@@ -1,0 +1,1 @@
+<script setup lang="ts">import{finite}from'../utils';defineProps<{label:string,value:unknown,hint?:string}>()</script><template><q-card flat bordered class="metric"><div class="muted">{{label}}</div><strong>{{finite(value)}}</strong><small v-if="hint">{{hint}}</small></q-card></template>

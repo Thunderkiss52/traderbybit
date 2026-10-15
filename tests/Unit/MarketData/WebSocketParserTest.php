@@ -1,0 +1,58 @@
+<?php
+
+declare(strict_types=1);
+
+namespace Tests\Unit\MarketData;
+
+use App\MarketData\Infrastructure\Bybit\BybitWebSocketMessageParser;
+use PHPUnit\Framework\TestCase;
+use UnexpectedValueException;
+
+final class WebSocketParserTest extends TestCase
+{
+    public function test_it_ignores_unconfirmed_candles_and_control_messages(): void
+    {
+        $parser = new BybitWebSocketMessageParser;
+
+        self::assertNull($parser->parseClosedCandle('{"op":"ping","success":true}'));
+        self::assertNull($parser->parseClosedCandle($this->event(false)));
+    }
+
+    public function test_it_parses_only_confirmed_closed_candles(): void
+    {
+        $candle = (new BybitWebSocketMessageParser)->parseClosedCandle($this->event(true));
+
+        self::assertNotNull($candle);
+        self::assertTrue($candle->isClosed);
+        self::assertSame('BTCUSDT', $candle->symbol);
+        self::assertSame(1704067200000, $candle->openTimeMs());
+    }
+
+    public function test_it_rejects_incomplete_events(): void
+    {
+        $this->expectException(UnexpectedValueException::class);
+        (new BybitWebSocketMessageParser)->parseClosedCandle('{"topic":"kline.5.BTCUSDT","data":[{"confirm":true}]}');
+    }
+
+    private function event(bool $confirmed): string
+    {
+        return json_encode([
+            'topic' => 'kline.5.BTCUSDT',
+            'type' => 'snapshot',
+            'ts' => 1704067500000,
+            'data' => [[
+                'start' => 1704067200000,
+                'end' => 1704067499999,
+                'interval' => '5',
+                'open' => '42000.1',
+                'high' => '42100.2',
+                'low' => '41900.3',
+                'close' => '42050.4',
+                'volume' => '12.5',
+                'turnover' => '525630',
+                'confirm' => $confirmed,
+                'timestamp' => 1704067499000,
+            ]],
+        ], JSON_THROW_ON_ERROR);
+    }
+}
