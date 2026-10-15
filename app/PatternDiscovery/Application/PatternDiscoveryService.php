@@ -8,8 +8,8 @@ use App\MarketData\Infrastructure\Persistence\CandleRecord;
 use App\PatternDiscovery\Domain\MarketObservation;
 use App\PatternDiscovery\Infrastructure\Persistence\PatternRecord;
 use App\PatternDiscovery\Infrastructure\Persistence\PatternRunRecord;
-use App\Strategy\Infrastructure\Persistence\SignalRecord;
 use App\Strategy\Infrastructure\Persistence\MarketContextRecord;
+use App\Strategy\Infrastructure\Persistence\SignalRecord;
 use DateTimeImmutable;
 use Illuminate\Support\Facades\DB;
 
@@ -60,12 +60,14 @@ final readonly class PatternDiscoveryService
                 if (! is_array($entry) || ! is_numeric($entry['atr_14'] ?? null) || ! is_numeric($entry['close'] ?? null)
                     || count($features['features']) < 5) {
                     $quality['missing_features']++;
+
                     continue;
                 }
                 $lastOpen = $time + (((int) $config['holding_bars_5m'] - 1) * 300);
                 // Never label a decision with candles closing after this research window.
                 if ($lastOpen + 300 > $run->to_at->getTimestamp()) {
                     $quality['missing_outcomes']++;
+
                     continue;
                 }
                 $bars = CandleRecord::query()->where('exchange', $record->exchange)
@@ -82,6 +84,7 @@ final readonly class PatternDiscoveryService
                     $label = $this->labeler->label($direction, (string) $entry['close'], (string) $entry['atr_14'], $time, $candles, $config);
                     if ($label === null) {
                         $quality['missing_outcomes']++;
+
                         continue;
                     }
                     $quality['ambiguous_labels'] += (int) $label['ambiguous'];

@@ -203,3 +203,20 @@ REST-свечи не содержат признака закрытия. Поэ�
 ## GitHub Actions deployment
 
 Manual one-click deployment requires a one-time setup of the SSH server wrapper, GHCR image access, and production GitHub Secrets. See [`docker/GIT_DEPLOY.md`](docker/GIT_DEPLOY.md) for exact prerequisites, the Actions button workflow, repeated-deployment behavior, and recovery steps. Never assume the workflow is ready on the VPS before these checks pass.
+
+### Local PHP test environment (no `.env` warnings)
+
+Run `composer test` (or `XDEBUG_MODE=off php artisan test --no-ansi`). The test bootstrap and Composer test script create a local
+`.env` from `.env.example` **only when `.env` is missing**. It never overwrites
+an existing local or production environment. PHPUnit uses the isolated SQLite
+configuration and test key from `phpunit.xml`. Disabling Xdebug for this
+command prevents connection timeout messages when no IDE debugger is listening.
+
+To run Artisan directly for the first time, initialize the local file once:
+
+```sh
+test -f .env || cp .env.example .env
+XDEBUG_MODE=off php artisan test --no-ansi
+```
+
+Never commit `.env` or use actual production secrets in local test runs.

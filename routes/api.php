@@ -1,8 +1,8 @@
 <?php
 
+use App\Http\Controllers\Api\V1\PatternResearchController as P;
 use App\Http\Controllers\Api\V1\ResearchController as C;
 use App\Http\Controllers\Api\V1\StrategyResearchController as R;
-use App\Http\Controllers\Api\V1\PatternResearchController as P;
 use App\Http\Middleware\RequireResearchToken;
 use Illuminate\Support\Facades\Route;
 

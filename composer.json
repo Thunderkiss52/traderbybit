@@ -47,8 +47,9 @@
             "@php artisan dev"
         ],
         "test": [
+            "@php -r \"is_file('.env') || copy('.env.example', '.env');\"",
             "@php artisan config:clear --ansi @no_additional_args",
-            "@php artisan test"
+            "XDEBUG_MODE=off php artisan test --no-ansi"
         ],
         "post-autoload-dump": [
             "Illuminate\\Foundation\\ComposerScripts::postAutoloadDump",

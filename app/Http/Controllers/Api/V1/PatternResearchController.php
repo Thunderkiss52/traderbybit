@@ -5,13 +5,13 @@ declare(strict_types=1);
 namespace App\Http\Controllers\Api\V1;
 
 use App\Http\Controllers\Controller;
+use App\PatternDiscovery\Application\MarketFeatureExtractor;
+use App\PatternDiscovery\Application\PatternMatcher;
 use App\PatternDiscovery\Infrastructure\Persistence\PatternRecord;
 use App\PatternDiscovery\Infrastructure\Persistence\PatternRunRecord;
 use App\PatternDiscovery\Jobs\DiscoverPatternsJob;
-use App\Strategy\Infrastructure\Persistence\SignalRecord;
 use App\Strategy\Infrastructure\Persistence\MarketContextRecord;
-use App\PatternDiscovery\Application\MarketFeatureExtractor;
-use App\PatternDiscovery\Application\PatternMatcher;
+use App\Strategy\Infrastructure\Persistence\SignalRecord;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Ramsey\Uuid\Uuid;
