@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, watch } from 'vue';
+import { ref, watch, onBeforeUnmount } from 'vue';
 import { useRoute } from 'vue-router';
 import { get } from '../services/api';
 import CandleChart from '../components/charts/CandleChart.vue';
@@ -13,29 +13,45 @@ const context = ref<any>();
 const signals = ref<any[]>([]);
 const error = ref('');
 const loading = ref(false);
-
-const load = async () => {
+const history = ref<string[]>([]);
+const to = ref<string | undefined>();
+let controller: AbortController | undefined;
+let version = 0;
+async function load() {
+  controller?.abort();
+  controller = new AbortController();
+  const current = ++version;
   loading.value = true;
   try {
+    const params = { interval: interval.value, limit: 300, to: to.value };
     const [loadedCandles, loadedIndicators, loadedContext, loadedSignals]: any[] = await Promise.all([
-      get(`/market/${route.params.symbol}/candles`, { interval: interval.value, limit: 500 }),
-      get(`/market/${route.params.symbol}/indicators`, { interval: interval.value, limit: 500 }),
-      get(`/market/${route.params.symbol}/context`),
-      get('/signals', { symbol: route.params.symbol, per_page: 100 }),
+      get(`/market/${route.params.symbol}/candles`, params, controller.signal),
+      get(`/market/${route.params.symbol}/indicators`, params, controller.signal),
+      get(`/market/${route.params.symbol}/context`, undefined, controller.signal),
+      get('/signals', { symbol: route.params.symbol, per_page: 10 }, controller.signal),
     ]);
+    if (current !== version) return;
     candles.value = loadedCandles;
     indicators.value = loadedIndicators;
     context.value = loadedContext;
     signals.value = loadedSignals.data || [];
     error.value = '';
   } catch (exception: any) {
-    error.value = exception.message;
-  } finally {
-    loading.value = false;
-  }
-};
-
-watch([() => route.params.symbol, interval], load, { immediate: true });
+    if (current === version && !controller.signal.aborted) error.value = exception.message;
+  } finally { if (current === version) loading.value = false; }
+}
+function older() {
+  if (!candles.value.length) return;
+  history.value.push(to.value || '');
+  to.value = candles.value[0].open_time;
+}
+function newer() {
+  const previous = history.value.pop();
+  to.value = previous || undefined;
+}
+watch([() => route.params.symbol, interval], () => { history.value = []; to.value = undefined; load(); }, { immediate: true });
+watch(to, load);
+onBeforeUnmount(() => controller?.abort());
 </script>
 
 <template>
@@ -46,6 +62,12 @@ watch([() => route.params.symbol, interval], load, { immediate: true });
     </div>
     <q-banner v-if="error" class="bg-negative text-white">{{ error }}</q-banner>
     <q-linear-progress v-if="loading" indeterminate color="primary" />
+    <div class="row items-center q-gutter-md q-mb-md">
+      <q-btn label="Older candles" outline :disable="loading || !candles.length" @click="older" />
+      <q-btn label="Newer candles" outline :disable="loading || !history.length" @click="newer" />
+      <q-btn label="Latest" flat :disable="loading || !history.length" @click="history = []; to = undefined" />
+      <span class="text-caption">{{ candles.length }} closed candles per window · {{ signals.length }} recent signals</span>
+    </div>
     <CandleChart :candles="candles" :indicators="indicators" :signals="signals" />
     <IndicatorPanels :indicators="indicators" />
     <div class="panel">

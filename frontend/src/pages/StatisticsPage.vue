@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref } from 'vue';
+import { computed, ref, watch } from 'vue';
 import { storeToRefs } from 'pinia';
 import { get } from '../services/api';
 import { usePolling } from '../composables/usePolling';
@@ -10,17 +10,27 @@ import PerformanceCharts from '../components/charts/PerformanceCharts.vue';
 import PeriodPnlChart from '../components/charts/PeriodPnlChart.vue';
 
 const data = ref<any>({ metrics: null, equity: [], breakdowns: {}, period_pnl: {}, data_quality: {} });
+const equityPage = ref(1);
+const rPage = ref(1);
+const periodPage = ref(1);
+const periodSeries = computed(() => ({
+  daily: data.value.period_pnl?.daily?.data || [],
+  weekly: data.value.period_pnl?.weekly?.data || [],
+  monthly: data.value.period_pnl?.monthly?.data || [],
+}));
+const periodPages = computed(() => Math.max(1, ...['daily', 'weekly', 'monthly'].map(name => data.value.period_pnl?.[name]?.last_page || 1)));
 const error = ref('');
 const { autoRefresh } = storeToRefs(useSettings());
-const { loading } = usePolling(async () => {
+const { loading, refresh } = usePolling(async () => {
   try {
-    data.value = await get('/statistics');
+    data.value = await get('/statistics', { equity_page: equityPage.value, r_page: rPage.value, period_page: periodPage.value });
     error.value = '';
   } catch (exception: any) {
     error.value = exception.message;
     throw exception;
   }
-}, 30000, autoRefresh);
+}, 60000, autoRefresh);
+watch([equityPage, rPage, periodPage], refresh);
 </script>
 
 <template>
@@ -44,9 +54,22 @@ const { loading } = usePolling(async () => {
       positions waiting for market data ({{ data.data_quality?.awaiting_market_data_positions || 0 }}).
     </q-banner>
     <div class="grid q-mt-md">
-      <div class="panel"><h2>Equity Curve</h2><EquityChart :points="data.equity || []" /></div>
-      <div class="panel"><h2>Net PnL by period (closed trades)</h2><PeriodPnlChart :periods="data.period_pnl || {}" /></div>
-      <div class="panel"><h2>PnL by symbol, side, class / R</h2><PerformanceCharts :breakdowns="data.breakdowns" /></div>
+      <div class="panel">
+        <h2>Equity Curve · 100 snapshots per page</h2>
+        <EquityChart :points="data.equity || []" />
+        <q-pagination v-model="equityPage" :max="data.equity_pagination?.last_page || 1" :max-pages="5" boundary-links direction-links />
+      </div>
+      <div class="panel">
+        <h2>Net PnL by period · 10 periods per page</h2>
+        <PeriodPnlChart :periods="periodSeries" />
+        <q-pagination v-model="periodPage" :max="periodPages" :max-pages="5" boundary-links direction-links />
+      </div>
+      <div class="panel">
+        <h2>PnL by symbol, side, class / R</h2>
+        <PerformanceCharts :breakdowns="data.breakdowns" />
+        <div class="text-caption">R distribution: 10 latest trades per page</div>
+        <q-pagination v-model="rPage" :max="data.r_pagination?.last_page || 1" :max-pages="5" boundary-links direction-links />
+      </div>
     </div>
   </q-page>
 </template>

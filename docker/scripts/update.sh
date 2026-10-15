@@ -23,6 +23,12 @@ if [[ "${DEPLOY_MODE:-pull}" == "pull" && -z "${NEW_IMAGE_TAG:-}" ]]; then
     exit 1
 fi
 if [[ "${NEW_TAG}" == "${CURRENT_TAG}" ]]; then
+    if [[ "${DEPLOY_MODE:-pull}" == "pull" ]]; then
+        # Immutable GHCR tags are SHA-based. A timestamp suffix does not exist in the registry.
+        echo "Release ${NEW_TAG} is already deployed; checking service health without rebuilding."
+        "${SCRIPT_DIR}/healthcheck.sh"
+        exit 0
+    fi
     NEW_TAG="${NEW_TAG}-$(date -u +%Y%m%d%H%M%S)"
 fi
 

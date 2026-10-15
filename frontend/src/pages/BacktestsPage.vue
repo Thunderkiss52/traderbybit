@@ -1,8 +1,12 @@
 <script setup lang="ts">
-import { onMounted, ref } from 'vue';
+import { onMounted, ref, watch } from 'vue';
 import { get, startBacktest } from '../services/api';
 
 const rows = ref<any[]>([]);
+const page = ref(1);
+const lastPage = ref(1);
+const error = ref('');
+const listLoading = ref(false);
 const form = ref({
   symbols: ['BTCUSDT'], from: '', to: '', mode: 'split',
   starting_balance: '', strategy_version: '', execution_model_version: '',
@@ -10,26 +14,39 @@ const form = ref({
 const token = ref('');
 const message = ref('');
 const loading = ref(false);
-
-const load = async () => {
-  const response: any = await get('/backtests');
-  rows.value = response.data;
-};
+let version = 0;
+async function load() {
+  const current = ++version;
+  listLoading.value = true;
+  try {
+    const response: any = await get('/backtests', { page: page.value, per_page: 10 });
+    if (current !== version) return;
+    rows.value = response.data || [];
+    lastPage.value = response.last_page || 1;
+    error.value = '';
+  } catch (exception: any) {
+    if (current === version) { rows.value = []; error.value = exception.message; }
+  } finally {
+    if (current === version) listLoading.value = false;
+  }
+}
 const submit = async () => {
   loading.value = true;
   try {
     await startBacktest(form.value, token.value);
     message.value = 'Research job queued';
+    page.value = 1;
     await load();
   } catch (exception: any) {
     message.value = exception.message;
-  } finally {
-    loading.value = false;
-  }
+  } finally { loading.value = false; }
 };
+watch(page, load);
 onMounted(async () => {
-  const dashboard: any = await get('/dashboard');
-  Object.assign(form.value, dashboard.research_settings || {});
+  try {
+    const dashboard: any = await get('/dashboard');
+    Object.assign(form.value, dashboard.research_settings || {});
+  } catch (exception: any) { error.value = exception.message; }
   await load();
 });
 </script>
@@ -52,6 +69,11 @@ onMounted(async () => {
       </div>
       <p>{{ message }}</p>
     </q-card>
-    <q-table flat bordered :rows="rows" row-key="id" @row-click="(_, row) => $router.push(`/backtests/${row.id}`)" />
+    <q-banner v-if="error" class="bg-negative text-white q-mb-md">{{ error }}</q-banner>
+    <q-table flat bordered :rows="rows" row-key="id" :loading="listLoading" :pagination="{ rowsPerPage: 0 }" hide-pagination @row-click="(_, row) => $router.push(`/backtests/${row.id}`)" />
+    <div class="row items-center justify-between q-mt-md">
+      <span class="text-caption">Latest 10 backtests · Page {{ page }} / {{ lastPage }}</span>
+      <q-pagination v-model="page" :max="lastPage" :max-pages="7" boundary-links direction-links />
+    </div>
   </q-page>
 </template>

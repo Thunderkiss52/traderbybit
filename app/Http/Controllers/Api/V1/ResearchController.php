@@ -33,6 +33,7 @@ use DateTimeImmutable;
 use Brick\Math\BigDecimal;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Cache;
 
 final class ResearchController extends Controller
 {
@@ -49,16 +50,32 @@ final class ResearchController extends Controller
         return $symbol;
     }
 
+    /** Keep default ledgers small even when clients omit pagination arguments. */
+    private function perPage(Request $request): int
+    {
+        return max(1, min(50, $request->integer('per_page', 10)));
+    }
+
     public function dashboard(PerformanceStatisticsService $statistics): ResearchResource
     {
         $account = PaperAccountRecord::query()->oldest()->first();
-        $contexts = MarketContextRecord::query()->whereIn('symbol', config('ui.symbols'))->latest('observed_at')->get()->unique('symbol')->values();
+        $contexts = collect(config('ui.symbols'))->map(
+            static fn (string $symbol) => MarketContextRecord::query()->where('symbol', $symbol)->latest('observed_at')->first()
+        )->filter()->values();
         $recentSkips = SignalRecord::query()->where('side', 'SKIP')
             ->where('decision_time', '>=', now('UTC')->subDay())
             ->whereIn('symbol', config('ui.symbols'))
-            ->get(['reasons']);
-        $skipReasons = $recentSkips->flatMap(static fn (SignalRecord $signal): array => $signal->reasons ?? [])
-            ->countBy()->sortDesc()->take(8)->all();
+            ->cursor();
+        $skipCounts = [];
+        foreach ($recentSkips as $skip) {
+            foreach ($skip->reasons ?? [] as $reason) {
+                if (is_string($reason)) {
+                    $skipCounts[$reason] = ($skipCounts[$reason] ?? 0) + 1;
+                }
+            }
+        }
+        arsort($skipCounts);
+        $skipReasons = array_slice($skipCounts, 0, 8, true);
 
         return $this->ok([
             'market' => $contexts,
@@ -67,11 +84,11 @@ final class ResearchController extends Controller
                 'open_positions' => VirtualPositionRecord::query()->where('paper_account_id', $account->id)->whereNull('closed_at')->count(),
                 'pending_entry_signals' => PaperSignalStateRecord::query()->where('paper_account_id', $account->id)->where('status', 'PENDING_ENTRY')->count(),
             ]) : null,
-            'signals' => SignalRecord::query()->whereIn('side', ['BUY', 'SELL'])->latest('decision_time')->limit(8)->get(),
-            'recent_decisions' => SignalRecord::query()->whereIn('symbol', config('ui.symbols'))->latest('decision_time')->limit(8)->get(),
+            'signals' => SignalRecord::query()->whereIn('side', ['BUY', 'SELL'])->latest('decision_time')->limit(8)->get(['id', 'symbol', 'side', 'quality_class', 'score', 'entry_low', 'entry_high', 'stop_loss', 'take_profit_1', 'take_profit_2', 'expires_at', 'reasons', 'decision_time']),
+            'recent_decisions' => SignalRecord::query()->whereIn('symbol', config('ui.symbols'))->latest('decision_time')->limit(8)->get(['id', 'symbol', 'side', 'decision_time', 'reasons']),
             'skip_reasons_24h' => $skipReasons,
-            'positions' => VirtualPositionRecord::query()->whereNull('closed_at')->get(),
-            'performance' => $account ? $statistics->calculate($account->id)->metrics : null,
+            'positions' => VirtualPositionRecord::query()->whereNull('closed_at')->latest('opened_at')->limit(10)->get(['id', 'symbol', 'side', 'status', 'entry_price', 'net_pnl', 'unrealized_pnl']),
+            'performance' => $account ? Cache::remember('paper:dashboard:performance:'.$account->id, 60, fn () => $statistics->calculate($account->id)->metrics) : null,
             'research_settings' => [
                 'starting_balance' => config('backtest.starting_balance'),
                 'strategy_version' => config('strategy.version'),
@@ -92,7 +109,11 @@ final class ResearchController extends Controller
 
     public function indicators(MarketSeriesRequest $r, string $symbol, IndicatorEngine $engine): ResearchResource
     {
-        $rows = CandleRecord::query()->where(['symbol' => $this->symbol($symbol), 'interval' => (string) $r->integer('interval', 15), 'is_closed' => true])->latest('open_time')->limit($r->integer('limit', 500))->get()->reverse()->values();
+        $query = CandleRecord::query()->where(['symbol' => $this->symbol($symbol), 'interval' => (string) $r->integer('interval', 15), 'is_closed' => true]);
+        if ($r->filled('to')) {
+            $query->where('open_time', '<', new DateTimeImmutable($r->string('to')));
+        }
+        $rows = $query->latest('open_time')->limit($r->integer('limit', 300))->get()->reverse()->values();
         if ($rows->isEmpty()) {
             return $this->ok(['times' => [], 'series' => null]);
         }
@@ -120,7 +141,7 @@ final class ResearchController extends Controller
             $q->where('symbol', 'like', '%'.strtoupper($r->string('search')).'%');
         }
 
-        return $this->ok($q->latest('decision_time')->paginate(min(100, max(1, $r->integer('per_page', 25)))));
+        return $this->ok($q->latest('decision_time')->paginate($this->perPage($r), ['id', 'symbol', 'side', 'quality_class', 'score', 'decision_time', 'candle_close_time', 'expires_at', 'entry_low', 'entry_high', 'stop_loss', 'take_profit_1', 'take_profit_2', 'strategy_version']));
     }
 
     public function signal(string $id): ResearchResource
@@ -137,10 +158,14 @@ final class ResearchController extends Controller
         if ($r->filled('symbol')) {
             $q->where('symbol', $this->symbol($r->string('symbol')));
         }
+        if ($r->filled('search')) {
+            $q->where('symbol', 'like', '%'.strtoupper($r->string('search')).'%');
+        }
 
-        $page = $q->latest('opened_at')->paginate(min(100, max(1, $r->integer('per_page', 25))));
-        $latestPrices = CandleRecord::query()->whereIn('symbol', collect($page->items())->pluck('symbol')->unique())
-            ->where('interval', '5')->where('is_closed', true)->latest('open_time')->get()->unique('symbol')->keyBy('symbol');
+        $page = $q->latest('opened_at')->paginate($this->perPage($r));
+        $latestPrices = collect($page->items())->pluck('symbol')->unique()->mapWithKeys(
+            static fn (string $symbol) => [$symbol => CandleRecord::query()->where('symbol', $symbol)->where('interval', '5')->where('is_closed', true)->latest('open_time')->first(['symbol', 'close'])]
+        );
         $page->through(function (VirtualPositionRecord $position) use ($latestPrices): array {
             $referenceAt = $position->closed_at ?? $position->last_processed_event_at ?? $position->opened_at;
 
@@ -154,7 +179,7 @@ final class ResearchController extends Controller
         return $this->ok($page);
     }
 
-    public function position(string $id): ResearchResource
+    public function position(Request $request, string $id): ResearchResource
     {
         $p = VirtualPositionRecord::query()->findOrFail($id);
 
@@ -162,9 +187,9 @@ final class ResearchController extends Controller
             'mode' => 'FORWARD_PAPER',
             'position' => $p,
             'signal' => SignalRecord::query()->find($p->signal_id),
-            'executions' => VirtualExecutionRecord::query()->where('position_id', $id)->oldest('market_event_at')->get(),
-            'funding_events' => PositionFundingEventRecord::query()->where('position_id', $id)->oldest('funding_at')->get(),
-            'journal' => JournalEventRecord::query()->where('position_id', $id)->oldest('occurred_at')->oldest('sequence')->get(),
+            'executions' => VirtualExecutionRecord::query()->where('position_id', $id)->latest('market_event_at')->paginate($this->perPage($request), ['id', 'type', 'quantity', 'price', 'commission', 'slippage', 'gross_pnl', 'market_event_at', 'price_source', 'ambiguous_execution'], 'executions_page'),
+            'funding_events' => PositionFundingEventRecord::query()->where('position_id', $id)->latest('funding_at')->paginate($this->perPage($request), ['id', 'rate', 'amount', 'funding_at'], 'funding_page'),
+            'journal' => JournalEventRecord::query()->where('position_id', $id)->latest('occurred_at')->paginate($this->perPage($request), ['id', 'event_type', 'occurred_at'], 'journal_page'),
         ]);
     }
 
@@ -175,52 +200,68 @@ final class ResearchController extends Controller
             $q->where('paper_account_id', $r->string('account'));
         }
 
-        return $this->ok($q->latest('occurred_at')->paginate(min(100, max(1, $r->integer('per_page', 25)))));
+        return $this->ok($q->latest('occurred_at')->latest('sequence')->paginate($this->perPage($r), ['sequence', 'id', 'paper_account_id', 'position_id', 'signal_id', 'event_type', 'occurred_at']));
     }
 
     public function statistics(Request $r, PerformanceStatisticsService $s): ResearchResource
     {
         $a = $r->string('account')->toString() ?: PaperAccountRecord::query()->value('id');
         if (! $a) {
-            return $this->ok(['metrics' => null, 'equity' => []]);
+            return $this->ok(['metrics' => null, 'equity' => [], 'equity_pagination' => ['current_page' => 1, 'last_page' => 1], 'breakdowns' => [], 'period_pnl' => []]);
         }
-        $report = $s->calculate($a);
-        $closed = VirtualPositionRecord::query()
-            ->where('paper_account_id', $a)
-            ->whereNotNull('closed_at');
+        $report = Cache::remember('paper:statistics:'.$a, 60, fn () => $s->calculate($a));
+        $closed = VirtualPositionRecord::query()->where('paper_account_id', $a)->whereNotNull('closed_at');
         $group = static fn (string $field) => (clone $closed)
             ->selectRaw($field.', COUNT(*) AS trades, SUM(net_pnl) AS net_pnl, SUM(CASE WHEN net_pnl > 0 THEN 1 ELSE 0 END) AS winning_trades')
-            ->groupBy($field)
-            ->orderBy($field)
-            ->get();
+            ->groupBy($field)->orderBy($field)->get();
+
+        // Never send an unbounded equity curve or per-trade R array to the browser.
+        $equityPage = max(1, $r->integer('equity_page', 1));
+        $equity = EquitySnapshotRecord::query()->where('paper_account_id', $a)
+            ->latest('recorded_at')->latest('id')->paginate(100, ['recorded_at', 'equity', 'drawdown_percent'], 'equity_page', $equityPage);
+        $rPage = max(1, $r->integer('r_page', 1));
+        $rMultiples = (clone $closed)->whereNotNull('r_multiple')->latest('closed_at')
+            ->paginate(10, ['id', 'r_multiple'], 'r_page', $rPage);
 
         return $this->ok([
             'metrics' => $report->metrics,
             'data_quality' => $report->dataQuality,
-            'equity' => EquitySnapshotRecord::query()->where('paper_account_id', $a)->oldest('recorded_at')->get(),
+            'equity' => collect($equity->items())->reverse()->values(),
+            'equity_pagination' => ['current_page' => $equity->currentPage(), 'last_page' => $equity->lastPage(), 'total' => $equity->total()],
             'breakdowns' => [
-                'symbols' => $group('symbol'),
-                'sides' => $group('side'),
-                'quality_classes' => $group('quality_class'),
-                'r_distribution' => (clone $closed)->whereNotNull('r_multiple')->orderBy('closed_at')->pluck('r_multiple'),
+                'symbols' => $group('symbol'), 'sides' => $group('side'), 'quality_classes' => $group('quality_class'),
+                'r_distribution' => collect($rMultiples->items())->pluck('r_multiple')->reverse()->values(),
             ],
-            'period_pnl' => $this->periodPnl((clone $closed)->oldest('closed_at')->get()),
+            'r_pagination' => ['current_page' => $rMultiples->currentPage(), 'last_page' => $rMultiples->lastPage(), 'total' => $rMultiples->total()],
+            'period_pnl' => $this->periodPnl((clone $closed)->oldest('closed_at')->cursor(), max(1, $r->integer('period_page', 1))),
         ]);
     }
 
-    private function periodPnl($positions): array
+    /** Aggregate with a cursor, returning only ten recent periods to the client. */
+    private function periodPnl(iterable $positions, int $page): array
     {
-        $periods = ['daily' => 'Y-m-d', 'weekly' => 'o-\WW', 'monthly' => 'Y-m'];
+        $formats = ['daily' => 'Y-m-d', 'weekly' => 'o-\WW', 'monthly' => 'Y-m'];
+        $buckets = ['daily' => [], 'weekly' => [], 'monthly' => []];
+        foreach ($positions as $position) {
+            foreach ($formats as $name => $format) {
+                $key = $position->closed_at->format($format);
+                $buckets[$name][$key] = ($buckets[$name][$key] ?? BigDecimal::zero())->plus($position->net_pnl);
+            }
+        }
         $result = [];
-        foreach ($periods as $name => $format) {
+        foreach ($buckets as $name => $byPeriod) {
+            ksort($byPeriod);
             $running = BigDecimal::zero();
-            $result[$name] = $positions->groupBy(fn (VirtualPositionRecord $position): string => $position->closed_at->format($format))
-                ->map(function ($rows, string $period) use (&$running): array {
-                    $net = $rows->reduce(fn (BigDecimal $sum, VirtualPositionRecord $position): BigDecimal => $sum->plus($position->net_pnl), BigDecimal::zero());
-                    $running = $running->plus($net);
-
-                    return ['period' => $period, 'net_pnl' => (string) $net, 'cumulative_net_pnl' => (string) $running];
-                })->values()->all();
+            $items = [];
+            foreach ($byPeriod as $period => $net) {
+                $running = $running->plus($net);
+                $items[] = ['period' => $period, 'net_pnl' => (string) $net, 'cumulative_net_pnl' => (string) $running];
+            }
+            $items = array_reverse($items); // newest first for consistent pagination
+            $result[$name] = [
+                'data' => array_reverse(array_slice($items, ($page - 1) * 10, 10)),
+                'current_page' => $page, 'last_page' => max(1, (int) ceil(count($items) / 10)),
+            ];
         }
 
         return $result;
@@ -229,25 +270,51 @@ final class ResearchController extends Controller
     public function risk(Request $r): ResearchResource
     {
         $a = $r->string('account')->toString() ?: PaperAccountRecord::query()->value('id');
+        $decisions = $a ? RiskDecisionRecord::query()->where('paper_account_id', $a)
+            ->latest('decided_at')->paginate($this->perPage($r), ['id', 'signal_id', 'allowed', 'reasons', 'decided_at']) : null;
 
-        return $this->ok(['account' => $a ? PaperAccountRecord::query()->find($a) : null, 'decisions' => $a ? RiskDecisionRecord::query()->where('paper_account_id', $a)->latest('decided_at')->limit(50)->get() : [], 'limits' => config('paper.portfolio')]);
+        return $this->ok([
+            'account' => $a ? PaperAccountRecord::query()->find($a) : null,
+            'decisions' => $decisions ?? ['data' => [], 'current_page' => 1, 'last_page' => 1],
+            'limits' => config('paper.portfolio'),
+        ]);
     }
 
     public function backtests(Request $r): ResearchResource
     {
-        return $this->ok(BacktestRunRecord::query()->latest()->paginate(min(100, max(1, $r->integer('per_page', 25)))));
+        return $this->ok(BacktestRunRecord::query()->latest('created_at')->paginate($this->perPage($r),
+            ['id', 'type', 'status', 'from_at', 'to_at', 'symbols', 'strategy_version', 'progress', 'created_at', 'completed_at']));
     }
 
-    public function backtest(string $id): ResearchResource
+    public function backtest(Request $request, string $id): ResearchResource
     {
         $run = BacktestRunRecord::query()->findOrFail($id);
 
-        return $this->ok(['run' => $run, 'segments' => BacktestSegmentRecord::query()->where('backtest_run_id', $id)->get()]);
+        return $this->ok([
+            'run' => $run->only(['id', 'type', 'status', 'progress', 'strategy_version', 'from_at', 'to_at', 'metrics']),
+            'segments' => BacktestSegmentRecord::query()->where('backtest_run_id', $id)
+                ->orderBy('window_index')->paginate($this->perPage($request),
+                    ['id', 'kind', 'window_index', 'from_at', 'to_at', 'status', 'metrics']),
+        ]);
     }
 
-    public function report(string $id): ResearchResource
+    public function report(Request $request, string $id): ResearchResource
     {
-        return $this->ok(['reports' => BacktestReportRecord::query()->where('backtest_run_id', $id)->get(), 'trades' => BacktestTradeRecord::query()->where('backtest_run_id', $id)->paginate(100), 'equity' => BacktestEquitySnapshotRecord::query()->where('backtest_run_id', $id)->oldest('recorded_at')->limit(5000)->get()]);
+        $run = BacktestRunRecord::query()->findOrFail($id);
+        $trades = BacktestTradeRecord::query()->where('backtest_run_id', $id)
+            ->latest('closed_at')->paginate($this->perPage($request),
+                ['id', 'symbol', 'side', 'quality_class', 'opened_at', 'closed_at', 'entry_price', 'exit_price', 'net_pnl', 'r_multiple', 'close_reason', 'ambiguous_execution', 'funding_complete']);
+        $equity = BacktestEquitySnapshotRecord::query()->where('backtest_run_id', $id)
+            ->latest('recorded_at')->latest('id')->paginate(100, ['recorded_at', 'equity', 'drawdown_percent'], 'equity_page', max(1, $request->integer('equity_page', 1)));
+
+        return $this->ok([
+            'run' => ['id' => $run->id, 'status' => $run->status, 'metrics' => $run->metrics, 'progress' => $run->progress],
+            // Report JSON can contain entire simulation traces: never include it in list responses.
+            'reports' => BacktestReportRecord::query()->where('backtest_run_id', $id)->get(['id', 'kind']),
+            'trades' => $trades,
+            'equity' => collect($equity->items())->reverse()->values(),
+            'equity_pagination' => ['current_page' => $equity->currentPage(), 'last_page' => $equity->lastPage(), 'total' => $equity->total()],
+        ]);
     }
 
     public function store(BacktestStoreRequest $r): JsonResponse

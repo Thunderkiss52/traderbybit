@@ -1,73 +1,52 @@
-# GitHub Actions production deployment
+# GitHub Actions deployment — one-time setup and checks
 
-`Deploy Production` tests the selected ref, builds immutable `app` and `web`
-images in GitHub Actions, pushes them to GHCR, and activates them on the VPS.
-Composer, Node.js, and Docker build cache are not required on the server.
+The workflow `.github/workflows/deploy.yml` is **manual** (`Actions → Deploy Production → Run workflow`) and is restricted to the `main` branch. It runs backend/frontend tests, publishes versioned `app` and `web` images to GHCR, and connects to the VPS over SSH. The images are **not** built on the VPS.
 
-## One-time GitHub setup
+## Before first click (one-time server setup)
 
-1. Push this repository to GitHub and create an Environment named `production`.
-2. Protect `main` and configure required reviewers for the production Environment.
-3. Add Environment secrets `DEPLOY_HOST`, `DEPLOY_USER`, `DEPLOY_SSH_KEY`, and
-   `DEPLOY_SSH_HOST_KEY`. The host-key value must come from a separately verified
-   `ssh-keyscan -p 2222 HOST` result; the workflow never disables host checking.
-4. Add Environment variable `DEPLOY_PORT` (`2222` on the current VPS).
-5. Give the server a GHCR credential restricted to `read:packages`, or make only
-   these two container packages public. Run `docker login ghcr.io` once as root;
-   never put that token in the repository.
-6. Configure a GHCR retention rule that preserves the current and previous image
-   versions. The server also removes only unused Bybit Signals tags after a
-   successful deployment.
+The workflow **does not provision** SSH, the server deploy wrapper, or the production secrets. Set these up once on the VPS, where the existing paper-trading deployment is already running:
 
-## One-time VPS setup
+1. Ensure `/srv/bybit-signals/.env.production` exists with secure permissions (`chmod 600`) and the existing Docker Compose stack is healthy. **Do not overwrite the production environment, database, or volumes.**
+2. Configure `APP_IMAGE=ghcr.io/<owner>/<repo>/app` and `WEB_IMAGE=ghcr.io/<owner>/<repo>/web` in `.env.production`, matching the lowercased GitHub repository name used by the workflow. Set `DEPLOY_MODE=pull`. **Do not change `IMAGE_TAG` to an unavailable GHCR tag.**
+3. The server must be able to pull both image packages from GHCR. Either make both GHCR packages public, or authenticate the server Docker daemon with a token limited to `read:packages`. Test pulling a previously published SHA tag before enabling regular releases. Do not put registry tokens in the repository.
+4. Create `/srv/bybit-signals/incoming`, `/srv/bybit-signals/releases`, and `/srv/bybit-signals/deploy-state`. Ensure the deploy user can upload archives to `incoming` and that the deploy wrapper can read those archives and the protected `.env.production`.
+5. Install `docker/scripts/production-deploy-wrapper.sh` from the reviewed repository as `/usr/local/sbin/bybit-signals-deploy`, owned by root and executable. The workflow runs `sudo -n /usr/local/sbin/bybit-signals-deploy <40-hex-commit-sha>`. Use a narrowly scoped `sudoers` entry for this exact script, not unrestricted sudo. A Docker-capable deployment user is effectively privileged: review this security boundary carefully.
+6. The wrapper expects an **already initialized** Docker Compose deployment because `update.sh` creates a PostgreSQL backup before updating. For a brand new server, bootstrap with the documented `docker/scripts/deploy.sh` process first, then enable GitHub deployment.
+7. Verify free disk space before the first release. No cleanup of other projects, and no global Docker prune, is allowed.
 
-Create a dedicated `deploy` user without a password or general sudo rights. Its
-public key belongs in `~deploy/.ssh/authorized_keys`. It needs write access only to
-`/srv/bybit-signals/incoming`. Install
-`docker/scripts/production-deploy-wrapper.sh` as the root-owned executable
-`/usr/local/sbin/bybit-signals-deploy`, then add exactly this sudoers rule:
+## GitHub repository settings
 
-```text
-deploy ALL=(root) NOPASSWD: /usr/local/sbin/bybit-signals-deploy *
-```
+Set GitHub Environment `production` and, preferably, require approval for this environment. The SSH server host key must be checked against an independently verified fingerprint.
 
-Do not add `deploy` to the Docker group. The wrapper accepts only a full 40-digit
-commit SHA, verifies the archive checksum and paths, and operates only on the
-`bybit-signals` Compose project. The wildcard is safe only with this immutable,
-root-owned validation wrapper; do not replace it with a general shell script.
-`/srv/bybit-signals/.env.production` remains
-root-owned with mode `0600` and is never uploaded by Actions.
+| Environment secret | Meaning |
+| --- | --- |
+| `DEPLOY_HOST` | VPS DNS/IP |
+| `DEPLOY_USER` | Restricted SSH deployment user |
+| `DEPLOY_SSH_KEY` | Private SSH key used **only** by GitHub Actions |
+| `DEPLOY_SSH_HOST_KEY` | Verified `known_hosts` entry, **not** a raw fingerprint |
 
-Set these non-secret values in `.env.production`:
+Optional Environment variable: `DEPLOY_PORT` (defaults to 22).
 
-```dotenv
-APP_IMAGE=ghcr.io/OWNER/REPOSITORY/app
-WEB_IMAGE=ghcr.io/OWNER/REPOSITORY/web
-DEPLOY_MODE=pull
-MIN_FREE_DISK_GB=10
-LOG_MAX_SIZE=10m
-LOG_MAX_FILES=3
-BACKUP_RETENTION_COUNT=7
-```
+For private GHCR packages, separately provision registry read credentials on the VPS; `GITHUB_TOKEN` used by GitHub Actions to publish images is **not transferred** to the VPS.
 
-## Deployment and rollback
+## One-click workflow
 
-Push to `main`, open **Actions → Deploy Production → Run workflow**, and select
-`main` or a release tag. Deployments are serialized. Tests and image publication
-must succeed before the protected production job starts.
+1. Commit and push the application updates to `main`.
+2. Open GitHub → Actions → **Deploy Production** → **Run workflow**, selecting `main`.
+3. The workflow tests the backend/frontend, builds/publishes `sha-<commit>` images, and transfers only a small source archive to the VPS.
+4. The server deploy wrapper verifies the archive checksum, extracts into an isolated SHA release directory, backs up PostgreSQL, pulls immutable GHCR images, migrates, updates the Compose stack, runs healthchecks, and switches the `/srv/bybit-signals/current` symlink only after success.
+5. Existing databases and volumes are preserved. The current and previous application image tags are retained for rollback.
 
-`update.sh` creates and verifies a PostgreSQL backup, pulls the commit-tagged
-images, migrates, replaces only Bybit Signals containers, and runs healthchecks.
-On failure it automatically restores the previous application images. It never
-rolls back migrations or removes volumes. Migrations must therefore remain
-backward compatible.
+The workflow can be rerun for the **same SHA**; `update.sh` recognizes the deployed image and verifies service health without inventing a non-existent image tag.
 
-Manual application rollback, if required:
+## Diagnostics if the button fails
 
-```bash
-sudo -n /usr/local/sbin/bybit-signals-deploy rollback
-```
+- **`Permission denied (publickey)`**: check deploy SSH key/user and `authorized_keys`.
+- **`sudo: a password is required` / command not found**: install wrapper and configure narrow passwordless sudo permission.
+- **`No such file or directory: /srv/bybit-signals/incoming`**: create upload directory and permissions.
+- **`pull access denied` / `unauthorized`**: check `APP_IMAGE`/`WEB_IMAGE`, GHCR visibility and server `docker login`.
+- **Backup or migration failure**: ensure running PostgreSQL, stable persistent volumes, and compatible migrations. Do not auto-restore production DB.
+- **`Image is already deployed`**: expected on repeated clicks for the same commit.
+- **Healthcheck failure**: inspect only `bybit-signals` Compose logs; investigate before attempting another deployment.
 
-Review Actions logs and `docker compose ... logs`. If a migration is incompatible,
-stop and deploy a forward fix; never restore a database over production without a
-separate approved recovery procedure.
+Do not claim a working one-click deployment until a real GitHub Actions run has passed end-to-end on the VPS. This is an operational prerequisite, not something a local archive can prove.

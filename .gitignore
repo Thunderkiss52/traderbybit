@@ -1,45 +1,22 @@
-/vendor/
-/node_modules/
-/frontend/node_modules/
-/frontend/dist/
-/.env.production
-/backups/
-/.deploy-previous
-/.deploy-current
-npm-debug.log
-yarn-error.log
 
-# Laravel runtime and generated assets
-bootstrap/compiled.php
-app/storage/
-public/storage
-public/hot
-public_html/storage
-public_html/hot
-storage/*.key
-/public/build
-/public/fonts-manifest.dev.json
-/storage/pail
+# Frontend build
+frontend/dist/
 
-# Local environment and tooling
-.env
-.env.backup
-.env.production
-.phpactor.json
-auth.json
-Homestead.yaml
-Homestead.json
-/.vagrant
-/.phpunit.result.cache
-/.phpunit.cache
-/.codex
-/.cursor/
-/.idea
-/.nova
-/.vscode
-/.zed
-*.log
-.DS_Store
-Thumbs.db
-_ide_helper.php
+# Archives
 *.zip
+
+# Dependencies
+/vendor/
+/frontend/node_modules/
+
+# Build artifacts
+/frontend/dist/
+
+# PHPUnit
+.phpunit.result.cache
+
+# Archives
+*.zip
+
+# Temporary verification reports
+/docs/VERIFICATION_LATEST.md

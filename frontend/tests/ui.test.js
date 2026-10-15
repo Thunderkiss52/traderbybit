@@ -87,9 +87,10 @@ test('statistics expose backend data quality flags, not nonexistent aliases', ()
 
 test('period PnL chart maps persisted net and cumulative PnL without fabricated points', () => {
   const text = source('components/charts/PeriodPnlChart.vue') + source('pages/StatisticsPage.vue');
-  for (const key of ['daily', 'weekly', 'monthly', 'net_pnl', 'cumulative_net_pnl', 'data.period_pnl']) {
+  for (const key of ['daily', 'weekly', 'monthly', 'net_pnl', 'cumulative_net_pnl']) {
     assert.match(text, new RegExp(key));
   }
+  assert.match(text, /data\.value\.period_pnl/);
   assert.match(text, /No closed paper trades/);
 });
 
@@ -99,4 +100,25 @@ test('dashboard explains real SKIP reasons instead of hiding strategy evaluation
   assert.match(text, /data.recent_decisions/);
   assert.match(text, /data.skip_reasons_24h/);
   assert.match(text, /decision.reasons/);
+});
+
+
+test('all ledger pages request ten records and use server-side pagination', () => {
+  for (const path of ['pages/TablePage.vue', 'pages/BacktestsPage.vue', 'pages/JournalPage.vue', 'pages/RiskPage.vue', 'pages/BacktestDetailPage.vue', 'pages/RecordDetailPage.vue']) {
+    const file = source(path);
+    assert.match(file, /per_page: 10|pageSize = 10/, path);
+    assert.match(file, /q-pagination/, path);
+  }
+});
+test('statistics paginates equity, R distribution, and reporting periods', () => {
+  const file = source('pages/StatisticsPage.vue');
+  for (const field of ['equity_page', 'r_page', 'period_page', 'equityPage', 'rPage', 'periodPage']) {
+    assert.ok(file.includes(field), field);
+  }
+});
+test('market chart limits history and permits window navigation', () => {
+  const file = source('pages/MarketPage.vue');
+  assert.match(file, /limit: 300/);
+  assert.match(file, /Older candles/);
+  assert.match(file, /Newer candles/);
 });

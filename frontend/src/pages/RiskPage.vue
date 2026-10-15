@@ -1,1 +1,43 @@
-<script setup lang="ts">import{ref,onMounted}from'vue';import{get}from'../services/api';import MetricCard from'../components/MetricCard.vue';const d=ref<any>({});onMounted(async()=>d.value=await get('/risk'))</script><template><q-page padding><div class="page-title"><div><span class="eyebrow">RISK CONTROL</span><h1>Portfolio Guardrails</h1></div></div><div class="metrics"><MetricCard label="Status" :value="d.account?.status"/><MetricCard label="Equity" :value="d.account?.current_equity"/><MetricCard label="Reserved Risk" :value="d.account?.reserved_risk"/><MetricCard label="Drawdown" :value="d.account?.current_drawdown_percent"/><MetricCard label="Max positions" :value="d.limits?.maximum_open_positions"/></div><h2>Latest decisions</h2><q-list bordered><q-item v-for="x in d.decisions" :key="x.id"><q-item-section><b>{{x.allowed?'APPROVED':'REJECTED'}}</b><small>{{x.reasons?.join(', ')}}</small></q-item-section></q-item></q-list></q-page></template>
+<script setup lang="ts">
+import { onMounted, ref, watch } from 'vue';
+import { get } from '../services/api';
+import MetricCard from '../components/MetricCard.vue';
+const d = ref<any>({ decisions: { data: [], last_page: 1 } });
+const page = ref(1);
+const loading = ref(false);
+const error = ref('');
+let version = 0;
+async function load() {
+  const current = ++version;
+  loading.value = true;
+  try {
+    const result = await get('/risk', { page: page.value, per_page: 10 });
+    if (current === version) { d.value = result; error.value = ''; }
+  } catch (exception: any) {
+    if (current === version) error.value = exception.message;
+  } finally {
+    if (current === version) loading.value = false;
+  }
+}
+watch(page, load);
+onMounted(load);
+</script>
+<template>
+  <q-page padding>
+    <div class="page-title"><div><span class="eyebrow">RISK CONTROL</span><h1>Portfolio Guardrails</h1></div></div>
+    <q-banner v-if="error" class="bg-negative text-white q-mb-md">{{ error }}</q-banner>
+    <div class="metrics">
+      <MetricCard label="Status" :value="d.account?.status" />
+      <MetricCard label="Equity" :value="d.account?.current_equity" />
+      <MetricCard label="Reserved Risk" :value="d.account?.reserved_risk" />
+      <MetricCard label="Drawdown" :value="d.account?.current_drawdown_percent" />
+      <MetricCard label="Max positions" :value="d.limits?.maximum_open_positions" />
+    </div>
+    <h2>Latest decisions</h2>
+    <q-table flat bordered :rows="d.decisions?.data || []" row-key="id" :loading="loading" :pagination="{ rowsPerPage: 0 }" hide-pagination />
+    <div class="row items-center justify-between q-mt-md">
+      <span class="text-caption">Latest 10 risk decisions · Page {{ page }} / {{ d.decisions?.last_page || 1 }}</span>
+      <q-pagination v-model="page" :max="d.decisions?.last_page || 1" :max-pages="7" boundary-links direction-links />
+    </div>
+  </q-page>
+</template>

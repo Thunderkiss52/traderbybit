@@ -198,3 +198,8 @@ REST-свечи не содержат признака закрытия. Поэ�
 - При недоступной части истории команда возвращает ненулевой код и сообщает число оставшихся пропусков. Искусственные свечи не создаются.
 - WebSocket-клиент — поддерживаемый `phrity/websocket` 4.x (PHP 8.2+), преемник заброшенного `textalk/websocket`.
 - Интеграционные запросы к реальному Bybit намеренно не входят в unit suite; unit/feature тесты не используют сеть.
+
+
+## GitHub Actions deployment
+
+Manual one-click deployment requires a one-time setup of the SSH server wrapper, GHCR image access, and production GitHub Secrets. See [`docker/GIT_DEPLOY.md`](docker/GIT_DEPLOY.md) for exact prerequisites, the Actions button workflow, repeated-deployment behavior, and recovery steps. Never assume the workflow is ready on the VPS before these checks pass.

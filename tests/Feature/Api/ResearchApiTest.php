@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Tests\Feature\Api;
 
 use App\Backtest\Jobs\RunBacktestJob;
+use App\Strategy\Infrastructure\Persistence\SignalRecord;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Bus;
 use Tests\TestCase;
@@ -70,6 +71,44 @@ final class ResearchApiTest extends TestCase
 
         self::assertNotNull($route);
         self::assertContains('throttle:api', $route->gatherMiddleware());
+    }
+
+    public function test_signal_list_is_paginated_and_excludes_heavy_json_snapshots(): void
+    {
+        for ($i = 0; $i < 12; $i++) {
+            SignalRecord::query()->create([
+                'exchange' => 'bybit', 'category' => 'linear', 'symbol' => 'BTCUSDT',
+                'timeframe' => '15', 'side' => 'SKIP', 'score' => 0,
+                'decision_time' => now('UTC')->subMinutes($i * 15),
+                'candle_close_time' => now('UTC')->subMinutes($i * 15),
+                'expires_at' => now('UTC')->addMinutes(30),
+                'maximum_holding_minutes' => 240,
+                'reasons' => ['test'], 'risks' => [],
+                'indicator_snapshot' => ['large' => str_repeat('X', 15000)],
+                'contract' => ['large' => str_repeat('Y', 15000)],
+                'strategy_version' => 'pagination-test', 'schema_version' => '1.0.0',
+            ]);
+        }
+
+        $response = $this->getJson('/api/v1/signals');
+        $response->assertOk()->assertJsonPath('data.per_page', 10)
+            ->assertJsonPath('data.total', 12)->assertJsonCount(10, 'data.data');
+        self::assertArrayNotHasKey('indicator_snapshot', $response->json('data.data.0'));
+        self::assertArrayNotHasKey('contract', $response->json('data.data.0'));
+        $response2 = $this->getJson('/api/v1/signals?page=2');
+        $response2->assertOk()->assertJsonCount(2, 'data.data');
+
+        $id = $response->json('data.data.0.id');
+        $this->getJson('/api/v1/signals/'.$id)->assertOk()
+            ->assertJsonPath('data.contract.large', str_repeat('Y', 15000));
+    }
+
+    public function test_other_ledgers_have_small_default_pages(): void
+    {
+        $this->getJson('/api/v1/backtests')->assertOk()->assertJsonPath('data.per_page', 10);
+        $this->getJson('/api/v1/positions')->assertOk()->assertJsonPath('data.per_page', 10);
+        $this->getJson('/api/v1/journal')->assertOk()->assertJsonPath('data.per_page', 10);
+        $this->getJson('/api/v1/risk')->assertOk()->assertJsonPath('data.decisions.last_page', 1);
     }
 
     public function test_no_trade_or_order_routes_exist(): void
