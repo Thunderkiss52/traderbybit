@@ -1,23 +1,26 @@
 <script setup lang="ts">
-import { onMounted, ref, watch } from 'vue';
+import { onBeforeUnmount, onMounted, ref, shallowRef, watch } from 'vue';
 import { get } from '../services/api';
 import EquityChart from '../components/charts/EquityChart.vue';
 import PerformanceCharts from '../components/charts/PerformanceCharts.vue';
 
-const journal = ref<any>({ data: [], last_page: 1 });
-const statistics = ref<any>({ metrics: null, equity: [], breakdowns: {} });
+const journal = shallowRef<any>({ data: [], last_page: 1 });
+const statistics = shallowRef<any>({ metrics: null, equity: [], breakdowns: {} });
 const page = ref(1);
 const loading = ref(false);
 const error = ref('');
 let version = 0;
+let controller: AbortController | undefined;
 async function loadJournal() {
+  controller?.abort();
+  controller = new AbortController();
   const current = ++version;
   loading.value = true;
   try {
-    const result: any = await get('/journal', { page: page.value, per_page: 10 });
+    const result: any = await get('/journal', { page: page.value, per_page: 10 }, controller.signal);
     if (current === version) { journal.value = result; error.value = ''; }
   } catch (exception: any) {
-    if (current === version) error.value = exception.message;
+    if (current === version && !controller.signal.aborted) error.value = exception.message;
   } finally {
     if (current === version) loading.value = false;
   }
@@ -25,9 +28,10 @@ async function loadJournal() {
 watch(page, loadJournal);
 onMounted(async () => {
   await loadJournal();
-  try { statistics.value = await get('/statistics', { equity_page: 1, r_page: 1, period_page: 1 }); }
+  try { statistics.value = await get('/statistics', { equity_page: 1, r_page: 1, period_page: 1 }, controller?.signal); }
   catch (exception: any) { error.value = exception.message; }
 });
+onBeforeUnmount(() => controller?.abort());
 </script>
 
 <template>

@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref } from 'vue';
+import { onBeforeUnmount, ref, shallowRef } from 'vue';
 import { storeToRefs } from 'pinia';
 import { get } from '../services/api';
 import { usePolling } from '../composables/usePolling';
@@ -8,18 +8,20 @@ import MetricCard from '../components/MetricCard.vue';
 import SignalCard from '../components/SignalCard.vue';
 import EmptyState from '../components/EmptyState.vue';
 
-const data = ref<any>({ market: [], signals: [], positions: [], portfolio: null, performance: null, recent_decisions: [], skip_reasons_24h: {} });
+const data = shallowRef<any>({ market: [], signals: [], positions: [], portfolio: null, performance: null, recent_decisions: [], skip_reasons_24h: {} });
 const error = ref('');
+const controller = new AbortController();
 const { autoRefresh } = storeToRefs(useSettings());
 const { loading, connected } = usePolling(async () => {
   try {
-    data.value = await get('/dashboard');
+    data.value = await get('/dashboard', undefined, controller.signal);
     error.value = '';
   } catch (exception: any) {
     error.value = exception.message;
     throw exception;
   }
 }, 5000, autoRefresh);
+onBeforeUnmount(() => controller.abort());
 </script>
 
 <template>

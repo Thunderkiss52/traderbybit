@@ -17,10 +17,11 @@ onMounted(() => {
   draw();
   window.addEventListener('resize', resize);
 });
-watch(() => props.points, draw, { deep: true });
+watch(() => props.points, draw);
 onBeforeUnmount(() => {
   window.removeEventListener('resize', resize);
   chart?.dispose();
+  chart = undefined;
 });
 </script>
 

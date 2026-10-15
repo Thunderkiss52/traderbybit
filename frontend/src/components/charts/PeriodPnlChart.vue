@@ -29,11 +29,12 @@ onMounted(() => {
   draw();
   window.addEventListener('resize', resize);
 });
-watch(() => props.periods, draw, { deep: true });
+watch(() => props.periods, draw);
 watch(period, draw);
 onBeforeUnmount(() => {
   window.removeEventListener('resize', resize);
   chart?.dispose();
+  chart = undefined;
 });
 </script>
 

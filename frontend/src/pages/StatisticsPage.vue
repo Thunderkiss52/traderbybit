@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, ref, watch } from 'vue';
+import { computed, onBeforeUnmount, ref, shallowRef, watch } from 'vue';
 import { storeToRefs } from 'pinia';
 import { get } from '../services/api';
 import { usePolling } from '../composables/usePolling';
@@ -9,7 +9,7 @@ import EquityChart from '../components/charts/EquityChart.vue';
 import PerformanceCharts from '../components/charts/PerformanceCharts.vue';
 import PeriodPnlChart from '../components/charts/PeriodPnlChart.vue';
 
-const data = ref<any>({ metrics: null, equity: [], breakdowns: {}, period_pnl: {}, data_quality: {} });
+const data = shallowRef<any>({ metrics: null, equity: [], breakdowns: {}, period_pnl: {}, data_quality: {} });
 const equityPage = ref(1);
 const rPage = ref(1);
 const periodPage = ref(1);
@@ -20,10 +20,11 @@ const periodSeries = computed(() => ({
 }));
 const periodPages = computed(() => Math.max(1, ...['daily', 'weekly', 'monthly'].map(name => data.value.period_pnl?.[name]?.last_page || 1)));
 const error = ref('');
+const controller = new AbortController();
 const { autoRefresh } = storeToRefs(useSettings());
 const { loading, refresh } = usePolling(async () => {
   try {
-    data.value = await get('/statistics', { equity_page: equityPage.value, r_page: rPage.value, period_page: periodPage.value });
+    data.value = await get('/statistics', { equity_page: equityPage.value, r_page: rPage.value, period_page: periodPage.value }, controller.signal);
     error.value = '';
   } catch (exception: any) {
     error.value = exception.message;
@@ -31,6 +32,7 @@ const { loading, refresh } = usePolling(async () => {
   }
 }, 60000, autoRefresh);
 watch([equityPage, rPage, periodPage], refresh);
+onBeforeUnmount(() => controller.abort());
 </script>
 
 <template>

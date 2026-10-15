@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, watch, onBeforeUnmount } from 'vue';
+import { ref, shallowRef, watch, onBeforeUnmount } from 'vue';
 import { useRoute } from 'vue-router';
 import { get } from '../services/api';
 import CandleChart from '../components/charts/CandleChart.vue';
@@ -7,10 +7,10 @@ import IndicatorPanels from '../components/charts/IndicatorPanels.vue';
 
 const route = useRoute();
 const interval = ref('15');
-const candles = ref<any[]>([]);
-const indicators = ref<any>();
-const context = ref<any>();
-const signals = ref<any[]>([]);
+const candles = shallowRef<any[]>([]);
+const indicators = shallowRef<any>();
+const context = shallowRef<any>();
+const signals = shallowRef<any[]>([]);
 const error = ref('');
 const loading = ref(false);
 const history = ref<string[]>([]);
@@ -24,17 +24,12 @@ async function load() {
   loading.value = true;
   try {
     const params = { interval: interval.value, limit: 300, to: to.value };
-    const [loadedCandles, loadedIndicators, loadedContext, loadedSignals]: any[] = await Promise.all([
-      get(`/market/${route.params.symbol}/candles`, params, controller.signal),
-      get(`/market/${route.params.symbol}/indicators`, params, controller.signal),
-      get(`/market/${route.params.symbol}/context`, undefined, controller.signal),
-      get('/signals', { symbol: route.params.symbol, per_page: 10 }, controller.signal),
-    ]);
+    const loaded: any = await get(`/market/${route.params.symbol}/analysis`, params, controller.signal);
     if (current !== version) return;
-    candles.value = loadedCandles;
-    indicators.value = loadedIndicators;
-    context.value = loadedContext;
-    signals.value = loadedSignals.data || [];
+    candles.value = loaded.candles || [];
+    indicators.value = loaded.indicators;
+    context.value = loaded.context;
+    signals.value = loaded.signals || [];
     error.value = '';
   } catch (exception: any) {
     if (current === version && !controller.signal.aborted) error.value = exception.message;

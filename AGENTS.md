@@ -210,11 +210,91 @@ rtk pip list            rtk pnpm install        rtk npm run <script>
 7. Changes reach the VPS only through the established Git deployment workflow.
    Do not manually patch deployed code or access other Docker projects.
 
-### Token-efficient agent behavior
+## English Only
 
-- Prefer specific `rg`, small file reads, minimal patches and concise test output.
-- Never dump `vendor`, `node_modules`, logs or binary files into prompt context.
-- Use `rtk` only when installed and when its filtering does not hide needed error
-  details; raw commands are acceptable for diagnostics and correctness.
-- Save compact implementation notes when context compression is necessary.
-- Token savings must not reduce essential testing, security or data integrity.
+- Always communicate in English, including progress updates, explanations, reports,
+  summaries, code comments, documentation, commit messages, and technical descriptions.
+- Preserve existing Russian translations and application localization. Never translate
+  existing user-facing UI strings unless the task explicitly requires it.
+
+## Maximum Token Efficiency
+
+Operate in maximum token-efficiency mode during every development session.
+
+### Communication
+
+- Keep responses extremely concise. Report only important discoveries, blockers, test
+  results, and completed work; prefer summaries over full code listings.
+- Do not repeat requirements, explain obvious actions, narrate every command, or print
+  entire files unless explicitly requested.
+- Keep final reports under 150 words whenever practical.
+
+### Repository exploration
+
+- Read `AGENTS.md` and relevant instructions once per session. Use targeted `rg`,
+  `rg -n`, and `rg --files`; read only relevant sections and avoid rereading unchanged
+  files or rediscovering known architecture.
+- Never scan or dump the entire repository unnecessarily. Exclude `vendor`,
+  `node_modules`, `.git`, logs, caches, and build artifacts.
+- Use `rtk` when installed and when filtering does not hide required diagnostics; raw
+  commands are acceptable for correctness and debugging.
+
+### Development
+
+- Make focused, minimal diffs and reuse existing services, interfaces, components, and
+  context. Avoid unnecessary abstractions, refactoring, documentation, fixtures,
+  dependencies, and network requests.
+- Batch related independent operations when safe.
+
+### Testing
+
+- Run targeted tests during development and required integration/regression tests.
+  Complete three meaningful development/testing iterations for substantial changes.
+- Capture verbose output in temporary files and show only relevant summaries or
+  failures. Do not rerun unchanged tests without a reason.
+- Never skip essential tests to save tokens or claim a test passed unless it ran.
+
+### Context management
+
+- Track progress through Git status, diffs, and concise project notes. After context
+  compaction, continue from the existing project state and diffs.
+- Recommend `/compact` when context becomes large, but never invoke it automatically
+  unless explicitly supported.
+
+### Final responses
+
+Report only changes made, tests and results, important blockers or limitations, and
+the next required action.
+
+## Preserve Engineering Quality
+
+Token efficiency must never compromise trading-signal correctness, risk management,
+financial calculations, look-ahead-bias prevention, data integrity, security,
+paper-only trading restrictions, production stability, or required testing.
+
+Priority: correctness, then security, then tests, then token efficiency.
+
+## Production Deployment Policy
+
+- Production deployments are allowed exclusively through
+  `.github/workflows/deploy.yml`.
+- Manual deployment via SSH, SCP, rsync, `git pull`, deployment scripts, or Docker
+  commands on the VPS is prohibited. Do not modify production source code directly
+  or manually restart application containers as a substitute for deployment.
+- SSH access is permitted only for read-only diagnostics, log inspection, and
+  healthchecks.
+- Complete three meaningful development and testing iterations before preparing a
+  production deployment: targeted fixes and tests, integration/performance tests,
+  then full regression and build verification.
+- Preserve production databases, trading history, Docker volumes, backups, and all
+  unrelated VPS projects and resources.
+- Never execute destructive Docker cleanup commands or delete production data,
+  volumes, or backups.
+- A Git push does not authorize a production deployment.
+- Triggering the GitHub Actions production deployment requires the user's explicit
+  approval after tests pass.
+- If GitHub Actions fails, diagnose and fix the CI/CD workflow or repository
+  configuration. Never bypass the pipeline with a manual deployment.
+- Every deployment report must state the actual test results, Git commit SHA,
+  GitHub Actions deployment status, production verification results when deployment
+  was authorized, and any remaining issues.

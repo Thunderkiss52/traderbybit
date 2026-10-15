@@ -1,8 +1,8 @@
 <script setup lang="ts">
-import { onMounted, ref, watch } from 'vue';
+import { onBeforeUnmount, onMounted, ref, shallowRef, watch } from 'vue';
 import { get, startBacktest } from '../services/api';
 
-const rows = ref<any[]>([]);
+const rows = shallowRef<any[]>([]);
 const page = ref(1);
 const lastPage = ref(1);
 const error = ref('');
@@ -15,17 +15,20 @@ const token = ref('');
 const message = ref('');
 const loading = ref(false);
 let version = 0;
+let controller: AbortController | undefined;
 async function load() {
+  controller?.abort();
+  controller = new AbortController();
   const current = ++version;
   listLoading.value = true;
   try {
-    const response: any = await get('/backtests', { page: page.value, per_page: 10 });
+    const response: any = await get('/backtests', { page: page.value, per_page: 10 }, controller.signal);
     if (current !== version) return;
     rows.value = response.data || [];
     lastPage.value = response.last_page || 1;
     error.value = '';
   } catch (exception: any) {
-    if (current === version) { rows.value = []; error.value = exception.message; }
+    if (current === version && !controller.signal.aborted) { rows.value = []; error.value = exception.message; }
   } finally {
     if (current === version) listLoading.value = false;
   }
@@ -49,6 +52,7 @@ onMounted(async () => {
   } catch (exception: any) { error.value = exception.message; }
   await load();
 });
+onBeforeUnmount(() => controller?.abort());
 </script>
 
 <template>

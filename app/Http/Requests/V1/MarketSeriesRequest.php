@@ -15,6 +15,6 @@ final class MarketSeriesRequest extends FormRequest
 
     public function rules(): array
     {
-        return ['interval' => ['sometimes', 'in:5,15,60'], 'limit' => ['sometimes', 'integer', 'min:1', 'max:1000'], 'to' => ['sometimes', 'date']];
+        return ['interval' => ['sometimes', 'in:5,15,60'], 'limit' => ['sometimes', 'integer', 'min:1', 'max:300'], 'to' => ['sometimes', 'date']];
     }
 }

@@ -30,10 +30,11 @@ onMounted(() => {
   draw();
   window.addEventListener('resize', resize);
 });
-watch(() => props.breakdowns, draw, { deep: true });
+watch(() => props.breakdowns, draw);
 onBeforeUnmount(() => {
   window.removeEventListener('resize', resize);
   chart?.dispose();
+  chart = undefined;
 });
 </script>
 

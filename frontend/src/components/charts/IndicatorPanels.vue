@@ -38,10 +38,11 @@ onMounted(() => {
   draw();
   window.addEventListener('resize', resize);
 });
-watch(() => props.indicators, draw, { deep: true });
+watch(() => props.indicators, draw);
 onBeforeUnmount(() => {
   window.removeEventListener('resize', resize);
   chart?.dispose();
+  chart = undefined;
 });
 </script>
 

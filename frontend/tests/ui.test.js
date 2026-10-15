@@ -33,7 +33,9 @@ test('finite metric formatting preserves zero and rejects null', () => {
   assert.notEqual(utils.finite(0), '—'); assert.equal(utils.finite(null), '—');
 });
 test('non-finite metrics are not displayed as numbers', () => assert.equal(utils.finite(Number.POSITIVE_INFINITY), '—'));
-test('API errors use a unified human-readable fallback', () => assert.match(source('services/api.ts'), /API unavailable/));
+test('API errors use a unified human-readable fallback with request IDs', () => {
+  const text = source('services/api.ts'); assert.match(text, /API unavailable/); assert.match(text, /Request ID/);
+});
 test('stale data handling has a configurable threshold', () => {
   const now = Date.parse('2026-01-01T00:05:01Z');
   assert.equal(utils.stale('2026-01-01T00:00:00Z', 300, now), true);
@@ -50,6 +52,7 @@ test('Russian and English translations exist', () => {
 });
 test('polling reconnect uses bounded exponential backoff', () => {
   const text = source('composables/usePolling.ts'); assert.match(text, /delay\s*\*\s*2/); assert.match(text, /60000/);
+  assert.match(text, /if \(active\)/); assert.match(text, /rerun/);
 });
 test('research mode warning is globally mounted', () => {
   assert.match(source('layouts/MainLayout.vue'), /ResearchBanner/); assert.match(source('components/ResearchBanner.vue'), /RESEARCH MODE/);
@@ -119,6 +122,14 @@ test('statistics paginates equity, R distribution, and reporting periods', () =>
 test('market chart limits history and permits window navigation', () => {
   const file = source('pages/MarketPage.vue');
   assert.match(file, /limit: 300/);
+  assert.match(file, /\/analysis/);
+  assert.doesNotMatch(file, /Promise\.all/);
   assert.match(file, /Older candles/);
   assert.match(file, /Newer candles/);
+});
+test('backtest details use bounded independent endpoints and lazy optimizations', () => {
+  const file = source('pages/BacktestDetailPage.vue');
+  for (const endpoint of ['/trades', '/equity', '/optimizations']) assert.ok(file.includes(endpoint), endpoint);
+  assert.match(file, /max_points: 1000/);
+  assert.match(file, /@show="loadOptimizations"/);
 });

@@ -5,6 +5,7 @@ use App\Backtest\Console\CancelBacktestCommand;
 use App\Backtest\Console\CompareBacktestsCommand;
 use App\Backtest\Console\RunBacktestCommand;
 use App\Backtest\Console\WalkForwardCommand;
+use App\Http\Middleware\ApiRequestDiagnostics;
 use App\MarketData\Console\StreamCandlesCommand;
 use App\MarketData\Console\SyncCandlesCommand;
 use App\PaperTrading\Console\PaperAccountCommand;
@@ -12,10 +13,17 @@ use App\PaperTrading\Console\PaperPositionsCommand;
 use App\PaperTrading\Console\PaperStatsCommand;
 use App\PaperTrading\Console\ProcessPaperTradingCommand;
 use App\Strategy\Console\GenerateSignalsCommand;
+use Illuminate\Auth\Access\AuthorizationException;
+use Illuminate\Auth\AuthenticationException;
+use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
+use Illuminate\Http\Exceptions\HttpResponseException;
 use Illuminate\Http\Request;
+use Illuminate\Validation\ValidationException;
+use Symfony\Component\HttpFoundation\Response;
+use Symfony\Component\HttpKernel\Exception\HttpExceptionInterface;
 
 return Application::configure(basePath: dirname(__DIR__))
     ->withRouting(
@@ -25,7 +33,7 @@ return Application::configure(basePath: dirname(__DIR__))
         health: '/up',
     )
     ->withMiddleware(function (Middleware $middleware): void {
-        //
+        $middleware->api(append: [ApiRequestDiagnostics::class]);
     })
     ->withCommands([
         SyncCandlesCommand::class,
@@ -45,4 +53,27 @@ return Application::configure(basePath: dirname(__DIR__))
         $exceptions->shouldRenderJsonWhen(
             fn (Request $request) => $request->is('api/*') || $request->expectsJson(),
         );
+        $exceptions->render(function (Throwable $exception, Request $request): ?Response {
+            if (! $request->is('api/*')) {
+                return null;
+            }
+            if ($exception instanceof HttpExceptionInterface
+                || $exception instanceof ValidationException
+                || $exception instanceof ModelNotFoundException
+                || $exception instanceof AuthenticationException
+                || $exception instanceof AuthorizationException
+                || $exception instanceof HttpResponseException) {
+                return null;
+            }
+
+            return response()->json([
+                'schema_version' => '1.0.0',
+                'research_mode' => true,
+                'error' => [
+                    'code' => 'server_error',
+                    'message' => 'The server could not complete the request.',
+                    'request_id' => $request->attributes->get('request_id'),
+                ],
+            ], 500);
+        });
     })->create();

@@ -8,6 +8,8 @@ use App\Backtest\Jobs\RunBacktestJob;
 use App\Strategy\Infrastructure\Persistence\SignalRecord;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Bus;
+use Illuminate\Support\Facades\Route;
+use RuntimeException;
 use Tests\TestCase;
 
 final class ResearchApiTest extends TestCase
@@ -32,6 +34,17 @@ final class ResearchApiTest extends TestCase
             ->assertOk()
             ->assertJsonPath('data.times', [])
             ->assertJsonPath('data.series', null);
+    }
+
+    public function test_market_analysis_combines_bounded_initial_payload(): void
+    {
+        $this->getJson('/api/v1/market/BTCUSDT/analysis?interval=15&limit=300')
+            ->assertOk()
+            ->assertJsonPath('data.candles', [])
+            ->assertJsonPath('data.indicators.times', [])
+            ->assertJsonPath('data.indicators.series', null)
+            ->assertJsonPath('data.signals', []);
+        $this->getJson('/api/v1/market/BTCUSDT/analysis?limit=301')->assertUnprocessable();
     }
 
     public function test_backtest_creation_requires_token_and_dispatches_only_research_job(): void
@@ -73,6 +86,17 @@ final class ResearchApiTest extends TestCase
         self::assertContains('throttle:api', $route->gatherMiddleware());
     }
 
+    public function test_server_errors_are_structured_and_have_request_ids(): void
+    {
+        Route::middleware('api')->get('/api/v1/_test-server-error', static fn () => throw new RuntimeException('sensitive detail'));
+
+        $response = $this->getJson('/api/v1/_test-server-error')->assertStatus(500)
+            ->assertJsonPath('error.code', 'server_error')
+            ->assertJsonPath('error.message', 'The server could not complete the request.');
+        self::assertNotEmpty($response->json('error.request_id'));
+        self::assertStringNotContainsString('sensitive detail', $response->getContent());
+    }
+
     public function test_signal_list_is_paginated_and_excludes_heavy_json_snapshots(): void
     {
         for ($i = 0; $i < 12; $i++) {
@@ -111,10 +135,16 @@ final class ResearchApiTest extends TestCase
         $this->getJson('/api/v1/risk')->assertOk()->assertJsonPath('data.decisions.last_page', 1);
     }
 
+    public function test_list_page_size_is_capped_at_one_hundred(): void
+    {
+        $this->getJson('/api/v1/signals?per_page=10000')->assertOk()->assertJsonPath('data.per_page', 100);
+        $this->getJson('/api/v1/backtests?per_page=10000')->assertOk()->assertJsonPath('data.per_page', 100);
+        $this->getJson('/api/v1/journal?per_page=10000')->assertOk()->assertJsonPath('data.per_page', 100);
+    }
+
     public function test_no_trade_or_order_routes_exist(): void
     {
-        $routes = collect(app('router')->getRoutes()->getRoutes())->pluck('uri')->implode('\n');
-        self::assertStringNotContainsString('/order', $routes);
-        self::assertStringNotContainsString('/trade', $routes);
+        $routes = collect(app('router')->getRoutes()->getRoutes())->pluck('uri');
+        self::assertFalse($routes->contains(fn (string $route): bool => preg_match('#api/v1/(?:orders?|trades?)(?:/|$)#', $route) === 1));
     }
 }

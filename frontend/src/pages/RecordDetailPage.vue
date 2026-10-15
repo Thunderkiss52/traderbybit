@@ -1,9 +1,9 @@
 <script setup lang="ts">
-import { computed, ref, watch } from 'vue';
+import { computed, onBeforeUnmount, ref, shallowRef, watch } from 'vue';
 import { useRoute } from 'vue-router';
 import { get } from '../services/api';
 const route = useRoute();
-const record = ref<any>(null);
+const record = shallowRef<any>(null);
 const error = ref('');
 const loading = ref(false);
 const executionsPage = ref(1);
@@ -17,16 +17,19 @@ const primary = computed(() => {
   return Object.fromEntries(Object.entries(selected.value).filter(([key]) => !omitted.has(key)));
 });
 let version = 0;
+let controller: AbortController | undefined;
 async function load() {
+  controller?.abort();
+  controller = new AbortController();
   const current = ++version;
   loading.value = true;
   try {
     const result = await get(`${String(route.meta.endpoint)}/${String(route.params.id)}`, {
       per_page: 10, executions_page: executionsPage.value, funding_page: fundingPage.value, journal_page: journalPage.value,
-    });
+    }, controller.signal);
     if (current === version) { record.value = result; error.value = ''; }
   } catch (exception: any) {
-    if (current === version) error.value = exception.message;
+    if (current === version && !controller.signal.aborted) error.value = exception.message;
   } finally { if (current === version) loading.value = false; }
 }
 watch(() => route.fullPath, () => {
@@ -34,6 +37,7 @@ watch(() => route.fullPath, () => {
   load();
 }, { immediate: true });
 watch([executionsPage, fundingPage, journalPage], load);
+onBeforeUnmount(() => controller?.abort());
 </script>
 <template>
   <q-page padding>

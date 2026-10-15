@@ -9,6 +9,7 @@ Route::prefix('v1')->middleware('throttle:api')->group(function () {
     Route::get('market/{symbol}/candles', [C::class, 'candles']);
     Route::get('market/{symbol}/indicators', [C::class, 'indicators']);
     Route::get('market/{symbol}/context', [C::class, 'context']);
+    Route::get('market/{symbol}/analysis', [C::class, 'analysis']);
     Route::get('signals', [C::class, 'signals']);
     Route::get('signals/{id}', [C::class, 'signal']);
     Route::get('positions', [C::class, 'positions']);
@@ -19,5 +20,8 @@ Route::prefix('v1')->middleware('throttle:api')->group(function () {
     Route::get('backtests', [C::class, 'backtests']);
     Route::get('backtests/{id}', [C::class, 'backtest']);
     Route::get('backtests/{id}/report', [C::class, 'report']);
+    Route::get('backtests/{id}/trades', [C::class, 'backtestTrades']);
+    Route::get('backtests/{id}/equity', [C::class, 'backtestEquity']);
+    Route::get('backtests/{id}/optimizations', [C::class, 'backtestOptimizations']);
     Route::post('backtests', [C::class, 'store'])->middleware(RequireResearchToken::class);
 });

@@ -1,26 +1,30 @@
 <script setup lang="ts">
-import { onMounted, ref, watch } from 'vue';
+import { onBeforeUnmount, onMounted, ref, shallowRef, watch } from 'vue';
 import { get } from '../services/api';
 import MetricCard from '../components/MetricCard.vue';
-const d = ref<any>({ decisions: { data: [], last_page: 1 } });
+const d = shallowRef<any>({ decisions: { data: [], last_page: 1 } });
 const page = ref(1);
 const loading = ref(false);
 const error = ref('');
 let version = 0;
+let controller: AbortController | undefined;
 async function load() {
+  controller?.abort();
+  controller = new AbortController();
   const current = ++version;
   loading.value = true;
   try {
-    const result = await get('/risk', { page: page.value, per_page: 10 });
+    const result = await get('/risk', { page: page.value, per_page: 10 }, controller.signal);
     if (current === version) { d.value = result; error.value = ''; }
   } catch (exception: any) {
-    if (current === version) error.value = exception.message;
+    if (current === version && !controller.signal.aborted) error.value = exception.message;
   } finally {
     if (current === version) loading.value = false;
   }
 }
 watch(page, load);
 onMounted(load);
+onBeforeUnmount(() => controller?.abort());
 </script>
 <template>
   <q-page padding>

@@ -6,9 +6,7 @@ namespace App\PaperTrading\Application;
 
 use App\PaperTrading\Domain\PerformanceReport;
 use App\PaperTrading\Infrastructure\Persistence\EquitySnapshotRecord;
-use App\PaperTrading\Infrastructure\Persistence\JournalEventRecord;
 use App\PaperTrading\Infrastructure\Persistence\PaperAccountRecord;
-use App\PaperTrading\Infrastructure\Persistence\PaperSignalStateRecord;
 use App\PaperTrading\Infrastructure\Persistence\VirtualExecutionRecord;
 use App\PaperTrading\Infrastructure\Persistence\VirtualPositionRecord;
 use App\Strategy\Infrastructure\Persistence\SignalRecord;
@@ -32,28 +30,69 @@ final class PerformanceStatisticsService
         if (($filters['to'] ?? null) instanceof DateTimeImmutable) {
             $query->where('opened_at', '<=', $filters['to']);
         }
-        $positions = $query->oldest('closed_at')->get();
-        $closed = $positions->whereNotNull('closed_at')
-            ->filter(fn ($position): bool => ! (($filters['to'] ?? null) instanceof DateTimeImmutable) || $position->closed_at <= $filters['to'])
-            ->values();
-        $wins = $closed->filter(fn ($p) => BigDecimal::of($p->net_pnl)->isPositive());
-        $losses = $closed->filter(fn ($p) => BigDecimal::of($p->net_pnl)->isNegative());
-        $grossProfit = $this->sum($wins->pluck('net_pnl')->all());
-        $grossLoss = $this->sum($losses->pluck('net_pnl')->all());
-        $net = $this->sum($closed->pluck('net_pnl')->all());
-        $fees = $this->sum($positions->pluck('fees')->all());
-        $funding = $this->sum($positions->pluck('funding')->all());
-        $grossPnl = $this->sum($closed->pluck('gross_pnl')->all());
-        $positionIds = $positions->pluck('id');
-        $slippage = VirtualExecutionRecord::query()->whereIn('position_id', $positionIds)->get(['quantity', 'slippage'])
+        $opened = $closedCount = $winCount = $lossCount = $incompleteFunding = $ambiguous = $awaitingMarketData = 0;
+        $consecutiveWins = $consecutiveLosses = $currentWins = $currentLosses = 0;
+        $holdingSeconds = 0;
+        $grossProfit = $grossLoss = $net = $fees = $funding = $grossPnl = $rTotal = BigDecimal::zero();
+        $rCount = 0;
+        foreach ((clone $query)->orderBy('closed_at')->orderBy('id')->cursor([
+            'id', 'closed_at', 'opened_at', 'net_pnl', 'gross_pnl', 'fees', 'funding', 'r_multiple',
+            'funding_complete', 'ambiguous_execution', 'awaiting_market_data',
+        ]) as $position) {
+            $opened++;
+            $fees = $fees->plus($position->fees);
+            $funding = $funding->plus($position->funding);
+            $incompleteFunding += $position->funding_complete ? 0 : 1;
+            $ambiguous += $position->ambiguous_execution ? 1 : 0;
+            $awaitingMarketData += $position->awaiting_market_data ? 1 : 0;
+            if ($position->closed_at === null || (($filters['to'] ?? null) instanceof DateTimeImmutable && $position->closed_at > $filters['to'])) {
+                continue;
+            }
+
+            $closedCount++;
+            $value = BigDecimal::of($position->net_pnl);
+            $net = $net->plus($value);
+            $grossPnl = $grossPnl->plus($position->gross_pnl);
+            $holdingSeconds += $position->closed_at->getTimestamp() - $position->opened_at->getTimestamp();
+            if ($value->isPositive()) {
+                $winCount++;
+                $grossProfit = $grossProfit->plus($value);
+                $currentWins++;
+                $currentLosses = 0;
+                $consecutiveWins = max($consecutiveWins, $currentWins);
+            } elseif ($value->isNegative()) {
+                $lossCount++;
+                $grossLoss = $grossLoss->plus($value);
+                $currentLosses++;
+                $currentWins = 0;
+                $consecutiveLosses = max($consecutiveLosses, $currentLosses);
+            } else {
+                $currentWins = $currentLosses = 0;
+            }
+            if ($position->r_multiple !== null) {
+                $rTotal = $rTotal->plus($position->r_multiple);
+                $rCount++;
+            }
+        }
+        $slippage = VirtualExecutionRecord::query()
+            ->whereIn('position_id', (clone $query)->select('id'))
+            ->cursor(['quantity', 'slippage'])
             ->reduce(fn (BigDecimal $sum, VirtualExecutionRecord $execution): BigDecimal => $sum->plus(
                 BigDecimal::of($execution->quantity)->multipliedBy($execution->slippage)
             ), BigDecimal::zero());
         $profitFactor = $grossLoss->isZero() ? null : (string) $grossProfit->dividedBy($grossLoss->abs(), 8, RoundingMode::HalfEven);
-        [$consecutiveWins, $consecutiveLosses] = $this->streaks($closed->all());
-        $acceptedIds = PaperSignalStateRecord::query()->where('paper_account_id', $accountId)->pluck('signal_id');
-        $skipIds = JournalEventRecord::query()->where('paper_account_id', $accountId)->where('event_type', 'ANALYTICAL_SKIP')->pluck('signal_id');
-        $signalQuery = SignalRecord::query()->whereIn('id', $acceptedIds->merge($skipIds)->unique());
+        $signalQuery = SignalRecord::query()->where(function ($signals) use ($accountId): void {
+            $signals->whereExists(function ($states) use ($accountId): void {
+                $states->selectRaw('1')->from('paper_signal_states')
+                    ->whereColumn('paper_signal_states.signal_id', 'signals.id')
+                    ->where('paper_signal_states.paper_account_id', $accountId);
+            })->orWhereExists(function ($events) use ($accountId): void {
+                $events->selectRaw('1')->from('trading_journal_events')
+                    ->whereColumn('trading_journal_events.signal_id', 'signals.id')
+                    ->where('trading_journal_events.paper_account_id', $accountId)
+                    ->where('trading_journal_events.event_type', 'ANALYTICAL_SKIP');
+            });
+        });
         foreach (['symbol', 'side', 'quality_class', 'strategy_version'] as $field) {
             if (isset($filters[$field])) {
                 $signalQuery->where($field, $filters[$field]);
@@ -65,32 +104,39 @@ final class PerformanceStatisticsService
         if (($filters['to'] ?? null) instanceof DateTimeImmutable) {
             $signalQuery->where('decision_time', '<=', $filters['to']);
         }
-        $signalRows = $signalQuery->get(['id', 'side']);
-        $totalSignals = $signalRows->count();
-        $sideCounts = $signalRows->countBy('side');
+        $sideCounts = ['BUY' => 0, 'SELL' => 0, 'SKIP' => 0];
+        $totalSignals = 0;
+        foreach ($signalQuery->cursor(['id', 'side']) as $signal) {
+            $totalSignals++;
+            $sideCounts[$signal->side] = ($sideCounts[$signal->side] ?? 0) + 1;
+        }
         $skip = (int) ($sideCounts['SKIP'] ?? 0);
-        $snapshots = EquitySnapshotRecord::query()->where('paper_account_id', $accountId)->oldest('recorded_at')->oldest('id')->get();
+        $maximumDrawdown = $this->drawdown(
+            EquitySnapshotRecord::query()->where('paper_account_id', $accountId)
+                ->oldest('recorded_at')->oldest('id')->cursor(['equity'])
+        );
 
         return new PerformanceReport([
             'total_signals' => $totalSignals, 'buy_signals' => (int) ($sideCounts['BUY'] ?? 0), 'sell_signals' => (int) ($sideCounts['SELL'] ?? 0), 'skip_signals' => $skip,
-            'opened_positions' => $positions->count(), 'closed_positions' => $closed->count(),
-            'winning_trades' => $wins->count(), 'losing_trades' => $losses->count(),
-            'win_rate' => $this->ratio($wins->count(), $closed->count()), 'loss_rate' => $this->ratio($losses->count(), $closed->count()),
-            'average_win' => $this->average($wins->pluck('net_pnl')->all()), 'average_loss' => $this->average($losses->pluck('net_pnl')->all()),
-            'average_r' => $this->average($closed->pluck('r_multiple')->filter(fn ($v) => $v !== null)->all()),
-            'expectancy' => $this->average($closed->pluck('net_pnl')->all()), 'gross_profit' => (string) $grossProfit, 'gross_loss' => (string) $grossLoss,
+            'opened_positions' => $opened, 'closed_positions' => $closedCount,
+            'winning_trades' => $winCount, 'losing_trades' => $lossCount,
+            'win_rate' => $this->ratio($winCount, $closedCount), 'loss_rate' => $this->ratio($lossCount, $closedCount),
+            'average_win' => $winCount === 0 ? null : (string) $grossProfit->dividedBy($winCount, 8, RoundingMode::HalfEven),
+            'average_loss' => $lossCount === 0 ? null : (string) $grossLoss->dividedBy($lossCount, 8, RoundingMode::HalfEven),
+            'average_r' => $rCount === 0 ? null : (string) $rTotal->dividedBy($rCount, 8, RoundingMode::HalfEven),
+            'expectancy' => $closedCount === 0 ? null : (string) $net->dividedBy($closedCount, 8, RoundingMode::HalfEven), 'gross_profit' => (string) $grossProfit, 'gross_loss' => (string) $grossLoss,
             'profit_factor' => $profitFactor, 'profit_factor_unavailable_reason' => $profitFactor === null ? 'no_negative_net_pnl' : null,
             'gross_pnl' => (string) $grossPnl, 'net_pnl' => (string) $net,
             'fees' => (string) $fees, 'total_commissions' => (string) $fees,
             'funding' => (string) $funding, 'total_funding_payments' => (string) $funding,
             'total_slippage_cost' => (string) $slippage,
-            'maximum_drawdown_percent' => $this->drawdown($snapshots->pluck('equity')->all()),
-            'average_holding_seconds' => $closed->isEmpty() ? null : (int) round($closed->average(fn ($p) => $p->closed_at->getTimestamp() - $p->opened_at->getTimestamp())),
+            'maximum_drawdown_percent' => $maximumDrawdown,
+            'average_holding_seconds' => $closedCount === 0 ? null : (int) round($holdingSeconds / $closedCount),
             'maximum_consecutive_wins' => $consecutiveWins, 'maximum_consecutive_losses' => $consecutiveLosses,
         ], [
-            'incomplete_funding_positions' => $positions->where('funding_complete', false)->count(),
-            'ambiguous_execution_positions' => $positions->where('ambiguous_execution', true)->count(),
-            'awaiting_market_data_positions' => $positions->where('awaiting_market_data', true)->count(),
+            'incomplete_funding_positions' => $incompleteFunding,
+            'ambiguous_execution_positions' => $ambiguous,
+            'awaiting_market_data_positions' => $awaitingMarketData,
         ]);
     }
 
@@ -121,27 +167,17 @@ final class PerformanceStatisticsService
         ];
     }
 
-    private function sum(array $values): BigDecimal
-    {
-        return array_reduce($values, fn (BigDecimal $sum, $v): BigDecimal => $sum->plus((string) $v), BigDecimal::zero());
-    }
-
-    private function average(array $values): ?string
-    {
-        return $values === [] ? null : (string) $this->sum($values)->dividedBy(count($values), 8, RoundingMode::HalfEven);
-    }
-
     private function ratio(int $part, int $total): ?string
     {
         return $total === 0 ? null : (string) BigDecimal::of($part)->multipliedBy(100)->dividedBy($total, 8, RoundingMode::HalfEven);
     }
 
-    private function drawdown(array $equities): string
+    private function drawdown(iterable $equities): string
     {
         $peak = null;
         $maximum = BigDecimal::zero();
         foreach ($equities as $value) {
-            $equity = BigDecimal::of((string) $value);
+            $equity = BigDecimal::of((string) ($value->equity ?? $value));
             if ($peak === null || $equity->isGreaterThan($peak)) {
                 $peak = $equity;
             }
@@ -154,25 +190,5 @@ final class PerformanceStatisticsService
         }
 
         return (string) $maximum->toScale(8, RoundingMode::HalfEven);
-    }
-
-    private function streaks(array $positions): array
-    {
-        $wins = $losses = $maxWins = $maxLosses = 0;
-        foreach ($positions as $position) {
-            if (BigDecimal::of($position->net_pnl)->isPositive()) {
-                $wins++;
-                $losses = 0;
-                $maxWins = max($maxWins, $wins);
-            } elseif (BigDecimal::of($position->net_pnl)->isNegative()) {
-                $losses++;
-                $wins = 0;
-                $maxLosses = max($maxLosses, $losses);
-            } else {
-                $wins = $losses = 0;
-            }
-        }
-
-        return [$maxWins, $maxLosses];
     }
 }

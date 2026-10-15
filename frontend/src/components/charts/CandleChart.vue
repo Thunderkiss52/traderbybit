@@ -72,8 +72,11 @@ const mount = () => {
 };
 
 onMounted(mount);
-watch(() => [props.candles, props.indicators, props.signals], mount, { deep: true });
-onBeforeUnmount(() => chart?.remove());
+watch(() => [props.candles, props.indicators, props.signals], mount, { flush: 'post' });
+onBeforeUnmount(() => {
+  chart?.remove();
+  chart = undefined;
+});
 </script>
 
 <template><div ref="element" class="candle" aria-label="Candles with backend indicators" /></template>
