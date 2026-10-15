@@ -247,7 +247,11 @@ final class ResearchController extends Controller
         if (! $a) {
             return $this->ok(['metrics' => null, 'equity' => [], 'equity_pagination' => ['current_page' => 1, 'last_page' => 1], 'breakdowns' => [], 'period_pnl' => []]);
         }
-        $report = Cache::remember('paper:statistics:'.$a, 60, fn () => $s->calculate($a));
+        $report = Cache::remember('paper:statistics:v2:'.$a, 60, function () use ($s, $a): array {
+            $calculated = $s->calculate($a);
+
+            return ['metrics' => $calculated->metrics, 'data_quality' => $calculated->dataQuality];
+        });
         $closed = VirtualPositionRecord::query()->where('paper_account_id', $a)->whereNotNull('closed_at');
         $group = static fn (string $field) => (clone $closed)
             ->selectRaw($field.', COUNT(*) AS trades, SUM(net_pnl) AS net_pnl, SUM(CASE WHEN net_pnl > 0 THEN 1 ELSE 0 END) AS winning_trades')
@@ -262,8 +266,8 @@ final class ResearchController extends Controller
             ->paginate(10, ['id', 'r_multiple'], 'r_page', $rPage);
 
         return $this->ok([
-            'metrics' => $report->metrics,
-            'data_quality' => $report->dataQuality,
+            'metrics' => $report['metrics'],
+            'data_quality' => $report['data_quality'],
             'equity' => collect($equity->items())->reverse()->values(),
             'equity_pagination' => ['current_page' => $equity->currentPage(), 'last_page' => $equity->lastPage(), 'total' => $equity->total()],
             'breakdowns' => [

@@ -5,9 +5,11 @@ declare(strict_types=1);
 namespace Tests\Feature\Api;
 
 use App\Backtest\Jobs\RunBacktestJob;
+use App\PaperTrading\Application\PaperAccountService;
 use App\Strategy\Infrastructure\Persistence\SignalRecord;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Bus;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Route;
 use RuntimeException;
 use Tests\TestCase;
@@ -133,6 +135,18 @@ final class ResearchApiTest extends TestCase
         $this->getJson('/api/v1/positions')->assertOk()->assertJsonPath('data.per_page', 10);
         $this->getJson('/api/v1/journal')->assertOk()->assertJsonPath('data.per_page', 10);
         $this->getJson('/api/v1/risk')->assertOk()->assertJsonPath('data.decisions.last_page', 1);
+    }
+
+    public function test_statistics_cache_contains_portable_arrays_not_domain_objects(): void
+    {
+        $account = app(PaperAccountService::class)->default();
+
+        $this->getJson('/api/v1/statistics')->assertOk()->assertJsonPath('data.metrics.closed_positions', 0);
+
+        $cached = Cache::get('paper:statistics:v2:'.$account->id);
+        self::assertIsArray($cached);
+        self::assertIsArray($cached['metrics']);
+        self::assertIsArray($cached['data_quality']);
     }
 
     public function test_list_page_size_is_capped_at_one_hundred(): void
