@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\Api\V1\ResearchController as C;
 use App\Http\Controllers\Api\V1\StrategyResearchController as R;
+use App\Http\Controllers\Api\V1\PatternResearchController as P;
 use App\Http\Middleware\RequireResearchToken;
 use Illuminate\Support\Facades\Route;
 
@@ -19,6 +20,11 @@ Route::prefix('v1')->middleware('throttle:api')->group(function () {
     Route::get('statistics', [C::class, 'statistics']);
     Route::get('paper/daily-performance', [C::class, 'dailyPerformance']);
     Route::get('research/daily-performance', [R::class, 'dailyPerformance']);
+    Route::get('research/patterns', [P::class, 'index']);
+    Route::get('research/patterns/runs', [P::class, 'runs']);
+    Route::get('research/patterns/latest-matches', [P::class, 'latestMatches']);
+    Route::get('research/patterns/{id}', [P::class, 'show']);
+    Route::post('research/patterns/runs', [P::class, 'queue'])->middleware(RequireResearchToken::class);
     Route::get('research/strategies', [R::class, 'strategies']);
     Route::get('research/strategies/{id}', [R::class, 'strategy']);
     Route::get('research/experiments', [R::class, 'experiments']);

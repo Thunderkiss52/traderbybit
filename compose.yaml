@@ -182,7 +182,7 @@ services:
 
   backtest-worker:
     <<: *php-service
-    command: ["php", "artisan", "queue:work", "redis", "--queue=backtests", "--sleep=3", "--tries=2", "--timeout=3600", "--max-time=7200", "--memory=${BACKTEST_WORKER_MEMORY_MB:-768}", "--no-interaction"]
+    command: ["php", "artisan", "queue:work", "redis", "--queue=backtests,research", "--sleep=3", "--tries=2", "--timeout=3600", "--max-time=7200", "--memory=${BACKTEST_WORKER_MEMORY_MB:-768}", "--no-interaction"]
     healthcheck:
       test: ["CMD-SHELL", "tr '\\0' ' ' </proc/1/cmdline | grep -q 'queue:work.*backtests'"]
       interval: 30s
