@@ -66,8 +66,9 @@ test('frontend contains no real order or trading action', () => {
 });
 test('all required application routes exist', () => {
   const text = source('router/index.ts');
-  for (const route of ['dashboard', 'market/:symbol', 'signals', 'positions', 'journal', 'statistics', 'backtests', 'risk', 'settings']) assert.match(text, new RegExp(route.replace('/', '\\/')));
+  for (const route of ['dashboard', 'market/:symbol', 'signals', 'positions', 'journal', 'statistics', 'research', 'backtests', 'risk', 'settings']) assert.match(text, new RegExp(route.replace('/', '\\/')));
 });
+test('research lab uses paginated real API results and labels missing evaluations', () => { const text=source('pages/ResearchPage.vue'); for(const value of ['/research/leaderboard','/research/experiments','per_page:10','Not evaluated','walk_forward','X-Research-Token','approve-forward']) assert.match(text,new RegExp(value)); assert.match(text,/q-pagination/); });
 
 
 test('dashboard displays actual account summary and paper-return fields', () => {
@@ -118,6 +119,14 @@ test('statistics paginates equity, R distribution, and reporting periods', () =>
   for (const field of ['equity_page', 'r_page', 'period_page', 'equityPage', 'rPage', 'periodPage']) {
     assert.ok(file.includes(field), field);
   }
+});
+test('daily paper performance is bounded, timezone aware, and disposes charts', () => {
+  const section = source('components/DailyPerformance.vue');
+  const chart = source('components/charts/DailyPerformanceChart.vue');
+  for (const value of ['Today', 'Yesterday', 'Last 7 Days', 'Last 30 Days', 'All Time', 'per_page: 10', 'timezone', 'BTCUSDT', 'ETHUSDT', 'Incomplete']) assert.match(section, new RegExp(value));
+  for (const field of ['realized_pnl', 'unrealized_pnl_change', 'commissions', 'funding', 'opened_positions', 'closed_positions', 'win_rate', 'average_r']) assert.match(section, new RegExp(field));
+  assert.match(section, /q-pagination/); assert.match(chart, /#21ba45/); assert.match(chart, /#c10015/); assert.match(chart, /chart\?\.dispose/);
+  assert.match(source('pages/DashboardPage.vue'), /DailyPerformance/);
 });
 test('market chart limits history and permits window navigation', () => {
   const file = source('pages/MarketPage.vue');

@@ -68,6 +68,7 @@ final readonly class PaperProcessingService
         // Scheduled forward paper trading must never backfill old strategy decisions
         // into an account that did not yet exist. Historical --at replay is explicit.
         $signals = SignalRecord::query()->where('decision_time', '<=', $at)
+            ->where('strategy_id', $account->strategy_id ?? 'baseline')
             ->when($forwardOnly, fn ($q) => $q->where('decision_time', '>=', $account->created_at))
             ->when($symbol, fn ($q) => $q->where('symbol', $symbol))
             ->oldest('decision_time')->get();

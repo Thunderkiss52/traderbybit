@@ -20,6 +20,7 @@ use App\Indicators\Application\IndicatorEngine;
 use App\MarketData\Domain\Candle;
 use App\MarketData\Domain\Interval;
 use App\MarketData\Infrastructure\Persistence\CandleRecord;
+use App\PaperTrading\Application\DailyPerformanceService;
 use App\PaperTrading\Application\PerformanceStatisticsService;
 use App\PaperTrading\Infrastructure\Persistence\EquitySnapshotRecord;
 use App\PaperTrading\Infrastructure\Persistence\JournalEventRecord;
@@ -277,6 +278,30 @@ final class ResearchController extends Controller
             'r_pagination' => ['current_page' => $rMultiples->currentPage(), 'last_page' => $rMultiples->lastPage(), 'total' => $rMultiples->total()],
             'period_pnl' => $this->periodPnl((clone $closed)->oldest('closed_at')->cursor(), max(1, $r->integer('period_page', 1))),
         ]);
+    }
+
+    public function dailyPerformance(Request $request, DailyPerformanceService $service): ResearchResource
+    {
+        $account = $request->string('account')->toString() ?: PaperAccountRecord::query()->value('id');
+        if (! $account) {
+            return $this->ok(['summary' => null, 'days' => ['data' => [], 'meta' => ['current_page' => 1, 'per_page' => 10, 'total' => 0, 'last_page' => 1]]]);
+        }
+        $timezone = $request->string('timezone', 'UTC')->toString();
+        abort_unless(in_array($timezone, timezone_identifiers_list(), true), 422, 'Invalid timezone.');
+        $symbol = $request->string('symbol')->toString();
+        if ($symbol !== '' && strtoupper($symbol) !== 'ALL') {
+            $symbol = $this->symbol($symbol);
+        } else {
+            $symbol = null;
+        }
+
+        return $this->ok($service->report(
+            $account,
+            $timezone,
+            $symbol,
+            max(1, $request->integer('page', 1)),
+            $this->perPage($request),
+        ));
     }
 
     /** Aggregate with a cursor, returning only ten recent periods to the client. */

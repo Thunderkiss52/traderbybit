@@ -24,6 +24,7 @@ final readonly class PaperAccountService
             'current_equity' => (string) $this->config['default_account']['starting_balance'],
             'peak_equity' => (string) $this->config['default_account']['starting_balance'],
             'realized_pnl' => '0', 'unrealized_pnl' => '0', 'reserved_risk' => '0', 'maximum_drawdown_percent' => '0', 'current_drawdown_percent' => '0',
+            'mode' => 'FORWARD_PAPER', 'strategy_id' => 'baseline', 'strategy_version' => (string) config('strategy.version'),
         ]);
     }
 

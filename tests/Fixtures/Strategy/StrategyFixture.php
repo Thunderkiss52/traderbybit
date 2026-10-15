@@ -57,10 +57,11 @@ final class StrategyFixture
             'emaEntry' => '100', 'emaFast' => '101', 'emaSlow' => '99', 'rsi' => '55', 'macd' => '0.1', 'macdSignal' => '0',
             'macdHistogram' => '0.1', 'atr' => '1', 'adx' => '25', 'plusDi' => '25', 'minusDi' => '15',
             'relativeVolume' => '1.2', 'averageTurnover' => '200000', 'support' => null, 'resistance' => null,
+            'bollingerUpper' => null, 'bollingerMiddle' => null, 'bollingerLower' => null,
         ], $values);
         $open = new DateTimeImmutable($openTime);
 
-        return new BarState($open, $open->modify("+{$minutes} minutes"), $v['open'], $v['high'], $v['low'], $v['close'], $v['turnover'], $v['emaEntry'], $v['emaFast'], $v['emaSlow'], $v['rsi'], $v['macd'], $v['macdSignal'], $v['macdHistogram'], $v['atr'], $v['adx'], $v['plusDi'], $v['minusDi'], $v['relativeVolume'], $v['averageTurnover'], $v['support'], $v['resistance']);
+        return new BarState($open, $open->modify("+{$minutes} minutes"), $v['open'], $v['high'], $v['low'], $v['close'], $v['turnover'], $v['emaEntry'], $v['emaFast'], $v['emaSlow'], $v['rsi'], $v['macd'], $v['macdSignal'], $v['macdHistogram'], $v['atr'], $v['adx'], $v['plusDi'], $v['minusDi'], $v['relativeVolume'], $v['averageTurnover'], $v['support'], $v['resistance'], $v['bollingerUpper'], $v['bollingerMiddle'], $v['bollingerLower']);
     }
 
     public static function config(): array

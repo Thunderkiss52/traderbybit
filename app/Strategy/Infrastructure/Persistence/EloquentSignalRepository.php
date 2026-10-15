@@ -39,7 +39,7 @@ final class EloquentSignalRepository implements SignalRepository
             'risk_reward_1' => $p?->riskReward1, 'risk_reward_2' => $p?->riskReward2, 'model_risk_percent' => $d->modelRiskPercent, 'expires_at' => $d->expiresAt,
             'maximum_holding_minutes' => $d->maximumHoldingMinutes, 'reasons' => json_encode($d->reasons, JSON_THROW_ON_ERROR), 'risks' => json_encode($d->risks, JSON_THROW_ON_ERROR),
             'indicator_snapshot' => json_encode($d->indicatorSnapshot, JSON_THROW_ON_ERROR), 'contract' => json_encode($d->toContractArray(), JSON_THROW_ON_ERROR),
-            'strategy_version' => $d->strategyVersion, 'schema_version' => $d->schemaVersion, 'created_at' => $now, 'updated_at' => $now,
+            'strategy_version' => $d->strategyVersion, 'schema_version' => $d->schemaVersion, 'strategy_id' => (string) ($d->indicatorSnapshot['strategy_id'] ?? 'baseline'), 'created_at' => $now, 'updated_at' => $now,
         ];
     }
 }

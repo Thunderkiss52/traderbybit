@@ -33,11 +33,11 @@ final class BacktestRunService
         private array $config,
     ) {}
 
-    public function run(array $symbols, DateTimeImmutable $from, DateTimeImmutable $to, bool $walkForward = false): BacktestRunRecord
+    public function run(array $symbols, DateTimeImmutable $from, DateTimeImmutable $to, bool $walkForward = false, ?array $strategyOverride = null): BacktestRunRecord
     {
         sort($symbols);
         $dataset = $this->datasets->inspect($symbols, $from, $to, (int) $this->config['warmup_bars']);
-        $strategy = (array) config('strategy');
+        $strategy = $strategyOverride ?? (array) config('strategy');
         $paper = (array) config('paper');
         $type = $walkForward ? 'walk_forward' : 'split';
         $fingerprint = $this->fingerprint([$type, $symbols, $from->format(DATE_ATOM), $to->format(DATE_ATOM), $dataset['checksum'], $strategy, $paper, $this->config]);
@@ -88,7 +88,7 @@ final class BacktestRunService
     private function executeSplit(BacktestRunRecord $run, array $symbols, DateTimeImmutable $from, DateTimeImmutable $to, array $strategy, array $paper): array
     {
         [$train, $validation, $test] = $this->splitter->split($from, $to, (array) $this->config['split']);
-        $optimized = $this->optimizer->optimize($symbols, $train, $validation, $strategy, $paper, (string) $this->config['starting_balance']);
+        $optimized = $this->optimizer->optimize($symbols, $train, $validation, $strategy, $paper, (string) $this->config['starting_balance'], $strategy['_research_optimization'] ?? null);
         $this->guardCancellation($run);
         $this->saveOptimizations($run->id, 0, $optimized);
         $selected = $optimized['selected']['strategy'];
@@ -124,7 +124,7 @@ final class BacktestRunService
         $oosBalance = (string) $this->config['starting_balance'];
         foreach ($windows as $windowIndex => [$train, $validation, $test]) {
             $this->guardCancellation($run);
-            $optimized = $this->optimizer->optimize($symbols, $train, $validation, $strategy, $paper, (string) $this->config['starting_balance']);
+            $optimized = $this->optimizer->optimize($symbols, $train, $validation, $strategy, $paper, (string) $this->config['starting_balance'], $strategy['_research_optimization'] ?? null);
             $this->saveOptimizations($run->id, $windowIndex, $optimized);
             $selected = $optimized['selected']['strategy'];
             foreach ([$train, $validation] as $segment) {

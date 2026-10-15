@@ -7,6 +7,7 @@ import { useSettings } from '../stores/settings';
 import MetricCard from '../components/MetricCard.vue';
 import SignalCard from '../components/SignalCard.vue';
 import EmptyState from '../components/EmptyState.vue';
+import DailyPerformance from '../components/DailyPerformance.vue';
 
 const data = shallowRef<any>({ market: [], signals: [], positions: [], portfolio: null, performance: null, recent_decisions: [], skip_reasons_24h: {} });
 const error = ref('');
@@ -105,5 +106,6 @@ onBeforeUnmount(() => controller.abort());
       </div>
       <div class="muted q-mt-sm">Closed-trade PnL and total portfolio PnL differ while positions are open or partially closed.</div>
     </section>
+    <DailyPerformance />
   </q-page>
 </template>

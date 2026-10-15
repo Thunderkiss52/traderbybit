@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\Api\V1\ResearchController as C;
+use App\Http\Controllers\Api\V1\StrategyResearchController as R;
 use App\Http\Middleware\RequireResearchToken;
 use Illuminate\Support\Facades\Route;
 
@@ -16,6 +17,17 @@ Route::prefix('v1')->middleware('throttle:api')->group(function () {
     Route::get('positions/{id}', [C::class, 'position']);
     Route::get('journal', [C::class, 'journal']);
     Route::get('statistics', [C::class, 'statistics']);
+    Route::get('paper/daily-performance', [C::class, 'dailyPerformance']);
+    Route::get('research/daily-performance', [R::class, 'dailyPerformance']);
+    Route::get('research/strategies', [R::class, 'strategies']);
+    Route::get('research/strategies/{id}', [R::class, 'strategy']);
+    Route::get('research/experiments', [R::class, 'experiments']);
+    Route::get('research/experiments/{id}', [R::class, 'experiment']);
+    Route::get('research/leaderboard', [R::class, 'leaderboard']);
+    Route::get('research/comparison', [R::class, 'comparison']);
+    Route::post('research/experiments', [R::class, 'store'])->middleware(RequireResearchToken::class);
+    Route::post('research/experiments/{id}/cancel', [R::class, 'cancel'])->middleware(RequireResearchToken::class);
+    Route::post('research/experiments/{id}/approve-forward', [R::class, 'approveForward'])->middleware(RequireResearchToken::class);
     Route::get('risk', [C::class, 'risk']);
     Route::get('backtests', [C::class, 'backtests']);
     Route::get('backtests/{id}', [C::class, 'backtest']);

@@ -6,6 +6,7 @@ use App\MarketData\Jobs\RecoverCandleGapsJob;
 use App\PaperTrading\Jobs\ProcessPaperTradingJob;
 use App\Strategy\Jobs\CaptureMarketContextJob;
 use App\Strategy\Jobs\GenerateSignalJob;
+use App\Strategy\Jobs\ProcessResearchPaperJob;
 use Illuminate\Foundation\Inspiring;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\Schedule;
@@ -34,4 +35,8 @@ foreach ((array) config('market_data.symbols', ['BTCUSDT', 'ETHUSDT']) as $symbo
 Schedule::job(new ProcessPaperTradingJob)
     ->cron('4,9,14,19,24,29,34,39,44,49,54,59 * * * *')
     ->name('paper:process:default')
+    ->withoutOverlapping();
+Schedule::job(new ProcessResearchPaperJob)
+    ->cron('3,18,33,48 * * * *')
+    ->name('research:forward-paper')
     ->withoutOverlapping();

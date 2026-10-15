@@ -43,10 +43,18 @@ use App\PaperTrading\Application\TradingJournalService;
 use App\Strategy\Application\SignalGenerator;
 use App\Strategy\Application\StrategyEngine;
 use App\Strategy\Application\StrategyInputFactory;
+use App\Strategy\Application\StrategyRankingService;
+use App\Strategy\Application\StrategyRegistry;
 use App\Strategy\Contracts\MarketContextRepository;
 use App\Strategy\Contracts\SignalRepository;
 use App\Strategy\Infrastructure\Persistence\EloquentMarketContextRepository;
 use App\Strategy\Infrastructure\Persistence\EloquentSignalRepository;
+use App\Strategy\Research\BaselineStrategy;
+use App\Strategy\Research\BollingerMeanReversionStrategy;
+use App\Strategy\Research\DonchianBreakoutStrategy;
+use App\Strategy\Research\MarketRegimeClassifier;
+use App\Strategy\Research\RegimeSwitchingStrategy;
+use App\Strategy\Research\TrendPullbackStrategy;
 use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Contracts\Cache\Factory;
 use Illuminate\Support\Facades\RateLimiter;
@@ -68,6 +76,19 @@ class AppServiceProvider extends ServiceProvider
         ));
         $this->app->singleton(WarmupPolicy::class);
         $this->app->singleton(StrategyEngine::class, fn (): StrategyEngine => new StrategyEngine((array) config('strategy')));
+        $this->app->singleton(StrategyRegistry::class, function (): StrategyRegistry {
+            $research = (array) config('research.strategies');
+            $trend = new TrendPullbackStrategy($research['trend_pullback']);
+            $range = new BollingerMeanReversionStrategy($research['bollinger_mean_reversion']);
+            $breakout = new DonchianBreakoutStrategy($research['donchian_atr_breakout']);
+            $regimeConfig = $research['regime_switching'];
+
+            return new StrategyRegistry([
+                new BaselineStrategy((array) config('strategy')), $trend, $range, $breakout,
+                new RegimeSwitchingStrategy($regimeConfig, new MarketRegimeClassifier($regimeConfig), $trend, $breakout, $range),
+            ]);
+        });
+        $this->app->singleton(StrategyRankingService::class, fn (): StrategyRankingService => new StrategyRankingService((array) config('research.ranking')));
         $this->app->singleton(MarketContextRepository::class, EloquentMarketContextRepository::class);
         $this->app->singleton(SignalRepository::class, EloquentSignalRepository::class);
         $this->app->singleton(StrategyInputFactory::class, fn ($app): StrategyInputFactory => new StrategyInputFactory(

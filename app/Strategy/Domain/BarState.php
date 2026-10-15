@@ -31,5 +31,8 @@ final readonly class BarState
         public ?string $averageTurnover,
         public ?string $support,
         public ?string $resistance,
+        public ?string $bollingerUpper = null,
+        public ?string $bollingerMiddle = null,
+        public ?string $bollingerLower = null,
     ) {}
 }

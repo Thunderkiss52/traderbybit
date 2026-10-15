@@ -29,6 +29,11 @@ h2 { font-size:16px; letter-spacing:.02em; }
 .q-table__container { background:var(--surface) !important; max-width:100%; overflow:auto; }
 .actions { display:flex; gap:10px; align-items:center; }
 .indicator-panels { height:430px; margin-top:16px; }
+.performance-calendar { display:grid; grid-template-columns:repeat(auto-fit,minmax(150px,1fr)); gap:.6rem; }
+.calendar-day { display:grid; gap:.2rem; padding:.75rem; border:1px solid rgba(255,255,255,.15); border-radius:8px; }
+.calendar-day.profit { border-left:4px solid #21ba45; }
+.calendar-day.loss { border-left:4px solid #c10015; }
+.calendar-day.unknown { border-left:4px solid #9e9e9e; }
 @media(max-width:600px) {
   .research { align-items:flex-start; flex-direction:column; gap:2px; padding:8px 14px; }
   .q-page { padding:14px !important; }
