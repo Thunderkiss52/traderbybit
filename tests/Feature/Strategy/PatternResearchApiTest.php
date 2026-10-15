@@ -24,8 +24,19 @@ final class PatternResearchApiTest extends TestCase
 
     public function test_unauthorized_research_cannot_queue_discovery(): void
     {
+        config()->set('ui.backtest_token', 'research-secret');
         $payload = ['symbol' => 'BTCUSDT', 'from' => '2026-01-01', 'to' => '2026-02-01'];
         $this->postJson('/api/v1/research/patterns/runs', $payload)->assertUnauthorized();
+        self::assertSame(0, PatternRunRecord::query()->count());
+    }
+
+    public function test_discovery_is_disabled_when_research_token_is_not_configured(): void
+    {
+        config()->set('ui.backtest_token', null);
+        $payload = ['symbol' => 'BTCUSDT', 'from' => '2026-01-01', 'to' => '2026-02-01'];
+        $this->postJson('/api/v1/research/patterns/runs', $payload)
+            ->assertStatus(503)
+            ->assertJsonPath('error.code', 'research_write_disabled');
         self::assertSame(0, PatternRunRecord::query()->count());
     }
 

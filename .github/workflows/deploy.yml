@@ -24,6 +24,11 @@ jobs:
           coverage: none
       - name: Install Composer dependencies
         run: composer install --no-interaction --prefer-dist --no-progress
+      - name: Prepare isolated testing environment
+        shell: bash
+        run: |
+          cp .env.example .env
+          chmod 600 .env
       - name: Run PHPUnit
         run: php artisan test --no-ansi
       - name: Check PHP formatting
