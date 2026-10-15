@@ -7,6 +7,7 @@ namespace Tests\Feature\MarketData;
 use App\MarketData\Jobs\EnsureStrategyHistoryJob;
 use App\MarketData\Jobs\SyncCandlesJob;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Queue;
 use Tests\TestCase;
 
@@ -22,8 +23,7 @@ final class EnsureStrategyHistoryTest extends TestCase
         (new EnsureStrategyHistoryJob)->handle();
 
         Queue::assertPushed(SyncCandlesJob::class, 6);
-        Queue::assertPushed(SyncCandlesJob::class, static fn (SyncCandlesJob $job): bool =>
-            $job->symbol === 'BTCUSDT' && $job->interval === '60'
+        Queue::assertPushed(SyncCandlesJob::class, static fn (SyncCandlesJob $job): bool => $job->symbol === 'BTCUSDT' && $job->interval === '60'
             && ($job->toMs - $job->fromMs) >= 220 * 3_600_000
         );
     }
@@ -45,14 +45,13 @@ final class EnsureStrategyHistoryTest extends TestCase
         }
         // Small batches work on both SQLite and PostgreSQL.
         foreach (array_chunk($rows, 50) as $chunk) {
-            \Illuminate\Support\Facades\DB::table('market_candles')->insert($chunk);
+            DB::table('market_candles')->insert($chunk);
         }
 
         (new EnsureStrategyHistoryJob)->handle();
 
         Queue::assertPushed(SyncCandlesJob::class, 5);
-        Queue::assertNotPushed(SyncCandlesJob::class, static fn (SyncCandlesJob $job): bool =>
-            $job->symbol === 'BTCUSDT' && $job->interval === '60'
+        Queue::assertNotPushed(SyncCandlesJob::class, static fn (SyncCandlesJob $job): bool => $job->symbol === 'BTCUSDT' && $job->interval === '60'
         );
     }
 }

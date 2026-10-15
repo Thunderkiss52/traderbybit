@@ -6,6 +6,7 @@ namespace App\MarketData\Jobs;
 
 use App\MarketData\Domain\Interval;
 use App\MarketData\Infrastructure\Persistence\CandleRecord;
+use Carbon\CarbonImmutable;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
@@ -44,7 +45,7 @@ final class EnsureStrategyHistoryJob implements ShouldQueue
                     ->where('exchange', 'bybit')->where('category', 'linear')
                     ->where('symbol', (string) $symbol)->where('interval', $interval->value)
                     ->where('is_closed', true)
-                    ->where('open_time', '<=', \Carbon\CarbonImmutable::createFromTimestampMsUTC($lastClosedOpenMs))
+                    ->where('open_time', '<=', CarbonImmutable::createFromTimestampMsUTC($lastClosedOpenMs))
                     ->latest('open_time')->limit($historyLimit)->pluck('open_time');
 
                 $expected = $lastClosedOpenMs;
