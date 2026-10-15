@@ -14,11 +14,17 @@ final readonly class StrategyComparisonService
     {
         $rows = [];
         foreach ($this->registry->metadata() as $strategy) {
-            $experiment = ResearchExperimentRecord::query()->where('strategy_id', $strategy['id'])->where('status', 'COMPLETED')->latest('completed_at')->first();
+            $experiment = ResearchExperimentRecord::query()
+                ->where('strategy_id', $strategy['id'])
+                ->where('strategy_version', $strategy['version'])
+                ->where('configuration_hash', $strategy['configuration_hash'])
+                ->where('status', 'COMPLETED')
+                ->latest('completed_at')
+                ->first();
             $metrics = $experiment?->metrics['test'] ?? $experiment?->metrics['out_of_sample'] ?? null;
             $rows[] = $strategy + ['experiment_id' => $experiment?->id, 'metrics' => $metrics, 'ranking' => $this->ranking->rank($metrics)];
         }
 
-return $rows;
+        return $rows;
     }
 }

@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Tests\Feature\Strategy;
 
+use App\Strategy\Application\StrategyRegistry;
 use App\Strategy\Infrastructure\Persistence\ResearchExperimentRecord;
 use App\Strategy\Jobs\RunResearchExperimentJob;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -36,6 +37,21 @@ final class ResearchApiTest extends TestCase
     {
         $this->getJson('/api/v1/research/experiments')->assertOk()->assertJsonPath('data.per_page', 10);
         $this->getJson('/api/v1/research/strategies/missing')->assertNotFound();
+    }
+
+    public function test_leaderboard_uses_only_experiments_for_the_current_strategy_identity(): void
+    {
+        $strategy = collect($this->app->make(StrategyRegistry::class)->metadata())->firstWhere('id', 'trend_pullback');
+        $common = ['strategy_id' => 'trend_pullback', 'parameters' => $strategy['parameters'], 'symbols' => ['BTCUSDT'], 'from_at' => '2025-01-01', 'to_at' => '2026-01-01', 'evaluation_mode' => 'split', 'status' => 'COMPLETED', 'resource_budget' => config('research.queue'), 'tested_combinations' => 1];
+
+        ResearchExperimentRecord::query()->create($common + ['id' => Uuid::uuid4()->toString(), 'strategy_version' => 'obsolete', 'configuration_hash' => str_repeat('0', 64), 'metrics' => ['test' => ['total_trades' => 999]], 'completed_at' => now('UTC')->addSecond()]);
+        $currentId = Uuid::uuid4()->toString();
+        ResearchExperimentRecord::query()->create($common + ['id' => $currentId, 'strategy_version' => $strategy['version'], 'configuration_hash' => $strategy['configuration_hash'], 'metrics' => ['test' => ['total_trades' => 1]], 'completed_at' => now('UTC')]);
+
+        $row = collect($this->getJson('/api/v1/research/leaderboard')->assertOk()->json('data.data'))->firstWhere('id', 'trend_pullback');
+
+        self::assertSame($currentId, $row['experiment_id']);
+        self::assertSame(1, $row['metrics']['total_trades']);
     }
 
     public function test_completed_experiment_requires_explicit_approval_and_creates_an_isolated_forward_portfolio(): void
