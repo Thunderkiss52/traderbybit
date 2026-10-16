@@ -27,6 +27,11 @@ final class StrategyFixture
         ] : [
             'close' => '100', 'low' => '99', 'high' => '100.3', 'emaEntry' => '100', 'rsi' => '51', 'macd' => '0.1', 'macdSignal' => '0', 'macdHistogram' => '0.1', 'support' => '98',
         ]);
+        $setup = self::bar('2026-10-13T09:30:00Z', 30, $buy ? [
+            'close' => '106', 'emaFast' => '104', 'emaSlow' => '101',
+        ] : [
+            'close' => '94', 'emaFast' => '96', 'emaSlow' => '99',
+        ]);
         $entryNow = self::bar('2026-10-13T10:00:00Z', 15, $buy ? [
             'open' => '102.2', 'close' => '103.2', 'low' => '102', 'high' => '104', 'emaEntry' => '101', 'rsi' => '60', 'macd' => '0.2', 'macdSignal' => '0', 'macdHistogram' => '0.2', 'relativeVolume' => '1.8', 'support' => '101.8', 'resistance' => null,
         ] : [
@@ -43,6 +48,7 @@ final class StrategyFixture
         return new StrategyInput(
             exchange: 'bybit', category: 'linear', symbol: 'BTCUSDT', decisionTime: $at,
             trend: $overrides['trend'] ?? new TimeframeState('60', [$hour], true),
+            setup: $overrides['setup'] ?? new TimeframeState('30', [$setup], true),
             entry: $overrides['entry'] ?? new TimeframeState('15', [$entryPrevious, $entryNow], true),
             confirmation: $overrides['confirmation'] ?? new TimeframeState('5', [$confirmPrevious, $confirmNow], true),
             marketContext: array_key_exists('marketContext', $overrides) ? $overrides['marketContext'] : $context,

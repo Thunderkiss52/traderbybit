@@ -19,6 +19,7 @@ final class ResearchApiTest extends TestCase
     public function test_strategy_catalog_and_empty_leaderboard_are_bounded_and_do_not_fabricate_metrics(): void
     {
         $this->getJson('/api/v1/research/strategies?per_page=10')->assertOk()->assertJsonPath('data.meta.total', 5)->assertJsonPath('data.data.0.id', 'baseline');
+        $this->getJson('/api/v1/research/strategies?per_page=10')->assertJsonPath('data.data.0.timeframes.setup', '30m');
         $this->getJson('/api/v1/research/strategies/baseline')->assertOk()->assertJsonPath('data.strategy.id', 'baseline');
         $response = $this->getJson('/api/v1/research/leaderboard')->assertOk();
         $response->assertJsonPath('data.meta.total', 5)->assertJsonPath('data.data.0.metrics', null)->assertJsonPath('data.data.0.ranking.status', 'NOT_EVALUATED');

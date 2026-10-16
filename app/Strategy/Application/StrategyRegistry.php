@@ -54,7 +54,9 @@ final readonly class StrategyRegistry
 
     public function metadata(): array
     {
-        return array_map(fn (StrategyInterface $s) => ['id' => $s->id(), 'version' => $s->version(), 'description' => $s->description(), 'configuration_hash' => $this->hash($s->parameters()), 'parameters' => $s->parameters()], $this->strategies);
+        return array_map(fn (StrategyInterface $s) => ['id' => $s->id(), 'version' => $s->version(), 'description' => $s->description(),
+            'timeframes' => ['trend' => '1h', 'setup' => '30m', 'entry' => '15m', 'confirmation' => '5m'],
+            'configuration_hash' => $this->hash($s->parameters()), 'parameters' => $s->parameters()], $this->strategies);
     }
 
     private function hash(array $parameters): string

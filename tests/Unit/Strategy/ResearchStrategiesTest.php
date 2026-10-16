@@ -34,7 +34,8 @@ final class ResearchStrategiesTest extends TestCase
         $previous = StrategyFixture::bar('2026-10-13T09:45:00Z', 15, ['close' => '94', 'bollingerLower' => '95', 'bollingerUpper' => '105', 'rsi' => '25']);
         $now = StrategyFixture::bar('2026-10-13T10:00:00Z', 15, ['close' => '96', 'bollingerLower' => '95', 'bollingerUpper' => '105', 'rsi' => '30']);
         $trend = new TimeframeState('60', [StrategyFixture::bar('2026-10-13T09:00:00Z', 60, ['adx' => '10'])], true);
-        $input = StrategyFixture::input(overrides: ['entry' => new TimeframeState('15', [$previous, $now], true), 'trend' => $trend]);
+        $setup = new TimeframeState('30', [StrategyFixture::bar('2026-10-13T09:30:00Z', 30, ['adx' => '10'])], true);
+        $input = StrategyFixture::input(overrides: ['entry' => new TimeframeState('15', [$previous, $now], true), 'trend' => $trend, 'setup' => $setup]);
         self::assertSame(SignalSide::Buy, (new BollingerMeanReversionStrategy($this->config['strategies']['bollinger_mean_reversion']))->evaluate($input)->side);
     }
 

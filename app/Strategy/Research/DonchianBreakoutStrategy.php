@@ -37,10 +37,10 @@ final readonly class DonchianBreakoutStrategy extends ResearchStrategy
         if ($now->relativeVolume === null || $this->lt($now->relativeVolume, (string) $this->config['relative_volume_min']) || $now->atr === null) {
             return $this->skip($input, ['volume_or_atr_filter_rejected']);
         }
-        if ((float) $now->close > $upper) {
+        if ((float) $now->close > $upper && $this->setupAligned($input, SignalSide::Buy)) {
             return $this->emit($input, SignalSide::Buy, ['prior_donchian_high_breakout', 'relative_volume_confirmation']);
         }
-        if ((float) $now->close < $lower) {
+        if ((float) $now->close < $lower && $this->setupAligned($input, SignalSide::Sell)) {
             return $this->emit($input, SignalSide::Sell, ['prior_donchian_low_breakout', 'relative_volume_confirmation']);
         }
 

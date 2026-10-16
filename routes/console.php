@@ -7,6 +7,7 @@ use App\PaperTrading\Jobs\ProcessPaperTradingJob;
 use App\Strategy\Jobs\CaptureMarketContextJob;
 use App\Strategy\Jobs\EnsureResearchCoverageJob;
 use App\Strategy\Jobs\GenerateSignalJob;
+use App\Strategy\Jobs\ObserveStrategiesJob;
 use App\Strategy\Jobs\ProcessResearchPaperJob;
 use Illuminate\Foundation\Inspiring;
 use Illuminate\Support\Facades\Artisan;
@@ -32,6 +33,10 @@ foreach ((array) config('market_data.symbols', ['BTCUSDT', 'ETHUSDT']) as $symbo
         ->cron('2,17,32,47 * * * *')
         ->name("signals:generate:{$symbol}")
         ->withoutOverlapping();
+    Schedule::job(new ObserveStrategiesJob((string) $symbol))
+        ->cron('3,18,33,48 * * * *')
+        ->name("strategies:observe:{$symbol}")
+        ->withoutOverlapping();
 }
 
 Schedule::job(new ProcessPaperTradingJob)
@@ -39,6 +44,6 @@ Schedule::job(new ProcessPaperTradingJob)
     ->name('paper:process:default')
     ->withoutOverlapping();
 Schedule::job(new ProcessResearchPaperJob)
-    ->cron('3,18,33,48 * * * *')
+    ->cron('4,19,34,49 * * * *')
     ->name('research:forward-paper')
     ->withoutOverlapping();

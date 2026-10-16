@@ -34,7 +34,7 @@ abstract readonly class ResearchStrategy implements StrategyInterface
         if ($input->validationErrors !== []) {
             return $this->skip($input, $input->validationErrors);
         }
-        foreach ([$input->trend, $input->entry, $input->confirmation] as $state) {
+        foreach ([$input->trend, $input->setup, $input->entry, $input->confirmation] as $state) {
             if (! $state->warmupReady) {
                 return $this->skip($input, ['insufficient_warmup']);
             }
@@ -82,6 +82,18 @@ abstract readonly class ResearchStrategy implements StrategyInterface
         }
 
         return $this->decision($input, $side, QualityClass::B, 70, new PricePlan((string) $low, (string) $high, (string) $stop, (string) $tp1, (string) $tp2, $r1, $r2), $reasons);
+    }
+
+    protected function setupAligned(StrategyInput $input, SignalSide $side): bool
+    {
+        $setup = $input->setup->latest();
+        if ($setup === null || $setup->emaFast === null || $setup->emaSlow === null) {
+            return false;
+        }
+
+        return $side === SignalSide::Buy
+            ? $this->gt($setup->close, $setup->emaFast) && $this->gt($setup->emaFast, $setup->emaSlow)
+            : $this->lt($setup->close, $setup->emaFast) && $this->lt($setup->emaFast, $setup->emaSlow);
     }
 
     protected function skip(StrategyInput $input, array $reasons): SignalDecision

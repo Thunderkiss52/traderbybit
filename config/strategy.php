@@ -3,17 +3,18 @@
 declare(strict_types=1);
 
 return [
-    'version' => env('STRATEGY_VERSION', '1.0.0'),
+    'version' => env('STRATEGY_VERSION', '1.1.0'),
     'schema_version' => '1.0.0',
     'decision_timeframe' => '15',
     'history_limit' => 220,
     'timeframes' => [
         'trend' => '60',
+        'setup' => '30',
         'entry' => '15',
         'confirmation' => '5',
     ],
     'freshness' => [
-        'max_lag_seconds' => ['5' => 0, '15' => 0, '60' => 3599],
+        'max_lag_seconds' => ['5' => 0, '15' => 0, '30' => 1799, '60' => 3599],
         'market_context_max_age_seconds' => 300,
         'require_market_context' => true,
     ],
@@ -71,6 +72,7 @@ return [
     'scoring' => [
         'weights' => [
             'trend_alignment' => 15,
+            'setup_30m' => 10,
             'confirmation_5m' => 15,
             'first_trigger' => 15,
             'additional_trigger' => 10,

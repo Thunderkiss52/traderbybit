@@ -30,8 +30,10 @@ use App\PaperTrading\Infrastructure\Persistence\PositionFundingEventRecord;
 use App\PaperTrading\Infrastructure\Persistence\RiskDecisionRecord;
 use App\PaperTrading\Infrastructure\Persistence\VirtualExecutionRecord;
 use App\PaperTrading\Infrastructure\Persistence\VirtualPositionRecord;
+use App\Strategy\Application\StrategyRegistry;
 use App\Strategy\Infrastructure\Persistence\MarketContextRecord;
 use App\Strategy\Infrastructure\Persistence\SignalRecord;
+use App\Strategy\Infrastructure\Persistence\StrategyObservationRecord;
 use Brick\Math\BigDecimal;
 use DateTimeImmutable;
 use Illuminate\Http\JsonResponse;
@@ -60,7 +62,7 @@ final class ResearchController extends Controller
         return max(1, min(100, $request->integer('per_page', 10)));
     }
 
-    public function dashboard(PerformanceStatisticsService $statistics): ResearchResource
+    public function dashboard(PerformanceStatisticsService $statistics, StrategyRegistry $strategies): ResearchResource
     {
         $account = PaperAccountRecord::query()->oldest()->first();
         $contexts = collect(config('ui.symbols'))->map(
@@ -91,6 +93,7 @@ final class ResearchController extends Controller
             'signals' => SignalRecord::query()->whereIn('side', ['BUY', 'SELL'])->latest('decision_time')->latest('id')->limit(8)->get(['id', 'symbol', 'side', 'quality_class', 'score', 'entry_low', 'entry_high', 'stop_loss', 'take_profit_1', 'take_profit_2', 'expires_at', 'reasons', 'decision_time']),
             'recent_decisions' => SignalRecord::query()->whereIn('symbol', config('ui.symbols'))->latest('decision_time')->latest('id')->limit(8)->get(['id', 'symbol', 'side', 'decision_time', 'reasons']),
             'skip_reasons_24h' => $skipReasons,
+            'strategy_observations_24h' => $this->strategyObservations($strategies),
             'positions' => VirtualPositionRecord::query()->whereNull('closed_at')->latest('opened_at')->limit(10)->get(['id', 'symbol', 'side', 'status', 'entry_price', 'net_pnl', 'unrealized_pnl']),
             'performance' => $account ? Cache::remember('paper:dashboard:performance:'.$account->id, 60, fn () => $statistics->calculate($account->id)->metrics) : null,
             'research_settings' => [
@@ -99,6 +102,42 @@ final class ResearchController extends Controller
                 'execution_model_version' => config('paper.execution_version'),
             ],
         ]);
+    }
+
+    private function strategyObservations(StrategyRegistry $strategies): array
+    {
+        $since = now('UTC')->subDay();
+
+        return collect($strategies->metadata())->map(function (array $strategy) use ($since): array {
+            $query = StrategyObservationRecord::query()
+                ->where('strategy_id', $strategy['id'])
+                ->where('configuration_hash', $strategy['configuration_hash'])
+                ->where('decision_time', '>=', $since);
+            $counts = (clone $query)->selectRaw('side, COUNT(*) AS aggregate')->groupBy('side')->pluck('aggregate', 'side');
+            $latest = (clone $query)->latest('decision_time')->latest('id')->first(['symbol', 'side', 'decision_time', 'reasons']);
+            $skipReasons = [];
+            foreach ((clone $query)->where('side', 'SKIP')->cursor() as $observation) {
+                foreach ($observation->reasons ?? [] as $reason) {
+                    if (is_string($reason)) {
+                        $skipReasons[$reason] = ($skipReasons[$reason] ?? 0) + 1;
+                    }
+                }
+            }
+            arsort($skipReasons);
+
+            return [
+                'strategy_id' => $strategy['id'],
+                'strategy_version' => $strategy['version'],
+                'description' => $strategy['description'],
+                'timeframes' => $strategy['timeframes'],
+                'buy' => (int) ($counts['BUY'] ?? 0),
+                'sell' => (int) ($counts['SELL'] ?? 0),
+                'skip' => (int) ($counts['SKIP'] ?? 0),
+                'total' => (int) $counts->sum(),
+                'latest' => $latest,
+                'top_skip_reasons' => array_slice($skipReasons, 0, 3, true),
+            ];
+        })->values()->all();
     }
 
     public function candles(MarketSeriesRequest $r, string $symbol): ResearchResource

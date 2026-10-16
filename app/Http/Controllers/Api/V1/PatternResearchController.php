@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Http\Controllers\Api\V1;
 
 use App\Http\Controllers\Controller;
+use App\MarketData\Infrastructure\Persistence\CandleRecord;
 use App\PatternDiscovery\Application\MarketFeatureExtractor;
 use App\PatternDiscovery\Application\PatternMatcher;
 use App\PatternDiscovery\Infrastructure\Persistence\PatternRecord;
@@ -47,7 +48,39 @@ final class PatternResearchController extends Controller
         $page = PatternRunRecord::query()->orderByDesc('created_at')->orderByDesc('id')->paginate((int) ($data['per_page'] ?? 10));
 
         return response()->json(['data' => $page->items(), 'meta' => ['current_page' => $page->currentPage(),
-            'per_page' => $page->perPage(), 'last_page' => $page->lastPage(), 'total' => $page->total()]]);
+            'per_page' => $page->perPage(), 'last_page' => $page->lastPage(), 'total' => $page->total(),
+            'readiness' => $this->readiness()]]);
+    }
+
+    private function readiness(): array
+    {
+        $maximum = max(1, (int) config('patterns.maximum_decisions', 800));
+        $required = min($maximum, max(1, (int) config('research.automatic.minimum_pattern_decisions', 700)));
+        $holdingSeconds = max(1, (int) config('patterns.holding_bars_5m', 48)) * 300;
+
+        return collect((array) config('patterns.allowed_symbols', ['BTCUSDT', 'ETHUSDT']))
+            ->map(function (string $symbol) use ($holdingSeconds, $maximum, $required): array {
+                $latest = CandleRecord::query()->where([
+                    'exchange' => 'bybit', 'category' => 'linear', 'symbol' => $symbol,
+                    'interval' => '5', 'is_closed' => true,
+                ])->latest('open_time')->first(['open_time']);
+                $to = $latest?->open_time->addMinutes(5);
+                $decisions = SignalRecord::query()->where([
+                    'exchange' => 'bybit', 'category' => 'linear', 'symbol' => $symbol,
+                ]);
+                $collected = $to === null ? 0 : (clone $decisions)->where('decision_time', '<=', $to)->count();
+                $eligible = $to === null ? 0 : (clone $decisions)
+                    ->where('decision_time', '<=', $to->subSeconds($holdingSeconds))->count();
+                $eligible = min($maximum, $eligible);
+
+                return [
+                    'symbol' => $symbol, 'collected_decisions' => $collected,
+                    'eligible_decisions' => $eligible, 'minimum_required' => $required,
+                    'remaining_decisions' => max(0, $required - $eligible),
+                    'progress_percent' => min(100, round($eligible / $required * 100, 1)),
+                    'ready' => $eligible >= $required,
+                ];
+            })->values()->all();
     }
 
     public function queue(Request $request): JsonResponse

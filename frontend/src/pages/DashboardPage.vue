@@ -9,7 +9,7 @@ import SignalCard from '../components/SignalCard.vue';
 import EmptyState from '../components/EmptyState.vue';
 import DailyPerformance from '../components/DailyPerformance.vue';
 
-const data = shallowRef<any>({ market: [], signals: [], positions: [], portfolio: null, performance: null, recent_decisions: [], skip_reasons_24h: {} });
+const data = shallowRef<any>({ market: [], signals: [], positions: [], portfolio: null, performance: null, recent_decisions: [], skip_reasons_24h: {}, strategy_observations_24h: [] });
 const error = ref('');
 const controller = new AbortController();
 const { autoRefresh } = storeToRefs(useSettings());
@@ -62,6 +62,27 @@ onBeforeUnmount(() => controller.abort());
         <MetricCard label="Pending Virtual Entries" :value="data.portfolio.pending_entry_signals" />
       </div>
       <EmptyState v-else />
+    </section>
+    <section>
+      <h2>All Strategy Decisions · Last 24 Hours</h2>
+      <q-banner class="bg-grey-9 text-white q-mb-md">Observation only. These five streams do not enter the paper portfolio unless separately approved for forward-paper evaluation.</q-banner>
+      <q-markup-table flat bordered wrap-cells>
+        <thead><tr><th class="text-left">Strategy</th><th>BUY</th><th>SELL</th><th>SKIP</th><th>Total</th><th class="text-left">Latest decision</th><th class="text-left">Top SKIP reasons</th></tr></thead>
+        <tbody>
+          <tr v-for="strategy in data.strategy_observations_24h" :key="strategy.strategy_id">
+            <td class="text-left"><b>{{ strategy.strategy_id }}</b><div class="muted">v{{ strategy.strategy_version }} · 1h / 30m / 15m / 5m</div></td>
+            <td class="text-center text-positive">{{ strategy.buy }}</td>
+            <td class="text-center text-negative">{{ strategy.sell }}</td>
+            <td class="text-center">{{ strategy.skip }}</td>
+            <td class="text-center">{{ strategy.total }}</td>
+            <td class="text-left">
+              <template v-if="strategy.latest">{{ strategy.latest.side }} · {{ strategy.latest.symbol }}<div class="muted">{{ strategy.latest.decision_time }}</div></template>
+              <span v-else class="muted">Waiting for next closed 15m candle</span>
+            </td>
+            <td class="text-left">{{ Object.entries(strategy.top_skip_reasons || {}).map(([reason, count]) => `${reason} (${count})`).join(', ') || '—' }}</td>
+          </tr>
+        </tbody>
+      </q-markup-table>
     </section>
     <section>
       <h2>Latest BUY / SELL Signals</h2>

@@ -21,7 +21,11 @@ final class PatternResearchApiTest extends TestCase
         $this->getJson('/api/v1/research/patterns')->assertOk()
             ->assertJsonCount(0, 'data')->assertJsonPath('meta.per_page', 10);
         $this->getJson('/api/v1/research/patterns/runs')->assertOk()
-            ->assertJsonCount(0, 'data')->assertJsonPath('meta.per_page', 10);
+            ->assertJsonCount(0, 'data')->assertJsonPath('meta.per_page', 10)
+            ->assertJsonPath('meta.readiness.0.symbol', 'BTCUSDT')
+            ->assertJsonPath('meta.readiness.0.eligible_decisions', 0)
+            ->assertJsonPath('meta.readiness.0.minimum_required', 700)
+            ->assertJsonPath('meta.readiness.0.ready', false);
         $this->getJson('/api/v1/research/patterns/latest-matches?symbol=BTCUSDT')->assertOk()
             ->assertJsonCount(0, 'data')->assertJsonPath('meta.point_in_time', null);
     }

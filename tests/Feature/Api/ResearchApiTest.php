@@ -6,7 +6,9 @@ namespace Tests\Feature\Api;
 
 use App\Backtest\Jobs\RunBacktestJob;
 use App\PaperTrading\Application\PaperAccountService;
+use App\Strategy\Application\StrategyRegistry;
 use App\Strategy\Infrastructure\Persistence\SignalRecord;
+use App\Strategy\Infrastructure\Persistence\StrategyObservationRecord;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Bus;
 use Illuminate\Support\Facades\Cache;
@@ -21,7 +23,29 @@ final class ResearchApiTest extends TestCase
     public function test_dashboard_contract_and_empty_state(): void
     {
         $this->getJson('/api/v1/dashboard')->assertOk()->assertJsonPath('schema_version', '1.0.0')->assertJsonPath('research_mode', true)
-            ->assertJsonCount(0, 'data.market')->assertJsonCount(0, 'data.recent_decisions')->assertJsonPath('data.skip_reasons_24h', []);
+            ->assertJsonCount(0, 'data.market')->assertJsonCount(0, 'data.recent_decisions')->assertJsonPath('data.skip_reasons_24h', [])
+            ->assertJsonCount(5, 'data.strategy_observations_24h')
+            ->assertJsonPath('data.strategy_observations_24h.0.strategy_id', 'baseline')
+            ->assertJsonPath('data.strategy_observations_24h.0.total', 0);
+    }
+
+    public function test_dashboard_reports_each_strategy_observation_stream(): void
+    {
+        $metadata = app(StrategyRegistry::class)->metadata();
+        foreach ($metadata as $index => $strategy) {
+            StrategyObservationRecord::query()->create([
+                'id' => sprintf('00000000-0000-4000-8000-%012d', $index + 1),
+                'exchange' => 'bybit', 'category' => 'linear', 'symbol' => 'BTCUSDT',
+                'strategy_id' => $strategy['id'], 'strategy_version' => $strategy['version'],
+                'configuration_hash' => $strategy['configuration_hash'], 'side' => $index === 0 ? 'SELL' : 'SKIP',
+                'score' => 0, 'decision_time' => now('UTC')->subMinutes(15), 'reasons' => ['test_reason'],
+            ]);
+        }
+
+        $response = $this->getJson('/api/v1/dashboard')->assertOk()->assertJsonCount(5, 'data.strategy_observations_24h');
+        $response->assertJsonPath('data.strategy_observations_24h.0.sell', 1)
+            ->assertJsonPath('data.strategy_observations_24h.1.skip', 1)
+            ->assertJsonPath('data.strategy_observations_24h.1.top_skip_reasons.test_reason', 1);
     }
 
     public function test_dashboard_returns_performance_for_an_existing_paper_account(): void

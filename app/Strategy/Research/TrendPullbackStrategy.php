@@ -36,6 +36,9 @@ final readonly class TrendPullbackStrategy extends ResearchStrategy
         if ($side === SignalSide::Skip) {
             return $this->skip($input, ['neutral_trend']);
         }
+        if (! $this->setupAligned($input, $side)) {
+            return $this->skip($input, ['thirty_minute_setup_conflicts']);
+        }
         $pullback = $previous->emaEntry !== null && $previous->atr !== null && BigDecimal::of($previous->close)->minus($previous->emaEntry)->abs()->isLessThanOrEqualTo(BigDecimal::of($previous->atr)->multipliedBy((string) $this->config['pullback_atr']));
         $momentum = $side === SignalSide::Buy ? $this->gt($now->rsi, '50') && $this->gt($now->macdHistogram, $previous->macdHistogram) : $this->lt($now->rsi, '50') && $this->lt($now->macdHistogram, $previous->macdHistogram);
 

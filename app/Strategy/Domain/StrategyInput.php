@@ -14,6 +14,7 @@ final readonly class StrategyInput
         public string $symbol,
         public DateTimeImmutable $decisionTime,
         public TimeframeState $trend,
+        public TimeframeState $setup,
         public TimeframeState $entry,
         public TimeframeState $confirmation,
         public ?MarketContext $marketContext,

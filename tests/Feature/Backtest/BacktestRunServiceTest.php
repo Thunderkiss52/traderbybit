@@ -43,7 +43,7 @@ final class BacktestRunServiceTest extends TestCase
 
     private function seedCompleteHour(): void
     {
-        foreach ([5, 15, 60] as $minutes) {
+        foreach ([5, 15, 30, 60] as $minutes) {
             for ($offset = 0; $offset < 60; $offset += $minutes) {
                 CandleRecord::query()->create([
                     'exchange' => 'bybit', 'category' => 'linear', 'symbol' => 'BTCUSDT', 'interval' => (string) $minutes,

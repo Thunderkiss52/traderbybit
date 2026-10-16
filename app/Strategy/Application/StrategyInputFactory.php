@@ -58,7 +58,7 @@ final readonly class StrategyInputFactory
 
         return new StrategyInput(
             exchange: $exchange, category: $category, symbol: $symbol, decisionTime: $at,
-            trend: $states['trend'], entry: $states['entry'], confirmation: $states['confirmation'],
+            trend: $states['trend'], setup: $states['setup'], entry: $states['entry'], confirmation: $states['confirmation'],
             marketContext: $this->contexts->latestAt($exchange, $category, $symbol, $at),
             validationErrors: array_values(array_unique($errors)),
         );

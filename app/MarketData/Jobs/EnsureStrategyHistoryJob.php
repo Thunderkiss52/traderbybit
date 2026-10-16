@@ -41,7 +41,7 @@ final class EnsureStrategyHistoryJob implements ShouldQueue
         $graceMs = 120_000;
 
         foreach ((array) config('market_data.symbols', ['BTCUSDT', 'ETHUSDT']) as $symbol) {
-            foreach ((array) config('market_data.intervals', ['5', '15', '60']) as $value) {
+            foreach ((array) config('market_data.intervals', ['5', '15', '30', '60']) as $value) {
                 $interval = Interval::parse((string) $value);
                 $intervalMs = $interval->milliseconds();
                 $researchHistoryLimit = $researchDays === 0

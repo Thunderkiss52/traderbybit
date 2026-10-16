@@ -25,6 +25,17 @@ final readonly class ResearchExperimentRunner
         $experiment->update(['status' => 'RUNNING', 'started_at' => now('UTC')]);
         try {
             $strategy = $this->strategies->get($experiment->strategy_id);
+            $identity = collect($this->strategies->metadata())->firstWhere('id', $experiment->strategy_id);
+            if ($identity === null || $experiment->strategy_version !== $identity['version']
+                || $experiment->configuration_hash !== $identity['configuration_hash']) {
+                $experiment->update([
+                    'status' => 'SUPERSEDED',
+                    'warnings' => [['class' => 'strategy_identity_changed', 'message' => 'A newer immutable strategy identity replaced this queued experiment.']],
+                    'completed_at' => now('UTC'),
+                ]);
+
+                return;
+            }
             $config = (array) config('strategy');
             $config['version'] = $strategy->version();
             $config['_research_strategy_id'] = $strategy->id();

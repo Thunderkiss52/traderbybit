@@ -79,6 +79,11 @@ test('research lab provides a safe fast-start window and explains asynchronous e
   assert.match(text, /:disable="!canQueue"/);
   assert.match(text, /autocomplete="off"/);
 });
+test('research lab declares all five strategies and the four-timeframe hierarchy', () => {
+  const source = read('pages/ResearchPage.vue');
+  for (const strategy of ['baseline', 'trend_pullback', 'bollinger_mean_reversion', 'donchian_atr_breakout', 'regime_switching']) assert.match(source, new RegExp(strategy));
+  assert.match(source, /1h trend · 30m setup · 15m entry · 5m confirmation/);
+});
 
 
 test('dashboard displays actual account summary and paper-return fields', () => {
@@ -113,6 +118,9 @@ test('dashboard explains real SKIP reasons instead of hiding strategy evaluation
   const text = source('pages/DashboardPage.vue');
   assert.match(text, /data.recent_decisions/);
   assert.match(text, /data.skip_reasons_24h/);
+  assert.match(text, /data.strategy_observations_24h/);
+  assert.match(text, /All Strategy Decisions/);
+  assert.match(text, /Waiting for next closed 15m candle/);
   assert.match(text, /decision.reasons/);
 });
 

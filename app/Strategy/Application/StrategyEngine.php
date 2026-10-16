@@ -29,7 +29,7 @@ final readonly class StrategyEngine
             return $this->skip($input, [$temporalError]);
         }
 
-        if (! $input->trend->warmupReady || ! $input->entry->warmupReady || ! $input->confirmation->warmupReady) {
+        if (! $input->trend->warmupReady || ! $input->setup->warmupReady || ! $input->entry->warmupReady || ! $input->confirmation->warmupReady) {
             return $this->skip($input, ['insufficient_warmup']);
         }
 
@@ -43,6 +43,10 @@ final readonly class StrategyEngine
         $trend = $this->trend($hour);
         if ($trend === SignalSide::Skip) {
             return $this->skip($input, ['neutral_hourly_trend'], $this->snapshot($input));
+        }
+
+        if (! $this->setupMatches($trend, $input)) {
+            return $this->skip($input, ['thirty_minute_setup_conflicts'], $this->snapshot($input));
         }
 
         if (! $this->confirmationMatches($trend, $input)) {
@@ -75,7 +79,7 @@ final readonly class StrategyEngine
 
         $risks = $this->contextRisks($input);
         $reasons = array_merge(
-            [$trend === SignalSide::Buy ? 'bullish_hourly_trend' : 'bearish_hourly_trend', 'five_minute_confirmation'],
+            [$trend === SignalSide::Buy ? 'bullish_hourly_trend' : 'bearish_hourly_trend', 'thirty_minute_setup', 'five_minute_confirmation'],
             $triggers,
         );
 
@@ -110,7 +114,7 @@ final readonly class StrategyEngine
 
     private function temporalError(StrategyInput $input): ?string
     {
-        foreach (['trend' => $input->trend, 'entry' => $input->entry, 'confirmation' => $input->confirmation] as $role => $state) {
+        foreach (['trend' => $input->trend, 'setup' => $input->setup, 'entry' => $input->entry, 'confirmation' => $input->confirmation] as $role => $state) {
             $previous = null;
             $step = ((int) $state->interval) * 60;
             foreach ($state->bars as $bar) {
@@ -146,6 +150,18 @@ final readonly class StrategyEngine
         return $side === SignalSide::Buy
             ? $this->gt($now->close, $now->emaEntry) && $this->gte($now->rsi, $mid) && $this->gte($now->macdHistogram, $previous->macdHistogram)
             : $this->lt($now->close, $now->emaEntry) && $this->lte($now->rsi, $mid) && $this->lte($now->macdHistogram, $previous->macdHistogram);
+    }
+
+    private function setupMatches(SignalSide $side, StrategyInput $input): bool
+    {
+        $setup = $input->setup->latest();
+        if ($setup === null || $this->missing($setup->close, $setup->emaFast, $setup->emaSlow)) {
+            return false;
+        }
+
+        return $side === SignalSide::Buy
+            ? $this->gt($setup->close, $setup->emaFast) && $this->gt($setup->emaFast, $setup->emaSlow)
+            : $this->lt($setup->close, $setup->emaFast) && $this->lt($setup->emaFast, $setup->emaSlow);
     }
 
     private function validateContext(StrategyInput $input, BarState $entry): ?string
@@ -308,7 +324,7 @@ final readonly class StrategyEngine
     private function score(SignalSide $side, StrategyInput $input, array $triggers, PricePlan $plan): array
     {
         $weights = $this->config['scoring']['weights'];
-        $score = (int) $weights['trend_alignment'] + (int) $weights['confirmation_5m'] + (int) $weights['first_trigger'];
+        $score = (int) $weights['trend_alignment'] + (int) $weights['setup_30m'] + (int) $weights['confirmation_5m'] + (int) $weights['first_trigger'];
         $score += min(max(0, count($triggers) - 1) * (int) $weights['additional_trigger'], (int) $weights['additional_trigger_max']);
         $hour = $input->trend->latest();
         $entry = $input->entry->latest();
@@ -359,7 +375,7 @@ final readonly class StrategyEngine
             'average_turnover' => $b->averageTurnover, 'support' => $b->support, 'resistance' => $b->resistance,
         ];
 
-        return ['1h' => $bar($input->trend->latest()), '15m' => $bar($input->entry->latest()), '5m' => $bar($input->confirmation->latest())];
+        return ['1h' => $bar($input->trend->latest()), '30m' => $bar($input->setup->latest()), '15m' => $bar($input->entry->latest()), '5m' => $bar($input->confirmation->latest())];
     }
 
     private function skip(StrategyInput $input, array $reasons, array $snapshot = [], int $score = 0): SignalDecision

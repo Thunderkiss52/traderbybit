@@ -70,7 +70,7 @@ final readonly class ResearchBootstrapService
     private function researchWindow(array $symbols): ?array
     {
         $intervals = array_map(static fn (string $value): Interval => Interval::parse($value),
-            array_values((array) config('market_data.intervals', ['5', '15', '60'])));
+            array_values((array) config('market_data.intervals', ['5', '15', '30', '60'])));
         $to = null;
         foreach ($symbols as $symbol) {
             foreach ($intervals as $interval) {

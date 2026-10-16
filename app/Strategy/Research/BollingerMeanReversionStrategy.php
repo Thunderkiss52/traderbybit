@@ -28,7 +28,10 @@ final readonly class BollingerMeanReversionStrategy extends ResearchStrategy
         $now = $input->entry->latest();
         $previous = $input->entry->previous();
         $trend = $input->trend->latest();
-        if (! $now || ! $previous || ! $trend || $trend->adx === null || ! $this->lt($trend->adx, (string) $this->config['adx_max'])) {
+        $setup = $input->setup->latest();
+        if (! $now || ! $previous || ! $trend || ! $setup || $trend->adx === null || $setup->adx === null
+            || ! $this->lt($trend->adx, (string) $this->config['adx_max'])
+            || ! $this->lt($setup->adx, (string) $this->config['adx_max'])) {
             return $this->skip($input, ['range_regime_required']);
         }
         if ($previous->bollingerLower !== null && $now->bollingerLower !== null && $this->lt($previous->close, $previous->bollingerLower) && $this->gt($now->close, $now->bollingerLower) && $this->lt($now->rsi, (string) $this->config['rsi_buy_max'])) {

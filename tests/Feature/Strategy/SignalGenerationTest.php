@@ -8,9 +8,11 @@ use App\MarketData\Domain\Interval;
 use App\Strategy\Application\SignalGenerator;
 use App\Strategy\Application\StrategyEngine;
 use App\Strategy\Application\StrategyInputFactory;
+use App\Strategy\Application\StrategyObservationService;
 use App\Strategy\Infrastructure\Persistence\EloquentSignalRepository;
 use App\Strategy\Infrastructure\Persistence\MarketContextRecord;
 use App\Strategy\Infrastructure\Persistence\SignalRecord;
+use App\Strategy\Infrastructure\Persistence\StrategyObservationRecord;
 use App\Strategy\Jobs\GenerateSignalJob;
 use DateTimeImmutable;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -54,6 +56,7 @@ final class SignalGenerationTest extends TestCase
         $input = $this->app->make(StrategyInputFactory::class)->make('bybit', 'linear', 'BTCUSDT', $this->at);
 
         self::assertSame('2026-10-13T10:00:00+00:00', $input->trend->latest()?->closeTime->format(DATE_ATOM));
+        self::assertSame('2026-10-13T10:00:00+00:00', $input->setup->latest()?->closeTime->format(DATE_ATOM));
         self::assertSame('2026-10-13T10:15:00+00:00', $input->entry->latest()?->closeTime->format(DATE_ATOM));
         self::assertSame('2026-10-13T10:15:00+00:00', $input->confirmation->latest()?->closeTime->format(DATE_ATOM));
         self::assertNotSame('999.000000000000', $input->entry->latest()?->close);
@@ -85,6 +88,37 @@ final class SignalGenerationTest extends TestCase
         $this->assertDatabaseCount('signals', 1);
     }
 
+    public function test_all_registered_strategies_are_observed_once_per_closed_candle(): void
+    {
+        $this->seedHistory();
+        $this->seedContext('2026-10-13T10:15:00Z');
+        $service = $this->app->make(StrategyObservationService::class);
+
+        $observations = $service->observe('BTCUSDT', $this->at);
+        $service->observe('BTCUSDT', $this->at);
+
+        self::assertCount(5, $observations);
+        self::assertSame([
+            'baseline',
+            'bollinger_mean_reversion',
+            'donchian_atr_breakout',
+            'regime_switching',
+            'trend_pullback',
+        ], StrategyObservationRecord::query()->orderBy('strategy_id')->pluck('strategy_id')->all());
+        $this->assertDatabaseCount('strategy_observations', 5);
+    }
+
+    public function test_recent_observation_backfill_populates_all_strategies_without_duplicates(): void
+    {
+        $this->seedHistory();
+        $this->seedContext('2026-10-13T10:15:00Z');
+        $service = $this->app->make(StrategyObservationService::class);
+
+        self::assertSame(2, $service->observeRecent('BTCUSDT', 1, 2));
+        self::assertSame(0, $service->observeRecent('BTCUSDT', 1, 2));
+        $this->assertDatabaseCount('strategy_observations', 10);
+    }
+
     public function test_no_trading_endpoint_is_present_in_application_source(): void
     {
         $iterator = new \RecursiveIteratorIterator(new \RecursiveDirectoryIterator(app_path()));
@@ -103,6 +137,7 @@ final class SignalGenerationTest extends TestCase
         $spec = [
             [Interval::FiveMinutes, new DateTimeImmutable('2026-10-13T10:10:00Z')],
             [Interval::FifteenMinutes, new DateTimeImmutable('2026-10-13T10:00:00Z')],
+            [Interval::ThirtyMinutes, new DateTimeImmutable('2026-10-13T09:30:00Z')],
             [Interval::OneHour, new DateTimeImmutable('2026-10-13T09:00:00Z')],
         ];
         foreach ($spec as [$interval, $lastOpen]) {

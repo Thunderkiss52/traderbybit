@@ -29,3 +29,10 @@ test('pattern discovery starts with a safe complete window and explains asynchro
   assert.match(page, /zero means more persisted signal history is needed/);
   assert.match(page, /'X-Research-Token': token\.value/);
 });
+test('pattern page shows automatic discovery readiness instead of an unexplained empty table', () => {
+  const page = read('pages/PatternsPage.vue');
+  assert.match(page, /automatic discovery readiness/);
+  assert.match(page, /eligible_decisions/);
+  assert.match(page, /remaining_decisions/);
+  assert.match(page, /protects the results from incomplete labels and small-sample claims/);
+});

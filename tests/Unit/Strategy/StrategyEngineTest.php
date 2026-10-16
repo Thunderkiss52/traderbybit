@@ -21,7 +21,8 @@ final class StrategyEngineTest extends TestCase
 
         self::assertSame(SignalSide::Buy, $decision->side);
         self::assertSame(QualityClass::A, $decision->qualityClass);
-        self::assertSame(['bullish_hourly_trend', 'five_minute_confirmation', 'ema_pullback', 'macd_crossover', 'confirmed_breakout'], $decision->reasons);
+        self::assertSame(['bullish_hourly_trend', 'thirty_minute_setup', 'five_minute_confirmation', 'ema_pullback', 'macd_crossover', 'confirmed_breakout'], $decision->reasons);
+        self::assertArrayHasKey('30m', $decision->indicatorSnapshot);
         self::assertSame('103.1', $decision->pricePlan?->entryLow);
         self::assertSame('103.3', $decision->pricePlan?->entryHigh);
         self::assertSame('101.7', $decision->pricePlan?->stopLoss);
@@ -55,6 +56,11 @@ final class StrategyEngineTest extends TestCase
 
     public function test_conflicting_confirmation_spread_and_extreme_atr_are_skips(): void
     {
+        $setupAgainst = new TimeframeState('30', [
+            StrategyFixture::bar('2026-10-13T09:30:00Z', 30, ['close' => '99', 'emaFast' => '100', 'emaSlow' => '101']),
+        ], true);
+        self::assertSame(['thirty_minute_setup_conflicts'], $this->engine()->evaluate(StrategyFixture::input(overrides: ['setup' => $setupAgainst]))->reasons);
+
         $against = new TimeframeState('5', [
             StrategyFixture::bar('2026-10-13T10:05:00Z', 5, ['macdHistogram' => '0.2']),
             StrategyFixture::bar('2026-10-13T10:10:00Z', 5, ['close' => '99', 'emaEntry' => '100', 'rsi' => '45', 'macdHistogram' => '0.1']),

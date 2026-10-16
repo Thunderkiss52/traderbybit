@@ -10,6 +10,7 @@ enum Interval: string
 {
     case FiveMinutes = '5';
     case FifteenMinutes = '15';
+    case ThirtyMinutes = '30';
     case OneHour = '60';
 
     public function milliseconds(): int
@@ -17,6 +18,7 @@ enum Interval: string
         return match ($this) {
             self::FiveMinutes => 300_000,
             self::FifteenMinutes => 900_000,
+            self::ThirtyMinutes => 1_800_000,
             self::OneHour => 3_600_000,
         };
     }
@@ -29,6 +31,6 @@ enum Interval: string
     public static function parse(string $value): self
     {
         return self::tryFrom($value)
-            ?? throw new InvalidArgumentException("Unsupported interval [{$value}]. Allowed: 5, 15, 60.");
+            ?? throw new InvalidArgumentException("Unsupported interval [{$value}]. Allowed: 5, 15, 30, 60.");
     }
 }

@@ -6,7 +6,7 @@ return [
     'exchange' => 'bybit',
     'category' => 'linear',
     'symbols' => ['BTCUSDT', 'ETHUSDT'],
-    'intervals' => ['5', '15', '60'],
+    'intervals' => ['5', '15', '30', '60'],
     'rest' => [
         'base_url' => env('BYBIT_REST_URL', 'https://api.bybit.com'),
         'timeout_seconds' => (int) env('BYBIT_HTTP_TIMEOUT', 10),

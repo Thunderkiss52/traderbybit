@@ -5,7 +5,8 @@ import { usePolling } from '../composables/usePolling';
 
 interface Pattern { id: string; symbol: string; direction: 'BUY' | 'SELL'; status: string; terms: string[]; metrics: { train: Metrics; validation: Metrics; test: Metrics; baseline_test: Metrics } }
 interface Metrics { count: number; win_rate: number | null; mean_r: number | null; ambiguous_count: number }
-interface Page<T> { data: T[]; meta: { last_page: number; total: number } }
+interface Readiness { symbol: string; collected_decisions: number; eligible_decisions: number; minimum_required: number; remaining_decisions: number; progress_percent: number; ready: boolean }
+interface Page<T> { data: T[]; meta: { last_page: number; total: number; readiness?: Readiness[] } }
 const page = ref(1);
 const symbol = ref('BTCUSDT');
 const direction = ref('');
@@ -22,6 +23,7 @@ const from = ref(utcDateDaysAgo(31));
 const to = ref(latestSafeDate);
 const queued = ref(false);
 const selected = shallowRef<Pattern | null>(null);
+const selectedReadiness = computed(() => runs.value.meta.readiness?.find(item => item.symbol === symbol.value));
 let controller: AbortController | undefined;
 let requestNumber = 0;
 const fmt = (value: number | null | undefined) => value == null ? 'Insufficient data' : value.toFixed(3);
@@ -82,6 +84,12 @@ const pageMax = computed(() => Math.max(1, patterns.value.meta.last_page));
     <q-banner v-if="hasActiveRuns" class="bg-blue-grey-9 text-white q-mb-md">Pattern discovery is queued or running asynchronously on the dedicated research worker. Jobs may wait behind experiments; status and results refresh automatically about every 10 seconds.</q-banner>
     <section>
       <h2>Research Runs</h2>
+      <q-banner v-if="selectedReadiness" class="bg-blue-grey-10 text-white q-mb-md">
+        <div class="text-subtitle2">{{ symbol }} automatic discovery readiness: {{ selectedReadiness.eligible_decisions }} / {{ selectedReadiness.minimum_required }} eligible decisions</div>
+        <q-linear-progress :value="selectedReadiness.progress_percent / 100" color="primary" class="q-my-sm" />
+        <div v-if="selectedReadiness.ready">Enough closed, outcome-labeled history is available. Automatic discovery will queue on the hourly research schedule.</div>
+        <div v-else>{{ selectedReadiness.remaining_decisions }} more mature decisions are required. {{ selectedReadiness.collected_decisions - selectedReadiness.eligible_decisions }} newer decisions are still waiting for their outcome window. This protects the results from incomplete labels and small-sample claims.</div>
+      </q-banner>
       <q-card flat bordered class="panel q-pa-md q-gutter-sm">
         <q-select v-model="symbol" :options="['BTCUSDT','ETHUSDT']" label="Symbol" dense />
         <q-input v-model="from" type="date" label="From" :max="latestSafeDate" dense />
