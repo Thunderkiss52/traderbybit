@@ -23,6 +23,8 @@ const { loading, connected } = usePolling(async () => {
   }
 }, 5000, autoRefresh);
 onBeforeUnmount(() => controller.abort());
+
+const probability = (value: unknown) => value === null || value === undefined ? '—' : `${value}%`;
 </script>
 
 <template>
@@ -65,20 +67,25 @@ onBeforeUnmount(() => controller.abort());
     </section>
     <section>
       <h2>All Strategy Decisions · Last 24 Hours</h2>
-      <q-banner class="bg-grey-9 text-white q-mb-md">Observation only. These five streams do not enter the paper portfolio unless separately approved for forward-paper evaluation.</q-banner>
+      <q-banner class="bg-grey-9 text-white q-mb-md">All five strategies independently evaluate BTC and ETH every closed 15m candle. Decision counts are observations, not profitability; validated experiment and isolated forward-paper results remain on the Research page.</q-banner>
       <q-markup-table flat bordered wrap-cells>
-        <thead><tr><th class="text-left">Strategy</th><th>BUY</th><th>SELL</th><th>SKIP</th><th>Total</th><th class="text-left">Latest decision</th><th class="text-left">Top SKIP reasons</th></tr></thead>
+        <thead><tr><th class="text-left">Strategy</th><th v-for="symbol in ['BTCUSDT', 'ETHUSDT']" :key="symbol" class="text-left">{{ symbol }}</th><th>Combined B / S / K</th><th class="text-left">Top SKIP reasons</th></tr></thead>
         <tbody>
           <tr v-for="strategy in data.strategy_observations_24h" :key="strategy.strategy_id">
             <td class="text-left"><b>{{ strategy.strategy_id }}</b><div class="muted">v{{ strategy.strategy_version }} · 1h / 30m / 15m / 5m</div></td>
-            <td class="text-center text-positive">{{ strategy.buy }}</td>
-            <td class="text-center text-negative">{{ strategy.sell }}</td>
-            <td class="text-center">{{ strategy.skip }}</td>
-            <td class="text-center">{{ strategy.total }}</td>
-            <td class="text-left">
-              <template v-if="strategy.latest">{{ strategy.latest.side }} · {{ strategy.latest.symbol }}<div class="muted">{{ strategy.latest.decision_time }}</div></template>
+            <td v-for="market in strategy.symbols" :key="market.symbol" class="text-left">
+              <div><span class="text-positive">B {{ market.buy }}</span> · <span class="text-negative">S {{ market.sell }}</span> · K {{ market.skip }}</div>
+              <template v-if="market.latest">
+                <b>{{ market.latest.side }}</b><div class="muted">{{ market.latest.decision_time }}</div>
+                <div v-if="market.latest.analysis?.level_interaction" class="muted">
+                  Momentum {{ market.latest.analysis.level_interaction.momentum_side }} ·
+                  {{ market.latest.analysis.level_interaction.selected_event || 'between levels' }}
+                  {{ probability(market.latest.analysis.level_interaction.selected_probability_percent) }}
+                </div>
+              </template>
               <span v-else class="muted">Waiting for next closed 15m candle</span>
             </td>
+            <td class="text-center">{{ strategy.buy }} / {{ strategy.sell }} / {{ strategy.skip }}<div class="muted">{{ strategy.total }} total</div></td>
             <td class="text-left">{{ Object.entries(strategy.top_skip_reasons || {}).map(([reason, count]) => `${reason} (${count})`).join(', ') || '—' }}</td>
           </tr>
         </tbody>
@@ -101,6 +108,13 @@ onBeforeUnmount(() => controller.abort());
           <q-item-section>
             <q-item-label>{{ decision.symbol }} · {{ decision.decision_time }}</q-item-label>
             <q-item-label caption>{{ decision.reasons?.join(', ') || 'No reason recorded' }}</q-item-label>
+            <q-item-label v-if="decision.level_interaction" caption class="q-mt-xs">
+              Support {{ decision.level_interaction.support ?? '—' }}: rejection {{ probability(decision.level_interaction.support_rejection_probability_percent) }}, breakdown {{ probability(decision.level_interaction.support_breakdown_probability_percent) }} ·
+              Resistance {{ decision.level_interaction.resistance ?? '—' }}: breakout {{ probability(decision.level_interaction.resistance_breakout_probability_percent) }}, rejection {{ probability(decision.level_interaction.resistance_rejection_probability_percent) }}
+            </q-item-label>
+            <q-item-label v-if="decision.level_interaction" caption>
+              Momentum {{ decision.level_interaction.momentum_side }} ({{ decision.level_interaction.momentum_strength }}) · Selected {{ decision.level_interaction.selected_event || 'no confirmed interaction' }}
+            </q-item-label>
           </q-item-section>
         </q-item>
       </q-list>

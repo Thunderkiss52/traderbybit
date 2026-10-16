@@ -37,6 +37,7 @@ final class ObserveStrategiesJob implements ShouldQueue
 
             return;
         }
-        $service->observeRecent($this->symbol);
+        $service->observe($this->symbol);
+        $service->observeRecent($this->symbol, maximumCandles: 8);
     }
 }

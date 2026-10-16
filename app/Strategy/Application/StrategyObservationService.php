@@ -16,6 +16,7 @@ final readonly class StrategyObservationService
     public function __construct(
         private StrategyRegistry $strategies,
         private StrategyInputFactory $inputs,
+        private LevelInteractionAnalyzer $levels,
         private CacheFactory $cache,
     ) {}
 
@@ -38,6 +39,10 @@ final readonly class StrategyObservationService
                     'traderbybit:strategy-observation', $exchange, $category, $symbol,
                     $strategy->id(), $configurationHash, $at->format('U.u'),
                 ]))->toString();
+                $analysis = [
+                    'level_interaction' => $this->levels->analyze($input),
+                    'indicator_snapshot' => $decision->indicatorSnapshot,
+                ];
                 StrategyObservationRecord::query()->insertOrIgnore([[
                     'id' => $id,
                     'exchange' => $exchange,
@@ -51,10 +56,15 @@ final readonly class StrategyObservationService
                     'score' => $decision->score,
                     'decision_time' => $decision->decisionTime,
                     'reasons' => json_encode($decision->reasons, JSON_THROW_ON_ERROR),
+                    'analysis' => json_encode($analysis, JSON_THROW_ON_ERROR),
                     'created_at' => now(),
                     'updated_at' => now(),
                 ]]);
-                $observations[] = StrategyObservationRecord::query()->findOrFail($id);
+                $observation = StrategyObservationRecord::query()->findOrFail($id);
+                if ($observation->analysis === null) {
+                    $observation->update(['analysis' => $analysis]);
+                }
+                $observations[] = $observation;
             }
 
             return $observations;
@@ -75,15 +85,16 @@ final readonly class StrategyObservationService
         $existing = StrategyObservationRecord::query()
             ->where('exchange', $exchange)->where('category', $category)->where('symbol', $symbol)
             ->where('decision_time', '>', $through->modify("-{$hours} hours"))->where('decision_time', '<=', $through)
-            ->get(['strategy_id', 'configuration_hash', 'decision_time'])
+            ->get(['strategy_id', 'configuration_hash', 'decision_time', 'analysis'])
             ->groupBy(fn (StrategyObservationRecord $row): string => $row->decision_time->format('U.u'))
-            ->map(fn ($rows): array => $rows->map(fn (StrategyObservationRecord $row): string => $row->strategy_id.'|'.$row->configuration_hash)->all());
+            ->map(fn ($rows): array => $rows->filter(fn (StrategyObservationRecord $row): bool => $row->analysis !== null)
+                ->map(fn (StrategyObservationRecord $row): string => $row->strategy_id.'|'.$row->configuration_hash)->all());
         $decisionTimes = CandleRecord::query()
             ->where('exchange', $exchange)->where('category', $category)->where('symbol', $symbol)
             ->where('interval', '15')->where('is_closed', true)
             ->where('open_time', '>=', $through->modify("-{$hours} hours"))
             ->where('open_time', '<', $through)
-            ->oldest('open_time')->limit($maximumCandles)->pluck('open_time');
+            ->latest('open_time')->limit(96)->pluck('open_time');
         $processed = 0;
         foreach ($decisionTimes as $openTime) {
             $at = $openTime->toDateTimeImmutable()->modify('+15 minutes');
@@ -93,6 +104,9 @@ final readonly class StrategyObservationService
             }
             $this->observe($symbol, $at, $exchange, $category);
             $processed++;
+            if ($processed >= $maximumCandles) {
+                break;
+            }
         }
 
         return $processed;

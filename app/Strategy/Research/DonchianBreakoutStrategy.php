@@ -37,11 +37,29 @@ final readonly class DonchianBreakoutStrategy extends ResearchStrategy
         if ($now->relativeVolume === null || $this->lt($now->relativeVolume, (string) $this->config['relative_volume_min']) || $now->atr === null) {
             return $this->skip($input, ['volume_or_atr_filter_rejected']);
         }
-        if ((float) $now->close > $upper && $this->setupAligned($input, SignalSide::Buy)) {
-            return $this->emit($input, SignalSide::Buy, ['prior_donchian_high_breakout', 'relative_volume_confirmation']);
+        if ((float) $now->close > $upper) {
+            if (! $this->trendAligned($input, SignalSide::Buy)) {
+                return $this->skip($input, ['hourly_trend_conflicts']);
+            }
+            if (! $this->setupAligned($input, SignalSide::Buy)) {
+                return $this->skip($input, ['thirty_minute_setup_conflicts']);
+            }
+
+            return $this->confirmationAligned($input, SignalSide::Buy)
+                ? $this->emit($input, SignalSide::Buy, ['hourly_trend', 'thirty_minute_setup', 'prior_donchian_high_breakout', 'relative_volume_confirmation', 'five_minute_confirmation'])
+                : $this->skip($input, ['five_minute_confirmation_conflicts']);
         }
-        if ((float) $now->close < $lower && $this->setupAligned($input, SignalSide::Sell)) {
-            return $this->emit($input, SignalSide::Sell, ['prior_donchian_low_breakout', 'relative_volume_confirmation']);
+        if ((float) $now->close < $lower) {
+            if (! $this->trendAligned($input, SignalSide::Sell)) {
+                return $this->skip($input, ['hourly_trend_conflicts']);
+            }
+            if (! $this->setupAligned($input, SignalSide::Sell)) {
+                return $this->skip($input, ['thirty_minute_setup_conflicts']);
+            }
+
+            return $this->confirmationAligned($input, SignalSide::Sell)
+                ? $this->emit($input, SignalSide::Sell, ['hourly_trend', 'thirty_minute_setup', 'prior_donchian_low_breakout', 'relative_volume_confirmation', 'five_minute_confirmation'])
+                : $this->skip($input, ['five_minute_confirmation_conflicts']);
         }
 
         return $this->skip($input, ['no_donchian_breakout']);

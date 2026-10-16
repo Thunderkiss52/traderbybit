@@ -25,8 +25,18 @@ final class ResearchStrategiesTest extends TestCase
     public function test_trend_pullback_emits_buy_and_sell_without_changing_baseline_rules(): void
     {
         $strategy = new TrendPullbackStrategy($this->config['strategies']['trend_pullback']);
-        self::assertSame(SignalSide::Buy, $strategy->evaluate(StrategyFixture::input())->side);
+        $buy = $strategy->evaluate(StrategyFixture::input());
+        self::assertSame(SignalSide::Buy, $buy->side);
+        foreach (['1h', '30m', '15m', '5m'] as $timeframe) {
+            self::assertArrayHasKey($timeframe, $buy->indicatorSnapshot);
+        }
         self::assertSame(SignalSide::Sell, $strategy->evaluate(StrategyFixture::input(SignalSide::Sell))->side);
+
+        $confirmation = new TimeframeState('5', [
+            StrategyFixture::bar('2026-10-13T10:05:00Z', 5, ['macdHistogram' => '0.2']),
+            StrategyFixture::bar('2026-10-13T10:10:00Z', 5, ['close' => '99', 'emaEntry' => '100', 'rsi' => '45', 'macdHistogram' => '0.1']),
+        ], true);
+        self::assertSame(['five_minute_confirmation_conflicts'], $strategy->evaluate(StrategyFixture::input(overrides: ['confirmation' => $confirmation]))->reasons);
     }
 
     public function test_mean_reversion_requires_prior_outside_close_and_current_reentry(): void
@@ -37,6 +47,13 @@ final class ResearchStrategiesTest extends TestCase
         $setup = new TimeframeState('30', [StrategyFixture::bar('2026-10-13T09:30:00Z', 30, ['adx' => '10'])], true);
         $input = StrategyFixture::input(overrides: ['entry' => new TimeframeState('15', [$previous, $now], true), 'trend' => $trend, 'setup' => $setup]);
         self::assertSame(SignalSide::Buy, (new BollingerMeanReversionStrategy($this->config['strategies']['bollinger_mean_reversion']))->evaluate($input)->side);
+
+        $confirmation = new TimeframeState('5', [
+            StrategyFixture::bar('2026-10-13T10:05:00Z', 5, ['macdHistogram' => '0.2']),
+            StrategyFixture::bar('2026-10-13T10:10:00Z', 5, ['close' => '99', 'emaEntry' => '100', 'rsi' => '45', 'macdHistogram' => '0.1']),
+        ], true);
+        $rejected = StrategyFixture::input(overrides: ['entry' => new TimeframeState('15', [$previous, $now], true), 'trend' => $trend, 'setup' => $setup, 'confirmation' => $confirmation]);
+        self::assertSame(['five_minute_confirmation_conflicts'], (new BollingerMeanReversionStrategy($this->config['strategies']['bollinger_mean_reversion']))->evaluate($rejected)->reasons);
     }
 
     public function test_donchian_excludes_breakout_candle_and_rejects_future_data(): void
@@ -49,6 +66,8 @@ final class ResearchStrategiesTest extends TestCase
         $bars[] = StrategyFixture::bar('2026-10-13T10:00:00Z', 15, ['close' => '102', 'high' => '500', 'relativeVolume' => '2']);
         $strategy = new DonchianBreakoutStrategy($this->config['strategies']['donchian_atr_breakout']);
         self::assertSame(SignalSide::Buy, $strategy->evaluate(StrategyFixture::input(overrides: ['entry' => new TimeframeState('15', $bars, true)]))->side);
+        $neutral = new TimeframeState('60', [StrategyFixture::bar('2026-10-13T09:00:00Z', 60, ['close' => '100', 'emaFast' => '100', 'emaSlow' => '100'])], true);
+        self::assertSame(['hourly_trend_conflicts'], $strategy->evaluate(StrategyFixture::input(overrides: ['entry' => new TimeframeState('15', $bars, true), 'trend' => $neutral]))->reasons);
         $bars[array_key_last($bars)] = StrategyFixture::bar('2026-10-13T10:15:00Z', 15, ['close' => '102', 'relativeVolume' => '2']);
         $decision = $strategy->evaluate(StrategyFixture::input(overrides: ['entry' => new TimeframeState('15', $bars, true)]));
         self::assertSame(SignalSide::Skip, $decision->side);

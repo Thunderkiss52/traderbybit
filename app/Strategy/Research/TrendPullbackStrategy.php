@@ -39,9 +39,12 @@ final readonly class TrendPullbackStrategy extends ResearchStrategy
         if (! $this->setupAligned($input, $side)) {
             return $this->skip($input, ['thirty_minute_setup_conflicts']);
         }
+        if (! $this->confirmationAligned($input, $side)) {
+            return $this->skip($input, ['five_minute_confirmation_conflicts']);
+        }
         $pullback = $previous->emaEntry !== null && $previous->atr !== null && BigDecimal::of($previous->close)->minus($previous->emaEntry)->abs()->isLessThanOrEqualTo(BigDecimal::of($previous->atr)->multipliedBy((string) $this->config['pullback_atr']));
         $momentum = $side === SignalSide::Buy ? $this->gt($now->rsi, '50') && $this->gt($now->macdHistogram, $previous->macdHistogram) : $this->lt($now->rsi, '50') && $this->lt($now->macdHistogram, $previous->macdHistogram);
 
-        return $pullback && $momentum ? $this->emit($input, $side, ['ema_trend', 'ema20_pullback', 'rsi_macd_confirmation']) : $this->skip($input, ['pullback_or_momentum_rejected']);
+        return $pullback && $momentum ? $this->emit($input, $side, ['hourly_ema_trend', 'thirty_minute_setup', 'ema20_pullback', 'rsi_macd_confirmation', 'five_minute_confirmation']) : $this->skip($input, ['pullback_or_momentum_rejected']);
     }
 }

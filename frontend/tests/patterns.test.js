@@ -36,3 +36,16 @@ test('pattern page shows automatic discovery readiness instead of an unexplained
   assert.match(page, /remaining_decisions/);
   assert.match(page, /protects the results from incomplete labels and small-sample claims/);
 });
+test('pattern page preserves top-level pagination metadata instead of unwrapping it', () => {
+  const page = read('pages/PatternsPage.vue');
+  assert.match(page, /api\.get\('\/research\/patterns'/);
+  assert.match(page, /patterns\.value = rowsResponse\.data/);
+  assert.match(page, /runs\.value = runsResponse\.data/);
+});
+test('pattern page exposes all strategy BUY SELL and SKIP context by symbol', () => {
+  const page = read('pages/PatternsPage.vue');
+  assert.match(page, /dashboard\.strategy_observations_24h/);
+  assert.match(page, /All Strategy Context/);
+  assert.match(page, /strategy\.symbols/);
+  for (const decision of ['BUY', 'SELL', 'SKIP']) assert.match(page, new RegExp(decision));
+});

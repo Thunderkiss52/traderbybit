@@ -17,7 +17,12 @@ use Ramsey\Uuid\Uuid;
 
 final readonly class StrategyEngine
 {
-    public function __construct(private array $config) {}
+    private LevelInteractionAnalyzer $levels;
+
+    public function __construct(private array $config, ?LevelInteractionAnalyzer $levels = null)
+    {
+        $this->levels = $levels ?? new LevelInteractionAnalyzer((array) $config['level_interaction']);
+    }
 
     public function evaluate(StrategyInput $input): SignalDecision
     {
@@ -40,46 +45,56 @@ final readonly class StrategyEngine
             return $this->skip($input, ['missing_timeframe_data']);
         }
 
-        $trend = $this->trend($hour);
+        $hourlyTrend = $this->trend($hour);
+        $level = $this->levels->analyze($input);
+        $levelSide = is_string($level['selected_side'] ?? null) ? SignalSide::from($level['selected_side']) : SignalSide::Skip;
+        $levelProbability = (int) ($level['selected_probability_percent'] ?? 0);
+        $levelEntry = $levelSide !== SignalSide::Skip
+            && $levelProbability >= (int) $this->config['level_interaction']['minimum_probability_percent'];
+        $trend = $hourlyTrend === SignalSide::Skip && $levelEntry ? $levelSide : $hourlyTrend;
         if ($trend === SignalSide::Skip) {
-            return $this->skip($input, ['neutral_hourly_trend'], $this->snapshot($input));
+            return $this->skip($input, ['neutral_hourly_trend'], $this->snapshot($input, $level));
         }
 
-        if (! $this->setupMatches($trend, $input)) {
-            return $this->skip($input, ['thirty_minute_setup_conflicts'], $this->snapshot($input));
+        $setupMatches = $this->setupMatches($trend, $input);
+        if (! $setupMatches) {
+            return $this->skip($input, ['thirty_minute_setup_conflicts'], $this->snapshot($input, $level));
         }
 
-        if (! $this->confirmationMatches($trend, $input)) {
-            return $this->skip($input, ['five_minute_confirmation_conflicts'], $this->snapshot($input));
+        $confirmationMatches = $this->confirmationMatches($trend, $input);
+        if (! $confirmationMatches) {
+            return $this->skip($input, ['five_minute_confirmation_conflicts'], $this->snapshot($input, $level));
         }
 
         if ($entry->atr === null || $this->d($entry->atr)->isZero()) {
-            return $this->skip($input, ['atr_unavailable_or_zero'], $this->snapshot($input));
+            return $this->skip($input, ['atr_unavailable_or_zero'], $this->snapshot($input, $level));
         }
 
         $contextFailure = $this->validateContext($input, $entry);
         if ($contextFailure !== null) {
-            return $this->skip($input, [$contextFailure], $this->snapshot($input));
+            return $this->skip($input, [$contextFailure], $this->snapshot($input, $level));
         }
 
-        $triggers = $this->triggers($trend, $input);
+        $triggers = $this->triggers($trend, $input, $level);
         if ($triggers === []) {
-            return $this->skip($input, ['no_entry_trigger'], $this->snapshot($input));
+            return $this->skip($input, ['no_entry_trigger'], $this->snapshot($input, $level));
         }
 
         $plan = $this->pricePlan($trend, $entry, $input->marketContext?->tickSize);
         if ($plan === null) {
-            return $this->skip($input, ['invalid_or_insufficient_risk_reward'], $this->snapshot($input));
+            return $this->skip($input, ['invalid_or_insufficient_risk_reward'], $this->snapshot($input, $level));
         }
 
         [$score, $quality] = $this->score($trend, $input, $triggers, $plan);
         if ($quality === null) {
-            return $this->skip($input, ['quality_score_below_minimum'], $this->snapshot($input), $score);
+            return $this->skip($input, ['quality_score_below_minimum'], $this->snapshot($input, $level), $score);
         }
 
         $risks = $this->contextRisks($input);
         $reasons = array_merge(
-            [$trend === SignalSide::Buy ? 'bullish_hourly_trend' : 'bearish_hourly_trend', 'thirty_minute_setup', 'five_minute_confirmation'],
+            [$hourlyTrend === SignalSide::Skip ? 'level_structure_direction' : ($trend === SignalSide::Buy ? 'bullish_hourly_trend' : 'bearish_hourly_trend'),
+                'thirty_minute_setup',
+                'five_minute_confirmation'],
             $triggers,
         );
 
@@ -92,7 +107,7 @@ final readonly class StrategyEngine
             risk: (string) $this->config['model_risk_percent'][$quality->value],
             reasons: $reasons,
             risks: $risks,
-            snapshot: $this->snapshot($input),
+            snapshot: $this->snapshot($input, $level),
         );
     }
 
@@ -205,7 +220,7 @@ final readonly class StrategyEngine
     }
 
     /** @return list<string> */
-    private function triggers(SignalSide $side, StrategyInput $input): array
+    private function triggers(SignalSide $side, StrategyInput $input, array $level): array
     {
         $result = [];
         $bars = $input->entry->bars;
@@ -213,6 +228,12 @@ final readonly class StrategyEngine
         $previous = $input->entry->previous();
         if ($now === null || $previous === null) {
             return [];
+        }
+
+        if (($level['selected_side'] ?? null) === $side->value
+            && (int) ($level['selected_probability_percent'] ?? 0) >= (int) $this->config['level_interaction']['minimum_probability_percent']
+            && is_string($level['selected_event'] ?? null)) {
+            $result[] = 'level_'.$level['selected_event'];
         }
 
         $lookback = array_slice($bars, -(int) $this->config['triggers']['ema_pullback']['lookback_bars']);
@@ -364,7 +385,7 @@ final readonly class StrategyEngine
         return $risks;
     }
 
-    private function snapshot(StrategyInput $input): array
+    private function snapshot(StrategyInput $input, array $levelInteraction = []): array
     {
         $bar = static fn (?BarState $b): ?array => $b === null ? null : [
             'close_time' => $b->closeTime->format('Y-m-d\TH:i:s.v\Z'), 'close' => $b->close,
@@ -375,7 +396,8 @@ final readonly class StrategyEngine
             'average_turnover' => $b->averageTurnover, 'support' => $b->support, 'resistance' => $b->resistance,
         ];
 
-        return ['1h' => $bar($input->trend->latest()), '30m' => $bar($input->setup->latest()), '15m' => $bar($input->entry->latest()), '5m' => $bar($input->confirmation->latest())];
+        return ['1h' => $bar($input->trend->latest()), '30m' => $bar($input->setup->latest()), '15m' => $bar($input->entry->latest()), '5m' => $bar($input->confirmation->latest()),
+            'level_interaction' => $levelInteraction];
     }
 
     private function skip(StrategyInput $input, array $reasons, array $snapshot = [], int $score = 0): SignalDecision

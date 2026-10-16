@@ -82,6 +82,17 @@ final class ResearchController extends Controller
         }
         arsort($skipCounts);
         $skipReasons = array_slice($skipCounts, 0, 8, true);
+        $recentDecisions = SignalRecord::query()->whereIn('symbol', config('ui.symbols'))
+            ->latest('decision_time')->latest('id')->limit(8)
+            ->get(['id', 'symbol', 'side', 'decision_time', 'reasons', 'indicator_snapshot'])
+            ->map(static fn (SignalRecord $decision): array => [
+                'id' => $decision->id,
+                'symbol' => $decision->symbol,
+                'side' => $decision->side,
+                'decision_time' => $decision->decision_time,
+                'reasons' => $decision->reasons,
+                'level_interaction' => data_get($decision->indicator_snapshot, 'level_interaction'),
+            ]);
 
         return $this->ok([
             'market' => $contexts,
@@ -91,7 +102,7 @@ final class ResearchController extends Controller
                 'pending_entry_signals' => PaperSignalStateRecord::query()->where('paper_account_id', $account->id)->where('status', 'PENDING_ENTRY')->count(),
             ]) : null,
             'signals' => SignalRecord::query()->whereIn('side', ['BUY', 'SELL'])->latest('decision_time')->latest('id')->limit(8)->get(['id', 'symbol', 'side', 'quality_class', 'score', 'entry_low', 'entry_high', 'stop_loss', 'take_profit_1', 'take_profit_2', 'expires_at', 'reasons', 'decision_time']),
-            'recent_decisions' => SignalRecord::query()->whereIn('symbol', config('ui.symbols'))->latest('decision_time')->latest('id')->limit(8)->get(['id', 'symbol', 'side', 'decision_time', 'reasons']),
+            'recent_decisions' => $recentDecisions,
             'skip_reasons_24h' => $skipReasons,
             'strategy_observations_24h' => $this->strategyObservations($strategies),
             'positions' => VirtualPositionRecord::query()->whereNull('closed_at')->latest('opened_at')->limit(10)->get(['id', 'symbol', 'side', 'status', 'entry_price', 'net_pnl', 'unrealized_pnl']),
@@ -114,7 +125,21 @@ final class ResearchController extends Controller
                 ->where('configuration_hash', $strategy['configuration_hash'])
                 ->where('decision_time', '>=', $since);
             $counts = (clone $query)->selectRaw('side, COUNT(*) AS aggregate')->groupBy('side')->pluck('aggregate', 'side');
-            $latest = (clone $query)->latest('decision_time')->latest('id')->first(['symbol', 'side', 'decision_time', 'reasons']);
+            $latest = (clone $query)->latest('decision_time')->latest('id')->first(['symbol', 'side', 'decision_time', 'reasons', 'analysis']);
+            $symbols = collect((array) config('ui.symbols'))->map(function (string $symbol) use ($query): array {
+                $symbolQuery = (clone $query)->where('symbol', $symbol);
+                $symbolCounts = (clone $symbolQuery)->selectRaw('side, COUNT(*) AS aggregate')->groupBy('side')->pluck('aggregate', 'side');
+
+                return [
+                    'symbol' => $symbol,
+                    'buy' => (int) ($symbolCounts['BUY'] ?? 0),
+                    'sell' => (int) ($symbolCounts['SELL'] ?? 0),
+                    'skip' => (int) ($symbolCounts['SKIP'] ?? 0),
+                    'total' => (int) $symbolCounts->sum(),
+                    'latest' => (clone $symbolQuery)->latest('decision_time')->latest('id')
+                        ->first(['side', 'decision_time', 'reasons', 'analysis']),
+                ];
+            })->values()->all();
             $skipReasons = [];
             foreach ((clone $query)->where('side', 'SKIP')->cursor() as $observation) {
                 foreach ($observation->reasons ?? [] as $reason) {
@@ -135,6 +160,7 @@ final class ResearchController extends Controller
                 'skip' => (int) ($counts['SKIP'] ?? 0),
                 'total' => (int) $counts->sum(),
                 'latest' => $latest,
+                'symbols' => $symbols,
                 'top_skip_reasons' => array_slice($skipReasons, 0, 3, true),
             ];
         })->values()->all();

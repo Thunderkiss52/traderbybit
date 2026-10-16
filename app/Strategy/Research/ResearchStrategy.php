@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Strategy\Research;
 
 use App\Strategy\Contracts\StrategyInterface;
+use App\Strategy\Domain\BarState;
 use App\Strategy\Domain\PricePlan;
 use App\Strategy\Domain\QualityClass;
 use App\Strategy\Domain\SignalDecision;
@@ -96,6 +97,32 @@ abstract readonly class ResearchStrategy implements StrategyInterface
             : $this->lt($setup->close, $setup->emaFast) && $this->lt($setup->emaFast, $setup->emaSlow);
     }
 
+    protected function trendAligned(StrategyInput $input, SignalSide $side): bool
+    {
+        $trend = $input->trend->latest();
+        if ($trend === null || $trend->emaFast === null || $trend->emaSlow === null) {
+            return false;
+        }
+
+        return $side === SignalSide::Buy
+            ? $this->gt($trend->close, $trend->emaFast) && $this->gt($trend->emaFast, $trend->emaSlow)
+            : $this->lt($trend->close, $trend->emaFast) && $this->lt($trend->emaFast, $trend->emaSlow);
+    }
+
+    protected function confirmationAligned(StrategyInput $input, SignalSide $side): bool
+    {
+        $now = $input->confirmation->latest();
+        $previous = $input->confirmation->previous();
+        if ($now === null || $previous === null || $now->emaEntry === null || $now->rsi === null
+            || $now->macdHistogram === null || $previous->macdHistogram === null) {
+            return false;
+        }
+
+        return $side === SignalSide::Buy
+            ? $this->gt($now->close, $now->emaEntry) && $this->gte($now->rsi, '50') && $this->gte($now->macdHistogram, $previous->macdHistogram)
+            : $this->lt($now->close, $now->emaEntry) && $this->lte($now->rsi, '50') && $this->lte($now->macdHistogram, $previous->macdHistogram);
+    }
+
     protected function skip(StrategyInput $input, array $reasons): SignalDecision
     {
         return $this->decision($input, SignalSide::Skip, null, 0, null, $reasons);
@@ -104,8 +131,29 @@ abstract readonly class ResearchStrategy implements StrategyInterface
     private function decision(StrategyInput $input, SignalSide $side, ?QualityClass $quality, int $score, ?PricePlan $plan, array $reasons): SignalDecision
     {
         $identity = implode('|', [$input->exchange, $input->category, $input->symbol, $input->decisionTime->format('U.u'), $this->id(), $this->version()]);
-        $bar = $input->entry->latest();
-        $snapshot = ['strategy_id' => $this->id(), '15m' => $bar === null ? null : ['close' => $bar->close, 'atr_14' => $bar->atr, 'rsi_14' => $bar->rsi, 'adx_14' => $bar->adx, 'relative_volume' => $bar->relativeVolume]];
+        $bar = static fn (?BarState $value): ?array => $value === null ? null : [
+            'close_time' => $value->closeTime->format('Y-m-d\TH:i:s.v\Z'),
+            'close' => $value->close,
+            'ema_20' => $value->emaEntry,
+            'ema_50' => $value->emaFast,
+            'ema_200' => $value->emaSlow,
+            'rsi_14' => $value->rsi,
+            'macd_histogram' => $value->macdHistogram,
+            'atr_14' => $value->atr,
+            'adx_14' => $value->adx,
+            'plus_di' => $value->plusDi,
+            'minus_di' => $value->minusDi,
+            'relative_volume' => $value->relativeVolume,
+            'support' => $value->support,
+            'resistance' => $value->resistance,
+        ];
+        $snapshot = [
+            'strategy_id' => $this->id(),
+            '1h' => $bar($input->trend->latest()),
+            '30m' => $bar($input->setup->latest()),
+            '15m' => $bar($input->entry->latest()),
+            '5m' => $bar($input->confirmation->latest()),
+        ];
 
         return new SignalDecision(Uuid::uuid5(Uuid::NAMESPACE_URL, 'traderbybit:research:'.$identity)->toString(), $input->exchange, $input->category, $input->symbol, '15', $input->decisionTime, $input->decisionTime, $side, $quality, $score, $plan, $side === SignalSide::Skip ? null : (string) ($this->config['model_risk_percent'] ?? '0.25'), $input->decisionTime->add(new DateInterval('PT30M')), (int) ($this->config['maximum_holding_minutes'] ?? 240), $reasons, [], $snapshot, $this->version(), '1.0.0');
     }
@@ -123,6 +171,16 @@ abstract readonly class ResearchStrategy implements StrategyInterface
     protected function lt(?string $a, ?string $b): bool
     {
         return $a !== null && $b !== null && BigDecimal::of($a)->isLessThan($b);
+    }
+
+    protected function gte(?string $a, ?string $b): bool
+    {
+        return $a !== null && $b !== null && BigDecimal::of($a)->isGreaterThanOrEqualTo($b);
+    }
+
+    protected function lte(?string $a, ?string $b): bool
+    {
+        return $a !== null && $b !== null && BigDecimal::of($a)->isLessThanOrEqualTo($b);
     }
 
     private function round(BigDecimal $value, BigDecimal $tick, RoundingMode $mode): BigDecimal

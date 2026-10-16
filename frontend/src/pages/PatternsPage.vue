@@ -14,6 +14,7 @@ const status = ref('');
 const patterns = shallowRef<Page<Pattern>>({ data: [], meta: { last_page: 1, total: 0 } });
 const runs = shallowRef<Page<any>>({ data: [], meta: { last_page: 1, total: 0 } });
 const matches = shallowRef<Pattern[]>([]);
+const strategyObservations = shallowRef<any[]>([]);
 const error = ref('');
 const notice = ref('');
 const token = ref('');
@@ -33,15 +34,17 @@ const load = async () => {
   const abort = new AbortController();
   controller = abort;
   try {
-    const [rows, recent, runRows] = await Promise.all([
-      get<Page<Pattern>>('/research/patterns', { page: page.value, per_page: 10, symbol: symbol.value, ...(direction.value ? { direction: direction.value } : {}), ...(status.value ? { status: status.value } : {}) }, abort.signal),
+    const [rowsResponse, recent, runsResponse, dashboard] = await Promise.all([
+      api.get('/research/patterns', { params: { page: page.value, per_page: 10, symbol: symbol.value, ...(direction.value ? { direction: direction.value } : {}), ...(status.value ? { status: status.value } : {}) }, signal: abort.signal }),
       get<Pattern[]>('/research/patterns/latest-matches', { symbol: symbol.value }, abort.signal),
-      get<Page<any>>('/research/patterns/runs', { page: 1, per_page: 10 }, abort.signal)
+      api.get('/research/patterns/runs', { params: { page: 1, per_page: 10 }, signal: abort.signal }),
+      get<any>('/dashboard', undefined, abort.signal)
     ]);
     if (version !== requestNumber) return;
-    patterns.value = rows;
+    patterns.value = rowsResponse.data;
     matches.value = recent;
-    runs.value = runRows;
+    runs.value = runsResponse.data;
+    strategyObservations.value = dashboard.strategy_observations_24h || [];
     error.value = '';
   } catch(e:any) {
     if (version === requestNumber && !abort.signal.aborted) error.value = e.message || 'Research unavailable';
@@ -82,6 +85,21 @@ const pageMax = computed(() => Math.max(1, patterns.value.meta.last_page));
     <q-banner v-if="error" class="bg-negative text-white q-mb-md">{{ error }} <q-btn flat label="Refresh" @click="refresh" /></q-banner>
     <q-banner v-if="notice" class="bg-positive text-white q-mb-md">{{ notice }}</q-banner>
     <q-banner v-if="hasActiveRuns" class="bg-blue-grey-9 text-white q-mb-md">Pattern discovery is queued or running asynchronously on the dedicated research worker. Jobs may wait behind experiments; status and results refresh automatically about every 10 seconds.</q-banner>
+    <section>
+      <h2>All Strategy Context · BTC and ETH</h2>
+      <q-banner class="bg-blue-grey-10 text-white q-mb-md">These are current four-timeframe strategy observations. Pattern metrics below are separate market-pattern evidence and are not attributed to a strategy unless tested by that strategy's experiment.</q-banner>
+      <q-markup-table flat bordered wrap-cells>
+        <thead><tr><th class="text-left">Strategy</th><th v-for="market in ['BTCUSDT','ETHUSDT']" :key="market" class="text-left">{{ market }}</th></tr></thead>
+        <tbody><tr v-for="strategy in strategyObservations" :key="strategy.strategy_id">
+          <td class="text-left"><b>{{ strategy.strategy_id }}</b><div class="muted">v{{ strategy.strategy_version }} · 1h → 30m → 15m → 5m</div></td>
+          <td v-for="market in strategy.symbols" :key="market.symbol" class="text-left">
+            <div><span class="text-positive">BUY {{ market.buy }}</span> · <span class="text-negative">SELL {{ market.sell }}</span> · SKIP {{ market.skip }}</div>
+            <template v-if="market.latest"><b>{{ market.latest.side }}</b><div class="muted">{{ market.latest.reasons?.join(', ') }}</div></template>
+            <span v-else class="muted">Waiting for observation</span>
+          </td>
+        </tr></tbody>
+      </q-markup-table>
+    </section>
     <section>
       <h2>Research Runs</h2>
       <q-banner v-if="selectedReadiness" class="bg-blue-grey-10 text-white q-mb-md">

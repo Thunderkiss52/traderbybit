@@ -24,6 +24,7 @@ final class StrategyObservationRecord extends Model
         return [
             'decision_time' => 'immutable_datetime',
             'reasons' => 'array',
+            'analysis' => 'array',
         ];
     }
 }

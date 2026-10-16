@@ -40,6 +40,7 @@ use App\PaperTrading\Application\PositionLifecycleService;
 use App\PaperTrading\Application\PositionSizingService;
 use App\PaperTrading\Application\RiskEngine;
 use App\PaperTrading\Application\TradingJournalService;
+use App\Strategy\Application\LevelInteractionAnalyzer;
 use App\Strategy\Application\SignalGenerator;
 use App\Strategy\Application\StrategyEngine;
 use App\Strategy\Application\StrategyInputFactory;
@@ -75,6 +76,7 @@ class AppServiceProvider extends ServiceProvider
             (array) config('indicators'),
         ));
         $this->app->singleton(WarmupPolicy::class);
+        $this->app->singleton(LevelInteractionAnalyzer::class, fn (): LevelInteractionAnalyzer => new LevelInteractionAnalyzer((array) config('strategy.level_interaction')));
         $this->app->singleton(StrategyEngine::class, fn (): StrategyEngine => new StrategyEngine((array) config('strategy')));
         $this->app->singleton(StrategyRegistry::class, function (): StrategyRegistry {
             $research = (array) config('research.strategies');

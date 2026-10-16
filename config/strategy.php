@@ -3,7 +3,7 @@
 declare(strict_types=1);
 
 return [
-    'version' => env('STRATEGY_VERSION', '1.1.0'),
+    'version' => '1.2.0',
     'schema_version' => '1.0.0',
     'decision_timeframe' => '15',
     'history_limit' => 220,
@@ -43,6 +43,11 @@ return [
     ],
     'confirmation' => [
         'rsi_midline' => '50',
+    ],
+    'level_interaction' => [
+        'proximity_atr' => '0.15',
+        'breakout_buffer_atr' => '0.05',
+        'minimum_probability_percent' => 65,
     ],
     'liquidity' => [
         'minimum_turnover_24h' => '50000000',

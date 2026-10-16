@@ -35,10 +35,14 @@ final readonly class BollingerMeanReversionStrategy extends ResearchStrategy
             return $this->skip($input, ['range_regime_required']);
         }
         if ($previous->bollingerLower !== null && $now->bollingerLower !== null && $this->lt($previous->close, $previous->bollingerLower) && $this->gt($now->close, $now->bollingerLower) && $this->lt($now->rsi, (string) $this->config['rsi_buy_max'])) {
-            return $this->emit($input, SignalSide::Buy, ['closed_back_inside_lower_band', 'rsi_oversold'], (string) $this->config['target_r']);
+            return $this->confirmationAligned($input, SignalSide::Buy)
+                ? $this->emit($input, SignalSide::Buy, ['hourly_range_regime', 'thirty_minute_range_regime', 'closed_back_inside_lower_band', 'rsi_oversold', 'five_minute_confirmation'], (string) $this->config['target_r'])
+                : $this->skip($input, ['five_minute_confirmation_conflicts']);
         }
         if ($previous->bollingerUpper !== null && $now->bollingerUpper !== null && $this->gt($previous->close, $previous->bollingerUpper) && $this->lt($now->close, $now->bollingerUpper) && $this->gt($now->rsi, (string) $this->config['rsi_sell_min'])) {
-            return $this->emit($input, SignalSide::Sell, ['closed_back_inside_upper_band', 'rsi_overbought'], (string) $this->config['target_r']);
+            return $this->confirmationAligned($input, SignalSide::Sell)
+                ? $this->emit($input, SignalSide::Sell, ['hourly_range_regime', 'thirty_minute_range_regime', 'closed_back_inside_upper_band', 'rsi_overbought', 'five_minute_confirmation'], (string) $this->config['target_r'])
+                : $this->skip($input, ['five_minute_confirmation_conflicts']);
         }
 
         return $this->skip($input, ['bollinger_reentry_not_confirmed']);

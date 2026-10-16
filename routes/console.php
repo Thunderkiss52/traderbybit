@@ -20,8 +20,8 @@ Artisan::command('inspire', function () {
 Schedule::job(new RecoverCandleGapsJob)->everyFiveMinutes()->withoutOverlapping();
 Schedule::job(new CheckMarketDataFreshnessJob)->everyMinute()->withoutOverlapping();
 // Bootstrap and maintain 220 contiguous closed candles on each strategy timeframe.
-Schedule::job(new EnsureStrategyHistoryJob)->hourly()->name('market:ensure-strategy-history')->withoutOverlapping();
-Schedule::job(new EnsureResearchCoverageJob)->hourlyAt(20)->name('research:ensure-coverage')->withoutOverlapping();
+Schedule::job(new EnsureStrategyHistoryJob)->everyFifteenMinutes()->name('market:ensure-strategy-history')->withoutOverlapping();
+Schedule::job(new EnsureResearchCoverageJob)->cron('7,22,37,52 * * * *')->name('research:ensure-coverage')->withoutOverlapping();
 
 foreach ((array) config('market_data.symbols', ['BTCUSDT', 'ETHUSDT']) as $symbol) {
     // Capture before the 15m close: a quote taken after it cannot be used at that decision time.

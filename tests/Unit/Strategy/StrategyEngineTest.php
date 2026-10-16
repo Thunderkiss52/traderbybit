@@ -21,8 +21,12 @@ final class StrategyEngineTest extends TestCase
 
         self::assertSame(SignalSide::Buy, $decision->side);
         self::assertSame(QualityClass::A, $decision->qualityClass);
-        self::assertSame(['bullish_hourly_trend', 'thirty_minute_setup', 'five_minute_confirmation', 'ema_pullback', 'macd_crossover', 'confirmed_breakout'], $decision->reasons);
+        self::assertSame(['bullish_hourly_trend', 'thirty_minute_setup', 'five_minute_confirmation', 'level_resistance_breakout', 'ema_pullback', 'macd_crossover', 'confirmed_breakout'], $decision->reasons);
         self::assertArrayHasKey('30m', $decision->indicatorSnapshot);
+        self::assertSame('resistance_breakout', $decision->indicatorSnapshot['level_interaction']['selected_event']);
+        self::assertSame(69, $decision->indicatorSnapshot['level_interaction']['selected_probability_percent']);
+        self::assertSame(100, $decision->indicatorSnapshot['level_interaction']['resistance_breakout_probability_percent']
+            + $decision->indicatorSnapshot['level_interaction']['resistance_rejection_probability_percent']);
         self::assertSame('103.1', $decision->pricePlan?->entryLow);
         self::assertSame('103.3', $decision->pricePlan?->entryHigh);
         self::assertSame('101.7', $decision->pricePlan?->stopLoss);
@@ -46,12 +50,38 @@ final class StrategyEngineTest extends TestCase
     public function test_neutral_trend_warmup_gap_and_staleness_are_specific_skips(): void
     {
         $neutral = new TimeframeState('60', [StrategyFixture::bar('2026-10-13T09:00:00Z', 60, ['emaFast' => '100', 'emaSlow' => '100'])], true);
-        self::assertSame(['neutral_hourly_trend'], $this->engine()->evaluate(StrategyFixture::input(overrides: ['trend' => $neutral]))->reasons);
+        $bars = StrategyFixture::input()->entry->bars;
+        $bars[0] = StrategyFixture::bar('2026-10-13T09:45:00Z', 15, ['resistance' => null, 'support' => null]);
+        self::assertSame(['neutral_hourly_trend'], $this->engine()->evaluate(StrategyFixture::input(overrides: [
+            'trend' => $neutral,
+            'entry' => new TimeframeState('15', $bars, true),
+        ]))->reasons);
 
         $cold = new TimeframeState('15', [], false);
         self::assertSame(['insufficient_warmup'], $this->engine()->evaluate(StrategyFixture::input(overrides: ['entry' => $cold]))->reasons);
         self::assertSame(['non_contiguous_entry_history'], $this->engine()->evaluate(StrategyFixture::input(overrides: ['validationErrors' => ['non_contiguous_entry_history']]))->reasons);
         self::assertSame(['stale_confirmation_data'], $this->engine()->evaluate(StrategyFixture::input(overrides: ['validationErrors' => ['stale_confirmation_data']]))->reasons);
+    }
+
+    public function test_strong_support_rejection_with_momentum_can_enter_during_neutral_hourly_trend(): void
+    {
+        $neutral = new TimeframeState('60', [StrategyFixture::bar('2026-10-13T09:00:00Z', 60, ['emaFast' => '100', 'emaSlow' => '100'])], true);
+        $bars = StrategyFixture::input()->entry->bars;
+        $bars[0] = StrategyFixture::bar('2026-10-13T09:45:00Z', 15, ['support' => '100', 'resistance' => '104', 'macdHistogram' => '0.05']);
+        $bars[1] = StrategyFixture::bar('2026-10-13T10:00:00Z', 15, [
+            'open' => '100.2', 'high' => '101.5', 'low' => '99.9', 'close' => '101.2', 'support' => '100',
+            'resistance' => null, 'rsi' => '60', 'macdHistogram' => '0.2', 'relativeVolume' => '1.8',
+        ]);
+
+        $decision = $this->engine()->evaluate(StrategyFixture::input(overrides: [
+            'trend' => $neutral,
+            'entry' => new TimeframeState('15', $bars, true),
+        ]));
+
+        self::assertSame(SignalSide::Buy, $decision->side);
+        self::assertContains('level_structure_direction', $decision->reasons);
+        self::assertContains('level_support_rejection', $decision->reasons);
+        self::assertSame('BUY', $decision->indicatorSnapshot['level_interaction']['momentum_side']);
     }
 
     public function test_conflicting_confirmation_spread_and_extreme_atr_are_skips(): void

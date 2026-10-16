@@ -105,6 +105,11 @@ final class SignalGenerationTest extends TestCase
             'regime_switching',
             'trend_pullback',
         ], StrategyObservationRecord::query()->orderBy('strategy_id')->pluck('strategy_id')->all());
+        StrategyObservationRecord::query()->each(function (StrategyObservationRecord $observation): void {
+            self::assertArrayHasKey('level_interaction', $observation->analysis);
+            self::assertArrayHasKey('momentum_side', $observation->analysis['level_interaction']);
+            self::assertArrayHasKey('indicator_snapshot', $observation->analysis);
+        });
         $this->assertDatabaseCount('strategy_observations', 5);
     }
 
@@ -115,8 +120,8 @@ final class SignalGenerationTest extends TestCase
         $service = $this->app->make(StrategyObservationService::class);
 
         self::assertSame(2, $service->observeRecent('BTCUSDT', 1, 2));
-        self::assertSame(0, $service->observeRecent('BTCUSDT', 1, 2));
-        $this->assertDatabaseCount('strategy_observations', 10);
+        self::assertSame(2, $service->observeRecent('BTCUSDT', 1, 2));
+        $this->assertDatabaseCount('strategy_observations', 20);
     }
 
     public function test_no_trading_endpoint_is_present_in_application_source(): void
