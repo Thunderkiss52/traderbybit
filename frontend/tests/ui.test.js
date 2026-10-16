@@ -125,8 +125,8 @@ test('dashboard explains real SKIP reasons instead of hiding strategy evaluation
   assert.match(text, /strategy.symbols/);
   assert.match(text, /market.latest.analysis.level_interaction/);
   assert.match(text, /independently evaluate BTC and ETH/);
-  for (const key of ['support_rejection_probability_percent', 'support_breakdown_probability_percent',
-    'resistance_breakout_probability_percent', 'resistance_rejection_probability_percent', 'momentum_strength']) {
+  for (const key of ['bullish_directional_evidence_score', 'bearish_directional_evidence_score',
+    'selected_evidence_score', 'momentum_strength']) {
     assert.match(text, new RegExp(key));
   }
 });

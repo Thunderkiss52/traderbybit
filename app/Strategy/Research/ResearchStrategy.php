@@ -52,7 +52,7 @@ abstract readonly class ResearchStrategy implements StrategyInterface
         return null;
     }
 
-    protected function emit(StrategyInput $input, SignalSide $side, array $reasons, ?string $targetR = null): SignalDecision
+    protected function emit(StrategyInput $input, SignalSide $side, array $reasons, ?string $targetR = null, int $score = 70): SignalDecision
     {
         $bar = $input->entry->latest();
         if ($bar === null || $bar->atr === null || BigDecimal::of($bar->atr)->isZero()) {
@@ -82,7 +82,9 @@ abstract readonly class ResearchStrategy implements StrategyInterface
             return $this->skip($input, ['invalid_risk_plan']);
         }
 
-        return $this->decision($input, $side, QualityClass::B, 70, new PricePlan((string) $low, (string) $high, (string) $stop, (string) $tp1, (string) $tp2, $r1, $r2), $reasons);
+        $quality = $score >= 85 ? QualityClass::A : ($score >= 70 ? QualityClass::B : QualityClass::C);
+
+        return $this->decision($input, $side, $quality, $score, new PricePlan((string) $low, (string) $high, (string) $stop, (string) $tp1, (string) $tp2, $r1, $r2), $reasons);
     }
 
     protected function setupAligned(StrategyInput $input, SignalSide $side): bool
@@ -123,9 +125,25 @@ abstract readonly class ResearchStrategy implements StrategyInterface
             : $this->lt($now->close, $now->emaEntry) && $this->lte($now->rsi, '50') && $this->lte($now->macdHistogram, $previous->macdHistogram);
     }
 
-    protected function skip(StrategyInput $input, array $reasons): SignalDecision
+    protected function confirmationMode(): string
     {
-        return $this->decision($input, SignalSide::Skip, null, 0, null, $reasons);
+        $mode = strtoupper((string) ($this->config['confirmation_mode'] ?? 'STRICT'));
+
+        return in_array($mode, ['STRICT', 'WEIGHTED', 'ADAPTIVE'], true) ? $mode : 'STRICT';
+    }
+
+    protected function acceptsWeightedScore(int $score, array $mandatory): bool
+    {
+        if (in_array(false, $mandatory, true)) {
+            return false;
+        }
+
+        return $score >= (int) ($this->config['minimum_score'] ?? 70);
+    }
+
+    protected function skip(StrategyInput $input, array $reasons, int $score = 0): SignalDecision
+    {
+        return $this->decision($input, SignalSide::Skip, null, $score, null, $reasons);
     }
 
     private function decision(StrategyInput $input, SignalSide $side, ?QualityClass $quality, int $score, ?PricePlan $plan, array $reasons): SignalDecision
@@ -149,6 +167,7 @@ abstract readonly class ResearchStrategy implements StrategyInterface
         ];
         $snapshot = [
             'strategy_id' => $this->id(),
+            'confirmation_mode' => $this->confirmationMode(),
             '1h' => $bar($input->trend->latest()),
             '30m' => $bar($input->setup->latest()),
             '15m' => $bar($input->entry->latest()),

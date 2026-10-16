@@ -29,4 +29,11 @@ return [
         'freshness_grace_multiplier' => (int) env('MARKET_DATA_FRESHNESS_MULTIPLIER', 3),
         'initial_history_days' => (int) env('MARKET_DATA_INITIAL_HISTORY_DAYS', 30),
     ],
+    'funding' => [
+        'initial_lookback_days' => (int) env('MARKET_FUNDING_LOOKBACK_DAYS', 30),
+    ],
+    'open_interest' => [
+        'interval' => env('MARKET_OPEN_INTEREST_INTERVAL', '15min'),
+        'maximum_pages' => (int) env('MARKET_OPEN_INTEREST_MAXIMUM_PAGES', 3),
+    ],
 ];

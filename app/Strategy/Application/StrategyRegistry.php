@@ -8,13 +8,16 @@ use App\Strategy\Contracts\StrategyInterface;
 use App\Strategy\Research\BollingerMeanReversionStrategy;
 use App\Strategy\Research\DonchianBreakoutStrategy;
 use App\Strategy\Research\MarketRegimeClassifier;
+use App\Strategy\Research\MomentumStrategy;
 use App\Strategy\Research\RegimeSwitchingStrategy;
+use App\Strategy\Research\SupportResistanceBounceStrategy;
+use App\Strategy\Research\SupportResistanceBreakoutStrategy;
 use App\Strategy\Research\TrendPullbackStrategy;
 
 final readonly class StrategyRegistry
 {
     /** @param list<StrategyInterface> $strategies */
-    public function __construct(private array $strategies) {}
+    public function __construct(private array $strategies, private LevelInteractionAnalyzer $levels, private LevelProbabilityService $probabilities) {}
 
     public function all(): array
     {
@@ -48,6 +51,9 @@ final readonly class StrategyRegistry
                 $this->get('donchian_atr_breakout'),
                 $this->get('bollinger_mean_reversion'),
             ),
+            'momentum' => new MomentumStrategy($parameters),
+            'support_resistance_bounce' => new SupportResistanceBounceStrategy($parameters, $this->levels, $this->probabilities),
+            'support_resistance_breakout' => new SupportResistanceBreakoutStrategy($parameters, $this->levels, $this->probabilities),
             default => throw new \InvalidArgumentException("Unknown strategy: {$id}"),
         };
     }

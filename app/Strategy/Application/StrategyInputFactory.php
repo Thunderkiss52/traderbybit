@@ -93,6 +93,7 @@ final readonly class StrategyInputFactory
                 relativeVolume: $series->volume->relativeVolume[$index], averageTurnover: $series->volume->turnoverSma[$index],
                 support: $level?->support, resistance: $level?->resistance,
                 bollingerUpper: $series->bollingerBands->upper[$index], bollingerMiddle: $series->bollingerBands->middle[$index], bollingerLower: $series->bollingerBands->lower[$index],
+                supportStrength: $level?->supportStrength ?? 0, resistanceStrength: $level?->resistanceStrength ?? 0,
             );
         }
 

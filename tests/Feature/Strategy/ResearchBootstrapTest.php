@@ -37,10 +37,10 @@ final class ResearchBootstrapTest extends TestCase
         $first = app(ResearchBootstrapService::class)->ensure();
         $second = app(ResearchBootstrapService::class)->ensure();
 
-        self::assertSame(5, $first['experiments']);
+        self::assertSame(8, $first['experiments']);
         self::assertSame(0, $second['experiments']);
-        self::assertSame(5, ResearchExperimentRecord::query()->count());
-        Bus::assertDispatchedTimes(RunResearchExperimentJob::class, 5);
+        self::assertSame(8, ResearchExperimentRecord::query()->count());
+        Bus::assertDispatchedTimes(RunResearchExperimentJob::class, 8);
     }
 
     public function test_sufficient_forward_decisions_queue_one_pattern_run_per_symbol_once(): void

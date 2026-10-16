@@ -5,6 +5,14 @@ declare(strict_types=1);
 namespace App\Strategy\Application;
 
 use App\MarketData\Infrastructure\Persistence\CandleRecord;
+use App\PatternDiscovery\Application\CandlestickPatternDetector;
+use App\PatternDiscovery\Application\MarketStructurePatternDetector;
+use App\PatternDiscovery\Application\PatternMatchService;
+use App\PatternDiscovery\Application\PatternOccurrenceOutcomeService;
+use App\PatternDiscovery\Infrastructure\Persistence\CandlestickPatternOccurrenceRecord;
+use App\Strategy\Contracts\SignalRepository;
+use App\Strategy\Domain\SignalDecision;
+use App\Strategy\Domain\StrategyInput;
 use App\Strategy\Infrastructure\Persistence\StrategyObservationRecord;
 use DateTimeImmutable;
 use Illuminate\Contracts\Cache\Factory as CacheFactory;
@@ -17,6 +25,12 @@ final readonly class StrategyObservationService
         private StrategyRegistry $strategies,
         private StrategyInputFactory $inputs,
         private LevelInteractionAnalyzer $levels,
+        private LevelProbabilityService $probabilities,
+        private CandlestickPatternDetector $candlesticks,
+        private MarketStructurePatternDetector $marketStructures,
+        private PatternOccurrenceOutcomeService $patternOutcomes,
+        private PatternMatchService $patternMatches,
+        private SignalRepository $signals,
         private CacheFactory $cache,
     ) {}
 
@@ -31,17 +45,27 @@ final readonly class StrategyObservationService
 
         try {
             $input = $this->inputs->make($exchange, $category, $symbol, $at);
+            $this->patternOutcomes->resolve($symbol, $at);
+            $this->recordCandlestickPatterns($input);
+            $levelInteraction = $this->levels->analyze($input);
+            $levelInteraction['historical_forecast'] = $this->probabilities->record($input, $levelInteraction);
             $observations = [];
+            $baselineDecision = null;
             foreach ($this->strategies->all() as $strategy) {
                 $decision = $strategy->evaluate($input);
+                if ($strategy->id() === 'baseline') {
+                    $baselineDecision = $decision;
+                }
+                $this->signals->createIfAbsent($decision);
                 $configurationHash = $this->configurationHash($strategy->parameters());
                 $id = Uuid::uuid5(Uuid::NAMESPACE_URL, implode('|', [
                     'traderbybit:strategy-observation', $exchange, $category, $symbol,
                     $strategy->id(), $configurationHash, $at->format('U.u'),
                 ]))->toString();
                 $analysis = [
-                    'level_interaction' => $this->levels->analyze($input),
+                    'level_interaction' => $levelInteraction,
                     'indicator_snapshot' => $decision->indicatorSnapshot,
+                    'diagnostics' => $this->diagnostics($decision),
                 ];
                 StrategyObservationRecord::query()->insertOrIgnore([[
                     'id' => $id,
@@ -61,16 +85,66 @@ final readonly class StrategyObservationService
                     'updated_at' => now(),
                 ]]);
                 $observation = StrategyObservationRecord::query()->findOrFail($id);
-                if ($observation->analysis === null) {
-                    $observation->update(['analysis' => $analysis]);
+                if ($observation->analysis === null || ! isset($observation->analysis['diagnostics'])) {
+                    $observation->update(['analysis' => array_replace_recursive($observation->analysis ?? [], $analysis)]);
                 }
                 $observations[] = $observation;
+            }
+            if ($baselineDecision !== null) {
+                $this->patternMatches->process($baselineDecision);
             }
 
             return $observations;
         } finally {
             $lock->release();
         }
+    }
+
+    private function recordCandlestickPatterns(StrategyInput $input): void
+    {
+        foreach (['60' => $input->trend, '30' => $input->setup, '15' => $input->entry, '5' => $input->confirmation] as $timeframe => $state) {
+            $bars = array_slice($state->bars, -80);
+            $payload = array_map(static fn ($bar): array => [
+                'open' => $bar->open, 'high' => $bar->high, 'low' => $bar->low, 'close' => $bar->close,
+            ], $bars);
+            $patterns = array_merge(
+                array_map(static fn (array $pattern): array => $pattern + ['type' => 'CANDLESTICK'], $this->candlesticks->detect(array_slice($payload, -3))),
+                array_map(static fn (array $pattern): array => $pattern + ['type' => 'MARKET_STRUCTURE'], $this->marketStructures->detect($payload)),
+            );
+            foreach ($patterns as $pattern) {
+                $detectedAt = $bars[array_key_last($bars)]->closeTime;
+                $formationIndex = isset($pattern['formation_index'])
+                    ? (int) $pattern['formation_index']
+                    : max(0, count($bars) - (int) $pattern['bars']);
+                $first = $bars[$formationIndex];
+                $identity = implode('|', [$input->exchange, $input->category, $input->symbol, $timeframe, $pattern['name'], $pattern['version'], $detectedAt->format('U.u')]);
+                CandlestickPatternOccurrenceRecord::query()->insertOrIgnore([[
+                    'id' => Uuid::uuid5(Uuid::NAMESPACE_URL, 'traderbybit:candlestick:'.$identity)->toString(),
+                    'exchange' => $input->exchange, 'category' => $input->category, 'symbol' => $input->symbol,
+                    'timeframe' => $timeframe, 'pattern_name' => $pattern['name'], 'direction' => $pattern['direction'],
+                    'pattern_type' => $pattern['type'],
+                    'version' => $pattern['version'], 'bar_count' => $pattern['bars'],
+                    'formation_time' => $first->openTime, 'detected_at' => $detectedAt,
+                    'evidence' => json_encode(['bars' => array_slice($payload, $formationIndex), 'conditions' => $pattern['evidence'] ?? []], JSON_THROW_ON_ERROR),
+                    'created_at' => now(), 'updated_at' => now(),
+                ]]);
+            }
+        }
+    }
+
+    private function diagnostics(SignalDecision $decision): array
+    {
+        $primary = $decision->side->value === 'SKIP' ? ($decision->reasons[0] ?? 'unspecified_strategy_rejection') : null;
+
+        return [
+            'decision' => $decision->side->value,
+            'signal_score' => $decision->score / 100,
+            'primary_rejection_reason' => $primary,
+            'secondary_rejection_reasons' => $primary === null ? [] : array_values(array_slice($decision->reasons, 1)),
+            'blocking_condition' => $primary !== null && count($decision->reasons) === 1 ? $primary : null,
+            'risk_approved' => null,
+            'paper_execution' => $decision->side->value === 'SKIP' ? 'NOT_ATTEMPTED' : 'PENDING_RISK',
+        ];
     }
 
     public function observeRecent(string $symbol, int $hours = 24, int $maximumCandles = 96, string $exchange = 'bybit', string $category = 'linear'): int
@@ -87,7 +161,7 @@ final readonly class StrategyObservationService
             ->where('decision_time', '>', $through->modify("-{$hours} hours"))->where('decision_time', '<=', $through)
             ->get(['strategy_id', 'configuration_hash', 'decision_time', 'analysis'])
             ->groupBy(fn (StrategyObservationRecord $row): string => $row->decision_time->format('U.u'))
-            ->map(fn ($rows): array => $rows->filter(fn (StrategyObservationRecord $row): bool => $row->analysis !== null)
+            ->map(fn ($rows): array => $rows->filter(fn (StrategyObservationRecord $row): bool => $row->analysis !== null && isset($row->analysis['diagnostics']))
                 ->map(fn (StrategyObservationRecord $row): string => $row->strategy_id.'|'.$row->configuration_hash)->all());
         $decisionTimes = CandleRecord::query()
             ->where('exchange', $exchange)->where('category', $category)->where('symbol', $symbol)

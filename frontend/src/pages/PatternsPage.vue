@@ -3,10 +3,13 @@ import { computed, onBeforeUnmount, ref, shallowRef, watch } from 'vue';
 import { api, get } from '../services/api';
 import { usePolling } from '../composables/usePolling';
 
-interface Pattern { id: string; symbol: string; direction: 'BUY' | 'SELL'; status: string; terms: string[]; metrics: { train: Metrics; validation: Metrics; test: Metrics; baseline_test: Metrics } }
-interface Metrics { count: number; win_rate: number | null; mean_r: number | null; ambiguous_count: number }
+interface Pattern { id: string; symbol: string; direction: 'BUY' | 'SELL'; status: string; terms: string[]; metrics: { train: Metrics; validation: Metrics; test: Metrics; baseline_test: Metrics; support?: number | null; confidence?: number | null; lift?: number | null; walk_forward?: any[] } }
+interface Metrics { count: number; win_rate: number | null; mean_r: number | null; expectancy_r?: number | null; profit_factor?: number | null; average_mfe_r?: number | null; average_mae_r?: number | null; ambiguous_count: number; anchor_decisions?: Record<string,number>; risk_outcomes?: Record<string,number>; paper_outcomes?: Record<string,number> }
 interface Readiness { symbol: string; collected_decisions: number; eligible_decisions: number; minimum_required: number; remaining_decisions: number; progress_percent: number; ready: boolean }
-interface Page<T> { data: T[]; meta: { last_page: number; total: number; readiness?: Readiness[] } }
+interface PatternOccurrence { id: string; symbol: string; timeframe: string; pattern_name: string; pattern_type: string; direction: string; formation_time: string; detected_at: string; version: string; outcome: string | null; forward_return: string | null }
+interface LevelForecast { id: string; event: string; side: string; triggered_at: string; sample_size: number; success_probability: string | null; confidence_low: string | null; confidence_high: string | null; validation_status: string; outcome: string | null }
+interface OccurrenceStatistic { pattern_type: string; pattern_name: string; direction: string; observations: number; resolved: number; successes: number; success_rate: number | null; confidence_low: number | null; confidence_high: number | null; validation_status: string; average_forward_return: string | null }
+interface Page<T> { data: T[]; meta: { last_page: number; total: number; readiness?: Readiness[]; statistics?: OccurrenceStatistic[] } }
 const page = ref(1);
 const symbol = ref('BTCUSDT');
 const direction = ref('');
@@ -14,6 +17,10 @@ const status = ref('');
 const patterns = shallowRef<Page<Pattern>>({ data: [], meta: { last_page: 1, total: 0 } });
 const runs = shallowRef<Page<any>>({ data: [], meta: { last_page: 1, total: 0 } });
 const matches = shallowRef<Pattern[]>([]);
+const storedMatches = shallowRef<any[]>([]);
+const occurrences = shallowRef<Page<PatternOccurrence>>({ data: [], meta: { last_page: 1, total: 0 } });
+const forecasts = shallowRef<any>({ data: [], meta: { calibration: {} } });
+const forecastRows = computed(() => forecasts.value.data as LevelForecast[]);
 const strategyObservations = shallowRef<any[]>([]);
 const error = ref('');
 const notice = ref('');
@@ -34,17 +41,23 @@ const load = async () => {
   const abort = new AbortController();
   controller = abort;
   try {
-    const [rowsResponse, recent, runsResponse, dashboard] = await Promise.all([
+    const [rowsResponse, recent, runsResponse, dashboard, occurrenceResponse, forecastResponse, storedMatchResponse] = await Promise.all([
       api.get('/research/patterns', { params: { page: page.value, per_page: 10, symbol: symbol.value, ...(direction.value ? { direction: direction.value } : {}), ...(status.value ? { status: status.value } : {}) }, signal: abort.signal }),
       get<Pattern[]>('/research/patterns/latest-matches', { symbol: symbol.value }, abort.signal),
       api.get('/research/patterns/runs', { params: { page: 1, per_page: 10 }, signal: abort.signal }),
-      get<any>('/dashboard', undefined, abort.signal)
+      get<any>('/dashboard', undefined, abort.signal),
+      api.get('/research/candlestick-patterns', { params: { symbol: symbol.value, per_page: 10 }, signal: abort.signal }),
+      api.get('/research/level-forecasts', { params: { symbol: symbol.value, per_page: 10 }, signal: abort.signal }),
+      api.get('/research/pattern-matches', { params: { symbol: symbol.value, per_page: 10 }, signal: abort.signal })
     ]);
     if (version !== requestNumber) return;
     patterns.value = rowsResponse.data;
     matches.value = recent;
     runs.value = runsResponse.data;
     strategyObservations.value = dashboard.strategy_observations_24h || [];
+    occurrences.value = occurrenceResponse.data;
+    forecasts.value = forecastResponse.data;
+    storedMatches.value = storedMatchResponse.data.data;
     error.value = '';
   } catch(e:any) {
     if (version === requestNumber && !abort.signal.aborted) error.value = e.message || 'Research unavailable';
@@ -101,6 +114,40 @@ const pageMax = computed(() => Math.max(1, patterns.value.meta.last_page));
       </q-markup-table>
     </section>
     <section>
+      <h2>Candlestick and Market-Structure Patterns · Latest 10</h2>
+      <q-banner class="bg-blue-grey-10 text-white q-mb-md">Deterministic closed-candle detections include classical candles, pivots, structure sequences, breakouts, retests, false breakouts, liquidity sweeps, and level rejections. Formation and detection times are stored separately.</q-banner>
+      <q-markup-table flat bordered wrap-cells>
+        <thead><tr><th class="text-left">Pattern</th><th>Type</th><th>Timeframe</th><th>Direction</th><th>Outcome</th><th class="text-left">Detected</th></tr></thead>
+        <tbody><tr v-for="pattern in occurrences.data" :key="pattern.id">
+          <td class="text-left"><b>{{ pattern.pattern_name }}</b><div class="muted">v{{ pattern.version }}</div></td><td class="text-center">{{ pattern.pattern_type }}</td>
+          <td class="text-center">{{ pattern.timeframe }}m</td><td class="text-center">{{ pattern.direction }}</td><td class="text-center">{{ pattern.outcome ?? 'PENDING' }}<div class="muted">{{ pattern.forward_return == null ? '' : (Number(pattern.forward_return)*100).toFixed(2)+'%' }}</div></td>
+          <td class="text-left">{{ pattern.detected_at }}<div class="muted">Formation: {{ pattern.formation_time }}</div></td>
+        </tr></tbody>
+      </q-markup-table>
+      <div v-if="!loading && occurrences.data.length === 0" class="muted q-pa-md">No pattern has been detected for {{ symbol }} yet.</div>
+      <q-markup-table v-if="occurrences.meta.statistics?.length" flat bordered dense class="q-mt-md">
+        <thead><tr><th class="text-left">Outcome statistics</th><th>Direction</th><th>Evidence</th><th>Success / 95% CI</th><th>Average return</th></tr></thead>
+        <tbody><tr v-for="row in occurrences.meta.statistics" :key="`${row.pattern_type}:${row.pattern_name}:${row.direction}`">
+          <td class="text-left">{{ row.pattern_name }}</td><td class="text-center">{{ row.direction }}</td><td class="text-center">{{ row.validation_status }} · {{ row.resolved }} / {{ row.observations }}</td>
+          <td class="text-center">{{ row.direction === 'NEUTRAL' ? 'Directional only' : (row.success_rate == null ? 'Insufficient data' : (row.success_rate*100).toFixed(1)+'% / '+(Number(row.confidence_low)*100).toFixed(1)+'–'+(Number(row.confidence_high)*100).toFixed(1)+'%') }}</td><td class="text-center">{{ row.average_forward_return == null ? 'Insufficient data' : (Number(row.average_forward_return)*100).toFixed(2)+'%' }}</td>
+        </tr></tbody>
+      </q-markup-table>
+    </section>
+    <section>
+      <h2>Support / Resistance Forecasts · Latest 10</h2>
+      <div class="muted q-mb-sm">Resolved forecasts: {{ forecasts.meta.calibration?.resolved_forecasts ?? 0 }} · Mean Brier score: {{ forecasts.meta.calibration?.mean_brier_score ?? 'Insufficient data' }} · Calibration degradation: {{ forecasts.meta.calibration?.degradation_detected ? 'DETECTED' : 'not detected' }}</div>
+      <q-markup-table flat bordered wrap-cells>
+        <thead><tr><th class="text-left">Event</th><th>Side</th><th>Evidence</th><th>Probability / 95% CI</th><th>Outcome</th><th class="text-left">Triggered</th></tr></thead>
+        <tbody><tr v-for="forecast in forecastRows" :key="forecast.id">
+          <td class="text-left">{{ forecast.event }}</td><td class="text-center">{{ forecast.side }}</td>
+          <td class="text-center">{{ forecast.validation_status }} · N={{ forecast.sample_size }}</td>
+          <td class="text-center"><template v-if="forecast.success_probability !== null">{{ (Number(forecast.success_probability) * 100).toFixed(1) }}% / {{ (Number(forecast.confidence_low) * 100).toFixed(1) }}–{{ (Number(forecast.confidence_high) * 100).toFixed(1) }}%</template><span v-else>Insufficient data</span></td>
+          <td class="text-center">{{ forecast.outcome ?? 'PENDING' }}</td><td class="text-left">{{ forecast.triggered_at }}</td>
+        </tr></tbody>
+      </q-markup-table>
+      <div v-if="!loading && forecasts.data.length === 0" class="muted q-pa-md">No level-interaction forecast has been recorded for {{ symbol }} yet.</div>
+    </section>
+    <section>
       <h2>Research Runs</h2>
       <q-banner v-if="selectedReadiness" class="bg-blue-grey-10 text-white q-mb-md">
         <div class="text-subtitle2">{{ symbol }} automatic discovery readiness: {{ selectedReadiness.eligible_decisions }} / {{ selectedReadiness.minimum_required }} eligible decisions</div>
@@ -131,7 +178,7 @@ const pageMax = computed(() => Math.max(1, patterns.value.meta.last_page));
       <h2>Discovered Patterns · 10 per page</h2>
       <div class="row q-gutter-sm q-mb-md">
         <q-select v-model="direction" :options="['','BUY','SELL']" label="Direction" dense style="min-width:150px" />
-        <q-select v-model="status" :options="['','VALIDATED','INCONCLUSIVE']" label="Evidence status" dense style="min-width:180px" />
+        <q-select v-model="status" :options="['','VALIDATING','VALIDATED','REJECTED','STALE']" label="Evidence status" dense style="min-width:180px" />
       </div>
       <q-table :loading="loading" flat bordered :rows="patterns.data" :columns="columns" row-key="id" :pagination="{ rowsPerPage: 0 }" hide-pagination @row-click="(_:unknown, row:Pattern) => selected = row" />
       <q-pagination v-model="page" :max="pageMax" class="q-mt-sm" />
@@ -141,6 +188,9 @@ const pageMax = computed(() => Math.max(1, patterns.value.meta.last_page));
         <p>{{ selected.terms.join(' AND ') }}</p>
         <p>Training: {{selected.metrics.train.count}} observations · Validation: {{selected.metrics.validation.count}} · Test: {{selected.metrics.test.count}}</p>
         <p>OOS mean R: {{ fmt(selected.metrics.test.mean_r) }} · OOS win rate: {{ selected.metrics.test.win_rate===null?'Insufficient data':(selected.metrics.test.win_rate*100).toFixed(1)+'%' }}</p>
+        <p>Support: {{ selected.metrics.support == null ? 'Insufficient data' : (selected.metrics.support*100).toFixed(1)+'%' }} · Confidence: {{ selected.metrics.confidence == null ? 'Insufficient data' : (selected.metrics.confidence*100).toFixed(1)+'%' }} · Lift: {{ fmt(selected.metrics.lift) }}</p>
+        <p>Profit factor: {{ fmt(selected.metrics.test.profit_factor) }} · MFE: {{ fmt(selected.metrics.test.average_mfe_r) }}R · MAE: {{ fmt(selected.metrics.test.average_mae_r) }}R · Walk-forward folds: {{ selected.metrics.walk_forward?.length ?? 0 }}</p>
+        <p>Anchor decisions: {{ JSON.stringify(selected.metrics.test.anchor_decisions || {}) }} · Risk outcomes: {{ JSON.stringify(selected.metrics.test.risk_outcomes || {}) }} · Paper outcomes: {{ JSON.stringify(selected.metrics.test.paper_outcomes || {}) }}</p>
         <p>Ambiguous executions (test): {{selected.metrics.test.ambiguous_count}}</p>
         <p>Status: {{selected.status}}. No automatically generated virtual entries.</p>
       </q-card>
@@ -149,6 +199,12 @@ const pageMax = computed(() => Math.max(1, patterns.value.meta.last_page));
       <h2>Latest Research Matches (No Trading Action)</h2>
       <div v-if="matches.length===0" class="muted q-pa-md">No validated patterns match the latest available signal.</div>
       <q-list v-else bordered separator><q-item v-for="match in matches" :key="match.id"><q-item-section>{{match.direction}} — {{match.terms.join(' + ')}}</q-item-section></q-item></q-list>
+      <h3>Persisted Match Outcomes</h3>
+      <q-markup-table v-if="storedMatches.length" flat bordered>
+        <thead><tr><th class="text-left">Conditions</th><th>Direction</th><th>Status</th><th>Outcome</th><th>Net R</th><th class="text-left">Matched</th></tr></thead>
+        <tbody><tr v-for="match in storedMatches" :key="match.id"><td class="text-left">{{ match.terms?.join(' + ') }}</td><td class="text-center">{{ match.direction }}</td><td class="text-center">{{ match.status }}</td><td class="text-center">{{ match.outcome ?? 'PENDING' }}</td><td class="text-center">{{ match.net_r ?? '—' }}</td><td class="text-left">{{ match.matched_at }}</td></tr></tbody>
+      </q-markup-table>
+      <div v-else class="muted q-pa-md">No validated pattern match has been persisted yet.</div>
     </section>
   </q-page>
 </template>

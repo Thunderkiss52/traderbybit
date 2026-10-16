@@ -10,11 +10,17 @@ use App\Backtest\Infrastructure\Persistence\BacktestSegmentRecord;
 use App\Http\Controllers\Controller;
 use App\Http\Resources\V1\ResearchResource;
 use App\PaperTrading\Application\DailyPerformanceService;
+use App\PaperTrading\Application\PerformanceStatisticsService;
+use App\PaperTrading\Infrastructure\Persistence\JournalEventRecord;
 use App\PaperTrading\Infrastructure\Persistence\PaperAccountRecord;
+use App\PaperTrading\Infrastructure\Persistence\RiskDecisionRecord;
+use App\PaperTrading\Infrastructure\Persistence\VirtualPositionRecord;
 use App\Strategy\Application\ResearchPortfolioManager;
 use App\Strategy\Application\StrategyComparisonService;
 use App\Strategy\Application\StrategyRegistry;
 use App\Strategy\Infrastructure\Persistence\ResearchExperimentRecord;
+use App\Strategy\Infrastructure\Persistence\SignalRecord;
+use App\Strategy\Infrastructure\Persistence\StrategyObservationRecord;
 use App\Strategy\Jobs\RunResearchExperimentJob;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -41,6 +47,64 @@ final class StrategyResearchController extends Controller
         } $latest = ResearchExperimentRecord::query()->where('strategy_id', $id)->latest('created_at')->first();
 
         return new ResearchResource(['strategy' => collect($registry->metadata())->firstWhere('id', $id), 'latest_experiment' => $latest]);
+    }
+
+    public function diagnostics(Request $request, string $id, StrategyRegistry $registry): ResearchResource
+    {
+        try {
+            $strategy = $registry->get($id);
+        } catch (\InvalidArgumentException) {
+            abort(404, 'Unknown strategy.');
+        }
+        $query = StrategyObservationRecord::query()->where('strategy_id', $id);
+        if ($request->filled('symbol')) {
+            $query->where('symbol', strtoupper($request->string('symbol')->toString()));
+        }
+        if ($request->filled('side')) {
+            $query->where('side', strtoupper($request->string('side')->toString()));
+        }
+        $signalIds = SignalRecord::query()->select('id')->where('strategy_id', $id);
+        $accountIds = PaperAccountRecord::query()->select('id')->where('strategy_id', $id);
+        $evaluations = (clone $query)->count();
+        $confirmed = SignalRecord::query()->where('strategy_id', $id)->whereIn('side', ['BUY', 'SELL'])->count();
+        $rejections = [];
+        foreach ((clone $query)->where('side', 'SKIP')->cursor() as $observation) {
+            $reason = data_get($observation->analysis, 'diagnostics.primary_rejection_reason') ?? ($observation->reasons[0] ?? 'unspecified');
+            $rejections[$reason] = ($rejections[$reason] ?? 0) + 1;
+        }
+        arsort($rejections);
+
+        return new ResearchResource([
+            'strategy' => ['id' => $strategy->id(), 'version' => $strategy->version()],
+            'funnel' => [
+                'market_evaluations' => $evaluations,
+                'raw_entry_candidates' => (clone $query)->where('score', '>', 0)->count(),
+                'confirmed_signals' => $confirmed,
+                'risk_approved_signals' => RiskDecisionRecord::query()->whereIn('paper_account_id', $accountIds)->whereIn('signal_id', $signalIds)->where('allowed', true)->count(),
+                'simulated_entry_attempts' => JournalEventRecord::query()->whereIn('paper_account_id', $accountIds)->whereIn('signal_id', $signalIds)->where('event_type', 'ENTRY_EVALUATED')->count(),
+                'successful_simulated_openings' => VirtualPositionRecord::query()->whereIn('paper_account_id', $accountIds)->whereIn('signal_id', $signalIds)->count(),
+                'execution_failures' => JournalEventRecord::query()->whereIn('paper_account_id', $accountIds)->whereIn('signal_id', $signalIds)->where('event_type', 'EXECUTION_FAILED')->count(),
+                'closed_positions' => VirtualPositionRecord::query()->whereIn('paper_account_id', $accountIds)->whereIn('signal_id', $signalIds)->whereNotNull('closed_at')->count(),
+            ],
+            'rejection_frequency' => $rejections,
+            'evaluations' => (clone $query)->latest('decision_time')->latest('id')->paginate(max(1, min(100, $request->integer('per_page', 10)))),
+        ]);
+    }
+
+    public function statistics(string $id, StrategyRegistry $registry, PerformanceStatisticsService $statistics): ResearchResource
+    {
+        try {
+            $registry->get($id);
+        } catch (\InvalidArgumentException) {
+            abort(404, 'Unknown strategy.');
+        }
+        $accounts = PaperAccountRecord::query()->where('strategy_id', $id)->orderBy('created_at')->get();
+
+        return new ResearchResource($accounts->map(fn (PaperAccountRecord $account): array => [
+            'account' => $account->only(['id', 'mode', 'strategy_id', 'strategy_version', 'created_at']),
+            'summary' => $statistics->accountSummary($account),
+            'performance' => $statistics->calculate($account->id)->metrics,
+        ])->values());
     }
 
     public function experiments(Request $request): ResearchResource
@@ -118,7 +182,7 @@ final class StrategyResearchController extends Controller
         abort_unless(in_array($timezone, timezone_identifiers_list(), true), 422, 'Invalid timezone.');
         $symbol = strtoupper($request->string('symbol', 'ALL')->toString());
         abort_unless(in_array($symbol, ['ALL', 'BTCUSDT', 'ETHUSDT'], true), 422, 'Unsupported symbol.');
-        $accounts = PaperAccountRecord::query()->where('mode', 'RESEARCH_FORWARD_PAPER')->latest('created_at')->latest('id')->paginate(max(1, min(100, $request->integer('per_page', 10))));
+        $accounts = PaperAccountRecord::query()->whereIn('mode', ['RESEARCH_FORWARD_PAPER', 'STRATEGY_FORWARD_PAPER'])->latest('created_at')->latest('id')->paginate(max(1, min(100, $request->integer('per_page', 10))));
         $rows = collect($accounts->items())->map(fn (PaperAccountRecord $account): array => ['account' => $account->only(['id', 'name', 'strategy_id', 'strategy_version', 'current_equity']), 'performance' => $daily->report($account->id, $timezone, $symbol === 'ALL' ? null : $symbol, 1, 10)['summary']])->all();
 
         return new ResearchResource(['data' => $rows, 'meta' => ['current_page' => $accounts->currentPage(), 'per_page' => $accounts->perPage(), 'total' => $accounts->total(), 'last_page' => $accounts->lastPage()]]);

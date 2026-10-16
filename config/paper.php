@@ -23,6 +23,7 @@ return [
     'market_safety' => [
         'maximum_context_age_seconds' => 300, 'maximum_spread_percent' => '0.001', 'minimum_turnover_24h' => '50000000',
         'minimum_atr_percent' => '0.001', 'maximum_atr_percent' => '0.05', 'require_indicator_snapshot' => true,
+        'maximum_absolute_funding_rate' => '0.001', 'maximum_absolute_open_interest_change' => '0.10',
     ],
     'processing' => ['lock_seconds' => 180, 'candle_interval' => '5', 'batch_size' => 500],
 ];

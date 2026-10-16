@@ -48,9 +48,9 @@ final readonly class StrategyEngine
         $hourlyTrend = $this->trend($hour);
         $level = $this->levels->analyze($input);
         $levelSide = is_string($level['selected_side'] ?? null) ? SignalSide::from($level['selected_side']) : SignalSide::Skip;
-        $levelProbability = (int) ($level['selected_probability_percent'] ?? 0);
+        $levelEvidence = (int) ($level['selected_evidence_score'] ?? 0);
         $levelEntry = $levelSide !== SignalSide::Skip
-            && $levelProbability >= (int) $this->config['level_interaction']['minimum_probability_percent'];
+            && $levelEvidence >= (int) $this->config['level_interaction']['minimum_evidence_score'];
         $trend = $hourlyTrend === SignalSide::Skip && $levelEntry ? $levelSide : $hourlyTrend;
         if ($trend === SignalSide::Skip) {
             return $this->skip($input, ['neutral_hourly_trend'], $this->snapshot($input, $level));
@@ -231,7 +231,7 @@ final readonly class StrategyEngine
         }
 
         if (($level['selected_side'] ?? null) === $side->value
-            && (int) ($level['selected_probability_percent'] ?? 0) >= (int) $this->config['level_interaction']['minimum_probability_percent']
+            && (int) ($level['selected_evidence_score'] ?? 0) >= (int) $this->config['level_interaction']['minimum_evidence_score']
             && is_string($level['selected_event'] ?? null)) {
             $result[] = 'level_'.$level['selected_event'];
         }

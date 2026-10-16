@@ -28,6 +28,34 @@ final readonly class PaperAccountService
         ]);
     }
 
+    public function strategyForward(string $strategyId, string $strategyVersion, array $parameters): PaperAccountRecord
+    {
+        if ($strategyId === 'baseline') {
+            return $this->default();
+        }
+
+        $id = Uuid::uuid5(Uuid::NAMESPACE_URL, "traderbybit:paper:strategy:{$strategyId}")->toString();
+        $starting = (string) $this->config['default_account']['starting_balance'];
+
+        return PaperAccountRecord::query()->firstOrCreate(['id' => $id], [
+            'name' => 'Forward Paper '.$strategyId,
+            'status' => AccountStatus::Active->value,
+            'starting_balance' => $starting,
+            'current_equity' => $starting,
+            'peak_equity' => $starting,
+            'realized_pnl' => '0',
+            'unrealized_pnl' => '0',
+            'reserved_risk' => '0',
+            'maximum_drawdown_percent' => '0',
+            'current_drawdown_percent' => '0',
+            'mode' => 'STRATEGY_FORWARD_PAPER',
+            'strategy_id' => $strategyId,
+            'strategy_version' => $strategyVersion,
+            'configuration_hash' => $this->hash($parameters),
+            'strategy_parameters' => $parameters,
+        ]);
+    }
+
     public function resume(string $id): PaperAccountRecord
     {
         return DB::transaction(function () use ($id): PaperAccountRecord {
@@ -36,5 +64,24 @@ final readonly class PaperAccountService
 
             return $account->refresh();
         });
+    }
+
+    private function hash(array $parameters): string
+    {
+        $sort = function (mixed &$value) use (&$sort): void {
+            if (! is_array($value)) {
+                return;
+            }
+            foreach ($value as &$item) {
+                $sort($item);
+            }
+            unset($item);
+            if (! array_is_list($value)) {
+                ksort($value);
+            }
+        };
+        $sort($parameters);
+
+        return hash('sha256', json_encode($parameters, JSON_THROW_ON_ERROR));
     }
 }

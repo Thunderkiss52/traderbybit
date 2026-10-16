@@ -24,7 +24,7 @@ final class ResearchApiTest extends TestCase
     {
         $this->getJson('/api/v1/dashboard')->assertOk()->assertJsonPath('schema_version', '1.0.0')->assertJsonPath('research_mode', true)
             ->assertJsonCount(0, 'data.market')->assertJsonCount(0, 'data.recent_decisions')->assertJsonPath('data.skip_reasons_24h', [])
-            ->assertJsonCount(5, 'data.strategy_observations_24h')
+            ->assertJsonCount(8, 'data.strategy_observations_24h')
             ->assertJsonPath('data.strategy_observations_24h.0.strategy_id', 'baseline')
             ->assertJsonPath('data.strategy_observations_24h.0.total', 0);
     }
@@ -39,11 +39,11 @@ final class ResearchApiTest extends TestCase
                 'strategy_id' => $strategy['id'], 'strategy_version' => $strategy['version'],
                 'configuration_hash' => $strategy['configuration_hash'], 'side' => $index === 0 ? 'SELL' : 'SKIP',
                 'score' => 0, 'decision_time' => now('UTC')->subMinutes(15), 'reasons' => ['test_reason'],
-                'analysis' => ['level_interaction' => ['momentum_side' => 'SELL', 'selected_event' => 'support_breakdown', 'selected_probability_percent' => 70]],
+                'analysis' => ['level_interaction' => ['momentum_side' => 'SELL', 'selected_event' => 'support_breakdown', 'selected_evidence_score' => 70]],
             ]);
         }
 
-        $response = $this->getJson('/api/v1/dashboard')->assertOk()->assertJsonCount(5, 'data.strategy_observations_24h');
+        $response = $this->getJson('/api/v1/dashboard')->assertOk()->assertJsonCount(8, 'data.strategy_observations_24h');
         $response->assertJsonPath('data.strategy_observations_24h.0.sell', 1)
             ->assertJsonPath('data.strategy_observations_24h.0.symbols.0.symbol', 'BTCUSDT')
             ->assertJsonPath('data.strategy_observations_24h.0.symbols.0.latest.analysis.level_interaction.momentum_side', 'SELL')
@@ -71,15 +71,15 @@ final class ResearchApiTest extends TestCase
             'reasons' => ['neutral_hourly_trend'], 'risks' => [],
             'indicator_snapshot' => ['level_interaction' => [
                 'support' => '100', 'resistance' => '110',
-                'resistance_breakout_probability_percent' => 70,
-                'support_rejection_probability_percent' => 65,
+                'bullish_directional_evidence_score' => 70,
+                'bearish_directional_evidence_score' => 30,
                 'momentum_side' => 'BUY', 'momentum_strength' => 35,
             ]],
             'contract' => [], 'strategy_version' => '1.2.0', 'schema_version' => '1.0.0',
         ]);
 
         $this->getJson('/api/v1/dashboard')->assertOk()
-            ->assertJsonPath('data.recent_decisions.0.level_interaction.resistance_breakout_probability_percent', 70)
+            ->assertJsonPath('data.recent_decisions.0.level_interaction.bullish_directional_evidence_score', 70)
             ->assertJsonPath('data.recent_decisions.0.level_interaction.momentum_side', 'BUY');
     }
 

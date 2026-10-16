@@ -34,5 +34,7 @@ final readonly class BarState
         public ?string $bollingerUpper = null,
         public ?string $bollingerMiddle = null,
         public ?string $bollingerLower = null,
+        public int $supportStrength = 0,
+        public int $resistanceStrength = 0,
     ) {}
 }

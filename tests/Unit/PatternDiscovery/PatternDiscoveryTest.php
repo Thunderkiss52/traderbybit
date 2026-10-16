@@ -85,8 +85,11 @@ final class PatternDiscoveryTest extends TestCase
             'minimum_out_of_sample_expectancy_r' => '0'];
         $found = (new PatternMiner)->discover($items, $cfg);
         self::assertNotEmpty($found);
-        self::assertSame('INCONCLUSIVE', $found[0]['status']);
+        self::assertSame('REJECTED', $found[0]['status']);
         self::assertSame(53, $found[0]['train']['count']);
+        self::assertSame(['UNKNOWN' => 18], $found[0]['test']['anchor_decisions']);
+        self::assertArrayHasKey('profit_factor', $found[0]['test']);
+        self::assertCount(3, $found[0]['walk_forward']);
     }
 
     public function test_sequence_and_context_use_only_past_information(): void

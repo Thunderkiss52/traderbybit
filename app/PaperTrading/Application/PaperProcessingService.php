@@ -16,6 +16,7 @@ use App\PaperTrading\Infrastructure\Persistence\RiskDecisionRecord;
 use App\PaperTrading\Infrastructure\Persistence\VirtualPositionRecord;
 use App\Strategy\Infrastructure\Persistence\MarketContextRecord;
 use App\Strategy\Infrastructure\Persistence\SignalRecord;
+use App\Strategy\Infrastructure\Persistence\StrategyObservationRecord;
 use Brick\Math\BigDecimal;
 use Brick\Math\RoundingMode;
 use DateTimeImmutable;
@@ -71,13 +72,25 @@ final readonly class PaperProcessingService
             ->where('strategy_id', $account->strategy_id ?? 'baseline')
             ->when($forwardOnly, fn ($q) => $q->where('decision_time', '>=', $account->created_at))
             ->when($symbol, fn ($q) => $q->where('symbol', $symbol))
-            ->oldest('decision_time')->get();
+            ->whereNotExists(fn ($query) => $query->selectRaw('1')->from('paper_signal_states')
+                ->whereColumn('paper_signal_states.signal_id', 'signals.id')
+                ->where('paper_signal_states.paper_account_id', $account->id))
+            ->oldest('decision_time')->oldest('id')->limit((int) $this->config['processing']['batch_size'])->get();
         foreach ($signals as $signal) {
             if (PaperSignalStateRecord::query()->where('paper_account_id', $account->id)->where('signal_id', $signal->id)->exists()) {
                 continue;
             }
             if ($signal->side === 'SKIP') {
-                $this->journal->append($account->id, $signal->id, null, 'ANALYTICAL_SKIP', $signal->decision_time->toDateTimeImmutable(), ['reasons' => $signal->reasons], "skip:{$account->id}:{$signal->id}");
+                DB::transaction(function () use ($account, $signal): void {
+                    PaperSignalStateRecord::query()->firstOrCreate([
+                        'paper_account_id' => $account->id, 'signal_id' => $signal->id,
+                    ], [
+                        'id' => Uuid::uuid5(Uuid::NAMESPACE_URL, "traderbybit:signal-state:{$account->id}:{$signal->id}")->toString(),
+                        'status' => SignalLifecycle::Completed->value, 'reason' => $signal->reasons[0] ?? 'analytical_skip',
+                        'processed_at' => $signal->decision_time,
+                    ]);
+                    $this->journal->append($account->id, $signal->id, null, 'ANALYTICAL_SKIP', $signal->decision_time->toDateTimeImmutable(), ['reasons' => $signal->reasons], "skip:{$account->id}:{$signal->id}");
+                });
 
                 continue;
             }
@@ -97,6 +110,11 @@ final readonly class PaperProcessingService
                     'reason' => $assessment['reasons'][0] ?? null, 'processed_at' => $signal->decision_time,
                 ]);
                 $this->journal->append($locked->id, $signal->id, null, $assessment['allowed'] ? 'RISK_ACCEPTED' : 'RISK_REJECTED', $signal->decision_time->toDateTimeImmutable(), $assessment, "risk:{$decisionId}");
+                $this->updateObservationDiagnostics($locked, $signal, [
+                    'risk_approved' => $assessment['allowed'],
+                    'risk_rejection_reasons' => $assessment['allowed'] ? [] : $assessment['reasons'],
+                    'paper_execution' => $assessment['allowed'] ? 'RISK_APPROVED' : 'RISK_REJECTED',
+                ]);
             });
         }
     }
@@ -106,6 +124,9 @@ final readonly class PaperProcessingService
         $context = MarketContextRecord::query()->where('exchange', $signal->exchange)->where('category', $signal->category)->where('symbol', $signal->symbol)
             ->where('observed_at', '<=', $signal->decision_time)->latest('observed_at')->first();
         $failures = [];
+        if ($signal->category === 'spot' && $signal->side === 'SELL') {
+            $failures[] = 'spot_short_unsupported';
+        }
         $limits = null;
         if ($context === null) {
             $failures[] = 'market_metadata_unavailable';
@@ -120,6 +141,14 @@ final readonly class PaperProcessingService
             }
             if (BigDecimal::of($context->turnover_24h)->isLessThan(BigDecimal::of((string) $this->config['market_safety']['minimum_turnover_24h']))) {
                 $failures[] = 'insufficient_liquidity';
+            }
+            if ($context->funding_rate !== null && BigDecimal::of($context->funding_rate)->abs()
+                ->isGreaterThan(BigDecimal::of((string) $this->config['market_safety']['maximum_absolute_funding_rate']))) {
+                $failures[] = 'extreme_funding_rate';
+            }
+            if ($context->open_interest_change !== null && BigDecimal::of($context->open_interest_change)->abs()
+                ->isGreaterThan(BigDecimal::of((string) $this->config['market_safety']['maximum_absolute_open_interest_change']))) {
+                $failures[] = 'extreme_open_interest_change';
             }
             if ($context->qty_step === null || $context->min_order_qty === null || $context->max_order_qty === null || $context->min_notional_value === null) {
                 $failures[] = 'instrument_constraints_unavailable';
@@ -168,7 +197,7 @@ final readonly class PaperProcessingService
     {
         $signal = SignalRecord::query()->findOrFail($state->signal_id);
         $watermark = $state->processed_at?->toDateTimeImmutable() ?? $signal->decision_time->toDateTimeImmutable();
-        $bars = $this->bars($signal->symbol, $watermark, $at);
+        $bars = $this->bars($signal->exchange, $signal->category, $signal->symbol, $watermark, $at);
         $processed = 0;
         $expected = $watermark->modify('+5 minutes');
         foreach ($bars as $bar) {
@@ -188,6 +217,7 @@ final readonly class PaperProcessingService
                 if ($bar->closeTime > $signal->expires_at->toDateTimeImmutable()) {
                     SignalLifecycle::PendingEntry->transitionTo(SignalLifecycle::Expired);
                     $state->update(['status' => SignalLifecycle::Expired->value, 'reason' => 'entry_window_expired', 'processed_at' => $bar->closeTime]);
+                    $this->updateObservationDiagnostics($account, $signal, ['paper_execution' => 'ENTRY_EXPIRED']);
                     $this->journal->append($account->id, $signal->id, null, 'SIGNAL_EXPIRED', $bar->closeTime, [], "expired:{$account->id}:{$signal->id}");
                     break;
                 }
@@ -201,6 +231,7 @@ final readonly class PaperProcessingService
                     if (! $entryAssessment['allowed']) {
                         SignalLifecycle::from($state->status)->transitionTo(SignalLifecycle::Rejected);
                         $state->update(['status' => SignalLifecycle::Rejected->value, 'reason' => $entryAssessment['reasons'][0] ?? 'entry_risk_rejected', 'processed_at' => $bar->closeTime]);
+                        $this->updateObservationDiagnostics($account, $signal, ['risk_approved' => false, 'risk_rejection_reasons' => $entryAssessment['reasons'], 'paper_execution' => 'ENTRY_RISK_REJECTED']);
                         $this->journal->append($account->id, $signal->id, null, 'ENTRY_RISK_REJECTED', $bar->closeTime, $entryAssessment, "entry-risk:{$account->id}:{$signal->id}:{$bar->closeTime->format('U.u')}");
                         break;
                     }
@@ -210,12 +241,20 @@ final readonly class PaperProcessingService
                     if (! $size->allowed) {
                         SignalLifecycle::from($state->status)->transitionTo(SignalLifecycle::Rejected);
                         $state->update(['status' => SignalLifecycle::Rejected->value, 'reason' => $size->reason, 'processed_at' => $bar->closeTime]);
+                        $this->updateObservationDiagnostics($account, $signal, ['paper_execution' => 'EXECUTION_FAILED', 'execution_failure_reason' => $size->reason]);
+                        $this->journal->append($account->id, $signal->id, null, 'EXECUTION_FAILED', $bar->closeTime, [
+                            'stage' => 'position_sizing', 'reason' => $size->reason,
+                        ], "execution-failed:{$account->id}:{$signal->id}:{$bar->closeTime->format('U.u')}");
                         break;
                     }
                     $position = $this->lifecycle->open($account->refresh(), $state, $signal, $size, $quote, $bar->closeTime);
+                    $this->updateObservationDiagnostics($account, $signal, ['paper_execution' => 'OPENED', 'position_id' => $position->id]);
                     $exit = $this->execution->exit($position->side, $position->status, $position->stop_loss, $position->take_profit_1, $position->take_profit_2, $position->maximum_holding_until->toDateTimeImmutable(), $bar);
                     if ($quote->ambiguous && $exit !== null) {
-                        $this->lifecycle->executeExit($position, $exit, $bar->closeTime);
+                        $position = $this->lifecycle->executeExit($position, $exit, $bar->closeTime);
+                        if (PositionStatus::from($position->status)->isClosed()) {
+                            $this->updateObservationDiagnostics($account, $signal, ['paper_execution' => 'CLOSED', 'position_id' => $position->id]);
+                        }
                     }
                 } else {
                     $state->update(['processed_at' => $bar->closeTime]);
@@ -223,6 +262,7 @@ final readonly class PaperProcessingService
             } else {
                 $position = VirtualPositionRecord::query()->where('paper_account_id', $account->id)->where('signal_id', $signal->id)->firstOrFail();
                 if (PositionStatus::from($position->status)->isClosed()) {
+                    $this->updateObservationDiagnostics($account, $signal, ['paper_execution' => 'CLOSED', 'position_id' => $position->id]);
                     break;
                 }
                 $this->lifecycle->applyFunding($position, $bar->closeTime);
@@ -246,9 +286,9 @@ final readonly class PaperProcessingService
         return $processed;
     }
 
-    private function bars(string $symbol, DateTimeImmutable $after, DateTimeImmutable $through): array
+    private function bars(string $exchange, string $category, string $symbol, DateTimeImmutable $after, DateTimeImmutable $through): array
     {
-        return CandleRecord::query()->where('exchange', 'bybit')->where('category', 'linear')->where('symbol', $symbol)->where('interval', '5')->where('is_closed', true)
+        return CandleRecord::query()->where('exchange', $exchange)->where('category', $category)->where('symbol', $symbol)->where('interval', '5')->where('is_closed', true)
             ->where('open_time', '>=', $after)->where('open_time', '<=', $through->modify('-5 minutes'))->oldest('open_time')->limit((int) $this->config['processing']['batch_size'])->get()
             ->map(fn (CandleRecord $c): MarketBar => new MarketBar($c->open_time->toDateTimeImmutable(), $c->open_time->toDateTimeImmutable()->modify('+5 minutes'), $c->open, $c->high, $c->low, $c->close, true))->all();
     }
@@ -258,5 +298,21 @@ final readonly class PaperProcessingService
         $record = CandleRecord::query()->where('interval', '5')->where('is_closed', true)->when($symbol, fn ($q) => $q->where('symbol', $symbol))->latest('open_time')->first();
 
         return $record?->open_time->toDateTimeImmutable()->modify('+5 minutes');
+    }
+
+    private function updateObservationDiagnostics(PaperAccountRecord $account, SignalRecord $signal, array $changes): void
+    {
+        if ($account->mode === 'RESEARCH_FORWARD_PAPER') {
+            return;
+        }
+        $observation = StrategyObservationRecord::query()->where('strategy_id', $signal->strategy_id)
+            ->where('strategy_version', $signal->strategy_version)->where('symbol', $signal->symbol)
+            ->where('decision_time', $signal->decision_time)->latest('id')->first();
+        if ($observation === null) {
+            return;
+        }
+        $analysis = $observation->analysis ?? [];
+        $analysis['diagnostics'] = array_replace($analysis['diagnostics'] ?? [], $changes);
+        $observation->update(['analysis' => $analysis]);
     }
 }

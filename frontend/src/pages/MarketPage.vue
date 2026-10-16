@@ -11,6 +11,8 @@ const candles = shallowRef<any[]>([]);
 const indicators = shallowRef<any>();
 const context = shallowRef<any>();
 const signals = shallowRef<any[]>([]);
+const patterns = shallowRef<any[]>([]);
+const levelInteraction = shallowRef<any>();
 const error = ref('');
 const loading = ref(false);
 const history = ref<string[]>([]);
@@ -30,6 +32,8 @@ async function load() {
     indicators.value = loaded.indicators;
     context.value = loaded.context;
     signals.value = loaded.signals || [];
+    patterns.value = loaded.candlestick_patterns || [];
+    levelInteraction.value = loaded.level_interaction;
     error.value = '';
   } catch (exception: any) {
     if (current === version && !controller.signal.aborted) error.value = exception.message;
@@ -63,12 +67,18 @@ onBeforeUnmount(() => controller?.abort());
       <q-btn label="Latest" flat :disable="loading || !history.length" @click="history = []; to = undefined" />
       <span class="text-caption">{{ candles.length }} closed candles per window · {{ signals.length }} recent signals</span>
     </div>
-    <CandleChart :candles="candles" :indicators="indicators" :signals="signals" />
+    <CandleChart :candles="candles" :indicators="indicators" :signals="signals" :patterns="patterns" />
     <IndicatorPanels :indicators="indicators" />
     <div class="panel">
       <h2>Market context</h2>
       <div class="muted">Spread {{ context?.spread ?? '—' }} · Funding {{ context?.funding_rate ?? '—' }} · Open interest {{ context?.open_interest ?? '—' }}</div>
       <p>EMA 20/50/200 · Bollinger Bands · VWAP · Volume · RSI · MACD · ADX · confirmed support/resistance.</p>
+      <div v-if="levelInteraction" class="q-mb-sm">
+        <b>Current 15m range</b>
+        <div class="muted">Support zone {{ levelInteraction.support_zone?.lower ?? '—' }}–{{ levelInteraction.support_zone?.upper ?? '—' }} (strength {{ levelInteraction.support_zone?.strength ?? 0 }}) · Resistance zone {{ levelInteraction.resistance_zone?.lower ?? '—' }}–{{ levelInteraction.resistance_zone?.upper ?? '—' }} (strength {{ levelInteraction.resistance_zone?.strength ?? 0 }})</div>
+        <div v-if="levelInteraction.historical_forecast" class="muted">Forecast {{ levelInteraction.historical_forecast.validation_status }} · N={{ levelInteraction.historical_forecast.sample_size }}<template v-if="levelInteraction.historical_forecast.success_probability !== null"> · success {{ (Number(levelInteraction.historical_forecast.success_probability) * 100).toFixed(1) }}% · 95% CI {{ (Number(levelInteraction.historical_forecast.confidence_low) * 100).toFixed(1) }}–{{ (Number(levelInteraction.historical_forecast.confidence_high) * 100).toFixed(1) }}%</template></div>
+      </div>
+      <div class="muted">{{ patterns.length }} bounded candlestick and market-structure occurrences in this chart window.</div>
       <div class="muted">Backend-calculated values from closed candles only. No frontend recalculation or look-ahead.</div>
     </div>
   </q-page>

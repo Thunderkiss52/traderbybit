@@ -24,7 +24,7 @@ const { loading, connected } = usePolling(async () => {
 }, 5000, autoRefresh);
 onBeforeUnmount(() => controller.abort());
 
-const probability = (value: unknown) => value === null || value === undefined ? '—' : `${value}%`;
+const evidence = (value: unknown) => value === null || value === undefined ? '—' : `${value}/100 evidence`;
 </script>
 
 <template>
@@ -66,8 +66,21 @@ const probability = (value: unknown) => value === null || value === undefined ? 
       <EmptyState v-else />
     </section>
     <section>
+      <h2>Independent Strategy Paper Portfolios</h2>
+      <div class="muted q-mb-sm">Each enabled strategy has isolated forward-only virtual accounting. No historical replay is mixed into these balances.</div>
+      <q-markup-table flat bordered>
+        <thead><tr><th class="text-left">Strategy</th><th>Status</th><th>Equity</th><th>Realized PnL</th><th>Unrealized PnL</th></tr></thead>
+        <tbody><tr v-for="portfolio in data.strategy_portfolios || []" :key="portfolio.id">
+          <td class="text-left"><b>{{ portfolio.strategy_id }}</b><div class="muted">v{{ portfolio.strategy_version }} · {{ portfolio.mode }}</div></td>
+          <td class="text-center">{{ portfolio.status }}</td><td class="text-right">{{ portfolio.current_equity }}</td>
+          <td class="text-right">{{ portfolio.realized_pnl }}</td><td class="text-right">{{ portfolio.unrealized_pnl }}</td>
+        </tr></tbody>
+      </q-markup-table>
+      <div class="muted q-mt-sm">Execution failures (24h): {{ data.paper_execution_health?.execution_failures_24h ?? 0 }} · Latest evaluation: {{ data.paper_execution_health?.latest_strategy_evaluation_at ?? '—' }}</div>
+    </section>
+    <section>
       <h2>All Strategy Decisions · Last 24 Hours</h2>
-      <q-banner class="bg-grey-9 text-white q-mb-md">All five strategies independently evaluate BTC and ETH every closed 15m candle. Decision counts are observations, not profitability; validated experiment and isolated forward-paper results remain on the Research page.</q-banner>
+      <q-banner class="bg-grey-9 text-white q-mb-md">All enabled strategies independently evaluate BTC and ETH every closed 15m candle. Decision counts are observations, not profitability; validated experiment and isolated forward-paper results remain on the Research page.</q-banner>
       <q-markup-table flat bordered wrap-cells>
         <thead><tr><th class="text-left">Strategy</th><th v-for="symbol in ['BTCUSDT', 'ETHUSDT']" :key="symbol" class="text-left">{{ symbol }}</th><th>Combined B / S / K</th><th class="text-left">Top SKIP reasons</th></tr></thead>
         <tbody>
@@ -80,7 +93,10 @@ const probability = (value: unknown) => value === null || value === undefined ? 
                 <div v-if="market.latest.analysis?.level_interaction" class="muted">
                   Momentum {{ market.latest.analysis.level_interaction.momentum_side }} ·
                   {{ market.latest.analysis.level_interaction.selected_event || 'between levels' }}
-                  {{ probability(market.latest.analysis.level_interaction.selected_probability_percent) }}
+                  {{ evidence(market.latest.analysis.level_interaction.selected_evidence_score) }}
+                </div>
+                <div v-if="market.latest.analysis?.level_interaction?.historical_forecast" class="muted">
+                  Probability {{ market.latest.analysis.level_interaction.historical_forecast.validation_status }} · N={{ market.latest.analysis.level_interaction.historical_forecast.sample_size }}
                 </div>
               </template>
               <span v-else class="muted">Waiting for next closed 15m candle</span>
@@ -109,8 +125,8 @@ const probability = (value: unknown) => value === null || value === undefined ? 
             <q-item-label>{{ decision.symbol }} · {{ decision.decision_time }}</q-item-label>
             <q-item-label caption>{{ decision.reasons?.join(', ') || 'No reason recorded' }}</q-item-label>
             <q-item-label v-if="decision.level_interaction" caption class="q-mt-xs">
-              Support {{ decision.level_interaction.support ?? '—' }}: rejection {{ probability(decision.level_interaction.support_rejection_probability_percent) }}, breakdown {{ probability(decision.level_interaction.support_breakdown_probability_percent) }} ·
-              Resistance {{ decision.level_interaction.resistance ?? '—' }}: breakout {{ probability(decision.level_interaction.resistance_breakout_probability_percent) }}, rejection {{ probability(decision.level_interaction.resistance_rejection_probability_percent) }}
+              Support {{ decision.level_interaction.support ?? '—' }} · Resistance {{ decision.level_interaction.resistance ?? '—' }} ·
+              Directional evidence: bullish {{ evidence(decision.level_interaction.bullish_directional_evidence_score) }}, bearish {{ evidence(decision.level_interaction.bearish_directional_evidence_score) }}
             </q-item-label>
             <q-item-label v-if="decision.level_interaction" caption>
               Momentum {{ decision.level_interaction.momentum_side }} ({{ decision.level_interaction.momentum_strength }}) · Selected {{ decision.level_interaction.selected_event || 'no confirmed interaction' }}

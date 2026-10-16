@@ -38,30 +38,46 @@ final readonly class DonchianBreakoutStrategy extends ResearchStrategy
             return $this->skip($input, ['volume_or_atr_filter_rejected']);
         }
         if ((float) $now->close > $upper) {
-            if (! $this->trendAligned($input, SignalSide::Buy)) {
-                return $this->skip($input, ['hourly_trend_conflicts']);
-            }
-            if (! $this->setupAligned($input, SignalSide::Buy)) {
-                return $this->skip($input, ['thirty_minute_setup_conflicts']);
-            }
-
-            return $this->confirmationAligned($input, SignalSide::Buy)
-                ? $this->emit($input, SignalSide::Buy, ['hourly_trend', 'thirty_minute_setup', 'prior_donchian_high_breakout', 'relative_volume_confirmation', 'five_minute_confirmation'])
-                : $this->skip($input, ['five_minute_confirmation_conflicts']);
+            return $this->breakoutDecision($input, SignalSide::Buy, 'prior_donchian_high_breakout');
         }
         if ((float) $now->close < $lower) {
-            if (! $this->trendAligned($input, SignalSide::Sell)) {
-                return $this->skip($input, ['hourly_trend_conflicts']);
-            }
-            if (! $this->setupAligned($input, SignalSide::Sell)) {
-                return $this->skip($input, ['thirty_minute_setup_conflicts']);
-            }
-
-            return $this->confirmationAligned($input, SignalSide::Sell)
-                ? $this->emit($input, SignalSide::Sell, ['hourly_trend', 'thirty_minute_setup', 'prior_donchian_low_breakout', 'relative_volume_confirmation', 'five_minute_confirmation'])
-                : $this->skip($input, ['five_minute_confirmation_conflicts']);
+            return $this->breakoutDecision($input, SignalSide::Sell, 'prior_donchian_low_breakout');
         }
 
         return $this->skip($input, ['no_donchian_breakout']);
+    }
+
+    private function breakoutDecision(StrategyInput $input, SignalSide $side, string $breakoutReason): SignalDecision
+    {
+        $trend = $this->trendAligned($input, $side);
+        $setup = $this->setupAligned($input, $side);
+        $confirmation = $this->confirmationAligned($input, $side);
+        if ($this->confirmationMode() === 'STRICT') {
+            if (! $trend) {
+                return $this->skip($input, ['hourly_trend_conflicts']);
+            }
+            if (! $setup) {
+                return $this->skip($input, ['thirty_minute_setup_conflicts']);
+            }
+            if (! $confirmation) {
+                return $this->skip($input, ['five_minute_confirmation_conflicts']);
+            }
+        }
+        $score = ($trend ? 20 : 0) + ($setup ? 20 : 0) + 35 + 15 + ($confirmation ? 10 : 0);
+        if (! $this->acceptsWeightedScore($score, [$trend || $setup])) {
+            return $this->skip($input, ['weighted_confirmation_below_threshold'], $score);
+        }
+        $reasons = [$breakoutReason, 'relative_volume_confirmation'];
+        if ($trend) {
+            $reasons[] = 'hourly_trend';
+        }
+        if ($setup) {
+            $reasons[] = 'thirty_minute_setup';
+        }
+        if ($confirmation) {
+            $reasons[] = 'five_minute_confirmation';
+        }
+
+        return $this->emit($input, $side, $reasons, score: $score);
     }
 }

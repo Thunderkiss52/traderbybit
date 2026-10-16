@@ -4,9 +4,11 @@ declare(strict_types=1);
 
 namespace App\Strategy\Application;
 
+use App\Strategy\Domain\BarState;
 use App\Strategy\Domain\SignalSide;
 use App\Strategy\Domain\StrategyInput;
 use Brick\Math\BigDecimal;
+use Brick\Math\RoundingMode;
 
 final readonly class LevelInteractionAnalyzer
 {
@@ -45,9 +47,10 @@ final readonly class LevelInteractionAnalyzer
         $trendStrength = $now->adx !== null && $this->gte($now->adx, '18') ? 10 : 0;
         $buyEvidence = 20 + $buyMomentum + $volume + $trendStrength;
         $sellEvidence = 20 + $sellMomentum + $volume + $trendStrength;
-        $buyProbability = min(95, max(5, (int) round(100 * $buyEvidence / ($buyEvidence + $sellEvidence))));
-        $sellProbability = 100 - $buyProbability;
+        $buyEvidenceScore = min(95, max(5, (int) round(100 * $buyEvidence / ($buyEvidence + $sellEvidence))));
+        $sellEvidenceScore = 100 - $buyEvidenceScore;
         $atr = $this->d($now->atr);
+        $zoneHalfWidth = $atr->multipliedBy((string) $this->config['zone_half_width_atr']);
         $proximity = $atr->multipliedBy((string) $this->config['proximity_atr']);
         $buffer = $atr->multipliedBy((string) $this->config['breakout_buffer_atr']);
         $candidates = [];
@@ -55,35 +58,59 @@ final readonly class LevelInteractionAnalyzer
         if ($previous->resistance !== null) {
             $resistance = $this->d($previous->resistance);
             if ($this->d($now->close)->isGreaterThan($resistance->plus($buffer))) {
-                $candidates[] = ['event' => 'resistance_breakout', 'side' => SignalSide::Buy->value, 'probability' => $buyProbability];
+                $candidates[] = ['event' => 'resistance_breakout', 'side' => SignalSide::Buy->value, 'evidence_score' => $buyEvidenceScore];
             } elseif ($this->d($now->high)->isGreaterThanOrEqualTo($resistance->minus($proximity)) && $this->d($now->close)->isLessThan($resistance) && $this->lt($now->close, $now->open)) {
-                $candidates[] = ['event' => 'resistance_rejection', 'side' => SignalSide::Sell->value, 'probability' => $sellProbability];
+                $candidates[] = ['event' => 'resistance_rejection', 'side' => SignalSide::Sell->value, 'evidence_score' => $sellEvidenceScore];
             }
         }
         if ($previous->support !== null) {
             $support = $this->d($previous->support);
             if ($this->d($now->close)->isLessThan($support->minus($buffer))) {
-                $candidates[] = ['event' => 'support_breakdown', 'side' => SignalSide::Sell->value, 'probability' => $sellProbability];
+                $candidates[] = ['event' => 'support_breakdown', 'side' => SignalSide::Sell->value, 'evidence_score' => $sellEvidenceScore];
             } elseif ($this->d($now->low)->isLessThanOrEqualTo($support->plus($proximity)) && $this->d($now->close)->isGreaterThan($support) && $this->gt($now->close, $now->open)) {
-                $candidates[] = ['event' => 'support_rejection', 'side' => SignalSide::Buy->value, 'probability' => $buyProbability];
+                $candidates[] = ['event' => 'support_rejection', 'side' => SignalSide::Buy->value, 'evidence_score' => $buyEvidenceScore];
             }
         }
-        usort($candidates, static fn (array $left, array $right): int => $right['probability'] <=> $left['probability']);
+        usort($candidates, static fn (array $left, array $right): int => $right['evidence_score'] <=> $left['evidence_score']);
         $selected = $candidates[0] ?? null;
+        $supportZone = $previous->support === null ? null : $this->zone($this->d($previous->support), $zoneHalfWidth, $previous->supportStrength, $now);
+        $resistanceZone = $previous->resistance === null ? null : $this->zone($this->d($previous->resistance), $zoneHalfWidth, $previous->resistanceStrength, $now);
+        $rangePosition = null;
+        if ($previous->support !== null && $previous->resistance !== null) {
+            $width = $this->d($previous->resistance)->minus($previous->support);
+            if ($width->isGreaterThan(BigDecimal::zero())) {
+                $rangePosition = (string) $this->d($now->close)->minus($previous->support)->dividedBy($width, 8, RoundingMode::HalfEven);
+            }
+        }
 
         return [
             'support' => $previous->support,
             'resistance' => $previous->resistance,
+            'support_zone' => $supportZone,
+            'resistance_zone' => $resistanceZone,
+            'range_position' => $rangePosition,
             'momentum_side' => $buyMomentum === $sellMomentum ? 'NEUTRAL' : ($buyMomentum > $sellMomentum ? 'BUY' : 'SELL'),
             'momentum_strength' => max($buyMomentum, $sellMomentum),
-            'resistance_breakout_probability_percent' => $buyProbability,
-            'resistance_rejection_probability_percent' => $sellProbability,
-            'support_breakdown_probability_percent' => $sellProbability,
-            'support_rejection_probability_percent' => $buyProbability,
+            'bullish_directional_evidence_score' => $buyEvidenceScore,
+            'bearish_directional_evidence_score' => $sellEvidenceScore,
             'selected_event' => $selected['event'] ?? null,
             'selected_side' => $selected['side'] ?? null,
-            'selected_probability_percent' => $selected['probability'] ?? null,
-            'model' => 'deterministic_rule_estimate_not_calibrated_probability',
+            'selected_evidence_score' => $selected['evidence_score'] ?? null,
+            'probability_status' => 'INSUFFICIENT_DATA',
+            'model' => 'deterministic_interaction_evidence_v1',
+        ];
+    }
+
+    private function zone(BigDecimal $center, BigDecimal $halfWidth, int $strength, BarState $now): array
+    {
+        return [
+            'lower' => (string) $center->minus($halfWidth),
+            'upper' => (string) $center->plus($halfWidth),
+            'center' => (string) $center,
+            'strength' => $strength,
+            'atr_normalized_half_width' => (string) $this->config['zone_half_width_atr'],
+            'distance_atr' => (string) $this->d($now->close)->minus($center)->abs()->dividedBy($now->atr ?? '1', 8, RoundingMode::HalfEven),
+            'timeframe' => '15',
         ];
     }
 

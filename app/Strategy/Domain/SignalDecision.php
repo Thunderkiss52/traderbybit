@@ -38,6 +38,12 @@ final readonly class SignalDecision
         $utc = new DateTimeZone('UTC');
         $date = static fn (DateTimeImmutable $value): string => $value->setTimezone($utc)->format('Y-m-d\TH:i:s.v\Z');
 
+        $executionIntent = match ($this->side) {
+            SignalSide::Buy => 'OPEN_LONG',
+            SignalSide::Sell => $this->category === 'linear' ? 'OPEN_SHORT' : 'NO_ACTION',
+            SignalSide::Skip => 'NO_ACTION',
+        };
+
         return [
             'schema_version' => $this->schemaVersion,
             'strategy_version' => $this->strategyVersion,
@@ -48,6 +54,7 @@ final readonly class SignalDecision
             'decision_time' => $date($this->decisionTime),
             'candle_close_time' => $date($this->candleCloseTime),
             'side' => $this->side->value,
+            'execution_intent' => $executionIntent,
             'quality_class' => $this->qualityClass?->value,
             'score' => $this->score,
             'entry_zone' => $this->pricePlan === null ? null : ['low' => $this->pricePlan->entryLow, 'high' => $this->pricePlan->entryHigh],

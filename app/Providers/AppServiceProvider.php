@@ -18,7 +18,9 @@ use App\Indicators\Domain\IndicatorParameters;
 use App\Indicators\Math\Decimal;
 use App\MarketData\Application\CandleSynchronizer;
 use App\MarketData\Application\ClosedCandleIngestor;
+use App\MarketData\Application\FundingHistorySynchronizer;
 use App\MarketData\Application\MarketStreamSupervisor;
+use App\MarketData\Application\OpenInterestHistorySynchronizer;
 use App\MarketData\Contracts\Backoff;
 use App\MarketData\Contracts\BybitMarketDataClient;
 use App\MarketData\Contracts\CandleStore;
@@ -40,7 +42,16 @@ use App\PaperTrading\Application\PositionLifecycleService;
 use App\PaperTrading\Application\PositionSizingService;
 use App\PaperTrading\Application\RiskEngine;
 use App\PaperTrading\Application\TradingJournalService;
+use App\PatternDiscovery\Application\AsOfMarketContextService;
+use App\PatternDiscovery\Application\BarrierOutcomeLabeler;
+use App\PatternDiscovery\Application\CandlestickPatternDetector;
+use App\PatternDiscovery\Application\MarketFeatureExtractor;
+use App\PatternDiscovery\Application\MarketStructurePatternDetector;
+use App\PatternDiscovery\Application\PatternMatcher;
+use App\PatternDiscovery\Application\PatternMatchService;
+use App\PatternDiscovery\Application\PatternOccurrenceOutcomeService;
 use App\Strategy\Application\LevelInteractionAnalyzer;
+use App\Strategy\Application\LevelProbabilityService;
 use App\Strategy\Application\SignalGenerator;
 use App\Strategy\Application\StrategyEngine;
 use App\Strategy\Application\StrategyInputFactory;
@@ -54,7 +65,10 @@ use App\Strategy\Research\BaselineStrategy;
 use App\Strategy\Research\BollingerMeanReversionStrategy;
 use App\Strategy\Research\DonchianBreakoutStrategy;
 use App\Strategy\Research\MarketRegimeClassifier;
+use App\Strategy\Research\MomentumStrategy;
 use App\Strategy\Research\RegimeSwitchingStrategy;
+use App\Strategy\Research\SupportResistanceBounceStrategy;
+use App\Strategy\Research\SupportResistanceBreakoutStrategy;
 use App\Strategy\Research\TrendPullbackStrategy;
 use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Contracts\Cache\Factory;
@@ -77,18 +91,34 @@ class AppServiceProvider extends ServiceProvider
         ));
         $this->app->singleton(WarmupPolicy::class);
         $this->app->singleton(LevelInteractionAnalyzer::class, fn (): LevelInteractionAnalyzer => new LevelInteractionAnalyzer((array) config('strategy.level_interaction')));
+        $this->app->singleton(LevelProbabilityService::class, fn (): LevelProbabilityService => new LevelProbabilityService((array) config('strategy.level_interaction')));
+        $this->app->singleton(CandlestickPatternDetector::class, fn (): CandlestickPatternDetector => new CandlestickPatternDetector((array) config('patterns.candlestick')));
+        $this->app->singleton(MarketStructurePatternDetector::class, fn (): MarketStructurePatternDetector => new MarketStructurePatternDetector((array) config('patterns.market_structure')));
+        $this->app->singleton(PatternOccurrenceOutcomeService::class, fn (): PatternOccurrenceOutcomeService => new PatternOccurrenceOutcomeService((array) config('patterns.occurrence_outcomes')));
+        $this->app->singleton(PatternMatchService::class, fn ($app): PatternMatchService => new PatternMatchService(
+            $app->make(MarketFeatureExtractor::class),
+            $app->make(PatternMatcher::class),
+            $app->make(AsOfMarketContextService::class),
+            $app->make(BarrierOutcomeLabeler::class),
+            (array) config('patterns'),
+        ));
         $this->app->singleton(StrategyEngine::class, fn (): StrategyEngine => new StrategyEngine((array) config('strategy')));
-        $this->app->singleton(StrategyRegistry::class, function (): StrategyRegistry {
+        $this->app->singleton(StrategyRegistry::class, function ($app): StrategyRegistry {
             $research = (array) config('research.strategies');
             $trend = new TrendPullbackStrategy($research['trend_pullback']);
             $range = new BollingerMeanReversionStrategy($research['bollinger_mean_reversion']);
             $breakout = new DonchianBreakoutStrategy($research['donchian_atr_breakout']);
             $regimeConfig = $research['regime_switching'];
+            $levels = $app->make(LevelInteractionAnalyzer::class);
+            $probabilities = $app->make(LevelProbabilityService::class);
 
             return new StrategyRegistry([
                 new BaselineStrategy((array) config('strategy')), $trend, $range, $breakout,
                 new RegimeSwitchingStrategy($regimeConfig, new MarketRegimeClassifier($regimeConfig), $trend, $breakout, $range),
-            ]);
+                new MomentumStrategy($research['momentum']),
+                new SupportResistanceBounceStrategy($research['support_resistance_bounce'], $levels, $probabilities),
+                new SupportResistanceBreakoutStrategy($research['support_resistance_breakout'], $levels, $probabilities),
+            ], $levels, $probabilities);
         });
         $this->app->singleton(StrategyRankingService::class, fn (): StrategyRankingService => new StrategyRankingService((array) config('research.ranking')));
         $this->app->singleton(MarketContextRepository::class, EloquentMarketContextRepository::class);
@@ -141,6 +171,12 @@ class AppServiceProvider extends ServiceProvider
         ));
         $this->app->singleton(Sleeper::class, NativeSleeper::class);
         $this->app->singleton(CandleStore::class, EloquentCandleStore::class);
+        $this->app->singleton(FundingHistorySynchronizer::class, fn ($app): FundingHistorySynchronizer => new FundingHistorySynchronizer(
+            $app->make(BybitMarketDataClient::class), (array) config('market_data.funding'),
+        ));
+        $this->app->singleton(OpenInterestHistorySynchronizer::class, fn ($app): OpenInterestHistorySynchronizer => new OpenInterestHistorySynchronizer(
+            $app->make(BybitMarketDataClient::class), (array) config('market_data.open_interest'),
+        ));
         $this->app->singleton(BybitMarketDataClient::class, fn ($app): BybitMarketDataClient => new BybitRestClient(
             transport: $app->make(HttpTransport::class),
             backoff: $app->make(Backoff::class),

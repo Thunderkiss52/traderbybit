@@ -30,6 +30,7 @@ use App\PaperTrading\Infrastructure\Persistence\PositionFundingEventRecord;
 use App\PaperTrading\Infrastructure\Persistence\RiskDecisionRecord;
 use App\PaperTrading\Infrastructure\Persistence\VirtualExecutionRecord;
 use App\PaperTrading\Infrastructure\Persistence\VirtualPositionRecord;
+use App\PatternDiscovery\Infrastructure\Persistence\CandlestickPatternOccurrenceRecord;
 use App\Strategy\Application\StrategyRegistry;
 use App\Strategy\Infrastructure\Persistence\MarketContextRecord;
 use App\Strategy\Infrastructure\Persistence\SignalRecord;
@@ -105,6 +106,13 @@ final class ResearchController extends Controller
             'recent_decisions' => $recentDecisions,
             'skip_reasons_24h' => $skipReasons,
             'strategy_observations_24h' => $this->strategyObservations($strategies),
+            'strategy_portfolios' => PaperAccountRecord::query()->whereIn('mode', ['FORWARD_PAPER', 'STRATEGY_FORWARD_PAPER', 'RESEARCH_FORWARD_PAPER'])
+                ->latest('created_at')->limit(20)->get(['id', 'name', 'mode', 'strategy_id', 'strategy_version', 'status', 'current_equity', 'realized_pnl', 'unrealized_pnl', 'created_at']),
+            'paper_execution_health' => [
+                'execution_failures_24h' => JournalEventRecord::query()->where('event_type', 'EXECUTION_FAILED')->where('occurred_at', '>=', now('UTC')->subDay())->count(),
+                'last_journal_event_at' => JournalEventRecord::query()->max('occurred_at'),
+                'latest_strategy_evaluation_at' => StrategyObservationRecord::query()->max('decision_time'),
+            ],
             'positions' => VirtualPositionRecord::query()->whereNull('closed_at')->latest('opened_at')->limit(10)->get(['id', 'symbol', 'side', 'status', 'entry_price', 'net_pnl', 'unrealized_pnl']),
             'performance' => $account ? Cache::remember('paper:dashboard:performance:'.$account->id, 60, fn () => $statistics->calculate($account->id)->metrics) : null,
             'research_settings' => [
@@ -183,12 +191,27 @@ final class ResearchController extends Controller
         $symbol = $this->symbol($symbol);
         $interval = (string) $r->integer('interval', 15);
         $rows = $this->marketRows($r, $symbol);
+        $through = $rows->isEmpty() ? null : $rows->last()->open_time->addMinutes((int) $interval);
+        $levelObservation = StrategyObservationRecord::query()->where('symbol', $symbol)
+            ->when($through, fn ($query) => $query->where('decision_time', '<=', $through))
+            ->latest('decision_time')->first(['analysis']);
 
         return $this->ok([
             'candles' => $rows,
             'indicators' => $this->indicatorPayload($rows, $interval, $engine),
-            'context' => MarketContextRecord::query()->where('symbol', $symbol)->latest('observed_at')->first(),
-            'signals' => SignalRecord::query()->where('symbol', $symbol)->latest('decision_time')->latest('id')->limit(10)
+            'context' => MarketContextRecord::query()->where('symbol', $symbol)
+                ->when($through, fn ($query) => $query->where('observed_at', '<=', $through))
+                ->latest('observed_at')->first(),
+            'level_interaction' => data_get($levelObservation, 'analysis.level_interaction'),
+            'candlestick_patterns' => CandlestickPatternOccurrenceRecord::query()->where('symbol', $symbol)
+                ->where('timeframe', $interval)
+                ->when($rows->isNotEmpty(), fn ($query) => $query->where('detected_at', '>=', $rows->first()->open_time)
+                    ->where('detected_at', '<=', $rows->last()->open_time->addMinutes((int) $interval)))
+                ->latest('detected_at')->limit(100)->get(['id', 'pattern_name', 'pattern_type', 'direction', 'formation_time', 'detected_at', 'timeframe', 'version']),
+            'signals' => SignalRecord::query()->where('symbol', $symbol)->where('timeframe', $interval)
+                ->when($rows->isNotEmpty(), fn ($query) => $query->where('decision_time', '>=', $rows->first()->open_time)
+                    ->where('decision_time', '<=', $through))
+                ->latest('decision_time')->latest('id')->limit(10)
                 ->get(['id', 'symbol', 'side', 'quality_class', 'decision_time', 'candle_close_time', 'entry_low', 'entry_high', 'stop_loss', 'take_profit_1', 'take_profit_2']),
         ]);
     }
@@ -235,8 +258,17 @@ final class ResearchController extends Controller
 
     public function signals(Request $r): ResearchResource
     {
-        $q = SignalRecord::query();
-        foreach (['symbol', 'side', 'quality_class', 'strategy_version'] as $f) {
+        $q = SignalRecord::query()->select([
+            'signals.id', 'signals.symbol', 'signals.category', 'signals.timeframe', 'signals.side', 'signals.quality_class', 'signals.score',
+            'signals.decision_time', 'signals.candle_close_time', 'signals.expires_at', 'signals.entry_low', 'signals.entry_high',
+            'signals.stop_loss', 'signals.take_profit_1', 'signals.take_profit_2', 'signals.reasons', 'signals.risks',
+            'signals.strategy_id', 'signals.strategy_version',
+        ])->addSelect([
+            'risk_approved' => RiskDecisionRecord::query()->select('allowed')->whereColumn('signal_id', 'signals.id')->latest('decided_at')->limit(1),
+            'paper_execution_status' => PaperSignalStateRecord::query()->select('status')->whereColumn('signal_id', 'signals.id')->latest('updated_at')->limit(1),
+            'linked_position_id' => VirtualPositionRecord::query()->select('id')->whereColumn('signal_id', 'signals.id')->latest('opened_at')->limit(1),
+        ]);
+        foreach (['symbol', 'side', 'quality_class', 'strategy_id', 'strategy_version'] as $f) {
             if ($r->filled($f)) {
                 $q->where($f, $r->string($f));
             }
@@ -245,7 +277,7 @@ final class ResearchController extends Controller
             $q->where('symbol', 'like', '%'.strtoupper($r->string('search')).'%');
         }
 
-        return $this->ok($q->latest('decision_time')->latest('id')->paginate($this->perPage($r), ['id', 'symbol', 'side', 'quality_class', 'score', 'decision_time', 'candle_close_time', 'expires_at', 'entry_low', 'entry_high', 'stop_loss', 'take_profit_1', 'take_profit_2', 'strategy_version']));
+        return $this->ok($q->latest('decision_time')->latest('id')->paginate($this->perPage($r)));
     }
 
     public function signal(string $id): ResearchResource

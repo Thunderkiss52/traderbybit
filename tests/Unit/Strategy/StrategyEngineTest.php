@@ -24,9 +24,8 @@ final class StrategyEngineTest extends TestCase
         self::assertSame(['bullish_hourly_trend', 'thirty_minute_setup', 'five_minute_confirmation', 'level_resistance_breakout', 'ema_pullback', 'macd_crossover', 'confirmed_breakout'], $decision->reasons);
         self::assertArrayHasKey('30m', $decision->indicatorSnapshot);
         self::assertSame('resistance_breakout', $decision->indicatorSnapshot['level_interaction']['selected_event']);
-        self::assertSame(69, $decision->indicatorSnapshot['level_interaction']['selected_probability_percent']);
-        self::assertSame(100, $decision->indicatorSnapshot['level_interaction']['resistance_breakout_probability_percent']
-            + $decision->indicatorSnapshot['level_interaction']['resistance_rejection_probability_percent']);
+        self::assertSame(69, $decision->indicatorSnapshot['level_interaction']['selected_evidence_score']);
+        self::assertSame('INSUFFICIENT_DATA', $decision->indicatorSnapshot['level_interaction']['probability_status']);
         self::assertSame('103.1', $decision->pricePlan?->entryLow);
         self::assertSame('103.3', $decision->pricePlan?->entryHigh);
         self::assertSame('101.7', $decision->pricePlan?->stopLoss);

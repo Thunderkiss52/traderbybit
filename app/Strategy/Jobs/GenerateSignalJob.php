@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Strategy\Jobs;
 
 use App\Strategy\Application\SignalGenerator;
+use App\Strategy\Application\StrategyObservationService;
 use DateTimeImmutable;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
@@ -30,8 +31,9 @@ final class GenerateSignalJob implements ShouldQueue
         return [(new WithoutOverlapping("signal:{$this->symbol}:{$this->at}"))->expireAfter(120)];
     }
 
-    public function handle(SignalGenerator $generator): void
+    public function handle(SignalGenerator $generator, StrategyObservationService $observations): void
     {
-        $generator->generate($this->symbol, $this->at === null ? null : new DateTimeImmutable($this->at));
+        $decision = $generator->generate($this->symbol, $this->at === null ? null : new DateTimeImmutable($this->at));
+        $observations->observe($this->symbol, $decision->decisionTime);
     }
 }

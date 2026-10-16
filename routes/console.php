@@ -3,6 +3,8 @@
 use App\MarketData\Jobs\CheckMarketDataFreshnessJob;
 use App\MarketData\Jobs\EnsureStrategyHistoryJob;
 use App\MarketData\Jobs\RecoverCandleGapsJob;
+use App\MarketData\Jobs\SyncFundingHistoryJob;
+use App\MarketData\Jobs\SyncOpenInterestHistoryJob;
 use App\PaperTrading\Jobs\ProcessPaperTradingJob;
 use App\Strategy\Jobs\CaptureMarketContextJob;
 use App\Strategy\Jobs\EnsureResearchCoverageJob;
@@ -28,6 +30,14 @@ foreach ((array) config('market_data.symbols', ['BTCUSDT', 'ETHUSDT']) as $symbo
     Schedule::job(new CaptureMarketContextJob((string) $symbol))
         ->cron('13,28,43,58 * * * *')
         ->name("market-context:capture:{$symbol}")
+        ->withoutOverlapping();
+    Schedule::job(new SyncFundingHistoryJob((string) $symbol))
+        ->cron('11 * * * *')
+        ->name("market-funding:sync:{$symbol}")
+        ->withoutOverlapping();
+    Schedule::job(new SyncOpenInterestHistoryJob((string) $symbol))
+        ->cron('12 * * * *')
+        ->name("market-open-interest:sync:{$symbol}")
         ->withoutOverlapping();
     Schedule::job(new GenerateSignalJob((string) $symbol))
         ->cron('2,17,32,47 * * * *')

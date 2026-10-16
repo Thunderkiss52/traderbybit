@@ -14,7 +14,7 @@ final class MarketFeatureExtractor
     {
         $features = [];
         $regime = 'UNCERTAIN';
-        foreach (['1h', '15m', '5m'] as $frame) {
+        foreach (['1h', '30m', '15m', '5m'] as $frame) {
             $bar = $snapshot[$frame] ?? null;
             if (! is_array($bar) || ! isset($bar['close_time'])) {
                 continue;
@@ -75,11 +75,14 @@ final class MarketFeatureExtractor
                 }
             }
         }
-        if ($context !== null && isset($context['observed_at'])
-            && $context['observed_at'] <= $decisionTimestamp
-            && $decisionTimestamp - $context['observed_at'] <= 900) {
-            foreach (['funding_rate' => 'funding', 'open_interest_change' => 'open_interest_change'] as $key => $label) {
-                if (is_numeric($context[$key] ?? null)) {
+        if ($context !== null) {
+            foreach ([
+                'funding_rate' => ['funding', 'funding_observed_at', 43200],
+                'open_interest_change' => ['open_interest_change', 'open_interest_observed_at', 1800],
+            ] as $key => [$label, $timestampKey, $maximumAge]) {
+                $observedAt = $context[$timestampKey] ?? $context['observed_at'] ?? null;
+                if (is_int($observedAt) && $observedAt <= $decisionTimestamp
+                    && $decisionTimestamp - $observedAt <= $maximumAge && is_numeric($context[$key] ?? null)) {
                     $features[] = 'context:'.$label.':'.((float) $context[$key] >= 0 ? 'POS' : 'NEG');
                 }
             }

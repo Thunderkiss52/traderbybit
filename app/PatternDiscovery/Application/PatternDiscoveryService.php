@@ -5,10 +5,11 @@ declare(strict_types=1);
 namespace App\PatternDiscovery\Application;
 
 use App\MarketData\Infrastructure\Persistence\CandleRecord;
+use App\PaperTrading\Infrastructure\Persistence\RiskDecisionRecord;
+use App\PaperTrading\Infrastructure\Persistence\VirtualPositionRecord;
 use App\PatternDiscovery\Domain\MarketObservation;
 use App\PatternDiscovery\Infrastructure\Persistence\PatternRecord;
 use App\PatternDiscovery\Infrastructure\Persistence\PatternRunRecord;
-use App\Strategy\Infrastructure\Persistence\MarketContextRecord;
 use App\Strategy\Infrastructure\Persistence\SignalRecord;
 use DateTimeImmutable;
 use Illuminate\Support\Facades\DB;
@@ -19,6 +20,7 @@ final readonly class PatternDiscoveryService
         private MarketFeatureExtractor $features,
         private BarrierOutcomeLabeler $labeler,
         private PatternMiner $miner,
+        private AsOfMarketContextService $contexts,
     ) {}
 
     public function run(string $runId): void
@@ -32,6 +34,7 @@ final readonly class PatternDiscoveryService
             $config = $run->parameters;
             $records = SignalRecord::query()->where('symbol', $run->symbol)
                 ->where('exchange', 'bybit')->where('category', 'linear')
+                ->where('strategy_id', 'baseline')
                 ->where('decision_time', '>=', $run->from_at)
                 ->where('decision_time', '<=', $run->to_at)
                 ->orderBy('decision_time')->orderBy('id')
@@ -39,21 +42,17 @@ final readonly class PatternDiscoveryService
             if ($records->count() > (int) $config['maximum_decisions']) {
                 throw new \RuntimeException('research_decision_limit_exceeded_narrow_date_range');
             }
+            $signalIds = $records->pluck('id');
+            $riskBySignal = RiskDecisionRecord::query()->whereIn('signal_id', $signalIds)->get(['signal_id', 'allowed'])->groupBy('signal_id');
+            $positionsBySignal = VirtualPositionRecord::query()->whereIn('signal_id', $signalIds)
+                ->get(['signal_id', 'status', 'net_pnl', 'closed_at'])->groupBy('signal_id');
             $observations = [];
             $quality = ['missing_features' => 0, 'missing_outcomes' => 0, 'ambiguous_labels' => 0];
             $previous = null;
             foreach ($records as $record) {
                 $time = $record->decision_time->getTimestamp();
                 $snapshot = (array) ($record->indicator_snapshot ?? []);
-                $contextRecord = MarketContextRecord::query()->where('exchange', $record->exchange)
-                    ->where('category', $record->category)->where('symbol', $record->symbol)
-                    ->where('observed_at', '<=', $record->decision_time)
-                    ->orderByDesc('observed_at')->first(['observed_at', 'funding_rate', 'open_interest_change']);
-                $context = $contextRecord === null ? null : [
-                    'observed_at' => $contextRecord->observed_at->getTimestamp(),
-                    'funding_rate' => $contextRecord->funding_rate,
-                    'open_interest_change' => $contextRecord->open_interest_change,
-                ];
+                $context = $this->contexts->at($record->exchange, $record->category, $record->symbol, $record->decision_time->toDateTimeImmutable());
                 $features = $this->features->extract($snapshot, $time, $previous, $context);
                 $previous = ['decision_timestamp' => $time, 'reason' => $record->reasons[0] ?? 'none', 'snapshot' => $snapshot];
                 $entry = $snapshot['15m'] ?? null;
@@ -88,9 +87,17 @@ final readonly class PatternDiscoveryService
                         continue;
                     }
                     $quality['ambiguous_labels'] += (int) $label['ambiguous'];
+                    $risks = $riskBySignal->get($record->id, collect());
+                    $riskOutcome = $risks->contains(fn (RiskDecisionRecord $risk): bool => ! $risk->allowed)
+                        ? 'REJECTED' : ($risks->contains(fn (RiskDecisionRecord $risk): bool => $risk->allowed) ? 'APPROVED' : 'NOT_EVALUATED');
+                    $positions = $positionsBySignal->get($record->id, collect());
+                    $closed = $positions->first(fn (VirtualPositionRecord $position): bool => $position->closed_at !== null);
+                    $paperOutcome = $closed !== null ? ((float) $closed->net_pnl > 0 ? 'WIN' : 'LOSS')
+                        : ($positions->isNotEmpty() ? 'OPEN' : 'NO_TRADE');
                     $observations[] = new MarketObservation($record->id, $record->symbol, $direction, $time,
                         $label['outcome_timestamp'], $features['features'], $label['won'], $label['net_r'],
-                        $label['ambiguous'], $features['regime']);
+                        $label['ambiguous'], $features['regime'], $label['mfe_r'], $label['mae_r'],
+                        $record->side, $riskOutcome, $paperOutcome);
                 }
             }
             $results = $this->miner->discover($observations, $config);

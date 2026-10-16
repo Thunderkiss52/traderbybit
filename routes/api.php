@@ -23,9 +23,14 @@ Route::prefix('v1')->middleware('throttle:api')->group(function () {
     Route::get('research/patterns', [P::class, 'index']);
     Route::get('research/patterns/runs', [P::class, 'runs']);
     Route::get('research/patterns/latest-matches', [P::class, 'latestMatches']);
+    Route::get('research/candlestick-patterns', [P::class, 'classical']);
+    Route::get('research/level-forecasts', [P::class, 'levelForecasts']);
+    Route::get('research/pattern-matches', [P::class, 'patternMatches']);
     Route::get('research/patterns/{id}', [P::class, 'show']);
     Route::post('research/patterns/runs', [P::class, 'queue'])->middleware(RequireResearchToken::class);
     Route::get('research/strategies', [R::class, 'strategies']);
+    Route::get('research/strategies/{id}/diagnostics', [R::class, 'diagnostics']);
+    Route::get('research/strategies/{id}/statistics', [R::class, 'statistics']);
     Route::get('research/strategies/{id}', [R::class, 'strategy']);
     Route::get('research/experiments', [R::class, 'experiments']);
     Route::get('research/experiments/{id}', [R::class, 'experiment']);

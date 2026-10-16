@@ -33,6 +33,8 @@ final class BarrierOutcomeLabeler
         $exitPrice = null;
         $outcome = 'TIMEOUT';
         $ambiguous = false;
+        $mfe = BigDecimal::zero();
+        $mae = BigDecimal::zero();
         foreach ($bars as $bar) {
             // Each candle must start at the previous decision/close boundary.
             if ($bar['open_time'] !== $expected) {
@@ -42,6 +44,14 @@ final class BarrierOutcomeLabeler
             $hi = BigDecimal::of($bar['high']);
             $lo = BigDecimal::of($bar['low']);
             $open = BigDecimal::of($bar['open']);
+            $favorable = $long ? $hi->minus($entryPrice) : $entryPrice->minus($lo);
+            $adverse = $long ? $lo->minus($entryPrice) : $entryPrice->minus($hi);
+            if ($favorable->isGreaterThan($mfe)) {
+                $mfe = $favorable;
+            }
+            if ($adverse->isLessThan($mae)) {
+                $mae = $adverse;
+            }
             $gappedThroughStop = $long ? $open->isLessThanOrEqualTo($stop) : $open->isGreaterThanOrEqualTo($stop);
             if ($gappedThroughStop) {
                 // A stop-market order cannot be assumed to fill at the stop after an adverse gap.
@@ -73,6 +83,8 @@ final class BarrierOutcomeLabeler
 
         return ['outcome' => $outcome, 'won' => $netR->isGreaterThan(BigDecimal::zero()),
             'net_r' => (float) (string) $netR, 'ambiguous' => $ambiguous,
+            'mfe_r' => (float) (string) $mfe->dividedBy($distance, 12, RoundingMode::HalfEven),
+            'mae_r' => (float) (string) $mae->dividedBy($distance, 12, RoundingMode::HalfEven),
             'outcome_timestamp' => $expected];
     }
 }

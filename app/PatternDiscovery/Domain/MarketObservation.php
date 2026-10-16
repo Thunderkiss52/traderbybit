@@ -18,5 +18,10 @@ final readonly class MarketObservation
         public float $netR,
         public bool $ambiguous,
         public string $regime,
+        public float $mfeR = 0.0,
+        public float $maeR = 0.0,
+        public string $anchorDecision = 'UNKNOWN',
+        public string $riskOutcome = 'NOT_EVALUATED',
+        public string $paperOutcome = 'NO_TRADE',
     ) {}
 }

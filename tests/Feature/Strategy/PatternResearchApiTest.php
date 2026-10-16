@@ -46,6 +46,8 @@ final class PatternResearchApiTest extends TestCase
         $this->getJson("/api/v1/research/patterns/{$pattern->id}")->assertOk()
             ->assertJsonPath('data.id', $pattern->id)
             ->assertJsonPath('data.status', 'VALIDATED');
+        $this->getJson('/api/v1/research/patterns')->assertOk()->assertJsonPath('data.0.status', 'STALE');
+        $this->getJson('/api/v1/research/patterns?status=STALE')->assertOk()->assertJsonCount(1, 'data');
     }
 
     public function test_unauthorized_research_cannot_queue_discovery(): void

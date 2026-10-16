@@ -5,7 +5,9 @@ declare(strict_types=1);
 namespace Tests\Feature\Strategy;
 
 use App\Strategy\Application\StrategyRegistry;
+use App\Strategy\Application\StrategyResearchService;
 use App\Strategy\Infrastructure\Persistence\ResearchExperimentRecord;
+use App\Strategy\Jobs\ProcessResearchPaperJob;
 use App\Strategy\Jobs\RunResearchExperimentJob;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Bus;
@@ -18,12 +20,21 @@ final class ResearchApiTest extends TestCase
 
     public function test_strategy_catalog_and_empty_leaderboard_are_bounded_and_do_not_fabricate_metrics(): void
     {
-        $this->getJson('/api/v1/research/strategies?per_page=10')->assertOk()->assertJsonPath('data.meta.total', 5)->assertJsonPath('data.data.0.id', 'baseline');
+        $this->getJson('/api/v1/research/strategies?per_page=10')->assertOk()->assertJsonPath('data.meta.total', 8)->assertJsonPath('data.data.0.id', 'baseline');
         $this->getJson('/api/v1/research/strategies?per_page=10')->assertJsonPath('data.data.0.timeframes.setup', '30m');
         $this->getJson('/api/v1/research/strategies/baseline')->assertOk()->assertJsonPath('data.strategy.id', 'baseline');
+        $this->getJson('/api/v1/research/strategies/baseline/diagnostics')
+            ->assertOk()
+            ->assertJsonPath('data.funnel.market_evaluations', 0)
+            ->assertJsonPath('data.funnel.successful_simulated_openings', 0)
+            ->assertJsonPath('data.evaluations.per_page', 10);
+        $this->getJson('/api/v1/research/strategies/baseline/statistics')->assertOk()->assertJsonCount(0, 'data');
+        $this->getJson('/api/v1/research/level-forecasts?per_page=10')->assertOk()
+            ->assertJsonPath('meta.per_page', 10)
+            ->assertJsonPath('meta.calibration.resolved_forecasts', 0);
         $response = $this->getJson('/api/v1/research/leaderboard')->assertOk();
-        $response->assertJsonPath('data.meta.total', 5)->assertJsonPath('data.data.0.metrics', null)->assertJsonPath('data.data.0.ranking.status', 'NOT_EVALUATED');
-        $this->getJson('/api/v1/research/comparison')->assertOk()->assertJsonPath('data.meta.total', 5);
+        $response->assertJsonPath('data.meta.total', 8)->assertJsonPath('data.data.0.metrics', null)->assertJsonPath('data.data.0.ranking.status', 'NOT_EVALUATED');
+        $this->getJson('/api/v1/research/comparison')->assertOk()->assertJsonPath('data.meta.total', 8);
     }
 
     public function test_authorized_experiment_is_persisted_and_queued_on_dedicated_worker(): void
@@ -46,6 +57,20 @@ final class ResearchApiTest extends TestCase
     {
         $this->getJson('/api/v1/research/experiments')->assertOk()->assertJsonPath('data.per_page', 10);
         $this->getJson('/api/v1/research/strategies/missing')->assertNotFound();
+    }
+
+    public function test_forward_research_job_bootstraps_enabled_isolated_strategy_accounts(): void
+    {
+        (new ProcessResearchPaperJob)->handle($this->app->make(StrategyResearchService::class));
+
+        $this->assertDatabaseCount('paper_accounts', 7);
+        $this->assertDatabaseHas('paper_accounts', ['mode' => 'STRATEGY_FORWARD_PAPER', 'strategy_id' => 'trend_pullback']);
+        $this->assertDatabaseHas('paper_accounts', ['mode' => 'STRATEGY_FORWARD_PAPER', 'strategy_id' => 'bollinger_mean_reversion']);
+        $this->assertDatabaseHas('paper_accounts', ['mode' => 'STRATEGY_FORWARD_PAPER', 'strategy_id' => 'donchian_atr_breakout']);
+        $this->assertDatabaseHas('paper_accounts', ['mode' => 'STRATEGY_FORWARD_PAPER', 'strategy_id' => 'regime_switching']);
+        $this->assertDatabaseHas('paper_accounts', ['mode' => 'STRATEGY_FORWARD_PAPER', 'strategy_id' => 'momentum']);
+        $this->assertDatabaseHas('paper_accounts', ['mode' => 'STRATEGY_FORWARD_PAPER', 'strategy_id' => 'support_resistance_bounce']);
+        $this->assertDatabaseHas('paper_accounts', ['mode' => 'STRATEGY_FORWARD_PAPER', 'strategy_id' => 'support_resistance_breakout']);
     }
 
     public function test_leaderboard_uses_only_experiments_for_the_current_strategy_identity(): void

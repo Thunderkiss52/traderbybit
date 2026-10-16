@@ -68,6 +68,66 @@ final class PaperLifecycleTest extends TestCase
             ->assertJsonCount(3, 'data.executions.data');
     }
 
+    public function test_non_baseline_actionable_signal_reaches_isolated_paper_execution(): void
+    {
+        $account = $this->app->make(PaperAccountService::class)->strategyForward(
+            'trend_pullback',
+            '1.2.0',
+            ['version' => '1.2.0'],
+        );
+        $signal = $this->signal('BUY', strategyId: 'trend_pullback');
+        $this->context();
+        $this->candle('10:15', '100.5', '102', '100.5', '101.2');
+
+        $this->app->make(PaperProcessingService::class)->process(
+            accountId: $account->id,
+            symbol: 'BTCUSDT',
+            at: new DateTimeImmutable('2026-10-14T10:20:00Z'),
+        );
+
+        $position = VirtualPositionRecord::query()->firstOrFail();
+        self::assertSame($account->id, $position->paper_account_id);
+        self::assertSame($signal->id, $position->signal_id);
+        self::assertSame(PositionStatus::Open->value, $position->status);
+        $this->assertDatabaseHas('risk_decisions', ['paper_account_id' => $account->id, 'signal_id' => $signal->id, 'allowed' => true]);
+        $this->assertDatabaseCount('virtual_executions', 1);
+    }
+
+    public function test_spot_sell_is_risk_rejected_and_never_opens_a_short(): void
+    {
+        $signal = $this->signal('SELL');
+        $signal->update(['category' => 'spot']);
+        $this->context();
+
+        $this->app->make(PaperProcessingService::class)->process(
+            symbol: 'BTCUSDT',
+            at: new DateTimeImmutable('2026-10-14T10:15:00Z'),
+        );
+
+        self::assertFalse(VirtualPositionRecord::query()->exists());
+        self::assertSame('REJECTED', PaperSignalStateRecord::query()->where('signal_id', $signal->id)->value('status'));
+        self::assertContains('spot_short_unsupported', RiskDecisionRecord::query()->where('signal_id', $signal->id)->firstOrFail()->reasons);
+    }
+
+    public function test_extreme_funding_and_open_interest_are_hard_risk_rejections(): void
+    {
+        $signal = $this->signal('BUY');
+        $this->context();
+        MarketContextRecord::query()->firstOrFail()->update([
+            'funding_rate' => '0.002', 'open_interest_change' => '0.20',
+        ]);
+
+        $this->app->make(PaperProcessingService::class)->process(
+            symbol: 'BTCUSDT', at: new DateTimeImmutable('2026-10-14T10:15:00Z'),
+        );
+
+        $decision = RiskDecisionRecord::query()->where('signal_id', $signal->id)->firstOrFail();
+        self::assertFalse($decision->allowed);
+        self::assertContains('extreme_funding_rate', $decision->reasons);
+        self::assertContains('extreme_open_interest_change', $decision->reasons);
+        self::assertFalse(VirtualPositionRecord::query()->exists());
+    }
+
     #[DataProvider('stopSides')]
     public function test_buy_and_sell_close_at_stop(string $side): void
     {
@@ -122,6 +182,19 @@ final class PaperLifecycleTest extends TestCase
         $this->process('11:15', 'ETHUSDT');
         self::assertSame('REJECTED', PaperSignalStateRecord::query()->where('signal_id', $other->id)->value('status'));
         self::assertContains('market_metadata_unavailable', RiskDecisionRecord::query()->where('signal_id', $other->id)->firstOrFail()->reasons);
+    }
+
+    public function test_skip_ingestion_is_bounded_and_idempotently_marked_complete(): void
+    {
+        $signal = $this->signal('SKIP');
+        $service = $this->app->make(PaperProcessingService::class);
+
+        $service->process(symbol: 'BTCUSDT', at: new DateTimeImmutable('2026-10-14T10:15:00Z'));
+        $service->process(symbol: 'BTCUSDT', at: new DateTimeImmutable('2026-10-14T10:15:00Z'));
+
+        $this->assertDatabaseHas('paper_signal_states', ['signal_id' => $signal->id, 'status' => 'COMPLETED']);
+        self::assertSame(1, JournalEventRecord::query()->where('event_type', 'ANALYTICAL_SKIP')->count());
+        self::assertFalse(RiskDecisionRecord::query()->where('signal_id', $signal->id)->exists());
     }
 
     public function test_timeout_waits_for_next_available_closed_bar_without_lookahead(): void
@@ -212,7 +285,7 @@ final class PaperLifecycleTest extends TestCase
         (new ProcessPaperTradingJob(at: '2026-10-14T10:15:00Z'))->handle($this->app->make(PaperProcessingService::class));
     }
 
-    private function signal(string $side, string $symbol = 'BTCUSDT', string $time = '10:15'): SignalRecord
+    private function signal(string $side, string $symbol = 'BTCUSDT', string $time = '10:15', string $strategyId = 'baseline'): SignalRecord
     {
         $at = new DateTimeImmutable("2026-10-14T{$time}:00Z");
         $buy = $side === 'BUY';
@@ -224,7 +297,7 @@ final class PaperLifecycleTest extends TestCase
             'take_profit_1' => $buy ? '105' : '95', 'take_profit_2' => $buy ? '110' : '90', 'risk_reward_1' => '1.5', 'risk_reward_2' => '2.5',
             'model_risk_percent' => '0.50', 'expires_at' => $at->modify('+30 minutes'), 'maximum_holding_minutes' => 240,
             'reasons' => ['fixture'], 'risks' => [], 'indicator_snapshot' => ['15m' => ['atr_14' => '1', 'close' => '100']], 'contract' => ['research_mode' => true],
-            'strategy_version' => '1.0.0', 'schema_version' => '1.0.0',
+            'strategy_version' => '1.0.0', 'schema_version' => '1.0.0', 'strategy_id' => $strategyId,
         ]);
     }
 

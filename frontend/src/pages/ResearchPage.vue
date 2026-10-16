@@ -23,7 +23,7 @@ const action=async(id:string,name:'cancel'|'approve-forward')=>{ try { await api
   <q-banner v-if="error" class="bg-negative text-white q-mb-md">{{error}} <q-btn flat label="Retry" @click="refresh" /></q-banner>
   <q-banner v-if="notice" class="bg-positive text-white q-mb-md">{{notice}}</q-banner>
   <q-banner v-if="hasActiveExperiments" class="bg-blue-grey-9 text-white q-mb-md">A research experiment is queued or running asynchronously. The dedicated worker processes one heavy research job at a time; results refresh automatically about every 10 seconds.</q-banner>
-  <q-banner class="bg-blue-grey-10 text-white q-mb-md">All five strategies use the same closed-candle hierarchy: 1h trend · 30m setup · 15m entry · 5m confirmation. Results remain separate by strategy version and are never combined with forward-paper performance.</q-banner>
+  <q-banner class="bg-blue-grey-10 text-white q-mb-md">All enabled strategies use the same closed-candle hierarchy: 1h trend · 30m setup · 15m entry · 5m confirmation. Results remain separate by strategy version and are never combined with forward-paper performance.</q-banner>
   <section><h2>Strategy Leaderboard</h2><q-table flat bordered :loading="loading" :rows="leaderboard.data||[]" row-key="id" :pagination="{rowsPerPage:0}" hide-pagination :columns="[
     {name:'id',label:'Strategy',field:'id',align:'left'},{name:'return',label:'OOS Net PnL',field:(r:any)=>r.metrics?.net_pnl??'Not evaluated'},
     {name:'pf',label:'Profit Factor',field:(r:any)=>r.metrics?.profit_factor??'—'},{name:'dd',label:'Max DD',field:(r:any)=>r.metrics?.maximum_drawdown_percent??'—'},

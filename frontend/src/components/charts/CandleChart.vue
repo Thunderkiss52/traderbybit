@@ -2,7 +2,7 @@
 import { CandlestickSeries, createChart, createSeriesMarkers, HistogramSeries, LineSeries } from 'lightweight-charts';
 import { onBeforeUnmount, onMounted, ref, watch } from 'vue';
 
-const props = defineProps<{ candles: any[]; indicators?: any; signals?: any[] }>();
+const props = defineProps<{ candles: any[]; indicators?: any; signals?: any[]; patterns?: any[] }>();
 const element = ref<HTMLElement>();
 let chart: ReturnType<typeof createChart> | undefined;
 
@@ -28,13 +28,21 @@ const mount = () => {
     open: Number(value.open), high: Number(value.high), low: Number(value.low), close: Number(value.close),
   })));
   const visibleSignals = (props.signals || []).filter(signal => ['BUY', 'SELL'].includes(signal.side));
-  createSeriesMarkers(candles, visibleSignals.map(signal => ({
+  const signalMarkers = visibleSignals.map(signal => ({
     time: Math.floor(new Date(signal.candle_close_time || signal.decision_time).getTime() / 1000) as any,
-    position: signal.side === 'BUY' ? 'belowBar' : 'aboveBar',
+    position: signal.side === 'BUY' ? 'belowBar' as const : 'aboveBar' as const,
     color: signal.side === 'BUY' ? '#35d0a0' : '#fb7185',
-    shape: signal.side === 'BUY' ? 'arrowUp' : 'arrowDown',
+    shape: signal.side === 'BUY' ? 'arrowUp' as const : 'arrowDown' as const,
     text: `${signal.side} ${signal.quality_class || ''}`,
-  })));
+  }));
+  const patternMarkers = (props.patterns || []).map(pattern => ({
+    time: Math.floor((new Date(pattern.detected_at).getTime() - Number(pattern.timeframe) * 60_000) / 1000) as any,
+    position: pattern.direction === 'BEARISH' ? 'aboveBar' as const : 'belowBar' as const,
+    color: pattern.direction === 'BEARISH' ? '#f59e0b' : pattern.direction === 'BULLISH' ? '#a78bfa' : '#94a3b8',
+    shape: 'circle' as const,
+    text: pattern.pattern_name,
+  }));
+  createSeriesMarkers(candles, [...signalMarkers, ...patternMarkers].sort((a, b) => Number(a.time) - Number(b.time)));
   const latestSignal = visibleSignals[0];
   if (latestSignal) {
     const levels = [
@@ -72,7 +80,7 @@ const mount = () => {
 };
 
 onMounted(mount);
-watch(() => [props.candles, props.indicators, props.signals], mount, { flush: 'post' });
+watch(() => [props.candles, props.indicators, props.signals, props.patterns], mount, { flush: 'post' });
 onBeforeUnmount(() => {
   chart?.remove();
   chart = undefined;
