@@ -77,7 +77,7 @@ final class DailyPerformanceService
             $bindings = [$modifier];
         }
         $base = EquitySnapshotRecord::query()->where('paper_account_id', $accountId)
-            ->selectRaw($expression.' AS local_date', $bindings)->groupByRaw($expression, $bindings);
+            ->selectRaw($expression.' AS local_date', $bindings)->groupBy('local_date');
         $total = DB::query()->fromSub(clone $base, 'snapshot_days')->count();
         $dates = (clone $base)->orderByDesc('local_date')->offset(($page - 1) * $perPage)->limit($perPage)->pluck('local_date')->map(fn ($date): string => (string) $date)->all();
 

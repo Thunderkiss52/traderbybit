@@ -45,6 +45,13 @@ final class BacktestCurveServiceTest extends TestCase
             DB::table('backtest_equity_snapshots')->insert($chunk);
         }
 
+        $this->getJson("/api/v1/backtests/{$runId}")->assertOk()->assertJsonPath('data.run.id', $runId);
+        $this->getJson("/api/v1/backtests/{$runId}/report")->assertOk()->assertJsonPath('data.run.id', $runId);
+        $this->getJson("/api/v1/backtests/{$runId}/trades")->assertOk()->assertJsonPath('data.total', 0);
+        $this->getJson("/api/v1/backtests/{$runId}/equity?max_points=100")->assertOk()
+            ->assertJsonPath('data.original_points', 1201);
+        $this->getJson("/api/v1/backtests/{$runId}/optimizations")->assertOk()->assertJsonPath('data.total', 0);
+
         $result = app(BacktestCurveService::class)->get($runId, 100);
         $equities = collect($result['points'])->pluck('equity')->map(static fn ($value): string => (string) $value);
 

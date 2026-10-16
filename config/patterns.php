@@ -5,7 +5,7 @@ declare(strict_types=1);
 return [
     'version' => '1.0.0',
     'queue' => 'research',
-    'maximum_decisions' => 600,
+    'maximum_decisions' => 800,
     'maximum_patterns' => 80,
     'maximum_terms' => 2,
     'minimum_train' => 20,

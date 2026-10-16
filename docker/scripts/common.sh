@@ -16,6 +16,17 @@ set -a
 # shellcheck disable=SC1090
 source "${ENV_FILE}"
 set +a
+if [[ -n "${UI_BASIC_AUTH_PASSWORD_B64:-}" ]]; then
+    if ! UI_BASIC_AUTH_PASSWORD="$(printf '%s' "${UI_BASIC_AUTH_PASSWORD_B64}" | base64 --decode)" || [[ -z "${UI_BASIC_AUTH_PASSWORD}" ]]; then
+        echo "UI_BASIC_AUTH_PASSWORD_B64 must contain a non-empty base64-encoded password." >&2
+        exit 1
+    fi
+    export UI_BASIC_AUTH_PASSWORD
+fi
+if [[ -z "${UI_BASIC_AUTH_USER:-}" || -z "${UI_BASIC_AUTH_PASSWORD:-}" ]]; then
+    echo "UI_BASIC_AUTH_USER and either UI_BASIC_AUTH_PASSWORD or UI_BASIC_AUTH_PASSWORD_B64 are required." >&2
+    exit 1
+fi
 ENV_FILE="${REQUESTED_ENV_FILE}"
 if [[ -n "${REQUESTED_IMAGE_TAG}" ]]; then
     IMAGE_TAG="${REQUESTED_IMAGE_TAG}"

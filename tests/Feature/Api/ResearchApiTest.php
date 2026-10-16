@@ -24,6 +24,15 @@ final class ResearchApiTest extends TestCase
             ->assertJsonCount(0, 'data.market')->assertJsonCount(0, 'data.recent_decisions')->assertJsonPath('data.skip_reasons_24h', []);
     }
 
+    public function test_dashboard_returns_performance_for_an_existing_paper_account(): void
+    {
+        $account = app(PaperAccountService::class)->default();
+
+        $this->getJson('/api/v1/dashboard')->assertOk()
+            ->assertJsonPath('data.portfolio.account_id', $account->id)
+            ->assertJsonPath('data.performance.closed_positions', 0);
+    }
+
     public function test_invalid_symbol_and_series_limit_are_rejected(): void
     {
         $this->getJson('/api/v1/market/DOGEUSDT/candles')->assertNotFound();
@@ -36,6 +45,10 @@ final class ResearchApiTest extends TestCase
             ->assertOk()
             ->assertJsonPath('data.times', [])
             ->assertJsonPath('data.series', null);
+
+        $this->getJson('/api/v1/market/BTCUSDT/context')
+            ->assertOk()
+            ->assertJsonPath('data', null);
     }
 
     public function test_market_analysis_combines_bounded_initial_payload(): void

@@ -32,6 +32,7 @@ final class EnsureStrategyHistoryTest extends TestCase
     {
         $this->travelTo(new \DateTimeImmutable('2026-10-15T12:05:00Z'));
         Queue::fake();
+        config()->set('research.automatic.enabled', false);
         $last = new \DateTimeImmutable('2026-10-15T11:00:00Z');
         $rows = [];
         for ($i = 0; $i < 220; $i++) {
@@ -52,6 +53,23 @@ final class EnsureStrategyHistoryTest extends TestCase
 
         Queue::assertPushed(SyncCandlesJob::class, 5);
         Queue::assertNotPushed(SyncCandlesJob::class, static fn (SyncCandlesJob $job): bool => $job->symbol === 'BTCUSDT' && $job->interval === '60'
+        );
+    }
+
+    public function test_automatic_research_requests_evaluation_history_plus_warmup(): void
+    {
+        $this->travelTo(new \DateTimeImmutable('2026-10-15T12:05:00Z'));
+        Queue::fake();
+        config()->set('market_data.symbols', ['BTCUSDT']);
+        config()->set('market_data.intervals', ['60']);
+        config()->set('research.automatic.evaluation_days', 14);
+        config()->set('backtest.warmup_bars', 220);
+
+        (new EnsureStrategyHistoryJob)->handle();
+
+        Queue::assertPushed(SyncCandlesJob::class, static fn (SyncCandlesJob $job): bool => $job->symbol === 'BTCUSDT'
+            && $job->interval === '60'
+            && ($job->toMs - $job->fromMs) >= (220 + 14 * 24) * 3_600_000
         );
     }
 }

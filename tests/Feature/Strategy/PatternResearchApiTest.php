@@ -4,10 +4,12 @@ declare(strict_types=1);
 
 namespace Tests\Feature\Strategy;
 
+use App\PatternDiscovery\Infrastructure\Persistence\PatternRecord;
 use App\PatternDiscovery\Infrastructure\Persistence\PatternRunRecord;
 use App\PatternDiscovery\Jobs\DiscoverPatternsJob;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Bus;
+use Ramsey\Uuid\Uuid;
 use Tests\TestCase;
 
 final class PatternResearchApiTest extends TestCase
@@ -20,6 +22,26 @@ final class PatternResearchApiTest extends TestCase
             ->assertJsonCount(0, 'data')->assertJsonPath('meta.per_page', 10);
         $this->getJson('/api/v1/research/patterns/runs')->assertOk()
             ->assertJsonCount(0, 'data')->assertJsonPath('meta.per_page', 10);
+        $this->getJson('/api/v1/research/patterns/latest-matches?symbol=BTCUSDT')->assertOk()
+            ->assertJsonCount(0, 'data')->assertJsonPath('meta.point_in_time', null);
+    }
+
+    public function test_pattern_detail_returns_the_persisted_research_definition(): void
+    {
+        $run = PatternRunRecord::query()->create([
+            'id' => Uuid::uuid4()->toString(), 'status' => 'COMPLETED',
+            'symbol' => 'BTCUSDT', 'from_at' => '2026-01-01', 'to_at' => '2026-02-01',
+            'configuration_hash' => str_repeat('a', 64), 'parameters' => [],
+        ]);
+        $pattern = PatternRecord::query()->create([
+            'id' => Uuid::uuid4()->toString(), 'pattern_run_id' => $run->id,
+            'direction' => 'BUY', 'status' => 'VALIDATED', 'terms' => ['trend' => 'up'],
+            'metrics' => ['observations' => 25], 'rule_hash' => str_repeat('b', 64), 'version' => '1.0.0',
+        ]);
+
+        $this->getJson("/api/v1/research/patterns/{$pattern->id}")->assertOk()
+            ->assertJsonPath('data.id', $pattern->id)
+            ->assertJsonPath('data.status', 'VALIDATED');
     }
 
     public function test_unauthorized_research_cannot_queue_discovery(): void

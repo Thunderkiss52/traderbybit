@@ -30,6 +30,12 @@ openssl rand -hex 24          # Basic Auth password
 openssl rand -hex 32          # UI_BACKTEST_TOKEN
 ```
 
+For a Basic Auth password containing shell-sensitive characters, store it without
+shell interpolation by setting `UI_BASIC_AUTH_PASSWORD_B64` to
+`printf '%s' 'your password' | base64 -w0`. The decoded value takes precedence
+over `UI_BASIC_AUTH_PASSWORD`. Hex-generated passwords can continue using the
+plain variable safely.
+
 Проверьте `APP_URL`, `CORS_ALLOWED_ORIGINS`, свободный `WEB_PORT` и доступное место на диске. Затем:
 
 ```bash

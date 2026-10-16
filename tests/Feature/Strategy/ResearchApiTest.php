@@ -19,8 +19,10 @@ final class ResearchApiTest extends TestCase
     public function test_strategy_catalog_and_empty_leaderboard_are_bounded_and_do_not_fabricate_metrics(): void
     {
         $this->getJson('/api/v1/research/strategies?per_page=10')->assertOk()->assertJsonPath('data.meta.total', 5)->assertJsonPath('data.data.0.id', 'baseline');
+        $this->getJson('/api/v1/research/strategies/baseline')->assertOk()->assertJsonPath('data.strategy.id', 'baseline');
         $response = $this->getJson('/api/v1/research/leaderboard')->assertOk();
         $response->assertJsonPath('data.meta.total', 5)->assertJsonPath('data.data.0.metrics', null)->assertJsonPath('data.data.0.ranking.status', 'NOT_EVALUATED');
+        $this->getJson('/api/v1/research/comparison')->assertOk()->assertJsonPath('data.meta.total', 5);
     }
 
     public function test_authorized_experiment_is_persisted_and_queued_on_dedicated_worker(): void
@@ -29,7 +31,13 @@ final class ResearchApiTest extends TestCase
         config()->set('ui.backtest_token', 'secret');
         $response = $this->withHeader('X-Research-Token', 'secret')->postJson('/api/v1/research/experiments', ['strategy_id' => 'trend_pullback', 'symbols' => ['BTCUSDT', 'ETHUSDT'], 'from' => '2025-01-01', 'to' => '2026-01-01', 'evaluation_mode' => 'split']);
         $response->assertAccepted()->assertJsonPath('data.strategy_id', 'trend_pullback')->assertJsonPath('data.status', 'QUEUED');
-        $this->assertDatabaseHas('research_experiments', ['strategy_id' => 'trend_pullback', 'status' => 'QUEUED', 'tested_combinations' => 0]);
+        $id = $response->json('data.id');
+        $this->getJson("/api/v1/research/experiments/{$id}")->assertOk()
+            ->assertJsonPath('data.experiment.id', $id)
+            ->assertJsonPath('data.segments.total', 0);
+        $this->withHeader('X-Research-Token', 'secret')->postJson("/api/v1/research/experiments/{$id}/cancel")
+            ->assertOk()->assertJsonPath('data.status', 'CANCEL_REQUESTED');
+        $this->assertDatabaseHas('research_experiments', ['strategy_id' => 'trend_pullback', 'status' => 'CANCEL_REQUESTED', 'tested_combinations' => 0]);
         Bus::assertDispatched(RunResearchExperimentJob::class);
     }
 

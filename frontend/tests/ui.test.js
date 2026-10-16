@@ -70,6 +70,16 @@ test('all required application routes exist', () => {
 });
 test('research lab uses paginated real API results and labels missing evaluations', () => { const text=source('pages/ResearchPage.vue'); for(const value of ['/research/leaderboard','/research/experiments','per_page:10','Not evaluated','walk_forward','X-Research-Token','approve-forward']) assert.match(text,new RegExp(value)); assert.match(text,/q-pagination/); });
 
+test('research lab provides a safe fast-start window and explains asynchronous evaluation', () => {
+  const text = source('pages/ResearchPage.vue');
+  assert.match(text, /utcDateDaysAgo\(15\)/);
+  assert.match(text, /latestSafeDate = utcDateDaysAgo\(1\)/);
+  assert.match(text, /queued or running jobs do not populate the leaderboard/i);
+  assert.match(text, /refreshes while it is active/);
+  assert.match(text, /:disable="!canQueue"/);
+  assert.match(text, /autocomplete="off"/);
+});
+
 
 test('dashboard displays actual account summary and paper-return fields', () => {
   const text = source('pages/DashboardPage.vue');

@@ -32,7 +32,11 @@ final class EnsureStrategyHistoryJob implements ShouldQueue
     public function handle(): void
     {
         $nowMs = now('UTC')->getTimestampMs();
-        $historyLimit = max(1, (int) config('strategy.history_limit', 220));
+        $strategyHistoryLimit = max(1, (int) config('strategy.history_limit', 220));
+        $researchDays = (bool) config('research.automatic.enabled', true)
+            ? max(1, (int) config('research.automatic.evaluation_days', 14))
+            : 0;
+        $researchWarmupBars = max(1, (int) config('backtest.warmup_bars', 220));
         // Allow late closed-candle ingestion and avoid requesting a still-open bar.
         $graceMs = 120_000;
 
@@ -40,6 +44,10 @@ final class EnsureStrategyHistoryJob implements ShouldQueue
             foreach ((array) config('market_data.intervals', ['5', '15', '60']) as $value) {
                 $interval = Interval::parse((string) $value);
                 $intervalMs = $interval->milliseconds();
+                $researchHistoryLimit = $researchDays === 0
+                    ? 0
+                    : $researchWarmupBars + (int) ceil(($researchDays * 86_400_000) / $intervalMs);
+                $historyLimit = max($strategyHistoryLimit, $researchHistoryLimit);
                 $lastClosedOpenMs = intdiv($nowMs - $graceMs, $intervalMs) * $intervalMs - $intervalMs;
                 $recent = CandleRecord::query()
                     ->where('exchange', 'bybit')->where('category', 'linear')

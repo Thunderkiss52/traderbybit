@@ -62,6 +62,10 @@ final class PaperLifecycleTest extends TestCase
         $this->assertDatabaseHas('virtual_executions', ['type' => 'TAKE_PROFIT_2']);
         self::assertSame('COMPLETED', PaperSignalStateRecord::query()->where('signal_id', $signal->id)->value('status'));
         self::assertSame(3, JournalEventRecord::query()->whereNotNull('position_id')->count());
+        $this->getJson('/api/v1/positions/'.$position->id)->assertOk()
+            ->assertJsonPath('data.mode', 'FORWARD_PAPER')
+            ->assertJsonPath('data.position.id', $position->id)
+            ->assertJsonCount(3, 'data.executions.data');
     }
 
     #[DataProvider('stopSides')]

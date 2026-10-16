@@ -4,6 +4,12 @@ declare(strict_types=1);
 
 return [
     'queue' => ['name' => 'research', 'max_concurrent' => 1, 'memory_mb' => 512, 'timeout_seconds' => 3600],
+    'automatic' => [
+        'enabled' => (bool) env('RESEARCH_AUTO_BOOTSTRAP', true),
+        'evaluation_days' => (int) env('RESEARCH_AUTO_EVALUATION_DAYS', 14),
+        'minimum_pattern_decisions' => (int) env('RESEARCH_AUTO_PATTERN_MINIMUM_DECISIONS', 700),
+        'pattern_retry_new_decisions' => (int) env('RESEARCH_AUTO_PATTERN_RETRY_NEW_DECISIONS', 120),
+    ],
     'optimization' => [
         'maximum_combinations' => 100,
         'grids' => [

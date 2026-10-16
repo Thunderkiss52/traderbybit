@@ -19,3 +19,13 @@ test('pattern UI distinguishes observations from trading signals', () => {
   assert.match(page, /No automatically generated virtual entries/);
   assert.match(page, /Insufficient data/);
 });
+test('pattern discovery starts with a safe complete window and explains asynchronous empty states', () => {
+  const page = read('pages/PatternsPage.vue');
+  assert.match(page, /utcDateDaysAgo\(31\)/);
+  assert.match(page, /latestSafeDate = utcDateDaysAgo\(1\)/);
+  assert.match(page, /rangeDays\.value <= 90/);
+  assert.match(page, /dedicated research worker/);
+  assert.match(page, /refresh automatically about every 10 seconds/);
+  assert.match(page, /zero means more persisted signal history is needed/);
+  assert.match(page, /'X-Research-Token': token\.value/);
+});

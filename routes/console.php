@@ -5,6 +5,7 @@ use App\MarketData\Jobs\EnsureStrategyHistoryJob;
 use App\MarketData\Jobs\RecoverCandleGapsJob;
 use App\PaperTrading\Jobs\ProcessPaperTradingJob;
 use App\Strategy\Jobs\CaptureMarketContextJob;
+use App\Strategy\Jobs\EnsureResearchCoverageJob;
 use App\Strategy\Jobs\GenerateSignalJob;
 use App\Strategy\Jobs\ProcessResearchPaperJob;
 use Illuminate\Foundation\Inspiring;
@@ -19,6 +20,7 @@ Schedule::job(new RecoverCandleGapsJob)->everyFiveMinutes()->withoutOverlapping(
 Schedule::job(new CheckMarketDataFreshnessJob)->everyMinute()->withoutOverlapping();
 // Bootstrap and maintain 220 contiguous closed candles on each strategy timeframe.
 Schedule::job(new EnsureStrategyHistoryJob)->hourly()->name('market:ensure-strategy-history')->withoutOverlapping();
+Schedule::job(new EnsureResearchCoverageJob)->hourlyAt(20)->name('research:ensure-coverage')->withoutOverlapping();
 
 foreach ((array) config('market_data.symbols', ['BTCUSDT', 'ETHUSDT']) as $symbol) {
     // Capture before the 15m close: a quote taken after it cannot be used at that decision time.

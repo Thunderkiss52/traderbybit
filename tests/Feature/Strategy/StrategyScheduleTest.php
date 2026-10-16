@@ -21,5 +21,6 @@ final class StrategyScheduleTest extends TestCase
             self::assertSame('2,17,32,47 * * * *', $signal->expression);
         }
         self::assertNotNull($events->first(fn ($event): bool => $event->getSummaryForDisplay() === 'market:ensure-strategy-history'));
+        self::assertNotNull($events->first(fn ($event): bool => $event->getSummaryForDisplay() === 'research:ensure-coverage'));
     }
 }

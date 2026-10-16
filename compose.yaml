@@ -82,7 +82,8 @@ services:
     restart: unless-stopped
     environment:
       UI_BASIC_AUTH_USER: ${UI_BASIC_AUTH_USER:?UI_BASIC_AUTH_USER is required}
-      UI_BASIC_AUTH_PASSWORD: ${UI_BASIC_AUTH_PASSWORD:?UI_BASIC_AUTH_PASSWORD is required}
+      UI_BASIC_AUTH_PASSWORD: ${UI_BASIC_AUTH_PASSWORD:-}
+      UI_BASIC_AUTH_PASSWORD_B64: ${UI_BASIC_AUTH_PASSWORD_B64:-}
     ports:
       - "${WEB_BIND_IP:-127.0.0.1}:${WEB_PORT:-18080}:80"
     networks:
