@@ -24,7 +24,6 @@ const forecastRows = computed(() => forecasts.value.data as LevelForecast[]);
 const strategyObservations = shallowRef<any[]>([]);
 const error = ref('');
 const notice = ref('');
-const token = ref('');
 const utcDateDaysAgo = (days: number) => new Date(Date.now() - days * 86_400_000).toISOString().slice(0, 10);
 const latestSafeDate = utcDateDaysAgo(1);
 const from = ref(utcDateDaysAgo(31));
@@ -65,7 +64,7 @@ const load = async () => {
 };
 const hasActiveRuns = computed(() => runs.value.data.some(run => ['QUEUED', 'RUNNING'].includes(run.status)));
 const rangeDays = computed(() => (Date.parse(to.value) - Date.parse(from.value)) / 86_400_000);
-const canQueue = computed(() => token.value.trim().length > 0 && from.value < to.value && to.value <= latestSafeDate && rangeDays.value <= 90);
+const canQueue = computed(() => from.value < to.value && to.value <= latestSafeDate && rangeDays.value <= 90);
 const { loading, refresh } = usePolling(load, 10000, hasActiveRuns);
 watch([symbol, direction, status], () => { page.value = 1; selected.value = null; void refresh(); });
 watch(page, () => { selected.value = null; void refresh(); });
@@ -74,7 +73,7 @@ const submit = async () => {
   queued.value = true;
   notice.value = '';
   try {
-    const response = await api.post('/research/patterns/runs', { symbol: symbol.value, from: from.value, to: to.value }, { headers: { 'X-Research-Token': token.value } });
+    const response = await api.post('/research/patterns/runs', { symbol: symbol.value, from: from.value, to: to.value });
     notice.value = `Discovery ${response.data.data.id} queued. It runs asynchronously and this page refreshes while it is active.`;
     error.value = '';
     await refresh();
@@ -159,8 +158,7 @@ const pageMax = computed(() => Math.max(1, patterns.value.meta.last_page));
         <q-select v-model="symbol" :options="['BTCUSDT','ETHUSDT']" label="Symbol" dense />
         <q-input v-model="from" type="date" label="From" :max="latestSafeDate" dense />
         <q-input v-model="to" type="date" label="To" :max="latestSafeDate" dense />
-        <q-input v-model="token" type="password" label="Research token" autocomplete="off" dense />
-        <div class="muted">Pre-filled with the last 30 complete UTC days. Discovery accepts past windows up to 90 days; the token is sent only with this protected request.</div>
+        <div class="muted">Pre-filled with the last 30 complete UTC days. Discovery accepts past windows up to 90 days.</div>
         <q-btn color="primary" :loading="queued" :disable="!canQueue" label="Queue bounded discovery" @click="submit" />
       </q-card>
     </section>

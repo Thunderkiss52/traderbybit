@@ -51,6 +51,10 @@ final class AuditExportService
         'strategy_degradation_snapshots' => ['id', 'strategy_id', 'strategy_version', 'symbol', 'horizon', 'sample_size', 'expectancy_r', 'profit_factor', 'win_rate', 'status', 'degradation_type', 'as_of_time', 'created_at'],
         'portfolio_correlation_snapshots' => ['id', 'horizon', 'concentration_score', 'alerts', 'evaluated_at', 'created_at'],
         'research_recommendations' => ['id', 'category', 'strategy_id', 'title', 'description', 'status', 'created_at'],
+        'learning_candidate_strategies' => ['id', 'name', 'parent_strategy_id', 'candidate_version', 'configuration_hash', 'status', 'promoted_at', 'created_at'],
+        'learning_model_artifacts' => ['id', 'name', 'model_type', 'target_event', 'version', 'artifact_hash', 'status', 'created_at'],
+        'autonomy_approval_events' => ['id', 'actor', 'action', 'target_type', 'target_id', 'previous_state', 'new_state', 'reason', 'created_at'],
+        'learning_feature_snapshots' => ['id', 'symbol', 'timeframe', 'decision_time', 'available_at', 'regime', 'label_status', 'label_outcome', 'label_r_multiple', 'created_at'],
     ];
 
     private const TIMES = [
@@ -67,6 +71,8 @@ final class AuditExportService
         'strategy_health_snapshots' => 'created_at', 'reconciliation_runs' => 'created_at',
         'counterfactual_evaluations' => 'decision_time', 'strategy_degradation_snapshots' => 'as_of_time',
         'portfolio_correlation_snapshots' => 'evaluated_at', 'research_recommendations' => 'created_at',
+        'learning_candidate_strategies' => 'created_at', 'learning_model_artifacts' => 'created_at',
+        'autonomy_approval_events' => 'created_at', 'learning_feature_snapshots' => 'decision_time',
     ];
 
     public function request(int $days): AuditExportRecord

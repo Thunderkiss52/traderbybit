@@ -218,8 +218,9 @@ final class PatternResearchController extends Controller
 
     public function latestMatches(Request $request, MarketFeatureExtractor $extractor, PatternMatcher $matcher, AsOfMarketContextService $contexts): JsonResponse
     {
-        $data = $request->validate(['symbol' => 'required|in:BTCUSDT,ETHUSDT']);
-        $signal = SignalRecord::query()->where('symbol', $data['symbol'])->where('strategy_id', 'baseline')->orderByDesc('decision_time')->first();
+        $data = $request->validate(['symbol' => 'nullable|in:BTCUSDT,ETHUSDT']);
+        $symbol = $data['symbol'] ?? 'BTCUSDT';
+        $signal = SignalRecord::query()->where('symbol', $symbol)->where('strategy_id', 'baseline')->orderByDesc('decision_time')->first();
         if ($signal === null) {
             return response()->json(['data' => [], 'meta' => ['point_in_time' => null]]);
         }

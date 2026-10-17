@@ -1,12 +1,12 @@
 <?php
 
 use App\Audit\Http\AuditExportController as A;
+use App\Http\Controllers\Api\V1\AutonomousLearningController;
 use App\Http\Controllers\Api\V1\PatternResearchController as P;
 use App\Http\Controllers\Api\V1\ResearchController as C;
 use App\Http\Controllers\Api\V1\ResearchHealthController as H;
 use App\Http\Controllers\Api\V1\ResearchIntelligenceController as I;
 use App\Http\Controllers\Api\V1\StrategyResearchController as R;
-use App\Http\Middleware\RequireResearchToken;
 use Illuminate\Support\Facades\Route;
 
 Route::prefix('v1')->middleware('throttle:api')->group(function () {
@@ -29,6 +29,20 @@ Route::prefix('v1')->middleware('throttle:api')->group(function () {
     Route::post('research/recommendations/{id}/dismiss', [I::class, 'dismissRecommendation']);
     Route::post('research/recommendations/{id}/accept', [I::class, 'acceptRecommendation']);
     Route::get('research/report', [I::class, 'report']);
+
+    Route::get('research/learning/overview', [AutonomousLearningController::class, 'overview']);
+    Route::get('research/learning/autonomy-settings', [AutonomousLearningController::class, 'autonomySettings']);
+    Route::post('research/learning/autonomy-settings', [AutonomousLearningController::class, 'updateAutonomySettings']);
+    Route::post('research/learning/kill-switch', [AutonomousLearningController::class, 'killSwitch']);
+    Route::get('research/learning/candidates', [AutonomousLearningController::class, 'candidates']);
+    Route::post('research/learning/candidates/generate', [AutonomousLearningController::class, 'generateCandidate']);
+    Route::post('research/learning/candidates/{id}/evaluate', [AutonomousLearningController::class, 'evaluateCandidate']);
+    Route::post('research/learning/candidates/{id}/promote', [AutonomousLearningController::class, 'promoteCandidate']);
+    Route::post('research/learning/candidates/{id}/rollback', [AutonomousLearningController::class, 'rollbackCandidate']);
+    Route::get('research/learning/models', [AutonomousLearningController::class, 'models']);
+    Route::post('research/learning/models/train', [AutonomousLearningController::class, 'trainModel']);
+    Route::get('research/learning/audit-trail', [AutonomousLearningController::class, 'auditTrail']);
+
     Route::get('audit/strategy-funnel', [A::class, 'funnel']);
     Route::post('audit/exports/quick', [A::class, 'create']);
     Route::get('audit/exports', [A::class, 'index']);
@@ -55,7 +69,7 @@ Route::prefix('v1')->middleware('throttle:api')->group(function () {
     Route::get('research/level-forecasts', [P::class, 'levelForecasts']);
     Route::get('research/pattern-matches', [P::class, 'patternMatches']);
     Route::get('research/patterns/{id}', [P::class, 'show']);
-    Route::post('research/patterns/runs', [P::class, 'queue'])->middleware(RequireResearchToken::class);
+    Route::post('research/patterns/runs', [P::class, 'queue']);
     Route::get('research/strategies', [R::class, 'strategies']);
     Route::get('research/strategies/{id}/diagnostics', [R::class, 'diagnostics']);
     Route::get('research/strategies/{id}/statistics', [R::class, 'statistics']);
@@ -64,9 +78,9 @@ Route::prefix('v1')->middleware('throttle:api')->group(function () {
     Route::get('research/experiments/{id}', [R::class, 'experiment']);
     Route::get('research/leaderboard', [R::class, 'leaderboard']);
     Route::get('research/comparison', [R::class, 'comparison']);
-    Route::post('research/experiments', [R::class, 'store'])->middleware(RequireResearchToken::class);
-    Route::post('research/experiments/{id}/cancel', [R::class, 'cancel'])->middleware(RequireResearchToken::class);
-    Route::post('research/experiments/{id}/approve-forward', [R::class, 'approveForward'])->middleware(RequireResearchToken::class);
+    Route::post('research/experiments', [R::class, 'store']);
+    Route::post('research/experiments/{id}/cancel', [R::class, 'cancel']);
+    Route::post('research/experiments/{id}/approve-forward', [R::class, 'approveForward']);
     Route::get('risk', [C::class, 'risk']);
     Route::get('backtests', [C::class, 'backtests']);
     Route::get('backtests/{id}', [C::class, 'backtest']);
@@ -74,5 +88,5 @@ Route::prefix('v1')->middleware('throttle:api')->group(function () {
     Route::get('backtests/{id}/trades', [C::class, 'backtestTrades']);
     Route::get('backtests/{id}/equity', [C::class, 'backtestEquity']);
     Route::get('backtests/{id}/optimizations', [C::class, 'backtestOptimizations']);
-    Route::post('backtests', [C::class, 'store'])->middleware(RequireResearchToken::class);
+    Route::post('backtests', [C::class, 'store']);
 });

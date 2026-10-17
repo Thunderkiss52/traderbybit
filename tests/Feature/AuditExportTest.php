@@ -50,4 +50,38 @@ final class AuditExportTest extends TestCase
             @unlink($service->archivePath($job->id));
         }
     }
+
+    public function test_all_four_export_periods_generate_successfully_with_learning_and_health_datasets(): void
+    {
+        if (! extension_loaded('zip')) {
+            $this->markTestSkipped('ZIP extension required on the production PHP image.');
+        }
+
+        $this->app->make(PaperAccountService::class)->default();
+        Queue::fake();
+        $service = $this->app->make(AuditExportService::class);
+
+        foreach ([1, 7, 14, 30] as $days) {
+            $job = $service->request($days);
+            try {
+                $service->generate($job->id);
+                $record = AuditExportRecord::query()->findOrFail($job->id);
+                self::assertSame('COMPLETED', $record->status);
+
+                $zip = new ZipArchive;
+                self::assertTrue($zip->open($service->archivePath($job->id)) === true);
+                self::assertNotFalse($zip->locateName('manifest.json'));
+                self::assertNotFalse($zip->locateName('learning_candidate_strategies.csv'));
+                self::assertNotFalse($zip->locateName('learning_model_artifacts.csv'));
+                self::assertNotFalse($zip->locateName('autonomy_approval_events.csv'));
+                self::assertNotFalse($zip->locateName('strategy_health_snapshots.csv'));
+                self::assertNotFalse($zip->locateName('strategy_degradation_snapshots.csv'));
+                self::assertNotFalse($zip->locateName('portfolio_correlation_snapshots.csv'));
+                self::assertNotFalse($zip->locateName('research_recommendations.csv'));
+                $zip->close();
+            } finally {
+                @unlink($service->archivePath($job->id));
+            }
+        }
+    }
 }

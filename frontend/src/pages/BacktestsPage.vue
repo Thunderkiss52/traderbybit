@@ -11,7 +11,6 @@ const form = ref({
   symbols: ['BTCUSDT'], from: '', to: '', mode: 'split',
   starting_balance: '', strategy_version: '', execution_model_version: '',
 });
-const token = ref('');
 const message = ref('');
 const loading = ref(false);
 let version = 0;
@@ -36,7 +35,7 @@ async function load() {
 const submit = async () => {
   loading.value = true;
   try {
-    await startBacktest(form.value, token.value);
+    await startBacktest(form.value);
     message.value = 'Research job queued';
     page.value = 1;
     await load();
@@ -68,7 +67,6 @@ onBeforeUnmount(() => controller?.abort());
         <q-input v-model="form.starting_balance" readonly label="Starting balance (USDT)" />
         <q-input v-model="form.strategy_version" readonly label="Strategy version" />
         <q-input v-model="form.execution_model_version" readonly label="Execution model" />
-        <q-input v-model="token" type="password" label="Local research token" autocomplete="off" />
         <q-btn color="primary" label="Queue research backtest" :loading="loading" @click="submit" />
       </div>
       <p>{{ message }}</p>

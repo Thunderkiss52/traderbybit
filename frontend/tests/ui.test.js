@@ -68,7 +68,7 @@ test('all required application routes exist', () => {
   const text = source('router/index.ts');
   for (const route of ['dashboard', 'market/:symbol', 'signals', 'positions', 'journal', 'statistics', 'research', 'backtests', 'risk', 'settings']) assert.match(text, new RegExp(route.replace('/', '\\/')));
 });
-test('research lab uses paginated real API results and labels missing evaluations', () => { const text=source('pages/ResearchPage.vue'); for(const value of ['/research/leaderboard','/research/experiments','per_page:10','Not evaluated','walk_forward','X-Research-Token','approve-forward']) assert.match(text,new RegExp(value)); assert.match(text,/q-pagination/); });
+test('research lab uses paginated real API results and labels missing evaluations', () => { const text=source('pages/ResearchPage.vue'); for(const value of ['/research/leaderboard','/research/experiments','per_page:10','Not evaluated','walk_forward','evaluation_mode','approve-forward']) assert.match(text,new RegExp(value)); assert.match(text,/q-pagination/); });
 
 test('research lab provides a safe fast-start window and explains asynchronous evaluation', () => {
   const text = source('pages/ResearchPage.vue');
@@ -77,7 +77,7 @@ test('research lab provides a safe fast-start window and explains asynchronous e
   assert.match(text, /queued or running jobs do not populate the leaderboard/i);
   assert.match(text, /refreshes while it is active/);
   assert.match(text, /:disable="!canQueue"/);
-  assert.match(text, /autocomplete="off"/);
+  assert.match(text, /q-select/);
 });
 test('research lab declares all five strategies and the four-timeframe hierarchy', () => {
   const source = read('pages/ResearchPage.vue');

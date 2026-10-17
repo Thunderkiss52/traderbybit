@@ -112,13 +112,11 @@ final class ResearchApiTest extends TestCase
         $this->getJson('/api/v1/market/BTCUSDT/analysis?limit=301')->assertUnprocessable();
     }
 
-    public function test_backtest_creation_requires_token_and_dispatches_only_research_job(): void
+    public function test_backtest_creation_dispatches_only_research_job(): void
     {
-        config()->set('ui.backtest_token', 'secret');
-        $payload = ['symbols' => ['BTCUSDT'], 'from' => '2025-01-01', 'to' => '2025-03-01', 'mode' => 'split'];
-        $this->postJson('/api/v1/backtests', $payload)->assertUnauthorized();
         Bus::fake();
-        $this->withHeader('X-Research-Token', 'secret')->postJson('/api/v1/backtests', $payload)->assertAccepted()->assertJsonPath('data.status', 'QUEUED');
+        $payload = ['symbols' => ['BTCUSDT'], 'from' => '2025-01-01', 'to' => '2025-03-01', 'mode' => 'split'];
+        $this->postJson('/api/v1/backtests', $payload)->assertAccepted()->assertJsonPath('data.status', 'QUEUED');
         Bus::assertDispatched(RunBacktestJob::class, fn (RunBacktestJob $job): bool => $job->queue === 'backtests');
     }
 
