@@ -125,21 +125,25 @@ final class ResearchRecommendationService
         $shadows = ResearchExperimentRecord::query()
             ->where('is_shadow', true)
             ->where('shadow_status', 'RUNNING')
-            ->where('sample_size', '>=', 30)
             ->get();
 
         foreach ($shadows as $exp) {
             $metrics = $exp->metrics ?? [];
+            $sampleSize = (int) ($metrics['sample_size'] ?? $exp->tested_combinations ?? 0);
+            if ($sampleSize < 30) {
+                continue;
+            }
             $sharpe = (float) ($metrics['sharpe_ratio'] ?? 0.0);
             if ($sharpe >= 1.5) {
+                $experimentLabel = $exp->strategy_id.'-'.substr($exp->id, 0, 8);
                 $rec = ResearchRecommendationRecord::query()->create([
                     'id' => (string) Str::uuid(),
                     'category' => 'EXPERIMENT_PROMOTION',
                     'strategy_id' => $exp->strategy_id,
-                    'title' => "Promote shadow experiment {$exp->name} to forward candidate",
-                    'description' => "Shadow variant for {$exp->strategy_id} reached {$exp->sample_size} evaluations with strong Sharpe ratio ({$sharpe}).",
+                    'title' => "Promote shadow experiment {$experimentLabel} to forward candidate",
+                    'description' => "Shadow variant for {$exp->strategy_id} reached {$sampleSize} evaluations with strong Sharpe ratio ({$sharpe}).",
                     'evidence' => [
-                        'sample_size' => $exp->sample_size,
+                        'sample_size' => $sampleSize,
                         'metrics' => $metrics,
                     ],
                     'proposed_changes' => $exp->parameters,

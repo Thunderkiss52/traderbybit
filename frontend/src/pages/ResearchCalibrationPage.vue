@@ -118,29 +118,29 @@ onMounted(() => {
           flat
           :rows="calibration.reliability_bins || []"
           :columns="[
-            { name: 'bin', label: 'Probability Bin', field: 'bin', align: 'left' },
-            { name: 'count', label: 'Observations', field: 'count', align: 'right' },
-            { name: 'mean_predicted', label: 'Mean Predicted Prob', field: 'mean_predicted', align: 'right' },
-            { name: 'empirical_rate', label: 'Empirical Hit Rate', field: 'empirical_rate', align: 'right' },
-            { name: 'gap', label: 'Calibration Gap', field: 'gap', align: 'right' },
+            { name: 'bin_range', label: 'Probability Bin', field: (row) => row.bin_range || row.bin, align: 'left' },
+            { name: 'sample_count', label: 'Observations', field: (row) => row.sample_count ?? row.count ?? 0, align: 'right' },
+            { name: 'predicted_mean', label: 'Mean Predicted Prob', field: (row) => row.predicted_mean ?? row.mean_predicted, align: 'right' },
+            { name: 'observed_frequency', label: 'Empirical Hit Rate', field: (row) => row.observed_frequency ?? row.empirical_rate, align: 'right' },
+            { name: 'calibration_gap', label: 'Calibration Gap', field: (row) => row.calibration_gap ?? row.gap, align: 'right' },
           ]"
-          row-key="bin"
+          row-key="bin_range"
           hide-pagination
           :pagination="{ rowsPerPage: 0 }"
         >
-          <template #body-cell-mean_predicted="props">
+          <template #body-cell-predicted_mean="props">
             <q-td :props="props">
-              {{ (props.value * 100).toFixed(1) }}%
+              {{ typeof props.value === 'number' && !isNaN(props.value) ? (props.value * 100).toFixed(1) + '%' : '—' }}
             </q-td>
           </template>
-          <template #body-cell-empirical_rate="props">
+          <template #body-cell-observed_frequency="props">
             <q-td :props="props" class="text-bold">
-              {{ (props.value * 100).toFixed(1) }}%
+              {{ typeof props.value === 'number' && !isNaN(props.value) ? (props.value * 100).toFixed(1) + '%' : '—' }}
             </q-td>
           </template>
-          <template #body-cell-gap="props">
-            <q-td :props="props" :class="Math.abs(props.value) <= 0.08 ? 'text-positive' : 'text-warning'">
-              {{ (props.value * 100).toFixed(1) }}%
+          <template #body-cell-calibration_gap="props">
+            <q-td :props="props" :class="typeof props.value === 'number' && Math.abs(props.value) <= 0.08 ? 'text-positive' : 'text-warning'">
+              {{ typeof props.value === 'number' && !isNaN(props.value) ? (props.value * 100).toFixed(1) + '%' : '—' }}
             </q-td>
           </template>
           <template #no-data>

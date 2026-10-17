@@ -97,10 +97,15 @@ final class ProbabilityCalibrationService
 
             $reliabilityBins[] = [
                 'bin_range' => "{$b['bin_lower']} - {$b['bin_upper']}",
+                'bin' => "{$b['bin_lower']} - {$b['bin_upper']}",
                 'sample_count' => $count,
+                'count' => $count,
                 'predicted_mean' => $meanProb,
+                'mean_predicted' => $meanProb,
                 'observed_frequency' => $empiricalFreq,
+                'empirical_rate' => $empiricalFreq,
                 'calibration_gap' => $count > 0 ? round(abs($empiricalFreq - $meanProb), 4) : 0.0,
+                'gap' => $count > 0 ? round(abs($empiricalFreq - $meanProb), 4) : 0.0,
             ];
         }
 
