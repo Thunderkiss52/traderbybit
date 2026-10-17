@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { onBeforeUnmount, ref } from 'vue';
+import { onBeforeUnmount, onMounted, ref } from 'vue';
 import { api } from '../services/api';
 
 type AuditStatus = {
@@ -8,7 +8,6 @@ type AuditStatus = {
   download_url: string | null; error_code: string | null;
 };
 
-const token = ref('');
 const active = ref<AuditStatus | null>(null);
 const history = ref<AuditStatus[]>([]);
 const funnel = ref<any[]>([]);
@@ -23,31 +22,30 @@ const options = [
   { days: 14, label: '14 days' },
   { days: 30, label: '30 days' },
 ];
-function headers() {
-  return { 'X-Research-Token': token.value };
-}
+
 function stopPolling() {
   if (polling) clearTimeout(polling);
   polling = undefined;
 }
+
 async function refreshFunnel() {
-  if (!token.value) return;
   try {
-    const response = await api.get('/audit/strategy-funnel', { headers: headers(), params: { days: 7 } });
+    const response = await api.get('/audit/strategy-funnel', { params: { days: 7 } });
     funnel.value = response.data.data.strategies || [];
   } catch (exception: any) { error.value = exception.message; }
 }
+
 async function refreshHistory() {
-  if (!token.value) return;
   try {
-    const response = await api.get('/audit/exports', { headers: headers(), params: { per_page: 10 } });
+    const response = await api.get('/audit/exports', { params: { per_page: 10 } });
     history.value = response.data.data.data;
   } catch (exception: any) { error.value = exception.message; }
 }
+
 async function checkJob(id: string) {
   if (disposed) return;
   try {
-    const response = await api.get(`/audit/exports/${id}`, { headers: headers() });
+    const response = await api.get(`/audit/exports/${id}`);
     if (disposed || active.value?.id !== id) return;
     active.value = response.data.data;
     if (active.value?.status === 'READY' || active.value?.status === 'FAILED' || active.value?.status === 'EXPIRED') {
@@ -63,13 +61,14 @@ async function checkJob(id: string) {
     error.value = exception.message;
   }
 }
+
 async function start(days: number) {
   stopPolling();
   automaticDownloadId = '';
   loading.value = true;
   error.value = '';
   try {
-    const response = await api.post('/audit/exports/quick', { days }, { headers: headers() });
+    const response = await api.post('/audit/exports/quick', { days });
     active.value = response.data.data;
     if (active.value?.status === 'READY' && active.value.download_url) {
       automaticDownloadId = active.value.id;
@@ -83,9 +82,16 @@ async function start(days: number) {
     error.value = exception.message;
   } finally { loading.value = false; }
 }
+
 function download(job: AuditStatus) {
   if (job.download_url) window.location.assign(job.download_url);
 }
+
+onMounted(() => {
+  refreshFunnel();
+  refreshHistory();
+});
+
 onBeforeUnmount(() => { disposed = true; stopPolling(); });
 </script>
 
@@ -95,11 +101,10 @@ onBeforeUnmount(() => { disposed = true; stopPolling(); });
     <p class="text-caption">Generate a private, complete ZIP of CSV files for independent audit. Never includes real orders or credentials.</p>
     <q-banner v-if="error" class="bg-negative text-white q-mb-md">{{ error }}</q-banner>
     <div class="panel q-pa-md q-mb-md">
-      <q-input v-model="token" type="password" autocomplete="off" label="Local research token (not saved)" class="q-mb-md" />
       <div class="row q-col-gutter-sm">
         <div v-for="option in options" :key="option.days" class="col-6 col-md-3">
           <q-btn class="full-width" no-caps color="primary" icon="download" :label="option.label"
-            :disable="!token || loading" :loading="loading" @click="start(option.days)" />
+            :disable="loading" :loading="loading" @click="start(option.days)" />
         </div>
       </div>
       <div v-if="active" class="q-mt-md">
@@ -116,7 +121,7 @@ onBeforeUnmount(() => { disposed = true; stopPolling(); });
     </div>
     <div class="panel q-pa-md q-mb-md">
       <div class="row items-center justify-between q-mb-sm"><h2>7-day strategy funnel</h2>
-        <q-btn flat icon="refresh" label="Analyze no-trade strategies" :disable="!token" @click="refreshFunnel" /></div>
+        <q-btn flat icon="refresh" label="Analyze no-trade strategies" :loading="loading" @click="refreshFunnel" /></div>
       <q-table flat bordered :rows="funnel" row-key="strategy_id" :columns="[
         {name:'strategy',label:'Strategy',field:'strategy_id',align:'left'},
         {name:'buy',label:'BUY',field:'buy'}, {name:'sell',label:'SELL',field:'sell'},
@@ -127,7 +132,7 @@ onBeforeUnmount(() => { disposed = true; stopPolling(); });
     </div>
     <div class="panel q-pa-md">
       <div class="row items-center justify-between q-mb-sm"><h2>Recent exports</h2>
-        <q-btn flat icon="refresh" label="Refresh" :disable="!token" @click="refreshHistory" /></div>
+        <q-btn flat icon="refresh" label="Refresh" :loading="loading" @click="refreshHistory" /></div>
       <q-table flat bordered row-key="id" :rows="history" :columns="[
         {name:'period', label:'Period', field:'period_days', align:'left'},
         {name:'status', label:'Status', field:'status', align:'left'},

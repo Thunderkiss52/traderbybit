@@ -17,15 +17,11 @@ final class AuditExportTest extends TestCase
 {
     use RefreshDatabase;
 
-    public function test_exports_require_authorization_and_deduplicate_repeated_clicks(): void
+    public function test_exports_deduplicate_repeated_clicks(): void
     {
-        config()->set('ui.backtest_token', 'test-audit-secret');
         Queue::fake();
-        $this->postJson('/api/v1/audit/exports/quick', ['days' => 7])->assertUnauthorized();
-        $this->withHeader('X-Research-Token', 'test-audit-secret')
-            ->postJson('/api/v1/audit/exports/quick', ['days' => 7])->assertStatus(202);
-        $this->withHeader('X-Research-Token', 'test-audit-secret')
-            ->postJson('/api/v1/audit/exports/quick', ['days' => 7])->assertStatus(202);
+        $this->postJson('/api/v1/audit/exports/quick', ['days' => 7])->assertStatus(202);
+        $this->postJson('/api/v1/audit/exports/quick', ['days' => 7])->assertStatus(202);
         $this->assertDatabaseCount('audit_export_jobs', 1);
         Queue::assertPushed(GenerateAuditExportJob::class, 1);
     }

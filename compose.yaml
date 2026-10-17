@@ -26,7 +26,7 @@ x-app-environment: &app-environment
   QUEUE_CONNECTION: redis
   REDIS_QUEUE: default
   REDIS_QUEUE_RETRY_AFTER: "3700"
-  UI_BACKTEST_TOKEN: ${UI_BACKTEST_TOKEN:?UI_BACKTEST_TOKEN is required}
+  UI_BACKTEST_TOKEN: ${UI_BACKTEST_TOKEN:-}
   CORS_ALLOWED_ORIGINS: ${CORS_ALLOWED_ORIGINS:-}
 
 x-php-service: &php-service

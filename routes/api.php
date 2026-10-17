@@ -8,10 +8,10 @@ use App\Http\Middleware\RequireResearchToken;
 use Illuminate\Support\Facades\Route;
 
 Route::prefix('v1')->middleware('throttle:api')->group(function () {
-    Route::get('audit/strategy-funnel', [A::class, 'funnel'])->middleware(RequireResearchToken::class);
-    Route::post('audit/exports/quick', [A::class, 'create'])->middleware(RequireResearchToken::class);
-    Route::get('audit/exports', [A::class, 'index'])->middleware(RequireResearchToken::class);
-    Route::get('audit/exports/{id}', [A::class, 'show'])->middleware(RequireResearchToken::class);
+    Route::get('audit/strategy-funnel', [A::class, 'funnel']);
+    Route::post('audit/exports/quick', [A::class, 'create']);
+    Route::get('audit/exports', [A::class, 'index']);
+    Route::get('audit/exports/{id}', [A::class, 'show']);
     Route::get('audit/exports/{id}/download', [A::class, 'download'])->name('audit.download')->middleware('signed:relative');
     Route::get('dashboard', [C::class, 'dashboard']);
     Route::get('market/{symbol}/candles', [C::class, 'candles']);
