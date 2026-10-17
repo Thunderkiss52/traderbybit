@@ -69,20 +69,23 @@ final class ResearchController extends Controller
         $contexts = collect(config('ui.symbols'))->map(
             static fn (string $symbol) => MarketContextRecord::query()->where('symbol', $symbol)->latest('observed_at')->first()
         )->filter()->values();
-        $recentSkips = SignalRecord::query()->where('side', 'SKIP')
-            ->where('decision_time', '>=', now('UTC')->subDay())
-            ->whereIn('symbol', config('ui.symbols'))
-            ->cursor();
-        $skipCounts = [];
-        foreach ($recentSkips as $skip) {
-            foreach ($skip->reasons ?? [] as $reason) {
-                if (is_string($reason) && ! str_starts_with($reason, 'regime_')) {
-                    $skipCounts[$reason] = ($skipCounts[$reason] ?? 0) + 1;
+        $skipReasons = Cache::remember('paper:dashboard:skip_reasons_24h', 15, function (): array {
+            $recentSkips = SignalRecord::query()->where('side', 'SKIP')
+                ->where('decision_time', '>=', now('UTC')->subDay())
+                ->whereIn('symbol', config('ui.symbols'))
+                ->cursor();
+            $skipCounts = [];
+            foreach ($recentSkips as $skip) {
+                foreach ($skip->reasons ?? [] as $reason) {
+                    if (is_string($reason) && ! str_starts_with($reason, 'regime_')) {
+                        $skipCounts[$reason] = ($skipCounts[$reason] ?? 0) + 1;
+                    }
                 }
             }
-        }
-        arsort($skipCounts);
-        $skipReasons = array_slice($skipCounts, 0, 8, true);
+            arsort($skipCounts);
+
+            return array_slice($skipCounts, 0, 8, true);
+        });
         $recentDecisions = SignalRecord::query()->whereIn('symbol', config('ui.symbols'))
             ->latest('decision_time')->latest('id')->limit(8)
             ->get(['id', 'symbol', 'side', 'decision_time', 'reasons', 'indicator_snapshot'])
@@ -105,7 +108,7 @@ final class ResearchController extends Controller
             'signals' => SignalRecord::query()->whereIn('side', ['BUY', 'SELL'])->latest('decision_time')->latest('id')->limit(8)->get(['id', 'symbol', 'side', 'quality_class', 'score', 'entry_low', 'entry_high', 'stop_loss', 'take_profit_1', 'take_profit_2', 'expires_at', 'reasons', 'decision_time']),
             'recent_decisions' => $recentDecisions,
             'skip_reasons_24h' => $skipReasons,
-            'strategy_observations_24h' => $this->strategyObservations($strategies),
+            'strategy_observations_24h' => Cache::remember('paper:dashboard:strategy_observations_24h', 15, fn () => $this->strategyObservations($strategies)),
             'strategy_portfolios' => PaperAccountRecord::query()->whereIn('mode', ['FORWARD_PAPER', 'STRATEGY_FORWARD_PAPER', 'RESEARCH_FORWARD_PAPER'])
                 ->latest('created_at')->limit(20)->get(['id', 'name', 'mode', 'strategy_id', 'strategy_version', 'status', 'current_equity', 'realized_pnl', 'unrealized_pnl', 'created_at']),
             'paper_execution_health' => [
@@ -218,16 +221,30 @@ final class ResearchController extends Controller
 
     private function marketRows(MarketSeriesRequest $request, string $symbol): Collection
     {
-        $query = CandleRecord::query()->where([
-            'symbol' => $symbol,
-            'interval' => (string) $request->integer('interval', 15),
-            'is_closed' => true,
-        ]);
-        if ($request->filled('to')) {
-            $query->where('open_time', '<', new DateTimeImmutable((string) $request->string('to')));
+        $symbol = strtoupper($symbol);
+        $interval = (string) $request->integer('interval', 15);
+        $limit = $request->integer('limit', 300);
+
+        if (! $request->filled('to')) {
+            return Cache::remember("market:candles:v2:{$symbol}:{$interval}:{$limit}", 5, function () use ($symbol, $interval, $limit): Collection {
+                return CandleRecord::query()->where([
+                    'symbol' => $symbol,
+                    'interval' => $interval,
+                    'is_closed' => true,
+                ])->latest('open_time')->limit($limit)
+                    ->get(['id', 'exchange', 'category', 'symbol', 'interval', 'open_time', 'open', 'high', 'low', 'close', 'volume', 'turnover', 'is_closed', 'updated_at'])
+                    ->reverse()->values();
+            });
         }
 
-        return $query->latest('open_time')->limit($request->integer('limit', 300))
+        $query = CandleRecord::query()->where([
+            'symbol' => $symbol,
+            'interval' => $interval,
+            'is_closed' => true,
+        ]);
+        $query->where('open_time', '<', new DateTimeImmutable((string) $request->string('to')));
+
+        return $query->latest('open_time')->limit($limit)
             ->get(['id', 'exchange', 'category', 'symbol', 'interval', 'open_time', 'open', 'high', 'low', 'close', 'volume', 'turnover', 'is_closed', 'updated_at'])
             ->reverse()->values();
     }
@@ -407,13 +424,17 @@ final class ResearchController extends Controller
             $symbol = null;
         }
 
-        return $this->ok($service->report(
+        $page = max(1, $request->integer('page', 1));
+        $perPage = $this->perPage($request);
+        $cacheKey = "paper:daily_performance:v1:{$account}:{$timezone}:".($symbol ?? 'ALL').":{$page}:{$perPage}";
+
+        return $this->ok(Cache::remember($cacheKey, 15, fn () => $service->report(
             $account,
             $timezone,
             $symbol,
-            max(1, $request->integer('page', 1)),
-            $this->perPage($request),
-        ));
+            $page,
+            $perPage,
+        )));
     }
 
     /** Aggregate with a cursor, returning only ten recent periods to the client. */
