@@ -60,6 +60,7 @@ LABEL io.bybit-signals.component="web"
 RUN apk add --no-cache apache2-utils
 COPY docker/nginx/default.conf /etc/nginx/conf.d/default.conf
 COPY docker/nginx/10-auth.sh /docker-entrypoint.d/10-auth.sh
-COPY --from=app /var/www/html/public /var/www/html/public
+COPY public/ /var/www/html/public/
+COPY --from=frontend /build/frontend/dist /var/www/html/public
 RUN chmod 0755 /docker-entrypoint.d/10-auth.sh
 EXPOSE 80
