@@ -38,7 +38,7 @@ final readonly class SupportResistanceBreakoutStrategy extends ResearchStrategy
             return $this->skip($input, ['no_support_resistance_breakout_trigger']);
         }
         $side = $event === 'resistance_breakout' ? SignalSide::Buy : SignalSide::Sell;
-        $estimate = $this->probabilities->estimate($input->symbol, $event, $input->decisionTime);
+        $estimate = $this->probabilities->estimateFor($input, $event, $interaction);
         if ($estimate['validation_status'] === 'INSUFFICIENT_DATA') {
             return $this->skip($input, ['level_probability_insufficient_data']);
         }

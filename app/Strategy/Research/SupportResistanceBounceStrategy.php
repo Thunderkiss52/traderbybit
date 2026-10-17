@@ -39,12 +39,12 @@ final readonly class SupportResistanceBounceStrategy extends ResearchStrategy
         }
         $side = $event === 'support_rejection' ? SignalSide::Buy : SignalSide::Sell;
 
-        return $this->probabilityDecision($input, $side, $event);
+        return $this->probabilityDecision($input, $side, $event, $interaction);
     }
 
-    private function probabilityDecision(StrategyInput $input, SignalSide $side, string $event): SignalDecision
+    private function probabilityDecision(StrategyInput $input, SignalSide $side, string $event, array $interaction): SignalDecision
     {
-        $estimate = $this->probabilities->estimate($input->symbol, $event, $input->decisionTime);
+        $estimate = $this->probabilities->estimateFor($input, $event, $interaction);
         if ($estimate['validation_status'] === 'INSUFFICIENT_DATA') {
             return $this->skip($input, ['level_probability_insufficient_data']);
         }

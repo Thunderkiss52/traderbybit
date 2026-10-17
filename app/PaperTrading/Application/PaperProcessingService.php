@@ -38,7 +38,7 @@ final readonly class PaperProcessingService
         private array $config,
     ) {}
 
-    public function process(?string $accountId = null, ?string $symbol = null, ?DateTimeImmutable $at = null): array
+    public function process(?string $accountId = null, ?string $symbol = null, ?DateTimeImmutable $at = null, bool $allowNewEntries = true): array
     {
         $account = $accountId === null ? $this->accounts->default() : PaperAccountRecord::query()->findOrFail($accountId);
         $historical = $at !== null;
@@ -48,13 +48,30 @@ final readonly class PaperProcessingService
             throw new \RuntimeException('Paper account is already being processed.');
         }
         try {
-            $this->ingestSignals($account, $symbol, $at, ! $historical);
+            if ($allowNewEntries && $account->status === 'ACTIVE') {
+                $this->ingestSignals($account, $symbol, $at, ! $historical);
+            }
             $processed = 0;
             $states = PaperSignalStateRecord::query()->where('paper_account_id', $account->id)
                 ->whereIn('status', [SignalLifecycle::PendingEntry->value, SignalLifecycle::Active->value])
                 ->when($symbol, fn ($q) => $q->whereIn('signal_id', SignalRecord::query()->select('id')->where('symbol', $symbol)))
                 ->get();
             foreach ($states as $state) {
+                if ($state->status === SignalLifecycle::PendingEntry->value
+                    && (! $allowNewEntries || $account->status !== 'ACTIVE')) {
+                    DB::transaction(function () use ($account, $state, $at): void {
+                        $locked = PaperSignalStateRecord::query()->lockForUpdate()->findOrFail($state->id);
+                        if ($locked->status !== SignalLifecycle::PendingEntry->value) {
+                            return;
+                        }
+                        $reason = $account->status !== 'ACTIVE' ? 'account_not_active' : 'forward_configuration_retired';
+                        $locked->update(['status' => SignalLifecycle::Rejected->value, 'reason' => $reason, 'processed_at' => $at]);
+                        $this->journal->append($account->id, $locked->signal_id, null, 'ENTRY_RISK_REJECTED', $at,
+                            ['reason' => $reason], "pending-cancel:{$account->id}:{$locked->signal_id}");
+                    });
+
+                    continue;
+                }
                 $processed += $this->processState($account, $state, $at, $historical);
             }
 
@@ -70,13 +87,20 @@ final readonly class PaperProcessingService
         // into an account that did not yet exist. Historical --at replay is explicit.
         $signals = SignalRecord::query()->where('decision_time', '<=', $at)
             ->where('strategy_id', $account->strategy_id ?? 'baseline')
-            ->when($forwardOnly, fn ($q) => $q->where('decision_time', '>=', $account->created_at))
+            ->when($account->mode === 'STRATEGY_FORWARD_PAPER',
+                fn ($q) => $q->where('strategy_version', $account->strategy_version))
+            ->when($forwardOnly, fn ($q) => $q->where('decision_time', '>=', $account->created_at)
+                ->whereColumn('created_at', '<=', 'expires_at'))
             ->when($symbol, fn ($q) => $q->where('symbol', $symbol))
             ->whereNotExists(fn ($query) => $query->selectRaw('1')->from('paper_signal_states')
                 ->whereColumn('paper_signal_states.signal_id', 'signals.id')
                 ->where('paper_signal_states.paper_account_id', $account->id))
             ->oldest('decision_time')->oldest('id')->limit((int) $this->config['processing']['batch_size'])->get();
         foreach ($signals as $signal) {
+            if ($forwardOnly && $signal->created_at->getTimestamp() > $signal->decision_time->getTimestamp() + 300) {
+                // Late historical observations are research-only, never forward fills.
+                continue;
+            }
             if (PaperSignalStateRecord::query()->where('paper_account_id', $account->id)->where('signal_id', $signal->id)->exists()) {
                 continue;
             }
@@ -214,6 +238,12 @@ final readonly class PaperProcessingService
             $expected = $bar->closeTime->modify('+5 minutes');
             $state->refresh();
             if ($state->status === SignalLifecycle::PendingEntry->value) {
+                if (! $historical && $bar->closeTime->getTimestamp() < time() - (int) ($this->config['processing']['max_forward_fill_lag_seconds'] ?? 600)) {
+                    // Never simulate a fill on a bar that had already passed before the processor ran.
+                    $state->update(['processed_at' => $bar->closeTime]);
+
+                    continue;
+                }
                 if ($bar->closeTime > $signal->expires_at->toDateTimeImmutable()) {
                     SignalLifecycle::PendingEntry->transitionTo(SignalLifecycle::Expired);
                     $state->update(['status' => SignalLifecycle::Expired->value, 'reason' => 'entry_window_expired', 'processed_at' => $bar->closeTime]);
@@ -235,7 +265,8 @@ final readonly class PaperProcessingService
                         $this->journal->append($account->id, $signal->id, null, 'ENTRY_RISK_REJECTED', $bar->closeTime, $entryAssessment, "entry-risk:{$account->id}:{$signal->id}:{$bar->closeTime->format('U.u')}");
                         break;
                     }
-                    $context = MarketContextRecord::query()->where('symbol', $signal->symbol)->where('observed_at', '<=', $signal->decision_time)->latest('observed_at')->firstOrFail();
+                    $context = MarketContextRecord::query()->where('exchange', $signal->exchange)->where('category', $signal->category)
+                        ->where('symbol', $signal->symbol)->where('observed_at', '<=', $signal->decision_time)->latest('observed_at')->firstOrFail();
                     $limits = new InstrumentConstraints($context->qty_step, $context->min_order_qty, $context->max_order_qty, $context->min_notional_value);
                     $size = $this->sizing->calculate($account->refresh()->current_equity, $signal->model_risk_percent, $quote->price, $signal->stop_loss, $limits);
                     if (! $size->allowed) {

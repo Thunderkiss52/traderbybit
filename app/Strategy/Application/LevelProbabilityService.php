@@ -41,7 +41,7 @@ final readonly class LevelProbabilityService
             'volatility_bucket' => $this->volatilityBucket($entry->atr, $entry->close),
             'zone_strength_bucket' => min(3, (int) floor((float) data_get($interaction, str_starts_with($event, 'resistance') ? 'resistance_zone.strength' : 'support_zone.strength', 0))),
         ];
-        $statistics = $this->statistics($input->symbol, $event, $input->decisionTime, $features);
+        $statistics = $this->statistics($input->symbol, $event, $input->decisionTime, $features, $input->exchange, $input->category);
         $features['cohort_sample_size'] = $statistics['cohort_sample_size'];
         $features['probability_population'] = $statistics['cohort_fallback'] ? 'ALL_PRIOR_EVENT_OBSERVATIONS' : 'COMPARABLE_COHORT';
         LevelInteractionForecastRecord::query()->insertOrIgnore([[
@@ -66,10 +66,29 @@ final readonly class LevelProbabilityService
         return $this->statistics($symbol, $event, $before);
     }
 
-    private function statistics(string $symbol, string $event, \DateTimeImmutable $before, ?array $cohort = null): array
+    public function estimateFor(StrategyInput $input, string $event, array $interaction): array
+    {
+        $bar = $input->entry->latest();
+        if ($bar === null || $bar->atr === null) {
+            return $this->statistics($input->symbol, $event, $input->decisionTime, null, $input->exchange, $input->category);
+        }
+        $cohort = [
+            'regime' => $this->regime($input),
+            'volatility_bucket' => $this->volatilityBucket($bar->atr, $bar->close),
+            'zone_strength_bucket' => min(3, (int) floor((float) data_get($interaction, str_starts_with($event, 'resistance') ? 'resistance_zone.strength' : 'support_zone.strength', 0))),
+            'momentum_side' => $interaction['momentum_side'] ?? 'NEUTRAL',
+        ];
+
+        return $this->statistics($input->symbol, $event, $input->decisionTime, $cohort, $input->exchange, $input->category);
+    }
+
+    private function statistics(string $symbol, string $event, \DateTimeImmutable $before, ?array $cohort = null, ?string $exchange = null, ?string $category = null): array
     {
         $rows = LevelInteractionForecastRecord::query()->where('symbol', $symbol)->where('event', $event)
-            ->where('triggered_at', '<', $before)->whereNotNull('outcome')->latest('triggered_at')
+            ->when($exchange, fn ($q) => $q->where('exchange', $exchange))
+            ->when($category, fn ($q) => $q->where('category', $category))
+            ->where('triggered_at', '<', $before)->whereNotNull('outcome')
+            ->whereNotNull('outcome_at')->where('outcome_at', '<=', $before)->latest('triggered_at')
             ->limit(max(1, (int) ($this->config['maximum_history'] ?? 2000)))->get(['outcome', 'features']);
         $cohortRows = $cohort === null ? collect() : $rows->filter(function (LevelInteractionForecastRecord $row) use ($cohort): bool {
             foreach (['regime', 'volatility_bucket', 'zone_strength_bucket', 'momentum_side'] as $field) {

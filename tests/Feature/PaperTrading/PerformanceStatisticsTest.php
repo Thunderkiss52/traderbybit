@@ -30,6 +30,7 @@ final class PerformanceStatisticsTest extends TestCase
                 'equity' => $equity, 'realized_pnl' => '0', 'unrealized_pnl' => '0', 'drawdown_percent' => '0', 'source_event_key' => "stats:{$time}",
             ]);
         }
+        $account->update(['current_equity' => '10050', 'realized_pnl' => '50']);
 
         $report = $this->app->make(PerformanceStatisticsService::class)->calculate($account->id)->metrics;
 

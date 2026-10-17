@@ -6,7 +6,6 @@ namespace App\Strategy\Application;
 
 use App\MarketData\Domain\Interval;
 use App\MarketData\Infrastructure\Persistence\CandleRecord;
-use App\PatternDiscovery\Infrastructure\Persistence\PatternRecord;
 use App\PatternDiscovery\Infrastructure\Persistence\PatternRunRecord;
 use App\PatternDiscovery\Jobs\DiscoverPatternsJob;
 use App\Strategy\Infrastructure\Persistence\ResearchExperimentRecord;
@@ -121,9 +120,6 @@ final readonly class ResearchBootstrapService
                 continue;
             }
             $completed = (clone $runs)->where('status', 'COMPLETED')->latest('completed_at')->first();
-            if ($completed !== null && PatternRecord::query()->where('pattern_run_id', $completed->id)->exists()) {
-                continue;
-            }
             if ($completed !== null && SignalRecord::query()->where('symbol', $symbol)
                 ->where('exchange', 'bybit')->where('category', 'linear')
                 ->where('decision_time', '>', $completed->to_at)->count() < $retryNewDecisions) {

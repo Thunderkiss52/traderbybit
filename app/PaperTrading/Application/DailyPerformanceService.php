@@ -56,7 +56,7 @@ final class DailyPerformanceService
                 'uses_equity_snapshots' => $symbol === null,
                 'cash_flow_adjustments_supported' => false,
                 'limitations' => array_values(array_filter([
-                    'external_virtual_cash_flows_are_not_supported',
+                    null, // No external cash-flow operations exist in Paper Trading.
                     $symbol === null ? null : 'historical_symbol_mark_to_market_snapshots_unavailable',
                 ])),
             ],

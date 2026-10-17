@@ -1,5 +1,6 @@
 <?php
 
+use App\Audit\Http\AuditExportController as A;
 use App\Http\Controllers\Api\V1\PatternResearchController as P;
 use App\Http\Controllers\Api\V1\ResearchController as C;
 use App\Http\Controllers\Api\V1\StrategyResearchController as R;
@@ -7,6 +8,11 @@ use App\Http\Middleware\RequireResearchToken;
 use Illuminate\Support\Facades\Route;
 
 Route::prefix('v1')->middleware('throttle:api')->group(function () {
+    Route::get('audit/strategy-funnel', [A::class, 'funnel'])->middleware(RequireResearchToken::class);
+    Route::post('audit/exports/quick', [A::class, 'create'])->middleware(RequireResearchToken::class);
+    Route::get('audit/exports', [A::class, 'index'])->middleware(RequireResearchToken::class);
+    Route::get('audit/exports/{id}', [A::class, 'show'])->middleware(RequireResearchToken::class);
+    Route::get('audit/exports/{id}/download', [A::class, 'download'])->name('audit.download')->middleware('signed:relative');
     Route::get('dashboard', [C::class, 'dashboard']);
     Route::get('market/{symbol}/candles', [C::class, 'candles']);
     Route::get('market/{symbol}/indicators', [C::class, 'indicators']);
@@ -17,6 +23,7 @@ Route::prefix('v1')->middleware('throttle:api')->group(function () {
     Route::get('positions', [C::class, 'positions']);
     Route::get('positions/{id}', [C::class, 'position']);
     Route::get('journal', [C::class, 'journal']);
+    Route::get('journal/accounts', [C::class, 'journalAccounts']);
     Route::get('statistics', [C::class, 'statistics']);
     Route::get('paper/daily-performance', [C::class, 'dailyPerformance']);
     Route::get('research/daily-performance', [R::class, 'dailyPerformance']);

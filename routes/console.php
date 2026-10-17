@@ -1,10 +1,12 @@
 <?php
 
+use App\Audit\Application\AuditExportService;
 use App\MarketData\Jobs\CheckMarketDataFreshnessJob;
 use App\MarketData\Jobs\EnsureStrategyHistoryJob;
 use App\MarketData\Jobs\RecoverCandleGapsJob;
 use App\MarketData\Jobs\SyncFundingHistoryJob;
 use App\MarketData\Jobs\SyncOpenInterestHistoryJob;
+use App\PaperTrading\Jobs\CapturePaperEquityJob;
 use App\PaperTrading\Jobs\ProcessPaperTradingJob;
 use App\Strategy\Jobs\CaptureMarketContextJob;
 use App\Strategy\Jobs\EnsureResearchCoverageJob;
@@ -57,3 +59,10 @@ Schedule::job(new ProcessResearchPaperJob)
     ->cron('4,19,34,49 * * * *')
     ->name('research:forward-paper')
     ->withoutOverlapping();
+
+// Remove only expired private audit archives, never trading history or Docker volumes.
+Schedule::call(fn () => app(AuditExportService::class)->purgeExpired())->hourly()->name('audit:purge-expired')->withoutOverlapping();
+
+// Record regular portfolio marks after scheduled paper position processing.
+Schedule::job(new CapturePaperEquityJob)
+    ->cron('5,20,35,50 * * * *')->name('paper:equity-checkpoint')->withoutOverlapping();

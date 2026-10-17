@@ -111,9 +111,12 @@ final class PerformanceStatisticsService
             $sideCounts[$signal->side] = ($sideCounts[$signal->side] ?? 0) + 1;
         }
         $skip = (int) ($sideCounts['SKIP'] ?? 0);
+        $accountForDrawdown = PaperAccountRecord::query()->findOrFail($accountId);
         $maximumDrawdown = $this->drawdown(
+            $accountForDrawdown->starting_balance,
             EquitySnapshotRecord::query()->where('paper_account_id', $accountId)
-                ->oldest('recorded_at')->oldest('id')->cursor(['equity'])
+                ->oldest('recorded_at')->oldest('id')->cursor(['equity', 'source_event_key']),
+            $accountForDrawdown->current_equity
         );
 
         return new PerformanceReport([
@@ -162,7 +165,12 @@ final class PerformanceStatisticsService
             'total_net_pnl' => (string) $net,
             'total_return_percent' => $return,
             'reserved_risk' => $account->reserved_risk,
-            'maximum_drawdown_percent' => $account->maximum_drawdown_percent,
+            'maximum_drawdown_percent' => (string) BigDecimal::of($account->maximum_drawdown_percent)->max($this->drawdown(
+                $account->starting_balance,
+                EquitySnapshotRecord::query()->where('paper_account_id', $account->id)
+                    ->oldest('recorded_at')->oldest('id')->cursor(['equity', 'source_event_key']),
+                $account->current_equity
+            )),
             'status' => $account->status,
         ];
     }
@@ -172,11 +180,19 @@ final class PerformanceStatisticsService
         return $total === 0 ? null : (string) BigDecimal::of($part)->multipliedBy(100)->dividedBy($total, 8, RoundingMode::HalfEven);
     }
 
-    private function drawdown(iterable $equities): string
+    private function drawdown(string $startingEquity, iterable $equities, ?string $currentEquity = null): string
     {
-        $peak = null;
+        $peak = BigDecimal::of($startingEquity);
         $maximum = BigDecimal::zero();
+        $hasActualValuation = false;
         foreach ($equities as $value) {
+            if (($value->source_event_key ?? null) === 'account:initial' && $hasActualValuation) {
+                // Historical imported valuations can predate account creation in fixtures.
+                continue;
+            }
+            if (($value->source_event_key ?? null) !== 'account:initial') {
+                $hasActualValuation = true;
+            }
             $equity = BigDecimal::of((string) ($value->equity ?? $value));
             if ($peak === null || $equity->isGreaterThan($peak)) {
                 $peak = $equity;
@@ -186,6 +202,19 @@ final class PerformanceStatisticsService
                 if ($drawdown->isGreaterThan($maximum)) {
                     $maximum = $drawdown;
                 }
+            }
+        }
+
+        // Recent account equity may not have been checkpointed yet. Never display a
+        // drawdown below the decline already visible in the current portfolio.
+        if ($currentEquity !== null) {
+            $current = BigDecimal::of($currentEquity);
+            if ($current->isGreaterThan($peak)) {
+                $peak = $current;
+            }
+            if (! $peak->isZero()) {
+                $drop = $peak->minus($current)->dividedBy($peak, 24, RoundingMode::HalfEven)->multipliedBy(100);
+                $maximum = $maximum->max($drop);
             }
         }
 

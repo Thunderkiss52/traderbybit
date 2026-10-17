@@ -117,7 +117,7 @@ final readonly class StrategyObservationService
                     ? (int) $pattern['formation_index']
                     : max(0, count($bars) - (int) $pattern['bars']);
                 $first = $bars[$formationIndex];
-                $identity = implode('|', [$input->exchange, $input->category, $input->symbol, $timeframe, $pattern['name'], $pattern['version'], $detectedAt->format('U.u')]);
+                $identity = implode('|', [$input->exchange, $input->category, $input->symbol, $timeframe, $pattern['name'], $pattern['direction'], $pattern['version'], $detectedAt->format('U.u')]);
                 CandlestickPatternOccurrenceRecord::query()->insertOrIgnore([[
                     'id' => Uuid::uuid5(Uuid::NAMESPACE_URL, 'traderbybit:candlestick:'.$identity)->toString(),
                     'exchange' => $input->exchange, 'category' => $input->category, 'symbol' => $input->symbol,

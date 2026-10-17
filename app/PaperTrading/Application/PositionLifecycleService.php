@@ -128,20 +128,20 @@ final readonly class PositionLifecycleService
             }
             $drawdown = $peak->isZero() ? BigDecimal::zero() : $peak->minus($equity)->dividedBy($peak, 24, RoundingMode::HalfEven)->multipliedBy(100);
             $accountStatus = $account->status;
-            if (! $account->drawdown_override) {
-                if ($drawdown->isGreaterThanOrEqualTo(BigDecimal::of((string) $this->config['drawdown']['halt_percent']))) {
-                    $accountStatus = 'HALTED';
-                } elseif ($drawdown->isGreaterThanOrEqualTo(BigDecimal::of((string) $this->config['drawdown']['block_new_entries_percent']))) {
-                    $accountStatus = 'BLOCKED';
-                } elseif ($accountStatus === 'BLOCKED') {
-                    $accountStatus = 'ACTIVE';
-                }
+
+            if ($drawdown->isGreaterThanOrEqualTo(BigDecimal::of((string) $this->config['drawdown']['halt_percent']))) {
+                $accountStatus = 'HALTED';
+            } elseif ($drawdown->isGreaterThanOrEqualTo(BigDecimal::of((string) $this->config['drawdown']['block_new_entries_percent']))) {
+                $accountStatus = 'BLOCKED';
+            } elseif ($accountStatus === 'BLOCKED') {
+                $accountStatus = 'ACTIVE';
             }
+
             $account->update([
                 'realized_pnl' => (string) $realized, 'unrealized_pnl' => (string) $portfolioUnrealized, 'current_equity' => (string) $equity, 'peak_equity' => (string) $peak,
                 'reserved_risk' => (string) BigDecimal::of($account->reserved_risk)->minus($release)->max(BigDecimal::zero()),
                 'maximum_drawdown_percent' => (string) BigDecimal::of($account->maximum_drawdown_percent)->max($drawdown), 'current_drawdown_percent' => (string) $drawdown, 'status' => $accountStatus,
-                'drawdown_override' => $accountStatus === 'HALTED' ? false : $account->drawdown_override,
+                'drawdown_override' => false,
             ]);
             if ($closed) {
                 SignalLifecycle::Active->transitionTo(SignalLifecycle::Completed);
@@ -160,7 +160,9 @@ final readonly class PositionLifecycleService
 
     public function applyFunding(VirtualPositionRecord $position, DateTimeImmutable $through): void
     {
-        $events = MarketFundingEventRecord::query()->where('symbol', $position->symbol)->where('funding_at', '>', $position->opened_at)->where('funding_at', '<=', $through)->oldest('funding_at')->get();
+        $signal = SignalRecord::query()->findOrFail($position->signal_id, ['exchange', 'category']);
+        $events = MarketFundingEventRecord::query()->where('exchange', $signal->exchange)
+            ->where('category', $signal->category)->where('symbol', $position->symbol)->where('funding_at', '>', $position->opened_at)->where('funding_at', '<=', $through)->oldest('funding_at')->get();
         foreach ($events as $event) {
             DB::transaction(function () use ($position, $event): void {
                 $locked = VirtualPositionRecord::query()->lockForUpdate()->findOrFail($position->id);
@@ -198,16 +200,16 @@ final readonly class PositionLifecycleService
             $peak = BigDecimal::of($account->peak_equity)->max($equity);
             $drawdown = $peak->isZero() ? BigDecimal::zero() : $peak->minus($equity)->dividedBy($peak, 24, RoundingMode::HalfEven)->multipliedBy(100);
             $status = $account->status;
-            if (! $account->drawdown_override) {
-                if ($drawdown->isGreaterThanOrEqualTo(BigDecimal::of((string) $this->config['drawdown']['halt_percent']))) {
-                    $status = 'HALTED';
-                } elseif ($drawdown->isGreaterThanOrEqualTo(BigDecimal::of((string) $this->config['drawdown']['block_new_entries_percent']))) {
-                    $status = 'BLOCKED';
-                } elseif ($status === 'BLOCKED') {
-                    $status = 'ACTIVE';
-                }
+
+            if ($drawdown->isGreaterThanOrEqualTo(BigDecimal::of((string) $this->config['drawdown']['halt_percent']))) {
+                $status = 'HALTED';
+            } elseif ($drawdown->isGreaterThanOrEqualTo(BigDecimal::of((string) $this->config['drawdown']['block_new_entries_percent']))) {
+                $status = 'BLOCKED';
+            } elseif ($status === 'BLOCKED') {
+                $status = 'ACTIVE';
             }
-            $account->update(['unrealized_pnl' => (string) $portfolioUnrealized, 'current_equity' => (string) $equity, 'peak_equity' => (string) $peak, 'maximum_drawdown_percent' => (string) BigDecimal::of($account->maximum_drawdown_percent)->max($drawdown), 'current_drawdown_percent' => (string) $drawdown, 'status' => $status, 'drawdown_override' => $status === 'HALTED' ? false : $account->drawdown_override]);
+
+            $account->update(['unrealized_pnl' => (string) $portfolioUnrealized, 'current_equity' => (string) $equity, 'peak_equity' => (string) $peak, 'maximum_drawdown_percent' => (string) BigDecimal::of($account->maximum_drawdown_percent)->max($drawdown), 'current_drawdown_percent' => (string) $drawdown, 'status' => $status, 'drawdown_override' => false]);
             $this->snapshot($account->refresh(), $at, "mark:{$locked->id}:{$at->format('U.u')}");
         });
     }

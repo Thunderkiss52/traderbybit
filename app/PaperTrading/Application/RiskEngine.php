@@ -45,12 +45,11 @@ final readonly class RiskEngine
             $reasons[] = 'portfolio_notional_limit';
         }
         $drawdown = BigDecimal::of((string) $input['drawdown_percent']);
-        if (! (bool) ($input['drawdown_override'] ?? false)) {
-            if ($drawdown->isGreaterThanOrEqualTo(BigDecimal::of((string) $this->config['drawdown']['halt_percent']))) {
-                $reasons[] = 'drawdown_halt';
-            } elseif ($drawdown->isGreaterThanOrEqualTo(BigDecimal::of((string) $this->config['drawdown']['block_new_entries_percent']))) {
-                $reasons[] = 'drawdown_entry_block';
-            }
+        // Historical drawdown_override values must not disable financial safety limits.
+        if ($drawdown->isGreaterThanOrEqualTo(BigDecimal::of((string) $this->config['drawdown']['halt_percent']))) {
+            $reasons[] = 'drawdown_halt';
+        } elseif ($drawdown->isGreaterThanOrEqualTo(BigDecimal::of((string) $this->config['drawdown']['block_new_entries_percent']))) {
+            $reasons[] = 'drawdown_entry_block';
         }
         foreach ((array) ($input['market_failures'] ?? []) as $failure) {
             $reasons[] = (string) $failure;

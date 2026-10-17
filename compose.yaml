@@ -181,6 +181,21 @@ services:
     mem_limit: ${MARKET_WS_MEMORY_LIMIT:-256m}
     cpus: ${MARKET_WS_CPU_LIMIT:-0.5}
 
+
+  audit-worker:
+    <<: *php-service
+    # Dedicated low-priority research export worker; never consumes the trading queue.
+    command: ["php", "-d", "memory_limit=192M", "artisan", "queue:work", "redis", "--queue=audit", "--sleep=3", "--tries=2", "--timeout=1800", "--max-time=3600", "--memory=192", "--no-interaction"]
+    healthcheck:
+      test: ["CMD-SHELL", "tr '\\0' ' ' </proc/1/cmdline | grep -q 'queue:work.*audit'"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+    stop_grace_period: 90s
+    mem_limit: ${AUDIT_MEMORY_LIMIT:-384m}
+    mem_reservation: ${AUDIT_MEMORY_RESERVATION:-128m}
+    cpus: ${AUDIT_CPU_LIMIT:-0.50}
+
   backtest-worker:
     <<: *php-service
     command: ["php", "artisan", "queue:work", "redis", "--queue=backtests,research", "--sleep=3", "--tries=2", "--timeout=3600", "--max-time=7200", "--memory=${BACKTEST_WORKER_MEMORY_MB:-768}", "--no-interaction"]

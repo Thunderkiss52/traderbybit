@@ -17,6 +17,7 @@ final class DailyPerformanceTest extends TestCase
     public function test_daily_equity_returns_are_paginated_and_use_the_selected_timezone(): void
     {
         $account = $this->app->make(PaperAccountService::class)->default();
+        EquitySnapshotRecord::query()->where('paper_account_id', $account->id)->delete();
         $this->snapshot($account->id, '2026-10-10T20:59:30Z', '10000', '0', '0', 'day-one');
         $this->snapshot($account->id, '2026-10-11T20:59:30Z', '10100', '80', '20', 'day-two');
         $this->snapshot($account->id, '2026-10-12T20:59:30Z', '10050', '70', '-20', 'day-three');
@@ -63,6 +64,7 @@ final class DailyPerformanceTest extends TestCase
     public function test_large_snapshot_history_returns_only_ten_server_aggregated_days_under_payload_limit(): void
     {
         $account = $this->app->make(PaperAccountService::class)->default();
+        EquitySnapshotRecord::query()->where('paper_account_id', $account->id)->delete();
         $at = new DateTimeImmutable('2023-01-01T23:59:30Z');
         for ($index = 0; $index < 1000; $index++) {
             $this->snapshot($account->id, $at->modify('+'.$index.' days')->format(DATE_ATOM), (string) (10000 + $index), (string) $index, '0', 'large-'.$index);

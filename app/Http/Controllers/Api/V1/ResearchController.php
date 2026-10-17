@@ -76,7 +76,7 @@ final class ResearchController extends Controller
         $skipCounts = [];
         foreach ($recentSkips as $skip) {
             foreach ($skip->reasons ?? [] as $reason) {
-                if (is_string($reason)) {
+                if (is_string($reason) && ! str_starts_with($reason, 'regime_')) {
                     $skipCounts[$reason] = ($skipCounts[$reason] ?? 0) + 1;
                 }
             }
@@ -151,7 +151,7 @@ final class ResearchController extends Controller
             $skipReasons = [];
             foreach ((clone $query)->where('side', 'SKIP')->cursor() as $observation) {
                 foreach ($observation->reasons ?? [] as $reason) {
-                    if (is_string($reason)) {
+                    if (is_string($reason) && ! str_starts_with($reason, 'regime_')) {
                         $skipReasons[$reason] = ($skipReasons[$reason] ?? 0) + 1;
                     }
                 }
@@ -329,14 +329,29 @@ final class ResearchController extends Controller
         ]);
     }
 
+    public function journalAccounts(): ResearchResource
+    {
+        return $this->ok(PaperAccountRecord::query()->orderBy('name')->limit(50)->get(['id', 'name', 'mode', 'strategy_id', 'status']));
+    }
+
     public function journal(Request $r): ResearchResource
     {
-        $q = JournalEventRecord::query();
-        if ($r->filled('account')) {
-            $q->where('paper_account_id', $r->string('account'));
+        $validated = $r->validate([
+            'account' => ['nullable', 'uuid'],
+            'period_days' => ['nullable', 'integer', 'in:1,7,14,30'],
+            'event_type' => ['nullable', 'string', 'max:40'],
+        ]);
+        $days = (int) ($validated['period_days'] ?? 7);
+        $q = JournalEventRecord::query()->where('occurred_at', '>=', now('UTC')->subDays($days));
+        if (! empty($validated['account'])) {
+            $q->where('paper_account_id', $validated['account']);
+        }
+        if (! empty($validated['event_type'])) {
+            $q->where('event_type', $validated['event_type']);
         }
 
-        return $this->ok($q->latest('occurred_at')->latest('sequence')->paginate($this->perPage($r), ['sequence', 'id', 'paper_account_id', 'position_id', 'signal_id', 'event_type', 'occurred_at']));
+        // Avoid a full-history COUNT(*) and eager statistics calculation on the journal request.
+        return $this->ok($q->latest('occurred_at')->latest('sequence')->simplePaginate($this->perPage($r), ['sequence', 'id', 'paper_account_id', 'position_id', 'signal_id', 'event_type', 'occurred_at']));
     }
 
     public function statistics(Request $r, PerformanceStatisticsService $s): ResearchResource

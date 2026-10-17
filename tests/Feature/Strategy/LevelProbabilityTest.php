@@ -34,6 +34,16 @@ final class LevelProbabilityTest extends TestCase
             ]);
         }
 
+        // An apparently completed forecast is not usable if its outcome occurred after T.
+        LevelInteractionForecastRecord::query()->create([
+            'id' => Uuid::uuid4()->toString(), 'exchange' => 'bybit', 'category' => 'linear', 'symbol' => 'BTCUSDT',
+            'timeframe' => '15', 'event' => 'resistance_breakout', 'side' => 'BUY',
+            'triggered_at' => $at->modify('-1 hour'), 'horizon_ends_at' => $at->modify('+1 hour'),
+            'model_version' => '0.9.0', 'configuration_hash' => str_repeat('a', 64),
+            'sample_size' => 0, 'validation_status' => 'INSUFFICIENT_DATA', 'outcome' => 'SUCCESS',
+            'outcome_at' => $at->modify('+30 minutes'), 'features' => ['reference_price' => '100', 'atr' => '1'],
+        ]);
+
         $forecast = $this->app->make(LevelProbabilityService::class)->record(StrategyFixture::input(), [
             'selected_event' => 'resistance_breakout', 'selected_side' => 'BUY', 'resistance' => '101',
             'momentum_side' => 'BUY', 'resistance_zone' => ['strength' => 3],

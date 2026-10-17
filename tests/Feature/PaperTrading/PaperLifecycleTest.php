@@ -40,6 +40,36 @@ final class PaperLifecycleTest extends TestCase
         self::assertSame('0', $account->refresh()->realized_pnl);
     }
 
+    public function test_blocked_account_still_closes_existing_paper_position(): void
+    {
+        $this->signal('BUY');
+        $this->context();
+        $this->candle('10:15', '100.5', '102', '100.5', '101');
+        $this->app->make(PaperProcessingService::class)->process(
+            symbol: 'BTCUSDT', at: new DateTimeImmutable('2026-10-14T10:20:00Z')
+        );
+        $account = $this->app->make(PaperAccountService::class)->default();
+        $account->update(['status' => 'BLOCKED']);
+        $this->candle('10:20', '101', '102', '94', '96');
+        $this->app->make(PaperProcessingService::class)->process(
+            accountId: $account->id, symbol: 'BTCUSDT', at: new DateTimeImmutable('2026-10-14T10:25:00Z')
+        );
+        self::assertSame(PositionStatus::ClosedSl->value, VirtualPositionRecord::query()->firstOrFail()->status);
+    }
+
+    public function test_late_backfilled_signal_cannot_create_forward_entry(): void
+    {
+        $this->travelTo(new DateTimeImmutable('2026-10-14T10:10:00Z'));
+        $account = $this->app->make(PaperAccountService::class)->default();
+        $this->travelTo(new DateTimeImmutable('2026-10-14T10:40:00Z'));
+        $this->signal('BUY'); // Decision timestamp 10:15, inserted 25 minutes too late.
+        $this->context();
+        $this->candle('10:40', '100.5', '102', '100.5', '101');
+        $this->app->make(PaperProcessingService::class)->process(accountId: $account->id, symbol: 'BTCUSDT');
+        $this->assertDatabaseCount('paper_signal_states', 0);
+        $this->assertDatabaseCount('virtual_positions', 0);
+    }
+
     public function test_complete_buy_lifecycle_entry_tp1_tp2_is_idempotent_and_journaled(): void
     {
         $signal = $this->signal('BUY');
@@ -76,6 +106,7 @@ final class PaperLifecycleTest extends TestCase
             ['version' => '1.2.0'],
         );
         $signal = $this->signal('BUY', strategyId: 'trend_pullback');
+        $signal->update(['strategy_version' => '1.2.0']);
         $this->context();
         $this->candle('10:15', '100.5', '102', '100.5', '101.2');
 

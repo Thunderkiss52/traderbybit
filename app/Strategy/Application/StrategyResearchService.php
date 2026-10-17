@@ -18,19 +18,39 @@ final readonly class StrategyResearchService
         if ((bool) config('research.forward_paper.automatic_accounts', true)) {
             foreach ((array) config('research.forward_paper.enabled_strategies', []) as $strategyId) {
                 $strategy = $this->registry->get((string) $strategyId);
-                $this->accounts->strategyForward($strategy->id(), $strategy->version(), $strategy->parameters());
+                try {
+                    $this->accounts->strategyForward($strategy->id(), $strategy->version(), $strategy->parameters());
+                } catch (\DomainException $error) {
+                    // Continue managing existing accounts; surface the versioning
+                    // problem in logs rather than silently mixing strategies.
+                    report($error);
+                }
             }
         }
 
         $processed = [];
-        PaperAccountRecord::query()->whereIn('mode', ['RESEARCH_FORWARD_PAPER', 'STRATEGY_FORWARD_PAPER'])->where('status', 'ACTIVE')->orderBy('id')->each(function (PaperAccountRecord $account) use (&$processed): void {
-            $strategy = $this->registry->make($account->strategy_id, $account->strategy_parameters ?? $this->registry->get($account->strategy_id)->parameters());
+        $metadata = collect($this->registry->metadata())->keyBy('id');
+        $enabled = (array) config('research.forward_paper.enabled_strategies', []);
+        PaperAccountRecord::query()->whereIn('mode', ['RESEARCH_FORWARD_PAPER', 'STRATEGY_FORWARD_PAPER'])->whereIn('status', ['ACTIVE', 'BLOCKED', 'HALTED'])->orderBy('id')->each(function (PaperAccountRecord $account) use (&$processed, $metadata, $enabled): void {
+            // Previous versions/configs remain readable and must exit existing positions,
+            // but they may not silently start new trades after a version rotation.
+            $current = $metadata->get($account->strategy_id);
+            $allowNew = $account->status === 'ACTIVE'
+                && ($account->mode === 'RESEARCH_FORWARD_PAPER' || (in_array($account->strategy_id, $enabled, true)
+                    && $current !== null && $current['version'] === $account->strategy_version
+                    && $current['configuration_hash'] === $account->configuration_hash));
+            $strategy = $allowNew
+                ? $this->registry->make($account->strategy_id, $account->strategy_parameters ?? $this->registry->get($account->strategy_id)->parameters())
+                : null;
             foreach ((array) config('market_data.symbols', ['BTCUSDT', 'ETHUSDT']) as $symbol) {
                 $at = $this->inputs->latestDecisionTime('bybit', 'linear', $symbol);
                 if ($at === null) {
                     continue;
-                } $this->signals->createIfAbsent($strategy->evaluate($this->inputs->make('bybit', 'linear', $symbol, $at)));
-                $processed[] = $this->paper->process($account->id, $symbol);
+                }
+                if ($strategy !== null) {
+                    $this->signals->createIfAbsent($strategy->evaluate($this->inputs->make('bybit', 'linear', $symbol, $at)));
+                }
+                $processed[] = $this->paper->process($account->id, $symbol, allowNewEntries: $allowNew);
             }
         });
 
