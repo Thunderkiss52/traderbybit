@@ -15,4 +15,9 @@ final class ResearchResource extends JsonResource
     {
         return ['schema_version' => '1.0.0', 'research_mode' => true, 'data' => $this->resource];
     }
+
+    public function toResponse($request)
+    {
+        return parent::toResponse($request)->setStatusCode(200);
+    }
 }

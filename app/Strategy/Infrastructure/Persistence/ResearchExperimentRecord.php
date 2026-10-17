@@ -21,6 +21,19 @@ final class ResearchExperimentRecord extends Model
 
     protected function casts(): array
     {
-        return ['parameters' => 'array', 'selected_parameters' => 'array', 'parameter_stability' => 'array', 'symbols' => 'array', 'metrics' => 'array', 'warnings' => 'array', 'resource_budget' => 'array', 'from_at' => 'immutable_datetime', 'to_at' => 'immutable_datetime', 'started_at' => 'immutable_datetime', 'completed_at' => 'immutable_datetime'];
+        return [
+            'is_shadow' => 'boolean',
+            'parameters' => 'array',
+            'selected_parameters' => 'array',
+            'parameter_stability' => 'array',
+            'symbols' => 'array',
+            'metrics' => 'array',
+            'warnings' => 'array',
+            'resource_budget' => 'array',
+            'from_at' => 'immutable_datetime',
+            'to_at' => 'immutable_datetime',
+            'started_at' => 'immutable_datetime',
+            'completed_at' => 'immutable_datetime',
+        ];
     }
 }

@@ -1,0 +1,138 @@
+<?php
+
+declare(strict_types=1);
+
+namespace App\Http\Controllers\Api\V1;
+
+use App\Http\Controllers\Controller;
+use App\Http\Resources\V1\ResearchResource;
+use App\Research\Application\CounterfactualAnalyzerService;
+use App\Research\Application\DecisionReplayService;
+use App\Research\Application\PortfolioCorrelationService;
+use App\Research\Application\ProbabilityCalibrationService;
+use App\Research\Application\ResearchRecommendationService;
+use App\Research\Application\ResearchReportService;
+use App\Research\Application\ShadowExperimentService;
+use App\Research\Application\StrategyDegradationService;
+use App\Research\Infrastructure\Persistence\CounterfactualEvaluationRecord;
+use App\Research\Infrastructure\Persistence\ResearchRecommendationRecord;
+use App\Strategy\Application\StrategyRegistry;
+use Illuminate\Http\Request;
+
+final class ResearchIntelligenceController extends Controller
+{
+    private function ok(mixed $data): ResearchResource
+    {
+        return new ResearchResource($data);
+    }
+
+    public function opportunities(Request $request, CounterfactualAnalyzerService $analyzer): ResearchResource
+    {
+        $perPage = max(1, min(100, $request->integer('per_page', 10)));
+        $strategyId = $request->string('strategy_id')->toString() ?: null;
+
+        $report = $analyzer->filterEffectivenessReport($strategyId);
+        $records = CounterfactualEvaluationRecord::query()
+            ->when($strategyId, fn ($q) => $q->where('strategy_id', $strategyId))
+            ->latest('decision_time')
+            ->paginate($perPage);
+
+        return $this->ok([
+            'summary' => $report,
+            'evaluations' => $records,
+        ]);
+    }
+
+    public function opportunityDetail(string $id): ResearchResource
+    {
+        return $this->ok(CounterfactualEvaluationRecord::query()->findOrFail($id));
+    }
+
+    public function replay(Request $request, string $evaluationId, DecisionReplayService $service): ResearchResource
+    {
+        $mode = $request->string('mode', 'AS_OF_DECISION')->toString();
+
+        return $this->ok($service->replay($evaluationId, $mode));
+    }
+
+    public function calibration(Request $request, ProbabilityCalibrationService $service): ResearchResource
+    {
+        $symbol = $request->string('symbol')->toString() ?: null;
+
+        return $this->ok($service->evaluateCalibration($symbol));
+    }
+
+    public function startShadow(string $id, ShadowExperimentService $service): ResearchResource
+    {
+        return $this->ok($service->startExperiment($id));
+    }
+
+    public function stopShadow(string $id, ShadowExperimentService $service): ResearchResource
+    {
+        return $this->ok($service->stopExperiment($id));
+    }
+
+    public function degradation(Request $request, StrategyDegradationService $service, StrategyRegistry $registry): ResearchResource
+    {
+        $horizon = $request->string('horizon', '14d')->toString();
+        $strategyId = $request->string('strategy_id')->toString() ?: null;
+        $symbol = $request->string('symbol')->toString() ?: null;
+
+        if ($strategyId) {
+            $snap = $service->evaluate($strategyId, $horizon, $symbol);
+
+            return $this->ok($snap);
+        }
+
+        $snapshots = [];
+        foreach ($registry->metadata() as $meta) {
+            $snapshots[] = $service->evaluate($meta['id'], $horizon, $symbol);
+        }
+
+        return $this->ok([
+            'horizon' => $horizon,
+            'strategies' => $snapshots,
+        ]);
+    }
+
+    public function correlations(Request $request, PortfolioCorrelationService $service): ResearchResource
+    {
+        $horizon = $request->string('horizon', '14d')->toString();
+
+        return $this->ok($service->evaluate($horizon));
+    }
+
+    public function recommendations(ResearchRecommendationService $service): ResearchResource
+    {
+        $service->generateRecommendations();
+        $records = ResearchRecommendationRecord::query()
+            ->where('status', 'OPEN')
+            ->latest('created_at')
+            ->get();
+
+        return $this->ok($records);
+    }
+
+    public function dismissRecommendation(string $id): ResearchResource
+    {
+        $rec = ResearchRecommendationRecord::query()->findOrFail($id);
+        $rec->update(['status' => 'DISMISSED']);
+
+        return $this->ok($rec->fresh());
+    }
+
+    public function acceptRecommendation(string $id): ResearchResource
+    {
+        $rec = ResearchRecommendationRecord::query()->findOrFail($id);
+        $rec->update(['status' => 'ACCEPTED']);
+
+        return $this->ok($rec->fresh());
+    }
+
+    public function report(Request $request, ResearchReportService $service): ResearchResource
+    {
+        $period = $request->string('period', 'daily')->toString();
+
+        return $this->ok($service->generateReport($period));
+    }
+}

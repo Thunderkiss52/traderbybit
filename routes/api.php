@@ -3,11 +3,32 @@
 use App\Audit\Http\AuditExportController as A;
 use App\Http\Controllers\Api\V1\PatternResearchController as P;
 use App\Http\Controllers\Api\V1\ResearchController as C;
+use App\Http\Controllers\Api\V1\ResearchHealthController as H;
+use App\Http\Controllers\Api\V1\ResearchIntelligenceController as I;
 use App\Http\Controllers\Api\V1\StrategyResearchController as R;
 use App\Http\Middleware\RequireResearchToken;
 use Illuminate\Support\Facades\Route;
 
 Route::prefix('v1')->middleware('throttle:api')->group(function () {
+    Route::get('research/health/overview', [H::class, 'overview']);
+    Route::get('research/health/strategy-funnel', [H::class, 'strategyFunnel']);
+    Route::get('research/health/reconciliation-runs', [H::class, 'reconciliationRuns']);
+    Route::post('research/health/reconcile', [H::class, 'reconcile']);
+    Route::get('research/health/data-freshness', [H::class, 'dataFreshness']);
+
+    Route::get('research/opportunities', [I::class, 'opportunities']);
+    Route::get('research/opportunities/{id}', [I::class, 'opportunityDetail']);
+    Route::get('research/replay/{evaluationId}', [I::class, 'replay']);
+    Route::get('research/calibration', [I::class, 'calibration']);
+    Route::post('research/experiments/{id}/start-shadow', [I::class, 'startShadow']);
+    Route::post('research/experiments/{id}/stop-shadow', [I::class, 'stopShadow']);
+
+    Route::get('research/degradation', [I::class, 'degradation']);
+    Route::get('research/correlations', [I::class, 'correlations']);
+    Route::get('research/recommendations', [I::class, 'recommendations']);
+    Route::post('research/recommendations/{id}/dismiss', [I::class, 'dismissRecommendation']);
+    Route::post('research/recommendations/{id}/accept', [I::class, 'acceptRecommendation']);
+    Route::get('research/report', [I::class, 'report']);
     Route::get('audit/strategy-funnel', [A::class, 'funnel']);
     Route::post('audit/exports/quick', [A::class, 'create']);
     Route::get('audit/exports', [A::class, 'index']);

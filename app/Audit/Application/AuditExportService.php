@@ -43,9 +43,14 @@ final class AuditExportService
         'market_candles' => ['id', 'exchange', 'category', 'symbol', 'interval', 'open_time', 'open', 'high', 'low', 'close', 'volume', 'turnover', 'is_closed'],
         'market_funding_events' => ['id', 'exchange', 'category', 'symbol', 'funding_at', 'rate', 'mark_price'],
         'market_open_interest_events' => ['id', 'exchange', 'category', 'symbol', 'interval', 'observed_at', 'open_interest'],
-        'research_pattern_runs' => ['id', 'status', 'from_at', 'to_at', 'symbol', 'configuration_hash', 'parameters', 'data_quality', 'examined_decisions', 'labeled_observations', 'completed_at', 'created_at'],
         'research_patterns' => ['id', 'pattern_run_id', 'direction', 'status', 'terms', 'metrics', 'rule_hash', 'version', 'created_at'],
         'research_pattern_matches' => ['id', 'pattern_id', 'symbol', 'direction', 'matched_at', 'feature_snapshot', 'status', 'outcome', 'net_r', 'outcome_at'],
+        'strategy_health_snapshots' => ['id', 'strategy_id', 'strategy_version', 'symbol', 'period', 'status', 'diagnostic_code', 'funnel', 'created_at'],
+        'reconciliation_runs' => ['id', 'paper_account_id', 'status', 'discrepancy_count', 'discrepancies', 'summary', 'created_at'],
+        'counterfactual_evaluations' => ['id', 'signal_id', 'strategy_id', 'strategy_version', 'symbol', 'timeframe', 'decision_time', 'skip_reason', 'filter_family', 'candidate_direction', 'hypothetical_entry', 'status', 'mfe', 'mae', 'r_multiple', 'net_return_percent', 'resolved_at', 'created_at'],
+        'strategy_degradation_snapshots' => ['id', 'strategy_id', 'strategy_version', 'symbol', 'horizon', 'sample_size', 'expectancy_r', 'profit_factor', 'win_rate', 'status', 'degradation_type', 'as_of_time', 'created_at'],
+        'portfolio_correlation_snapshots' => ['id', 'horizon', 'concentration_score', 'alerts', 'evaluated_at', 'created_at'],
+        'research_recommendations' => ['id', 'category', 'strategy_id', 'title', 'description', 'status', 'created_at'],
     ];
 
     private const TIMES = [
@@ -59,6 +64,9 @@ final class AuditExportService
         'market_candles' => 'open_time', 'market_funding_events' => 'funding_at',
         'market_open_interest_events' => 'observed_at', 'research_pattern_runs' => 'created_at',
         'research_patterns' => 'created_at', 'research_pattern_matches' => 'matched_at',
+        'strategy_health_snapshots' => 'created_at', 'reconciliation_runs' => 'created_at',
+        'counterfactual_evaluations' => 'decision_time', 'strategy_degradation_snapshots' => 'as_of_time',
+        'portfolio_correlation_snapshots' => 'evaluated_at', 'research_recommendations' => 'created_at',
     ];
 
     public function request(int $days): AuditExportRecord
