@@ -29,6 +29,13 @@ final readonly class PaperAccountService
             'mode' => 'FORWARD_PAPER', 'strategy_id' => 'baseline', 'strategy_version' => (string) config('strategy.version'),
         ]);
 
+        if ($account->strategy_version === null || $account->strategy_id === null) {
+            $account->update([
+                'strategy_version' => $account->strategy_version ?? (string) config('strategy.version'),
+                'strategy_id' => $account->strategy_id ?? 'baseline',
+            ]);
+        }
+
         $this->ensureInitialSnapshot($account);
 
         return $account;

@@ -110,8 +110,33 @@ final class ResearchController extends Controller
                 'recent_decisions' => $recentDecisions,
                 'skip_reasons_24h' => $skipReasons,
                 'strategy_observations_24h' => Cache::remember('paper:dashboard:strategy_observations_24h', 60, fn () => $this->strategyObservations($strategies)),
-                'strategy_portfolios' => PaperAccountRecord::query()->whereIn('mode', ['FORWARD_PAPER', 'STRATEGY_FORWARD_PAPER', 'RESEARCH_FORWARD_PAPER'])
-                    ->latest('created_at')->limit(20)->get(['id', 'name', 'mode', 'strategy_id', 'strategy_version', 'status', 'current_equity', 'realized_pnl', 'unrealized_pnl', 'created_at']),
+                'strategy_portfolios' => collect($strategies->metadata())->map(function (array $strategy): array {
+                    $account = PaperAccountRecord::query()
+                        ->where('strategy_id', $strategy['id'])
+                        ->whereIn('mode', ['FORWARD_PAPER', 'STRATEGY_FORWARD_PAPER', 'RESEARCH_FORWARD_PAPER'])
+                        ->latest('created_at')
+                        ->first();
+
+                    if ($account === null && $strategy['id'] === 'baseline') {
+                        $account = PaperAccountRecord::query()
+                            ->where(fn ($q) => $q->where('strategy_id', 'baseline')->orWhereNull('strategy_id'))
+                            ->whereIn('mode', ['FORWARD_PAPER', 'STRATEGY_FORWARD_PAPER'])
+                            ->oldest('created_at')
+                            ->first();
+                    }
+
+                    return [
+                        'id' => $account ? (string) $account->id : 'strategy:'.$strategy['id'],
+                        'name' => $account ? (string) $account->name : 'Forward Paper '.$strategy['id'],
+                        'mode' => $account ? (string) ($account->mode ?: 'STRATEGY_FORWARD_PAPER') : 'STRATEGY_FORWARD_PAPER',
+                        'strategy_id' => $strategy['id'],
+                        'strategy_version' => $account && $account->strategy_version ? (string) $account->strategy_version : (string) $strategy['version'],
+                        'status' => $account ? (string) ($account->status ?: 'ACTIVE') : 'ACTIVE',
+                        'current_equity' => $account ? (string) $account->current_equity : (string) config('backtest.starting_balance', '10000'),
+                        'realized_pnl' => $account ? (string) $account->realized_pnl : '0',
+                        'unrealized_pnl' => $account ? (string) $account->unrealized_pnl : '0',
+                    ];
+                })->values()->all(),
                 'paper_execution_health' => [
                     'execution_failures_24h' => JournalEventRecord::query()->where('event_type', 'EXECUTION_FAILED')->where('occurred_at', '>=', now('UTC')->subDay())->count(),
                     'last_journal_event_at' => JournalEventRecord::query()->max('occurred_at'),
@@ -137,7 +162,7 @@ final class ResearchController extends Controller
         return collect($strategies->metadata())->map(function (array $strategy) use ($since): array {
             $query = StrategyObservationRecord::query()
                 ->where('strategy_id', $strategy['id'])
-                ->where('configuration_hash', $strategy['configuration_hash'])
+                ->where(fn ($q) => $q->where('configuration_hash', $strategy['configuration_hash'])->orWhereNull('configuration_hash'))
                 ->where('decision_time', '>=', $since);
             $counts = (clone $query)->selectRaw('side, COUNT(*) AS aggregate')->groupBy('side')->pluck('aggregate', 'side');
             $latest = (clone $query)->latest('decision_time')->latest('id')->first(['symbol', 'side', 'decision_time', 'reasons', 'analysis']);
@@ -313,19 +338,19 @@ final class ResearchController extends Controller
             $riskDecisions = RiskDecisionRecord::query()
                 ->whereIn('signal_id', $signalIds)
                 ->latest('decided_at')
-                ->get()
+                ->get(['id', 'signal_id', 'allowed'])
                 ->keyBy('signal_id');
 
             $paperStates = PaperSignalStateRecord::query()
                 ->whereIn('signal_id', $signalIds)
                 ->latest('updated_at')
-                ->get()
+                ->get(['id', 'signal_id', 'status'])
                 ->keyBy('signal_id');
 
             $positions = VirtualPositionRecord::query()
                 ->whereIn('signal_id', $signalIds)
                 ->latest('opened_at')
-                ->get()
+                ->get(['id', 'signal_id'])
                 ->keyBy('signal_id');
 
             $paginator->through(function (SignalRecord $sig) use ($riskDecisions, $paperStates, $positions): array {
@@ -360,16 +385,22 @@ final class ResearchController extends Controller
         }
 
         $page = $q->latest('opened_at')->latest('id')->paginate($this->perPage($r));
-        $latestPrices = collect($page->items())->pluck('symbol')->unique()->mapWithKeys(
-            static fn (string $symbol) => [$symbol => CandleRecord::query()->where('symbol', $symbol)->where('interval', '5')->where('is_closed', true)->latest('open_time')->first(['symbol', 'close'])]
+        $symbols = collect($page->items())->pluck('symbol')->unique()->filter()->values();
+        $latestPrices = $symbols->mapWithKeys(
+            static fn (string $symbol) => [
+                $symbol => Cache::remember("market:latest_close:5m:{$symbol}", 5, static fn () => CandleRecord::query()->where('symbol', $symbol)->where('interval', '5')->where('is_closed', true)->latest('open_time')->first(['symbol', 'close'])),
+            ]
         );
         $page->through(function (VirtualPositionRecord $position) use ($latestPrices): array {
             $referenceAt = $position->closed_at ?? $position->last_processed_event_at ?? $position->opened_at;
+            $openedAtTs = $position->opened_at instanceof \DateTimeInterface ? $position->opened_at->getTimestamp() : 0;
+            $refTs = $referenceAt instanceof \DateTimeInterface ? $referenceAt->getTimestamp() : $openedAtTs;
+            $maxHoldingTs = $position->maximum_holding_until instanceof \DateTimeInterface ? $position->maximum_holding_until->getTimestamp() : $refTs;
 
             return array_merge($position->toArray(), [
                 'current_reference_price' => $latestPrices->get($position->symbol)?->close,
-                'duration_seconds' => max(0, $referenceAt->getTimestamp() - $position->opened_at->getTimestamp()),
-                'maximum_holding_remaining_seconds' => max(0, $position->maximum_holding_until->getTimestamp() - $referenceAt->getTimestamp()),
+                'duration_seconds' => max(0, $refTs - $openedAtTs),
+                'maximum_holding_remaining_seconds' => max(0, $maxHoldingTs - $refTs),
             ]);
         });
 

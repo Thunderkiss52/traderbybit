@@ -8,9 +8,15 @@ const error = ref('');
 
 const overview = ref<any>(null);
 const candidates = ref<any[]>([]);
+const candidatesPage = ref(1);
+const candidatesPages = ref(1);
+const candidatesTotal = ref(0);
 const models = ref<any[]>([]);
 const settings = ref<any>(null);
 const auditEvents = ref<any[]>([]);
+const auditPage = ref(1);
+const auditPages = ref(1);
+const auditTotal = ref(0);
 
 const selectedStrategy = ref('trend_pullback');
 const generating = ref(false);
@@ -32,8 +38,12 @@ async function loadOverview() {
 async function loadCandidates() {
   loading.value = true;
   try {
-    const res = await api.get('/research/learning/candidates', { params: { per_page: 20 } });
+    const res = await api.get('/research/learning/candidates', {
+      params: { page: candidatesPage.value, per_page: 10 },
+    });
     candidates.value = res.data.data.data || [];
+    candidatesPages.value = res.data.data.last_page || 1;
+    candidatesTotal.value = res.data.data.total || 0;
   } catch (err: any) {
     error.value = err.message || 'Failed to load candidates';
   } finally {
@@ -56,8 +66,12 @@ async function loadModels() {
 async function loadAuditTrail() {
   loading.value = true;
   try {
-    const res = await api.get('/research/learning/audit-trail', { params: { per_page: 25 } });
+    const res = await api.get('/research/learning/audit-trail', {
+      params: { page: auditPage.value, per_page: 15 },
+    });
     auditEvents.value = res.data.data.data || [];
+    auditPages.value = res.data.data.last_page || 1;
+    auditTotal.value = res.data.data.total || 0;
   } catch (err: any) {
     error.value = err.message || 'Failed to load audit trail';
   } finally {
@@ -328,7 +342,8 @@ onMounted(() => {
             { name: 'actions', label: 'Actions', field: 'id', align: 'right' },
           ]"
           row-key="id"
-          :pagination="{ rowsPerPage: 10 }"
+          :pagination="{ rowsPerPage: 0 }"
+          hide-pagination
         >
           <template #body-cell-status="props">
             <q-td :props="props">
@@ -406,6 +421,13 @@ onMounted(() => {
             </q-td>
           </template>
         </q-table>
+        <div class="row items-center justify-between q-pa-md">
+          <div class="text-caption text-grey">
+            Showing {{ candidates.length ? (candidatesPage - 1) * 10 + 1 : 0 }}–{{ Math.min(candidatesPage * 10, candidatesTotal || candidates.length) }}
+            of {{ candidatesTotal || candidates.length }} candidates · Page {{ candidatesPage }} / {{ candidatesPages }}
+          </div>
+          <q-pagination v-model="candidatesPage" :max="candidatesPages" :max-pages="7" boundary-links direction-links :disable="loading" @update:model-value="loadCandidates" />
+        </div>
       </q-card>
     </div>
 
@@ -482,8 +504,16 @@ onMounted(() => {
             { name: 'reason', label: 'Reason & Rationale', field: 'reason', align: 'left' },
           ]"
           row-key="id"
-          :pagination="{ rowsPerPage: 15 }"
+          :pagination="{ rowsPerPage: 0 }"
+          hide-pagination
         />
+        <div class="row items-center justify-between q-pa-md">
+          <div class="text-caption text-grey">
+            Showing {{ auditEvents.length ? (auditPage - 1) * 15 + 1 : 0 }}–{{ Math.min(auditPage * 15, auditTotal || auditEvents.length) }}
+            of {{ auditTotal || auditEvents.length }} events · Page {{ auditPage }} / {{ auditPages }}
+          </div>
+          <q-pagination v-model="auditPage" :max="auditPages" :max-pages="7" boundary-links direction-links :disable="loading" @update:model-value="loadAuditTrail" />
+        </div>
       </q-card>
     </div>
   </q-page>

@@ -1,11 +1,19 @@
 <script setup lang="ts">
 import { onBeforeUnmount, onMounted, ref, shallowRef, watch } from 'vue';
 import { get } from '../services/api';
+import type { QTableColumn } from 'quasar';
 import MetricCard from '../components/MetricCard.vue';
 const d = shallowRef<any>({ decisions: { data: [], last_page: 1 } });
 const page = ref(1);
 const loading = ref(false);
 const error = ref('');
+
+const riskColumns: QTableColumn[] = [
+  { name: 'decided_at', label: 'Time (UTC)', field: 'decided_at', align: 'left', sortable: true },
+  { name: 'signal_id', label: 'Signal ID', field: (r: any) => r.signal_id ? r.signal_id.slice(0, 8) + '...' : '—', align: 'left' },
+  { name: 'allowed', label: 'Decision', field: 'allowed', align: 'center', sortable: true },
+  { name: 'reasons', label: 'Reasons & Checks', field: (r: any) => Array.isArray(r.reasons) ? r.reasons.join(', ') : (r.reasons || '—'), align: 'left' },
+];
 let version = 0;
 let controller: AbortController | undefined;
 async function load() {
@@ -37,8 +45,25 @@ onBeforeUnmount(() => controller?.abort());
       <MetricCard label="Drawdown" :value="d.account?.current_drawdown_percent" />
       <MetricCard label="Max positions" :value="d.limits?.maximum_open_positions" />
     </div>
-    <h2>Latest decisions</h2>
-    <q-table flat bordered :rows="d.decisions?.data || []" row-key="id" :loading="loading" :pagination="{ rowsPerPage: 0 }" hide-pagination />
+    <q-table
+      flat
+      bordered
+      :rows="d.decisions?.data || []"
+      :columns="riskColumns"
+      row-key="id"
+      :loading="loading"
+      :pagination="{ rowsPerPage: 0 }"
+      hide-pagination
+    >
+      <template #body-cell-allowed="props">
+        <q-td :props="props">
+          <q-badge
+            :color="props.value ? 'positive' : 'negative'"
+            :label="props.value ? 'ALLOWED' : 'REJECTED'"
+          />
+        </q-td>
+      </template>
+    </q-table>
     <div class="row items-center justify-between q-mt-md">
       <span class="text-caption">Latest 10 risk decisions · Page {{ page }} / {{ d.decisions?.last_page || 1 }}</span>
       <q-pagination v-model="page" :max="d.decisions?.last_page || 1" :max-pages="7" boundary-links direction-links />

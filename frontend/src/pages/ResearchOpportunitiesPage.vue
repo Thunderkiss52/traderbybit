@@ -9,6 +9,9 @@ const error = ref('');
 const summary = ref<any>(null);
 const evaluations = ref<any[]>([]);
 const strategyId = ref('');
+const evalPage = ref(1);
+const evalPages = ref(1);
+const evalTotal = ref(0);
 
 async function refresh() {
   loading.value = true;
@@ -17,11 +20,14 @@ async function refresh() {
     const res = await api.get('/research/opportunities', {
       params: {
         strategy_id: strategyId.value || undefined,
-        per_page: 25,
+        page: evalPage.value,
+        per_page: 15,
       },
     });
     summary.value = res.data.data.summary;
     evaluations.value = res.data.data.evaluations.data || [];
+    evalPages.value = res.data.data.evaluations.last_page || 1;
+    evalTotal.value = res.data.data.evaluations.total || 0;
   } catch (err: any) {
     error.value = err.message || 'Failed to load counterfactual opportunities';
   } finally {
@@ -169,7 +175,8 @@ onMounted(() => {
           { name: 'actions', label: 'Action', field: 'id', align: 'center' },
         ]"
         row-key="id"
-        :pagination="{ rowsPerPage: 15 }"
+        :pagination="{ rowsPerPage: 0 }"
+        hide-pagination
       >
         <template #body-cell-direction="props">
           <q-td :props="props">
@@ -200,6 +207,13 @@ onMounted(() => {
           </div>
         </template>
       </q-table>
+      <div class="row items-center justify-between q-pa-md">
+        <div class="text-caption text-grey">
+          Showing {{ evaluations.length ? (evalPage - 1) * 15 + 1 : 0 }}–{{ Math.min(evalPage * 15, evalTotal || evaluations.length) }}
+          of {{ evalTotal || evaluations.length }} candidates · Page {{ evalPage }} / {{ evalPages }}
+        </div>
+        <q-pagination v-model="evalPage" :max="evalPages" :max-pages="7" boundary-links direction-links :disable="loading" @update:model-value="refresh" />
+      </div>
     </q-card>
   </q-page>
 </template>

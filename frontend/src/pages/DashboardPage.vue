@@ -9,16 +9,21 @@ import SignalCard from '../components/SignalCard.vue';
 import EmptyState from '../components/EmptyState.vue';
 import DailyPerformance from '../components/DailyPerformance.vue';
 
-const data = shallowRef<any>({ market: [], signals: [], positions: [], portfolio: null, performance: null, recent_decisions: [], skip_reasons_24h: {}, strategy_observations_24h: [] });
+const data = shallowRef<any>({ market: [], signals: [], positions: [], portfolio: null, performance: null, recent_decisions: [], skip_reasons_24h: {}, strategy_observations_24h: [], strategy_portfolios: [] });
 const error = ref('');
 const controller = new AbortController();
 const { autoRefresh } = storeToRefs(useSettings());
 const { loading, connected } = usePolling(async () => {
   try {
-    data.value = await get('/dashboard', undefined, controller.signal);
+    const res = await get<any>('/dashboard', undefined, controller.signal);
+    if (res) {
+      data.value = res;
+    }
     error.value = '';
   } catch (exception: any) {
-    error.value = exception.message;
+    if (exception.name !== 'CanceledError') {
+      error.value = exception.message;
+    }
     throw exception;
   }
 }, 5000, autoRefresh);
@@ -71,11 +76,15 @@ const evidence = (value: unknown) => value === null || value === undefined ? '�
       <q-markup-table flat bordered>
         <thead><tr><th class="text-left">Strategy</th><th>Status</th><th>Equity</th><th>Realized PnL</th><th>Unrealized PnL</th></tr></thead>
         <tbody><tr v-for="portfolio in data.strategy_portfolios || []" :key="portfolio.id">
-          <td class="text-left"><b>{{ portfolio.strategy_id }}</b><div class="muted">v{{ portfolio.strategy_version }} · {{ portfolio.mode }}</div></td>
-          <td class="text-center">{{ portfolio.status }}</td><td class="text-right">{{ portfolio.current_equity }}</td>
+          <td class="text-left">
+            <b>{{ portfolio.strategy_id || 'baseline' }}</b>
+            <div v-if="portfolio.strategy_version" class="muted">v{{ portfolio.strategy_version }} · {{ portfolio.mode || 'FORWARD_PAPER' }}</div>
+          </td>
+          <td class="text-center">{{ portfolio.status || 'ACTIVE' }}</td><td class="text-right">{{ portfolio.current_equity }}</td>
           <td class="text-right">{{ portfolio.realized_pnl }}</td><td class="text-right">{{ portfolio.unrealized_pnl }}</td>
         </tr></tbody>
       </q-markup-table>
+      <EmptyState v-if="!(data.strategy_portfolios || []).length" />
       <div class="muted q-mt-sm">Execution failures (24h): {{ data.paper_execution_health?.execution_failures_24h ?? 0 }} · Latest evaluation: {{ data.paper_execution_health?.latest_strategy_evaluation_at ?? '—' }}</div>
     </section>
     <section>
@@ -84,8 +93,11 @@ const evidence = (value: unknown) => value === null || value === undefined ? '�
       <q-markup-table flat bordered wrap-cells>
         <thead><tr><th class="text-left">Strategy</th><th v-for="symbol in ['BTCUSDT', 'ETHUSDT']" :key="symbol" class="text-left">{{ symbol }}</th><th>Combined B / S / K</th><th class="text-left">Top SKIP reasons</th></tr></thead>
         <tbody>
-          <tr v-for="strategy in data.strategy_observations_24h" :key="strategy.strategy_id">
-            <td class="text-left"><b>{{ strategy.strategy_id }}</b><div class="muted">v{{ strategy.strategy_version }} · 1h / 30m / 15m / 5m</div></td>
+          <tr v-for="strategy in data.strategy_observations_24h || []" :key="strategy.strategy_id">
+            <td class="text-left">
+              <b>{{ strategy.strategy_id }}</b>
+              <div v-if="strategy.strategy_version" class="muted">v{{ strategy.strategy_version }} · 1h / 30m / 15m / 5m</div>
+            </td>
             <td v-for="market in strategy.symbols" :key="market.symbol" class="text-left">
               <div><span class="text-positive">B {{ market.buy }}</span> · <span class="text-negative">S {{ market.sell }}</span> · K {{ market.skip }}</div>
               <template v-if="market.latest">
@@ -106,6 +118,7 @@ const evidence = (value: unknown) => value === null || value === undefined ? '�
           </tr>
         </tbody>
       </q-markup-table>
+      <EmptyState v-if="!(data.strategy_observations_24h || []).length" />
     </section>
     <section>
       <h2>Latest BUY / SELL Signals</h2>

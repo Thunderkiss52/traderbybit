@@ -4,6 +4,8 @@ import { useRoute } from 'vue-router';
 import { get } from '../services/api';
 import EquityChart from '../components/charts/EquityChart.vue';
 
+import type { QTableColumn } from 'quasar';
+
 const route = useRoute();
 const summary = shallowRef<any>({ run: {}, segments: { data: [], last_page: 1 } });
 const trades = shallowRef<any>({ data: [], last_page: 1 });
@@ -14,6 +16,27 @@ const optimizationPage = ref(1);
 const error = ref('');
 const loading = ref(false);
 const optimizationLoading = ref(false);
+
+const tradeColumns: QTableColumn[] = [
+  { name: 'symbol', label: 'Symbol', field: 'symbol', align: 'left', sortable: true },
+  { name: 'side', label: 'Side', field: 'side', align: 'center', sortable: true },
+  { name: 'quality_class', label: 'Class', field: 'quality_class', align: 'center' },
+  { name: 'entry_price', label: 'Entry', field: (r: any) => r.entry_price ? Number(r.entry_price).toFixed(2) : '—', align: 'right' },
+  { name: 'exit_price', label: 'Exit', field: (r: any) => r.exit_price ? Number(r.exit_price).toFixed(2) : '—', align: 'right' },
+  { name: 'net_pnl', label: 'Net PnL', field: (r: any) => r.net_pnl ? Number(r.net_pnl).toFixed(2) : '0.00', align: 'right' },
+  { name: 'r_multiple', label: 'R', field: (r: any) => r.r_multiple ? `${Number(r.r_multiple) > 0 ? '+' : ''}${Number(r.r_multiple).toFixed(2)} R` : '—', align: 'right' },
+  { name: 'close_reason', label: 'Close Reason', field: 'close_reason', align: 'left' },
+  { name: 'opened_at', label: 'Opened (UTC)', field: 'opened_at', align: 'left', sortable: true },
+  { name: 'closed_at', label: 'Closed (UTC)', field: 'closed_at', align: 'left', sortable: true },
+];
+
+const optimizationColumns: QTableColumn[] = [
+  { name: 'window_index', label: 'Window', field: 'window_index', align: 'right', sortable: true },
+  { name: 'combination_index', label: 'Combination', field: 'combination_index', align: 'right' },
+  { name: 'objective_score', label: 'Score', field: (r: any) => r.objective_score ? Number(r.objective_score).toFixed(4) : '—', align: 'right', sortable: true },
+  { name: 'selected', label: 'Selected', field: 'selected', align: 'center' },
+  { name: 'created_at', label: 'Evaluated (UTC)', field: 'created_at', align: 'left', sortable: true },
+];
 let summaryController: AbortController | undefined;
 let tradeController: AbortController | undefined;
 let curveController: AbortController | undefined;
@@ -88,10 +111,45 @@ onBeforeUnmount(() => [summaryController, tradeController, curveController, opti
       <EquityChart :points="curve.points || []" />
     </div>
     <h2>Latest 10 simulated trades</h2>
-    <q-table flat bordered :rows="trades.data || []" row-key="id" :loading="loading" :pagination="{ rowsPerPage: 0 }" hide-pagination />
+    <q-table
+      flat
+      bordered
+      :rows="trades.data || []"
+      :columns="tradeColumns"
+      row-key="id"
+      :loading="loading"
+      :pagination="{ rowsPerPage: 0 }"
+      hide-pagination
+    >
+      <template #body-cell-side="props">
+        <q-td :props="props">
+          <q-badge :color="props.value === 'BUY' ? 'positive' : 'negative'" :label="props.value" />
+        </q-td>
+      </template>
+      <template #body-cell-net_pnl="props">
+        <q-td :props="props" :class="Number(props.row.net_pnl) > 0 ? 'text-positive text-bold' : (Number(props.row.net_pnl) < 0 ? 'text-negative text-bold' : '')">
+          {{ props.value }}
+        </q-td>
+      </template>
+    </q-table>
     <q-pagination v-model="tradePage" :max="trades.last_page || 1" :max-pages="7" boundary-links direction-links />
     <q-expansion-item label="Optimization results" @show="loadOptimizations">
-      <q-table flat bordered :rows="optimizations.data || []" row-key="id" :loading="optimizationLoading" :pagination="{ rowsPerPage: 0 }" hide-pagination />
+      <q-table
+        flat
+        bordered
+        :rows="optimizations.data || []"
+        :columns="optimizationColumns"
+        row-key="id"
+        :loading="optimizationLoading"
+        :pagination="{ rowsPerPage: 0 }"
+        hide-pagination
+      >
+        <template #body-cell-selected="props">
+          <q-td :props="props">
+            <q-badge :color="props.value ? 'positive' : 'grey-7'" :label="props.value ? 'YES' : 'NO'" />
+          </q-td>
+        </template>
+      </q-table>
       <q-pagination v-model="optimizationPage" :max="optimizations.last_page || 1" :max-pages="7" boundary-links direction-links />
     </q-expansion-item>
   </q-page>

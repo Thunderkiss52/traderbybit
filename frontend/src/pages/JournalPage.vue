@@ -4,6 +4,8 @@ import { get } from '../services/api';
 import EquityChart from '../components/charts/EquityChart.vue';
 import PerformanceCharts from '../components/charts/PerformanceCharts.vue';
 
+import type { QTableColumn } from 'quasar';
+
 const journal = shallowRef<any>({ data: [], next_page_url: null });
 const statistics = shallowRef<any>({ metrics: null, equity: [], breakdowns: {} });
 const accounts = ref<any[]>([]);
@@ -16,6 +18,14 @@ const loading = ref(false);
 const chartsLoading = ref(false);
 const showCharts = ref(false);
 const error = ref('');
+
+const journalColumns: QTableColumn[] = [
+  { name: 'sequence', label: '#', field: 'sequence', align: 'right', sortable: true },
+  { name: 'event_type', label: 'Event Type', field: 'event_type', align: 'left', sortable: true },
+  { name: 'position_id', label: 'Position', field: (r: any) => r.position_id ? r.position_id.slice(0, 8) + '...' : '—', align: 'left' },
+  { name: 'signal_id', label: 'Signal', field: (r: any) => r.signal_id ? r.signal_id.slice(0, 8) + '...' : '—', align: 'left' },
+  { name: 'occurred_at', label: 'Occurred (UTC)', field: 'occurred_at', align: 'left', sortable: true },
+];
 let version = 0;
 let controller: AbortController | undefined;
 let chartsController: AbortController | undefined;
@@ -70,8 +80,22 @@ onBeforeUnmount(() => { controller?.abort(); chartsController?.abort(); });
         :options="[{label:'24 hours',value:1},{label:'7 days',value:7},{label:'14 days',value:14},{label:'30 days',value:30}]" label="Period" /></div>
       <div class="col-6 col-sm-4"><q-input v-model="eventType" dense outlined label="Event type" clearable /></div>
     </div>
-    <q-table flat bordered :rows="journal.data || []" row-key="id" :loading="loading"
-      :pagination="{ rowsPerPage: 0 }" hide-pagination />
+    <q-table
+      flat
+      bordered
+      :rows="journal.data || []"
+      :columns="journalColumns"
+      row-key="id"
+      :loading="loading"
+      :pagination="{ rowsPerPage: 0 }"
+      hide-pagination
+    >
+      <template #body-cell-event_type="props">
+        <q-td :props="props">
+          <q-badge color="blue-grey-8" :label="props.value" />
+        </q-td>
+      </template>
+    </q-table>
     <div class="row items-center justify-between q-mt-md">
       <span class="text-caption">10 events per page · Page {{ page }}</span>
       <q-pagination v-model="page" :max="pages" :max-pages="5" direction-links :disable="loading" />

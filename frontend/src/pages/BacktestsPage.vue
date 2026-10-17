@@ -2,11 +2,24 @@
 import { onBeforeUnmount, onMounted, ref, shallowRef, watch } from 'vue';
 import { get, startBacktest } from '../services/api';
 
+import type { QTableColumn } from 'quasar';
+
 const rows = shallowRef<any[]>([]);
 const page = ref(1);
 const lastPage = ref(1);
 const error = ref('');
 const listLoading = ref(false);
+
+const backtestColumns: QTableColumn[] = [
+  { name: 'type', label: 'Type', field: 'type', align: 'left', sortable: true },
+  { name: 'status', label: 'Status', field: 'status', align: 'center', sortable: true },
+  { name: 'progress', label: 'Progress', field: (r: any) => `${r.progress ?? 0}%`, align: 'right' },
+  { name: 'symbols', label: 'Symbols', field: (r: any) => Array.isArray(r.symbols) ? r.symbols.join(', ') : (r.symbols || '—'), align: 'left' },
+  { name: 'from_at', label: 'From', field: (r: any) => r.from_at ? r.from_at.slice(0, 10) : '—', align: 'left' },
+  { name: 'to_at', label: 'To', field: (r: any) => r.to_at ? r.to_at.slice(0, 10) : '—', align: 'left' },
+  { name: 'strategy_version', label: 'Version', field: 'strategy_version', align: 'left' },
+  { name: 'created_at', label: 'Created (UTC)', field: 'created_at', align: 'left', sortable: true },
+];
 const form = ref({
   symbols: ['BTCUSDT'], from: '', to: '', mode: 'split',
   starting_balance: '', strategy_version: '', execution_model_version: '',
@@ -71,8 +84,26 @@ onBeforeUnmount(() => controller?.abort());
       </div>
       <p>{{ message }}</p>
     </q-card>
-    <q-banner v-if="error" class="bg-negative text-white q-mb-md">{{ error }}</q-banner>
-    <q-table flat bordered :rows="rows" row-key="id" :loading="listLoading" :pagination="{ rowsPerPage: 0 }" hide-pagination @row-click="(_, row) => $router.push(`/backtests/${row.id}`)" />
+    <q-table
+      flat
+      bordered
+      :rows="rows"
+      :columns="backtestColumns"
+      row-key="id"
+      :loading="listLoading"
+      :pagination="{ rowsPerPage: 0 }"
+      hide-pagination
+      @row-click="(_, row) => $router.push(`/backtests/${row.id}`)"
+    >
+      <template #body-cell-status="props">
+        <q-td :props="props">
+          <q-badge
+            :color="props.value === 'COMPLETED' ? 'positive' : (['RUNNING', 'QUEUED'].includes(props.value) ? 'primary' : 'negative')"
+            :label="props.value"
+          />
+        </q-td>
+      </template>
+    </q-table>
     <div class="row items-center justify-between q-mt-md">
       <span class="text-caption">Latest 10 backtests · Page {{ page }} / {{ lastPage }}</span>
       <q-pagination v-model="page" :max="lastPage" :max-pages="7" boundary-links direction-links />
