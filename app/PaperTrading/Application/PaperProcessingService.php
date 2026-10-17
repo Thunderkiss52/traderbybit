@@ -99,6 +99,53 @@ final readonly class PaperProcessingService
         foreach ($signals as $signal) {
             if ($forwardOnly && $signal->created_at->getTimestamp() > $signal->decision_time->getTimestamp() + 300) {
                 // Late historical observations are research-only, never forward fills.
+                DB::transaction(function () use ($account, $signal): void {
+                    $decisionId = Uuid::uuid5(Uuid::NAMESPACE_URL, "traderbybit:risk:{$account->id}:{$signal->id}:{$this->config['risk_version']}")->toString();
+                    RiskDecisionRecord::query()->insertOrIgnore([[
+                        'id' => $decisionId,
+                        'paper_account_id' => $account->id,
+                        'signal_id' => $signal->id,
+                        'allowed' => false,
+                        'reasons' => json_encode(['late_signal_not_executable'], JSON_THROW_ON_ERROR),
+                        'snapshot' => json_encode([
+                            'reason' => 'late_signal_not_executable',
+                            'delay_seconds' => $signal->created_at->getTimestamp() - $signal->decision_time->getTimestamp(),
+                            'decision_time' => $signal->decision_time->format(DATE_ATOM),
+                            'created_at' => $signal->created_at->format(DATE_ATOM),
+                        ], JSON_THROW_ON_ERROR),
+                        'risk_version' => (string) $this->config['risk_version'],
+                        'decided_at' => $signal->decision_time,
+                        'created_at' => now(),
+                        'updated_at' => now(),
+                    ]]);
+                    PaperSignalStateRecord::query()->firstOrCreate([
+                        'paper_account_id' => $account->id,
+                        'signal_id' => $signal->id,
+                    ], [
+                        'id' => Uuid::uuid5(Uuid::NAMESPACE_URL, "traderbybit:signal-state:{$account->id}:{$signal->id}")->toString(),
+                        'status' => SignalLifecycle::LateSignalNotExecutable->value,
+                        'reason' => 'late_signal_not_executable',
+                        'processed_at' => $signal->decision_time,
+                    ]);
+                    $this->journal->append(
+                        $account->id,
+                        $signal->id,
+                        null,
+                        'LATE_SIGNAL_NOT_EXECUTABLE',
+                        $signal->decision_time->toDateTimeImmutable(),
+                        [
+                            'reason' => 'late_signal_not_executable',
+                            'delay_seconds' => $signal->created_at->getTimestamp() - $signal->decision_time->getTimestamp(),
+                        ],
+                        "late:{$account->id}:{$signal->id}"
+                    );
+                    $this->updateObservationDiagnostics($account, $signal, [
+                        'risk_approved' => false,
+                        'risk_rejection_reasons' => ['late_signal_not_executable'],
+                        'paper_execution' => 'LATE_SIGNAL_NOT_EXECUTABLE',
+                    ]);
+                });
+
                 continue;
             }
             if (PaperSignalStateRecord::query()->where('paper_account_id', $account->id)->where('signal_id', $signal->id)->exists()) {

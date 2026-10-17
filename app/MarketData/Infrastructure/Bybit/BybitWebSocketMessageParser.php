@@ -28,7 +28,7 @@ final class BybitWebSocketMessageParser
 
         $topic = $payload['topic'] ?? null;
         $data = $payload['data'] ?? null;
-        if (! is_string($topic) || ! preg_match('/^kline\.(5|15|60)\.([A-Z0-9]+)$/', $topic, $matches)) {
+        if (! is_string($topic) || ! preg_match('/^kline\.(5|15|30|60)\.([A-Z0-9]+)$/', $topic, $matches)) {
             return null;
         }
         if (! is_array($data) || ! array_is_list($data) || ! isset($data[0]) || ! is_array($data[0])) {

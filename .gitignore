@@ -27,3 +27,6 @@ frontend/dist/
 
 # Temporary verification reports
 /docs/VERIFICATION_LATEST.md
+
+# Audit data extracts
+audit_data/

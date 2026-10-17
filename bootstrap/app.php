@@ -12,6 +12,7 @@ use App\PaperTrading\Console\PaperAccountCommand;
 use App\PaperTrading\Console\PaperPositionsCommand;
 use App\PaperTrading\Console\PaperStatsCommand;
 use App\PaperTrading\Console\ProcessPaperTradingCommand;
+use App\Research\Console\ResearchBenchmarkCommand;
 use App\Strategy\Console\GenerateSignalsCommand;
 use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Auth\AuthenticationException;
@@ -48,6 +49,7 @@ return Application::configure(basePath: dirname(__DIR__))
         BacktestReportCommand::class,
         CompareBacktestsCommand::class,
         CancelBacktestCommand::class,
+        ResearchBenchmarkCommand::class,
     ])
     ->withExceptions(function (Exceptions $exceptions): void {
         $exceptions->shouldRenderJsonWhen(

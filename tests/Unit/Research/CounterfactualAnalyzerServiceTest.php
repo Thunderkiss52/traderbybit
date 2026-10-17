@@ -87,4 +87,46 @@ final class CounterfactualAnalyzerServiceTest extends TestCase
         self::assertSame(1, $report['total_evaluated']);
         self::assertSame(1, $report['filters'][0]['restrictive_skips']);
     }
+
+    public function test_analyze_and_resolve_is_idempotent(): void
+    {
+        $service = new CounterfactualAnalyzerService;
+
+        $t0 = now('UTC')->subHours(6);
+        CandleRecord::query()->create([
+            'exchange' => 'bybit',
+            'category' => 'linear',
+            'symbol' => 'BTCUSDT',
+            'interval' => '15',
+            'open_time' => $t0,
+            'open' => '60000',
+            'high' => '60500',
+            'low' => '59800',
+            'close' => '60000',
+            'volume' => '100',
+            'turnover' => '6000000',
+            'is_closed' => true,
+        ]);
+
+        $obs = StrategyObservationRecord::query()->create([
+            'id' => (string) Str::uuid(),
+            'exchange' => 'bybit',
+            'category' => 'linear',
+            'symbol' => 'BTCUSDT',
+            'strategy_id' => 'trend_pullback',
+            'strategy_version' => '1.0.0',
+            'configuration_hash' => 'hash_test_idemp',
+            'side' => 'SKIP',
+            'score' => 60,
+            'decision_time' => $t0,
+            'reasons' => ['adx_below_threshold_20'],
+        ]);
+
+        $firstRun = $service->analyzeAndResolve(50);
+        self::assertSame(1, $firstRun['analyzed_count']);
+
+        // Second run must find zero un-analyzed observations
+        $secondRun = $service->analyzeAndResolve(50);
+        self::assertSame(0, $secondRun['analyzed_count']);
+    }
 }

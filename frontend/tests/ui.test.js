@@ -167,3 +167,19 @@ test('backtest details use bounded independent endpoints and lazy optimizations'
   assert.match(file, /max_points: 1000/);
   assert.match(file, /@show="loadOptimizations"/);
 });
+
+test('research monitoring page exposes compute workers and tasks management', () => {
+  const file = source('pages/ResearchMonitoringPage.vue');
+  assert.match(file, /Compute Workers & Tasks/);
+  assert.match(file, /refreshCompute/);
+  assert.match(file, /Durable Research Job Queue/);
+  assert.match(file, /queueQuickJob/);
+});
+
+test('api client exposes research job management endpoints', () => {
+  const file = source('services/api.ts');
+  assert.match(file, /getResearchJobs/);
+  assert.match(file, /submitResearchJob/);
+  assert.match(file, /cancelResearchJob/);
+  assert.match(file, /getResearchCapabilities/);
+});

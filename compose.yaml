@@ -131,7 +131,7 @@ services:
     restart: unless-stopped
     environment:
       REDIS_PASSWORD: ${REDIS_PASSWORD:?REDIS_PASSWORD is required}
-    command: ["sh", "-c", "exec redis-server --appendonly yes --appendfsync everysec --maxmemory-policy noeviction --requirepass \"$$REDIS_PASSWORD\""]
+    command: ["sh", "-c", "exec redis-server --appendonly yes --appendfsync everysec --maxmemory-policy volatile-lru --requirepass \"$$REDIS_PASSWORD\""]
     volumes:
       - redis_data:/data
     networks:
@@ -207,6 +207,29 @@ services:
     stop_grace_period: 90s
     mem_limit: ${BACKTEST_MEMORY_LIMIT:-2g}
     cpus: ${BACKTEST_CPU_LIMIT:-2.0}
+
+  research-worker:
+    image: ${RESEARCH_WORKER_IMAGE:-bybit-signals-research-worker}:${IMAGE_TAG:-latest}
+    build:
+      context: .
+      dockerfile: docker/go/Dockerfile
+    restart: unless-stopped
+    environment:
+      DB_HOST: postgres
+      DB_PORT: "5432"
+      DB_DATABASE: ${POSTGRES_DB:-bybit_signals}
+      DB_USERNAME: ${POSTGRES_USER:-bybit_signals}
+      DB_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD is required}
+      DB_SSLMODE: disable
+    networks:
+      - internal
+    depends_on:
+      postgres:
+        condition: service_healthy
+    logging: *default-logging
+    stop_grace_period: 30s
+    mem_limit: ${RESEARCH_WORKER_MEMORY_LIMIT:-512m}
+    cpus: ${RESEARCH_WORKER_CPU_LIMIT:-1.0}
 
 networks:
   internal:

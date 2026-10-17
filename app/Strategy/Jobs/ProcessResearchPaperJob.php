@@ -16,11 +16,11 @@ final class ProcessResearchPaperJob implements ShouldQueue
 
     public int $tries = 2;
 
-    public int $timeout = 240;
+    public int $timeout = 600;
 
     public function middleware(): array
     {
-        return [(new WithoutOverlapping('research-forward-paper'))->expireAfter(260)];
+        return [(new WithoutOverlapping('research-forward-paper'))->expireAfter(660)];
     }
 
     public function handle(StrategyResearchService $service): void

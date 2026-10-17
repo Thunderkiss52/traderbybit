@@ -45,8 +45,10 @@ foreach ((array) config('market_data.symbols', ['BTCUSDT', 'ETHUSDT']) as $symbo
         ->cron('2,17,32,47 * * * *')
         ->name("signals:generate:{$symbol}")
         ->withoutOverlapping();
+    // GenerateSignalJob already generates signals and observes all registered strategies at :02, :17, :32, :47.
+    // ObserveStrategiesJob runs hourly at :03 for recent multi-candle catchup without redundant 15m duplicate runs.
     Schedule::job(new ObserveStrategiesJob((string) $symbol))
-        ->cron('3,18,33,48 * * * *')
+        ->cron('3 * * * *')
         ->name("strategies:observe:{$symbol}")
         ->withoutOverlapping();
 }

@@ -14,7 +14,11 @@ use App\Research\Infrastructure\Persistence\AutonomyApprovalEventRecord;
 use App\Research\Infrastructure\Persistence\LearningCandidateStrategyRecord;
 use App\Research\Infrastructure\Persistence\LearningFeatureSnapshotRecord;
 use App\Research\Infrastructure\Persistence\LearningModelArtifactRecord;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Log;
+use Symfony\Component\HttpFoundation\Response;
+use Throwable;
 
 final class AutonomousLearningController extends Controller
 {
@@ -23,126 +27,234 @@ final class AutonomousLearningController extends Controller
         return new ResearchResource($data);
     }
 
-    public function overview(AutonomyPermissionService $autonomy): ResearchResource
+    public function overview(AutonomyPermissionService $autonomy): ResearchResource|JsonResponse
     {
-        $settings = $autonomy->getSettings();
-        $totalSnapshots = LearningFeatureSnapshotRecord::query()->count();
-        $maturedSnapshots = LearningFeatureSnapshotRecord::query()->where('label_status', 'MATURED')->count();
-        $activeModels = LearningModelArtifactRecord::query()->where('status', 'ACTIVE')->count();
-        $totalCandidates = LearningCandidateStrategyRecord::query()->count();
-        $promotedCandidates = LearningCandidateStrategyRecord::query()->where('status', 'PAPER_PROMOTED')->count();
+        try {
+            $settings = $autonomy->getSettings();
+            $totalSnapshots = LearningFeatureSnapshotRecord::query()->count();
+            $maturedSnapshots = LearningFeatureSnapshotRecord::query()->where('label_status', 'MATURED')->count();
+            $activeModels = LearningModelArtifactRecord::query()->where('status', 'ACTIVE')->count();
+            $totalCandidates = LearningCandidateStrategyRecord::query()->count();
+            $promotedCandidates = LearningCandidateStrategyRecord::query()->where('status', 'PAPER_PROMOTED')->count();
 
-        return $this->ok([
-            'settings' => $settings,
-            'feature_store' => [
-                'total_snapshots' => $totalSnapshots,
-                'matured_snapshots' => $maturedSnapshots,
-                'schema_version' => '1.0.0',
-            ],
-            'models' => [
-                'active_models_count' => $activeModels,
-            ],
-            'candidates' => [
-                'total' => $totalCandidates,
-                'promoted_to_paper' => $promotedCandidates,
-            ],
-            'operating_mode' => 'PAPER_TRADING_RESEARCH_ONLY',
-        ]);
+            return $this->ok([
+                'settings' => $settings,
+                'feature_store' => [
+                    'total_snapshots' => $totalSnapshots,
+                    'matured_snapshots' => $maturedSnapshots,
+                    'schema_version' => '1.0.0',
+                ],
+                'models' => [
+                    'active_models_count' => $activeModels,
+                ],
+                'candidates' => [
+                    'total' => $totalCandidates,
+                    'promoted_to_paper' => $promotedCandidates,
+                ],
+                'operating_mode' => 'PAPER_TRADING_RESEARCH_ONLY',
+            ]);
+        } catch (Throwable $e) {
+            Log::error('AutonomousLearningController overview failed: '.$e->getMessage(), ['exception' => $e]);
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to load autonomous learning overview: '.$e->getMessage(),
+            ], Response::HTTP_INTERNAL_SERVER_ERROR);
+        }
     }
 
-    public function autonomySettings(AutonomyPermissionService $autonomy): ResearchResource
+    public function autonomySettings(AutonomyPermissionService $autonomy): ResearchResource|JsonResponse
     {
-        return $this->ok($autonomy->getSettings());
+        try {
+            return $this->ok($autonomy->getSettings());
+        } catch (Throwable $e) {
+            Log::error('AutonomousLearningController autonomySettings failed: '.$e->getMessage(), ['exception' => $e]);
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to load autonomy settings: '.$e->getMessage(),
+            ], Response::HTTP_INTERNAL_SERVER_ERROR);
+        }
     }
 
-    public function updateAutonomySettings(Request $request, AutonomyPermissionService $autonomy): ResearchResource
+    public function updateAutonomySettings(Request $request, AutonomyPermissionService $autonomy): ResearchResource|JsonResponse
     {
-        $capabilities = (array) $request->input('capabilities', []);
-        $limits = (array) $request->input('limits', []);
+        try {
+            $capabilities = (array) $request->input('capabilities', []);
+            $limits = (array) $request->input('limits', []);
 
-        return $this->ok($autonomy->updateSettings($capabilities, $limits, 'USER_OPERATOR'));
+            return $this->ok($autonomy->updateSettings($capabilities, $limits, 'USER_OPERATOR'));
+        } catch (Throwable $e) {
+            Log::error('AutonomousLearningController updateAutonomySettings failed: '.$e->getMessage(), ['exception' => $e]);
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to update autonomy settings: '.$e->getMessage(),
+            ], Response::HTTP_INTERNAL_SERVER_ERROR);
+        }
     }
 
-    public function killSwitch(Request $request, AutonomyPermissionService $autonomy): ResearchResource
+    public function killSwitch(Request $request, AutonomyPermissionService $autonomy): ResearchResource|JsonResponse
     {
-        $active = (bool) $request->boolean('active', true);
-        $reason = (string) $request->input('reason', 'Operator kill-switch triggered');
+        try {
+            $active = (bool) $request->boolean('active', true);
+            $reason = (string) $request->input('reason', 'Operator kill-switch triggered');
 
-        return $this->ok($autonomy->toggleKillSwitch($active, 'USER_OPERATOR', $reason));
+            return $this->ok($autonomy->toggleKillSwitch($active, 'USER_OPERATOR', $reason));
+        } catch (Throwable $e) {
+            Log::error('AutonomousLearningController killSwitch failed: '.$e->getMessage(), ['exception' => $e]);
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to toggle kill switch: '.$e->getMessage(),
+            ], Response::HTTP_INTERNAL_SERVER_ERROR);
+        }
     }
 
-    public function candidates(Request $request): ResearchResource
+    public function candidates(Request $request): ResearchResource|JsonResponse
     {
-        $perPage = max(1, min(100, $request->integer('per_page', 10)));
-        $status = $request->string('status')->toString() ?: null;
-        $strategyId = $request->string('parent_strategy_id')->toString() ?: null;
+        try {
+            $perPage = max(1, min(100, $request->integer('per_page', 10)));
+            $status = $request->string('status')->toString() ?: null;
+            $strategyId = $request->string('parent_strategy_id')->toString() ?: null;
 
-        $records = LearningCandidateStrategyRecord::query()
-            ->when($status, fn ($q) => $q->where('status', $status))
-            ->when($strategyId, fn ($q) => $q->where('parent_strategy_id', $strategyId))
-            ->latest('created_at')
-            ->paginate($perPage);
+            $records = LearningCandidateStrategyRecord::query()
+                ->when($status, fn ($q) => $q->where('status', $status))
+                ->when($strategyId, fn ($q) => $q->where('parent_strategy_id', $strategyId))
+                ->latest('created_at')
+                ->paginate($perPage);
 
-        return $this->ok($records);
+            return $this->ok($records);
+        } catch (Throwable $e) {
+            Log::error('AutonomousLearningController candidates failed: '.$e->getMessage(), ['exception' => $e]);
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to fetch candidate strategies: '.$e->getMessage(),
+            ], Response::HTTP_INTERNAL_SERVER_ERROR);
+        }
     }
 
-    public function generateCandidate(Request $request, StrategyEvolutionService $evolution): ResearchResource
+    public function generateCandidate(Request $request, StrategyEvolutionService $evolution): ResearchResource|JsonResponse
     {
-        $parentStrategyId = $request->string('parent_strategy_id', 'trend_pullback')->toString();
-        $seed = $request->has('seed') ? $request->integer('seed') : null;
+        try {
+            $parentStrategyId = $request->string('parent_strategy_id', 'trend_pullback')->toString();
+            $seed = $request->has('seed') ? $request->integer('seed') : null;
 
-        return $this->ok($evolution->generateCandidate($parentStrategyId, $seed));
+            return $this->ok($evolution->generateCandidate($parentStrategyId, $seed));
+        } catch (Throwable $e) {
+            Log::error('AutonomousLearningController generateCandidate failed: '.$e->getMessage(), ['exception' => $e]);
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to generate strategy candidate: '.$e->getMessage(),
+            ], Response::HTTP_INTERNAL_SERVER_ERROR);
+        }
     }
 
-    public function evaluateCandidate(string $id, Request $request, PromotionPolicyService $policy): ResearchResource
+    public function evaluateCandidate(string $id, Request $request, PromotionPolicyService $policy): ResearchResource|JsonResponse
     {
-        $metrics = $request->input('metrics');
+        try {
+            $metrics = $request->input('metrics');
 
-        return $this->ok($policy->evaluateCandidate($id, is_array($metrics) ? $metrics : null));
+            return $this->ok($policy->evaluateCandidate($id, is_array($metrics) ? $metrics : null));
+        } catch (Throwable $e) {
+            Log::error("AutonomousLearningController evaluateCandidate failed for {$id}: ".$e->getMessage(), ['exception' => $e]);
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to evaluate candidate: '.$e->getMessage(),
+            ], Response::HTTP_INTERNAL_SERVER_ERROR);
+        }
     }
 
-    public function promoteCandidate(string $id, Request $request, PromotionPolicyService $policy): ResearchResource
+    public function promoteCandidate(string $id, Request $request, PromotionPolicyService $policy): ResearchResource|JsonResponse
     {
-        $actor = $request->string('actor', 'USER_OPERATOR')->toString();
+        try {
+            $actor = $request->string('actor', 'USER_OPERATOR')->toString();
 
-        return $this->ok($policy->promoteCandidate($id, $actor));
+            return $this->ok($policy->promoteCandidate($id, $actor));
+        } catch (Throwable $e) {
+            Log::error("AutonomousLearningController promoteCandidate failed for {$id}: ".$e->getMessage(), ['exception' => $e]);
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to promote candidate: '.$e->getMessage(),
+            ], Response::HTTP_INTERNAL_SERVER_ERROR);
+        }
     }
 
-    public function rollbackCandidate(string $id, Request $request, PromotionPolicyService $policy): ResearchResource
+    public function rollbackCandidate(string $id, Request $request, PromotionPolicyService $policy): ResearchResource|JsonResponse
     {
-        $reason = $request->string('reason', 'Manual rollback requested by operator')->toString();
-        $actor = $request->string('actor', 'USER_OPERATOR')->toString();
+        try {
+            $reason = $request->string('reason', 'Manual rollback requested by operator')->toString();
+            $actor = $request->string('actor', 'USER_OPERATOR')->toString();
 
-        return $this->ok($policy->rollbackCandidate($id, $reason, $actor));
+            return $this->ok($policy->rollbackCandidate($id, $reason, $actor));
+        } catch (Throwable $e) {
+            Log::error("AutonomousLearningController rollbackCandidate failed for {$id}: ".$e->getMessage(), ['exception' => $e]);
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to rollback candidate: '.$e->getMessage(),
+            ], Response::HTTP_INTERNAL_SERVER_ERROR);
+        }
     }
 
-    public function models(): ResearchResource
+    public function models(): ResearchResource|JsonResponse
     {
-        $records = LearningModelArtifactRecord::query()
-            ->latest('created_at')
-            ->get();
+        try {
+            $records = LearningModelArtifactRecord::query()
+                ->latest('created_at')
+                ->get();
 
-        return $this->ok($records);
+            return $this->ok($records);
+        } catch (Throwable $e) {
+            Log::error('AutonomousLearningController models failed: '.$e->getMessage(), ['exception' => $e]);
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to fetch model artifacts: '.$e->getMessage(),
+            ], Response::HTTP_INTERNAL_SERVER_ERROR);
+        }
     }
 
-    public function trainModel(Request $request, LearningPredictorService $trainer): ResearchResource
+    public function trainModel(Request $request, LearningPredictorService $trainer): ResearchResource|JsonResponse
     {
-        $event = $request->string('target_event', 'TP_BEFORE_SL')->toString();
-        $symbol = $request->string('symbol', 'BTCUSDT')->toString();
+        try {
+            $event = $request->string('target_event', 'TP_BEFORE_SL')->toString();
+            $symbol = $request->string('symbol', 'BTCUSDT')->toString();
 
-        $artifact = $trainer->trainModel($event, $symbol);
+            $artifact = $trainer->trainModel($event, $symbol);
 
-        return $this->ok($artifact ?? ['status' => 'INSUFFICIENT_DATA', 'message' => 'Minimum 10 matured observations required to train model.']);
+            return $this->ok($artifact ?? ['status' => 'INSUFFICIENT_DATA', 'message' => 'Minimum 10 matured observations required to train model.']);
+        } catch (Throwable $e) {
+            Log::error('AutonomousLearningController trainModel failed: '.$e->getMessage(), ['exception' => $e]);
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to train model: '.$e->getMessage(),
+            ], Response::HTTP_INTERNAL_SERVER_ERROR);
+        }
     }
 
-    public function auditTrail(Request $request): ResearchResource
+    public function auditTrail(Request $request): ResearchResource|JsonResponse
     {
-        $perPage = max(1, min(100, $request->integer('per_page', 15)));
+        try {
+            $perPage = max(1, min(100, $request->integer('per_page', 15)));
 
-        $records = AutonomyApprovalEventRecord::query()
-            ->latest('created_at')
-            ->paginate($perPage);
+            $records = AutonomyApprovalEventRecord::query()
+                ->latest('created_at')
+                ->paginate($perPage);
 
-        return $this->ok($records);
+            return $this->ok($records);
+        } catch (Throwable $e) {
+            Log::error('AutonomousLearningController auditTrail failed: '.$e->getMessage(), ['exception' => $e]);
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to fetch audit trail: '.$e->getMessage(),
+            ], Response::HTTP_INTERNAL_SERVER_ERROR);
+        }
     }
 }

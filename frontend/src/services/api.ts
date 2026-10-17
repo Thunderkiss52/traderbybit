@@ -15,3 +15,19 @@ export async function get<T>(url: string, params?: object, signal?: AbortSignal)
 export async function startBacktest(payload: object) {
   return api.post('/backtests', payload);
 }
+
+export async function getResearchJobs(params?: object) {
+  return api.get('/research/jobs', { params });
+}
+
+export async function submitResearchJob(payload: object) {
+  return api.post('/research/jobs', payload);
+}
+
+export async function cancelResearchJob(id: string, reason?: string) {
+  return api.post(`/research/jobs/${id}/cancel`, { reason });
+}
+
+export async function getResearchCapabilities() {
+  return api.get('/research/capabilities');
+}

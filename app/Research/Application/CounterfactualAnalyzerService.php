@@ -8,7 +8,6 @@ use App\MarketData\Infrastructure\Persistence\CandleRecord;
 use App\Research\Infrastructure\Persistence\CounterfactualEvaluationRecord;
 use App\Strategy\Infrastructure\Persistence\StrategyObservationRecord;
 use Brick\Math\BigDecimal;
-use Illuminate\Support\Str;
 
 final class CounterfactualAnalyzerService
 {
@@ -102,8 +101,8 @@ final class CounterfactualAnalyzerService
         }
 
         return CounterfactualEvaluationRecord::query()->create([
-            'id' => (string) Str::uuid(),
-            'signal_id' => null,
+            'id' => (string) $obs->id,
+            'signal_id' => (string) $obs->id,
             'strategy_id' => $obs->strategy_id,
             'strategy_version' => $obs->strategy_version,
             'symbol' => $obs->symbol,

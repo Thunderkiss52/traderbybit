@@ -28,6 +28,34 @@ final class WebSocketParserTest extends TestCase
         self::assertSame(1704067200000, $candle->openTimeMs());
     }
 
+    public function test_it_parses_30m_closed_candles(): void
+    {
+        $payload = json_encode([
+            'topic' => 'kline.30.ETHUSDT',
+            'type' => 'snapshot',
+            'ts' => 1704069000000,
+            'data' => [[
+                'start' => 1704067200000,
+                'end' => 1704068999999,
+                'interval' => '30',
+                'open' => '2200.1',
+                'high' => '2250.2',
+                'low' => '2190.3',
+                'close' => '2240.4',
+                'volume' => '500',
+                'turnover' => '1110000',
+                'confirm' => true,
+                'timestamp' => 1704068999000,
+            ]],
+        ], JSON_THROW_ON_ERROR);
+
+        $candle = (new BybitWebSocketMessageParser)->parseClosedCandle($payload);
+        self::assertNotNull($candle);
+        self::assertTrue($candle->isClosed);
+        self::assertSame('ETHUSDT', $candle->symbol);
+        self::assertSame('30', $candle->interval->value);
+    }
+
     public function test_it_rejects_incomplete_events(): void
     {
         $this->expectException(UnexpectedValueException::class);

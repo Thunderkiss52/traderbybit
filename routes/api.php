@@ -6,6 +6,7 @@ use App\Http\Controllers\Api\V1\PatternResearchController as P;
 use App\Http\Controllers\Api\V1\ResearchController as C;
 use App\Http\Controllers\Api\V1\ResearchHealthController as H;
 use App\Http\Controllers\Api\V1\ResearchIntelligenceController as I;
+use App\Http\Controllers\Api\V1\ResearchJobController as J;
 use App\Http\Controllers\Api\V1\StrategyResearchController as R;
 use Illuminate\Support\Facades\Route;
 
@@ -42,6 +43,12 @@ Route::prefix('v1')->middleware('throttle:api')->group(function () {
     Route::get('research/learning/models', [AutonomousLearningController::class, 'models']);
     Route::post('research/learning/models/train', [AutonomousLearningController::class, 'trainModel']);
     Route::get('research/learning/audit-trail', [AutonomousLearningController::class, 'auditTrail']);
+
+    Route::get('research/capabilities', [J::class, 'capabilities']);
+    Route::get('research/jobs', [J::class, 'index']);
+    Route::post('research/jobs', [J::class, 'store']);
+    Route::get('research/jobs/{id}', [J::class, 'show']);
+    Route::post('research/jobs/{id}/cancel', [J::class, 'cancel']);
 
     Route::get('audit/strategy-funnel', [A::class, 'funnel']);
     Route::post('audit/exports/quick', [A::class, 'create']);

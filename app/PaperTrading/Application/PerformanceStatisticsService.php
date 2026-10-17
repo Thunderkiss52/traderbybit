@@ -165,12 +165,15 @@ final class PerformanceStatisticsService
             'total_net_pnl' => (string) $net,
             'total_return_percent' => $return,
             'reserved_risk' => $account->reserved_risk,
-            'maximum_drawdown_percent' => (string) BigDecimal::of($account->maximum_drawdown_percent)->max($this->drawdown(
-                $account->starting_balance,
-                EquitySnapshotRecord::query()->where('paper_account_id', $account->id)
-                    ->oldest('recorded_at')->oldest('id')->cursor(['equity', 'source_event_key']),
-                $account->current_equity
-            )),
+            'maximum_drawdown_percent' => (string) BigDecimal::max(
+                $account->maximum_drawdown_percent,
+                $this->drawdown(
+                    $account->starting_balance,
+                    EquitySnapshotRecord::query()->where('paper_account_id', $account->id)
+                        ->oldest('recorded_at')->oldest('id')->cursor(['equity', 'source_event_key']),
+                    $account->current_equity
+                )
+            ),
             'status' => $account->status,
         ];
     }
@@ -214,7 +217,7 @@ final class PerformanceStatisticsService
             }
             if (! $peak->isZero()) {
                 $drop = $peak->minus($current)->dividedBy($peak, 24, RoundingMode::HalfEven)->multipliedBy(100);
-                $maximum = $maximum->max($drop);
+                $maximum = BigDecimal::max($maximum, $drop);
             }
         }
 

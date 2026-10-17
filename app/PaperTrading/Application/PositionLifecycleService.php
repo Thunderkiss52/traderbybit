@@ -56,11 +56,10 @@ final readonly class PositionLifecycleService
             ]);
             $this->recordExecution($position, ExecutionType::Entry, $signal->side, $quantity, $quote, '0', $fee, $at);
             $lockedState->update(['status' => SignalLifecycle::Active->value, 'processed_at' => $at]);
-            $lockedAccount->update([
-                'reserved_risk' => (string) BigDecimal::of($lockedAccount->reserved_risk)->plus($size->riskCapital),
-                'realized_pnl' => (string) BigDecimal::of($lockedAccount->realized_pnl)->minus($fee),
-                'current_equity' => (string) BigDecimal::of($lockedAccount->current_equity)->minus($fee),
-            ]);
+            $realized = BigDecimal::of($lockedAccount->realized_pnl)->minus($fee);
+            $portfolioUnrealized = $this->portfolioUnrealized($lockedAccount->id);
+            $reservedRisk = BigDecimal::of($lockedAccount->reserved_risk)->plus($size->riskCapital);
+            $this->refreshAccountMetrics($lockedAccount, $realized, $portfolioUnrealized, $reservedRisk);
             $this->snapshot($lockedAccount->refresh(), $at, "entry:{$position->id}");
             $this->journal->append($account->id, $signal->id, $position->id, 'POSITION_OPENED', $at, [
                 'paper' => true, 'price' => $quote->price, 'quantity' => $quantity, 'fee' => $fee, 'slippage' => $quote->slippage,
@@ -121,28 +120,8 @@ final readonly class PositionLifecycleService
             $realizedDelta = BigDecimal::of($gross)->minus($fee);
             $realized = BigDecimal::of($account->realized_pnl)->plus($realizedDelta);
             $portfolioUnrealized = $this->portfolioUnrealized($account->id);
-            $equity = BigDecimal::of($account->starting_balance)->plus($realized)->plus($portfolioUnrealized);
-            $peak = BigDecimal::of($account->peak_equity);
-            if ($equity->isGreaterThan($peak)) {
-                $peak = $equity;
-            }
-            $drawdown = $peak->isZero() ? BigDecimal::zero() : $peak->minus($equity)->dividedBy($peak, 24, RoundingMode::HalfEven)->multipliedBy(100);
-            $accountStatus = $account->status;
-
-            if ($drawdown->isGreaterThanOrEqualTo(BigDecimal::of((string) $this->config['drawdown']['halt_percent']))) {
-                $accountStatus = 'HALTED';
-            } elseif ($drawdown->isGreaterThanOrEqualTo(BigDecimal::of((string) $this->config['drawdown']['block_new_entries_percent']))) {
-                $accountStatus = 'BLOCKED';
-            } elseif ($accountStatus === 'BLOCKED') {
-                $accountStatus = 'ACTIVE';
-            }
-
-            $account->update([
-                'realized_pnl' => (string) $realized, 'unrealized_pnl' => (string) $portfolioUnrealized, 'current_equity' => (string) $equity, 'peak_equity' => (string) $peak,
-                'reserved_risk' => (string) BigDecimal::of($account->reserved_risk)->minus($release)->max(BigDecimal::zero()),
-                'maximum_drawdown_percent' => (string) BigDecimal::of($account->maximum_drawdown_percent)->max($drawdown), 'current_drawdown_percent' => (string) $drawdown, 'status' => $accountStatus,
-                'drawdown_override' => false,
-            ]);
+            $reservedRisk = BigDecimal::of($account->reserved_risk)->minus($release);
+            $this->refreshAccountMetrics($account, $realized, $portfolioUnrealized, $reservedRisk);
             if ($closed) {
                 SignalLifecycle::Active->transitionTo(SignalLifecycle::Completed);
                 PaperSignalStateRecord::query()->where('paper_account_id', $account->id)->where('signal_id', $locked->signal_id)->update(['status' => SignalLifecycle::Completed->value, 'processed_at' => $at]);
@@ -178,7 +157,9 @@ final readonly class PositionLifecycleService
                 $funding = BigDecimal::of($locked->funding)->plus($amount);
                 $locked->update(['funding' => (string) $funding, 'net_pnl' => (string) BigDecimal::of($locked->gross_pnl)->plus($funding)->minus($locked->fees)]);
                 $account = PaperAccountRecord::query()->lockForUpdate()->findOrFail($locked->paper_account_id);
-                $account->update(['realized_pnl' => (string) BigDecimal::of($account->realized_pnl)->plus($amount), 'current_equity' => (string) BigDecimal::of($account->current_equity)->plus($amount)]);
+                $realized = BigDecimal::of($account->realized_pnl)->plus($amount);
+                $portfolioUnrealized = $this->portfolioUnrealized($account->id);
+                $this->refreshAccountMetrics($account, $realized, $portfolioUnrealized);
                 $this->snapshot($account->refresh(), $event->funding_at->toDateTimeImmutable(), "funding:{$locked->id}:{$event->id}");
                 $this->journal->append($account->id, $locked->signal_id, $locked->id, 'FUNDING_APPLIED', $event->funding_at->toDateTimeImmutable(), ['amount' => $amount, 'rate' => $event->rate, 'mark_price' => $event->mark_price], "funding:{$locked->id}:{$event->id}");
             });
@@ -196,20 +177,7 @@ final readonly class PositionLifecycleService
             $locked->update(['unrealized_pnl' => $unrealized, 'last_processed_event_at' => $at, 'awaiting_market_data' => false]);
             $account = PaperAccountRecord::query()->lockForUpdate()->findOrFail($locked->paper_account_id);
             $portfolioUnrealized = $this->portfolioUnrealized($account->id);
-            $equity = BigDecimal::of($account->starting_balance)->plus($account->realized_pnl)->plus($portfolioUnrealized);
-            $peak = BigDecimal::of($account->peak_equity)->max($equity);
-            $drawdown = $peak->isZero() ? BigDecimal::zero() : $peak->minus($equity)->dividedBy($peak, 24, RoundingMode::HalfEven)->multipliedBy(100);
-            $status = $account->status;
-
-            if ($drawdown->isGreaterThanOrEqualTo(BigDecimal::of((string) $this->config['drawdown']['halt_percent']))) {
-                $status = 'HALTED';
-            } elseif ($drawdown->isGreaterThanOrEqualTo(BigDecimal::of((string) $this->config['drawdown']['block_new_entries_percent']))) {
-                $status = 'BLOCKED';
-            } elseif ($status === 'BLOCKED') {
-                $status = 'ACTIVE';
-            }
-
-            $account->update(['unrealized_pnl' => (string) $portfolioUnrealized, 'current_equity' => (string) $equity, 'peak_equity' => (string) $peak, 'maximum_drawdown_percent' => (string) BigDecimal::of($account->maximum_drawdown_percent)->max($drawdown), 'current_drawdown_percent' => (string) $drawdown, 'status' => $status, 'drawdown_override' => false]);
+            $this->refreshAccountMetrics($account, BigDecimal::of($account->realized_pnl), $portfolioUnrealized);
             $this->snapshot($account->refresh(), $at, "mark:{$locked->id}:{$at->format('U.u')}");
         });
     }
@@ -243,6 +211,49 @@ final readonly class PositionLifecycleService
         if ($last->count() === $count && $last->every(fn (VirtualPositionRecord $position): bool => BigDecimal::of($position->net_pnl)->isNegative())) {
             $account->update(['cooldown_until' => $at->modify('+'.(int) $this->config['losing_streak']['cooldown_minutes'].' minutes')]);
         }
+    }
+
+    private function refreshAccountMetrics(
+        PaperAccountRecord $account,
+        BigDecimal $realized,
+        BigDecimal $portfolioUnrealized,
+        ?BigDecimal $reservedRisk = null
+    ): void {
+        $equity = BigDecimal::of($account->starting_balance)->plus($realized)->plus($portfolioUnrealized);
+        $peak = BigDecimal::max(
+            $account->starting_balance,
+            $account->peak_equity ?? $account->starting_balance,
+            $equity
+        );
+        $drawdown = $peak->isZero()
+            ? BigDecimal::zero()
+            : $peak->minus($equity)->dividedBy($peak, 24, RoundingMode::HalfEven)->multipliedBy(100);
+        $maxDrawdown = BigDecimal::max($account->maximum_drawdown_percent ?? '0', $drawdown);
+
+        $status = $account->status;
+        if ($drawdown->isGreaterThanOrEqualTo(BigDecimal::of((string) $this->config['drawdown']['halt_percent']))) {
+            $status = 'HALTED';
+        } elseif ($drawdown->isGreaterThanOrEqualTo(BigDecimal::of((string) $this->config['drawdown']['block_new_entries_percent']))) {
+            $status = 'BLOCKED';
+        } elseif ($status === 'BLOCKED') {
+            $status = 'ACTIVE';
+        }
+
+        $payload = [
+            'realized_pnl' => (string) $realized,
+            'unrealized_pnl' => (string) $portfolioUnrealized,
+            'current_equity' => (string) $equity,
+            'peak_equity' => (string) $peak,
+            'current_drawdown_percent' => (string) $drawdown,
+            'maximum_drawdown_percent' => (string) $maxDrawdown,
+            'status' => $status,
+            'drawdown_override' => false,
+        ];
+        if ($reservedRisk !== null) {
+            $payload['reserved_risk'] = (string) BigDecimal::max($reservedRisk, BigDecimal::zero());
+        }
+
+        $account->update($payload);
     }
 
     private function portfolioUnrealized(string $accountId): BigDecimal

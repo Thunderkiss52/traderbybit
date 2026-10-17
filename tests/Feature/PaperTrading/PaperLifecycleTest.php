@@ -66,8 +66,15 @@ final class PaperLifecycleTest extends TestCase
         $this->context();
         $this->candle('10:40', '100.5', '102', '100.5', '101');
         $this->app->make(PaperProcessingService::class)->process(accountId: $account->id, symbol: 'BTCUSDT');
-        $this->assertDatabaseCount('paper_signal_states', 0);
+        $this->assertDatabaseCount('paper_signal_states', 1);
+        $this->assertDatabaseHas('paper_signal_states', [
+            'status' => 'LATE_SIGNAL_NOT_EXECUTABLE',
+            'reason' => 'late_signal_not_executable',
+        ]);
         $this->assertDatabaseCount('virtual_positions', 0);
+        $this->assertDatabaseHas('risk_decisions', [
+            'allowed' => false,
+        ]);
     }
 
     public function test_complete_buy_lifecycle_entry_tp1_tp2_is_idempotent_and_journaled(): void

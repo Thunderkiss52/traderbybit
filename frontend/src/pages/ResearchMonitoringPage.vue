@@ -83,12 +83,58 @@ async function dismissRecommendation(id: string) {
   }
 }
 
+const capabilities = ref<any>(null);
+const jobs = ref<any[]>([]);
+
+async function refreshCompute() {
+  loading.value = true;
+  error.value = '';
+  try {
+    const [capRes, jobsRes] = await Promise.all([
+      api.get('/research/capabilities'),
+      api.get('/research/jobs', { params: { per_page: 20 } }),
+    ]);
+    capabilities.value = capRes.data.data;
+    jobs.value = jobsRes.data.data || [];
+  } catch (err: any) {
+    error.value = err.message || 'Failed to load compute worker information';
+  } finally {
+    loading.value = false;
+  }
+}
+
+async function cancelJob(jobId: string) {
+  try {
+    await api.post(`/research/jobs/${jobId}/cancel`, { reason: 'User requested abort from monitoring' });
+    await refreshCompute();
+  } catch (err: any) {
+    error.value = err.message || 'Failed to cancel job';
+  }
+}
+
+async function queueQuickJob(kind: string) {
+  loading.value = true;
+  try {
+    await api.post('/research/jobs', {
+      kind,
+      strategy_id: 'trend_pullback',
+      payload: { symbol: 'BTCUSDT', timeframe: '15m' },
+    });
+    await refreshCompute();
+  } catch (err: any) {
+    error.value = err.message || 'Failed to queue research job';
+  } finally {
+    loading.value = false;
+  }
+}
+
 function handleTabChange(tab: string) {
   activeTab.value = tab;
   if (tab === 'degradation') refreshDegradation();
   else if (tab === 'correlations') refreshCorrelations();
   else if (tab === 'recommendations') refreshRecommendations();
   else if (tab === 'report') refreshReport();
+  else if (tab === 'compute') refreshCompute();
 }
 
 onMounted(() => {
@@ -144,6 +190,7 @@ onMounted(() => {
       <q-tab name="correlations" icon="grid_view" label="Portfolio Correlation" />
       <q-tab name="recommendations" icon="lightbulb" label="Advisory Recommendations" />
       <q-tab name="report" icon="assessment" label="Audit Reports" />
+      <q-tab name="compute" icon="memory" label="Compute Workers & Tasks" />
     </q-tabs>
 
     <q-separator class="q-mb-md" />
@@ -412,6 +459,141 @@ onMounted(() => {
               <pre class="code-box">{{ JSON.stringify(reportData.strategy_degradation_watchlist, null, 2) }}</pre>
             </div>
           </div>
+        </q-card-section>
+      </q-card>
+    </div>
+
+    <!-- TAB 5: COMPUTE WORKERS & TASKS -->
+    <div v-if="activeTab === 'compute'">
+      <!-- Engines Overview -->
+      <div v-if="capabilities" class="row q-col-gutter-md q-mb-md">
+        <div class="col-12 col-md-4">
+          <q-card flat bordered class="kpi-card">
+            <q-card-section>
+              <div class="row items-center justify-between">
+                <span class="text-caption text-grey">Go Research Worker</span>
+                <q-chip dense color="positive" text-color="white" size="sm">ACTIVE</q-chip>
+              </div>
+              <div class="text-h6 text-bold q-mt-xs">{{ capabilities.capabilities.go?.engine }}</div>
+              <div class="text-caption text-grey-6 q-mb-sm">High-throughput backtest & pattern mining</div>
+              <div class="text-caption">Concurrency: {{ capabilities.capabilities.go?.concurrency_cap }} | Memory: {{ capabilities.capabilities.go?.memory_cap_mb }}MB</div>
+            </q-card-section>
+          </q-card>
+        </div>
+
+        <div class="col-12 col-md-4">
+          <q-card flat bordered class="kpi-card">
+            <q-card-section>
+              <div class="row items-center justify-between">
+                <span class="text-caption text-grey">Laravel Primary Engine</span>
+                <q-chip dense color="primary" text-color="white" size="sm">READY</q-chip>
+              </div>
+              <div class="text-h6 text-bold q-mt-xs">{{ capabilities.capabilities.php?.engine }}</div>
+              <div class="text-caption text-grey-6 q-mb-sm">Orchestration, safety, and fallback</div>
+              <div class="text-caption">Concurrency: {{ capabilities.capabilities.php?.concurrency_cap }} | Ledger Authority</div>
+            </q-card-section>
+          </q-card>
+        </div>
+
+        <div class="col-12 col-md-4">
+          <q-card flat bordered class="kpi-card">
+            <q-card-section>
+              <div class="row items-center justify-between">
+                <span class="text-caption text-grey">Python ML Engine</span>
+                <q-chip dense color="grey" text-color="white" size="sm">STANDBY</q-chip>
+              </div>
+              <div class="text-h6 text-bold q-mt-xs">{{ capabilities.capabilities.python?.engine }}</div>
+              <div class="text-caption text-grey-6 q-mb-sm">Offline training on demand</div>
+              <div class="text-caption">Status: {{ capabilities.capabilities.python?.status }}</div>
+            </q-card-section>
+          </q-card>
+        </div>
+      </div>
+
+      <!-- Quick Actions -->
+      <q-card flat bordered class="q-mb-md">
+        <q-card-section class="row items-center justify-between">
+          <div>
+            <div class="text-subtitle1 text-bold">Dispatch Research Tasks</div>
+            <div class="text-caption text-grey">Queue asynchronous computational workloads to the isolated research worker.</div>
+          </div>
+          <div class="row q-gutter-sm">
+            <q-btn unelevated color="primary" size="sm" icon="play_arrow" label="Run Backtest" @click="queueQuickJob('BACKTEST')" />
+            <q-btn unelevated color="secondary" size="sm" icon="timeline" label="Run Walk-Forward" @click="queueQuickJob('WALK_FORWARD')" />
+            <q-btn unelevated color="accent" size="sm" icon="pattern" label="Mine Patterns" @click="queueQuickJob('PATTERN_MINE')" />
+            <q-btn unelevated color="warning" text-color="dark" size="sm" icon="casino" label="Monte Carlo" @click="queueQuickJob('MONTE_CARLO')" />
+          </div>
+        </q-card-section>
+      </q-card>
+
+      <!-- Task Queue Table -->
+      <q-card flat bordered>
+        <q-card-section>
+          <div class="row items-center justify-between">
+            <div>
+              <div class="text-subtitle1 text-bold">Durable Research Job Queue</div>
+              <div class="text-caption text-grey">PostgreSQL FOR UPDATE SKIP LOCKED state machine with fencing tokens and heartbeat leases.</div>
+            </div>
+            <q-btn flat dense icon="refresh" label="Refresh Queue" @click="refreshCompute" />
+          </div>
+        </q-card-section>
+        <q-separator />
+        <q-card-section class="q-pa-none">
+          <q-markup-table flat dense wrap-cells>
+            <thead>
+              <tr class="text-left">
+                <th>Job ID</th>
+                <th>Kind</th>
+                <th>Strategy</th>
+                <th>Status</th>
+                <th>Progress</th>
+                <th>Duration</th>
+                <th>Requested At</th>
+                <th>Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr v-if="jobs.length === 0">
+                <td colspan="8" class="text-center text-grey q-pa-md">No research jobs queued or running.</td>
+              </tr>
+              <tr v-for="j in jobs" :key="j.job_id">
+                <td class="text-mono text-caption">{{ j.job_id?.substring(0, 8) }}...</td>
+                <td><q-badge color="primary">{{ j.kind }}</q-badge></td>
+                <td>{{ j.strategy_id || 'All' }}</td>
+                <td>
+                  <q-badge
+                    :color="j.status === 'SUCCEEDED' ? 'positive' : j.status === 'FAILED' ? 'negative' : j.status === 'RUNNING' ? 'warning' : 'grey'"
+                  >
+                    {{ j.status }}
+                  </q-badge>
+                </td>
+                <td style="min-width: 100px;">
+                  <q-linear-progress
+                    :value="(j.progress || 0) / 100"
+                    :color="j.status === 'SUCCEEDED' ? 'positive' : 'primary'"
+                    rounded
+                    size="8px"
+                  />
+                  <div class="text-caption text-grey-6">{{ j.progress }}%</div>
+                </td>
+                <td>{{ j.runtime_stats?.duration_ms ? `${j.runtime_stats.duration_ms} ms` : '-' }}</td>
+                <td class="text-caption">{{ j.requested_at_utc ? new Date(j.requested_at_utc).toLocaleTimeString() : '-' }}</td>
+                <td>
+                  <q-btn
+                    v-if="j.status === 'QUEUED' || j.status === 'RUNNING'"
+                    flat
+                    dense
+                    color="negative"
+                    icon="cancel"
+                    size="sm"
+                    label="Cancel"
+                    @click="cancelJob(j.job_id)"
+                  />
+                  <span v-else class="text-caption text-grey">Finalized</span>
+                </td>
+              </tr>
+            </tbody>
+          </q-markup-table>
         </q-card-section>
       </q-card>
     </div>

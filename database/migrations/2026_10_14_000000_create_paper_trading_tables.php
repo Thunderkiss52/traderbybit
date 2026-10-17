@@ -31,7 +31,7 @@ return new class extends Migration
             $table->uuid('id')->primary();
             $table->uuid('paper_account_id');
             $table->uuid('signal_id');
-            $table->string('status', 24);
+            $table->string('status', 32);
             $table->string('reason', 100)->nullable();
             $table->timestampTz('processed_at', precision: 3)->nullable();
             $table->timestampsTz(precision: 3);
