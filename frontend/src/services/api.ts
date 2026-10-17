@@ -12,10 +12,6 @@ export async function get<T>(url: string, params?: object, signal?: AbortSignal)
   return (await api.get(url, { params, signal })).data.data;
 }
 
-export async function startBacktest(payload: object, token?: string) {
-  const headers: Record<string, string> = {};
-  if (token) {
-    headers['X-Research-Token'] = token;
-  }
-  return api.post('/backtests', payload, { headers });
+export async function startBacktest(payload: object) {
+  return api.post('/backtests', payload);
 }
