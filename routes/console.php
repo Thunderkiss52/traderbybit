@@ -8,6 +8,7 @@ use App\MarketData\Jobs\SyncFundingHistoryJob;
 use App\MarketData\Jobs\SyncOpenInterestHistoryJob;
 use App\PaperTrading\Jobs\CapturePaperEquityJob;
 use App\PaperTrading\Jobs\ProcessPaperTradingJob;
+use App\Research\Jobs\ProcessAutonomousLearningJob;
 use App\Research\Jobs\ProcessCounterfactualAnalysisJob;
 use App\Research\Jobs\ReconcileLedgerJob;
 use App\Strategy\Jobs\CaptureMarketContextJob;
@@ -78,3 +79,7 @@ Schedule::job(new ProcessCounterfactualAnalysisJob)
 // Periodically reconcile all paper trading accounts, cash flow, and invariants on the audit worker.
 Schedule::job(new ReconcileLedgerJob)
     ->cron('8,23,38,53 * * * *')->name('audit:reconcile-ledger')->withoutOverlapping();
+
+// Execute continuous quantitative learning, model retraining, and challenger evaluation.
+Schedule::job(new ProcessAutonomousLearningJob)
+    ->cron('9,24,39,54 * * * *')->name('research:autonomous-learning')->withoutOverlapping();

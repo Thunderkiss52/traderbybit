@@ -7,6 +7,7 @@ import IndicatorPanels from '../components/charts/IndicatorPanels.vue';
 
 const route = useRoute();
 const interval = ref('15');
+const viewMode = ref<'today' | '7d'>('today');
 const candles = shallowRef<any[]>([]);
 const indicators = shallowRef<any>();
 const context = shallowRef<any>();
@@ -26,6 +27,9 @@ async function load() {
   loading.value = true;
   try {
     const params = { interval: interval.value, limit: 300, to: to.value };
+    if (viewMode.value === '7d') {
+      params.limit = 672;
+    }
     const loaded: any = await get(`/market/${route.params.symbol}/analysis`, params, controller.signal);
     if (current !== version) return;
     candles.value = loaded.candles || [];
@@ -48,7 +52,7 @@ function newer() {
   const previous = history.value.pop();
   to.value = previous || undefined;
 }
-watch([() => route.params.symbol, interval], () => { history.value = []; to.value = undefined; load(); }, { immediate: true });
+watch([() => route.params.symbol, interval, viewMode], () => { history.value = []; to.value = undefined; load(); }, { immediate: true });
 watch(to, load);
 onBeforeUnmount(() => controller?.abort());
 </script>
@@ -57,7 +61,10 @@ onBeforeUnmount(() => controller?.abort());
   <q-page padding>
     <div class="page-title">
       <div><span class="eyebrow">INSTRUMENT</span><h1>{{ route.params.symbol }}</h1></div>
-      <q-btn-toggle v-model="interval" :options="[{label:'5m',value:'5'},{label:'15m',value:'15'},{label:'1h',value:'60'}]" />
+      <div class="row items-center q-gutter-sm">
+        <q-btn-toggle v-model="viewMode" :options="[{label:'Today',value:'today'},{label:'7 Days',value:'7d'}]" />
+        <q-btn-toggle v-model="interval" :options="[{label:'5m',value:'5'},{label:'15m',value:'15'},{label:'1h',value:'60'}]" />
+      </div>
     </div>
     <q-banner v-if="error" class="bg-negative text-white">{{ error }}</q-banner>
     <q-linear-progress v-if="loading" indeterminate color="primary" />

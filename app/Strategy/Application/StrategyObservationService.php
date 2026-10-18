@@ -67,6 +67,17 @@ final readonly class StrategyObservationService
                     'indicator_snapshot' => $decision->indicatorSnapshot,
                     'diagnostics' => $this->diagnostics($decision),
                 ];
+                if ($decision->pricePlan !== null) {
+                    $analysis['candidate_plan'] = [
+                        'entry_low' => $decision->pricePlan->entryLow,
+                        'entry_high' => $decision->pricePlan->entryHigh,
+                        'stop_loss' => $decision->pricePlan->stopLoss,
+                        'take_profit_1' => $decision->pricePlan->takeProfit1,
+                        'take_profit_2' => $decision->pricePlan->takeProfit2,
+                        'risk_reward_1' => $decision->pricePlan->riskReward1,
+                        'risk_reward_2' => $decision->pricePlan->riskReward2,
+                    ];
+                }
                 StrategyObservationRecord::query()->insertOrIgnore([[
                     'id' => $id,
                     'exchange' => $exchange,

@@ -8,6 +8,7 @@ use App\MarketData\Infrastructure\Persistence\CandleRecord;
 use App\Research\Infrastructure\Persistence\CounterfactualEvaluationRecord;
 use App\Strategy\Infrastructure\Persistence\StrategyObservationRecord;
 use Brick\Math\BigDecimal;
+use Brick\Math\RoundingMode;
 
 final class CounterfactualAnalyzerService
 {
@@ -90,6 +91,20 @@ final class CounterfactualAnalyzerService
             }
         }
 
+        $nonEvaluableReasons = [
+            'insufficient_warmup',
+            'missing_timeframe_data',
+            'future_candle_rejected',
+            'atr_unavailable_or_zero',
+            'tick_size_unavailable',
+            'market_context_unavailable',
+            'non_contiguous_trend_history',
+            'non_contiguous_setup_history',
+            'non_contiguous_entry_history',
+            'non_contiguous_confirmation_history',
+        ];
+        $isEvaluable = array_intersect($reasons, $nonEvaluableReasons) === [];
+
         // Determine reference price from the last closed candle at decision time
         $candle = CandleRecord::query()
             ->where('symbol', $obs->symbol)
@@ -114,8 +129,13 @@ final class CounterfactualAnalyzerService
 
         $direction = $isBearish ? 'SELL' : 'BUY';
 
-        // 1.5% risk distance, 2:1 reward:risk hypothetical trade
-        if ($direction === 'BUY') {
+        // 1.5% risk distance, 2:1 reward:risk hypothetical trade or candidate plan
+        if (isset($obs->analysis['candidate_plan']) && is_array($obs->analysis['candidate_plan'])) {
+            $candidatePlan = $obs->analysis['candidate_plan'];
+            $entry = BigDecimal::of($candidatePlan['entry_low'] ?? $price);
+            $sl = BigDecimal::of($candidatePlan['stop_loss'] ?? ($direction === 'BUY' ? $price->multipliedBy('0.985') : $price->multipliedBy('1.015')));
+            $tp = BigDecimal::of($candidatePlan['take_profit_1'] ?? ($direction === 'BUY' ? $price->multipliedBy('1.030') : $price->multipliedBy('0.970')));
+        } elseif ($direction === 'BUY') {
             $entry = $price;
             $sl = $price->multipliedBy('0.985');
             $tp = $price->multipliedBy('1.030');
@@ -139,11 +159,12 @@ final class CounterfactualAnalyzerService
             'hypothetical_entry' => (string) $entry,
             'hypothetical_sl' => (string) $sl,
             'hypothetical_tp' => (string) $tp,
-            'status' => 'PENDING_MATURITY',
+            'status' => $isEvaluable ? 'PENDING_MATURITY' : 'NON_EVALUABLE',
             'decision_snapshot' => [
                 'reasons' => $reasons,
                 'analysis' => $obs->analysis,
                 'candle_close' => $candle->close,
+                'is_evaluable' => $isEvaluable,
             ],
         ]);
     }
@@ -153,6 +174,10 @@ final class CounterfactualAnalyzerService
      */
     public function resolveHypotheticalOutcome(CounterfactualEvaluationRecord $record): bool
     {
+        if ($record->status === 'NON_EVALUABLE') {
+            return false;
+        }
+
         $horizonMinutes = 240; // 4 hours = 16 15m candles
         $candles = CandleRecord::query()
             ->where('symbol', $record->symbol)
@@ -265,17 +290,25 @@ final class CounterfactualAnalyzerService
             $resolvedAt = $candles->last()->open_time;
         }
 
-        $riskDistance = $entry->minus($sl)->abs();
-        $rMultiple = match ($status) {
-            'RESOLVED_TP' => '2.00000000',
-            'RESOLVED_SL' => '-1.00000000',
-            default => '0.00000000',
-        };
+        $totalCostPercent = BigDecimal::of('0.13000000'); // 0.11% taker round-trip + 0.02% slippage
+        $riskPct = BigDecimal::of('1.50000000');
+
         $netReturn = match ($status) {
-            'RESOLVED_TP' => '3.00000000',
-            'RESOLVED_SL' => '-1.50000000',
-            default => '0.00000000',
+            'RESOLVED_TP' => BigDecimal::of('3.00000000')->minus($totalCostPercent),
+            'RESOLVED_SL' => BigDecimal::of('-1.50000000')->minus($totalCostPercent),
+            'AMBIGUOUS' => BigDecimal::of('-1.50000000')->minus($totalCostPercent),
+            'RESOLVED_TIMEOUT' => (function () use ($candles, $entry, $direction, $totalCostPercent): BigDecimal {
+                $lastClose = BigDecimal::of($candles->last()->close);
+                $gross = $direction === 'BUY'
+                    ? $lastClose->minus($entry)->dividedBy($entry, 8, RoundingMode::HalfEven)->multipliedBy(100)
+                    : $entry->minus($lastClose)->dividedBy($entry, 8, RoundingMode::HalfEven)->multipliedBy(100);
+
+                return $gross->minus($totalCostPercent);
+            })(),
+            default => BigDecimal::zero(),
         };
+
+        $rMultiple = $netReturn->dividedBy($riskPct, 8, RoundingMode::HalfEven);
 
         $record->update([
             'status' => $status,

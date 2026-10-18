@@ -7,7 +7,6 @@ namespace Tests\Unit\Research;
 use App\MarketData\Infrastructure\Persistence\CandleRecord;
 use App\Research\Application\CounterfactualAnalyzerService;
 use App\Strategy\Infrastructure\Persistence\StrategyObservationRecord;
-use Brick\Math\BigDecimal;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Str;
 use Tests\TestCase;
@@ -79,8 +78,8 @@ final class CounterfactualAnalyzerServiceTest extends TestCase
 
         $eval->refresh();
         self::assertSame('RESOLVED_TP', $eval->status);
-        self::assertTrue(BigDecimal::of($eval->r_multiple)->isEqualTo('2'));
-        self::assertTrue(BigDecimal::of($eval->net_return_percent)->isEqualTo('3'));
+        self::assertEquals(2.87, (float) $eval->net_return_percent);
+        self::assertEquals(round(2.87 / 1.5, 4), round((float) $eval->r_multiple, 4));
 
         // Report
         $report = $service->filterEffectivenessReport('trend_pullback');

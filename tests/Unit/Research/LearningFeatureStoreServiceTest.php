@@ -68,6 +68,6 @@ final class LearningFeatureStoreServiceTest extends TestCase
         $snapshot->refresh();
         self::assertSame('MATURED', $snapshot->label_status);
         self::assertSame('TP', $snapshot->label_outcome);
-        self::assertSame('2.0000', (string) $snapshot->label_r_multiple);
+        self::assertSame('1.8700', (string) $snapshot->label_r_multiple);
     }
 }

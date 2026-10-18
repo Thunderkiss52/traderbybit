@@ -34,6 +34,17 @@ final class LearningFeatureStoreService
             return null;
         }
 
+        // De-duplication check: avoid duplicate snapshot at the same decision timestamp
+        $existing = LearningFeatureSnapshotRecord::query()
+            ->where('symbol', $symbol)
+            ->where('timeframe', $timeframe)
+            ->where('decision_time', $decisionTime)
+            ->first();
+
+        if ($existing) {
+            return $existing;
+        }
+
         // Available at is candle open_time + interval duration
         $availableAt = CarbonImmutable::parse($candle->open_time)->addMinutes((int) $timeframe);
 
@@ -61,10 +72,15 @@ final class LearningFeatureStoreService
 
         // Compute technical features without future leakage
         $returns = [];
+        $gains = [];
+        $losses = [];
         for ($i = 1; $i < $history->count(); $i++) {
             $prev = (float) $history[$i - 1]->close;
             $curr = (float) $history[$i]->close;
-            $returns[] = $prev > 0 ? ($curr - $prev) / $prev : 0.0;
+            $change = $curr - $prev;
+            $returns[] = $prev > 0 ? $change / $prev : 0.0;
+            $gains[] = $change > 0 ? $change : 0.0;
+            $losses[] = $change < 0 ? abs($change) : 0.0;
         }
 
         $meanReturn = count($returns) > 0 ? array_sum($returns) / count($returns) : 0.0;
@@ -74,11 +90,21 @@ final class LearningFeatureStoreService
         }
         $volatility = count($returns) > 1 ? sqrt($variance / (count($returns) - 1)) : 0.0;
 
+        $avgGain = count($gains) > 0 ? array_sum(array_slice($gains, -14)) / min(14, count($gains)) : 0.0;
+        $avgLoss = count($losses) > 0 ? array_sum(array_slice($losses, -14)) / min(14, count($losses)) : 0.0;
+        $rs = $avgLoss > 0 ? $avgGain / $avgLoss : 1.0;
+        $rsi14 = round(100.0 - (100.0 / (1.0 + $rs)), 2);
+
+        $avgVol = $history->avg('volume') ?: 1.0;
+        $volumeRatio = round($vol / (float) $avgVol, 4);
+
         $features = [
             'close' => $close,
             'hl_spread_pct' => $close > 0 ? (($high - $low) / $close) * 100 : 0.0,
             'body_spread_pct' => $close > 0 ? (abs($close - $open) / $close) * 100 : 0.0,
             'recent_volatility' => round($volatility * 100, 4),
+            'rsi_14' => $rsi14,
+            'volume_ratio' => $volumeRatio,
             'volume' => $vol,
             'bar_count' => $history->count(),
         ];
@@ -146,10 +172,13 @@ final class LearningFeatureStoreService
                 $h = (float) $candle->high;
                 $l = (float) $candle->low;
 
+                $tradingCostPct = 0.13; // 0.11% taker fees + 0.02% slippage
+
                 if ($h >= $tp && $l <= $sl) {
                     $snapshot->update([
                         'label_status' => 'AMBIGUOUS',
                         'label_outcome' => 'AMBIGUOUS',
+                        'label_r_multiple' => -1.13, // Conservative assumption
                         'outcome_at' => $candle->open_time,
                     ]);
                     $resolved = true;
@@ -161,7 +190,7 @@ final class LearningFeatureStoreService
                     $snapshot->update([
                         'label_status' => 'MATURED',
                         'label_outcome' => 'TP',
-                        'label_r_multiple' => 2.0,
+                        'label_r_multiple' => round(2.0 - $tradingCostPct, 4),
                         'outcome_at' => $candle->open_time,
                     ]);
                     $resolved = true;
@@ -173,7 +202,7 @@ final class LearningFeatureStoreService
                     $snapshot->update([
                         'label_status' => 'MATURED',
                         'label_outcome' => 'SL',
-                        'label_r_multiple' => -1.0,
+                        'label_r_multiple' => round(-1.0 - $tradingCostPct, 4),
                         'outcome_at' => $candle->open_time,
                     ]);
                     $resolved = true;
@@ -186,12 +215,12 @@ final class LearningFeatureStoreService
                 // Timeout after 4 hours
                 $last = $subsequentCandles->last();
                 $lastClose = (float) $last->close;
-                $netPct = (($lastClose - $entryPrice) / $entryPrice) * 100;
+                $netPct = ((($lastClose - $entryPrice) / $entryPrice) * 100) - 0.13;
 
                 $snapshot->update([
                     'label_status' => 'MATURED',
                     'label_outcome' => 'TIMEOUT',
-                    'label_r_multiple' => round($netPct, 2),
+                    'label_r_multiple' => round($netPct, 4),
                     'outcome_at' => $last->open_time,
                 ]);
                 $maturedCount++;
