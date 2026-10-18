@@ -7,6 +7,7 @@ namespace App\Research\Application;
 use App\Backtest\Infrastructure\Persistence\BacktestRunRecord;
 use App\PaperTrading\Application\PaperAccountService;
 use App\Research\Infrastructure\Persistence\LearningCandidateStrategyRecord;
+use App\Research\Infrastructure\Persistence\LearningModelArtifactRecord;
 use App\Research\Infrastructure\Persistence\ResearchJobRecord;
 use Carbon\CarbonImmutable;
 use Illuminate\Validation\ValidationException;
@@ -327,6 +328,83 @@ final class PromotionPolicyService
                 'champion_artifact_id' => $championMetrics['artifact_id'] ?? null,
                 'policy_hash' => $policyHash,
             ],
+        ];
+    }
+
+    /**
+     * Evaluate whether an active ML model artifact is eligible to influence live/paper execution.
+     * Legacy active models without Gate 6 promotion or explicit approved eligibility are strictly ineligible.
+     *
+     * @return array{eligible: bool, reason: string, policy_version: string, failures?: list<string>}
+     */
+    public function evaluateAdvisoryEligibility(LearningModelArtifactRecord $model): array
+    {
+        $params = (array) ($model->parameters ?? []);
+        $metrics = (array) ($model->metrics ?? []);
+
+        // 1. Explicit Gate 6 promotion validation approval
+        if (($params['gate6_validation']['all_gates_passed'] ?? false) === true) {
+            return [
+                'eligible' => true,
+                'reason' => 'gate6_promotion_verified',
+                'policy_version' => (string) ($params['gate6_validation']['policy_version'] ?? $this->getPolicyVersion()),
+            ];
+        }
+
+        // 2. Explicitly approved operator eligibility policy
+        if (($params['approved_for_advisory'] ?? false) === true) {
+            return [
+                'eligible' => true,
+                'reason' => 'explicitly_approved_advisory_policy',
+                'policy_version' => $this->getPolicyVersion(),
+            ];
+        }
+
+        // 3. Dynamic evaluation against Gate 6 promotion policy
+        $policy = (array) config('strategy.promotion_policy', []);
+        $minTrain = (int) ($policy['min_training_samples'] ?? 300);
+        $minOos = (int) ($policy['min_oos_samples'] ?? 100);
+        $minChallengerDays = (int) ($policy['min_challenger_duration_days'] ?? 14);
+        $minChallengerOps = (int) ($policy['min_challenger_samples'] ?? 50);
+        $maxBrier = (float) ($policy['max_brier'] ?? 0.28);
+        $maxEce = (float) ($policy['max_ece'] ?? 0.15);
+
+        $trainSamples = (int) ($params['train_sample_size'] ?? $metrics['sample_size'] ?? 0);
+        $oosSamples = (int) ($params['validation_sample_size'] ?? $metrics['oos_samples'] ?? 0);
+        $brier = (float) ($metrics['brier_score'] ?? 1.0);
+        $ece = (float) ($metrics['ece'] ?? 1.0);
+
+        $ageDays = $model->created_at ? CarbonImmutable::parse($model->created_at)->diffInDays(now('UTC')) : 0;
+        $challengerOps = (int) ($params['challenger_samples'] ?? $metrics['challenger_samples'] ?? 0);
+
+        $samplePass = $trainSamples >= $minTrain && $oosSamples >= $minOos;
+        $challengerPass = $ageDays >= $minChallengerDays && $challengerOps >= $minChallengerOps;
+        $calibPass = $brier <= $maxBrier && $ece <= $maxEce;
+
+        if ($samplePass && $challengerPass && $calibPass) {
+            return [
+                'eligible' => true,
+                'reason' => 'dynamic_gate6_requirements_satisfied',
+                'policy_version' => $this->getPolicyVersion(),
+            ];
+        }
+
+        $failures = [];
+        if (! $samplePass) {
+            $failures[] = "insufficient_samples (train: {$trainSamples}/{$minTrain}, oos: {$oosSamples}/{$minOos})";
+        }
+        if (! $challengerPass) {
+            $failures[] = "insufficient_challenger_observation (days: {$ageDays}/{$minChallengerDays}, ops: {$challengerOps}/{$minChallengerOps})";
+        }
+        if (! $calibPass) {
+            $failures[] = "calibration_gates_breached (Brier: {$brier}/{$maxBrier}, ECE: {$ece}/{$maxEce})";
+        }
+
+        return [
+            'eligible' => false,
+            'reason' => 'legacy_model_unverified_by_gate6: '.implode('; ', $failures),
+            'policy_version' => $this->getPolicyVersion(),
+            'failures' => $failures,
         ];
     }
 

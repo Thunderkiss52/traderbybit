@@ -6,9 +6,11 @@ namespace App\Research\Application;
 
 use App\MarketData\Infrastructure\Persistence\CandleRecord;
 use App\Research\Infrastructure\Persistence\CounterfactualEvaluationRecord;
+use App\Strategy\Infrastructure\Persistence\SignalRecord;
 use App\Strategy\Infrastructure\Persistence\StrategyObservationRecord;
 use Brick\Math\BigDecimal;
 use Brick\Math\RoundingMode;
+use Illuminate\Support\Facades\Log;
 
 final class CounterfactualAnalyzerService
 {
@@ -145,9 +147,34 @@ final class CounterfactualAnalyzerService
             $tp = $price->multipliedBy('0.970');
         }
 
+        $signalMatches = SignalRecord::query()
+            ->where('symbol', $obs->symbol)
+            ->where('strategy_id', $obs->strategy_id)
+            ->where('strategy_version', $obs->strategy_version)
+            ->where('timeframe', $obs->timeframe ?? '15')
+            ->where('decision_time', $obs->decision_time)
+            ->limit(2)
+            ->pluck('id');
+
+        $matchingSignalId = null;
+        $isAmbiguous = false;
+        if ($signalMatches->count() === 1) {
+            $matchingSignalId = (string) $signalMatches->first();
+        } elseif ($signalMatches->count() > 1) {
+            $isAmbiguous = true;
+            Log::warning('Ambiguous signal match for counterfactual observation; rejecting attachment.', [
+                'observation_id' => (string) $obs->id,
+                'symbol' => $obs->symbol,
+                'strategy_id' => $obs->strategy_id,
+                'timeframe' => $obs->timeframe ?? '15',
+                'decision_time' => (string) $obs->decision_time,
+                'candidate_signal_ids' => $signalMatches->all(),
+            ]);
+        }
+
         return CounterfactualEvaluationRecord::query()->create([
             'id' => (string) $obs->id,
-            'signal_id' => (string) $obs->id,
+            'signal_id' => $matchingSignalId,
             'strategy_id' => $obs->strategy_id,
             'strategy_version' => $obs->strategy_version,
             'symbol' => $obs->symbol,
@@ -161,6 +188,10 @@ final class CounterfactualAnalyzerService
             'hypothetical_tp' => (string) $tp,
             'status' => $isEvaluable ? 'PENDING_MATURITY' : 'NON_EVALUABLE',
             'decision_snapshot' => [
+                'observation_id' => (string) $obs->id,
+                'signal_id' => $matchingSignalId,
+                'ambiguous_signal_match' => $isAmbiguous,
+                'candidate_signal_ids' => $isAmbiguous ? $signalMatches->all() : null,
                 'reasons' => $reasons,
                 'analysis' => $obs->analysis,
                 'candle_close' => $candle->close,

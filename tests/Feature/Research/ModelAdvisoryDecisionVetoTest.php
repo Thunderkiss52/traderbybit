@@ -87,6 +87,8 @@ final class ModelAdvisoryDecisionVetoTest extends TestCase
                 'scaling' => ['mean' => ['rsi_14' => 50, 'adx_14' => 25, 'relative_volume' => 1.0], 'std' => ['rsi_14' => 10, 'adx_14' => 5, 'relative_volume' => 0.5]],
                 'dataset_id' => 'ds-001',
                 'training_run_id' => 'run-001',
+                'approved_for_advisory' => true,
+                'gate6_validation' => ['all_gates_passed' => true, 'policy_version' => '4.0.0'],
             ],
             'weights' => [
                 'intercept' => -3.0, // Strong negative bias -> P(TP_BEFORE_SL) ~ 0.047

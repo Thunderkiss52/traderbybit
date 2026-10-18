@@ -40,13 +40,38 @@ final class ReconcileLedgerJob implements ShouldQueue
         $results = $service->reconcileAll();
 
         $discrepancies = 0;
+        $failedAccounts = [];
         foreach ($results as $res) {
-            $discrepancies += (int) ($res['discrepancy_count'] ?? 0);
+            $count = (int) ($res['discrepancy_count'] ?? 0);
+            $discrepancies += $count;
+            if ($count > 0 || ($res['status'] ?? '') !== 'PASSED') {
+                $failedAccounts[] = [
+                    'account_id' => $res['paper_account_id'] ?? 'unknown',
+                    'status' => $res['status'] ?? 'UNKNOWN',
+                    'discrepancies' => $count,
+                ];
+            }
         }
 
-        Log::info('Ledger reconciliation completed for all accounts.', [
-            'accounts_count' => count($results),
-            'total_discrepancies' => $discrepancies,
+        if (! empty($failedAccounts)) {
+            Log::warning('Ledger reconciliation detected discrepancies in paper accounts.', [
+                'accounts_count' => count($results),
+                'total_discrepancies' => $discrepancies,
+                'failed_accounts' => $failedAccounts,
+            ]);
+        } else {
+            Log::info('Ledger reconciliation completed successfully for all accounts.', [
+                'accounts_count' => count($results),
+                'total_discrepancies' => 0,
+            ]);
+        }
+    }
+
+    public function failed(?\Throwable $exception): void
+    {
+        Log::error('Ledger reconciliation job failed on audit queue.', [
+            'error' => $exception?->getMessage(),
+            'trace' => $exception?->getTraceAsString(),
         ]);
     }
 }

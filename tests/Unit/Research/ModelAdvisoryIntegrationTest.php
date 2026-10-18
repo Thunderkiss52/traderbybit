@@ -66,7 +66,12 @@ final class ModelAdvisoryIntegrationTest extends TestCase
             'model_type' => 'LOGISTIC_REGRESSION',
             'target_event' => 'TP_BEFORE_SL',
             'version' => 'v1.0.0',
-            'parameters' => ['target_event' => 'TP_BEFORE_SL', 'symbol' => $symbol],
+            'parameters' => [
+                'target_event' => 'TP_BEFORE_SL',
+                'symbol' => $symbol,
+                'approved_for_advisory' => true,
+                'gate6_validation' => ['all_gates_passed' => true, 'policy_version' => '4.0.0'],
+            ],
             'weights' => [
                 'intercept' => $intercept,
                 'coefficients' => [

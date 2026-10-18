@@ -73,5 +73,10 @@ final class ResearchRecommendationServiceTest extends TestCase
         $categories = array_map(fn ($r) => $r->category, $recommendations);
         self::assertContains('ALPHA_IMPROVEMENT', $categories);
         self::assertContains('RISK_MITIGATION', $categories);
+
+        // Verify deduplication: repeated runs must update existing OPEN records, not create duplicates
+        $secondRun = $service->generateRecommendations();
+        self::assertCount(2, $secondRun);
+        $this->assertDatabaseCount('research_recommendations', 2);
     }
 }

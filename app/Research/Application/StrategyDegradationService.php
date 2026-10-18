@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Research\Application;
 
+use App\PaperTrading\Infrastructure\Persistence\PaperAccountRecord;
 use App\PaperTrading\Infrastructure\Persistence\VirtualPositionRecord;
 use App\Research\Infrastructure\Persistence\StrategyDegradationSnapshotRecord;
 use App\Strategy\Infrastructure\Persistence\StrategyObservationRecord;
@@ -64,8 +65,14 @@ final class StrategyDegradationService
         $grossLosses = 0.0;
         $wins = 0;
         $rMultiples = [];
+        $startingBalance = (float) (PaperAccountRecord::query()
+            ->where(function ($q) use ($strategyId): void {
+                $q->where('strategy_id', $strategyId)
+                    ->orWhere('primary_strategy_id', $strategyId);
+            })->value('starting_balance') ?? 10000.0);
+
         $cumulativePnl = 0.0;
-        $peak = 0.0;
+        $peakEquity = $startingBalance;
         $maxDd = 0.0;
 
         foreach ($positions as $pos) {
@@ -84,10 +91,11 @@ final class StrategyDegradationService
             $rMultiples[] = $r;
 
             $cumulativePnl += $net;
-            if ($cumulativePnl > $peak) {
-                $peak = $cumulativePnl;
+            $currentEquity = $startingBalance + $cumulativePnl;
+            if ($currentEquity > $peakEquity) {
+                $peakEquity = $currentEquity;
             }
-            $dd = $peak > 0 ? (($peak - $cumulativePnl) / $peak) * 100 : 0.0;
+            $dd = $peakEquity > 0 ? (($peakEquity - $currentEquity) / $peakEquity) * 100 : 0.0;
             if ($dd > $maxDd) {
                 $maxDd = $dd;
             }

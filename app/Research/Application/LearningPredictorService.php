@@ -9,7 +9,7 @@ use App\Research\Infrastructure\Persistence\LearningModelArtifactRecord;
 use Carbon\CarbonImmutable;
 use Illuminate\Support\Str;
 
-final class LearningPredictorService
+class LearningPredictorService
 {
     private readonly AutonomyPermissionService $autonomy;
 

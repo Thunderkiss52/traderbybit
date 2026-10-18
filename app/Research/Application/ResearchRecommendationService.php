@@ -40,17 +40,37 @@ final class ResearchRecommendationService
 
         foreach ($byFilter as $item) {
             if ($item['count'] >= 3 && $item['missed_r'] >= 4.0) {
+                $title = "Relax restrictive {$item['filter']} filter threshold for {$item['strategy_id']}";
+                $evidence = [
+                    'evaluated_filter' => $item['filter'],
+                    'missed_tp_trades' => $item['count'],
+                    'missed_r_multiple' => round($item['missed_r'], 2),
+                ];
+
+                $existing = ResearchRecommendationRecord::query()
+                    ->where('category', 'ALPHA_IMPROVEMENT')
+                    ->where('strategy_id', $item['strategy_id'])
+                    ->where('status', 'OPEN')
+                    ->first();
+
+                if ($existing !== null) {
+                    $existing->update([
+                        'title' => $title,
+                        'evidence' => $evidence,
+                        'updated_at' => now(),
+                    ]);
+                    $recommendations[] = $existing;
+
+                    continue;
+                }
+
                 $rec = ResearchRecommendationRecord::query()->create([
                     'id' => (string) Str::uuid(),
                     'category' => 'ALPHA_IMPROVEMENT',
                     'strategy_id' => $item['strategy_id'],
-                    'title' => "Relax restrictive {$item['filter']} filter threshold for {$item['strategy_id']}",
+                    'title' => $title,
                     'description' => "Counterfactual analyzer detected that {$item['count']} skipped candidates resolved at TP (+{$item['missed_r']} R missed). Relaxing this filter may capture profitable trades without excessive risk.",
-                    'evidence' => [
-                        'evaluated_filter' => $item['filter'],
-                        'missed_tp_trades' => $item['count'],
-                        'missed_r_multiple' => round($item['missed_r'], 2),
-                    ],
+                    'evidence' => $evidence,
                     'proposed_changes' => [
                         'filter' => $item['filter'],
                         'action' => 'REDUCE_THRESHOLD_BY_10_PERCENT',
@@ -72,20 +92,39 @@ final class ResearchRecommendationService
                 ? "Pause or adapt {$deg->strategy_id} due to market regime mismatch"
                 : "Reduce risk allocation for {$deg->strategy_id} due to alpha degradation";
 
+            $evidence = [
+                'status' => $deg->status,
+                'drawdown_percent' => $deg->max_drawdown_percent,
+                'profit_factor' => $deg->profit_factor,
+                'win_rate' => $deg->win_rate,
+                'sample_size' => $deg->sample_size,
+                'degradation_type' => $deg->degradation_type,
+            ];
+
+            $existing = ResearchRecommendationRecord::query()
+                ->where('category', 'RISK_MITIGATION')
+                ->where('strategy_id', $deg->strategy_id)
+                ->where('status', 'OPEN')
+                ->first();
+
+            if ($existing !== null) {
+                $existing->update([
+                    'title' => $title,
+                    'evidence' => $evidence,
+                    'updated_at' => now(),
+                ]);
+                $recommendations[] = $existing;
+
+                continue;
+            }
+
             $rec = ResearchRecommendationRecord::query()->create([
                 'id' => (string) Str::uuid(),
                 'category' => 'RISK_MITIGATION',
                 'strategy_id' => $deg->strategy_id,
                 'title' => $title,
                 'description' => "Strategy {$deg->strategy_id} shows status {$deg->status} over horizon {$deg->horizon} (drawdown {$deg->max_drawdown_percent}%, PF {$deg->profit_factor}).",
-                'evidence' => [
-                    'status' => $deg->status,
-                    'drawdown_percent' => $deg->max_drawdown_percent,
-                    'profit_factor' => $deg->profit_factor,
-                    'win_rate' => $deg->win_rate,
-                    'sample_size' => $deg->sample_size,
-                    'degradation_type' => $deg->degradation_type,
-                ],
+                'evidence' => $evidence,
                 'proposed_changes' => [
                     'risk_per_trade_scale' => 0.50,
                     'regime_filter_enabled' => true,
@@ -102,16 +141,36 @@ final class ResearchRecommendationService
 
         if ($latestCorr && ! empty($latestCorr->alerts)) {
             foreach ($latestCorr->alerts as $alert) {
+                $title = "Address portfolio concentration / correlation: {$alert}";
+                $evidence = [
+                    'concentration_score' => $latestCorr->concentration_score,
+                    'alert' => $alert,
+                ];
+
+                $existing = ResearchRecommendationRecord::query()
+                    ->where('category', 'PORTFOLIO_DIVERSIFICATION')
+                    ->whereNull('strategy_id')
+                    ->where('title', $title)
+                    ->where('status', 'OPEN')
+                    ->first();
+
+                if ($existing !== null) {
+                    $existing->update([
+                        'evidence' => $evidence,
+                        'updated_at' => now(),
+                    ]);
+                    $recommendations[] = $existing;
+
+                    continue;
+                }
+
                 $rec = ResearchRecommendationRecord::query()->create([
                     'id' => (string) Str::uuid(),
                     'category' => 'PORTFOLIO_DIVERSIFICATION',
                     'strategy_id' => null,
-                    'title' => "Address portfolio concentration / correlation: {$alert}",
+                    'title' => $title,
                     'description' => "Portfolio correlation engine raised alert: {$alert}. Consider enabling anti-correlation risk limits or hedging.",
-                    'evidence' => [
-                        'concentration_score' => $latestCorr->concentration_score,
-                        'alert' => $alert,
-                    ],
+                    'evidence' => $evidence,
                     'proposed_changes' => [
                         'max_concurrent_same_direction_signals' => 1,
                     ],
@@ -136,16 +195,36 @@ final class ResearchRecommendationService
             $sharpe = (float) ($metrics['sharpe_ratio'] ?? 0.0);
             if ($sharpe >= 1.5) {
                 $experimentLabel = $exp->strategy_id.'-'.substr($exp->id, 0, 8);
+                $title = "Promote shadow experiment {$experimentLabel} to forward candidate";
+                $evidence = [
+                    'sample_size' => $sampleSize,
+                    'metrics' => $metrics,
+                ];
+
+                $existing = ResearchRecommendationRecord::query()
+                    ->where('category', 'EXPERIMENT_PROMOTION')
+                    ->where('strategy_id', $exp->strategy_id)
+                    ->where('status', 'OPEN')
+                    ->first();
+
+                if ($existing !== null) {
+                    $existing->update([
+                        'title' => $title,
+                        'evidence' => $evidence,
+                        'updated_at' => now(),
+                    ]);
+                    $recommendations[] = $existing;
+
+                    continue;
+                }
+
                 $rec = ResearchRecommendationRecord::query()->create([
                     'id' => (string) Str::uuid(),
                     'category' => 'EXPERIMENT_PROMOTION',
                     'strategy_id' => $exp->strategy_id,
-                    'title' => "Promote shadow experiment {$experimentLabel} to forward candidate",
+                    'title' => $title,
                     'description' => "Shadow variant for {$exp->strategy_id} reached {$sampleSize} evaluations with strong Sharpe ratio ({$sharpe}).",
-                    'evidence' => [
-                        'sample_size' => $sampleSize,
-                        'metrics' => $metrics,
-                    ],
+                    'evidence' => $evidence,
                     'proposed_changes' => $exp->parameters,
                     'status' => 'OPEN',
                 ]);
