@@ -247,6 +247,14 @@ final readonly class PaperProcessingService
             $failures[] = (string) $size->reason;
         }
         $active = VirtualPositionRecord::query()->where('paper_account_id', $account->id)->whereIn('status', [PositionStatus::Open->value, PositionStatus::PartiallyClosed->value])->get();
+        $existingSymbolPosition = $active->first(fn (VirtualPositionRecord $p): bool => $p->symbol === $signal->symbol);
+        if ($existingSymbolPosition !== null) {
+            if ($existingSymbolPosition->side !== $signal->side) {
+                $failures[] = 'position_conflict';
+            } else {
+                $failures[] = 'position_already_open';
+            }
+        }
         $same = $active->first(fn (VirtualPositionRecord $p): bool => $p->side === $signal->side && $p->symbol !== $signal->symbol);
         $corr = $same === null ? null : $this->correlation->between($signal->symbol, $same->symbol, $signal->decision_time->toDateTimeImmutable());
         $totalRiskPercent = BigDecimal::of($account->current_equity)->isZero() ? '999' : (string) BigDecimal::of($account->reserved_risk)->dividedBy($account->current_equity, 24, RoundingMode::HalfEven)->multipliedBy(100);

@@ -1,0 +1,62 @@
+{
+    "timestamp": "2026-10-18T15:04:04+00:00",
+    "environment": {
+        "app_env": "local",
+        "os": "Linux",
+        "php_version": "8.4.24",
+        "database_driver": "pgsql",
+        "database_host": "127.0.0.1:25432",
+        "cache_store": "redis",
+        "isolated_namespace": true
+    },
+    "database_records": {
+        "paper_accounts": 8,
+        "signals": 120,
+        "virtual_positions": 25,
+        "strategy_observations": 351,
+        "market_candles": 1250,
+        "market_contexts": 100
+    },
+    "in_process_benchmark": {
+        "cold_runs_ms": [
+            279.78,
+            182.19,
+            190.93,
+            205.04,
+            199.99
+        ],
+        "cold_avg_ms": 211.59,
+        "warm_sample_count": 50,
+        "warm_p50_ms": 0.53,
+        "warm_p95_ms": 0.74,
+        "warm_min_ms": 0.41,
+        "warm_max_ms": 0.84,
+        "explanation": "In-process memory cache read of cached PHP array payload without network, TCP, HTTP kernel, routing, or JSON serialization overhead (takes ~10 microseconds)."
+    },
+    "http_network_benchmark": {
+        "endpoint": "/api/v1/dashboard",
+        "method": "GET",
+        "protocol": "HTTP/1.1 over TCP socket (127.0.0.1:8000)",
+        "cold_runs_ms": [
+            571.29,
+            256.11,
+            268.82,
+            246.92,
+            340.99
+        ],
+        "cold_avg_ms": 336.83,
+        "warm_sample_count": 50,
+        "warm_min_ms": 10.45,
+        "warm_p50_ms": 12.18,
+        "warm_avg_ms": 12.97,
+        "warm_p95_ms": 16.72,
+        "warm_max_ms": 17.93,
+        "speedup_ratio": 27.6,
+        "spec_thresholds": {
+            "cold_max_allowed_ms": 1500,
+            "warm_max_allowed_ms": 200,
+            "cold_status": "PASS",
+            "warm_status": "PASS"
+        }
+    }
+}

@@ -31,6 +31,7 @@ final class ModelAdvisoryService
         $threshold = (float) ($this->config['minimum_calibrated_probability'] ?? config('strategy.model_advisory.minimum_calibrated_probability', 0.40));
         $maxBrier = (float) ($this->config['maximum_allowed_brier'] ?? config('strategy.model_advisory.maximum_allowed_brier', 0.28));
         $maxEce = (float) ($this->config['maximum_allowed_ece'] ?? config('strategy.model_advisory.maximum_allowed_ece', 0.15));
+        $fallbackPolicy = strtoupper((string) ($this->config['fallback_policy'] ?? config('strategy.model_advisory.fallback_policy', 'FAIL_CLOSED_SKIP')));
 
         // Query active champion model for this target event & symbol
         $model = LearningModelArtifactRecord::query()
@@ -41,10 +42,41 @@ final class ModelAdvisoryService
             ->first();
 
         if (! $model) {
+            $altered = false;
+            $finalSide = $decision->side;
+            $finalReasons = $decision->reasons;
+            $status = 'NO_ACTIVE_MODEL';
+
+            if ($mode === 'ACTIVE' && $decision->side !== SignalSide::Skip) {
+                if ($fallbackPolicy === 'FAIL_CLOSED_SKIP') {
+                    $finalSide = SignalSide::Skip;
+                    $finalReasons = array_merge($finalReasons, ['ml_advisory_no_active_model_fail_closed']);
+                    $altered = true;
+                    $action = 'MODEL_ADVISORY_FAIL_CLOSED';
+                    $reasonText = 'Active mode with no active champion model: fail-closed to SKIP.';
+                } else {
+                    $action = 'MODEL_ADVISORY_FALLBACK_BASELINE';
+                    $reasonText = 'Active mode with no active champion model: fallback to authorized baseline execution.';
+                }
+
+                $this->autonomy->recordEvent(
+                    actor: 'SYSTEM_AUTONOMOUS',
+                    action: $action,
+                    targetType: 'MODEL_ARTIFACT',
+                    targetId: 'none',
+                    previousState: $decision->side->value,
+                    newState: $finalSide->value,
+                    reason: $reasonText,
+                    evidence: ['mode' => $mode, 'fallback_policy' => $fallbackPolicy]
+                );
+            }
+
             $snapshot = $decision->indicatorSnapshot;
             $snapshot['model_advisory'] = [
-                'status' => 'NO_ACTIVE_MODEL',
+                'status' => $status,
                 'mode' => $mode,
+                'fallback_policy' => $fallbackPolicy,
+                'altered_decision' => $altered,
             ];
 
             return new SignalDecision(
@@ -55,14 +87,14 @@ final class ModelAdvisoryService
                 $decision->timeframe,
                 $decision->decisionTime,
                 $decision->candleCloseTime,
-                $decision->side,
-                $decision->qualityClass,
+                $finalSide,
+                $finalSide === SignalSide::Skip ? null : $decision->qualityClass,
                 $decision->score,
-                $decision->pricePlan,
-                $decision->modelRiskPercent,
+                $finalSide === SignalSide::Skip ? null : $decision->pricePlan,
+                $finalSide === SignalSide::Skip ? null : $decision->modelRiskPercent,
                 $decision->expiresAt,
                 $decision->maximumHoldingMinutes,
-                $decision->reasons,
+                $finalReasons,
                 $decision->risks,
                 $snapshot,
                 $decision->strategyVersion,
@@ -93,6 +125,17 @@ final class ModelAdvisoryService
                 $altered = true;
                 $action = 'MODEL_ADVISORY_VETO';
                 $reasonText = "Active model vetoed trade: calibrated probability {$prob} < threshold {$threshold}. Converted to SKIP.";
+            } elseif (! $gatesPassed) {
+                if ($fallbackPolicy === 'FAIL_CLOSED_SKIP') {
+                    $finalSide = SignalSide::Skip;
+                    $finalReasons = array_merge($finalReasons, ['ml_advisory_corrupt_model_fail_closed']);
+                    $altered = true;
+                    $action = 'MODEL_ADVISORY_FAIL_CLOSED';
+                    $reasonText = "Active model validation gates breached (Brier: {$brier}, ECE: {$ece}). Fail-closed to SKIP.";
+                } else {
+                    $action = 'MODEL_ADVISORY_FALLBACK_BASELINE';
+                    $reasonText = 'Active model validation gates breached: fallback to authorized baseline execution.';
+                }
             } else {
                 $action = 'MODEL_ADVISORY_PASSED';
                 $reasonText = "Active model approved trade: calibrated probability {$prob} >= threshold {$threshold}.";

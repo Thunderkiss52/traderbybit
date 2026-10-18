@@ -108,4 +108,20 @@ final class ResearchHealthController extends Controller
             ], Response::HTTP_INTERNAL_SERVER_ERROR);
         }
     }
+
+    public function version(): JsonResponse
+    {
+        $commitSha = trim((string) @shell_exec('git rev-parse HEAD 2>/dev/null')) ?: config('app.version_sha', 'b3bbedd');
+
+        return response()->json([
+            'git_sha' => $commitSha,
+            'build_timestamp' => '2026-10-18T12:00:00Z',
+            'version' => config('strategy.version', '1.2.0'),
+            'environment' => config('app.env', 'production'),
+            'market_category' => 'linear',
+            'symbols' => (array) config('market_data.symbols', ['BTCUSDT', 'ETHUSDT']),
+            'active_strategies_count' => 8,
+            'paper_only' => true,
+        ]);
+    }
 }

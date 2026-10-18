@@ -74,13 +74,16 @@ const evidence = (value: unknown) => value === null || value === undefined ? 'â€
       <h2>Independent Strategy Paper Portfolios</h2>
       <div class="muted q-mb-sm">Each enabled strategy has isolated forward-only virtual accounting. No historical replay is mixed into these balances.</div>
       <q-markup-table flat bordered>
-        <thead><tr><th class="text-left">Strategy</th><th>Status</th><th>Equity</th><th>Realized PnL</th><th>Unrealized PnL</th></tr></thead>
+        <thead><tr><th class="text-left">Strategy</th><th>Account</th><th>Evaluation</th><th>ML Model</th><th>Equity</th><th>Realized PnL</th><th>Unrealized PnL</th></tr></thead>
         <tbody><tr v-for="portfolio in data.strategy_portfolios || []" :key="portfolio.id">
           <td class="text-left">
             <b>{{ portfolio.strategy_id || 'baseline' }}</b>
             <div v-if="portfolio.strategy_version" class="muted">v{{ portfolio.strategy_version }} Â· {{ portfolio.mode || 'FORWARD_PAPER' }}</div>
           </td>
-          <td class="text-center">{{ portfolio.status || 'ACTIVE' }}</td><td class="text-right">{{ portfolio.current_equity }}</td>
+          <td class="text-center"><q-badge :color="portfolio.status === 'ACTIVE' ? 'positive' : 'negative'">{{ portfolio.status || 'ACTIVE' }}</q-badge></td>
+          <td class="text-center"><q-badge color="primary">{{ portfolio.evaluation_status || 'STRATEGY_EVALUATING' }}</q-badge></td>
+          <td class="text-center"><q-badge color="grey-7">{{ portfolio.ml_status || 'ML_NOT_TRAINED' }}</q-badge></td>
+          <td class="text-right">{{ portfolio.current_equity }}</td>
           <td class="text-right">{{ portfolio.realized_pnl }}</td><td class="text-right">{{ portfolio.unrealized_pnl }}</td>
         </tr></tbody>
       </q-markup-table>

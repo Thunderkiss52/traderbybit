@@ -30,9 +30,9 @@ final class AuditInvariantTest extends TestCase
     public function test_peak_equity_never_falls_below_starting_balance_and_drawdown_is_positive_on_loss(): void
     {
         $account = $this->app->make(PaperAccountService::class)->default();
-        self::assertSame('10000', $account->starting_balance);
-        self::assertSame('10000', $account->peak_equity);
-        self::assertSame('0', $account->current_drawdown_percent);
+        self::assertTrue(BigDecimal::of((string) $account->starting_balance)->isEqualTo(10000));
+        self::assertTrue(BigDecimal::of((string) $account->peak_equity)->isEqualTo(10000));
+        self::assertTrue(BigDecimal::of((string) $account->current_drawdown_percent)->isEqualTo(0));
 
         // Open a trade that hits SL (loss)
         $this->signal('BUY', 'BTCUSDT', '10:15');

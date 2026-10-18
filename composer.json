@@ -10,7 +10,8 @@
         "brick/math": "^1.0",
         "laravel/framework": "^13.17",
         "laravel/tinker": "^3.0",
-        "phrity/websocket": "^4.0"
+        "phrity/websocket": "^4.0",
+        "predis/predis": "*"
     },
     "require-dev": {
         "fakerphp/faker": "^1.23",

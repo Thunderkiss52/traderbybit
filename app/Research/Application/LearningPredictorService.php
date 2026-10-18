@@ -456,6 +456,56 @@ final class LearningPredictorService
         ];
     }
 
+    /**
+     * Rollback the active champion model to the previous champion (or retire it if none exists).
+     */
+    public function rollbackModel(string $targetEvent = 'TP_BEFORE_SL', string $symbol = 'BTCUSDT', string $reason = 'Manual rollback or concept drift detected'): ?LearningModelArtifactRecord
+    {
+        $current = LearningModelArtifactRecord::query()
+            ->where('target_event', $targetEvent)
+            ->where('name', "Logistic_{$targetEvent}_{$symbol}")
+            ->where('status', 'ACTIVE')
+            ->latest('created_at')
+            ->first();
+
+        if ($current === null) {
+            return null;
+        }
+
+        $previous = LearningModelArtifactRecord::query()
+            ->where('target_event', $targetEvent)
+            ->where('name', "Logistic_{$targetEvent}_{$symbol}")
+            ->where('id', '!=', $current->id)
+            ->whereIn('status', ['SUPERSEDED', 'RETIRED', 'STANDBY'])
+            ->latest('created_at')
+            ->first();
+
+        $current->update(['status' => 'ROLLED_BACK']);
+
+        $this->recordAutonomyEvent(
+            action: 'MODEL_ROLLBACK',
+            targetId: $current->id,
+            prevState: 'ACTIVE',
+            newState: 'ROLLED_BACK',
+            reason: $reason,
+            evidence: ['target_event' => $targetEvent, 'symbol' => $symbol, 'previous_model_id' => $previous?->id]
+        );
+
+        if ($previous !== null) {
+            $previous->update(['status' => 'ACTIVE']);
+            $this->recordAutonomyEvent(
+                action: 'CHAMPION_RESTORED',
+                targetId: $previous->id,
+                prevState: 'SUPERSEDED',
+                newState: 'ACTIVE',
+                reason: "Restored champion after rollback of {$current->id}: {$reason}",
+                evidence: ['target_event' => $targetEvent, 'symbol' => $symbol]
+            );
+        }
+
+        return $previous;
+    }
+
     private function recordAutonomyEvent(string $action, string $targetId, string $prevState, string $newState, string $reason, ?array $evidence = null): void
     {
         if ($this->autonomy !== null) {

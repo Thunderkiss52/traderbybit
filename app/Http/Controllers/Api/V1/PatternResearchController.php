@@ -238,7 +238,7 @@ final class PatternResearchController extends Controller
         $features = $extractor->extract((array) $signal->indicator_snapshot,
             $signal->decision_time->getTimestamp(), $previous, $context);
         $patterns = PatternRecord::query()->join('research_pattern_runs as runs', 'runs.id', '=', 'research_patterns.pattern_run_id')
-            ->where('runs.symbol', $data['symbol'])->where('research_patterns.status', 'VALIDATED')
+            ->where('runs.symbol', $symbol)->where('research_patterns.status', 'VALIDATED')
             ->where('runs.configuration_hash', hash('sha256', json_encode((array) config('patterns'), JSON_THROW_ON_ERROR)))
             ->orderByDesc('research_patterns.created_at')->limit(100)->get(['research_patterns.*']);
         $matches = $patterns->filter(fn ($pattern) => $matcher->matches((array) $pattern->terms, $features['features']))->take(10)->values()->all();

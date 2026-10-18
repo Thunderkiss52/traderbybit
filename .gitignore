@@ -22,6 +22,9 @@ frontend/dist/
 # PHPUnit
 .phpunit.result.cache
 
+# Binaries
+/bin/
+
 # Archives
 *.zip
 

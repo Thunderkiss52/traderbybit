@@ -67,4 +67,11 @@ final class PatternResearchApiTest extends TestCase
         $this->postJson('/api/v1/research/patterns/runs', ['symbol' => 'BTCUSDT', 'from' => '2026-10-01', 'to' => '2028-01-01'])
             ->assertUnprocessable();
     }
+
+    public function test_latest_matches_handles_missing_symbol_parameter_safely(): void
+    {
+        $this->getJson('/api/v1/research/patterns/latest-matches')
+            ->assertOk()
+            ->assertJsonStructure(['data', 'meta']);
+    }
 }

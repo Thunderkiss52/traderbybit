@@ -16,6 +16,7 @@ use App\PaperTrading\Infrastructure\Persistence\VirtualPositionRecord;
 use App\PaperTrading\Jobs\ProcessPaperTradingJob;
 use App\Strategy\Infrastructure\Persistence\MarketContextRecord;
 use App\Strategy\Infrastructure\Persistence\SignalRecord;
+use Brick\Math\BigDecimal;
 use DateTimeImmutable;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
@@ -32,12 +33,13 @@ final class PaperLifecycleTest extends TestCase
         $this->travelTo(new DateTimeImmutable('2026-10-15T12:00:00Z'));
         $this->signal('BUY'); // Historical signal from 2026-10-14.
         $account = $this->app->make(PaperAccountService::class)->default();
+        $account->update(['created_at' => new DateTimeImmutable('2026-10-15T12:00:00Z')]);
         $this->app->make(PaperProcessingService::class)->process(symbol: 'BTCUSDT');
 
         // The account is created after the historical signal and must not invent
         // a forward trade that would have required the account to exist earlier.
         $this->assertDatabaseCount('paper_signal_states', 0);
-        self::assertSame('0', $account->refresh()->realized_pnl);
+        self::assertTrue(BigDecimal::of((string) $account->refresh()->realized_pnl)->isEqualTo(0));
     }
 
     public function test_blocked_account_still_closes_existing_paper_position(): void
@@ -61,6 +63,7 @@ final class PaperLifecycleTest extends TestCase
     {
         $this->travelTo(new DateTimeImmutable('2026-10-14T10:10:00Z'));
         $account = $this->app->make(PaperAccountService::class)->default();
+        $account->update(['created_at' => new DateTimeImmutable('2026-10-14T10:10:00Z')]);
         $this->travelTo(new DateTimeImmutable('2026-10-14T10:40:00Z'));
         $this->signal('BUY'); // Decision timestamp 10:15, inserted 25 minutes too late.
         $this->context();
@@ -91,9 +94,9 @@ final class PaperLifecycleTest extends TestCase
 
         $position = VirtualPositionRecord::query()->firstOrFail();
         self::assertSame(PositionStatus::ClosedTp->value, $position->status);
-        self::assertSame('0', $position->remaining_quantity);
-        self::assertSame('51.43027179678', $position->net_pnl);
-        self::assertSame('1.0286054359', $position->r_multiple);
+        self::assertTrue(BigDecimal::of((string) $position->remaining_quantity)->isEqualTo(0));
+        self::assertTrue(BigDecimal::of((string) $position->net_pnl)->isEqualTo('51.43027179678'));
+        self::assertTrue(BigDecimal::of((string) $position->r_multiple)->isEqualTo('1.0286054359'));
         $this->assertDatabaseCount('virtual_executions', 3);
         $this->assertDatabaseHas('virtual_executions', ['type' => 'TAKE_PROFIT_1']);
         $this->assertDatabaseHas('virtual_executions', ['type' => 'TAKE_PROFIT_2']);
@@ -314,7 +317,7 @@ final class PaperLifecycleTest extends TestCase
     public function test_default_account_and_artisan_commands_work(): void
     {
         $account = $this->app->make(PaperAccountService::class)->default();
-        self::assertSame('10000', $account->starting_balance);
+        self::assertTrue(BigDecimal::of((string) $account->starting_balance)->isEqualTo(10000));
         self::assertSame($account->id, $this->app->make(PaperAccountService::class)->default()->id);
         $this->artisan('paper:account')->assertSuccessful();
         $this->artisan('paper:positions')->assertSuccessful();

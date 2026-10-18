@@ -8,6 +8,7 @@ use App\PaperTrading\Domain\AccountStatus;
 use App\PaperTrading\Infrastructure\Persistence\EquitySnapshotRecord;
 use App\PaperTrading\Infrastructure\Persistence\PaperAccountRecord;
 use Brick\Math\BigDecimal;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 use Ramsey\Uuid\Uuid;
 
@@ -19,7 +20,26 @@ final readonly class PaperAccountService
     {
         $id = Uuid::uuid5(Uuid::NAMESPACE_URL, 'traderbybit:paper:default')->toString();
 
-        $account = PaperAccountRecord::query()->firstOrCreate(['id' => $id], [
+        $account = PaperAccountRecord::query()->where('primary_strategy_id', 'baseline')->first()
+            ?? PaperAccountRecord::query()->find($id);
+
+        if ($account !== null) {
+            if ($account->strategy_version === null || $account->strategy_id === null || ! $account->is_primary || $account->primary_strategy_id === null) {
+                $account->update([
+                    'strategy_version' => $account->strategy_version ?? (string) config('strategy.version'),
+                    'strategy_id' => $account->strategy_id ?? 'baseline',
+                    'primary_strategy_id' => 'baseline',
+                    'is_primary' => true,
+                ]);
+            }
+
+            $this->ensureInitialSnapshot($account);
+
+            return $account;
+        }
+
+        $account = PaperAccountRecord::query()->create([
+            'id' => $id,
             'name' => (string) $this->config['default_account']['name'],
             'status' => AccountStatus::Active->value,
             'starting_balance' => (string) $this->config['default_account']['starting_balance'],
@@ -27,14 +47,8 @@ final readonly class PaperAccountService
             'peak_equity' => (string) $this->config['default_account']['starting_balance'],
             'realized_pnl' => '0', 'unrealized_pnl' => '0', 'reserved_risk' => '0', 'maximum_drawdown_percent' => '0', 'current_drawdown_percent' => '0',
             'mode' => 'FORWARD_PAPER', 'strategy_id' => 'baseline', 'strategy_version' => (string) config('strategy.version'),
+            'primary_strategy_id' => 'baseline', 'is_primary' => true,
         ]);
-
-        if ($account->strategy_version === null || $account->strategy_id === null) {
-            $account->update([
-                'strategy_version' => $account->strategy_version ?? (string) config('strategy.version'),
-                'strategy_id' => $account->strategy_id ?? 'baseline',
-            ]);
-        }
 
         $this->ensureInitialSnapshot($account);
 
@@ -83,6 +97,75 @@ final readonly class PaperAccountService
         $this->ensureInitialSnapshot($account);
 
         return $account;
+    }
+
+    public function primaryAccount(string $strategyId): PaperAccountRecord
+    {
+        if ($strategyId === 'baseline') {
+            return $this->default();
+        }
+
+        $account = PaperAccountRecord::query()
+            ->where('primary_strategy_id', $strategyId)
+            ->first();
+
+        if ($account !== null) {
+            return $account;
+        }
+
+        $account = PaperAccountRecord::query()
+            ->where('strategy_id', $strategyId)
+            ->whereIn('mode', ['FORWARD_PAPER', 'STRATEGY_FORWARD_PAPER', 'PRIMARY'])
+            ->oldest('created_at')
+            ->first();
+
+        if ($account !== null) {
+            $account->update(['primary_strategy_id' => $strategyId, 'is_primary' => true]);
+
+            return $account;
+        }
+
+        $id = Uuid::uuid5(Uuid::NAMESPACE_URL, "traderbybit:paper:primary:{$strategyId}")->toString();
+        $starting = (string) $this->config['default_account']['starting_balance'];
+
+        $account = PaperAccountRecord::query()->create([
+            'id' => $id,
+            'name' => 'Forward Paper '.$strategyId,
+            'status' => AccountStatus::Active->value,
+            'starting_balance' => $starting,
+            'current_equity' => $starting,
+            'peak_equity' => $starting,
+            'realized_pnl' => '0',
+            'unrealized_pnl' => '0',
+            'reserved_risk' => '0',
+            'maximum_drawdown_percent' => '0',
+            'current_drawdown_percent' => '0',
+            'mode' => 'STRATEGY_FORWARD_PAPER',
+            'strategy_id' => $strategyId,
+            'primary_strategy_id' => $strategyId,
+            'is_primary' => true,
+            'strategy_version' => (string) config("research.strategies.{$strategyId}.version", '1.0.0'),
+        ]);
+
+        $this->ensureInitialSnapshot($account);
+
+        return $account;
+    }
+
+    public function allPrimaryAccounts(): Collection
+    {
+        $strategies = [
+            'baseline',
+            'trend_pullback',
+            'bollinger_mean_reversion',
+            'donchian_atr_breakout',
+            'regime_switching',
+            'momentum',
+            'support_resistance_bounce',
+            'support_resistance_breakout',
+        ];
+
+        return collect($strategies)->map(fn (string $s) => $this->primaryAccount($s));
     }
 
     public function resume(string $id): PaperAccountRecord

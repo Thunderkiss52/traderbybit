@@ -6,7 +6,10 @@ namespace Tests\Feature\Api;
 
 use App\Backtest\Jobs\RunBacktestJob;
 use App\PaperTrading\Application\PaperAccountService;
+use App\PaperTrading\Infrastructure\Persistence\PaperAccountRecord;
+use App\PaperTrading\Infrastructure\Persistence\VirtualPositionRecord;
 use App\Strategy\Application\StrategyRegistry;
+use App\Strategy\Infrastructure\Persistence\MarketContextRecord;
 use App\Strategy\Infrastructure\Persistence\SignalRecord;
 use App\Strategy\Infrastructure\Persistence\StrategyObservationRecord;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -221,5 +224,80 @@ final class ResearchApiTest extends TestCase
     {
         $routes = collect(app('router')->getRoutes()->getRoutes())->pluck('uri');
         self::assertFalse($routes->contains(fn (string $route): bool => preg_match('#api/v1/(?:orders?|trades?)(?:/|$)#', $route) === 1));
+    }
+
+    public function test_system_version_endpoint_returns_valid_metadata(): void
+    {
+        $this->getJson('/api/v1/system/version')
+            ->assertOk()
+            ->assertJsonStructure([
+                'git_sha',
+                'build_timestamp',
+                'version',
+                'environment',
+                'market_category',
+                'symbols',
+                'active_strategies_count',
+                'paper_only',
+            ])
+            ->assertJsonPath('market_category', 'linear')
+            ->assertJsonPath('active_strategies_count', 8)
+            ->assertJsonPath('paper_only', true);
+    }
+
+    public function test_dashboard_cold_and_warm_cache_performance(): void
+    {
+        Cache::flush();
+        $startCold = microtime(true);
+        $resCold = $this->getJson('/api/v1/dashboard');
+        $coldMs = round((microtime(true) - $startCold) * 1000, 2);
+        $resCold->assertOk();
+
+        $samples = 30;
+        $warmLatencies = [];
+        for ($i = 0; $i < $samples; $i++) {
+            $startWarm = microtime(true);
+            $resWarm = $this->getJson('/api/v1/dashboard');
+            $dur = round((microtime(true) - $startWarm) * 1000, 2);
+            $resWarm->assertOk();
+            $warmLatencies[] = $dur;
+        }
+
+        sort($warmLatencies);
+        $minMs = $warmLatencies[0];
+        $maxMs = $warmLatencies[$samples - 1];
+        $p50Ms = $warmLatencies[(int) floor($samples * 0.50)];
+        $p95Ms = $warmLatencies[(int) floor($samples * 0.95)];
+        $avgMs = round(array_sum($warmLatencies) / $samples, 2);
+
+        $benchmark = [
+            'database_size' => [
+                'accounts' => PaperAccountRecord::query()->count(),
+                'signals' => SignalRecord::query()->count(),
+                'positions' => VirtualPositionRecord::query()->count(),
+                'observations' => StrategyObservationRecord::query()->count(),
+                'contexts' => MarketContextRecord::query()->count(),
+            ],
+            'cold_ms' => $coldMs,
+            'warm_samples' => $samples,
+            'warm_min_ms' => $minMs,
+            'warm_p50_ms' => $p50Ms,
+            'warm_p95_ms' => $p95Ms,
+            'warm_max_ms' => $maxMs,
+            'warm_avg_ms' => $avgMs,
+            'speedup_ratio' => round($coldMs / max(0.01, $p50Ms), 1),
+            'measured_at' => now('UTC')->toISOString(),
+            'sla_compliance' => [
+                'cold_under_1500ms' => $coldMs < 1500.0,
+                'warm_p95_under_200ms' => $p95Ms < 200.0,
+            ],
+        ];
+
+        if (! file_exists(storage_path('latency_benchmark.json')) || ($benchmark['database_size']['signals'] > 0)) {
+            file_put_contents(storage_path('latency_benchmark.json'), json_encode($benchmark, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES));
+        }
+
+        self::assertLessThan(1500.0, $coldMs, "Cold dashboard response took {$coldMs}ms, exceeding 1500ms");
+        self::assertLessThan(200.0, $p95Ms, "Warm dashboard p95 response took {$p95Ms}ms, exceeding 200ms");
     }
 }

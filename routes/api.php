@@ -16,6 +16,7 @@ Route::prefix('v1')->middleware('throttle:api')->group(function () {
     Route::get('research/health/reconciliation-runs', [H::class, 'reconciliationRuns']);
     Route::post('research/health/reconcile', [H::class, 'reconcile']);
     Route::get('research/health/data-freshness', [H::class, 'dataFreshness']);
+    Route::get('system/version', [H::class, 'version']);
 
     Route::get('research/opportunities', [I::class, 'opportunities']);
     Route::get('research/opportunities/{id}', [I::class, 'opportunityDetail']);
@@ -69,6 +70,7 @@ Route::prefix('v1')->middleware('throttle:api')->group(function () {
     Route::get('statistics', [C::class, 'statistics']);
     Route::get('paper/daily-performance', [C::class, 'dailyPerformance']);
     Route::get('research/daily-performance', [R::class, 'dailyPerformance']);
+    Route::get('research/exit-horizons', [R::class, 'exitHorizons']);
     Route::get('research/patterns', [P::class, 'index']);
     Route::get('research/patterns/runs', [P::class, 'runs']);
     Route::get('research/patterns/latest-matches', [P::class, 'latestMatches']);

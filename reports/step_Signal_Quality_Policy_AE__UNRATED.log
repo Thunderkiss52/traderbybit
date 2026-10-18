@@ -1,0 +1,2 @@
+Xdebug: [Step Debug] Time-out connecting to debugging client, waited: 200 ms. Tried: 127.0.0.1:9003 (through xdebug.client_host/xdebug.client_port).
+{"tool":"phpunit","result":"passed","tests":5,"passed":5,"assertions":17,"duration_ms":3}

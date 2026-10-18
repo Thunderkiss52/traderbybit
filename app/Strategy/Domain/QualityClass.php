@@ -9,4 +9,7 @@ enum QualityClass: string
     case A = 'A';
     case B = 'B';
     case C = 'C';
+    case D = 'D';
+    case E = 'E';
+    case Unrated = 'UNRATED';
 }

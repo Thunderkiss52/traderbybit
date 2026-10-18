@@ -7,11 +7,15 @@ namespace Tests\Feature\Research;
 use App\MarketData\Infrastructure\Persistence\CandleRecord;
 use App\Research\Application\AutonomyPermissionService;
 use App\Research\Application\LearningFeatureStoreService;
+use App\Research\Application\ModelAdvisoryService;
 use App\Research\Infrastructure\Persistence\AutonomyApprovalEventRecord;
 use App\Research\Infrastructure\Persistence\LearningCandidateStrategyRecord;
 use App\Research\Infrastructure\Persistence\LearningFeatureSnapshotRecord;
 use App\Research\Infrastructure\Persistence\LearningModelArtifactRecord;
 use App\Research\Jobs\ProcessAutonomousLearningJob;
+use App\Strategy\Domain\QualityClass;
+use App\Strategy\Domain\SignalDecision;
+use App\Strategy\Domain\SignalSide;
 use Carbon\CarbonImmutable;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
@@ -122,5 +126,42 @@ final class AutonomousLearningPipelineTest extends TestCase
         // 8. Assert audit approval trail recorded actions
         $auditCount = AutonomyApprovalEventRecord::query()->count();
         $this->assertGreaterThan(0, $auditCount);
+
+        // 9. Assert subsequent decision is evaluated and attributed to the active model artifact
+        $advisory = app(ModelAdvisoryService::class);
+        $decision = new SignalDecision(
+            id: 'test-advisory-decision',
+            exchange: 'bybit',
+            category: 'linear',
+            symbol: $symbol,
+            timeframe: '15',
+            decisionTime: $t0->addMinutes(30 * 15),
+            candleCloseTime: $t0->addMinutes(30 * 15),
+            side: SignalSide::Buy,
+            qualityClass: QualityClass::A,
+            score: 85,
+            pricePlan: null,
+            modelRiskPercent: '0.50',
+            expiresAt: $t0->addMinutes(32 * 15),
+            maximumHoldingMinutes: 240,
+            reasons: ['test_setup'],
+            risks: [],
+            indicatorSnapshot: [],
+            strategyVersion: '1.0.0',
+            schemaVersion: '1.0.0'
+        );
+
+        $advised = $advisory->advise($decision, [
+            'close' => 60500.0,
+            'hl_spread_pct' => 1.5,
+            'body_spread_pct' => 0.7,
+            'recent_volatility' => 0.5,
+            'rsi_14' => 52.0,
+            'volume_ratio' => 1.0,
+        ]);
+
+        $this->assertArrayHasKey('model_advisory', $advised->indicatorSnapshot);
+        $this->assertSame($activeModel->id, $advised->indicatorSnapshot['model_advisory']['model_id']);
+        $this->assertArrayHasKey('calibrated_probability', $advised->indicatorSnapshot['model_advisory']);
     }
 }

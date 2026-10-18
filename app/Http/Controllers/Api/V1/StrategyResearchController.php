@@ -15,6 +15,7 @@ use App\PaperTrading\Infrastructure\Persistence\JournalEventRecord;
 use App\PaperTrading\Infrastructure\Persistence\PaperAccountRecord;
 use App\PaperTrading\Infrastructure\Persistence\RiskDecisionRecord;
 use App\PaperTrading\Infrastructure\Persistence\VirtualPositionRecord;
+use App\Research\Application\ExitHorizonResearchService;
 use App\Strategy\Application\ResearchPortfolioManager;
 use App\Strategy\Application\StrategyComparisonService;
 use App\Strategy\Application\StrategyRegistry;
@@ -186,5 +187,15 @@ final class StrategyResearchController extends Controller
         $rows = collect($accounts->items())->map(fn (PaperAccountRecord $account): array => ['account' => $account->only(['id', 'name', 'strategy_id', 'strategy_version', 'current_equity']), 'performance' => $daily->report($account->id, $timezone, $symbol === 'ALL' ? null : $symbol, 1, 10)['summary']])->all();
 
         return new ResearchResource(['data' => $rows, 'meta' => ['current_page' => $accounts->currentPage(), 'per_page' => $accounts->perPage(), 'total' => $accounts->total(), 'last_page' => $accounts->lastPage()]]);
+    }
+
+    public function exitHorizons(Request $request, ExitHorizonResearchService $service): ResearchResource
+    {
+        $symbol = strtoupper($request->string('symbol', 'BTCUSDT')->toString());
+        abort_unless(in_array($symbol, ['BTCUSDT', 'ETHUSDT'], true), 422, 'Unsupported symbol.');
+
+        $result = $service->analyze(symbol: $symbol);
+
+        return new ResearchResource($result);
     }
 }

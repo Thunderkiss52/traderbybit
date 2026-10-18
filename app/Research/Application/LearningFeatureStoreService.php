@@ -167,12 +167,14 @@ final class LearningFeatureStoreService
                 continue;
             }
 
+            $takerRate = (float) config('paper.fees.taker_rate', 0.00055);
+            $slippageRate = (float) config('paper.slippage_rate', 0.0002);
+            $tradingCostPct = ($takerRate * 2 + $slippageRate) * 100;
+
             $resolved = false;
             foreach ($subsequentCandles as $candle) {
                 $h = (float) $candle->high;
                 $l = (float) $candle->low;
-
-                $tradingCostPct = 0.13; // 0.11% taker fees + 0.02% slippage
 
                 if ($h >= $tp && $l <= $sl) {
                     $snapshot->update([
@@ -215,7 +217,7 @@ final class LearningFeatureStoreService
                 // Timeout after 4 hours
                 $last = $subsequentCandles->last();
                 $lastClose = (float) $last->close;
-                $netPct = ((($lastClose - $entryPrice) / $entryPrice) * 100) - 0.13;
+                $netPct = ((($lastClose - $entryPrice) / $entryPrice) * 100) - $tradingCostPct;
 
                 $snapshot->update([
                     'label_status' => 'MATURED',

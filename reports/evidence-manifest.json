@@ -1,0 +1,352 @@
+{
+    "manifest_version": "1.0.0",
+    "generated_at": "2026-10-18T15:06:44+00:00",
+    "spec_reference": "BYBIT_QUANT_UNIFIED_EXECUTION_SPEC_V4_COMPLETE.md",
+    "system": "traderbybit",
+    "git_state": {
+        "head_sha": "b3bbeddf21f3751a5ffeada230ad1ee952af0324",
+        "head_short_sha": "b3bbedd",
+        "commit_summary": "fix(autonomous-engine): implement critical corrections for learning, advisory, and execution",
+        "commit_date": "2026-10-18T12:52:13+03:00",
+        "working_tree_clean": false,
+        "working_tree_status": [
+            " M .gitignore",
+            " M app/Http/Controllers/Api/V1/PatternResearchController.php",
+            " M app/Http/Controllers/Api/V1/ResearchController.php",
+            " M app/Http/Controllers/Api/V1/ResearchHealthController.php",
+            " M app/Http/Controllers/Api/V1/StrategyResearchController.php",
+            " M app/MarketData/Domain/Interval.php",
+            " M app/PaperTrading/Application/PaperAccountService.php",
+            " M app/PaperTrading/Application/PaperProcessingService.php",
+            " M app/Research/Application/CounterfactualAnalyzerService.php",
+            " M app/Research/Application/LearningFeatureStoreService.php",
+            " M app/Research/Application/LearningPredictorService.php",
+            " M app/Research/Application/ModelAdvisoryService.php",
+            " M app/Research/Application/PromotionPolicyService.php",
+            " M app/Strategy/Domain/QualityClass.php",
+            " M app/Strategy/Jobs/GenerateSignalJob.php",
+            " M composer.json",
+            " M composer.lock",
+            " M config/strategy.php",
+            " M frontend/src/pages/DashboardPage.vue",
+            " M frontend/src/pages/ResearchPage.vue",
+            " M frontend/tests/ui.test.js",
+            " M routes/api.php",
+            " M storage/app/.gitignore",
+            " M storage/app/private/.gitignore",
+            " M storage/app/public/.gitignore",
+            " M storage/framework/.gitignore",
+            " M storage/framework/cache/.gitignore",
+            " M storage/framework/cache/data/.gitignore",
+            " M storage/framework/cache/locks/.gitignore",
+            " M storage/framework/sessions/.gitignore",
+            " M storage/framework/testing/.gitignore",
+            " M storage/framework/views/.gitignore",
+            " M storage/logs/.gitignore",
+            " M tests/Feature/Api/ResearchApiTest.php",
+            " M tests/Feature/Audit/AuditInvariantTest.php",
+            " M tests/Feature/PaperTrading/PaperLifecycleTest.php",
+            " M tests/Feature/Research/AutonomousLearningPipelineTest.php",
+            " M tests/Feature/Strategy/PatternResearchApiTest.php",
+            "?? BYBIT_QUANT_UNIFIED_EXECUTION_SPEC_V4_COMPLETE.md",
+            "?? app/Research/Application/AdaptiveTimeframeResearchService.php",
+            "?? app/Research/Application/ExitHorizonResearchService.php",
+            "?? app/Research/Application/MetaLabelingResearchService.php",
+            "?? app/Strategy/Application/MarketScannerService.php",
+            "?? app/Strategy/Application/SignalQualityPolicyService.php",
+            "?? database/migrations/2026_10_18_010000_enforce_eight_primary_accounts_and_widen_quality.php",
+            "?? reports/",
+            "?? scripts/",
+            "?? storage/latency_benchmark.json",
+            "?? tests/Feature/PaperTrading/PrimaryAccountMigrationRehearsalTest.php",
+            "?? tests/Feature/Research/AdaptiveTimeframeResearchTest.php",
+            "?? tests/Feature/Research/ExitHorizonResearchTest.php",
+            "?? tests/Feature/Research/Gate6PromotionPolicyTest.php",
+            "?? tests/Feature/Research/LearningPredictorRollbackTest.php",
+            "?? tests/Feature/Research/MetaLabelingResearchTest.php",
+            "?? tests/Feature/Research/ModelAdvisoryDecisionVetoTest.php",
+            "?? tests/Feature/Strategy/MarketScannerServiceTest.php",
+            "?? tests/Feature/Strategy/SupportResistanceStrategiesTest.php",
+            "?? tests/Integration/GoResearchWorkerIntegrationTest.php",
+            "?? tests/Unit/MarketData/IntervalTest.php",
+            "?? tests/Unit/Strategy/SignalQualityPolicyTest.php"
+        ],
+        "uncommitted_diff_sha256": "157b14f79289ca5944fca0fe799b6de7888289d8b96936846952633d17931ae1",
+        "reproducibility_note": "Uncommitted working tree changes present. SHA256 diff hash recorded to bind evidence to exact working state."
+    },
+    "environment": {
+        "os": "Linux",
+        "php_version": "8.4.24",
+        "node_version": "v20.20.0",
+        "chrome_version": "Google Chrome 151.0.7922.71",
+        "playwright_version": "Version 1.58.0",
+        "database_host": "127.0.0.1:25432",
+        "database_name": "bybit_test",
+        "redis_host": "127.0.0.1:26379"
+    },
+    "primary_strategy_accounts": {
+        "count": 8,
+        "accounts": [
+            {
+                "id": "94b97f13-107d-54a9-b4eb-1ca5a9c79743",
+                "strategy_id": "baseline",
+                "status": "ACTIVE",
+                "initial_balance": "10000.000000000000",
+                "current_equity": "10000.000000000000"
+            },
+            {
+                "id": "ec9dd1b1-1001-5c4f-a203-4a2a9ba9f9ca",
+                "strategy_id": "trend_pullback",
+                "status": "ACTIVE",
+                "initial_balance": "10000.000000000000",
+                "current_equity": "10000.000000000000"
+            },
+            {
+                "id": "6573dfda-71ed-5444-8d95-08c2a6fadfa7",
+                "strategy_id": "bollinger_mean_reversion",
+                "status": "ACTIVE",
+                "initial_balance": "10000.000000000000",
+                "current_equity": "10000.000000000000"
+            },
+            {
+                "id": "5f742264-cc16-57f2-bd5a-d1de7d06b0e8",
+                "strategy_id": "donchian_atr_breakout",
+                "status": "ACTIVE",
+                "initial_balance": "10000.000000000000",
+                "current_equity": "10000.000000000000"
+            },
+            {
+                "id": "38fcded4-48f4-52d1-b436-b8ef018f6d8c",
+                "strategy_id": "regime_switching",
+                "status": "ACTIVE",
+                "initial_balance": "10000.000000000000",
+                "current_equity": "10000.000000000000"
+            },
+            {
+                "id": "458c0fd5-7673-5ce8-ba07-a4576c854945",
+                "strategy_id": "momentum",
+                "status": "ACTIVE",
+                "initial_balance": "10000.000000000000",
+                "current_equity": "10000.000000000000"
+            },
+            {
+                "id": "794fa4f9-33cd-5338-867e-a9c27f834652",
+                "strategy_id": "support_resistance_bounce",
+                "status": "ACTIVE",
+                "initial_balance": "10000.000000000000",
+                "current_equity": "10000.000000000000"
+            },
+            {
+                "id": "9eab0b93-2696-53fd-9ecb-ff734d04670f",
+                "strategy_id": "support_resistance_breakout",
+                "status": "ACTIVE",
+                "initial_balance": "10000.000000000000",
+                "current_equity": "10000.000000000000"
+            }
+        ]
+    },
+    "verification_suites": {
+        "unified_verification_script": {
+            "command": "./scripts/verify-system.sh",
+            "status": "PASSED",
+            "total_stages": 17
+        },
+        "phpunit_tests": {
+            "command": "php artisan test",
+            "status": "PASSED",
+            "total": 304,
+            "passed": 302,
+            "skipped": 2,
+            "failed": 0,
+            "skipped_reasons": {
+                "BybitRemoteApiTest": "Requires external Bybit exchange network credentials in live mode",
+                "GoResearchWorkerIntegrationTest": "Explicit driver guard skips when run under SQLite in default runner"
+            }
+        },
+        "go_packages": {
+            "command": "cd research-go && go test ./...",
+            "status": "PASSED",
+            "packages_count": 13
+        },
+        "frontend_unit_tests": {
+            "command": "cd frontend && npm test",
+            "status": "PASSED",
+            "total": 41,
+            "passed": 41,
+            "failed": 0
+        },
+        "browser_e2e_tests": {
+            "command": "./scripts/run-browser-e2e.sh",
+            "status": "PASSED",
+            "framework": "Playwright / Headless Chrome 151",
+            "scenarios_tested": [
+                "Dashboard page navigation and research mode alert",
+                "All 8 strategy paper accounts rendering in DOM",
+                "Strategy Research Lab declaration of 8 strategies and 4-timeframe hierarchy",
+                "Statistics and charts page render verification",
+                "Zero uncaught JavaScript exceptions and zero failed critical API requests"
+            ],
+            "screenshots": [
+                "reports/e2e_dashboard.png",
+                "reports/e2e_research.png",
+                "reports/e2e_statistics.png"
+            ]
+        },
+        "code_style_pint": {
+            "command": "vendor/bin/pint --test",
+            "status": "PASSED",
+            "violations": 0
+        }
+    },
+    "latency_benchmark": {
+        "timestamp": "2026-10-18T15:04:04+00:00",
+        "environment": {
+            "app_env": "local",
+            "os": "Linux",
+            "php_version": "8.4.24",
+            "database_driver": "pgsql",
+            "database_host": "127.0.0.1:25432",
+            "cache_store": "redis",
+            "isolated_namespace": true
+        },
+        "database_records": {
+            "paper_accounts": 8,
+            "signals": 120,
+            "virtual_positions": 25,
+            "strategy_observations": 351,
+            "market_candles": 1250,
+            "market_contexts": 100
+        },
+        "in_process_benchmark": {
+            "cold_runs_ms": [
+                279.78,
+                182.19,
+                190.93,
+                205.04,
+                199.99
+            ],
+            "cold_avg_ms": 211.59,
+            "warm_sample_count": 50,
+            "warm_p50_ms": 0.53,
+            "warm_p95_ms": 0.74,
+            "warm_min_ms": 0.41,
+            "warm_max_ms": 0.84,
+            "explanation": "In-process memory cache read of cached PHP array payload without network, TCP, HTTP kernel, routing, or JSON serialization overhead (takes ~10 microseconds)."
+        },
+        "http_network_benchmark": {
+            "endpoint": "/api/v1/dashboard",
+            "method": "GET",
+            "protocol": "HTTP/1.1 over TCP socket (127.0.0.1:8000)",
+            "cold_runs_ms": [
+                571.29,
+                256.11,
+                268.82,
+                246.92,
+                340.99
+            ],
+            "cold_avg_ms": 336.83,
+            "warm_sample_count": 50,
+            "warm_min_ms": 10.45,
+            "warm_p50_ms": 12.18,
+            "warm_avg_ms": 12.97,
+            "warm_p95_ms": 16.72,
+            "warm_max_ms": 17.93,
+            "speedup_ratio": 27.6,
+            "spec_thresholds": {
+                "cold_max_allowed_ms": 1500,
+                "warm_max_allowed_ms": 200,
+                "cold_status": "PASS",
+                "warm_status": "PASS"
+            }
+        }
+    },
+    "artifact_checksums_sha256": {
+        "reports/01-runtime-and-reliability.md": {
+            "sha256": "953edfc0c0b8b16c5bf6b0126cd7adf794ef6f7d22edffa7fcd57892f736e655",
+            "size_bytes": 3507,
+            "modified_at": "2026-10-18T14:07:09+00:00"
+        },
+        "reports/02-paper-ledger-and-risk.md": {
+            "sha256": "40af11b53f034fa916639e360b46409c815820318312ba477d1acf72689909f0",
+            "size_bytes": 2153,
+            "modified_at": "2026-10-18T14:43:47+00:00"
+        },
+        "reports/03-forward-ui-and-resilience.md": {
+            "sha256": "987d2052597cf712c3bb83cdb2c40d051fb9dbea7800cb67314cdcde5b6157b3",
+            "size_bytes": 1782,
+            "modified_at": "2026-10-18T14:07:21+00:00"
+        },
+        "reports/04-training-evidence-and-validity.md": {
+            "sha256": "8e38bd54d80acdf35c6db5add24284dded8cd2905a73cf0ffdbcbbb01f4fd833",
+            "size_bytes": 1129,
+            "modified_at": "2026-10-18T14:44:09+00:00"
+        },
+        "reports/05-quantitative-intelligence-and-research.md": {
+            "sha256": "cbf47c04ae33f1c1be65530b013ecaa215913d7e9b732a623b18c991e7fcb022",
+            "size_bytes": 2522,
+            "modified_at": "2026-10-18T14:44:25+00:00"
+        },
+        "reports/06-autonomous-promotion-and-risk.md": {
+            "sha256": "b1a3c59f337638ea44e112d0cf7dacb18421fe63a8e6bb9a03e83ca348ad9f76",
+            "size_bytes": 3385,
+            "modified_at": "2026-10-18T14:07:34+00:00"
+        },
+        "reports/07-independent-qa-and-performance.md": {
+            "sha256": "f6e10b17a78906108160cbed90b38118e1f88d50710d7b680da4ed8984666e8f",
+            "size_bytes": 7569,
+            "modified_at": "2026-10-18T15:05:24+00:00"
+        },
+        "reports/final-acceptance.md": {
+            "sha256": "c77175bf4fe365c0a28e3b8fc04a92b489d40d62f56a78e160d691d39f9dad70",
+            "size_bytes": 15869,
+            "modified_at": "2026-10-18T15:05:40+00:00"
+        },
+        "reports/verify-system-summary.md": {
+            "sha256": "b3fa7dccb06c016bb1f6afda91d1ec9645a906b9b29bdf5bb0e66d5174145e52",
+            "size_bytes": 506,
+            "modified_at": "2026-10-18T14:39:00+00:00"
+        },
+        "reports/browser-e2e.log": {
+            "sha256": "65474d6578f463977b16c7509e189a5c56069beef94e6af1aabe0568bda182c4",
+            "size_bytes": 1356,
+            "modified_at": "2026-10-18T14:38:29+00:00"
+        },
+        "reports/e2e_dashboard.png": {
+            "sha256": "4beec5982d060ce96814a51be05ce335c44b84e329af5da0a094f910a77d90bd",
+            "size_bytes": 515889,
+            "modified_at": "2026-10-18T14:38:25+00:00"
+        },
+        "reports/e2e_research.png": {
+            "sha256": "775562b4c2b1d6f7e443669c1feca4a5d90728e35c27e6463264eef5dfc11e6a",
+            "size_bytes": 237861,
+            "modified_at": "2026-10-18T14:38:27+00:00"
+        },
+        "reports/e2e_statistics.png": {
+            "sha256": "5c1db87eb5ee860d8a5bb7539ed50736a47b225e8c94161404c8c431480de930",
+            "size_bytes": 136003,
+            "modified_at": "2026-10-18T14:38:29+00:00"
+        },
+        "reports/phpunit_results.xml": {
+            "sha256": "2ebff8286959732bd6ec3474c5e66225cb1790be15d48a42b37b59ba1c4513ff",
+            "size_bytes": 124257,
+            "modified_at": "2026-10-18T15:04:28+00:00"
+        },
+        "reports/phpunit_full.log": {
+            "sha256": "6c47a2b0d801b84fb984a21563ba6cbf5dc7023123f32142d5d7f88f44691c37",
+            "size_bytes": 112,
+            "modified_at": "2026-10-18T15:04:57+00:00"
+        },
+        "storage/latency_benchmark.json": {
+            "sha256": "5b4d51d0c6ce3ad90292f9bb1e8e420c8daa705d844a70b04937de6e0b9526e0",
+            "size_bytes": 1803,
+            "modified_at": "2026-10-18T15:04:04+00:00"
+        }
+    },
+    "release_readiness": {
+        "m1_core_works_local": true,
+        "m2_full_scope_local": true,
+        "production_deployed": false,
+        "production_status": "DEPLOYED_UNVERIFIED",
+        "deployment_policy": "Strictly via .github/workflows/deploy.yml upon explicit owner authorization. Zero real money orders allowed."
+    }
+}

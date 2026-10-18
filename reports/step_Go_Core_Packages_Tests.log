@@ -1,0 +1,13 @@
+?   	github.com/traderbybit/research-go/cmd/research-worker	[no test files]
+ok  	github.com/traderbybit/research-go/internal/algorithms	0.008s
+ok  	github.com/traderbybit/research-go/internal/backtest	0.058s
+?   	github.com/traderbybit/research-go/internal/contracts	[no test files]
+?   	github.com/traderbybit/research-go/internal/datasets	[no test files]
+ok  	github.com/traderbybit/research-go/internal/decimal	0.006s
+ok  	github.com/traderbybit/research-go/internal/jobrunner	0.012s
+ok  	github.com/traderbybit/research-go/internal/patterns	0.081s
+ok  	github.com/traderbybit/research-go/internal/replay	0.006s
+ok  	github.com/traderbybit/research-go/internal/simulation	0.002s
+?   	github.com/traderbybit/research-go/internal/telemetry	[no test files]
+ok  	github.com/traderbybit/research-go/internal/walkforward	0.042s
+ok  	github.com/traderbybit/research-go/tests/golden	0.002s

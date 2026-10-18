@@ -297,8 +297,10 @@ final class CounterfactualAnalyzerService
         }
         $riskPct = $riskDistance->dividedBy($entry, 8, RoundingMode::HalfEven)->multipliedBy(100);
 
-        // Applicable round-trip execution costs: 0.11% taker fees (0.055% * 2) + 0.02% slippage (0.01% * 2)
-        $totalCostPercent = BigDecimal::of('0.13000000');
+        // Applicable round-trip execution costs derived from versioned configuration
+        $takerRate = BigDecimal::of((string) config('paper.fees.taker_rate', '0.00055'));
+        $slippageRate = BigDecimal::of((string) config('paper.slippage_rate', '0.0002'));
+        $totalCostPercent = $takerRate->multipliedBy(2)->plus($slippageRate)->multipliedBy(100);
 
         $exitPrice = match ($status) {
             'RESOLVED_TP' => $tp,

@@ -31,6 +31,7 @@ use App\PaperTrading\Infrastructure\Persistence\RiskDecisionRecord;
 use App\PaperTrading\Infrastructure\Persistence\VirtualExecutionRecord;
 use App\PaperTrading\Infrastructure\Persistence\VirtualPositionRecord;
 use App\PatternDiscovery\Infrastructure\Persistence\CandlestickPatternOccurrenceRecord;
+use App\Research\Infrastructure\Persistence\LearningModelArtifactRecord;
 use App\Strategy\Application\StrategyRegistry;
 use App\Strategy\Infrastructure\Persistence\MarketContextRecord;
 use App\Strategy\Infrastructure\Persistence\SignalRecord;
@@ -75,7 +76,8 @@ final class ResearchController extends Controller
                 $recentSkips = SignalRecord::query()->where('side', 'SKIP')
                     ->where('decision_time', '>=', now('UTC')->subDay())
                     ->whereIn('symbol', config('ui.symbols'))
-                    ->cursor(['reasons']);
+                    ->latest('decision_time')
+                    ->get(['reasons']);
                 $skipCounts = [];
                 foreach ($recentSkips as $skip) {
                     foreach ($skip->reasons ?? [] as $reason) {
@@ -100,23 +102,29 @@ final class ResearchController extends Controller
                     'level_interaction' => data_get($decision->indicator_snapshot, 'level_interaction'),
                 ]);
 
+            $signals = SignalRecord::query()->whereIn('side', ['BUY', 'SELL'])->latest('decision_time')->latest('id')->limit(8)->get(['id', 'symbol', 'side', 'quality_class', 'score', 'entry_low', 'entry_high', 'stop_loss', 'take_profit_1', 'take_profit_2', 'expires_at', 'reasons', 'decision_time'])->map(fn ($s) => $s->toArray())->all();
+            $positions = VirtualPositionRecord::query()->whereNull('closed_at')->latest('opened_at')->limit(10)->get(['id', 'symbol', 'side', 'status', 'entry_price', 'net_pnl', 'unrealized_pnl'])->map(fn ($p) => $p->toArray())->all();
+
             return [
-                'market' => $contexts,
-                'account' => $account,
+                'market' => $contexts->map(fn ($c) => $c->toArray())->values()->all(),
+                'account' => $account?->toArray(),
                 'portfolio' => $account ? array_merge($statistics->accountSummary($account), [
                     'open_positions' => VirtualPositionRecord::query()->where('paper_account_id', $account->id)->whereNull('closed_at')->count(),
                     'pending_entry_signals' => PaperSignalStateRecord::query()->where('paper_account_id', $account->id)->where('status', 'PENDING_ENTRY')->count(),
                 ]) : null,
-                'signals' => SignalRecord::query()->whereIn('side', ['BUY', 'SELL'])->latest('decision_time')->latest('id')->limit(8)->get(['id', 'symbol', 'side', 'quality_class', 'score', 'entry_low', 'entry_high', 'stop_loss', 'take_profit_1', 'take_profit_2', 'expires_at', 'reasons', 'decision_time']),
+                'signals' => $signals,
                 'recent_decisions' => $recentDecisions,
                 'skip_reasons_24h' => $skipReasons,
                 'strategy_observations_24h' => Cache::remember('paper:dashboard:strategy_observations_24h', 60, fn () => $this->strategyObservations($strategies)),
                 'strategy_portfolios' => collect($strategies->metadata())->map(function (array $strategy): array {
                     $account = PaperAccountRecord::query()
-                        ->where('strategy_id', $strategy['id'])
-                        ->whereIn('mode', ['FORWARD_PAPER', 'STRATEGY_FORWARD_PAPER', 'RESEARCH_FORWARD_PAPER'])
-                        ->latest('created_at')
-                        ->first();
+                        ->where('primary_strategy_id', $strategy['id'])
+                        ->first()
+                        ?? PaperAccountRecord::query()
+                            ->where('strategy_id', $strategy['id'])
+                            ->whereIn('mode', ['FORWARD_PAPER', 'STRATEGY_FORWARD_PAPER', 'RESEARCH_FORWARD_PAPER'])
+                            ->latest('created_at')
+                            ->first();
 
                     if ($account === null && $strategy['id'] === 'baseline') {
                         $account = PaperAccountRecord::query()
@@ -126,6 +134,31 @@ final class ResearchController extends Controller
                             ->first();
                     }
 
+                    $latestObs = StrategyObservationRecord::query()
+                        ->where('strategy_id', $strategy['id'])
+                        ->latest('decision_time')
+                        ->first(['side', 'decision_time', 'reasons']);
+
+                    $activeModel = LearningModelArtifactRecord::query()
+                        ->where('target_event', 'TP_BEFORE_SL')
+                        ->where('status', 'ACTIVE')
+                        ->first();
+                    $shadowModel = $activeModel === null
+                        ? LearningModelArtifactRecord::query()
+                            ->where('target_event', 'TP_BEFORE_SL')
+                            ->whereIn('status', ['SHADOW', 'STANDBY', 'CANDIDATE'])
+                            ->first()
+                        : null;
+                    $mlStatus = $activeModel !== null ? 'ML_ACTIVE' : ($shadowModel !== null ? 'ML_SHADOW' : 'ML_NOT_TRAINED');
+
+                    $accountStatus = ($account && $account->status === 'ACTIVE') ? 'ACCOUNT_ACTIVE' : ($account ? (string) $account->status : 'ACCOUNT_NOT_PROVISIONED');
+                    $strategyStatus = 'STRATEGY_ENABLED';
+                    $evaluationStatus = $latestObs !== null ? 'STRATEGY_EVALUATING' : 'AWAITING_FIRST_CYCLE';
+                    $paperStatus = $account ? 'PAPER_EXECUTION_OPERATIONAL' : 'ACCOUNT_NOT_PROVISIONED';
+
+                    $openPositionsCount = $account ? VirtualPositionRecord::query()->where('paper_account_id', $account->id)->whereNull('closed_at')->count() : 0;
+                    $closedPositionsCount = $account ? VirtualPositionRecord::query()->where('paper_account_id', $account->id)->whereNotNull('closed_at')->count() : 0;
+
                     return [
                         'id' => $account ? (string) $account->id : 'strategy:'.$strategy['id'],
                         'name' => $account ? (string) $account->name : 'Forward Paper '.$strategy['id'],
@@ -133,9 +166,22 @@ final class ResearchController extends Controller
                         'strategy_id' => $strategy['id'],
                         'strategy_version' => $account && $account->strategy_version ? (string) $account->strategy_version : (string) $strategy['version'],
                         'status' => $account ? (string) ($account->status ?: 'ACTIVE') : 'ACTIVE',
+                        'account_status' => $accountStatus,
+                        'strategy_status' => $strategyStatus,
+                        'evaluation_status' => $evaluationStatus,
+                        'ml_status' => $mlStatus,
+                        'paper_execution_status' => $paperStatus,
                         'current_equity' => $account ? (string) $account->current_equity : (string) config('backtest.starting_balance', '10000'),
                         'realized_pnl' => $account ? (string) $account->realized_pnl : '0',
                         'unrealized_pnl' => $account ? (string) $account->unrealized_pnl : '0',
+                        'open_positions' => $openPositionsCount,
+                        'closed_positions' => $closedPositionsCount,
+                        'last_evaluation_at' => $latestObs?->decision_time?->toISOString(),
+                        'latest_decision' => $latestObs ? [
+                            'side' => $latestObs->side,
+                            'decision_time' => $latestObs->decision_time->toISOString(),
+                            'reasons' => $latestObs->reasons,
+                        ] : null,
                     ];
                 })->values()->all(),
                 'paper_execution_health' => [
@@ -143,7 +189,7 @@ final class ResearchController extends Controller
                     'last_journal_event_at' => JournalEventRecord::query()->max('occurred_at'),
                     'latest_strategy_evaluation_at' => StrategyObservationRecord::query()->max('decision_time'),
                 ],
-                'positions' => VirtualPositionRecord::query()->whereNull('closed_at')->latest('opened_at')->limit(10)->get(['id', 'symbol', 'side', 'status', 'entry_price', 'net_pnl', 'unrealized_pnl']),
+                'positions' => $positions,
                 'performance' => $account ? Cache::remember('paper:dashboard:performance:'.$account->id, 60, fn () => $statistics->calculate($account->id)->metrics) : null,
                 'research_settings' => [
                     'starting_balance' => config('backtest.starting_balance'),
@@ -182,7 +228,8 @@ final class ResearchController extends Controller
                 ];
             })->values()->all();
             $skipReasons = [];
-            foreach ((clone $query)->where('side', 'SKIP')->cursor() as $observation) {
+            $skipRows = (clone $query)->where('side', 'SKIP')->get(['reasons']);
+            foreach ($skipRows as $observation) {
                 foreach ($observation->reasons ?? [] as $reason) {
                     if (is_string($reason) && ! str_starts_with($reason, 'regime_')) {
                         $skipReasons[$reason] = ($skipReasons[$reason] ?? 0) + 1;
@@ -345,7 +392,11 @@ final class ResearchController extends Controller
             $rows->count(),
             $rows->max('updated_at')?->getTimestampMs(),
         ]);
-        $series = Cache::remember('market:indicators:'.sha1($version), now()->addMinutes(5), fn () => $engine->calculate($candles));
+        $series = Cache::remember('market:indicators:'.sha1($version), now()->addMinutes(5), function () use ($engine, $candles) {
+            $calculated = $engine->calculate($candles);
+
+            return json_decode(json_encode($calculated, JSON_THROW_ON_ERROR), true);
+        });
 
         return ['times' => $rows->pluck('open_time'), 'series' => $series];
     }
@@ -429,7 +480,11 @@ final class ResearchController extends Controller
         $symbols = collect($page->items())->pluck('symbol')->unique()->filter()->values();
         $latestPrices = $symbols->mapWithKeys(
             static fn (string $symbol) => [
-                $symbol => Cache::remember("market:latest_close:5m:{$symbol}", 5, static fn () => CandleRecord::query()->where('symbol', $symbol)->where('interval', '5')->where('is_closed', true)->latest('open_time')->first(['symbol', 'close'])),
+                $symbol => Cache::remember("market:latest_close:5m:{$symbol}", 5, static function () use ($symbol): ?array {
+                    $c = CandleRecord::query()->where('symbol', $symbol)->where('interval', '5')->where('is_closed', true)->latest('open_time')->first(['symbol', 'close']);
+
+                    return $c !== null ? ['symbol' => (string) $c->symbol, 'close' => (string) $c->close] : null;
+                }),
             ]
         );
         $page->through(function (VirtualPositionRecord $position) use ($latestPrices): array {
@@ -437,9 +492,11 @@ final class ResearchController extends Controller
             $openedAtTs = $position->opened_at instanceof \DateTimeInterface ? $position->opened_at->getTimestamp() : 0;
             $refTs = $referenceAt instanceof \DateTimeInterface ? $referenceAt->getTimestamp() : $openedAtTs;
             $maxHoldingTs = $position->maximum_holding_until instanceof \DateTimeInterface ? $position->maximum_holding_until->getTimestamp() : $refTs;
+            $priceData = $latestPrices->get($position->symbol);
+            $currentRefPrice = is_array($priceData) ? ($priceData['close'] ?? null) : ($priceData?->close ?? null);
 
             return array_merge($position->toArray(), [
-                'current_reference_price' => $latestPrices->get($position->symbol)?->close,
+                'current_reference_price' => $currentRefPrice,
                 'duration_seconds' => max(0, $refTs - $openedAtTs),
                 'maximum_holding_remaining_seconds' => max(0, $maxHoldingTs - $refTs),
             ]);

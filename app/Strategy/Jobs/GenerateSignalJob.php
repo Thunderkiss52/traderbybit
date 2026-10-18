@@ -5,9 +5,9 @@ declare(strict_types=1);
 namespace App\Strategy\Jobs;
 
 use App\Research\Application\LearningFeatureStoreService;
+use App\Strategy\Application\MarketScannerService;
 use App\Strategy\Application\SignalGenerator;
 use App\Strategy\Application\StrategyObservationService;
-use Carbon\CarbonImmutable;
 use DateTimeImmutable;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
@@ -34,20 +34,14 @@ final class GenerateSignalJob implements ShouldQueue
     }
 
     public function handle(
-        SignalGenerator $generator,
-        StrategyObservationService $observations,
-        ?LearningFeatureStoreService $featureStore = null
+        ?SignalGenerator $generator = null,
+        ?StrategyObservationService $observations = null,
+        ?LearningFeatureStoreService $featureStore = null,
+        ?MarketScannerService $scanner = null
     ): void {
-        $featureStore ??= app(LearningFeatureStoreService::class);
-        $decision = $generator->generate($this->symbol, $this->at === null ? null : new DateTimeImmutable($this->at));
-        $observations->observe($this->symbol, $decision->decisionTime);
+        $scanner ??= app(MarketScannerService::class);
+        $at = $this->at === null ? null : new DateTimeImmutable($this->at);
 
-        $featureStore->assembleSnapshot(
-            symbol: $this->symbol,
-            timeframe: '15',
-            decisionTime: CarbonImmutable::instance($decision->decisionTime),
-            strategyId: 'baseline',
-            regime: $decision->indicatorSnapshot['regime'] ?? null
-        );
+        $scanner->scanSymbol($this->symbol, $at);
     }
 }
