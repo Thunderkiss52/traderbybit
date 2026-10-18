@@ -13,24 +13,47 @@ const data = shallowRef<any>({ metrics: null, equity: [], breakdowns: {}, period
 const equityPage = ref(1);
 const rPage = ref(1);
 const periodPage = ref(1);
+
 const periodSeries = computed(() => ({
-  daily: data.value.period_pnl?.daily?.data || [],
-  weekly: data.value.period_pnl?.weekly?.data || [],
-  monthly: data.value.period_pnl?.monthly?.data || [],
+  daily: Array.isArray(data.value?.period_pnl?.daily?.data) ? data.value.period_pnl.daily.data : [],
+  weekly: Array.isArray(data.value?.period_pnl?.weekly?.data) ? data.value.period_pnl.weekly.data : [],
+  monthly: Array.isArray(data.value?.period_pnl?.monthly?.data) ? data.value.period_pnl.monthly.data : [],
 }));
-const periodPages = computed(() => Math.max(1, ...['daily', 'weekly', 'monthly'].map(name => data.value.period_pnl?.[name]?.last_page || 1)));
+
+const periodPages = computed(() => Math.max(1, ...['daily', 'weekly', 'monthly'].map(name => {
+  const p = data.value?.period_pnl?.[name];
+  return (p && typeof p === 'object' && typeof p.last_page === 'number') ? p.last_page : 1;
+})));
+
 const error = ref('');
 const controller = new AbortController();
 const { autoRefresh } = storeToRefs(useSettings());
+
+const hasIncompleteClasses = (obj: any): boolean => {
+  if (!obj || typeof obj !== 'object') return false;
+  if ('__PHP_Incomplete_Class_Name' in obj) return true;
+  return Object.values(obj).some(val => hasIncompleteClasses(val));
+};
+
 const { loading, refresh } = usePolling(async () => {
   try {
-    data.value = await get('/statistics', { equity_page: equityPage.value, r_page: rPage.value, period_page: periodPage.value }, controller.signal);
-    error.value = '';
+    const res = await get('/statistics', { equity_page: equityPage.value, r_page: rPage.value, period_page: periodPage.value }, controller.signal);
+    if (res && typeof res === 'object') {
+      if (hasIncompleteClasses(res)) {
+        error.value = 'Received statistics payload with corrupted serialized objects. Refreshing cache...';
+      } else {
+        error.value = '';
+      }
+      data.value = res;
+    } else {
+      error.value = 'Invalid statistics payload received.';
+    }
   } catch (exception: any) {
     error.value = exception.message;
     throw exception;
   }
 }, 60000, autoRefresh);
+
 watch([equityPage, rPage, periodPage], refresh);
 onBeforeUnmount(() => controller.abort());
 </script>
@@ -39,7 +62,7 @@ onBeforeUnmount(() => controller.abort());
   <q-page padding>
     <div class="page-title"><div><span class="eyebrow">FORWARD PAPER PERFORMANCE</span><h1>Virtual Trading Statistics</h1></div></div>
     <q-banner class="bg-grey-9 text-white q-mb-md">Simulation only; historical backtest performance is shown separately.</q-banner>
-    <q-banner v-if="error" class="bg-negative text-white">{{ error }}</q-banner>
+    <q-banner v-if="error" class="bg-negative text-white q-mb-md" role="alert">{{ error }}</q-banner>
     <q-inner-loading :showing="loading && !data.metrics" />
     <div v-if="data.metrics" class="metrics">
       <MetricCard v-for="key in [
@@ -49,7 +72,7 @@ onBeforeUnmount(() => controller.abort());
         'maximum_drawdown_percent','average_holding_seconds','closed_positions',
       ]" :key="key" :label="key.replaceAll('_',' ')" :value="data.metrics[key]" />
     </div>
-    <q-banner v-else>No completed paper trading observations yet.</q-banner>
+    <q-banner v-else class="q-mb-md">No completed paper trading observations yet.</q-banner>
     <q-banner v-if="data.data_quality?.ambiguous_execution_positions || data.data_quality?.incomplete_funding_positions || data.data_quality?.awaiting_market_data_positions" class="bg-warning text-dark q-mt-sm">
       Model limitations: ambiguous OHLC executions ({{ data.data_quality?.ambiguous_execution_positions || 0 }}),
       incomplete funding ({{ data.data_quality?.incomplete_funding_positions || 0 }}),
@@ -58,7 +81,7 @@ onBeforeUnmount(() => controller.abort());
     <div class="grid q-mt-md">
       <div class="panel">
         <h2>Equity Curve · 100 snapshots per page</h2>
-        <EquityChart :points="data.equity || []" />
+        <EquityChart :points="Array.isArray(data.equity) ? data.equity : []" />
         <q-pagination v-model="equityPage" :max="data.equity_pagination?.last_page || 1" :max-pages="5" boundary-links direction-links />
       </div>
       <div class="panel">
@@ -68,7 +91,7 @@ onBeforeUnmount(() => controller.abort());
       </div>
       <div class="panel">
         <h2>PnL by symbol, side, class / R</h2>
-        <PerformanceCharts :breakdowns="data.breakdowns" />
+        <PerformanceCharts :breakdowns="data.breakdowns || {}" />
         <div class="text-caption">R distribution: 10 latest trades per page</div>
         <q-pagination v-model="rPage" :max="data.r_pagination?.last_page || 1" :max-pages="5" boundary-links direction-links />
       </div>

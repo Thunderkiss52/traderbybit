@@ -207,10 +207,21 @@ final class ResearchApiTest extends TestCase
 
         $this->getJson('/api/v1/statistics')->assertOk()->assertJsonPath('data.metrics.closed_positions', 0);
 
-        $cached = Cache::get('paper:statistics:v2:'.$account->id);
+        $cached = Cache::get('paper:statistics:report:v5:'.$account->id);
         self::assertIsArray($cached);
         self::assertIsArray($cached['metrics']);
         self::assertIsArray($cached['data_quality']);
+
+        $responseCache = Cache::get("paper:statistics:response:v5:{$account->id}:1:1:1");
+        self::assertIsArray($responseCache);
+        self::assertIsArray($responseCache['equity']);
+        self::assertIsArray($responseCache['breakdowns']);
+        self::assertIsArray($responseCache['breakdowns']['symbols']);
+        self::assertIsArray($responseCache['breakdowns']['sides']);
+        self::assertIsArray($responseCache['breakdowns']['quality_classes']);
+        self::assertIsArray($responseCache['breakdowns']['r_distribution']);
+        self::assertIsArray($responseCache['period_pnl']);
+        self::assertIsArray($responseCache['period_pnl']['daily']['data']);
     }
 
     public function test_list_page_size_is_capped_at_one_hundred(): void

@@ -124,6 +124,28 @@ test('period PnL chart maps persisted net and cumulative PnL without fabricated 
   assert.match(text, /No closed paper trades/);
 });
 
+test('statistics charts guard against non-array payloads and PHP incomplete classes', () => {
+  const equityText = source('components/charts/EquityChart.vue');
+  assert.match(equityText, /Array\.isArray\(props\.points\)/);
+  assert.match(equityText, /__PHP_Incomplete_Class_Name/);
+  assert.match(equityText, /Equity data format is invalid or corrupted/);
+
+  const periodText = source('components/charts/PeriodPnlChart.vue');
+  assert.match(periodText, /Array\.isArray\(current\)/);
+  assert.match(periodText, /__PHP_Incomplete_Class_Name/);
+  assert.match(periodText, /Period PnL data format is invalid or corrupted/);
+
+  const perfText = source('components/charts/PerformanceCharts.vue');
+  assert.match(perfText, /Array\.isArray/);
+  assert.match(perfText, /__PHP_Incomplete_Class_Name/);
+  assert.match(perfText, /\[\.\.\.symbols, \.\.\.sides, \.\.\.qualityClasses\]/);
+  assert.match(perfText, /Breakdown data format is invalid or corrupted/);
+
+  const statsPageText = source('pages/StatisticsPage.vue');
+  assert.match(statsPageText, /hasIncompleteClasses/);
+  assert.match(statsPageText, /Array\.isArray\(data\.value\?\.period_pnl/);
+});
+
 
 test('dashboard explains real SKIP reasons instead of hiding strategy evaluations', () => {
   const text = source('pages/DashboardPage.vue');

@@ -33,3 +33,10 @@ frontend/dist/
 
 # Audit data extracts
 audit_data/
+
+# Ephemeral test logs, results, screenshots, and benchmark dumps
+reports/*.log
+reports/*.xml
+reports/*.png
+reports/evidence-manifest.json
+storage/latency_benchmark.json

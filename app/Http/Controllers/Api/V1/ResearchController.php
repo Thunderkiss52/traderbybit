@@ -67,7 +67,7 @@ final class ResearchController extends Controller
 
     public function dashboard(PerformanceStatisticsService $statistics, StrategyRegistry $strategies): ResearchResource
     {
-        $payload = Cache::remember('paper:dashboard:full_payload:v3', 10, function () use ($statistics, $strategies): array {
+        $payload = Cache::remember('paper:dashboard:full_payload:v5', 10, function () use ($statistics, $strategies): array {
             $account = PaperAccountRecord::query()->oldest()->first();
             $contexts = collect(config('ui.symbols'))->map(
                 static fn (string $symbol) => MarketContextRecord::query()->where('symbol', $symbol)->latest('observed_at')->first()
@@ -94,13 +94,13 @@ final class ResearchController extends Controller
                 ->latest('decision_time')->latest('id')->limit(8)
                 ->get(['id', 'symbol', 'side', 'decision_time', 'reasons', 'indicator_snapshot'])
                 ->map(static fn (SignalRecord $decision): array => [
-                    'id' => $decision->id,
-                    'symbol' => $decision->symbol,
-                    'side' => $decision->side,
-                    'decision_time' => $decision->decision_time,
-                    'reasons' => $decision->reasons,
+                    'id' => (string) $decision->id,
+                    'symbol' => (string) $decision->symbol,
+                    'side' => (string) $decision->side,
+                    'decision_time' => $decision->decision_time?->toISOString(),
+                    'reasons' => is_array($decision->reasons) ? $decision->reasons : (array) $decision->reasons,
                     'level_interaction' => data_get($decision->indicator_snapshot, 'level_interaction'),
-                ]);
+                ])->values()->all();
 
             $signals = SignalRecord::query()->whereIn('side', ['BUY', 'SELL'])->latest('decision_time')->latest('id')->limit(8)->get(['id', 'symbol', 'side', 'quality_class', 'score', 'entry_low', 'entry_high', 'stop_loss', 'take_profit_1', 'take_profit_2', 'expires_at', 'reasons', 'decision_time'])->map(fn ($s) => $s->toArray())->all();
             $positions = VirtualPositionRecord::query()->whereNull('closed_at')->latest('opened_at')->limit(10)->get(['id', 'symbol', 'side', 'status', 'entry_price', 'net_pnl', 'unrealized_pnl'])->map(fn ($p) => $p->toArray())->all();
@@ -115,7 +115,7 @@ final class ResearchController extends Controller
                 'signals' => $signals,
                 'recent_decisions' => $recentDecisions,
                 'skip_reasons_24h' => $skipReasons,
-                'strategy_observations_24h' => Cache::remember('paper:dashboard:strategy_observations_24h', 60, fn () => $this->strategyObservations($strategies)),
+                'strategy_observations_24h' => Cache::remember('paper:dashboard:strategy_observations_24h:v5', 60, fn () => $this->strategyObservations($strategies)),
                 'strategy_portfolios' => collect($strategies->metadata())->map(function (array $strategy): array {
                     $account = PaperAccountRecord::query()
                         ->where('primary_strategy_id', $strategy['id'])
@@ -213,9 +213,18 @@ final class ResearchController extends Controller
                 ->where('decision_time', '>=', $since);
             $counts = (clone $query)->selectRaw('side, COUNT(*) AS aggregate')->groupBy('side')->pluck('aggregate', 'side');
             $latest = (clone $query)->latest('decision_time')->latest('id')->first(['symbol', 'side', 'decision_time', 'reasons', 'analysis']);
+            $latestDto = $latest ? [
+                'symbol' => (string) $latest->symbol,
+                'side' => (string) $latest->side,
+                'decision_time' => $latest->decision_time?->toISOString(),
+                'reasons' => is_array($latest->reasons) ? $latest->reasons : (array) $latest->reasons,
+                'analysis' => is_array($latest->analysis) ? $latest->analysis : (array) $latest->analysis,
+            ] : null;
             $symbols = collect((array) config('ui.symbols'))->map(function (string $symbol) use ($query): array {
                 $symbolQuery = (clone $query)->where('symbol', $symbol);
                 $symbolCounts = (clone $symbolQuery)->selectRaw('side, COUNT(*) AS aggregate')->groupBy('side')->pluck('aggregate', 'side');
+                $symLatest = (clone $symbolQuery)->latest('decision_time')->latest('id')
+                    ->first(['side', 'decision_time', 'reasons', 'analysis']);
 
                 return [
                     'symbol' => $symbol,
@@ -223,8 +232,12 @@ final class ResearchController extends Controller
                     'sell' => (int) ($symbolCounts['SELL'] ?? 0),
                     'skip' => (int) ($symbolCounts['SKIP'] ?? 0),
                     'total' => (int) $symbolCounts->sum(),
-                    'latest' => (clone $symbolQuery)->latest('decision_time')->latest('id')
-                        ->first(['side', 'decision_time', 'reasons', 'analysis']),
+                    'latest' => $symLatest ? [
+                        'side' => (string) $symLatest->side,
+                        'decision_time' => $symLatest->decision_time?->toISOString(),
+                        'reasons' => is_array($symLatest->reasons) ? $symLatest->reasons : (array) $symLatest->reasons,
+                        'analysis' => is_array($symLatest->analysis) ? $symLatest->analysis : (array) $symLatest->analysis,
+                    ] : null,
                 ];
             })->values()->all();
             $skipReasons = [];
@@ -247,7 +260,7 @@ final class ResearchController extends Controller
                 'sell' => (int) ($counts['SELL'] ?? 0),
                 'skip' => (int) ($counts['SKIP'] ?? 0),
                 'total' => (int) $counts->sum(),
-                'latest' => $latest,
+                'latest' => $latestDto,
                 'symbols' => $symbols,
                 'top_skip_reasons' => array_slice($skipReasons, 0, 3, true),
             ];
@@ -548,42 +561,98 @@ final class ResearchController extends Controller
     {
         $a = $r->string('account')->toString() ?: PaperAccountRecord::query()->value('id');
         if (! $a) {
-            return $this->ok(['metrics' => null, 'equity' => [], 'equity_pagination' => ['current_page' => 1, 'last_page' => 1], 'breakdowns' => [], 'period_pnl' => []]);
+            return $this->ok([
+                'metrics' => null,
+                'equity' => [],
+                'equity_pagination' => ['current_page' => 1, 'last_page' => 1, 'total' => 0, 'per_page' => 100],
+                'breakdowns' => [
+                    'symbols' => [],
+                    'sides' => [],
+                    'quality_classes' => [],
+                    'r_distribution' => [],
+                ],
+                'r_pagination' => ['current_page' => 1, 'last_page' => 1, 'total' => 0, 'per_page' => 10],
+                'period_pnl' => [
+                    'daily' => ['data' => [], 'current_page' => 1, 'last_page' => 1, 'total' => 0],
+                    'weekly' => ['data' => [], 'current_page' => 1, 'last_page' => 1, 'total' => 0],
+                    'monthly' => ['data' => [], 'current_page' => 1, 'last_page' => 1, 'total' => 0],
+                ],
+            ]);
         }
 
-        $report = Cache::remember('paper:statistics:v2:'.$a, 60, function () use ($s, $a): array {
+        $report = Cache::remember('paper:statistics:report:v5:'.$a, 60, function () use ($s, $a): array {
             $calculated = $s->calculate($a);
 
-            return ['metrics' => $calculated->metrics, 'data_quality' => $calculated->dataQuality];
+            return [
+                'metrics' => is_array($calculated->metrics) ? $calculated->metrics : (array) $calculated->metrics,
+                'data_quality' => is_array($calculated->dataQuality) ? $calculated->dataQuality : (array) $calculated->dataQuality,
+            ];
         });
 
         $equityPage = max(1, $r->integer('equity_page', 1));
         $rPage = max(1, $r->integer('r_page', 1));
         $periodPage = max(1, $r->integer('period_page', 1));
 
-        $cacheKey = "paper:statistics:response:v4:{$a}:{$equityPage}:{$rPage}:{$periodPage}";
+        $cacheKey = "paper:statistics:response:v5:{$a}:{$equityPage}:{$rPage}:{$periodPage}";
 
         $payload = Cache::remember($cacheKey, 30, function () use ($a, $report, $equityPage, $rPage, $periodPage): array {
             $closed = VirtualPositionRecord::query()->where('paper_account_id', $a)->whereNotNull('closed_at');
-            $group = static fn (string $field) => (clone $closed)
+            $group = static fn (string $field): array => (clone $closed)
                 ->selectRaw($field.', COUNT(*) AS trades, SUM(net_pnl) AS net_pnl, SUM(CASE WHEN net_pnl > 0 THEN 1 ELSE 0 END) AS winning_trades')
-                ->groupBy($field)->orderBy($field)->get();
+                ->groupBy($field)->orderBy($field)->get()
+                ->map(static fn ($record): array => [
+                    $field => (string) ($record->{$field} ?? ''),
+                    'trades' => (int) ($record->trades ?? 0),
+                    'net_pnl' => (string) ($record->net_pnl ?? '0'),
+                    'winning_trades' => (int) ($record->winning_trades ?? 0),
+                ])->values()->all();
 
             $equity = EquitySnapshotRecord::query()->where('paper_account_id', $a)
                 ->latest('recorded_at')->latest('id')->paginate(100, ['recorded_at', 'equity', 'drawdown_percent'], 'equity_page', $equityPage);
             $rMultiples = (clone $closed)->whereNotNull('r_multiple')->latest('closed_at')
                 ->paginate(10, ['id', 'r_multiple'], 'r_page', $rPage);
 
+            $equityItems = array_values(array_map(static fn ($item): array => [
+                'recorded_at' => $item instanceof EquitySnapshotRecord
+                    ? ($item->recorded_at ? $item->recorded_at->toISOString() : '')
+                    : (string) ($item['recorded_at'] ?? ''),
+                'equity' => $item instanceof EquitySnapshotRecord
+                    ? (string) $item->equity
+                    : (string) ($item['equity'] ?? '0'),
+                'drawdown_percent' => $item instanceof EquitySnapshotRecord
+                    ? (string) $item->drawdown_percent
+                    : (string) ($item['drawdown_percent'] ?? '0'),
+            ], array_reverse($equity->items())));
+
+            $rDistribution = array_values(array_map(
+                static fn ($item): ?string => $item instanceof VirtualPositionRecord
+                    ? ($item->r_multiple !== null ? (string) $item->r_multiple : null)
+                    : (is_array($item) && isset($item['r_multiple']) ? (string) $item['r_multiple'] : null),
+                array_reverse($rMultiples->items())
+            ));
+
             return [
                 'metrics' => $report['metrics'],
                 'data_quality' => $report['data_quality'],
-                'equity' => collect($equity->items())->reverse()->values(),
-                'equity_pagination' => ['current_page' => $equity->currentPage(), 'last_page' => $equity->lastPage(), 'total' => $equity->total()],
-                'breakdowns' => [
-                    'symbols' => $group('symbol'), 'sides' => $group('side'), 'quality_classes' => $group('quality_class'),
-                    'r_distribution' => collect($rMultiples->items())->pluck('r_multiple')->reverse()->values(),
+                'equity' => $equityItems,
+                'equity_pagination' => [
+                    'current_page' => (int) $equity->currentPage(),
+                    'last_page' => (int) $equity->lastPage(),
+                    'total' => (int) $equity->total(),
+                    'per_page' => (int) $equity->perPage(),
                 ],
-                'r_pagination' => ['current_page' => $rMultiples->currentPage(), 'last_page' => $rMultiples->lastPage(), 'total' => $rMultiples->total()],
+                'breakdowns' => [
+                    'symbols' => $group('symbol'),
+                    'sides' => $group('side'),
+                    'quality_classes' => $group('quality_class'),
+                    'r_distribution' => $rDistribution,
+                ],
+                'r_pagination' => [
+                    'current_page' => (int) $rMultiples->currentPage(),
+                    'last_page' => (int) $rMultiples->lastPage(),
+                    'total' => (int) $rMultiples->total(),
+                    'per_page' => (int) $rMultiples->perPage(),
+                ],
                 'period_pnl' => $this->periodPnl((clone $closed)->oldest('closed_at')->cursor(['closed_at', 'net_pnl']), $periodPage),
             ];
         });
@@ -626,8 +695,14 @@ final class ResearchController extends Controller
         $buckets = ['daily' => [], 'weekly' => [], 'monthly' => []];
         foreach ($positions as $position) {
             foreach ($formats as $name => $format) {
-                $key = $position->closed_at->format($format);
-                $buckets[$name][$key] = ($buckets[$name][$key] ?? BigDecimal::zero())->plus($position->net_pnl);
+                $closedAt = $position instanceof VirtualPositionRecord
+                    ? $position->closed_at
+                    : CarbonImmutable::parse($position['closed_at']);
+                $netPnl = $position instanceof VirtualPositionRecord
+                    ? $position->net_pnl
+                    : $position['net_pnl'];
+                $key = $closedAt->format($format);
+                $buckets[$name][$key] = ($buckets[$name][$key] ?? BigDecimal::zero())->plus($netPnl);
             }
         }
         $result = [];
@@ -637,12 +712,19 @@ final class ResearchController extends Controller
             $items = [];
             foreach ($byPeriod as $period => $net) {
                 $running = $running->plus($net);
-                $items[] = ['period' => $period, 'net_pnl' => (string) $net, 'cumulative_net_pnl' => (string) $running];
+                $items[] = [
+                    'period' => (string) $period,
+                    'net_pnl' => (string) $net,
+                    'cumulative_net_pnl' => (string) $running,
+                ];
             }
             $items = array_reverse($items); // newest first for consistent pagination
+            $slice = array_slice($items, ($page - 1) * 10, 10);
             $result[$name] = [
-                'data' => array_reverse(array_slice($items, ($page - 1) * 10, 10)),
-                'current_page' => $page, 'last_page' => max(1, (int) ceil(count($items) / 10)),
+                'data' => array_values(array_reverse($slice)),
+                'current_page' => $page,
+                'last_page' => max(1, (int) ceil(count($items) / 10)),
+                'total' => count($items),
             ];
         }
 

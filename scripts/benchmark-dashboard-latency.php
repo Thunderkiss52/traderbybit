@@ -209,9 +209,9 @@ $statsService = app(PerformanceStatisticsService::class);
 $registry = app(StrategyRegistry::class);
 
 $dashboardKeys = [
-    'paper:dashboard:full_payload:v3',
+    'paper:dashboard:full_payload:v5',
     'paper:dashboard:skip_reasons_24h',
-    'paper:dashboard:strategy_observations_24h',
+    'paper:dashboard:strategy_observations_24h:v5',
 ];
 $clearDashboardCache = static function () use ($dashboardKeys): void {
     foreach ($dashboardKeys as $key) {
