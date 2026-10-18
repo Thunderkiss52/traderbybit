@@ -290,24 +290,29 @@ final class CounterfactualAnalyzerService
             $resolvedAt = $candles->last()->open_time;
         }
 
-        $totalCostPercent = BigDecimal::of('0.13000000'); // 0.11% taker round-trip + 0.02% slippage
-        $riskPct = BigDecimal::of('1.50000000');
+        // Calculate actual risk distance and percentage from saved entry and stop-loss
+        $riskDistance = $direction === 'BUY' ? $entry->minus($sl) : $sl->minus($entry);
+        if ($riskDistance->isLessThanOrEqualTo(BigDecimal::zero())) {
+            $riskDistance = $entry->multipliedBy('0.015'); // 1.5% fallback if sl was inverted
+        }
+        $riskPct = $riskDistance->dividedBy($entry, 8, RoundingMode::HalfEven)->multipliedBy(100);
 
-        $netReturn = match ($status) {
-            'RESOLVED_TP' => BigDecimal::of('3.00000000')->minus($totalCostPercent),
-            'RESOLVED_SL' => BigDecimal::of('-1.50000000')->minus($totalCostPercent),
-            'AMBIGUOUS' => BigDecimal::of('-1.50000000')->minus($totalCostPercent),
-            'RESOLVED_TIMEOUT' => (function () use ($candles, $entry, $direction, $totalCostPercent): BigDecimal {
-                $lastClose = BigDecimal::of($candles->last()->close);
-                $gross = $direction === 'BUY'
-                    ? $lastClose->minus($entry)->dividedBy($entry, 8, RoundingMode::HalfEven)->multipliedBy(100)
-                    : $entry->minus($lastClose)->dividedBy($entry, 8, RoundingMode::HalfEven)->multipliedBy(100);
+        // Applicable round-trip execution costs: 0.11% taker fees (0.055% * 2) + 0.02% slippage (0.01% * 2)
+        $totalCostPercent = BigDecimal::of('0.13000000');
 
-                return $gross->minus($totalCostPercent);
-            })(),
-            default => BigDecimal::zero(),
+        $exitPrice = match ($status) {
+            'RESOLVED_TP' => $tp,
+            'RESOLVED_SL', 'AMBIGUOUS' => $sl,
+            'RESOLVED_TIMEOUT' => BigDecimal::of($candles->last()->close),
+            default => $entry,
         };
 
+        $priceDelta = $direction === 'BUY'
+            ? $exitPrice->minus($entry)
+            : $entry->minus($exitPrice);
+
+        $grossReturnPercent = $priceDelta->dividedBy($entry, 8, RoundingMode::HalfEven)->multipliedBy(100);
+        $netReturn = $grossReturnPercent->minus($totalCostPercent);
         $rMultiple = $netReturn->dividedBy($riskPct, 8, RoundingMode::HalfEven);
 
         $record->update([

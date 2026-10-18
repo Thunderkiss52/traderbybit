@@ -10,12 +10,15 @@ use App\PatternDiscovery\Application\MarketStructurePatternDetector;
 use App\PatternDiscovery\Application\PatternMatchService;
 use App\PatternDiscovery\Application\PatternOccurrenceOutcomeService;
 use App\PatternDiscovery\Infrastructure\Persistence\CandlestickPatternOccurrenceRecord;
+use App\Research\Application\ModelAdvisoryService;
+use App\Research\Infrastructure\Persistence\LearningCandidateStrategyRecord;
 use App\Strategy\Contracts\SignalRepository;
 use App\Strategy\Domain\SignalDecision;
 use App\Strategy\Domain\StrategyInput;
 use App\Strategy\Infrastructure\Persistence\StrategyObservationRecord;
 use DateTimeImmutable;
 use Illuminate\Contracts\Cache\Factory as CacheFactory;
+use Illuminate\Support\Facades\Log;
 use Ramsey\Uuid\Uuid;
 use RuntimeException;
 
@@ -32,6 +35,7 @@ final readonly class StrategyObservationService
         private PatternMatchService $patternMatches,
         private SignalRepository $signals,
         private CacheFactory $cache,
+        private ?ModelAdvisoryService $advisory = null,
     ) {}
 
     public function observe(string $symbol, ?DateTimeImmutable $at = null, string $exchange = 'bybit', string $category = 'linear'): array
@@ -54,6 +58,9 @@ final readonly class StrategyObservationService
             foreach ($this->strategies->all() as $strategy) {
                 $decision = $strategy->evaluate($input);
                 if ($strategy->id() === 'baseline') {
+                    if ($this->advisory !== null) {
+                        $decision = $this->advisory->advise($decision, $this->extractFeatures($input));
+                    }
                     $baselineDecision = $decision;
                 }
                 $this->signals->createIfAbsent($decision);
@@ -101,6 +108,70 @@ final readonly class StrategyObservationService
                 }
                 $observations[] = $observation;
             }
+
+            // Evaluate active promoted candidate strategies so they receive paper signals and executions
+            $promotedCandidates = LearningCandidateStrategyRecord::query()
+                ->where('status', 'PAPER_PROMOTED')
+                ->get();
+
+            foreach ($promotedCandidates as $candidate) {
+                try {
+                    $candParams = (array) $candidate->parameters;
+                    $candParams['version'] = $candidate->candidate_version;
+                    $candStrategy = $this->strategies->make($candidate->parent_strategy_id, $candParams);
+                    $candDecision = $candStrategy->evaluate($input);
+                    $this->signals->createIfAbsent($candDecision);
+
+                    $candConfigHash = $this->configurationHash($candParams);
+                    $candObsId = Uuid::uuid5(Uuid::NAMESPACE_URL, implode('|', [
+                        'traderbybit:strategy-observation', $exchange, $category, $symbol,
+                        $candStrategy->id(), $candConfigHash, $at->format('U.u'),
+                    ]))->toString();
+
+                    $candAnalysis = [
+                        'level_interaction' => $levelInteraction,
+                        'indicator_snapshot' => $candDecision->indicatorSnapshot,
+                        'diagnostics' => $this->diagnostics($candDecision),
+                    ];
+                    if ($candDecision->pricePlan !== null) {
+                        $candAnalysis['candidate_plan'] = [
+                            'entry_low' => $candDecision->pricePlan->entryLow,
+                            'entry_high' => $candDecision->pricePlan->entryHigh,
+                            'stop_loss' => $candDecision->pricePlan->stopLoss,
+                            'take_profit_1' => $candDecision->pricePlan->takeProfit1,
+                            'take_profit_2' => $candDecision->pricePlan->takeProfit2,
+                            'risk_reward_1' => $candDecision->pricePlan->riskReward1,
+                            'risk_reward_2' => $candDecision->pricePlan->riskReward2,
+                        ];
+                    }
+
+                    StrategyObservationRecord::query()->insertOrIgnore([[
+                        'id' => $candObsId,
+                        'exchange' => $exchange,
+                        'category' => $category,
+                        'symbol' => $symbol,
+                        'strategy_id' => $candStrategy->id(),
+                        'strategy_version' => $candidate->candidate_version,
+                        'configuration_hash' => $candConfigHash,
+                        'side' => $candDecision->side->value,
+                        'quality_class' => $candDecision->qualityClass?->value,
+                        'score' => $candDecision->score,
+                        'decision_time' => $candDecision->decisionTime,
+                        'reasons' => json_encode($candDecision->reasons, JSON_THROW_ON_ERROR),
+                        'analysis' => json_encode($candAnalysis, JSON_THROW_ON_ERROR),
+                        'created_at' => now(),
+                        'updated_at' => now(),
+                    ]]);
+
+                    $candObs = StrategyObservationRecord::query()->find($candObsId);
+                    if ($candObs !== null) {
+                        $observations[] = $candObs;
+                    }
+                } catch (\Throwable $e) {
+                    Log::warning("Failed to evaluate candidate {$candidate->id}: {$e->getMessage()}");
+                }
+            }
+
             if ($baselineDecision !== null) {
                 $this->patternMatches->process($baselineDecision);
             }
@@ -109,6 +180,29 @@ final readonly class StrategyObservationService
         } finally {
             $lock->release();
         }
+    }
+
+    private function extractFeatures(StrategyInput $input): array
+    {
+        $latest = $input->entry->latest();
+        if ($latest === null) {
+            return [];
+        }
+        $close = (float) $latest->close;
+        $high = (float) $latest->high;
+        $low = (float) $latest->low;
+        $hlSpread = $close > 0 ? (($high - $low) / $close) * 100 : 0.0;
+        $atr = (float) ($latest->atr ?? 0.0);
+        $recentVol = $close > 0 ? ($atr / $close) * 100 : 0.0;
+        $rsi = (float) ($latest->rsi ?? 50.0);
+        $volRatio = (float) ($latest->relativeVolume ?? 1.0);
+
+        return [
+            'hl_spread_pct' => $hlSpread,
+            'recent_volatility' => $recentVol,
+            'rsi_14' => $rsi,
+            'volume_ratio' => $volRatio,
+        ];
     }
 
     private function recordCandlestickPatterns(StrategyInput $input): void

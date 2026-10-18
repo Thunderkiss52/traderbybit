@@ -155,9 +155,9 @@ final class AutonomousLearningController extends Controller
     public function evaluateCandidate(string $id, Request $request, PromotionPolicyService $policy): ResearchResource|JsonResponse
     {
         try {
-            $metrics = $request->input('metrics');
+            $runId = $request->input('validation_run_id') ?? $request->input('run_id');
 
-            return $this->ok($policy->evaluateCandidate($id, is_array($metrics) ? $metrics : null));
+            return $this->ok($policy->evaluateCandidate($id, is_string($runId) ? $runId : null));
         } catch (Throwable $e) {
             Log::error("AutonomousLearningController evaluateCandidate failed for {$id}: ".$e->getMessage(), ['exception' => $e]);
 

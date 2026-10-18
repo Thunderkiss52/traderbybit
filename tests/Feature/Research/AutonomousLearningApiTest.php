@@ -4,8 +4,10 @@ declare(strict_types=1);
 
 namespace Tests\Feature\Research;
 
+use App\Backtest\Infrastructure\Persistence\BacktestRunRecord;
 use App\PaperTrading\Application\PaperAccountService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Str;
 use Tests\TestCase;
 
 final class AutonomousLearningApiTest extends TestCase
@@ -62,14 +64,39 @@ final class AutonomousLearningApiTest extends TestCase
 
         $candidateId = $genRes->json('data.id');
 
-        // 2. Evaluate candidate
-        $evalRes = $this->postJson('/api/v1/research/learning/candidates/'.$candidateId.'/evaluate', [
+        // 2. Create completed backtest run for validation evidence
+        $passingRun = BacktestRunRecord::query()->create([
+            'id' => (string) Str::uuid(),
+            'fingerprint' => 'fp-'.Str::random(16),
+            'symbols' => ['BTCUSDT'],
+            'strategy_config' => ['id' => 'trend_pullback'],
+            'risk_config' => [],
+            'execution_config' => [],
+            'strategy_version' => '1.3.0',
+            'risk_version' => '1.0.0',
+            'execution_version' => '1.0.0',
+            'backtest_version' => '1.0.0',
+            'schema_version' => '1.0.0',
+            'dataset_checksum' => 'checksum-'.Str::random(16),
+            'status' => 'COMPLETED',
+            'type' => 'SPLIT',
+            'from_at' => now()->subDays(30),
+            'to_at' => now(),
             'metrics' => [
-                'sample_size' => 40,
-                'expectancy_r' => 0.40,
+                'total_trades' => 45,
+                'average_r' => 0.40,
+                'profit_factor' => 1.85,
+                'win_rate' => 0.58,
                 'max_drawdown_percent' => 6.5,
                 'ece' => 0.05,
             ],
+            'started_at' => now()->subHours(1),
+            'completed_at' => now(),
+        ]);
+
+        // 2. Evaluate candidate using immutable run ID
+        $evalRes = $this->postJson('/api/v1/research/learning/candidates/'.$candidateId.'/evaluate', [
+            'validation_run_id' => $passingRun->id,
         ]);
         $evalRes->assertOk()
             ->assertJsonPath('data.status', 'PAPER_ELIGIBLE')

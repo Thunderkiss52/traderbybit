@@ -233,9 +233,32 @@ func (r *Runner) FailJob(ctx context.Context, jobID string, fencingToken int64, 
 	return err
 }
 
+// IsSupportedKind checks whether the job kind is implemented and supported by the worker
+func IsSupportedKind(kind string) bool {
+	switch strings.ToUpper(kind) {
+	case contracts.KindBacktest,
+		contracts.KindWalkForward,
+		contracts.KindPatternMine,
+		contracts.KindMonteCarlo,
+		contracts.KindReplay,
+		contracts.KindSkipOutcomes,
+		contracts.KindFeatureBuild:
+		return true
+	default:
+		return false
+	}
+}
+
 // ExecuteJob runs a single job and handles heartbeat, telemetry, execution, and completion
 func (r *Runner) ExecuteJob(ctx context.Context, req *contracts.JobRequest, fencingToken int64) (retErr error) {
 	log.Printf("[jobrunner] Starting job %s kind=%s strategy=%s", req.JobID, req.Kind, req.StrategyID)
+
+	if !IsSupportedKind(req.Kind) {
+		unsupportedErr := fmt.Errorf("unsupported or unimplemented research job kind: %s", req.Kind)
+		_ = r.FailJob(ctx, req.JobID, fencingToken, unsupportedErr)
+		log.Printf("[jobrunner] Rejected job %s with unsupported kind %s: %v", req.JobID, req.Kind, unsupportedErr)
+		return unsupportedErr
+	}
 
 	if err := r.StartJob(ctx, req.JobID, fencingToken); err != nil {
 		return fmt.Errorf("failed to start job: %w", err)
@@ -526,8 +549,10 @@ func (r *Runner) ExecuteJob(ctx context.Context, req *contracts.JobRequest, fenc
 		}
 
 	default:
-		metrics["status"] = "acknowledged"
-		metrics["message"] = fmt.Sprintf("Executed kind %s", req.Kind)
+		unsupportedErr := fmt.Errorf("unsupported or unimplemented research job kind: %s", req.Kind)
+		_ = r.FailJob(ctx, req.JobID, fencingToken, unsupportedErr)
+		log.Printf("[jobrunner] Rejected job %s with unsupported kind %s: %v", req.JobID, req.Kind, unsupportedErr)
+		return unsupportedErr
 	}
 
 	runtimeStats := tracker.Stop(rowsProcessed)

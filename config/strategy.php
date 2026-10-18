@@ -112,4 +112,12 @@ return [
     'signal_expiration_minutes' => 30,
     'maximum_holding_minutes' => 240,
     'lock_seconds' => 120,
+    'model_advisory' => [
+        'enabled' => (bool) env('MODEL_ADVISORY_ENABLED', true),
+        'mode' => env('MODEL_ADVISORY_MODE', 'SHADOW'),
+        'target_event' => 'TP_BEFORE_SL',
+        'minimum_calibrated_probability' => 0.40,
+        'maximum_allowed_ece' => 0.15,
+        'maximum_allowed_brier' => 0.28,
+    ],
 ];

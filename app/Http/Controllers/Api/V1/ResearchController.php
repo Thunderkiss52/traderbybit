@@ -36,6 +36,7 @@ use App\Strategy\Infrastructure\Persistence\MarketContextRecord;
 use App\Strategy\Infrastructure\Persistence\SignalRecord;
 use App\Strategy\Infrastructure\Persistence\StrategyObservationRecord;
 use Brick\Math\BigDecimal;
+use Carbon\CarbonImmutable;
 use DateTimeImmutable;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -222,9 +223,11 @@ final class ResearchController extends Controller
     {
         $symbol = $this->symbol($symbol);
         $interval = (string) $r->integer('interval', 15);
+        $limit = $r->integer('limit', 300);
+        $viewMode = (string) $r->input('view_mode', 'today');
 
-        if (! $r->filled('to')) {
-            $cacheKey = "market:analysis:v4:{$symbol}:{$interval}";
+        if (! $r->filled('to') && ! $r->filled('from')) {
+            $cacheKey = "market:analysis:v5:{$symbol}:{$interval}:{$viewMode}:{$limit}";
 
             return $this->ok(Cache::remember($cacheKey, 10, fn (): array => $this->buildAnalysisPayload($r, $symbol, $interval, $engine)));
         }
@@ -264,30 +267,68 @@ final class ResearchController extends Controller
     {
         $symbol = strtoupper($symbol);
         $interval = (string) $request->integer('interval', 15);
-        $limit = $request->integer('limit', 300);
+        $limit = min(1000, max(1, $request->integer('limit', 300)));
 
-        if (! $request->filled('to')) {
-            return Cache::remember("market:candles:v2:{$symbol}:{$interval}:{$limit}", 5, function () use ($symbol, $interval, $limit): Collection {
-                return CandleRecord::query()->where([
-                    'symbol' => $symbol,
-                    'interval' => $interval,
-                    'is_closed' => true,
-                ])->latest('open_time')->limit($limit)
-                    ->get(['id', 'exchange', 'category', 'symbol', 'interval', 'open_time', 'open', 'high', 'low', 'close', 'volume', 'turnover', 'is_closed', 'updated_at'])
-                    ->reverse()->values();
-            });
+        $viewMode = $request->input('view_mode');
+        if ($viewMode === null) {
+            $viewMode = $limit > 300 ? '7d' : 'today';
         }
 
-        $query = CandleRecord::query()->where([
-            'symbol' => $symbol,
-            'interval' => $interval,
-            'is_closed' => true,
-        ]);
-        $query->where('open_time', '<', new DateTimeImmutable((string) $request->string('to')));
+        $now = CarbonImmutable::now('UTC');
 
-        return $query->latest('open_time')->limit($limit)
-            ->get(['id', 'exchange', 'category', 'symbol', 'interval', 'open_time', 'open', 'high', 'low', 'close', 'volume', 'turnover', 'is_closed', 'updated_at'])
-            ->reverse()->values();
+        if ($request->filled('from') && $request->filled('to')) {
+            $fromTime = new DateTimeImmutable((string) $request->string('from'));
+            $toTime = new DateTimeImmutable((string) $request->string('to'));
+        } elseif ($viewMode === '7d') {
+            if ($request->filled('to')) {
+                $toTime = new DateTimeImmutable((string) $request->string('to'));
+                $fromTime = $toTime->modify('-7 days');
+            } else {
+                $toTime = $now;
+                $fromTime = $now->subDays(7)->startOfDay();
+            }
+        } else { // 'today'
+            if ($request->filled('to')) {
+                $toTime = new DateTimeImmutable((string) $request->string('to'));
+                if ($toTime->format('H:i:s') === '00:00:00') {
+                    $fromTime = $toTime->modify('-1 day')->setTime(0, 0, 0);
+                } else {
+                    $fromTime = $toTime->setTime(0, 0, 0);
+                }
+            } else {
+                $toTime = $now;
+                $fromTime = $now->startOfDay();
+            }
+        }
+
+        $fetcher = function () use ($symbol, $interval, $limit, $fromTime, $toTime, $request): Collection {
+            $query = CandleRecord::query()->where([
+                'symbol' => $symbol,
+                'interval' => $interval,
+                'is_closed' => true,
+            ])
+                ->where('open_time', '>=', $fromTime);
+
+            if ($request->filled('to')) {
+                $query->where('open_time', '<', $toTime);
+            } else {
+                $query->where('open_time', '<=', $toTime);
+            }
+
+            return $query->latest('open_time')
+                ->limit($limit)
+                ->get(['id', 'exchange', 'category', 'symbol', 'interval', 'open_time', 'open', 'high', 'low', 'close', 'volume', 'turnover', 'is_closed', 'updated_at'])
+                ->reverse()
+                ->values();
+        };
+
+        if (! $request->filled('to') && ! $request->filled('from')) {
+            $cacheKey = "market:candles:v4:{$symbol}:{$interval}:{$viewMode}:{$limit}:".$fromTime->format('Ymd');
+
+            return Cache::remember($cacheKey, 5, $fetcher);
+        }
+
+        return $fetcher();
     }
 
     private function indicatorPayload(Collection $rows, string $interval, IndicatorEngine $engine): array

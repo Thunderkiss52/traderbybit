@@ -26,7 +26,7 @@ async function load() {
   const current = ++version;
   loading.value = true;
   try {
-    const params = { interval: interval.value, limit: 300, to: to.value };
+    const params: any = { interval: interval.value, limit: 300, to: to.value, view_mode: viewMode.value };
     if (viewMode.value === '7d') {
       params.limit = 672;
     }

@@ -50,6 +50,7 @@ use App\PatternDiscovery\Application\MarketStructurePatternDetector;
 use App\PatternDiscovery\Application\PatternMatcher;
 use App\PatternDiscovery\Application\PatternMatchService;
 use App\PatternDiscovery\Application\PatternOccurrenceOutcomeService;
+use App\Research\Application\ModelAdvisoryService;
 use App\Strategy\Application\LevelInteractionAnalyzer;
 use App\Strategy\Application\LevelProbabilityService;
 use App\Strategy\Application\SignalGenerator;
@@ -134,6 +135,7 @@ class AppServiceProvider extends ServiceProvider
             signals: $app->make(SignalRepository::class),
             cache: $app->make(Factory::class),
             config: (array) config('strategy'),
+            advisory: $app->make(ModelAdvisoryService::class),
         ));
         $this->app->singleton(PaperAccountService::class, fn (): PaperAccountService => new PaperAccountService((array) config('paper')));
         $this->app->singleton(PositionSizingService::class, fn (): PositionSizingService => new PositionSizingService((array) config('paper')));

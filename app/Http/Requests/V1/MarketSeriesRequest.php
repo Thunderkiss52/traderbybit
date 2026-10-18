@@ -15,6 +15,14 @@ final class MarketSeriesRequest extends FormRequest
 
     public function rules(): array
     {
-        return ['interval' => ['sometimes', 'in:5,15,60'], 'limit' => ['sometimes', 'integer', 'min:1', 'max:300'], 'to' => ['sometimes', 'date']];
+        $maxLimit = $this->input('view_mode') === '7d' ? 'max:1000' : 'max:300';
+
+        return [
+            'interval' => ['sometimes', 'in:5,15,60'],
+            'limit' => ['sometimes', 'integer', 'min:1', $maxLimit],
+            'view_mode' => ['sometimes', 'in:today,7d'],
+            'from' => ['sometimes', 'date'],
+            'to' => ['sometimes', 'date'],
+        ];
     }
 }

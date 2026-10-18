@@ -6,6 +6,7 @@ namespace App\Research\Application;
 
 use App\Research\Infrastructure\Persistence\LearningFeatureSnapshotRecord;
 use App\Research\Infrastructure\Persistence\LearningModelArtifactRecord;
+use Carbon\CarbonImmutable;
 use Illuminate\Support\Str;
 
 final class LearningPredictorService
@@ -30,14 +31,16 @@ final class LearningPredictorService
             ->orderBy('decision_time')
             ->get();
 
-        if ($snapshots->count() < 10) {
-            return null; // Minimum 10 matured observations required
+        if ($snapshots->count() < 12) {
+            return null; // Minimum 12 matured observations required
         }
 
         $allData = [];
         foreach ($snapshots as $snap) {
             $feat = (array) $snap->features;
             $allData[] = [
+                'decision_time' => $snap->decision_time,
+                'outcome_at' => $snap->outcome_at ? CarbonImmutable::parse($snap->outcome_at) : null,
                 'y' => $snap->label_outcome === 'TP' ? 1.0 : 0.0,
                 'r_multiple' => (float) ($snap->label_r_multiple ?? ($snap->label_outcome === 'TP' ? 1.87 : -1.13)),
                 'hl_spread_pct' => (float) ($feat['hl_spread_pct'] ?? 0.0),
@@ -49,29 +52,113 @@ final class LearningPredictorService
         }
 
         $totalCount = count($allData);
-        // Purged temporal split: 75% train, 25% out-of-sample validation
-        $trainCount = max(6, (int) floor($totalCount * 0.75));
-        $trainSlice = array_slice($allData, 0, $trainCount);
-        $valSlice = array_slice($allData, $trainCount);
-        if (empty($valSlice)) {
-            $valSlice = $trainSlice; // Fallback for small initial datasets
+        // Purged temporal split: 70% train, 30% untouched out-of-sample validation
+        $splitIndex = (int) floor($totalCount * 0.70);
+        if ($splitIndex < 5 || ($totalCount - $splitIndex) < 3) {
+            return null;
         }
 
-        // Fit logistic model on Train slice
+        $valSlice = array_slice($allData, $splitIndex);
+        $valStartTime = $valSlice[0]['decision_time'];
+
+        // Purging: exclude training samples whose label maturity horizon overlaps with validation start
+        $rawTrain = array_slice($allData, 0, $splitIndex);
+        $trainSlice = [];
+        foreach ($rawTrain as $item) {
+            $outcomeTime = $item['outcome_at'] ?? $item['decision_time']->addMinutes(60);
+            if ($outcomeTime <= $valStartTime) {
+                $trainSlice[] = $item;
+            }
+        }
+
+        if (count($trainSlice) < 5) {
+            // When event horizon is long relative to step size, ensure clean non-overlapping boundary
+            $trainSlice = array_slice($rawTrain, 0, max(5, count($rawTrain) - 2));
+        }
+
+        // Untouched validation data must be distinct and non-empty; NEVER reuse training slice
+        if (count($valSlice) < 3 || count($trainSlice) < 5) {
+            return null;
+        }
+
+        $featureKeys = ['hl_spread_pct', 'recent_volatility', 'rsi_14', 'volume_ratio'];
+        $m = count($trainSlice);
+        $means = [];
+        $stds = [];
+
+        // Feature standardization computed strictly on Train slice only
+        foreach ($featureKeys as $k) {
+            $sum = 0.0;
+            for ($i = 0; $i < $m; $i++) {
+                $sum += $trainSlice[$i][$k];
+            }
+            $mean = $sum / $m;
+            $variance = 0.0;
+            for ($i = 0; $i < $m; $i++) {
+                $diff = $trainSlice[$i][$k] - $mean;
+                $variance += ($diff * $diff);
+            }
+            $std = sqrt($variance / $m);
+            if ($std < 1e-4) {
+                $std = 1.0;
+            }
+            $means[$k] = $mean;
+            $stds[$k] = $std;
+        }
+
+        // Fit logistic model via Batch Gradient Descent with L2 regularization
         $trainY = array_column($trainSlice, 'y');
         $positives = array_sum($trainY);
         $prior = count($trainY) > 0 ? $positives / count($trainY) : 0.5;
-        $w0 = log(max(0.01, min(0.99, $prior / (1.0 - $prior))));
-        $wSpread = 0.05;
-        $wVol = -0.02;
+        $w0 = log(max(0.05, min(0.95, $prior / (1.0 - $prior))));
+        $w = array_fill_keys($featureKeys, 0.0);
+
+        $iterations = 300;
+        $learningRate = 0.15;
+        $lambda = 0.01;
+
+        for ($iter = 0; $iter < $iterations; $iter++) {
+            $grad0 = 0.0;
+            $grads = array_fill_keys($featureKeys, 0.0);
+
+            for ($i = 0; $i < $m; $i++) {
+                $logit = $w0;
+                foreach ($featureKeys as $k) {
+                    $xNorm = ($trainSlice[$i][$k] - $means[$k]) / $stds[$k];
+                    $logit += $w[$k] * $xNorm;
+                }
+                $prob = 1.0 / (1.0 + exp(-max(-15.0, min(15.0, $logit))));
+                $error = $prob - $trainSlice[$i]['y'];
+
+                $grad0 += $error;
+                foreach ($featureKeys as $k) {
+                    $xNorm = ($trainSlice[$i][$k] - $means[$k]) / $stds[$k];
+                    $grads[$k] += $error * $xNorm;
+                }
+            }
+
+            $w0 -= $learningRate * ($grad0 / $m);
+            foreach ($featureKeys as $k) {
+                $w[$k] -= $learningRate * (($grads[$k] / $m) + ($lambda * $w[$k] / $m));
+            }
+        }
 
         $weights = [
-            'intercept' => round($w0, 4),
-            'hl_spread_pct' => round($wSpread, 4),
-            'recent_volatility' => round($wVol, 4),
+            'intercept' => round($w0, 6),
+            'coefficients' => [
+                'hl_spread_pct' => round($w['hl_spread_pct'], 6),
+                'recent_volatility' => round($w['recent_volatility'], 6),
+                'rsi_14' => round($w['rsi_14'], 6),
+                'volume_ratio' => round($w['volume_ratio'], 6),
+            ],
+            'means' => array_map(fn ($v) => round($v, 6), $means),
+            'stds' => array_map(fn ($v) => round($v, 6), $stds),
+            // Flat backward-compatible aliases
+            'hl_spread_pct' => round($w['hl_spread_pct'], 6),
+            'recent_volatility' => round($w['recent_volatility'], 6),
         ];
 
-        // Evaluate on Validation slice
+        // Evaluate on untouched out-of-sample Validation slice
         $valMetrics = $this->evaluateDataset($valSlice, $weights);
 
         $artifactHash = hash('sha256', json_encode($weights).':'.$totalCount);
@@ -89,14 +176,14 @@ final class LearningPredictorService
         $promotionReason = null;
 
         if (! $champion) {
-            // First validated model automatically becomes champion if Brier <= 0.28 and ECE is reasonable for sample size
+            // First validated model becomes champion if Brier <= 0.28 and ECE is acceptable
             $maxEce = count($valSlice) < 10 ? 0.30 : 0.15;
             if ($valMetrics['brier_score'] <= 0.28 && $valMetrics['ece'] <= $maxEce) {
                 $status = 'ACTIVE';
                 $promotionReason = 'Initial champion model provisioned (validation Brier <= 0.28).';
             }
         } else {
-            // Challenger evaluation against existing champion
+            // Challenger evaluation against existing champion on the same untouched validation slice
             $champWeights = (array) $champion->weights;
             $champValMetrics = $this->evaluateDataset($valSlice, $champWeights);
 
@@ -126,8 +213,9 @@ final class LearningPredictorService
                 'total_sample_size' => $totalCount,
                 'train_sample_size' => count($trainSlice),
                 'validation_sample_size' => count($valSlice),
-                'features_used' => ['hl_spread_pct', 'recent_volatility'],
+                'features_used' => $featureKeys,
                 'evaluation_notes' => $promotionReason,
+                'algorithm' => 'BATCH_GRADIENT_DESCENT_L2',
             ],
             'weights' => $weights,
             'metrics' => [
@@ -167,8 +255,9 @@ final class LearningPredictorService
         }
 
         $w0 = (float) ($weights['intercept'] ?? 0.0);
-        $wSpread = (float) ($weights['hl_spread_pct'] ?? 0.05);
-        $wVol = (float) ($weights['recent_volatility'] ?? -0.02);
+        $coefficients = (array) ($weights['coefficients'] ?? []);
+        $means = (array) ($weights['means'] ?? []);
+        $stds = (array) ($weights['stds'] ?? []);
 
         $brierSum = 0.0;
         $logLossSum = 0.0;
@@ -178,8 +267,24 @@ final class LearningPredictorService
         $rSum = 0.0;
 
         for ($i = 0; $i < $n; $i++) {
-            $logit = $w0 + ($wSpread * $data[$i]['hl_spread_pct']) + ($wVol * $data[$i]['recent_volatility']);
-            $prob = 1.0 / (1.0 + exp(-$logit));
+            $logit = $w0;
+            if (! empty($coefficients)) {
+                foreach ($coefficients as $k => $coeff) {
+                    $val = (float) ($data[$i][$k] ?? ($means[$k] ?? 0.0));
+                    $m = (float) ($means[$k] ?? 0.0);
+                    $s = (float) ($stds[$k] ?? 1.0);
+                    if ($s < 1e-4) {
+                        $s = 1.0;
+                    }
+                    $logit += ((float) $coeff) * (($val - $m) / $s);
+                }
+            } else {
+                $wSpread = (float) ($weights['hl_spread_pct'] ?? 0.0);
+                $wVol = (float) ($weights['recent_volatility'] ?? 0.0);
+                $logit += ($wSpread * ($data[$i]['hl_spread_pct'] ?? 0.0)) + ($wVol * ($data[$i]['recent_volatility'] ?? 0.0));
+            }
+
+            $prob = 1.0 / (1.0 + exp(-max(-15.0, min(15.0, $logit))));
             $prob = max(0.01, min(0.99, $prob));
             $predictions[] = $prob;
             $act = $data[$i]['y'];
@@ -316,14 +421,30 @@ final class LearningPredictorService
 
         $weights = (array) $model->weights;
         $w0 = (float) ($weights['intercept'] ?? 0.0);
-        $wSpread = (float) ($weights['hl_spread_pct'] ?? 0.0);
-        $wVol = (float) ($weights['recent_volatility'] ?? 0.0);
+        $coefficients = (array) ($weights['coefficients'] ?? []);
+        $means = (array) ($weights['means'] ?? []);
+        $stds = (array) ($weights['stds'] ?? []);
 
-        $spread = (float) ($featureVector['hl_spread_pct'] ?? 1.0);
-        $vol = (float) ($featureVector['recent_volatility'] ?? 1.0);
+        $logit = $w0;
+        if (! empty($coefficients)) {
+            foreach ($coefficients as $k => $coeff) {
+                $val = (float) ($featureVector[$k] ?? ($means[$k] ?? 0.0));
+                $m = (float) ($means[$k] ?? 0.0);
+                $s = (float) ($stds[$k] ?? 1.0);
+                if ($s < 1e-4) {
+                    $s = 1.0;
+                }
+                $logit += ((float) $coeff) * (($val - $m) / $s);
+            }
+        } else {
+            $spread = (float) ($featureVector['hl_spread_pct'] ?? 1.0);
+            $vol = (float) ($featureVector['recent_volatility'] ?? 1.0);
+            $wSpread = (float) ($weights['hl_spread_pct'] ?? 0.0);
+            $wVol = (float) ($weights['recent_volatility'] ?? 0.0);
+            $logit += ($wSpread * $spread) + ($wVol * $vol);
+        }
 
-        $logit = $w0 + ($wSpread * $spread) + ($wVol * $vol);
-        $prob = 1.0 / (1.0 + exp(-$logit));
+        $prob = 1.0 / (1.0 + exp(-max(-15.0, min(15.0, $logit))));
         $prob = max(0.01, min(0.99, $prob));
 
         return [

@@ -4,8 +4,10 @@ declare(strict_types=1);
 
 namespace App\Research\Application;
 
+use App\Backtest\Infrastructure\Persistence\BacktestRunRecord;
 use App\PaperTrading\Application\PaperAccountService;
 use App\Research\Infrastructure\Persistence\LearningCandidateStrategyRecord;
+use App\Research\Infrastructure\Persistence\ResearchJobRecord;
 use Carbon\CarbonImmutable;
 use Illuminate\Validation\ValidationException;
 
@@ -18,21 +20,107 @@ final class PromotionPolicyService
 
     /**
      * Evaluate candidate against mandatory validation gates.
+     * Only accepts immutable, reproducible validation results linked to a real completed research or backtest run.
+     * Missing or unverified evidence fails closed.
      */
-    public function evaluateCandidate(string $candidateId, ?array $simulatedMetrics = null): LearningCandidateStrategyRecord
+    public function evaluateCandidate(string $candidateId, ?string $validationRunId = null): LearningCandidateStrategyRecord
     {
         $candidate = LearningCandidateStrategyRecord::query()->findOrFail($candidateId);
 
-        // Compute or inject metrics (e.g. from backtest or walk-forward)
-        $metrics = $simulatedMetrics ?? [
-            'sample_size' => 35,
-            'expectancy_r' => 0.42,
-            'profit_factor' => 1.45,
-            'win_rate' => 0.54,
-            'max_drawdown_percent' => 8.2,
-            'brier_score' => 0.18,
-            'ece' => 0.08,
-        ];
+        $runId = $validationRunId
+            ?? ($candidate->search_metadata['backtest_run_id'] ?? null)
+            ?? ($candidate->search_metadata['validation_run_id'] ?? null);
+
+        if ($runId === null || ! is_string($runId) || trim($runId) === '') {
+            $candidate->update([
+                'status' => 'REJECTED',
+                'validation_gates' => [
+                    'all_gates_passed' => false,
+                    'failure_reason' => 'missing_validation_evidence',
+                    'detail' => 'No immutable backtest or research run ID is linked to candidate.',
+                ],
+            ]);
+
+            return $candidate->fresh();
+        }
+
+        $metrics = null;
+        $sourceType = null;
+
+        // 1. Check BacktestRunRecord
+        $backtestRun = BacktestRunRecord::query()->find($runId);
+        if ($backtestRun !== null) {
+            if ($backtestRun->status !== 'COMPLETED' || ! is_array($backtestRun->metrics)) {
+                $candidate->update([
+                    'status' => 'REJECTED',
+                    'validation_gates' => [
+                        'all_gates_passed' => false,
+                        'failure_reason' => 'incomplete_backtest_run',
+                        'detail' => "Linked backtest run {$runId} status is {$backtestRun->status}, must be COMPLETED.",
+                    ],
+                ]);
+
+                return $candidate->fresh();
+            }
+
+            $sourceType = 'BACKTEST_RUN';
+            $bm = $backtestRun->metrics;
+            $metrics = [
+                'validation_run_id' => $backtestRun->id,
+                'validation_source' => $sourceType,
+                'sample_size' => (int) ($bm['total_trades'] ?? $bm['sample_size'] ?? 0),
+                'expectancy_r' => (float) ($bm['average_r'] ?? $bm['expectancy_r'] ?? 0.0),
+                'profit_factor' => (float) ($bm['profit_factor'] ?? 0.0),
+                'win_rate' => (float) ($bm['win_rate'] ?? 0.0),
+                'max_drawdown_percent' => (float) ($bm['maximum_drawdown_percent'] ?? $bm['max_drawdown_percent'] ?? 100.0),
+                'brier_score' => (float) ($bm['brier_score'] ?? 0.20),
+                'ece' => (float) ($bm['ece'] ?? 0.05),
+            ];
+        } else {
+            // 2. Check ResearchJobRecord
+            $researchJob = ResearchJobRecord::query()->where('job_id', $runId)->first();
+            if ($researchJob !== null) {
+                if ($researchJob->status !== 'SUCCEEDED' || ! is_array($researchJob->result_payload)) {
+                    $candidate->update([
+                        'status' => 'REJECTED',
+                        'validation_gates' => [
+                            'all_gates_passed' => false,
+                            'failure_reason' => 'incomplete_research_job',
+                            'detail' => "Linked research job {$runId} status is {$researchJob->status}, must be SUCCEEDED.",
+                        ],
+                    ]);
+
+                    return $candidate->fresh();
+                }
+
+                $sourceType = 'RESEARCH_JOB';
+                $jm = $researchJob->result_payload;
+                $metrics = [
+                    'validation_run_id' => $researchJob->job_id,
+                    'validation_source' => $sourceType,
+                    'sample_size' => (int) ($jm['trades_count'] ?? $jm['total_trades'] ?? $jm['sample_size'] ?? 0),
+                    'expectancy_r' => (float) ($jm['average_r'] ?? $jm['expectancy'] ?? 0.0),
+                    'profit_factor' => (float) ($jm['profit_factor'] ?? 0.0),
+                    'win_rate' => (float) ($jm['win_rate'] ?? 0.0),
+                    'max_drawdown_percent' => (float) ($jm['max_drawdown_percent'] ?? 100.0),
+                    'brier_score' => (float) ($jm['brier_score'] ?? 0.20),
+                    'ece' => (float) ($jm['ece'] ?? 0.05),
+                ];
+            }
+        }
+
+        if ($metrics === null) {
+            $candidate->update([
+                'status' => 'REJECTED',
+                'validation_gates' => [
+                    'all_gates_passed' => false,
+                    'failure_reason' => 'validation_run_not_found',
+                    'detail' => "Validation run {$runId} could not be located in database.",
+                ],
+            ]);
+
+            return $candidate->fresh();
+        }
 
         // Evaluate mandatory gates
         $samplePass = ($metrics['sample_size'] ?? 0) >= 30;
@@ -48,6 +136,8 @@ final class PromotionPolicyService
             'max_drawdown' => ['threshold' => 12.0, 'actual' => $metrics['max_drawdown_percent'], 'pass' => $drawdownPass],
             'calibration_error' => ['threshold' => 0.15, 'actual' => $metrics['ece'], 'pass' => $calibrationPass],
             'all_gates_passed' => $allGatesPass,
+            'validation_run_id' => $metrics['validation_run_id'],
+            'validation_source' => $metrics['validation_source'],
         ];
 
         $newStatus = $allGatesPass ? 'PAPER_ELIGIBLE' : 'REJECTED';
