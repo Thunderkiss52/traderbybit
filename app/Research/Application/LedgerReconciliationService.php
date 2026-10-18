@@ -32,7 +32,7 @@ final class LedgerReconciliationService
         // Sum executions for realized PnL and fees
         $executions = VirtualExecutionRecord::query()
             ->whereIn('position_id', VirtualPositionRecord::query()->where('paper_account_id', $accountId)->select('id'))
-            ->get(['id', 'position_id', 'type', 'quantity', 'commission', 'gross_pnl', 'net_pnl']);
+            ->get(['id', 'position_id', 'type', 'quantity', 'commission', 'gross_pnl']);
 
         $realizedGrossPnl = BigDecimal::zero();
         $totalFees = BigDecimal::zero();
