@@ -28,7 +28,7 @@ final class StrategyDegradationService
         $query = VirtualPositionRecord::query()
             ->join('paper_accounts', 'virtual_positions.paper_account_id', '=', 'paper_accounts.id')
             ->where('paper_accounts.strategy_id', $strategyId)
-            ->where('virtual_positions.status', 'CLOSED')
+            ->where('virtual_positions.status', 'LIKE', 'CLOSED%')
             ->where('virtual_positions.closed_at', '>=', $cutoff)
             ->when($symbol, fn ($q) => $q->where('virtual_positions.symbol', $symbol))
             ->select('virtual_positions.*')

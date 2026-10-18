@@ -17,7 +17,8 @@ final class ProbabilityCalibrationService
     {
         $query = LevelInteractionForecastRecord::query()
             ->whereNotNull('outcome')
-            ->where('outcome', '!=', 'UNRESOLVED');
+            ->whereNotNull('success_probability')
+            ->whereIn('outcome', ['SUCCESS', 'FAILURE', 'BOUNCE', 'REJECTION']);
 
         if ($symbol) {
             $query->where('symbol', $symbol);
@@ -59,7 +60,8 @@ final class ProbabilityCalibrationService
 
         foreach ($forecasts as $f) {
             $p = max(0.0001, min(0.9999, (float) $f->success_probability));
-            $y = in_array($f->outcome, ['BOUNCE', 'BREAKOUT'], true) ? 1 : 0;
+            $outcomeUpper = strtoupper((string) $f->outcome);
+            $y = in_array($outcomeUpper, ['SUCCESS', 'BOUNCE', 'BREAKOUT'], true) ? 1 : 0;
 
             if ($y === 1) {
                 $positiveCount++;
@@ -88,10 +90,11 @@ final class ProbabilityCalibrationService
 
         foreach ($bins as $b) {
             $count = $b['count'];
-            $meanProb = $count > 0 ? round($b['prob_sum'] / $count, 4) : round(($b['bin_lower'] + $b['bin_upper']) / 2, 4);
-            $empiricalFreq = $count > 0 ? round($b['positive_sum'] / $count, 4) : 0.0;
+            $meanProb = $count > 0 ? round($b['prob_sum'] / $count, 4) : null;
+            $empiricalFreq = $count > 0 ? round($b['positive_sum'] / $count, 4) : null;
+            $calGap = $count > 0 && $meanProb !== null && $empiricalFreq !== null ? round(abs($empiricalFreq - $meanProb), 4) : null;
 
-            if ($count > 0) {
+            if ($count > 0 && $meanProb !== null && $empiricalFreq !== null) {
                 $eceSum += ($count / $total) * abs($empiricalFreq - $meanProb);
             }
 
@@ -104,8 +107,8 @@ final class ProbabilityCalibrationService
                 'mean_predicted' => $meanProb,
                 'observed_frequency' => $empiricalFreq,
                 'empirical_rate' => $empiricalFreq,
-                'calibration_gap' => $count > 0 ? round(abs($empiricalFreq - $meanProb), 4) : 0.0,
-                'gap' => $count > 0 ? round(abs($empiricalFreq - $meanProb), 4) : 0.0,
+                'calibration_gap' => $calGap,
+                'gap' => $calGap,
             ];
         }
 

@@ -8,6 +8,7 @@ use App\PaperTrading\Infrastructure\Persistence\JournalEventRecord;
 use App\PaperTrading\Infrastructure\Persistence\PaperSignalStateRecord;
 use App\PaperTrading\Infrastructure\Persistence\RiskDecisionRecord;
 use App\PaperTrading\Infrastructure\Persistence\VirtualPositionRecord;
+use App\Research\Infrastructure\Persistence\StrategyHealthSnapshotRecord;
 use App\Strategy\Application\StrategyRegistry;
 use App\Strategy\Infrastructure\Persistence\SignalRecord;
 use App\Strategy\Infrastructure\Persistence\StrategyObservationRecord;
@@ -156,6 +157,21 @@ final class StrategyHealthService
 
         // Determine status and diagnostics
         [$status, $diagnostics] = $this->classifyHealth($strategyId, $funnel);
+
+        try {
+            StrategyHealthSnapshotRecord::query()->create([
+                'strategy_id' => $strategyId,
+                'strategy_version' => $version,
+                'symbol' => $symbol ?? 'ALL',
+                'period' => $period,
+                'status' => $status,
+                'funnel_metrics' => $funnel,
+                'diagnostics' => $diagnostics,
+                'snapshot_at' => now('UTC'),
+            ]);
+        } catch (\Throwable) {
+            // Fail-safe non-blocking persistence
+        }
 
         return [
             'strategy_id' => $strategyId,

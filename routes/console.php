@@ -8,6 +8,8 @@ use App\MarketData\Jobs\SyncFundingHistoryJob;
 use App\MarketData\Jobs\SyncOpenInterestHistoryJob;
 use App\PaperTrading\Jobs\CapturePaperEquityJob;
 use App\PaperTrading\Jobs\ProcessPaperTradingJob;
+use App\Research\Jobs\ProcessCounterfactualAnalysisJob;
+use App\Research\Jobs\ReconcileLedgerJob;
 use App\Strategy\Jobs\CaptureMarketContextJob;
 use App\Strategy\Jobs\EnsureResearchCoverageJob;
 use App\Strategy\Jobs\GenerateSignalJob;
@@ -68,3 +70,11 @@ Schedule::call(fn () => app(AuditExportService::class)->purgeExpired())->hourly(
 // Record regular portfolio marks after scheduled paper position processing.
 Schedule::job(new CapturePaperEquityJob)
     ->cron('5,20,35,50 * * * *')->name('paper:equity-checkpoint')->withoutOverlapping();
+
+// Evaluate and resolve matured SKIP counterfactuals on the research worker.
+Schedule::job(new ProcessCounterfactualAnalysisJob)
+    ->cron('6,21,36,51 * * * *')->name('research:counterfactual-analysis')->withoutOverlapping();
+
+// Periodically reconcile all paper trading accounts, cash flow, and invariants on the audit worker.
+Schedule::job(new ReconcileLedgerJob)
+    ->cron('8,23,38,53 * * * *')->name('audit:reconcile-ledger')->withoutOverlapping();

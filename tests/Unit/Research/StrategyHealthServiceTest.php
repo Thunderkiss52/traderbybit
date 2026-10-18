@@ -6,6 +6,7 @@ namespace Tests\Unit\Research;
 
 use App\PaperTrading\Application\PaperAccountService;
 use App\Research\Application\StrategyHealthService;
+use App\Research\Infrastructure\Persistence\StrategyHealthSnapshotRecord;
 use App\Strategy\Application\StrategyRegistry;
 use App\Strategy\Infrastructure\Persistence\StrategyObservationRecord;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -53,6 +54,7 @@ final class StrategyHealthServiceTest extends TestCase
         self::assertSame(1, $baseline['funnel']['buy']);
         self::assertSame(9, $baseline['funnel']['skip']);
         self::assertSame('HEALTHY', $baseline['status']);
+        self::assertGreaterThanOrEqual(1, StrategyHealthSnapshotRecord::query()->where('strategy_id', 'baseline')->count());
     }
 
     public function test_identifies_insufficient_data_status(): void

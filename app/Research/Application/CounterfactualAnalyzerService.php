@@ -18,6 +18,23 @@ final class CounterfactualAnalyzerService
      */
     public function analyzeAndResolve(int $limit = 50): array
     {
+        $analyzed = 0;
+        $resolved = 0;
+
+        // 1. Resolve existing pending evaluations whose candles have matured
+        $pending = CounterfactualEvaluationRecord::query()
+            ->where('status', 'PENDING_MATURITY')
+            ->oldest('decision_time')
+            ->limit($limit)
+            ->get();
+
+        foreach ($pending as $record) {
+            if ($this->resolveHypotheticalOutcome($record)) {
+                $resolved++;
+            }
+        }
+
+        // 2. Ingest un-analyzed mature SKIP observations
         $observations = StrategyObservationRecord::query()
             ->where('side', 'SKIP')
             ->where('decision_time', '<=', now('UTC')->subHours(4))
@@ -25,9 +42,6 @@ final class CounterfactualAnalyzerService
             ->latest('decision_time')
             ->limit($limit)
             ->get();
-
-        $analyzed = 0;
-        $resolved = 0;
 
         foreach ($observations as $obs) {
             $record = $this->createFromObservation($obs);
@@ -65,6 +79,10 @@ final class CounterfactualAnalyzerService
                     $filterFamily = 'TREND';
                 } elseif (str_contains($r, 'regime')) {
                     $filterFamily = 'REGIME';
+                } elseif (str_contains($r, 'rsi') || str_contains($r, 'macd') || str_contains($r, 'momentum')) {
+                    $filterFamily = 'MOMENTUM';
+                } elseif (str_contains($r, 'volume') || str_contains($r, 'turnover') || str_contains($r, 'liquidity')) {
+                    $filterFamily = 'LIQUIDITY';
                 } else {
                     $filterFamily = 'FILTER';
                 }
@@ -86,10 +104,17 @@ final class CounterfactualAnalyzerService
         }
 
         $price = BigDecimal::of($candle->close);
-        // Default hypothetical direction based on fast EMA / close or default BUY
-        $direction = str_contains(implode(' ', $reasons), 'bearish') ? 'SELL' : 'BUY';
+        $reasonsStr = strtolower(implode(' ', array_filter($reasons, 'is_string')));
+        $isBearish = str_contains($reasonsStr, 'bearish')
+            || str_contains($reasonsStr, 'short')
+            || str_contains($reasonsStr, 'sell')
+            || str_contains($reasonsStr, 'upper_band')
+            || str_contains($reasonsStr, 'rsi_overbought')
+            || (($obs->analysis['level_interaction']['selected_side'] ?? null) === 'SELL');
 
-        // 1% risk distance, 2:1 reward:risk hypothetical trade
+        $direction = $isBearish ? 'SELL' : 'BUY';
+
+        // 1.5% risk distance, 2:1 reward:risk hypothetical trade
         if ($direction === 'BUY') {
             $entry = $price;
             $sl = $price->multipliedBy('0.985');
@@ -149,7 +174,7 @@ final class CounterfactualAnalyzerService
 
         $mfe = BigDecimal::zero();
         $mae = BigDecimal::zero();
-        $status = 'RESOLVED_TIMEOUT';
+        $status = null;
         $resolvedAt = null;
 
         foreach ($candles as $candle) {
@@ -209,6 +234,35 @@ final class CounterfactualAnalyzerService
                     break;
                 }
             }
+        }
+
+        // If neither TP nor SL was hit in evaluated candles:
+        if ($status === null) {
+            $latestSymbolCandle = CandleRecord::query()
+                ->where('symbol', $record->symbol)
+                ->where('interval', $record->timeframe)
+                ->where('is_closed', true)
+                ->latest('open_time')
+                ->first(['open_time']);
+
+            $intervalMinutes = (int) $record->timeframe;
+            $horizonCandleCutoff = $record->decision_time->addMinutes($horizonMinutes - $intervalMinutes);
+
+            $isMatured = ($candles->last()->open_time >= $horizonCandleCutoff)
+                || ($latestSymbolCandle !== null && $latestSymbolCandle->open_time >= $horizonCandleCutoff);
+
+            if (! $isMatured) {
+                // Candles stream has not yet reached the horizon. Keep PENDING_MATURITY with updated excursions.
+                $record->update([
+                    'mfe' => (string) $mfe,
+                    'mae' => (string) $mae,
+                ]);
+
+                return false;
+            }
+
+            $status = 'RESOLVED_TIMEOUT';
+            $resolvedAt = $candles->last()->open_time;
         }
 
         $riskDistance = $entry->minus($sl)->abs();
