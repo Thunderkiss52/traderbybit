@@ -29,7 +29,7 @@ final class ResearchRecommendationServiceTest extends TestCase
                 'strategy_version' => '1.0.0',
                 'symbol' => 'BTCUSDT',
                 'timeframe' => '15',
-                'decision_time' => $now->subDays(2),
+                'decision_time' => $now->subDays(2)->addMinutes($i * 15),
                 'skip_reason' => 'adx_below_threshold',
                 'filter_family' => 'ADX',
                 'candidate_direction' => 'BUY',

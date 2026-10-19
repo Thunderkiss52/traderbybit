@@ -172,32 +172,104 @@ final class CounterfactualAnalyzerService
             ]);
         }
 
-        return CounterfactualEvaluationRecord::query()->create([
-            'id' => (string) $obs->id,
-            'signal_id' => $matchingSignalId,
-            'strategy_id' => $obs->strategy_id,
-            'strategy_version' => $obs->strategy_version,
-            'symbol' => $obs->symbol,
-            'timeframe' => '15',
-            'decision_time' => $obs->decision_time,
-            'skip_reason' => $skipReason,
-            'filter_family' => $filterFamily,
-            'candidate_direction' => $direction,
-            'hypothetical_entry' => (string) $entry,
-            'hypothetical_sl' => (string) $sl,
-            'hypothetical_tp' => (string) $tp,
-            'status' => $isEvaluable ? 'PENDING_MATURITY' : 'NON_EVALUABLE',
-            'decision_snapshot' => [
-                'observation_id' => (string) $obs->id,
+        $existing = CounterfactualEvaluationRecord::query()
+            ->whereNull('superseded_by')
+            ->where(function ($query) use ($matchingSignalId, $obs) {
+                if ($matchingSignalId !== null) {
+                    $query->where('signal_id', $matchingSignalId);
+                } else {
+                    $query->where('strategy_id', $obs->strategy_id)
+                        ->where('strategy_version', $obs->strategy_version)
+                        ->where('symbol', $obs->symbol)
+                        ->where('timeframe', $obs->timeframe ?? '15')
+                        ->where('decision_time', $obs->decision_time);
+                }
+            })
+            ->first();
+
+        if ($existing !== null) {
+            $existingHash = $existing->decision_snapshot['configuration_hash'] ?? null;
+            if ($existingHash !== null && $obs->configuration_hash !== null && $existingHash !== $obs->configuration_hash && $existing->strategy_version === $obs->strategy_version) {
+                Log::warning('Incompatible payload detected: configuration_hash changed for same strategy version without version bump.', [
+                    'strategy_id' => $obs->strategy_id,
+                    'strategy_version' => $obs->strategy_version,
+                    'existing_hash' => $existingHash,
+                    'incoming_hash' => $obs->configuration_hash,
+                    'decision_time' => (string) $obs->decision_time,
+                ]);
+                $snapshot = (array) ($existing->decision_snapshot ?? []);
+                $snapshot['incompatible_payload_detected'] = true;
+                $snapshot['conflicting_configuration_hashes'] = array_values(array_unique(array_merge(
+                    (array) ($snapshot['conflicting_configuration_hashes'] ?? [$existingHash]),
+                    [$obs->configuration_hash]
+                )));
+                $existing->update(['decision_snapshot' => $snapshot]);
+            }
+
+            return $existing;
+        }
+
+        try {
+            return CounterfactualEvaluationRecord::query()->create([
+                'id' => (string) $obs->id,
                 'signal_id' => $matchingSignalId,
-                'ambiguous_signal_match' => $isAmbiguous,
-                'candidate_signal_ids' => $isAmbiguous ? $signalMatches->all() : null,
-                'reasons' => $reasons,
-                'analysis' => $obs->analysis,
-                'candle_close' => $candle->close,
-                'is_evaluable' => $isEvaluable,
-            ],
-        ]);
+                'strategy_id' => $obs->strategy_id,
+                'strategy_version' => $obs->strategy_version,
+                'symbol' => $obs->symbol,
+                'timeframe' => $obs->timeframe ?? '15',
+                'decision_time' => $obs->decision_time,
+                'skip_reason' => $skipReason,
+                'filter_family' => $filterFamily,
+                'candidate_direction' => $direction,
+                'hypothetical_entry' => (string) $entry,
+                'hypothetical_sl' => (string) $sl,
+                'hypothetical_tp' => (string) $tp,
+                'status' => $isEvaluable ? 'PENDING_MATURITY' : 'NON_EVALUABLE',
+                'decision_snapshot' => [
+                    'observation_id' => (string) $obs->id,
+                    'signal_id' => $matchingSignalId,
+                    'configuration_hash' => $obs->configuration_hash,
+                    'ambiguous_signal_match' => $isAmbiguous,
+                    'candidate_signal_ids' => $isAmbiguous ? $signalMatches->all() : null,
+                    'reasons' => $reasons,
+                    'analysis' => $obs->analysis,
+                    'candle_close' => $candle->close,
+                    'is_evaluable' => $isEvaluable,
+                ],
+            ]);
+        } catch (\Throwable $e) {
+            $canonical = CounterfactualEvaluationRecord::query()
+                ->whereNull('superseded_by')
+                ->where(function ($query) use ($matchingSignalId, $obs) {
+                    if ($matchingSignalId !== null) {
+                        $query->where('signal_id', $matchingSignalId);
+                    } else {
+                        $query->where('strategy_id', $obs->strategy_id)
+                            ->where('strategy_version', $obs->strategy_version)
+                            ->where('symbol', $obs->symbol)
+                            ->where('timeframe', $obs->timeframe ?? '15')
+                            ->where('decision_time', $obs->decision_time);
+                    }
+                })
+                ->first();
+
+            if ($canonical !== null) {
+                $existingHash = $canonical->decision_snapshot['configuration_hash'] ?? null;
+                if ($existingHash !== null && $obs->configuration_hash !== null && $existingHash !== $obs->configuration_hash && $canonical->strategy_version === $obs->strategy_version) {
+                    $snapshot = (array) ($canonical->decision_snapshot ?? []);
+                    $snapshot['incompatible_payload_detected'] = true;
+                    $snapshot['conflicting_configuration_hashes'] = array_values(array_unique(array_merge(
+                        (array) ($snapshot['conflicting_configuration_hashes'] ?? [$existingHash]),
+                        [$obs->configuration_hash]
+                    )));
+                    $canonical->update(['decision_snapshot' => $snapshot]);
+                }
+
+                return $canonical;
+            }
+
+            throw $e;
+        }
     }
 
     /**

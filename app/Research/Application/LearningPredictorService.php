@@ -172,15 +172,34 @@ class LearningPredictorService
             ->latest('created_at')
             ->first();
 
+        // Compute training-only class prevalence (constant forecast baseline)
+        $trainPositives = count(array_filter($trainSlice, fn ($r) => (int) round((float) ($r['y'] ?? $r['label'] ?? 0)) === 1));
+        $trainCount = count($trainSlice);
+        $trainingPrevalence = $trainCount > 0 ? $trainPositives / $trainCount : 0.5;
+
+        // Evaluate frozen constant forecast baseline on chronological OOS validation slice
+        $baselineOosLossSum = 0.0;
+        foreach ($valSlice as $vRow) {
+            $yTrue = (float) ($vRow['y'] ?? $vRow['label'] ?? 0);
+            $baselineOosLossSum += ($trainingPrevalence - $yTrue) ** 2;
+        }
+        $baselineBrier = count($valSlice) > 0 ? round($baselineOosLossSum / count($valSlice), 4) : 0.25;
+        $brierReductionVsBaseline = round($baselineBrier - $valMetrics['brier_score'], 4);
+        $brierSkillScore = $baselineBrier > 0.0 ? round(1.0 - ($valMetrics['brier_score'] / $baselineBrier), 4) : 0.0;
+        $improvesBaseline = $brierReductionVsBaseline >= 0.0;
+
         $status = 'CANDIDATE';
         $promotionReason = null;
 
         if (! $champion) {
-            // First validated model becomes champion if Brier <= 0.28 and ECE is acceptable
+            // First validated model becomes champion if Brier <= 0.28, ECE is acceptable, and beats/matches constant baseline
             $maxEce = count($valSlice) < 10 ? 0.30 : 0.15;
-            if ($valMetrics['brier_score'] <= 0.28 && $valMetrics['ece'] <= $maxEce) {
+            if ($valMetrics['brier_score'] <= 0.28 && $valMetrics['ece'] <= $maxEce && $improvesBaseline) {
                 $status = 'ACTIVE';
-                $promotionReason = 'Initial champion model provisioned (validation Brier <= 0.28).';
+                $promotionReason = "Initial champion model provisioned (validation Brier {$valMetrics['brier_score']} <= 0.28, baseline {$baselineBrier}).";
+            } else {
+                $status = 'CANDIDATE_REJECTED';
+                $promotionReason = "Initial model failed validation gates: Brier {$valMetrics['brier_score']}, Baseline {$baselineBrier}, ECE {$valMetrics['ece']}.";
             }
         } else {
             // Challenger evaluation against existing champion on the same untouched validation slice
@@ -190,14 +209,14 @@ class LearningPredictorService
             $improvesBrier = $valMetrics['brier_score'] < $champValMetrics['brier_score'];
             $improvesLogLoss = $valMetrics['log_loss'] <= $champValMetrics['log_loss'];
 
-            if ($improvesBrier && $improvesLogLoss) {
+            if ($improvesBrier && $improvesLogLoss && $improvesBaseline) {
                 $status = 'ACTIVE';
-                $promotionReason = "Challenger outperformed champion on holdout: Brier {$valMetrics['brier_score']} vs {$champValMetrics['brier_score']}.";
+                $promotionReason = "Challenger outperformed champion on holdout: Brier {$valMetrics['brier_score']} vs {$champValMetrics['brier_score']}, beats baseline {$baselineBrier}.";
                 $champion->update(['status' => 'RETIRED']);
                 $this->recordAutonomyEvent('CHAMPION_RETIRED', $champion->id, 'ACTIVE', 'RETIRED', "Replaced by superior challenger {$version}.");
             } else {
                 $status = 'CHALLENGER_REJECTED';
-                $promotionReason = "Challenger failed to beat champion on holdout: Brier {$valMetrics['brier_score']} vs {$champValMetrics['brier_score']}.";
+                $promotionReason = "Challenger failed to beat champion and baseline on holdout: Brier {$valMetrics['brier_score']} vs {$champValMetrics['brier_score']} (baseline {$baselineBrier}).";
             }
         }
 
@@ -224,6 +243,10 @@ class LearningPredictorService
                 'ece' => $valMetrics['ece'],
                 'accuracy' => $valMetrics['accuracy'],
                 'prior_positive_rate' => round($prior, 4),
+                'training_prevalence' => round($trainingPrevalence, 4),
+                'baseline_brier_score' => $baselineBrier,
+                'brier_reduction_vs_baseline' => $brierReductionVsBaseline,
+                'brier_skill_score' => $brierSkillScore,
                 'validation_r_multiple' => $valMetrics['expected_r'],
             ],
             'artifact_hash' => $artifactHash,

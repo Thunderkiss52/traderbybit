@@ -34,4 +34,9 @@ final class CounterfactualEvaluationRecord extends Model
             'net_return_percent' => 'string',
         ];
     }
+
+    public function scopeCanonical($query)
+    {
+        return $query->whereNull('superseded_by');
+    }
 }

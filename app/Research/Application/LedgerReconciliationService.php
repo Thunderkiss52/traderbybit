@@ -5,12 +5,14 @@ declare(strict_types=1);
 namespace App\Research\Application;
 
 use App\PaperTrading\Application\PerformanceStatisticsService;
+use App\PaperTrading\Infrastructure\Persistence\EquitySnapshotRecord;
 use App\PaperTrading\Infrastructure\Persistence\PaperAccountRecord;
 use App\PaperTrading\Infrastructure\Persistence\PositionFundingEventRecord;
 use App\PaperTrading\Infrastructure\Persistence\VirtualExecutionRecord;
 use App\PaperTrading\Infrastructure\Persistence\VirtualPositionRecord;
 use App\Research\Infrastructure\Persistence\ReconciliationRunRecord;
 use Brick\Math\BigDecimal;
+use Carbon\CarbonImmutable;
 use Illuminate\Support\Str;
 
 final class LedgerReconciliationService
@@ -106,9 +108,9 @@ final class LedgerReconciliationService
         }
 
         // Accounting identity:
-        // Expected Balance = Starting Balance + Realized PnL - Fees + Funding
-        $recalculatedRealized = $realizedGrossPnl->minus($totalFees);
-        $recalculatedBalance = $startingBalance->plus($recalculatedRealized)->plus($totalFunding);
+        // Expected Balance = Starting Balance + Realized PnL (where Realized PnL = Gross - Fees + Funding)
+        $recalculatedRealized = $realizedGrossPnl->minus($totalFees)->plus($totalFunding);
+        $recalculatedBalance = $startingBalance->plus($recalculatedRealized);
         $recalculatedEquity = $recalculatedBalance->plus($unrealizedPnl);
 
         $storedBalance = BigDecimal::of($account->starting_balance)->plus($account->realized_pnl);
@@ -183,6 +185,112 @@ final class LedgerReconciliationService
             'discrepancy_count' => count($discrepancies),
             'discrepancies' => $discrepancies,
             'completed_at' => $record->completed_at->toIso8601String(),
+        ];
+    }
+
+    /**
+     * Reconcile account transactions, boundary fills, and equity over a specific time window [start, end).
+     *
+     * @return array<string, mixed>
+     */
+    public function reconcileWindow(string $accountId, CarbonImmutable $start, CarbonImmutable $end): array
+    {
+        $account = PaperAccountRecord::query()->findOrFail($accountId);
+        $positionIds = VirtualPositionRecord::query()
+            ->where('paper_account_id', $accountId)
+            ->pluck('id')
+            ->all();
+
+        // In-window executions
+        $inWindowExecutions = VirtualExecutionRecord::query()
+            ->whereIn('position_id', $positionIds)
+            ->where('market_event_at', '>=', $start)
+            ->where('market_event_at', '<', $end)
+            ->get(['id', 'position_id', 'type', 'quantity', 'commission', 'gross_pnl', 'market_event_at']);
+
+        $inWindowGrossPnl = BigDecimal::zero();
+        $inWindowFees = BigDecimal::zero();
+        foreach ($inWindowExecutions as $exec) {
+            $inWindowGrossPnl = $inWindowGrossPnl->plus(BigDecimal::of($exec->gross_pnl ?? '0'));
+            $inWindowFees = $inWindowFees->plus(BigDecimal::of($exec->commission ?? '0'));
+        }
+
+        // In-window funding events
+        $inWindowFunding = PositionFundingEventRecord::query()
+            ->whereIn('position_id', $positionIds)
+            ->where('funding_at', '>=', $start)
+            ->where('funding_at', '<', $end)
+            ->get(['id', 'position_id', 'amount', 'funding_at']);
+
+        $inWindowFundingTotal = BigDecimal::zero();
+        foreach ($inWindowFunding as $fe) {
+            $inWindowFundingTotal = $inWindowFundingTotal->plus(BigDecimal::of($fe->amount ?? '0'));
+        }
+
+        // Positions active during window (opened before end and closed after start or still open)
+        $activePositions = VirtualPositionRecord::query()
+            ->where('paper_account_id', $accountId)
+            ->where('opened_at', '<', $end)
+            ->where(function ($q) use ($start) {
+                $q->whereNull('closed_at')->orWhere('closed_at', '>=', $start);
+            })
+            ->get(['id', 'fees', 'gross_pnl', 'net_pnl', 'funding', 'opened_at', 'closed_at']);
+
+        $activePositionFees = BigDecimal::zero();
+        foreach ($activePositions as $p) {
+            $activePositionFees = $activePositionFees->plus(BigDecimal::of($p->fees ?? '0'));
+        }
+
+        // Boundary fills: executions of active positions whose market_event_at is outside [start, end)
+        $boundaryExecutions = VirtualExecutionRecord::query()
+            ->whereIn('position_id', $activePositions->pluck('id')->all())
+            ->where(function ($q) use ($start, $end) {
+                $q->where('market_event_at', '<', $start)->orWhere('market_event_at', '>=', $end);
+            })
+            ->get(['id', 'position_id', 'type', 'commission', 'gross_pnl', 'market_event_at']);
+
+        $boundaryFees = BigDecimal::zero();
+        foreach ($boundaryExecutions as $be) {
+            $boundaryFees = $boundaryFees->plus(BigDecimal::of($be->commission ?? '0'));
+        }
+
+        // Equity snapshots across window
+        $firstSnapshot = EquitySnapshotRecord::query()
+            ->where('paper_account_id', $accountId)
+            ->where('recorded_at', '>=', $start)
+            ->oldest('recorded_at')
+            ->first();
+
+        $lastSnapshot = EquitySnapshotRecord::query()
+            ->where('paper_account_id', $accountId)
+            ->where('recorded_at', '<=', $end)
+            ->latest('recorded_at')
+            ->first();
+
+        $startEquity = $firstSnapshot ? BigDecimal::of($firstSnapshot->equity) : BigDecimal::of($account->starting_balance);
+        $endEquity = $lastSnapshot ? BigDecimal::of($lastSnapshot->equity) : BigDecimal::of($account->current_equity);
+        $equityChange = $endEquity->minus($startEquity);
+
+        $recalculatedWindowNetPnl = $inWindowGrossPnl->minus($inWindowFees)->plus($inWindowFundingTotal);
+
+        return [
+            'account_id' => $accountId,
+            'window_start' => $start->toIso8601String(),
+            'window_end' => $end->toIso8601String(),
+            'in_window_executions_count' => $inWindowExecutions->count(),
+            'in_window_gross_pnl' => (string) $inWindowGrossPnl,
+            'in_window_fees' => (string) $inWindowFees,
+            'in_window_funding' => (string) $inWindowFundingTotal,
+            'recalculated_window_net_pnl' => (string) $recalculatedWindowNetPnl,
+            'active_positions_count' => $activePositions->count(),
+            'active_positions_lifecycle_fees' => (string) $activePositionFees,
+            'boundary_executions_count' => $boundaryExecutions->count(),
+            'boundary_execution_ids' => $boundaryExecutions->pluck('id')->all(),
+            'boundary_fees' => (string) $boundaryFees,
+            'fee_difference_reconciled' => $activePositionFees->minus($inWindowFees)->isEqualTo($boundaryFees),
+            'start_equity' => (string) $startEquity,
+            'end_equity' => (string) $endEquity,
+            'equity_change' => (string) $equityChange,
         ];
     }
 

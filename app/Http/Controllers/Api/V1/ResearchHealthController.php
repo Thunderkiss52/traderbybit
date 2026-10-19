@@ -7,9 +7,11 @@ namespace App\Http\Controllers\Api\V1;
 use App\Http\Controllers\Controller;
 use App\Http\Resources\V1\ResearchResource;
 use App\Research\Application\LedgerReconciliationService;
+use App\Research\Application\SlotIntegrityService;
 use App\Research\Application\StrategyHealthService;
 use App\Research\Application\SystemFreshnessService;
 use App\Research\Infrastructure\Persistence\ReconciliationRunRecord;
+use Carbon\CarbonImmutable;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
@@ -105,6 +107,24 @@ final class ResearchHealthController extends Controller
             return response()->json([
                 'success' => false,
                 'message' => 'Data freshness check failed: '.$e->getMessage(),
+            ], Response::HTTP_INTERNAL_SERVER_ERROR);
+        }
+    }
+
+    public function slotIntegrity(Request $request, SlotIntegrityService $service): ResearchResource|JsonResponse
+    {
+        try {
+            $lookbackHours = (int) $request->input('hours', 4);
+            $end = CarbonImmutable::now('UTC');
+            $start = $end->subHours($lookbackHours);
+
+            return $this->ok($service->auditCadence($start, $end));
+        } catch (Throwable $e) {
+            Log::error('ResearchHealthController slotIntegrity failed: '.$e->getMessage(), ['exception' => $e]);
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Slot integrity audit failed: '.$e->getMessage(),
             ], Response::HTTP_INTERNAL_SERVER_ERROR);
         }
     }

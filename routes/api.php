@@ -16,6 +16,7 @@ Route::prefix('v1')->middleware('throttle:api')->group(function () {
     Route::get('research/health/reconciliation-runs', [H::class, 'reconciliationRuns']);
     Route::post('research/health/reconcile', [H::class, 'reconcile']);
     Route::get('research/health/data-freshness', [H::class, 'dataFreshness']);
+    Route::get('research/health/slot-integrity', [H::class, 'slotIntegrity']);
     Route::get('system/version', [H::class, 'version']);
 
     Route::get('research/opportunities', [I::class, 'opportunities']);

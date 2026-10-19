@@ -65,9 +65,36 @@ final readonly class StrategyObservationService
                 }
                 $this->signals->createIfAbsent($decision);
                 $configurationHash = $this->configurationHash($strategy->parameters());
+
+                // Safeguard 3: Check for existing canonical observation before generating or inserting
+                $existingObs = StrategyObservationRecord::query()
+                    ->where('exchange', $exchange)
+                    ->where('category', $category)
+                    ->where('symbol', $symbol)
+                    ->where('strategy_id', $strategy->id())
+                    ->where('strategy_version', $strategy->version())
+                    ->where('decision_time', $decision->decisionTime)
+                    ->whereNull('superseded_by')
+                    ->first();
+
+                if ($existingObs !== null) {
+                    if ($existingObs->configuration_hash !== $configurationHash) {
+                        Log::warning('Configuration hash conflict detected for canonical strategy observation slot without version bump.', [
+                            'observation_id' => (string) $existingObs->id,
+                            'slot' => "{$exchange}|{$category}|{$symbol}|{$strategy->id()}|{$strategy->version()}",
+                            'existing_hash' => $existingObs->configuration_hash,
+                            'incoming_hash' => $configurationHash,
+                            'decision_time' => (string) $decision->decisionTime,
+                        ]);
+                    }
+                    $observations[] = $existingObs;
+
+                    continue;
+                }
+
                 $id = Uuid::uuid5(Uuid::NAMESPACE_URL, implode('|', [
                     'traderbybit:strategy-observation', $exchange, $category, $symbol,
-                    $strategy->id(), $configurationHash, $at->format('U.u'),
+                    $strategy->id(), $strategy->version(), $at->format('U.u'),
                 ]))->toString();
                 $analysis = [
                     'level_interaction' => $levelInteraction,
@@ -123,9 +150,36 @@ final readonly class StrategyObservationService
                     $this->signals->createIfAbsent($candDecision);
 
                     $candConfigHash = $this->configurationHash($candParams);
+
+                    // Safeguard 3: Check for existing canonical candidate observation
+                    $existingCand = StrategyObservationRecord::query()
+                        ->where('exchange', $exchange)
+                        ->where('category', $category)
+                        ->where('symbol', $symbol)
+                        ->where('strategy_id', $candStrategy->id())
+                        ->where('strategy_version', $candidate->candidate_version)
+                        ->where('decision_time', $candDecision->decisionTime)
+                        ->whereNull('superseded_by')
+                        ->first();
+
+                    if ($existingCand !== null) {
+                        if ($existingCand->configuration_hash !== $candConfigHash) {
+                            Log::warning('Configuration hash conflict detected for canonical candidate observation slot without version bump.', [
+                                'observation_id' => (string) $existingCand->id,
+                                'slot' => "{$exchange}|{$category}|{$symbol}|{$candStrategy->id()}|{$candidate->candidate_version}",
+                                'existing_hash' => $existingCand->configuration_hash,
+                                'incoming_hash' => $candConfigHash,
+                                'decision_time' => (string) $candDecision->decisionTime,
+                            ]);
+                        }
+                        $observations[] = $existingCand;
+
+                        continue;
+                    }
+
                     $candObsId = Uuid::uuid5(Uuid::NAMESPACE_URL, implode('|', [
                         'traderbybit:strategy-observation', $exchange, $category, $symbol,
-                        $candStrategy->id(), $candConfigHash, $at->format('U.u'),
+                        $candStrategy->id(), $candidate->candidate_version, $at->format('U.u'),
                     ]))->toString();
 
                     $candAnalysis = [
