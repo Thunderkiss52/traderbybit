@@ -1,0 +1,12 @@
+--- a/app/Research/Application/SlotIntegrityService.php
++++ b/app/Research/Application/SlotIntegrityService.php
+@@ -283,7 +283,8 @@
+ 
+         if ($missingUnexplainedTotal > 0) {
+             $alertKey = "alert:missing_slots:{$missingUnexplainedTotal}";
+-            $alerts[] = [
++            // MUTATION_MUTATED
++        if (false) $alerts[] = [
+                 'name' => 'MISSING_UNEXPLAINED_SLOTS_DETECTED',
+                 'severity' => $oldestMissingAgeSeconds >= 3600 ? 'CRITICAL' : 'WARNING',
+                 'message' => "Detected {$missingUnexplainedTotal} unexplained missing strategy evaluation slots. Oldest slot age: {$oldestMissingAgeSeconds}s.",

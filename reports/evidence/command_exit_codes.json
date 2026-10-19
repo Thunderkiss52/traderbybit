@@ -1,0 +1,108 @@
+{
+  "generated_at_utc": "2026-10-19T23:38:12Z",
+  "total_commands_executed": 10,
+  "all_passed": true,
+  "commands": [
+    {
+      "id": "CMD-01",
+      "name": "Isolated PostgreSQL Integration Test Suite (P1-P5)",
+      "command": "php -d xdebug.mode=off vendor/bin/phpunit tests/Integration/CounterfactualSlotIdempotencyPostgresIntegrationTest.php tests/Integration/SlotIntegrityAndRiskFunnelPostgresIntegrationTest.php tests/Integration/FinancialAccountingAndReconciliationPostgresIntegrationTest.php tests/Integration/MlAuthorityAndProperScoringPostgresIntegrationTest.php tests/Integration/QuantPortfolioMetricsPostgresIntegrationTest.php",
+      "cwd": "/home/thunder/work/traderbybit",
+      "exit_code": 0,
+      "status": "PASSED",
+      "log_file": "reports/evidence/raw_test_logs/phpunit_isolated_postgres.log",
+      "tests_run": 21,
+      "assertions": 217,
+      "failures": 0
+    },
+    {
+      "id": "CMD-02",
+      "name": "Full PHPUnit Regression Test Suite",
+      "command": "php -d xdebug.mode=off vendor/bin/phpunit",
+      "cwd": "/home/thunder/work/traderbybit",
+      "exit_code": 0,
+      "status": "PASSED",
+      "log_file": "reports/evidence/raw_test_logs/phpunit_full_stdout.log",
+      "tests_run": 351,
+      "passed": 346,
+      "skipped": 5,
+      "assertions": 2159,
+      "failures": 0
+    },
+    {
+      "id": "CMD-03",
+      "name": "PHP Code Style Lint (Laravel Pint)",
+      "command": "vendor/bin/pint --test",
+      "cwd": "/home/thunder/work/traderbybit",
+      "exit_code": 0,
+      "status": "PASSED",
+      "log_file": "reports/evidence/raw_test_logs/pint_stdout.log"
+    },
+    {
+      "id": "CMD-04",
+      "name": "Go Research Worker Test Suite",
+      "command": "go test -v ./...",
+      "cwd": "/home/thunder/work/traderbybit/research-go",
+      "exit_code": 0,
+      "status": "PASSED",
+      "log_file": "reports/evidence/raw_test_logs/go_test_stdout.log"
+    },
+    {
+      "id": "CMD-05",
+      "name": "Frontend Node Test Suite (node:test)",
+      "command": "npm test --prefix frontend",
+      "cwd": "/home/thunder/work/traderbybit",
+      "exit_code": 0,
+      "status": "PASSED",
+      "log_file": "reports/evidence/raw_test_logs/frontend_test_stdout.log",
+      "tests_run": 42,
+      "passed": 42,
+      "failures": 0
+    },
+    {
+      "id": "CMD-06",
+      "name": "Frontend Production Build (vue-tsc & vite build)",
+      "command": "npm run build --prefix frontend",
+      "cwd": "/home/thunder/work/traderbybit",
+      "exit_code": 0,
+      "status": "PASSED",
+      "log_file": "reports/evidence/raw_test_logs/frontend_build_stdout.log"
+    },
+    {
+      "id": "CMD-07",
+      "name": "Raw PostgreSQL Fail-Closed Query Capture",
+      "command": "python3 scripts/capture_postgres_queries_and_results.py",
+      "cwd": "/home/thunder/work/traderbybit",
+      "exit_code": 0,
+      "status": "PASSED",
+      "output_evidence": "reports/evidence/postgres_queries_and_results.json"
+    },
+    {
+      "id": "CMD-08",
+      "name": "Negative Controls Mutation Triad Execution",
+      "command": "python3 scripts/run_negative_controls_with_traces.py",
+      "cwd": "/home/thunder/work/traderbybit",
+      "exit_code": 0,
+      "status": "PASSED",
+      "output_evidence": "reports/evidence/negative_controls_failure_traces.json"
+    },
+    {
+      "id": "CMD-09",
+      "name": "P1 Multi-Process PostgreSQL Concurrency and Slot Idempotency Proof",
+      "command": "php -d xdebug.mode=off scripts/test_p1_postgres_concurrency.php",
+      "cwd": "/home/thunder/work/traderbybit",
+      "exit_code": 0,
+      "status": "PASSED",
+      "output_evidence": "reports/evidence/p1_concurrency_proof.json"
+    },
+    {
+      "id": "CMD-10",
+      "name": "Static Hardcoding Audit (\u00a715.2 / Spec Item 4g)",
+      "command": "python3 scripts/audit_hardcoding.py",
+      "cwd": "/home/thunder/work/traderbybit",
+      "exit_code": 0,
+      "status": "PASSED",
+      "output_evidence": "reports/evidence/hardcoding_audit.json"
+    }
+  ]
+}

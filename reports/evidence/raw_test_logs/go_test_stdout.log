@@ -1,0 +1,64 @@
+?   	github.com/traderbybit/research-go/cmd/research-worker	[no test files]
+=== RUN   TestCalculateSMA
+--- PASS: TestCalculateSMA (0.00s)
+=== RUN   TestCalculateEMA
+--- PASS: TestCalculateEMA (0.00s)
+=== RUN   TestCalculateRSI
+--- PASS: TestCalculateRSI (0.00s)
+=== RUN   TestCalculateATR
+--- PASS: TestCalculateATR (0.00s)
+=== RUN   TestCalculateBollingerBands
+--- PASS: TestCalculateBollingerBands (0.00s)
+PASS
+ok  	github.com/traderbybit/research-go/internal/algorithms	(cached)
+=== RUN   TestBacktestEngineDeterministicRun
+--- PASS: TestBacktestEngineDeterministicRun (0.04s)
+=== RUN   TestBacktestInsufficientWarmup
+--- PASS: TestBacktestInsufficientWarmup (0.00s)
+PASS
+ok  	github.com/traderbybit/research-go/internal/backtest	(cached)
+?   	github.com/traderbybit/research-go/internal/contracts	[no test files]
+?   	github.com/traderbybit/research-go/internal/datasets	[no test files]
+=== RUN   TestDecimalArithmetic
+--- PASS: TestDecimalArithmetic (0.00s)
+=== RUN   TestDecimalComparison
+--- PASS: TestDecimalComparison (0.00s)
+PASS
+ok  	github.com/traderbybit/research-go/internal/decimal	(cached)
+=== RUN   TestIsSupportedKind
+--- PASS: TestIsSupportedKind (0.00s)
+=== RUN   TestExecuteJob_RejectsUnsupportedKind
+2026/10/18 12:36:13 [jobrunner] Starting job job-model-train-123 kind=MODEL_TRAIN strategy=
+2026/10/18 12:36:13 [jobrunner] Rejected job job-model-train-123 with unsupported kind MODEL_TRAIN: unsupported or unimplemented research job kind: MODEL_TRAIN
+--- PASS: TestExecuteJob_RejectsUnsupportedKind (0.00s)
+PASS
+ok  	github.com/traderbybit/research-go/internal/jobrunner	(cached)
+=== RUN   TestMinePatternsExecution
+--- PASS: TestMinePatternsExecution (0.09s)
+=== RUN   TestBenjaminiHochbergStepUp
+--- PASS: TestBenjaminiHochbergStepUp (0.00s)
+PASS
+ok  	github.com/traderbybit/research-go/internal/patterns	(cached)
+=== RUN   TestReconstructDecision
+--- PASS: TestReconstructDecision (0.00s)
+=== RUN   TestReconstructDecisionAmbiguity
+--- PASS: TestReconstructDecisionAmbiguity (0.00s)
+PASS
+ok  	github.com/traderbybit/research-go/internal/replay	(cached)
+=== RUN   TestMonteCarloSimulation
+--- PASS: TestMonteCarloSimulation (0.00s)
+=== RUN   TestMonteCarloInsufficientTrades
+--- PASS: TestMonteCarloInsufficientTrades (0.00s)
+PASS
+ok  	github.com/traderbybit/research-go/internal/simulation	(cached)
+?   	github.com/traderbybit/research-go/internal/telemetry	[no test files]
+=== RUN   TestWalkForwardRun
+--- PASS: TestWalkForwardRun (0.04s)
+=== RUN   TestWalkForwardInsufficientData
+--- PASS: TestWalkForwardInsufficientData (0.00s)
+PASS
+ok  	github.com/traderbybit/research-go/internal/walkforward	(cached)
+=== RUN   TestGoldenIndicatorParity
+--- PASS: TestGoldenIndicatorParity (0.00s)
+PASS
+ok  	github.com/traderbybit/research-go/tests/golden	(cached)

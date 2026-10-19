@@ -1,0 +1,224 @@
+
+> test
+> node --test tests/*.test.js
+
+TAP version 13
+# Subtest: pattern page is routed and listed
+ok 1 - pattern page is routed and listed
+  ---
+  duration_ms: 1.647438
+  ...
+# Subtest: paginated pattern research uses bounded server requests
+ok 2 - paginated pattern research uses bounded server requests
+  ---
+  duration_ms: 0.292051
+  ...
+# Subtest: pattern UI distinguishes observations from trading signals
+ok 3 - pattern UI distinguishes observations from trading signals
+  ---
+  duration_ms: 1.02949
+  ...
+# Subtest: pattern discovery starts with a safe complete window and explains asynchronous empty states
+ok 4 - pattern discovery starts with a safe complete window and explains asynchronous empty states
+  ---
+  duration_ms: 0.276504
+  ...
+# Subtest: pattern page shows automatic discovery readiness instead of an unexplained empty table
+ok 5 - pattern page shows automatic discovery readiness instead of an unexplained empty table
+  ---
+  duration_ms: 0.290662
+  ...
+# Subtest: pattern page preserves top-level pagination metadata instead of unwrapping it
+ok 6 - pattern page preserves top-level pagination metadata instead of unwrapping it
+  ---
+  duration_ms: 0.240808
+  ...
+# Subtest: pattern page exposes all strategy BUY SELL and SKIP context by symbol
+ok 7 - pattern page exposes all strategy BUY SELL and SKIP context by symbol
+  ---
+  duration_ms: 0.22964
+  ...
+# Subtest: SignalCard renders BUY SELL and SKIP semantics
+ok 8 - SignalCard renders BUY SELL and SKIP semantics
+  ---
+  duration_ms: 1.270389
+  ...
+# Subtest: SignalCard contains entry, SL and both targets
+ok 9 - SignalCard contains entry, SL and both targets
+  ---
+  duration_ms: 0.228979
+  ...
+# Subtest: signal expiration is deterministic at an injected timestamp
+ok 10 - signal expiration is deterministic at an injected timestamp
+  ---
+  duration_ms: 0.164858
+  ...
+# Subtest: position table has a detailed audit route
+ok 11 - position table has a detailed audit route
+  ---
+  duration_ms: 0.271758
+  ...
+# Subtest: position detail exposes partial executions through backend payload
+ok 12 - position detail exposes partial executions through backend payload
+  ---
+  duration_ms: 0.277796
+  ...
+# Subtest: net PnL and portfolio PnL are rendered without frontend calculation
+ok 13 - net PnL and portfolio PnL are rendered without frontend calculation
+  ---
+  duration_ms: 0.360114
+  ...
+# Subtest: equity chart maps backend timestamps and equity values
+ok 14 - equity chart maps backend timestamps and equity values
+  ---
+  duration_ms: 0.249488
+  ...
+# Subtest: finite metric formatting preserves zero and rejects null
+ok 15 - finite metric formatting preserves zero and rejects null
+  ---
+  duration_ms: 11.2073
+  ...
+# Subtest: non-finite metrics are not displayed as numbers
+ok 16 - non-finite metrics are not displayed as numbers
+  ---
+  duration_ms: 0.332506
+  ...
+# Subtest: API errors use a unified human-readable fallback with request IDs
+ok 17 - API errors use a unified human-readable fallback with request IDs
+  ---
+  duration_ms: 0.329328
+  ...
+# Subtest: stale data handling has a configurable threshold
+ok 18 - stale data handling has a configurable threshold
+  ---
+  duration_ms: 0.167536
+  ...
+# Subtest: pagination parameters remain server-side
+ok 19 - pagination parameters remain server-side
+  ---
+  duration_ms: 0.638814
+  ...
+# Subtest: signals filters and debounced search are sent to API
+ok 20 - signals filters and debounced search are sent to API
+  ---
+  duration_ms: 2.338781
+  ...
+# Subtest: UTC timestamps can be converted with an explicit timezone
+ok 21 - UTC timestamps can be converted with an explicit timezone
+  ---
+  duration_ms: 3.618167
+  ...
+# Subtest: Russian and English translations exist
+ok 22 - Russian and English translations exist
+  ---
+  duration_ms: 0.303306
+  ...
+# Subtest: polling reconnect uses bounded exponential backoff
+ok 23 - polling reconnect uses bounded exponential backoff
+  ---
+  duration_ms: 0.335929
+  ...
+# Subtest: research mode warning is globally mounted
+ok 24 - research mode warning is globally mounted
+  ---
+  duration_ms: 0.200941
+  ...
+# Subtest: backtest form queues only a research job and shows status
+ok 25 - backtest form queues only a research job and shows status
+  ---
+  duration_ms: 0.265073
+  ...
+# Subtest: frontend contains no real order or trading action
+ok 26 - frontend contains no real order or trading action
+  ---
+  duration_ms: 0.329617
+  ...
+# Subtest: all required application routes exist
+ok 27 - all required application routes exist
+  ---
+  duration_ms: 0.239359
+  ...
+# Subtest: research lab uses paginated real API results and labels missing evaluations
+ok 28 - research lab uses paginated real API results and labels missing evaluations
+  ---
+  duration_ms: 0.222368
+  ...
+# Subtest: research lab provides a safe fast-start window and explains asynchronous evaluation
+ok 29 - research lab provides a safe fast-start window and explains asynchronous evaluation
+  ---
+  duration_ms: 0.207659
+  ...
+# Subtest: research lab declares all eight strategies and the four-timeframe hierarchy
+ok 30 - research lab declares all eight strategies and the four-timeframe hierarchy
+  ---
+  duration_ms: 0.165407
+  ...
+# Subtest: dashboard displays actual account summary and paper-return fields
+ok 31 - dashboard displays actual account summary and paper-return fields
+  ---
+  duration_ms: 0.207922
+  ...
+# Subtest: statistics expose backend data quality flags, not nonexistent aliases
+ok 32 - statistics expose backend data quality flags, not nonexistent aliases
+  ---
+  duration_ms: 0.128799
+  ...
+# Subtest: period PnL chart maps persisted net and cumulative PnL without fabricated points
+ok 33 - period PnL chart maps persisted net and cumulative PnL without fabricated points
+  ---
+  duration_ms: 0.141721
+  ...
+# Subtest: statistics charts guard against non-array payloads and PHP incomplete classes
+ok 34 - statistics charts guard against non-array payloads and PHP incomplete classes
+  ---
+  duration_ms: 0.178916
+  ...
+# Subtest: dashboard explains real SKIP reasons instead of hiding strategy evaluations
+ok 35 - dashboard explains real SKIP reasons instead of hiding strategy evaluations
+  ---
+  duration_ms: 0.334476
+  ...
+# Subtest: all ledger pages request ten records and use server-side pagination
+ok 36 - all ledger pages request ten records and use server-side pagination
+  ---
+  duration_ms: 0.390063
+  ...
+# Subtest: statistics paginates equity, R distribution, and reporting periods
+ok 37 - statistics paginates equity, R distribution, and reporting periods
+  ---
+  duration_ms: 0.162531
+  ...
+# Subtest: daily paper performance is bounded, timezone aware, and disposes charts
+ok 38 - daily paper performance is bounded, timezone aware, and disposes charts
+  ---
+  duration_ms: 0.25334
+  ...
+# Subtest: market chart limits history and permits window navigation
+ok 39 - market chart limits history and permits window navigation
+  ---
+  duration_ms: 0.189563
+  ...
+# Subtest: backtest details use bounded independent endpoints and lazy optimizations
+ok 40 - backtest details use bounded independent endpoints and lazy optimizations
+  ---
+  duration_ms: 0.254066
+  ...
+# Subtest: research monitoring page exposes compute workers and tasks management
+ok 41 - research monitoring page exposes compute workers and tasks management
+  ---
+  duration_ms: 0.180152
+  ...
+# Subtest: api client exposes research job management endpoints
+ok 42 - api client exposes research job management endpoints
+  ---
+  duration_ms: 0.112435
+  ...
+1..42
+# tests 42
+# suites 0
+# pass 42
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 632.111673

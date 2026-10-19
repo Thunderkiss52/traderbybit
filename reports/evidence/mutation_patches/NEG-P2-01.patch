@@ -1,0 +1,2 @@
+-- NEG-P2-01 MUTATION: Drop risk_decisions unique constraint to allow duplicate decisions
+ALTER TABLE risk_decisions DROP CONSTRAINT IF EXISTS risk_decisions_paper_account_id_signal_id_risk_version_unique;

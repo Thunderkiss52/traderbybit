@@ -1,0 +1,567 @@
+PHPUnit 12.5.39 by Sebastian Bergmann and contributors.
+
+Runtime:       PHP 8.4.24
+Configuration: /home/thunder/work/traderbybit/phpunit.xml
+
+Time: 00:14.216, Memory: 85.00 MB
+
+[4mAccount Safety Regression (Tests\Feature\PaperTrading\AccountSafetyRegression)[0m
+[32m ✔ [0mResume keeps hard drawdown limits and cannot override cooldown
+[32m ✔ [0mForward accounts are version and configuration isolated without resetting history
+[32m ✔ [0mDrawdown metrics include starting equity
+
+[4mAdaptive Timeframe Research (Tests\Feature\Research\AdaptiveTimeframeResearch)[0m
+[32m ✔ [0mAll seven supported intervals are analyzed causally
+[32m ✔ [0mTimeframe hierarchy validation
+
+[4mAudit Export (Tests\Feature\AuditExport)[0m
+[32m ✔ [0mExports deduplicate repeated clicks
+[32m ✔ [0mExport contains manifest csv and rejects anonymous download
+[32m ✔ [0mAll four export periods generate successfully with learning and health datasets
+
+[4mAudit Invariant (Tests\Feature\Audit\AuditInvariant)[0m
+[32m ✔ [0mPeak equity never falls below starting balance and drawdown is positive on loss
+[32m ✔ [0mMark to market drawdown is positive on unrealized loss
+[32m ✔ [0mLate signals create terminal state and do not starve query
+[32m ✔ [0mProcess paper trading job processes all active strategy accounts
+[32m ✔ [0mAudit csv momentum account drawdown recalculation
+
+[4mAutonomous Learning Api (Tests\Feature\Research\AutonomousLearningApi)[0m
+[32m ✔ [0mLearning overview and autonomy settings endpoints
+[32m ✔ [0mCandidate lifecycle api endpoints
+[32m ✔ [0mModels endpoint
+
+[4mAutonomous Learning Pipeline (Tests\Feature\Research\AutonomousLearningPipeline)[0m
+[32m ✔ [0mFull autonomous learning pipeline execution
+
+[4mAutonomy Permission Service (Tests\Unit\Research\AutonomyPermissionService)[0m
+[32m ✔ [0mAutonomy defaults and hard invariants
+[32m ✔ [0mKill switch immediately blocks all autonomy
+
+[4mBacktest Curve Service (Tests\Feature\Backtest\BacktestCurveService)[0m
+[32m ✔ [0mLarge curve is bounded and preserves bucket extrema
+
+[4mBacktest Run Service (Tests\Feature\Backtest\BacktestRunService)[0m
+[32m ✔ [0mCompleted run is persisted idempotently without touching paper state
+
+[4mBacktest Simulation (Tests\Feature\Backtest\BacktestSimulation)[0m
+[32m ✔ [0mBuy tp1 tp2 is deterministic and isolated from paper tables
+
+[4mBybit Public Api Integration (Tests\Integration\BybitPublicApiIntegration)[0m
+[36m ↩ [0mPublic linear market endpoints match the documented contract
+
+[4mBybit Rest Client (Tests\Unit\MarketData\BybitRestClient)[0m
+[32m ✔ [0mIt parses sorts utc and marks only closed rest candles
+[32m ✔ [0mIt paginates backwards and deduplicates rows
+[32m ✔ [0mIt retries rate limits[2m with [22m[36mHTTP[2m·[22m429[0m
+[32m ✔ [0mIt retries rate limits[2m with [22m[36mretCode[2m·[22m10006[0m
+[32m ✔ [0mIt rejects incomplete api payload
+[32m ✔ [0mIt reads tick size from instrument info
+[32m ✔ [0mIt retries a network transport failure
+
+[4mCandle Persistence (Tests\Feature\MarketData\CandlePersistence)[0m
+[32m ✔ [0mUpsert prevents duplicate candles
+[32m ✔ [0mDuplicate websocket events remain idempotent
+[32m ✔ [0mLarge history is upserted in database safe batches
+
+[4mCandlestick Pattern Detector (Tests\Unit\PatternDiscovery\CandlestickPatternDetector)[0m
+[32m ✔ [0mDetects single candle geometry patterns
+[32m ✔ [0mDetects two and three candle patterns only after confirmation bar
+
+[4mCandle Synchronizer (Tests\Feature\MarketData\CandleSynchronizer)[0m
+[32m ✔ [0mIt filters open candles detects gap and backfills it
+[32m ✔ [0mIt reports history that bybit does not return
+
+[4mChampion Challenger Lifecycle (Tests\Unit\Research\ChampionChallengerLifecycle)[0m
+[32m ✔ [0mTrain model returns null when under sample size threshold
+[32m ✔ [0mInitial champion model is promoted when validation passes
+[32m ✔ [0mChallenger is evaluated against active champion
+[32m ✔ [0mConcept drift detection
+
+[4mChronological Splitter (Tests\Unit\Backtest\ChronologicalSplitter)[0m
+[32m ✔ [0mSplit is chronological and never shuffled
+[32m ✔ [0mWalk forward uses independent six two two month windows
+
+[4mComplete Api Endpoint Audit (Tests\Feature\Api\CompleteApiEndpointAudit)[0m
+[32m ✔ [0mAll registered api endpoints are discovered and tested
+[32m ✔ [0mResearch write routes do not require local token when authenticated
+
+[4mCounterfactual Accurate RCalculation (Tests\Unit\Research\CounterfactualAccurateRCalculation)[0m
+[32m ✔ [0mBuy take profit calculates accurate net r with execution costs
+[32m ✔ [0mSell stop loss calculates accurate net r with execution costs
+[32m ✔ [0mTimeout resolution uses last candle close
+
+[4mCounterfactual Analyzer Service (Tests\Unit\Research\CounterfactualAnalyzerService)[0m
+[32m ✔ [0mCreates and resolves counterfactual evaluation
+[32m ✔ [0mAnalyze and resolve is idempotent
+[32m ✔ [0mCounterfactual links to matching signal id when signal exists
+[32m ✔ [0mCounterfactual rejects ambiguous signal matches and leaves signal id null
+[32m ✔ [0mCounterfactual leaves signal id null when no signal record exists
+
+[4mCounterfactual No Hindsight (Tests\Unit\Research\CounterfactualNoHindsight)[0m
+[32m ✔ [0mNon evaluable skip is flagged as non evaluable
+[32m ✔ [0mDirection is strictly derived at decision time without future knowledge
+[32m ✔ [0mResolved tp incorporates realistic trading costs
+
+[4mCounterfactual Slot Idempotency Postgres Integration (Tests\Integration\CounterfactualSlotIdempotencyPostgresIntegration)[0m
+[32m ✔ [0mSequential rerun returns canonical evaluation without duplicate
+[32m ✔ [0mDistinct strategy versions preserve separate evaluations
+[32m ✔ [0mNegative control duplicate direct insert rejected by postgresql unique constraint
+[32m ✔ [0mHistorical golden replay resolves eight raw to four canonical
+[32m ✔ [0mNegative control duplicate observation rejected by slot unique constraint
+
+[4mDaily Performance (Tests\Feature\PaperTrading\DailyPerformance)[0m
+[32m ✔ [0mDaily equity returns are paginated and use the selected timezone
+[32m ✔ [0mSymbol filter does not fabricate historical mark to market returns
+[32m ✔ [0mInvalid timezone is rejected
+[32m ✔ [0mLarge snapshot history returns only ten server aggregated days under payload limit
+
+[4mDataset Inspector (Tests\Feature\Backtest\DatasetInspector)[0m
+[32m ✔ [0mChecksum is deterministic for complete closed history
+[32m ✔ [0mGap is rejected instead of fabricating a price
+
+[4mDecision Replay Service (Tests\Unit\Research\DecisionReplayService)[0m
+[32m ✔ [0mReplays decision deterministically
+
+[4mEnsure Strategy History (Tests\Feature\MarketData\EnsureStrategyHistory)[0m
+[32m ✔ [0mMissing history is queued for every symbol and timeframe
+[32m ✔ [0mA contiguous warmup window is not queued again
+[32m ✔ [0mAutomatic research requests evaluation history plus warmup
+
+[4mExample (Tests\Feature\Example)[0m
+[32m ✔ [0mThe application returns a successful response
+
+[4mExample (Tests\Unit\Example)[0m
+[32m ✔ [0mThat true is true
+
+[4mExecution Engine (Tests\Unit\PaperTrading\ExecutionEngine)[0m
+[32m ✔ [0mEntry uses side specific quote and slippage
+[32m ✔ [0mOhlc collision is ambiguous and stop is conservative first
+[32m ✔ [0mFees slippage pnl and funding use decimal arithmetic
+[32m ✔ [0mState machines reject impossible transitions
+[32m ✔ [0mExecution result is deterministic and risk closure is explicit
+
+[4mExit Horizon Research (Tests\Feature\Research\ExitHorizonResearch)[0m
+[32m ✔ [0mExit horizon analysis evaluates fixed intervals and benchmark
+[32m ✔ [0mExit horizon endpoint returns json
+
+[4mFinancial Accounting And Reconciliation Postgres Integration (Tests\Integration\FinancialAccountingAndReconciliationPostgresIntegration)[0m
+[32m ✔ [0mGolden positions lifecycle accounting identities
+[32m ✔ [0mWindow reconciliation detects boundary fills and matches fee gap
+[32m ✔ [0mNegative control inverted funding sign fails reconciliation
+
+[4mFunding History Synchronizer (Tests\Feature\MarketData\FundingHistorySynchronizer)[0m
+[32m ✔ [0mClosed candle mark price is persisted idempotently
+[32m ✔ [0mMissing closed mark candle does not fabricate funding price
+
+[4mGap Detector (Tests\Unit\MarketData\GapDetector)[0m
+[32m ✔ [0mIt detects missing closed slots and groups ranges
+[32m ✔ [0mIt never marks the current open candle as a gap
+
+[4mGate6Promotion Policy (Tests\Feature\Research\Gate6PromotionPolicy)[0m
+[32m ✔ [0mMultiplicity adjusted lcb rejects insignificant improvement under multiple trials
+[32m ✔ [0mMultiplicity adjusted lcb passes for strong and consistent challenger
+[32m ✔ [0mCandidate rejected on insufficient training samples
+[32m ✔ [0mCandidate rejected on insufficient oos samples
+[32m ✔ [0mCandidate rejected on insufficient shadow samples
+[32m ✔ [0mCandidate rejected on premature challenger duration
+[32m ✔ [0mCandidate rejected on insufficient challenger samples
+[32m ✔ [0mCandidate rejected on drawdown breach
+[32m ✔ [0mCandidate rejected in forward production without genuine forward evidence
+[32m ✔ [0mCandidate passes all gate6 requirements with immutable hash
+[32m ✔ [0mHac variance inflates under positively autocorrelated overlapping returns
+[32m ✔ [0mAuthoritative candidate pool prevents caller underestimation
+
+[4mGo Research Worker Integration (Tests\Integration\GoResearchWorkerIntegration)[0m
+[36m ↩ [0mScheduler queue go worker persists succeeded result
+
+[4mGrid Optimizer (Tests\Unit\Backtest\GridOptimizer)[0m
+[32m ✔ [0mGrid is deterministic and resource capped
+
+[4mIndicator Engine (Tests\Feature\Indicators\IndicatorEngine)[0m
+[32m ✔ [0mWarmup blocks signal readiness until all mandatory indicators are ready
+[32m ✔ [0mSame closed history produces byte identical indicator values
+[32m ✔ [0mEngine rejects an open candle
+[32m ✔ [0mEngine rejects gaps or unsorted history
+
+[4mInterval (Tests\Unit\MarketData\Interval)[0m
+[32m ✔ [0mAll supported intervals parse correctly
+[32m ✔ [0mMilliseconds and seconds match timeframe durations
+[32m ✔ [0mFloor aligns to interval boundaries
+[32m ✔ [0mUnsupported interval throws
+
+[4mLearning Feature Store Service (Tests\Unit\Research\LearningFeatureStoreService)[0m
+[32m ✔ [0mAssembles point in time snapshot and matures label
+
+[4mLearning Predictor Rollback (Tests\Feature\Research\LearningPredictorRollback)[0m
+[32m ✔ [0mModel rollback restores previous champion
+[32m ✔ [0mModel rollback without previous champion gracefully retires
+
+[4mLearning Predictor Service (Tests\Unit\Research\LearningPredictorService)[0m
+[32m ✔ [0mTrains model and predicts calibrated probability
+
+[4mLedger Reconciliation Postgres Integration (Tests\Integration\LedgerReconciliationPostgresIntegration)[0m
+[36m ↩ [0mReconcile all eight primary accounts in postgresql succeeds without sql error
+[36m ↩ [0mPostgresql financial reconciliation with partial and full exits and funding
+[36m ↩ [0mPostgresql reconciliation detects balance discrepancy
+
+[4mLedger Reconciliation Service (Tests\Unit\Research\LedgerReconciliationService)[0m
+[32m ✔ [0mReconciliation passes on clean account
+[32m ✔ [0mReconciliation detects injected discrepancies
+[32m ✔ [0mReconciliation verifies executions with partial and full exits and funding
+
+[4mLegacy Active Model Safety (Tests\Feature\Research\LegacyActiveModelSafety)[0m
+[32m ✔ [0mIneligible legacy active model under fail closed skip converts to skip
+[32m ✔ [0mIneligible legacy active model under allow unfiltered proceeds to risk gate
+[32m ✔ [0mMissing model under mandatory active ml converts to skip
+[32m ✔ [0mMissing model under deterministic only strategy proceeds normally
+[32m ✔ [0mInference exception under fail closed skip converts to skip
+[32m ✔ [0mInvalid model artifact gates breached under fail closed skip
+[32m ✔ [0mRolled back model cannot influence new decisions
+[32m ✔ [0mExisting position management continues when model is missing
+[32m ✔ [0mDisallowed trade under risk gate remains rejected even with allow unfiltered
+[32m ✔ [0mDuplicate paper processing event does not mutate ledger or create duplicate positions
+
+[4mLevel Probability (Tests\Feature\Strategy\LevelProbability)[0m
+[32m ✔ [0mForecast uses only prior resolved observations and reports smoothed probabilities
+
+[4mLogistic Regression Training (Tests\Unit\Research\LogisticRegressionTraining)[0m
+[32m ✔ [0mTrain model optimizes weights via gradient descent not hardcoded
+[32m ✔ [0mTrain model fails closed when data is insufficient
+
+[4mMarket Commands (Tests\Feature\MarketData\MarketCommands)[0m
+[32m ✔ [0mMarket data commands are registered
+
+[4mMarket Context Collector (Tests\Unit\Strategy\MarketContextCollector)[0m
+[32m ✔ [0mIt builds a timestamped context and deterministic oi change
+
+[4mMarket Scanner Service (Tests\Feature\Strategy\MarketScannerService)[0m
+[32m ✔ [0mScanner evaluates all eight strategies across both symbols and is idempotent
+
+[4mMarket Stream Supervisor (Tests\Feature\MarketData\MarketStreamSupervisor)[0m
+[32m ✔ [0mIt reconnects and runs rest recovery each time
+
+[4mMarket Structure Pattern Detector (Tests\Unit\PatternDiscovery\MarketStructurePatternDetector)[0m
+[32m ✔ [0mDetects double top only when second pivot is confirmed
+[32m ✔ [0mDetects false breakout and liquidity sweep without future bars
+
+[4mMarket Today Filter (Tests\Feature\MarketData\MarketTodayFilter)[0m
+[32m ✔ [0mMarket today mode bounds strictly to trading day timestamps
+[32m ✔ [0mBounded 7d view obeys maximum limit
+
+[4mMeta Labeling Research (Tests\Feature\Research\MetaLabelingResearch)[0m
+[32m ✔ [0mPaired policy comparison demonstrates meta labeling filter advantage
+[32m ✔ [0mDirection invariance detects illicit side flip
+
+[4mMl Authority And Proper Scoring Postgres Integration (Tests\Integration\MlAuthorityAndProperScoringPostgresIntegration)[0m
+[32m ✔ [0mLegacy active model lacks authority and fails closed or bypasses
+[32m ✔ [0mProper scoring rule training prevalence baseline and bss
+[32m ✔ [0mGate6 full funnel validation
+[32m ✔ [0mNegative mutation unauthorized promotion rejected
+
+[4mModel Advisory Decision Veto (Tests\Feature\Research\ModelAdvisoryDecisionVeto)[0m
+[32m ✔ [0mActive model vetoes buy to skip and respects fail closed and authorized fallback
+[32m ✔ [0mChampion rollback restores previous champion if available
+
+[4mModel Advisory Integration (Tests\Unit\Research\ModelAdvisoryIntegration)[0m
+[32m ✔ [0mShadow mode records predictions without altering trading decisions
+[32m ✔ [0mActive mode vetoes low probability trades to skip
+[32m ✔ [0mActive mode allows high probability trades
+
+[4mMoving Momentum Indicators (Tests\Unit\Indicators\MovingMomentumIndicators)[0m
+[32m ✔ [0mSma uses a complete rolling window
+[32m ✔ [0mEma is seeded with sma and then uses recursive smoothing
+[32m ✔ [0mRsi matches wilders reference series
+[32m ✔ [0mRsi flat series is neutral and rising series is one hundred
+[32m ✔ [0mMacd aligns signal and histogram with original series
+
+[4mOpen Interest History Synchronizer (Tests\Feature\MarketData\OpenInterestHistorySynchronizer)[0m
+[32m ✔ [0mPages persist idempotently and exclude future observations
+[32m ✔ [0mResearch context uses only events available at decision time
+
+[4mPaper Lifecycle (Tests\Feature\PaperTrading\PaperLifecycle)[0m
+[32m ✔ [0mAutomatic forward paper does not replay signals before account creation
+[32m ✔ [0mBlocked account still closes existing paper position
+[32m ✔ [0mLate backfilled signal cannot create forward entry
+[32m ✔ [0mComplete buy lifecycle entry tp1 tp2 is idempotent and journaled
+[32m ✔ [0mNon baseline actionable signal reaches isolated paper execution
+[32m ✔ [0mSpot sell is risk rejected and never opens a short
+[32m ✔ [0mExtreme funding and open interest are hard risk rejections
+[32m ✔ [0mBuy and sell close at stop[2m with data set [22m[36m0[0m
+[32m ✔ [0mBuy and sell close at stop[2m with data set [22m[36m1[0m
+[32m ✔ [0mSell can take tp1 then stop remaining quantity
+[32m ✔ [0mPending signal expires and missing metadata is risk rejected
+[32m ✔ [0mSkip ingestion is bounded and idempotently marked complete
+[32m ✔ [0mTimeout waits for next available closed bar without lookahead
+[32m ✔ [0mGap stops processing and marks position waiting for data
+[32m ✔ [0mFunding event is applied once
+[32m ✔ [0mThree completed losses start a sixty minute cooldown
+[32m ✔ [0mRecorded execution and risk decision are immutable across configuration changes
+[32m ✔ [0mDefault account and artisan commands work
+
+[4mPattern Discovery (Tests\Unit\PatternDiscovery\PatternDiscovery)[0m
+[32m ✔ [0mFuture features are rejected
+[32m ✔ [0mMissing values do not become artificial features
+[32m ✔ [0mPrevious signal can only influence later decision
+[32m ✔ [0mSame bar tp and sl is ambiguously scored as stop
+[32m ✔ [0mAdverse gap uses the worse open price
+[32m ✔ [0mMissing candle is not an execution
+[32m ✔ [0mConservative timeout includes costs
+[32m ✔ [0mInsufficient independent holdouts never validate
+[32m ✔ [0mSequence and context use only past information
+[32m ✔ [0mPattern matching does not emit order
+
+[4mPattern Match Service (Tests\Feature\PatternDiscovery\PatternMatchService)[0m
+[32m ✔ [0mValidated current pattern is persisted once without trading action
+
+[4mPattern Occurrence Outcome (Tests\Feature\PatternDiscovery\PatternOccurrenceOutcome)[0m
+[32m ✔ [0mOutcome is resolved only after complete contiguous future horizon
+
+[4mPattern Research Api (Tests\Feature\Strategy\PatternResearchApi)[0m
+[32m ✔ [0mPattern list and runs are empty and paginated
+[32m ✔ [0mPattern detail returns the persisted research definition
+[32m ✔ [0mDiscovery queues one bounded job without token
+[32m ✔ [0mInvalid symbol and future range are rejected
+[32m ✔ [0mLatest matches handles missing symbol parameter safely
+
+[4mPerformance Metric Calculator (Tests\Unit\Backtest\PerformanceMetricCalculator)[0m
+[32m ✔ [0mKnown trade and equity metrics are exact
+[32m ✔ [0mProfit factor is null when there are no losses
+
+[4mPerformance Statistics (Tests\Feature\PaperTrading\PerformanceStatistics)[0m
+[32m ✔ [0mWin rate profit factor average r and equity drawdown
+[32m ✔ [0mProfit factor is null with explicit reason when there are no losses and filters isolate portfolios
+
+[4mPortfolio Correlation Service (Tests\Unit\Research\PortfolioCorrelationService)[0m
+[32m ✔ [0mComputes portfolio correlation and overlap
+
+[4mPrimary Account Migration Rehearsal (Tests\Feature\PaperTrading\PrimaryAccountMigrationRehearsal)[0m
+[32m ✔ [0mMigration rehearsal preserves account ids balances and history
+
+[4mProbability Calibration Service (Tests\Unit\Research\ProbabilityCalibrationService)[0m
+[32m ✔ [0mComputes brier ece and reliability bins
+[32m ✔ [0mHandles success failure outcomes and filters null probabilities
+[32m ✔ [0mReturns insufficient data when fewer than five matured forecasts
+
+[4mPromoted Candidate Execution (Tests\Feature\Research\PromotedCandidateExecution)[0m
+[32m ✔ [0mPromoted strategy candidate receives signals and virtual executions
+
+[4mPromotion Policy Fail Closed (Tests\Unit\Research\PromotionPolicyFailClosed)[0m
+[32m ✔ [0mCandidate without validation run fails closed
+[32m ✔ [0mCandidate with uncompleted backtest run fails closed
+[32m ✔ [0mCandidate with failing metrics fails gates
+[32m ✔ [0mCandidate with passing backtest promotes with audit trail
+[32m ✔ [0mAdversarial attempt to promote rejected candidate throws
+
+[4mPromotion Policy Service (Tests\Unit\Research\PromotionPolicyService)[0m
+[32m ✔ [0mEvaluates gates and promotes with operator approval
+[32m ✔ [0mGates evaluation and promotion flow
+
+[4mQuant Portfolio Metrics Postgres Integration (Tests\Integration\QuantPortfolioMetricsPostgresIntegration)[0m
+[32m ✔ [0mComplete 29 positions population economics
+[32m ✔ [0mReconstruct point in time state at cutoff
+[32m ✔ [0mShared market events and overlap clusters
+[32m ✔ [0mDeterministic reproducibility proof
+[32m ✔ [0mNegative control source variation reacts dynamically
+
+[4mReconcile Ledger Job Execution Path (Tests\Feature\Research\ReconcileLedgerJobExecutionPath)[0m
+[32m ✔ [0mScheduler registers reconcile ledger job on expected cron
+[32m ✔ [0mReconcile ledger job dispatches to audit queue
+[32m ✔ [0mCompose yaml configures audit worker for audit queue
+[32m ✔ [0mWorker execution persists actual reconciliation runs with ledger integrity
+[32m ✔ [0mReconcile ledger job handles worker failure reporting
+
+[4mResearch Api (Tests\Feature\Api\ResearchApi)[0m
+[32m ✔ [0mDashboard contract and empty state
+[32m ✔ [0mDashboard reports each strategy observation stream
+[32m ✔ [0mDashboard returns performance for an existing paper account
+[32m ✔ [0mDashboard exposes bounded level and momentum analysis
+[32m ✔ [0mInvalid symbol and series limit are rejected
+[32m ✔ [0mEmpty indicator series is a valid missing data response
+[32m ✔ [0mMarket analysis combines bounded initial payload
+[32m ✔ [0mBacktest creation dispatches only research job
+[32m ✔ [0mBacktest validation rejects unknown symbol
+[32m ✔ [0mBacktest rejects client side model overrides
+[32m ✔ [0mApi routes are rate limited
+[32m ✔ [0mServer errors are structured and have request ids
+[32m ✔ [0mSignal list is paginated and excludes heavy json snapshots
+[32m ✔ [0mOther ledgers have small default pages
+[32m ✔ [0mStatistics cache contains portable arrays not domain objects
+[32m ✔ [0mList page size is capped at one hundred
+[32m ✔ [0mNo trade or order routes exist
+[32m ✔ [0mSystem version endpoint returns valid metadata
+[32m ✔ [0mDashboard cold and warm cache performance
+
+[4mResearch Api (Tests\Feature\Strategy\ResearchApi)[0m
+[32m ✔ [0mStrategy catalog and empty leaderboard are bounded and do not fabricate metrics
+[32m ✔ [0mAuthorized experiment is persisted and queued on dedicated worker
+[32m ✔ [0mLists default to ten rows and reject unknown strategy
+[32m ✔ [0mForward research job bootstraps enabled isolated strategy accounts
+[32m ✔ [0mLeaderboard uses only experiments for the current strategy identity
+[32m ✔ [0mCompleted experiment requires explicit approval and creates an isolated forward portfolio
+
+[4mResearch Benchmark Command (Tests\Feature\Research\ResearchBenchmarkCommand)[0m
+[32m ✔ [0mCan run research benchmark command
+
+[4mResearch Bootstrap (Tests\Feature\Strategy\ResearchBootstrap)[0m
+[32m ✔ [0mComplete closed history queues each strategy once
+[32m ✔ [0mSufficient forward decisions queue one pattern run per symbol once
+[32m ✔ [0mQueued experiment is superseded when its immutable strategy identity is stale
+
+[4mResearch Health Api (Tests\Feature\Research\ResearchHealthApi)[0m
+[32m ✔ [0mHealth overview endpoint returns strategy funnel and status
+[32m ✔ [0mData freshness endpoint returns candle and queue health
+[32m ✔ [0mReconcile and reconciliation runs endpoints
+
+[4mResearch Job Api (Tests\Feature\Research\ResearchJobApi)[0m
+[32m ✔ [0mCan list research jobs
+[32m ✔ [0mCan submit research job
+[32m ✔ [0mCan show single research job
+[32m ✔ [0mCan cancel queued research job
+[32m ✔ [0mReturns capabilities routing
+
+[4mResearch Job Service (Tests\Unit\Research\ResearchJobService)[0m
+[32m ✔ [0mCan submit valid research job
+[32m ✔ [0mRejects invalid job kind
+[32m ✔ [0mDeduplicates active job with same idempotency key
+[32m ✔ [0mCan claim and start job
+[32m ✔ [0mHeartbeat updates progress and lease
+[32m ✔ [0mComplete job persists manifest and stats
+[32m ✔ [0mFail job retries then fails
+[32m ✔ [0mReconcile stale leases
+[32m ✔ [0mCapability routing
+
+[4mResearch Recommendation Service (Tests\Unit\Research\ResearchRecommendationService)[0m
+[32m ✔ [0mGenerates recommendations from counterfactual and degradation
+
+[4mResearch Report Service (Tests\Unit\Research\ResearchReportService)[0m
+[32m ✔ [0mGenerates comprehensive research report
+
+[4mResearch Strategies (Tests\Unit\Strategy\ResearchStrategies)[0m
+[32m ✔ [0mTrend pullback emits buy and sell without changing baseline rules
+[32m ✔ [0mMean reversion requires prior outside close and current reentry
+[32m ✔ [0mDonchian excludes breakout candle and rejects future data
+[32m ✔ [0mRegime classifier is causal and identifies trend range and high volatility
+[32m ✔ [0mMomentum strategy operates independently for long and short setups
+
+[4mRisk And Sizing (Tests\Unit\PaperTrading\RiskAndSizing)[0m
+[32m ✔ [0mPosition size includes fees slippage and rounds down to qty step
+[32m ✔ [0mPosition size rejects minimum notional and exposure limit
+[32m ✔ [0mRisk engine rejects portfolio guards[2m with [22m[36mmaximum[2m·[22mpositions[0m
+[32m ✔ [0mRisk engine rejects portfolio guards[2m with [22m[36mportfolio[2m·[22mrisk[0m
+[32m ✔ [0mRisk engine rejects portfolio guards[2m with [22m[36mcorrelation[0m
+[32m ✔ [0mRisk engine rejects portfolio guards[2m with [22m[36mmissing[2m·[22mcorrelation[0m
+[32m ✔ [0mRisk engine rejects portfolio guards[2m with [22m[36mdrawdown[2m·[22mblock[0m
+[32m ✔ [0mRisk engine rejects portfolio guards[2m with [22m[36mdrawdown[2m·[22mhalt[0m
+[32m ✔ [0mRisk engine rejects portfolio guards[2m with [22m[36mcooldown[0m
+[32m ✔ [0mRisk engine rejects portfolio guards[2m with [22m[36mmarket[2m·[22msafety[0m
+[32m ✔ [0mPearson correlation is deterministic
+
+[4mScheduled Research Jobs (Tests\Feature\Research\ScheduledResearchJobs)[0m
+[32m ✔ [0mProcess counterfactual analysis job runs on research queue
+[32m ✔ [0mReconcile ledger job runs on audit queue and creates records
+[32m ✔ [0mScheduled events include counterfactual and ledger jobs
+
+[4mShadow Experiment Service (Tests\Unit\Research\ShadowExperimentService)[0m
+[32m ✔ [0mShadow experiment lifecycle and capacity limits
+
+[4mSignal Generation (Tests\Feature\Strategy\SignalGeneration)[0m
+[32m ✔ [0mRepository is idempotent and never rewrites an old strategy result
+[32m ✔ [0mTime alignment excludes future context and open candles
+[32m ✔ [0mGap is detected and saved as skip
+[32m ✔ [0mCommand and queue job persist one result per strategy
+[32m ✔ [0mAll registered strategies are observed once per closed candle
+[32m ✔ [0mRecent observation backfill populates all strategies without duplicates
+[32m ✔ [0mNo trading endpoint is present in application source
+
+[4mSignal Quality Policy (Tests\Unit\Strategy\SignalQualityPolicy)[0m
+[32m ✔ [0mPure skip decision without plan is graded unrated and not eligible
+[32m ✔ [0mSkip with candidate plan preserves technical grade with skipped status
+[32m ✔ [0mGrade a requires both conservative expectancy and score
+[32m ✔ [0mUncertainty reduces conservative expectancy
+[32m ✔ [0mSmall sample size yields unrated
+
+[4mSlot Integrity And Risk Funnel Postgres Integration (Tests\Integration\SlotIntegrityAndRiskFunnelPostgresIntegration)[0m
+[32m ✔ [0mGolden risk decisions funnel and reason multisets
+[32m ✔ [0mSlot integrity cadence detects missing unexplained and market data unavailable
+[32m ✔ [0mOpportunity tracer separates signal opportunity from risk decision events
+[32m ✔ [0mNegative control duplicate risk decision rejected by unique constraint
+
+[4mStage Three Api (Tests\Feature\Research\StageThreeApi)[0m
+[32m ✔ [0mDegradation endpoint
+[32m ✔ [0mCorrelations endpoint
+[32m ✔ [0mRecommendations and lifecycle endpoints
+[32m ✔ [0mReport endpoint returns signed audit manifest
+
+[4mStage Two Api (Tests\Feature\Research\StageTwoApi)[0m
+[32m ✔ [0mOpportunities and detail endpoints
+[32m ✔ [0mReplay endpoint
+[32m ✔ [0mCalibration endpoint
+[32m ✔ [0mShadow experiment start and stop endpoints
+
+[4mStatistics Payload Serialization Regression (Tests\Feature\PaperTrading\StatisticsPayloadSerializationRegression)[0m
+[32m ✔ [0mLegacy corrupted redis cache is superseded by v5 and does not crash
+[32m ✔ [0mEmpty statistics dataset returns strictly sequential arrays not objects
+[32m ✔ [0mPopulated statistics with multiple symbols and sides serializes clean dtos
+[32m ✔ [0mAll eight primary strategy accounts generate valid statistics dtos
+
+[4mStrategy Degradation Service (Tests\Unit\Research\StrategyDegradationService)[0m
+[32m ✔ [0mEvaluates degradation with insufficient data
+[32m ✔ [0mDetects regime mismatch degradation
+[32m ✔ [0mDetects closed positions with enum statuses
+
+[4mStrategy Engine (Tests\Unit\Strategy\StrategyEngine)[0m
+[32m ✔ [0mBuy contains all triggers prices and a quality
+[32m ✔ [0mSell is mirrored and rounded to tick
+[32m ✔ [0mNeutral trend warmup gap and staleness are specific skips
+[32m ✔ [0mStrong support rejection with momentum can enter during neutral hourly trend
+[32m ✔ [0mConflicting confirmation spread and extreme atr are skips
+[32m ✔ [0mOpposite level rejects insufficient risk reward
+[32m ✔ [0mQuality classes follow configured thresholds without duplicate points
+[32m ✔ [0mJson contract is deterministic and research only
+[32m ✔ [0mMissing historical context and tick size cannot emit signal
+[32m ✔ [0mFuture candle is rejected by the pure engine
+
+[4mStrategy Evolution Service (Tests\Unit\Research\StrategyEvolutionService)[0m
+[32m ✔ [0mGenerates bounded candidate with reproducible seed
+
+[4mStrategy Health Service (Tests\Unit\Research\StrategyHealthService)[0m
+[32m ✔ [0mEvaluates strategy health and builds funnel
+[32m ✔ [0mIdentifies insufficient data status
+
+[4mStrategy Schedule (Tests\Feature\Strategy\StrategySchedule)[0m
+[32m ✔ [0mMarket context is captured before candle close and signal generation
+
+[4mSupport Resistance Strategies (Tests\Feature\Strategy\SupportResistanceStrategies)[0m
+[32m ✔ [0mAll eight primary accounts exist and are isolated
+[32m ✔ [0mSr bounce and breakout skip when sample size is under thirty
+[32m ✔ [0mSr breakout emits buy with sufficient resolved forecasts
+[32m ✔ [0mSr bounce emits buy on support rejection with sufficient data
+[32m ✔ [0mSr signals execute in isolated strategy paper account
+[32m ✔ [0mOne way position conflict rejects opposite signal
+
+[4mSystem Freshness Service (Tests\Unit\Research\SystemFreshnessService)[0m
+[32m ✔ [0mFreshness check detects lag and generates alerts
+
+[4mVolatility Trend Indicators (Tests\Unit\Indicators\VolatilityTrendIndicators)[0m
+[32m ✔ [0mAtr uses true range and wilders smoothing
+[32m ✔ [0mBollinger bands use population standard deviation
+[32m ✔ [0mAdx warmup and directional values on a strong monotonic trend
+
+[4mVolume Levels Indicators (Tests\Unit\Indicators\VolumeLevelsIndicators)[0m
+[32m ✔ [0mRolling vwap weights typical price by volume
+[32m ✔ [0mVolume returns sma relative volume and turnover sma
+[32m ✔ [0mSupport and resistance use only confirmed pivots
+
+[4mWarmup Policy (Tests\Unit\Indicators\WarmupPolicy)[0m
+[32m ✔ [0mRequired history is the maximum of every indicator warmup
+
+[4mWeb Socket Parser (Tests\Unit\MarketData\WebSocketParser)[0m
+[32m ✔ [0mIt ignores unconfirmed candles and control messages
+[32m ✔ [0mIt parses only confirmed closed candles
+[32m ✔ [0mIt parses 30m closed candles
+[32m ✔ [0mIt rejects incomplete events
+
+[30;43mOK, but there were issues![0m
+[30;43mTests: 351[0m[30;43m, Assertions: 2159[0m[30;43m, PHPUnit Notices: 1[0m[30;43m, Skipped: 5[0m[30;43m.[0m
+{"tool":"phpunit","result":"passed","tests":351,"passed":346,"assertions":2159,"duration_ms":14216,"skipped":5}

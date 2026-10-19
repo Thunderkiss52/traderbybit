@@ -1,0 +1,61 @@
+{
+    "test": "P1 PostgreSQL Concurrency & Slot Idempotency Proof",
+    "timestamp_utc": "2026-10-19T23:27:38Z",
+    "database": "bybit_test",
+    "host": "127.0.0.1",
+    "port": 25432,
+    "synchronization_mechanism": "PostgreSQL 17 advisory lock barrier (pg_advisory_lock(777111))",
+    "concurrent_workers": {
+        "worker_1": {
+            "worker_id": "worker_1",
+            "pid": 115241,
+            "observation_id": "6063b231-b968-589c-bec7-df9f3832bde6",
+            "unblocked_at": 1792452457.573063,
+            "obs_finished_at": 1792452457.606245,
+            "eval_finished_at": 1792452457.626523,
+            "obs_duration_ms": 33.18,
+            "eval_duration_ms": 20.28,
+            "total_duration_ms": 53.46,
+            "evaluation_id": "6063b231-b968-589c-bec7-df9f3832bde6",
+            "action": "SUCCESS",
+            "error": null
+        },
+        "worker_2": {
+            "worker_id": "worker_2",
+            "pid": 115242,
+            "observation_id": "6063b231-b968-589c-bec7-df9f3832bde6",
+            "unblocked_at": 1792452457.568079,
+            "obs_finished_at": 1792452457.605962,
+            "eval_finished_at": 1792452457.628544,
+            "obs_duration_ms": 37.88,
+            "eval_duration_ms": 22.58,
+            "total_duration_ms": 60.47,
+            "evaluation_id": "6063b231-b968-589c-bec7-df9f3832bde6",
+            "action": "SUCCESS",
+            "error": null
+        }
+    },
+    "concurrency_metrics": {
+        "barrier_release_epoch": 1792452457.562851,
+        "worker_1_unblock": 1792452457.573063,
+        "worker_2_unblock": 1792452457.568079,
+        "unblock_delta_ms": 4.984,
+        "execution_overlap": true
+    },
+    "assertions": {
+        "both_workers_exit_zero": true,
+        "canonical_evaluation_id_match": true,
+        "canonical_evaluation_id": "6063b231-b968-589c-bec7-df9f3832bde6",
+        "strategy_observations_count_after_race": 1,
+        "counterfactual_evaluations_canonical_count_after_race": 1,
+        "incompatible_config_hash_handled_without_duplicate": true,
+        "incompatible_payload_flagged": true,
+        "conflicting_configuration_hashes": [
+            "hash_initial",
+            "hash_conflicting_b"
+        ],
+        "legitimate_version_bump_creates_distinct_evaluation": true,
+        "evaluation_id_v1_3_0": "86e24c27-2241-5c3f-b3cb-1185e2a23154"
+    },
+    "overall_verdict": "PASS"
+}

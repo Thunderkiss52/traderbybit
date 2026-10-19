@@ -1,0 +1,532 @@
+{
+  "captured_at_utc": "2026-10-19T23:25:54Z",
+  "database": "bybit_test",
+  "host": "127.0.0.1",
+  "port": 25432,
+  "credentials": "[REDACTED]",
+  "validation_policy": "STRICT_FAIL_CLOSED_VALIDATION",
+  "queries": [
+    {
+      "query_id": "Q01_PAPER_ACCOUNTS_INSPECTION",
+      "description": "Inspect all primary paper accounts, verifying 8 isolated accounts and their balances",
+      "sql": "SELECT id, name, strategy_id, strategy_version, starting_balance, current_equity, peak_equity, realized_pnl, status FROM paper_accounts ORDER BY name;",
+      "exit_code": 0,
+      "duration_ms": 152.88,
+      "row_count": 9,
+      "rows": [
+        {
+          "id": "6573dfda-71ed-5444-8d95-08c2a6fadfa7",
+          "name": "Forward Paper bollinger_mean_reversion",
+          "strategy_id": "bollinger_mean_reversion",
+          "strategy_version": "1.3.0",
+          "starting_balance": 10000.0,
+          "current_equity": 10000.0,
+          "peak_equity": 10000.0,
+          "realized_pnl": 0.0,
+          "status": "ACTIVE"
+        },
+        {
+          "id": "5f742264-cc16-57f2-bd5a-d1de7d06b0e8",
+          "name": "Forward Paper donchian_atr_breakout",
+          "strategy_id": "donchian_atr_breakout",
+          "strategy_version": "1.3.0",
+          "starting_balance": 10000.0,
+          "current_equity": 10000.0,
+          "peak_equity": 10000.0,
+          "realized_pnl": 0.0,
+          "status": "ACTIVE"
+        },
+        {
+          "id": "458c0fd5-7673-5ce8-ba07-a4576c854945",
+          "name": "Forward Paper momentum",
+          "strategy_id": "momentum",
+          "strategy_version": "1.0.0",
+          "starting_balance": 10000.0,
+          "current_equity": 10000.0,
+          "peak_equity": 10000.0,
+          "realized_pnl": 0.0,
+          "status": "ACTIVE"
+        },
+        {
+          "id": "38fcded4-48f4-52d1-b436-b8ef018f6d8c",
+          "name": "Forward Paper regime_switching",
+          "strategy_id": "regime_switching",
+          "strategy_version": "1.3.0",
+          "starting_balance": 10000.0,
+          "current_equity": 10000.0,
+          "peak_equity": 10000.0,
+          "realized_pnl": 0.0,
+          "status": "ACTIVE"
+        },
+        {
+          "id": "794fa4f9-33cd-5338-867e-a9c27f834652",
+          "name": "Forward Paper support_resistance_bounce",
+          "strategy_id": "support_resistance_bounce",
+          "strategy_version": "1.0.0",
+          "starting_balance": 10000.0,
+          "current_equity": 10000.0,
+          "peak_equity": 10000.0,
+          "realized_pnl": 0.0,
+          "status": "ACTIVE"
+        },
+        {
+          "id": "9eab0b93-2696-53fd-9ecb-ff734d04670f",
+          "name": "Forward Paper support_resistance_breakout",
+          "strategy_id": "support_resistance_breakout",
+          "strategy_version": "1.0.0",
+          "starting_balance": 10000.0,
+          "current_equity": 10000.0,
+          "peak_equity": 10000.0,
+          "realized_pnl": 0.0,
+          "status": "ACTIVE"
+        },
+        {
+          "id": "0efa78fb-182f-5053-af0c-6d04188d4a15",
+          "name": "Forward Paper trend_pullback",
+          "strategy_id": "trend_pullback",
+          "strategy_version": "1.5.0-unauthorized",
+          "starting_balance": 10000.0,
+          "current_equity": 10000.0,
+          "peak_equity": 10000.0,
+          "realized_pnl": 0.0,
+          "status": "ACTIVE"
+        },
+        {
+          "id": "ec9dd1b1-1001-5c4f-a203-4a2a9ba9f9ca",
+          "name": "Forward Paper trend_pullback",
+          "strategy_id": "trend_pullback",
+          "strategy_version": "1.3.0",
+          "starting_balance": 10000.0,
+          "current_equity": 10000.0,
+          "peak_equity": 10000.0,
+          "realized_pnl": 0.0,
+          "status": "ACTIVE"
+        },
+        {
+          "id": "94b97f13-107d-54a9-b4eb-1ca5a9c79743",
+          "name": "Research Portfolio",
+          "strategy_id": "baseline",
+          "strategy_version": "1.2.0",
+          "starting_balance": 10000.0,
+          "current_equity": 10000.0,
+          "peak_equity": 10000.0,
+          "realized_pnl": 0.0,
+          "status": "ACTIVE"
+        }
+      ],
+      "raw_stdout": "[{\"id\":\"6573dfda-71ed-5444-8d95-08c2a6fadfa7\",\"name\":\"Forward Paper bollinger_mean_reversion\",\"strategy_id\":\"bollinger_mean_reversion\",\"strategy_version\":\"1.3.0\",\"starting_balance\":10000.000000000000,\"current_equity\":10000.000000000000,\"peak_equity\":10000.000000000000,\"realized_pnl\":0.000000000000,\"status\":\"ACTIVE\"}, \n {\"id\":\"5f742264-cc16-57f2-bd5a-d1de7d06b0e8\",\"name\":\"Forward Paper donchian_atr_breakout\",\"strategy_id\":\"donchian_atr_breakout\",\"strategy_version\":\"1.3.0\",\"starting_balance\":10000.000000000000,\"current_equity\":10000.000000000000,\"peak_equity\":10000.000000000000,\"realized_pnl\":0.000000000000,\"status\":\"ACTIVE\"}, \n {\"id\":\"458c0fd5-7673-5ce8-ba07-a4576c854945\",\"name\":\"Forward Paper momentum\",\"strategy_id\":\"momentum\",\"strategy_version\":\"1.0.0\",\"starting_balance\":10000.000000000000,\"current_equity\":10000.000000000000,\"peak_equity\":10000.000000000000,\"realized_pnl\":0.000000000000,\"status\":\"ACTIVE\"}, \n {\"id\":\"38fcded4-48f4-52d1-b436-b8ef018f6d8c\",\"name\":\"Forward Paper regime_switching\",\"strategy_id\":\"regime_switching\",\"strategy_version\":\"1.3.0\",\"starting_balance\":10000.000000000000,\"current_equity\":10000.000000000000,\"peak_equity\":10000.000000000000,\"realized_pnl\":0.000000000000,\"status\":\"ACTIVE\"}, \n {\"id\":\"794fa4f9-33cd-5338-867e-a9c27f834652\",\"name\":\"Forward Paper support_resistance_bounce\",\"strategy_id\":\"support_resistance_bounce\",\"strategy_version\":\"1.0.0\",\"starting_balance\":10000.000000000000,\"current_equity\":10000.000000000000,\"peak_equity\":10000.000000000000,\"realized_pnl\":0.000000000000,\"status\":\"ACTIVE\"}, \n {\"id\":\"9eab0b93-2696-53fd-9ecb-ff734d04670f\",\"name\":\"Forward Paper support_resistance_breakout\",\"strategy_id\":\"support_resistance_breakout\",\"strategy_version\":\"1.0.0\",\"starting_balance\":10000.000000000000,\"current_equity\":10000.000000000000,\"peak_equity\":10000.000000000000,\"realized_pnl\":0.000000000000,\"status\":\"ACTIVE\"}, \n {\"id\":\"0efa78fb-182f-5053-af0c-6d04188d4a15\",\"name\":\"Forward Paper trend_pullback\",\"strategy_id\":\"trend_pullback\",\"strategy_version\":\"1.5.0-unauthorized\",\"starting_balance\":10000.000000000000,\"current_equity\":10000.000000000000,\"peak_equity\":10000.000000000000,\"realized_pnl\":0.000000000000,\"status\":\"ACTIVE\"}, \n {\"id\":\"ec9dd1b1-1001-5c4f-a203-4a2a9ba9f9ca\",\"name\":\"Forward Paper trend_pullback\",\"strategy_id\":\"trend_pullback\",\"strategy_version\":\"1.3.0\",\"starting_balance\":10000.000000000000,\"current_equity\":10000.000000000000,\"peak_equity\":10000.000000000000,\"realized_pnl\":0.000000000000,\"status\":\"ACTIVE\"}, \n {\"id\":\"94b97f13-107d-54a9-b4eb-1ca5a9c79743\",\"name\":\"Research Portfolio\",\"strategy_id\":\"baseline\",\"strategy_version\":\"1.2.0\",\"starting_balance\":10000.000000000000,\"current_equity\":10000.000000000000,\"peak_equity\":10000.000000000000,\"realized_pnl\":0.000000000000,\"status\":\"ACTIVE\"}]",
+      "raw_stderr": null,
+      "validation": {
+        "cardinality_min": 8,
+        "cardinality_max": 10,
+        "required_non_null_fields": [
+          "id",
+          "name",
+          "strategy_id",
+          "starting_balance",
+          "current_equity",
+          "status"
+        ],
+        "status": "PASSED_STRICT_VALIDATION"
+      }
+    },
+    {
+      "query_id": "Q02_RECONCILIATION_RUNS_LATEST",
+      "description": "Verify latest ledger reconciliation runs and discrepancy status across accounts",
+      "sql": "SELECT r.id, r.paper_account_id, a.name AS account_name, r.status, r.recalculated_balance, r.stored_balance, r.recalculated_equity, r.stored_equity, r.discrepancy_count, r.completed_at FROM reconciliation_runs r JOIN paper_accounts a ON r.paper_account_id = a.id ORDER BY r.completed_at DESC LIMIT 8;",
+      "exit_code": 0,
+      "duration_ms": 152.94,
+      "row_count": 8,
+      "rows": [
+        {
+          "id": "c68b7c8a-a346-4707-8736-3ecc1805a75f",
+          "paper_account_id": "38fcded4-48f4-52d1-b436-b8ef018f6d8c",
+          "account_name": "Forward Paper regime_switching",
+          "status": "PASSED",
+          "recalculated_balance": 10000.0,
+          "stored_balance": 10000.0,
+          "recalculated_equity": 10000.0,
+          "stored_equity": 10000.0,
+          "discrepancy_count": 0,
+          "completed_at": "2026-10-19T19:48:01+00:00"
+        },
+        {
+          "id": "f89a2189-a594-4738-b93a-6352ce78986f",
+          "paper_account_id": "794fa4f9-33cd-5338-867e-a9c27f834652",
+          "account_name": "Forward Paper support_resistance_bounce",
+          "status": "PASSED",
+          "recalculated_balance": 10000.0,
+          "stored_balance": 10000.0,
+          "recalculated_equity": 10000.0,
+          "stored_equity": 10000.0,
+          "discrepancy_count": 0,
+          "completed_at": "2026-10-19T19:48:01+00:00"
+        },
+        {
+          "id": "fd152f35-6db9-44be-b4e4-effe129d7104",
+          "paper_account_id": "5f742264-cc16-57f2-bd5a-d1de7d06b0e8",
+          "account_name": "Forward Paper donchian_atr_breakout",
+          "status": "PASSED",
+          "recalculated_balance": 10000.0,
+          "stored_balance": 10000.0,
+          "recalculated_equity": 10000.0,
+          "stored_equity": 10000.0,
+          "discrepancy_count": 0,
+          "completed_at": "2026-10-19T19:48:01+00:00"
+        },
+        {
+          "id": "c3ca5ade-bda6-4c37-977e-939021703eb0",
+          "paper_account_id": "94b97f13-107d-54a9-b4eb-1ca5a9c79743",
+          "account_name": "Research Portfolio",
+          "status": "PASSED",
+          "recalculated_balance": 10000.0,
+          "stored_balance": 10000.0,
+          "recalculated_equity": 10000.0,
+          "stored_equity": 10000.0,
+          "discrepancy_count": 0,
+          "completed_at": "2026-10-19T19:48:01+00:00"
+        },
+        {
+          "id": "187657f9-0fd8-43da-84f7-0f7b725f94d8",
+          "paper_account_id": "6573dfda-71ed-5444-8d95-08c2a6fadfa7",
+          "account_name": "Forward Paper bollinger_mean_reversion",
+          "status": "PASSED",
+          "recalculated_balance": 10000.0,
+          "stored_balance": 10000.0,
+          "recalculated_equity": 10000.0,
+          "stored_equity": 10000.0,
+          "discrepancy_count": 0,
+          "completed_at": "2026-10-19T19:48:01+00:00"
+        },
+        {
+          "id": "7ab33ed9-5651-4878-a563-00b1aa08cf5c",
+          "paper_account_id": "458c0fd5-7673-5ce8-ba07-a4576c854945",
+          "account_name": "Forward Paper momentum",
+          "status": "PASSED",
+          "recalculated_balance": 10000.0,
+          "stored_balance": 10000.0,
+          "recalculated_equity": 10000.0,
+          "stored_equity": 10000.0,
+          "discrepancy_count": 0,
+          "completed_at": "2026-10-19T19:48:01+00:00"
+        },
+        {
+          "id": "4a7254a5-acd7-4cbe-951b-85e2d41518a1",
+          "paper_account_id": "ec9dd1b1-1001-5c4f-a203-4a2a9ba9f9ca",
+          "account_name": "Forward Paper trend_pullback",
+          "status": "PASSED",
+          "recalculated_balance": 10000.0,
+          "stored_balance": 10000.0,
+          "recalculated_equity": 10000.0,
+          "stored_equity": 10000.0,
+          "discrepancy_count": 0,
+          "completed_at": "2026-10-19T19:48:01+00:00"
+        },
+        {
+          "id": "020e1606-7eff-4d8f-8bb2-4d47b314f796",
+          "paper_account_id": "9eab0b93-2696-53fd-9ecb-ff734d04670f",
+          "account_name": "Forward Paper support_resistance_breakout",
+          "status": "PASSED",
+          "recalculated_balance": 10000.0,
+          "stored_balance": 10000.0,
+          "recalculated_equity": 10000.0,
+          "stored_equity": 10000.0,
+          "discrepancy_count": 0,
+          "completed_at": "2026-10-19T19:48:01+00:00"
+        }
+      ],
+      "raw_stdout": "[{\"id\":\"c68b7c8a-a346-4707-8736-3ecc1805a75f\",\"paper_account_id\":\"38fcded4-48f4-52d1-b436-b8ef018f6d8c\",\"account_name\":\"Forward Paper regime_switching\",\"status\":\"PASSED\",\"recalculated_balance\":10000.000000000000,\"stored_balance\":10000.000000000000,\"recalculated_equity\":10000.000000000000,\"stored_equity\":10000.000000000000,\"discrepancy_count\":0,\"completed_at\":\"2026-10-19T19:48:01+00:00\"}, \n {\"id\":\"f89a2189-a594-4738-b93a-6352ce78986f\",\"paper_account_id\":\"794fa4f9-33cd-5338-867e-a9c27f834652\",\"account_name\":\"Forward Paper support_resistance_bounce\",\"status\":\"PASSED\",\"recalculated_balance\":10000.000000000000,\"stored_balance\":10000.000000000000,\"recalculated_equity\":10000.000000000000,\"stored_equity\":10000.000000000000,\"discrepancy_count\":0,\"completed_at\":\"2026-10-19T19:48:01+00:00\"}, \n {\"id\":\"fd152f35-6db9-44be-b4e4-effe129d7104\",\"paper_account_id\":\"5f742264-cc16-57f2-bd5a-d1de7d06b0e8\",\"account_name\":\"Forward Paper donchian_atr_breakout\",\"status\":\"PASSED\",\"recalculated_balance\":10000.000000000000,\"stored_balance\":10000.000000000000,\"recalculated_equity\":10000.000000000000,\"stored_equity\":10000.000000000000,\"discrepancy_count\":0,\"completed_at\":\"2026-10-19T19:48:01+00:00\"}, \n {\"id\":\"c3ca5ade-bda6-4c37-977e-939021703eb0\",\"paper_account_id\":\"94b97f13-107d-54a9-b4eb-1ca5a9c79743\",\"account_name\":\"Research Portfolio\",\"status\":\"PASSED\",\"recalculated_balance\":10000.000000000000,\"stored_balance\":10000.000000000000,\"recalculated_equity\":10000.000000000000,\"stored_equity\":10000.000000000000,\"discrepancy_count\":0,\"completed_at\":\"2026-10-19T19:48:01+00:00\"}, \n {\"id\":\"187657f9-0fd8-43da-84f7-0f7b725f94d8\",\"paper_account_id\":\"6573dfda-71ed-5444-8d95-08c2a6fadfa7\",\"account_name\":\"Forward Paper bollinger_mean_reversion\",\"status\":\"PASSED\",\"recalculated_balance\":10000.000000000000,\"stored_balance\":10000.000000000000,\"recalculated_equity\":10000.000000000000,\"stored_equity\":10000.000000000000,\"discrepancy_count\":0,\"completed_at\":\"2026-10-19T19:48:01+00:00\"}, \n {\"id\":\"7ab33ed9-5651-4878-a563-00b1aa08cf5c\",\"paper_account_id\":\"458c0fd5-7673-5ce8-ba07-a4576c854945\",\"account_name\":\"Forward Paper momentum\",\"status\":\"PASSED\",\"recalculated_balance\":10000.000000000000,\"stored_balance\":10000.000000000000,\"recalculated_equity\":10000.000000000000,\"stored_equity\":10000.000000000000,\"discrepancy_count\":0,\"completed_at\":\"2026-10-19T19:48:01+00:00\"}, \n {\"id\":\"4a7254a5-acd7-4cbe-951b-85e2d41518a1\",\"paper_account_id\":\"ec9dd1b1-1001-5c4f-a203-4a2a9ba9f9ca\",\"account_name\":\"Forward Paper trend_pullback\",\"status\":\"PASSED\",\"recalculated_balance\":10000.000000000000,\"stored_balance\":10000.000000000000,\"recalculated_equity\":10000.000000000000,\"stored_equity\":10000.000000000000,\"discrepancy_count\":0,\"completed_at\":\"2026-10-19T19:48:01+00:00\"}, \n {\"id\":\"020e1606-7eff-4d8f-8bb2-4d47b314f796\",\"paper_account_id\":\"9eab0b93-2696-53fd-9ecb-ff734d04670f\",\"account_name\":\"Forward Paper support_resistance_breakout\",\"status\":\"PASSED\",\"recalculated_balance\":10000.000000000000,\"stored_balance\":10000.000000000000,\"recalculated_equity\":10000.000000000000,\"stored_equity\":10000.000000000000,\"discrepancy_count\":0,\"completed_at\":\"2026-10-19T19:48:01+00:00\"}]",
+      "raw_stderr": null,
+      "validation": {
+        "cardinality_min": 8,
+        "cardinality_max": 8,
+        "required_non_null_fields": [
+          "id",
+          "paper_account_id",
+          "account_name",
+          "status",
+          "recalculated_balance",
+          "recalculated_equity",
+          "discrepancy_count"
+        ],
+        "status": "PASSED_STRICT_VALIDATION"
+      }
+    },
+    {
+      "query_id": "Q03_COUNTERFACTUAL_SLOT_INTEGRITY",
+      "description": "Inspect canonical vs superseded counterfactual evaluations count and slot uniqueness",
+      "sql": "SELECT COUNT(*) AS total_rows, COUNT(CASE WHEN superseded_by IS NULL THEN 1 END) AS canonical_rows, COUNT(CASE WHEN superseded_by IS NOT NULL THEN 1 END) AS superseded_rows, COUNT(DISTINCT (strategy_id || '|' || strategy_version || '|' || symbol || '|' || timeframe || '|' || decision_time::text)) AS distinct_slots FROM counterfactual_evaluations;",
+      "exit_code": 0,
+      "duration_ms": 145.48,
+      "row_count": 1,
+      "rows": [
+        {
+          "total_rows": 2,
+          "canonical_rows": 2,
+          "superseded_rows": 0,
+          "distinct_slots": 2
+        }
+      ],
+      "raw_stdout": "[{\"total_rows\":2,\"canonical_rows\":2,\"superseded_rows\":0,\"distinct_slots\":2}]",
+      "raw_stderr": null,
+      "validation": {
+        "cardinality_min": 1,
+        "cardinality_max": 1,
+        "required_non_null_fields": [
+          "total_rows",
+          "canonical_rows",
+          "superseded_rows",
+          "distinct_slots"
+        ],
+        "status": "PASSED_STRICT_VALIDATION"
+      }
+    },
+    {
+      "query_id": "Q04_STRATEGY_OBSERVATIONS_SUMMARY",
+      "description": "Strategy observations distribution by strategy_id, side, and quality class",
+      "sql": "SELECT strategy_id, side, quality_class, COUNT(*) AS count FROM strategy_observations GROUP BY strategy_id, side, quality_class ORDER BY strategy_id, side;",
+      "exit_code": 0,
+      "duration_ms": 157.39,
+      "row_count": 10,
+      "rows": [
+        {
+          "strategy_id": "baseline",
+          "side": "BUY",
+          "quality_class": "B",
+          "count": 44
+        },
+        {
+          "strategy_id": "baseline",
+          "side": "SKIP",
+          "quality_class": "B",
+          "count": 1
+        },
+        {
+          "strategy_id": "baseline",
+          "side": "SKIP",
+          "quality_class": null,
+          "count": 2
+        },
+        {
+          "strategy_id": "bollinger_mean_reversion",
+          "side": "SKIP",
+          "quality_class": "B",
+          "count": 44
+        },
+        {
+          "strategy_id": "donchian_atr_breakout",
+          "side": "SKIP",
+          "quality_class": "B",
+          "count": 44
+        },
+        {
+          "strategy_id": "momentum",
+          "side": "SKIP",
+          "quality_class": "B",
+          "count": 44
+        },
+        {
+          "strategy_id": "regime_switching",
+          "side": "BUY",
+          "quality_class": "B",
+          "count": 44
+        },
+        {
+          "strategy_id": "support_resistance_bounce",
+          "side": "SKIP",
+          "quality_class": "B",
+          "count": 43
+        },
+        {
+          "strategy_id": "support_resistance_breakout",
+          "side": "SKIP",
+          "quality_class": "B",
+          "count": 43
+        },
+        {
+          "strategy_id": "trend_pullback",
+          "side": "SKIP",
+          "quality_class": "B",
+          "count": 44
+        }
+      ],
+      "raw_stdout": "[{\"strategy_id\":\"baseline\",\"side\":\"BUY\",\"quality_class\":\"B\",\"count\":44}, \n {\"strategy_id\":\"baseline\",\"side\":\"SKIP\",\"quality_class\":\"B\",\"count\":1}, \n {\"strategy_id\":\"baseline\",\"side\":\"SKIP\",\"quality_class\":null,\"count\":2}, \n {\"strategy_id\":\"bollinger_mean_reversion\",\"side\":\"SKIP\",\"quality_class\":\"B\",\"count\":44}, \n {\"strategy_id\":\"donchian_atr_breakout\",\"side\":\"SKIP\",\"quality_class\":\"B\",\"count\":44}, \n {\"strategy_id\":\"momentum\",\"side\":\"SKIP\",\"quality_class\":\"B\",\"count\":44}, \n {\"strategy_id\":\"regime_switching\",\"side\":\"BUY\",\"quality_class\":\"B\",\"count\":44}, \n {\"strategy_id\":\"support_resistance_bounce\",\"side\":\"SKIP\",\"quality_class\":\"B\",\"count\":43}, \n {\"strategy_id\":\"support_resistance_breakout\",\"side\":\"SKIP\",\"quality_class\":\"B\",\"count\":43}, \n {\"strategy_id\":\"trend_pullback\",\"side\":\"SKIP\",\"quality_class\":\"B\",\"count\":44}]",
+      "raw_stderr": null,
+      "validation": {
+        "cardinality_min": 5,
+        "cardinality_max": null,
+        "required_non_null_fields": [
+          "strategy_id",
+          "side",
+          "count"
+        ],
+        "status": "PASSED_STRICT_VALIDATION"
+      }
+    },
+    {
+      "query_id": "Q05_RISK_DECISIONS_DISTRIBUTION",
+      "description": "Risk decisions distribution by paper_account_id, allowed flag, and risk_version",
+      "sql": "SELECT paper_account_id, allowed, risk_version, COUNT(*) AS count FROM risk_decisions GROUP BY paper_account_id, allowed, risk_version ORDER BY paper_account_id, allowed;",
+      "exit_code": 0,
+      "duration_ms": 129.0,
+      "row_count": 10,
+      "rows": [
+        {
+          "paper_account_id": "38fcded4-48f4-52d1-b436-b8ef018f6d8c",
+          "allowed": false,
+          "risk_version": "1.0.0",
+          "count": 1
+        },
+        {
+          "paper_account_id": "38fcded4-48f4-52d1-b436-b8ef018f6d8c",
+          "allowed": true,
+          "risk_version": "1.0.0",
+          "count": 1
+        },
+        {
+          "paper_account_id": "458c0fd5-7673-5ce8-ba07-a4576c854945",
+          "allowed": false,
+          "risk_version": "1.0.0",
+          "count": 1
+        },
+        {
+          "paper_account_id": "458c0fd5-7673-5ce8-ba07-a4576c854945",
+          "allowed": true,
+          "risk_version": "1.0.0",
+          "count": 1
+        },
+        {
+          "paper_account_id": "5f742264-cc16-57f2-bd5a-d1de7d06b0e8",
+          "allowed": false,
+          "risk_version": "1.0.0",
+          "count": 1
+        },
+        {
+          "paper_account_id": "5f742264-cc16-57f2-bd5a-d1de7d06b0e8",
+          "allowed": true,
+          "risk_version": "1.0.0",
+          "count": 1
+        },
+        {
+          "paper_account_id": "6573dfda-71ed-5444-8d95-08c2a6fadfa7",
+          "allowed": false,
+          "risk_version": "1.0.0",
+          "count": 1
+        },
+        {
+          "paper_account_id": "6573dfda-71ed-5444-8d95-08c2a6fadfa7",
+          "allowed": true,
+          "risk_version": "1.0.0",
+          "count": 1
+        },
+        {
+          "paper_account_id": "794fa4f9-33cd-5338-867e-a9c27f834652",
+          "allowed": false,
+          "risk_version": "1.0.0",
+          "count": 1
+        },
+        {
+          "paper_account_id": "794fa4f9-33cd-5338-867e-a9c27f834652",
+          "allowed": true,
+          "risk_version": "1.0.0",
+          "count": 1
+        }
+      ],
+      "raw_stdout": "[{\"paper_account_id\":\"38fcded4-48f4-52d1-b436-b8ef018f6d8c\",\"allowed\":false,\"risk_version\":\"1.0.0\",\"count\":1}, \n {\"paper_account_id\":\"38fcded4-48f4-52d1-b436-b8ef018f6d8c\",\"allowed\":true,\"risk_version\":\"1.0.0\",\"count\":1}, \n {\"paper_account_id\":\"458c0fd5-7673-5ce8-ba07-a4576c854945\",\"allowed\":false,\"risk_version\":\"1.0.0\",\"count\":1}, \n {\"paper_account_id\":\"458c0fd5-7673-5ce8-ba07-a4576c854945\",\"allowed\":true,\"risk_version\":\"1.0.0\",\"count\":1}, \n {\"paper_account_id\":\"5f742264-cc16-57f2-bd5a-d1de7d06b0e8\",\"allowed\":false,\"risk_version\":\"1.0.0\",\"count\":1}, \n {\"paper_account_id\":\"5f742264-cc16-57f2-bd5a-d1de7d06b0e8\",\"allowed\":true,\"risk_version\":\"1.0.0\",\"count\":1}, \n {\"paper_account_id\":\"6573dfda-71ed-5444-8d95-08c2a6fadfa7\",\"allowed\":false,\"risk_version\":\"1.0.0\",\"count\":1}, \n {\"paper_account_id\":\"6573dfda-71ed-5444-8d95-08c2a6fadfa7\",\"allowed\":true,\"risk_version\":\"1.0.0\",\"count\":1}, \n {\"paper_account_id\":\"794fa4f9-33cd-5338-867e-a9c27f834652\",\"allowed\":false,\"risk_version\":\"1.0.0\",\"count\":1}, \n {\"paper_account_id\":\"794fa4f9-33cd-5338-867e-a9c27f834652\",\"allowed\":true,\"risk_version\":\"1.0.0\",\"count\":1}]",
+      "raw_stderr": null,
+      "validation": {
+        "cardinality_min": 1,
+        "cardinality_max": null,
+        "required_non_null_fields": [
+          "paper_account_id",
+          "allowed",
+          "risk_version",
+          "count"
+        ],
+        "status": "PASSED_STRICT_VALIDATION"
+      }
+    },
+    {
+      "query_id": "Q06_ML_MODELS_GATE6_STATUS",
+      "description": "Inspect registered ML model artifacts, statuses, and Gate 6 validation flags",
+      "sql": "SELECT id, name, model_type, version, status, parameters->>'gate6_validation' AS gate6_validation_raw, parameters->>'approved_for_advisory' AS approved_for_advisory, created_at FROM learning_model_artifacts ORDER BY created_at DESC;",
+      "exit_code": 0,
+      "duration_ms": 158.37,
+      "row_count": 1,
+      "rows": [
+        {
+          "id": "1f20a49c-f059-43de-9ccc-cfa55fcc96f8",
+          "name": "Logistic_TP_BEFORE_SL_BTCUSDT",
+          "model_type": "LOGISTIC_REGRESSION",
+          "version": "v20261017.120000",
+          "status": "CANDIDATE",
+          "gate6_validation_raw": "false",
+          "approved_for_advisory": "false",
+          "created_at": "2026-10-19T22:53:52.526+00:00"
+        }
+      ],
+      "raw_stdout": "[{\"id\":\"1f20a49c-f059-43de-9ccc-cfa55fcc96f8\",\"name\":\"Logistic_TP_BEFORE_SL_BTCUSDT\",\"model_type\":\"LOGISTIC_REGRESSION\",\"version\":\"v20261017.120000\",\"status\":\"CANDIDATE\",\"gate6_validation_raw\":\"false\",\"approved_for_advisory\":\"false\",\"created_at\":\"2026-10-19T22:53:52.526+00:00\"}]",
+      "raw_stderr": null,
+      "validation": {
+        "cardinality_min": 1,
+        "cardinality_max": null,
+        "required_non_null_fields": [
+          "id",
+          "name",
+          "model_type",
+          "version",
+          "status",
+          "created_at"
+        ],
+        "status": "PASSED_STRICT_VALIDATION"
+      }
+    },
+    {
+      "query_id": "Q07_SCHEMA_CONSTRAINTS_AND_INDEXES",
+      "description": "Verify presence of partial unique indexes enforcing slot idempotency and account uniqueness",
+      "sql": "SELECT schemaname, tablename, indexname, indexdef FROM pg_indexes WHERE tablename IN ('counterfactual_evaluations', 'strategy_observations', 'risk_decisions') AND indexname LIKE '%unique%' ORDER BY tablename, indexname;",
+      "exit_code": 0,
+      "duration_ms": 136.04,
+      "row_count": 4,
+      "rows": [
+        {
+          "schemaname": "public",
+          "tablename": "counterfactual_evaluations",
+          "indexname": "counterfactual_evaluations_signal_unique",
+          "indexdef": "CREATE UNIQUE INDEX counterfactual_evaluations_signal_unique ON public.counterfactual_evaluations USING btree (signal_id) WHERE ((signal_id IS NOT NULL) AND (superseded_by IS NULL))"
+        },
+        {
+          "schemaname": "public",
+          "tablename": "counterfactual_evaluations",
+          "indexname": "counterfactual_evaluations_slot_unique",
+          "indexdef": "CREATE UNIQUE INDEX counterfactual_evaluations_slot_unique ON public.counterfactual_evaluations USING btree (strategy_id, strategy_version, symbol, timeframe, decision_time) WHERE (superseded_by IS NULL)"
+        },
+        {
+          "schemaname": "public",
+          "tablename": "risk_decisions",
+          "indexname": "risk_decisions_paper_account_id_signal_id_risk_version_unique",
+          "indexdef": "CREATE UNIQUE INDEX risk_decisions_paper_account_id_signal_id_risk_version_unique ON public.risk_decisions USING btree (paper_account_id, signal_id, risk_version)"
+        },
+        {
+          "schemaname": "public",
+          "tablename": "strategy_observations",
+          "indexname": "strategy_observations_slot_unique",
+          "indexdef": "CREATE UNIQUE INDEX strategy_observations_slot_unique ON public.strategy_observations USING btree (exchange, category, symbol, strategy_id, strategy_version, decision_time) WHERE (superseded_by IS NULL)"
+        }
+      ],
+      "raw_stdout": "[{\"schemaname\":\"public\",\"tablename\":\"counterfactual_evaluations\",\"indexname\":\"counterfactual_evaluations_signal_unique\",\"indexdef\":\"CREATE UNIQUE INDEX counterfactual_evaluations_signal_unique ON public.counterfactual_evaluations USING btree (signal_id) WHERE ((signal_id IS NOT NULL) AND (superseded_by IS NULL))\"}, \n {\"schemaname\":\"public\",\"tablename\":\"counterfactual_evaluations\",\"indexname\":\"counterfactual_evaluations_slot_unique\",\"indexdef\":\"CREATE UNIQUE INDEX counterfactual_evaluations_slot_unique ON public.counterfactual_evaluations USING btree (strategy_id, strategy_version, symbol, timeframe, decision_time) WHERE (superseded_by IS NULL)\"}, \n {\"schemaname\":\"public\",\"tablename\":\"risk_decisions\",\"indexname\":\"risk_decisions_paper_account_id_signal_id_risk_version_unique\",\"indexdef\":\"CREATE UNIQUE INDEX risk_decisions_paper_account_id_signal_id_risk_version_unique ON public.risk_decisions USING btree (paper_account_id, signal_id, risk_version)\"}, \n {\"schemaname\":\"public\",\"tablename\":\"strategy_observations\",\"indexname\":\"strategy_observations_slot_unique\",\"indexdef\":\"CREATE UNIQUE INDEX strategy_observations_slot_unique ON public.strategy_observations USING btree (exchange, category, symbol, strategy_id, strategy_version, decision_time) WHERE (superseded_by IS NULL)\"}]",
+      "raw_stderr": null,
+      "validation": {
+        "cardinality_min": 4,
+        "cardinality_max": null,
+        "required_non_null_fields": [
+          "schemaname",
+          "tablename",
+          "indexname",
+          "indexdef"
+        ],
+        "status": "PASSED_STRICT_VALIDATION"
+      }
+    }
+  ]
+}

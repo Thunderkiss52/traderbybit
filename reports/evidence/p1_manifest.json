@@ -1,0 +1,24 @@
+{
+  "package_id": "P1",
+  "title": "Idempotency and Slot Integrity",
+  "status": "COMPLETED_AND_VERIFIED",
+  "timestamp_utc": "2026-10-19T23:38:12Z",
+  "actor": "Codex / Antigravity Lead Engineer",
+  "git_head_sha": "98cbe67906849ea8026441f19695c1462ddef9cc",
+  "working_tree_dirty": true,
+  "diff_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+  "migrations": [
+    "database/migrations/2026_10_19_000000_add_slot_idempotency_to_counterfactual_evaluations.php",
+    "database/migrations/2026_10_20_000000_add_slot_idempotency_to_strategy_observations.php"
+  ],
+  "test_file": "tests/Integration/CounterfactualSlotIdempotencyPostgresIntegrationTest.php",
+  "test_suite_result": {
+    "tests": 5,
+    "passed": 5,
+    "assertions": 21,
+    "status": "PASSED"
+  },
+  "claims_count": 5,
+  "negative_controls_count": 2,
+  "concurrency_proof": "reports/evidence/p1_concurrency_proof.json"
+}

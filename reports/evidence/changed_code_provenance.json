@@ -1,0 +1,19 @@
+{
+  "generated_at_utc": "2026-10-19T23:38:12Z",
+  "git_head_sha": "98cbe67906849ea8026441f19695c1462ddef9cc",
+  "tracked_changes": {
+    "diff_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "modified_files_count": 0,
+    "modified_files": []
+  },
+  "untracked_files_provenance": {
+    "count": 1,
+    "files": [
+      {
+        "path": "evidence.zip.sha256",
+        "sha256": "1da91eda45fd3aab81214b9ab4fcc18a0b37d0e784fee922771f3038b8fdaad9",
+        "size_bytes": 79
+      }
+    ]
+  }
+}

@@ -1,0 +1,22 @@
+{
+  "audit_name": "Production Codebase Static Hardcoding Audit",
+  "timestamp_utc": "2026-10-19T23:27:34Z",
+  "target_directory": "app/",
+  "files_scanned": 249,
+  "prohibited_constants_audited": [
+    "Full-lifecycle gross PnL (142.5411)",
+    "Full-lifecycle fees (104.4998)",
+    "Full-lifecycle net PnL (37.5057)",
+    "Point-in-time gross PnL (11.8735)",
+    "Point-in-time fees (15.3567)",
+    "Point-in-time net cash flow (-3.4832)",
+    "Historical R-sum (7.7731)",
+    "Historical win rate (0.6552)",
+    "Historical profit factor (2.3662)",
+    "Historical audit generation ID"
+  ],
+  "findings_count": 0,
+  "findings": [],
+  "verdict": "PASS",
+  "explanation": "No hardcoded historical financial constants, UUIDs, or fake metric returns exist in production app/ code."
+}

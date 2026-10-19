@@ -1,0 +1,30 @@
+{
+  "package_id": "P4",
+  "title": "ML Authority & Proper Scoring",
+  "captured_at_utc": "2026-10-19T23:38:12Z",
+  "git_head_sha": "98cbe67906849ea8026441f19695c1462ddef9cc",
+  "working_tree_dirty": true,
+  "diff_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+  "files_touched": [
+    "app/Research/Application/LearningPredictorService.php",
+    "app/Research/Application/ModelAdvisoryService.php",
+    "app/Research/Application/PromotionPolicyService.php",
+    "tests/Integration/MlAuthorityAndProperScoringPostgresIntegrationTest.php"
+  ],
+  "file_checksums": {
+    "LearningPredictorService.php": "b8b0780548757ea1a51d52777b1bd76fd8877f826e4257d3638a436f11cf484b",
+    "ModelAdvisoryService.php": "f9502d9368f24deaed66a12ad36ddf540e6984dbe6e1a2ab4506b4cef98794a1",
+    "PromotionPolicyService.php": "68a01431405e0864c352f4cb7da108390d416bd670d89d9acf7d54de7cfebb7c",
+    "MlAuthorityAndProperScoringPostgresIntegrationTest.php": "587133048af5ee0a83bf60773f8b132d4cb116eb9660953b784a5f7a800cece3"
+  },
+  "test_results": {
+    "test_command": "php -d xdebug.mode=off vendor/bin/phpunit tests/Integration/MlAuthorityAndProperScoringPostgresIntegrationTest.php",
+    "tests_run": 4,
+    "passed": 4,
+    "assertions": 29,
+    "exit_code": 0
+  },
+  "claims_count": 3,
+  "negative_controls_count": 2,
+  "status": "COMPLETED_AND_VERIFIED"
+}

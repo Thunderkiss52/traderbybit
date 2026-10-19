@@ -1,0 +1,18 @@
+[
+  {
+    "control_id": "NEG-P4-01",
+    "target": "Unauthorized candidate promotion",
+    "fault_injected": "Attempt to call PromotionPolicyService::promoteCandidate on a REJECTED candidate with failed statistical gates",
+    "expected_outcome": "ValidationException thrown with 'Cannot promote candidate', zero change to candidate status, and zero change to paper accounts",
+    "actual_outcome": "ValidationException asserted in test_negative_mutation_unauthorized_promotion_rejected; candidate status remained REJECTED and all 8 paper account equities remained identical",
+    "status": "PASS"
+  },
+  {
+    "control_id": "NEG-P4-02",
+    "target": "Legacy active model bypass prevention",
+    "fault_injected": "Legacy model with status=ACTIVE but no Gate 6 passing parameters evaluated under FAIL_CLOSED_SKIP mode",
+    "expected_outcome": "Trading proposal overridden to SKIP with reason code ml_advisory_no_eligible_model_fail_closed",
+    "actual_outcome": "Decision side changed to SKIP, reason code added, and paper accounts unchanged",
+    "status": "PASS"
+  }
+]

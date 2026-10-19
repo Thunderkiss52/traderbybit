@@ -1,0 +1,57 @@
+{
+  "/api/v1/system/version": {
+    "cold_ms": 23.89,
+    "warm_samples": [
+      23.13,
+      24.04,
+      37.91
+    ],
+    "warm_p50_ms": 24.04,
+    "warm_p95_ms": 37.91,
+    "status": 200
+  },
+  "/api/v1/research/capabilities": {
+    "cold_ms": 81.09,
+    "warm_samples": [
+      49.43,
+      57.83,
+      69.06
+    ],
+    "warm_p50_ms": 57.83,
+    "warm_p95_ms": 69.06,
+    "status": 200
+  },
+  "/api/v1/research/health/data-freshness": {
+    "cold_ms": 132.46,
+    "warm_samples": [
+      65.87,
+      74.99,
+      109.89
+    ],
+    "warm_p50_ms": 74.99,
+    "warm_p95_ms": 109.89,
+    "status": 200
+  },
+  "/api/v1/research/learning/overview": {
+    "cold_ms": 123.27,
+    "warm_samples": [
+      63.5,
+      66.71,
+      80.7
+    ],
+    "warm_p50_ms": 66.71,
+    "warm_p95_ms": 80.7,
+    "status": 200
+  },
+  "/api/v1/dashboard": {
+    "cold_ms": 338.49,
+    "warm_samples": [
+      26.51,
+      29.74,
+      31.83
+    ],
+    "warm_p50_ms": 29.74,
+    "warm_p95_ms": 31.83,
+    "status": 200
+  }
+}

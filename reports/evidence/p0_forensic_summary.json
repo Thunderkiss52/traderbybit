@@ -1,0 +1,219 @@
+{
+  "archive_path": "vector-audit-1d-e534ac49-60de-5263-9685-4bea563094c2.zip",
+  "archive_sha256": "54da31d20c396901c723f8f3255ba0bbda1e39d9918664d4b48a3a84d5d1c0b4",
+  "verified_metrics": {
+    "signals": {
+      "total": 1524,
+      "direction_counts": {
+        "SKIP": 1439,
+        "SELL": 60,
+        "BUY": 25
+      },
+      "strategy_count": 8,
+      "symbol_count": 2,
+      "strategies": [
+        "baseline",
+        "bollinger_mean_reversion",
+        "donchian_atr_breakout",
+        "momentum",
+        "regime_switching",
+        "support_resistance_bounce",
+        "support_resistance_breakout",
+        "trend_pullback"
+      ],
+      "symbols": [
+        "BTCUSDT",
+        "ETHUSDT"
+      ]
+    },
+    "risk_decisions": {
+      "total_rows": 109,
+      "approved": 31,
+      "rejected": 78,
+      "directional_rejected": 54,
+      "skip_rejected": 24,
+      "exposure_reason_incidences": {
+        "position_already_open": 24,
+        "correlation_limit": 23,
+        "maximum_positions_reached": 3,
+        "position_conflict": 2
+      },
+      "total_exposure_incidences": 52,
+      "distinct_directional_exposure_rows": 49,
+      "losing_streak_rejections": 4,
+      "late_rejections": 1,
+      "rows_with_two_exposure_reasons": [
+        {
+          "signal_id": "aec279e4-e13e-5281-bdcd-e1d36b64bee3",
+          "decision_id": "78bb2282-4420-5e4a-8cdc-e47e645dcdc8",
+          "reasons": [
+            "maximum_positions_reached",
+            "correlation_limit"
+          ]
+        },
+        {
+          "signal_id": "94ba88f1-e34b-56dc-9607-d328f4ad661c",
+          "decision_id": "ba8c9396-7532-55a0-9f73-587538c24d2d",
+          "reasons": [
+            "maximum_positions_reached",
+            "position_already_open"
+          ]
+        },
+        {
+          "signal_id": "4d49920c-2ed6-543e-9f06-8dcaaf38448b",
+          "decision_id": "def1ee8d-68c1-54d0-9231-3092ca9e9545",
+          "reasons": [
+            "maximum_positions_reached",
+            "correlation_limit"
+          ]
+        }
+      ]
+    },
+    "counterfactual_evaluations": {
+      "total_rows": 1203,
+      "unique_signals": 1199,
+      "duplicate_evaluation_count": 4,
+      "duplicate_evaluations": [
+        {
+          "signal_id": "6923c82d-31f3-5d98-88b8-875f074aa7c7",
+          "count": 2,
+          "strategy": "baseline",
+          "symbol": "ETHUSDT",
+          "candle_close_time": "2026-10-18 14:45:00+00",
+          "evaluation_ids": [
+            "0f9992d2-ff37-5f52-a4e9-b624c3e1f832",
+            "bd8b0d87-f644-5788-a007-1be8a91f999f"
+          ]
+        },
+        {
+          "signal_id": "32044ded-9865-510e-9064-6d669945243f",
+          "count": 2,
+          "strategy": "baseline",
+          "symbol": "ETHUSDT",
+          "candle_close_time": "2026-10-18 15:00:00+00",
+          "evaluation_ids": [
+            "410d859e-1862-521b-8514-13a0605e8845",
+            "9d976219-4cf9-525a-b373-60db82905547"
+          ]
+        },
+        {
+          "signal_id": "ef6b4bea-ad5d-5c5f-828d-06972481244e",
+          "count": 2,
+          "strategy": "baseline",
+          "symbol": "ETHUSDT",
+          "candle_close_time": "2026-10-18 15:15:00+00",
+          "evaluation_ids": [
+            "7cdb7973-954e-5195-9fe4-c25195f20fd8",
+            "e07a0016-8cce-550d-9433-dac38c30e377"
+          ]
+        },
+        {
+          "signal_id": "13933284-41ea-58e7-bb73-dfcc5a17dd3f",
+          "count": 2,
+          "strategy": "baseline",
+          "symbol": "ETHUSDT",
+          "candle_close_time": "2026-10-18 15:30:00+00",
+          "evaluation_ids": [
+            "dea97a44-fd21-5583-bef6-84af5321e884",
+            "e9af0013-bf88-54ce-b054-72670d62c663"
+          ]
+        }
+      ],
+      "five_minute_conflicts_raw_count": 40,
+      "five_minute_conflicts_raw_mean_r": 0.3253,
+      "five_minute_conflicts_dedup_count": 36,
+      "five_minute_conflicts_dedup_mean_r": 0.3891
+    },
+    "positions_and_executions": {
+      "position_count": 29,
+      "gross_pnl": 142.5411,
+      "fees": 104.4998,
+      "signed_funding": -0.5356,
+      "net_pnl": 37.5057,
+      "execution_count": 65,
+      "execution_window_fees": 96.7267,
+      "fee_gap": 7.7731,
+      "boundary_positions": [
+        {
+          "position_id": "37ac46c7-39f8-590e-8e46-e873c0d324ed",
+          "position_fees": 2.887020424299,
+          "in_window_exec_fees": 1.437523262835,
+          "diff": 1.449497161464,
+          "opened_at": "2026-10-19 14:05:00+00",
+          "closed_at": "2026-10-19 14:50:00+00"
+        },
+        {
+          "position_id": "7bbebf79-4668-5c52-8cea-ef6e23f5b4e2",
+          "position_fees": 2.622286477107,
+          "in_window_exec_fees": 1.306625742576,
+          "diff": 1.315660734531,
+          "opened_at": "2026-10-19 14:20:00+00",
+          "closed_at": "2026-10-19 14:50:00+00"
+        },
+        {
+          "position_id": "7d469430-605a-5cee-af08-99413b71f1e5",
+          "position_fees": 4.811070503448,
+          "in_window_exec_fees": 2.399024979054,
+          "diff": 2.412045524394,
+          "opened_at": "2026-10-18 14:20:00+00",
+          "closed_at": "2026-10-18 20:20:00+00"
+        },
+        {
+          "position_id": "cbaf4440-666a-58d0-b631-7eeadc575a36",
+          "position_fees": 5.178780345574,
+          "in_window_exec_fees": 2.582846986104,
+          "diff": 2.59593335947,
+          "opened_at": "2026-10-18 13:50:00+00",
+          "closed_at": "2026-10-18 19:50:00+00"
+        }
+      ]
+    },
+    "accounts_and_equity": {
+      "account_count": 8,
+      "equity_snapshot_count": 1888,
+      "account_equity_deltas": {
+        "96f68027-14af-5513-bda1-ee04cfd0e67b": {
+          "start_equity": 10077.00124456966,
+          "end_equity": 10101.715153650708,
+          "delta": 24.7139
+        },
+        "1b36e922-59b6-50a6-8209-cd0391dce128": {
+          "start_equity": 9810.51880921535,
+          "end_equity": 9827.98010323696,
+          "delta": 17.4613
+        },
+        "483a9a0b-5bfe-57ab-a097-d049a0ce3b39": {
+          "start_equity": 10026.484810307546,
+          "end_equity": 10025.355083401339,
+          "delta": -1.1297
+        },
+        "63dac59c-b1b8-5998-888f-e534fcfa45b8": {
+          "start_equity": 10000.0,
+          "end_equity": 9988.006898589805,
+          "delta": -11.9931
+        },
+        "94b97f13-107d-54a9-b4eb-1ca5a9c79743": {
+          "start_equity": 9860.189721947356,
+          "end_equity": 9867.110952920959,
+          "delta": 6.9212
+        },
+        "a34a5da0-3aa8-51c0-847d-86993131a2e4": {
+          "start_equity": 10000.0,
+          "end_equity": 9994.937750467792,
+          "delta": -5.0622
+        },
+        "a539c242-6dd2-5f9b-b5f2-cc6318f462d5": {
+          "start_equity": 9858.197145638745,
+          "end_equity": 9879.549124672867,
+          "delta": 21.352
+        },
+        "baaa0dac-3273-5bcd-9cb0-c653dc817c21": {
+          "start_equity": 9843.37702202773,
+          "end_equity": 9868.23577950976,
+          "delta": 24.8588
+        }
+      },
+      "sum_of_equity_changes": 77.1221
+    }
+  }
+}

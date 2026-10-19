@@ -1,0 +1,245 @@
+{
+  "generated_at_utc": "2026-10-19T23:27:47Z",
+  "total_controls": 7,
+  "all_verified_sensitive": true,
+  "controls": [
+    {
+      "control_id": "NEG-P1-01",
+      "name": "counterfactual_evaluations slot unique constraint guard",
+      "target_module": "CounterfactualAnalyzerService & PostgreSQL schema",
+      "type": "SQL",
+      "test_command": "php -d xdebug.mode=off vendor/bin/phpunit tests/Integration/CounterfactualSlotIdempotencyPostgresIntegrationTest.php --filter test_negative_control_duplicate_direct_insert_rejected_by_postgresql_unique_constraint",
+      "mutation_patch_file": "reports/evidence/mutation_patches/NEG-P1-01.patch",
+      "provenance": {
+        "file": null,
+        "pre_mutation_sha256": null,
+        "mutated_sha256": null,
+        "restored_sha256": null,
+        "restoration_verified": true
+      },
+      "baseline_pass": {
+        "exit_code": 0,
+        "stdout": "{\"tool\":\"phpunit\",\"result\":\"passed\",\"tests\":1,\"passed\":1,\"assertions\":1,\"duration_ms\":157}",
+        "stderr": "",
+        "status": "PASS"
+      },
+      "deliberately_broken_fail": {
+        "exit_code": 1,
+        "stdout": "{\"tool\":\"phpunit\",\"result\":\"failed\",\"tests\":1,\"passed\":0,\"assertions\":1,\"duration_ms\":149,\"failed\":1,\"failures\":[{\"test\":\"Tests\\\\Integration\\\\CounterfactualSlotIdempotencyPostgresIntegrationTest::test_negative_control_duplicate_direct_insert_rejected_by_postgresql_unique_constraint\",\"file\":\"/home/thunder/work/traderbybit/tests/Integration/CounterfactualSlotIdempotencyPostgresIntegrationTest.php\",\"line\":274,\"message\":\"Failed asserting that exception of type \\\"Illuminate\\\\Database\\\\UniqueConstraintViolationException\\\" is thrown.\"}]}",
+        "stderr": "",
+        "status": "FAIL_AS_EXPECTED"
+      },
+      "restored_pass": {
+        "exit_code": 0,
+        "stdout": "{\"tool\":\"phpunit\",\"result\":\"passed\",\"tests\":1,\"passed\":1,\"assertions\":1,\"duration_ms\":173}",
+        "stderr": "",
+        "status": "PASS"
+      },
+      "overall_verdict": "VERIFIED_SENSITIVE"
+    },
+    {
+      "control_id": "NEG-P2-01",
+      "name": "risk_decisions idempotency unique constraint",
+      "target_module": "RiskDecisionRecord & PostgreSQL schema",
+      "type": "SQL",
+      "test_command": "php -d xdebug.mode=off vendor/bin/phpunit tests/Integration/SlotIntegrityAndRiskFunnelPostgresIntegrationTest.php --filter test_negative_control_duplicate_risk_decision_rejected_by_unique_constraint",
+      "mutation_patch_file": "reports/evidence/mutation_patches/NEG-P2-01.patch",
+      "provenance": {
+        "file": null,
+        "pre_mutation_sha256": null,
+        "mutated_sha256": null,
+        "restored_sha256": null,
+        "restoration_verified": true
+      },
+      "baseline_pass": {
+        "exit_code": 0,
+        "stdout": "{\"tool\":\"phpunit\",\"result\":\"passed\",\"tests\":1,\"passed\":1,\"assertions\":1,\"duration_ms\":173}",
+        "stderr": "",
+        "status": "PASS"
+      },
+      "deliberately_broken_fail": {
+        "exit_code": 1,
+        "stdout": "{\"tool\":\"phpunit\",\"result\":\"failed\",\"tests\":1,\"passed\":0,\"assertions\":1,\"duration_ms\":172,\"failed\":1,\"failures\":[{\"test\":\"Tests\\\\Integration\\\\SlotIntegrityAndRiskFunnelPostgresIntegrationTest::test_negative_control_duplicate_risk_decision_rejected_by_unique_constraint\",\"file\":\"/home/thunder/work/traderbybit/tests/Integration/SlotIntegrityAndRiskFunnelPostgresIntegrationTest.php\",\"line\":259,\"message\":\"Failed asserting that exception of type \\\"Illuminate\\\\Database\\\\UniqueConstraintViolationException\\\" is thrown.\"}]}",
+        "stderr": "",
+        "status": "FAIL_AS_EXPECTED"
+      },
+      "restored_pass": {
+        "exit_code": 0,
+        "stdout": "{\"tool\":\"phpunit\",\"result\":\"passed\",\"tests\":1,\"passed\":1,\"assertions\":1,\"duration_ms\":182}",
+        "stderr": "",
+        "status": "PASS"
+      },
+      "overall_verdict": "VERIFIED_SENSITIVE"
+    },
+    {
+      "control_id": "NEG-P2-02",
+      "name": "slot integrity missing unexplained cadence alert",
+      "target_module": "SlotIntegrityService",
+      "type": "FILE",
+      "test_command": "php -d xdebug.mode=off vendor/bin/phpunit tests/Integration/SlotIntegrityAndRiskFunnelPostgresIntegrationTest.php --filter test_slot_integrity_cadence_detects_missing_unexplained_and_market_data_unavailable",
+      "mutation_patch_file": "reports/evidence/mutation_patches/NEG-P2-02.patch",
+      "provenance": {
+        "file": "app/Research/Application/SlotIntegrityService.php",
+        "pre_mutation_sha256": "92e47820dc5ee42f7c3584578ace778caaca6fb9bf53299ad8f3bfc977836582",
+        "mutated_sha256": "755f7f5847582265f87ee0a22a523239992746478b8d0a4687d73567291be289",
+        "restored_sha256": "92e47820dc5ee42f7c3584578ace778caaca6fb9bf53299ad8f3bfc977836582",
+        "restoration_verified": true
+      },
+      "baseline_pass": {
+        "exit_code": 0,
+        "stdout": "{\"tool\":\"phpunit\",\"result\":\"passed\",\"tests\":1,\"passed\":1,\"assertions\":7,\"duration_ms\":179}",
+        "stderr": "",
+        "status": "PASS"
+      },
+      "deliberately_broken_fail": {
+        "exit_code": 1,
+        "stdout": "{\"tool\":\"phpunit\",\"result\":\"failed\",\"tests\":1,\"passed\":0,\"assertions\":7,\"duration_ms\":163,\"failed\":1,\"failures\":[{\"test\":\"Tests\\\\Integration\\\\SlotIntegrityAndRiskFunnelPostgresIntegrationTest::test_slot_integrity_cadence_detects_missing_unexplained_and_market_data_unavailable\",\"file\":\"/home/thunder/work/traderbybit/tests/Integration/SlotIntegrityAndRiskFunnelPostgresIntegrationTest.php\",\"line\":179,\"message\":\"Failed asserting that an array contains 'MISSING_UNEXPLAINED_SLOTS_DETECTED'.\"}]}",
+        "stderr": "",
+        "status": "FAIL_AS_EXPECTED"
+      },
+      "restored_pass": {
+        "exit_code": 0,
+        "stdout": "{\"tool\":\"phpunit\",\"result\":\"passed\",\"tests\":1,\"passed\":1,\"assertions\":7,\"duration_ms\":155}",
+        "stderr": "",
+        "status": "PASS"
+      },
+      "overall_verdict": "VERIFIED_SENSITIVE"
+    },
+    {
+      "control_id": "NEG-P3-01",
+      "name": "financial reconciliation funding sign discrepancy detection",
+      "target_module": "LedgerReconciliationService",
+      "type": "FILE",
+      "test_command": "php -d xdebug.mode=off vendor/bin/phpunit tests/Integration/FinancialAccountingAndReconciliationPostgresIntegrationTest.php --filter test_negative_control_inverted_funding_sign_fails_reconciliation",
+      "mutation_patch_file": "reports/evidence/mutation_patches/NEG-P3-01.patch",
+      "provenance": {
+        "file": "app/Research/Application/LedgerReconciliationService.php",
+        "pre_mutation_sha256": "92ab4f561e55aaddef528659c4c59db79f62ca4cb68e42ebb62cb49f2a92e426",
+        "mutated_sha256": "796c8e6197d1eef5462d6050ceb58b2affa554d422550d08a6a8fb1d56ede354",
+        "restored_sha256": "92ab4f561e55aaddef528659c4c59db79f62ca4cb68e42ebb62cb49f2a92e426",
+        "restoration_verified": true
+      },
+      "baseline_pass": {
+        "exit_code": 0,
+        "stdout": "{\"tool\":\"phpunit\",\"result\":\"passed\",\"tests\":1,\"passed\":1,\"assertions\":4,\"duration_ms\":208}",
+        "stderr": "",
+        "status": "PASS"
+      },
+      "deliberately_broken_fail": {
+        "exit_code": 1,
+        "stdout": "{\"tool\":\"phpunit\",\"result\":\"failed\",\"tests\":1,\"passed\":0,\"assertions\":1,\"duration_ms\":199,\"failed\":1,\"failures\":[{\"test\":\"Tests\\\\Integration\\\\FinancialAccountingAndReconciliationPostgresIntegrationTest::test_negative_control_inverted_funding_sign_fails_reconciliation\",\"file\":\"/home/thunder/work/traderbybit/tests/Integration/FinancialAccountingAndReconciliationPostgresIntegrationTest.php\",\"line\":380,\"message\":\"Failed asserting that two strings are identical.\\n--- Expected\\n+++ Actual\\n@@ @@\\n-'DISCREPANCY_DETECTED'\\n+'PASSED'\"}]}",
+        "stderr": "",
+        "status": "FAIL_AS_EXPECTED"
+      },
+      "restored_pass": {
+        "exit_code": 0,
+        "stdout": "{\"tool\":\"phpunit\",\"result\":\"passed\",\"tests\":1,\"passed\":1,\"assertions\":4,\"duration_ms\":246}",
+        "stderr": "",
+        "status": "PASS"
+      },
+      "overall_verdict": "VERIFIED_SENSITIVE"
+    },
+    {
+      "control_id": "NEG-P4-01",
+      "name": "unauthorized candidate promotion rejected without Gate 6 validation",
+      "target_module": "PromotionPolicyService",
+      "type": "FILE",
+      "test_command": "php -d xdebug.mode=off vendor/bin/phpunit tests/Integration/MlAuthorityAndProperScoringPostgresIntegrationTest.php --filter test_negative_mutation_unauthorized_promotion_rejected",
+      "mutation_patch_file": "reports/evidence/mutation_patches/NEG-P4-01.patch",
+      "provenance": {
+        "file": "app/Research/Application/PromotionPolicyService.php",
+        "pre_mutation_sha256": "68a01431405e0864c352f4cb7da108390d416bd670d89d9acf7d54de7cfebb7c",
+        "mutated_sha256": "66da08a5214839771ac9cd8a28dc15c5c24e40bb7b987e1ba7ce5016aeba69f2",
+        "restored_sha256": "68a01431405e0864c352f4cb7da108390d416bd670d89d9acf7d54de7cfebb7c",
+        "restoration_verified": true
+      },
+      "baseline_pass": {
+        "exit_code": 0,
+        "stdout": "{\"tool\":\"phpunit\",\"result\":\"passed\",\"tests\":1,\"passed\":1,\"assertions\":4,\"duration_ms\":150}",
+        "stderr": "",
+        "status": "PASS"
+      },
+      "deliberately_broken_fail": {
+        "exit_code": 1,
+        "stdout": "{\"tool\":\"phpunit\",\"result\":\"failed\",\"tests\":1,\"passed\":0,\"assertions\":1,\"duration_ms\":217,\"failed\":1,\"failures\":[{\"test\":\"Tests\\\\Integration\\\\MlAuthorityAndProperScoringPostgresIntegrationTest::test_negative_mutation_unauthorized_promotion_rejected\",\"file\":\"/home/thunder/work/traderbybit/tests/Integration/MlAuthorityAndProperScoringPostgresIntegrationTest.php\",\"line\":364,\"message\":\"Promotion of ineligible candidate MUST throw ValidationException.\\nFailed asserting that false is true.\"}]}",
+        "stderr": "",
+        "status": "FAIL_AS_EXPECTED"
+      },
+      "restored_pass": {
+        "exit_code": 0,
+        "stdout": "{\"tool\":\"phpunit\",\"result\":\"passed\",\"tests\":1,\"passed\":1,\"assertions\":4,\"duration_ms\":145}",
+        "stderr": "",
+        "status": "PASS"
+      },
+      "overall_verdict": "VERIFIED_SENSITIVE"
+    },
+    {
+      "control_id": "NEG-P4-02",
+      "name": "legacy active model authority denial under Gate 6 policy",
+      "target_module": "PromotionPolicyService & ModelAdvisoryService",
+      "type": "FILE",
+      "test_command": "php -d xdebug.mode=off vendor/bin/phpunit tests/Integration/MlAuthorityAndProperScoringPostgresIntegrationTest.php --filter test_legacy_active_model_lacks_authority_and_fails_closed_or_bypasses",
+      "mutation_patch_file": "reports/evidence/mutation_patches/NEG-P4-02.patch",
+      "provenance": {
+        "file": "app/Research/Application/PromotionPolicyService.php",
+        "pre_mutation_sha256": "68a01431405e0864c352f4cb7da108390d416bd670d89d9acf7d54de7cfebb7c",
+        "mutated_sha256": "5dc838d426d20227525f3de195aed3afde237dccffe6047aa68f4c0b9b15084d",
+        "restored_sha256": "68a01431405e0864c352f4cb7da108390d416bd670d89d9acf7d54de7cfebb7c",
+        "restoration_verified": true
+      },
+      "baseline_pass": {
+        "exit_code": 0,
+        "stdout": "{\"tool\":\"phpunit\",\"result\":\"passed\",\"tests\":1,\"passed\":1,\"assertions\":8,\"duration_ms\":191}",
+        "stderr": "",
+        "status": "PASS"
+      },
+      "deliberately_broken_fail": {
+        "exit_code": 1,
+        "stdout": "{\"tool\":\"phpunit\",\"result\":\"failed\",\"tests\":1,\"passed\":0,\"assertions\":1,\"duration_ms\":147,\"failed\":1,\"failures\":[{\"test\":\"Tests\\\\Integration\\\\MlAuthorityAndProperScoringPostgresIntegrationTest::test_legacy_active_model_lacks_authority_and_fails_closed_or_bypasses\",\"file\":\"/home/thunder/work/traderbybit/tests/Integration/MlAuthorityAndProperScoringPostgresIntegrationTest.php\",\"line\":157,\"message\":\"Legacy active model must NOT be marked eligible without Gate 6 validation.\\nFailed asserting that true is false.\"}]}",
+        "stderr": "",
+        "status": "FAIL_AS_EXPECTED"
+      },
+      "restored_pass": {
+        "exit_code": 0,
+        "stdout": "{\"tool\":\"phpunit\",\"result\":\"passed\",\"tests\":1,\"passed\":1,\"assertions\":8,\"duration_ms\":184}",
+        "stderr": "",
+        "status": "PASS"
+      },
+      "overall_verdict": "VERIFIED_SENSITIVE"
+    },
+    {
+      "control_id": "NEG-P5-01",
+      "name": "source variation dynamic calculation proof against hardcoded constants",
+      "target_module": "QuantPortfolioMetricsService",
+      "type": "FILE",
+      "test_command": "php -d xdebug.mode=off vendor/bin/phpunit tests/Integration/QuantPortfolioMetricsPostgresIntegrationTest.php --filter test_negative_control_source_variation_reacts_dynamically",
+      "mutation_patch_file": "reports/evidence/mutation_patches/NEG-P5-01.patch",
+      "provenance": {
+        "file": "app/Research/Application/QuantPortfolioMetricsService.php",
+        "pre_mutation_sha256": "42aedaa75c074a1d8917cb907c9bd068dba715fca53a4423dbb6102c0a1257d1",
+        "mutated_sha256": "9ee52c23ec371100fe83b1ebeea9d41cd3fa3ba359669d84fde63ae40318b874",
+        "restored_sha256": "42aedaa75c074a1d8917cb907c9bd068dba715fca53a4423dbb6102c0a1257d1",
+        "restoration_verified": true
+      },
+      "baseline_pass": {
+        "exit_code": 0,
+        "stdout": "{\"tool\":\"phpunit\",\"result\":\"passed\",\"tests\":1,\"passed\":1,\"assertions\":5,\"duration_ms\":101}",
+        "stderr": "",
+        "status": "PASS"
+      },
+      "deliberately_broken_fail": {
+        "exit_code": 1,
+        "stdout": "{\"tool\":\"phpunit\",\"result\":\"failed\",\"tests\":1,\"passed\":0,\"assertions\":4,\"duration_ms\":96,\"failed\":1,\"failures\":[{\"test\":\"Tests\\\\Integration\\\\QuantPortfolioMetricsPostgresIntegrationTest::test_negative_control_source_variation_reacts_dynamically\",\"file\":\"/home/thunder/work/traderbybit/tests/Integration/QuantPortfolioMetricsPostgresIntegrationTest.php\",\"line\":267,\"message\":\"Net PnL must decrease by exactly 10.00\\nFailed asserting that 37.5057 matches expected 27.505699999999997.\"}]}",
+        "stderr": "",
+        "status": "FAIL_AS_EXPECTED"
+      },
+      "restored_pass": {
+        "exit_code": 0,
+        "stdout": "{\"tool\":\"phpunit\",\"result\":\"passed\",\"tests\":1,\"passed\":1,\"assertions\":5,\"duration_ms\":105}",
+        "stderr": "",
+        "status": "PASS"
+      },
+      "overall_verdict": "VERIFIED_SENSITIVE"
+    }
+  ]
+}

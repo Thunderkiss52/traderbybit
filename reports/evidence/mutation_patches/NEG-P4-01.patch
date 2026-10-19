@@ -1,0 +1,12 @@
+--- a/app/Research/Application/PromotionPolicyService.php
++++ b/app/Research/Application/PromotionPolicyService.php
+@@ -601,7 +601,8 @@
+ 
+         // Verification: cannot promote without passing gates
+         $gates = (array) $candidate->validation_gates;
+-        if (! ($gates['all_gates_passed'] ?? false)) {
++        // MUTATION_MUTATED
++        if (false && ! ($gates['all_gates_passed'] ?? false)) {
+             throw ValidationException::withMessages([
+                 'gates' => 'Cannot promote candidate: mandatory statistical validation gates have not passed.',
+             ]);

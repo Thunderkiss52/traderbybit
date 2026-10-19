@@ -1,0 +1,284 @@
+{
+    "schema_version": "1.0.0",
+    "generation_id": "canonical-eval-001",
+    "extraction_generation_time": "2026-10-19T14:57:47+00:00",
+    "population_scope": "FULL_LIFECYCLE_POPULATION",
+    "summary_economics": {
+        "scope": "FULL_LIFECYCLE_POPULATION",
+        "extraction_generation_time": "2026-10-19T14:57:47+00:00",
+        "total_positions": 29,
+        "gross_pnl": 142.5411,
+        "fees": 104.4998,
+        "signed_funding": -0.5356,
+        "net_pnl": 37.5057,
+        "accounting_identity_holds": true,
+        "fully_closed_positions_scope": {
+            "positions_count": 28,
+            "gross_pnl": 137.9441,
+            "gross_gains": 232.1882,
+            "gross_losses": 94.2442,
+            "profit_factor": 2.4637,
+            "fees": 103.1003,
+            "signed_funding": -0.5356,
+            "net_pnl": 34.3082,
+            "win_rate": 0.4643,
+            "win_count": 13,
+            "loss_count": 15,
+            "scratch_count": 0
+        },
+        "partially_closed_positions_scope": {
+            "positions_count": 1,
+            "realized_gross_pnl": 4.597,
+            "realized_fees": 1.3995,
+            "realized_funding": 0,
+            "realized_net_pnl": 3.1975,
+            "position_ids": [
+                "5b446c88-4488-57b6-b9da-e6883900b038"
+            ]
+        },
+        "total_realized_population_scope": {
+            "total_positions_count": 29,
+            "total_realized_gross_gains": 236.7852,
+            "total_realized_gross_losses": 94.2442,
+            "total_realized_gross_pnl": 142.5411,
+            "total_realized_profit_factor": 2.5125,
+            "total_fees": 104.4998,
+            "total_signed_funding": -0.5356,
+            "total_net_pnl": 37.5057,
+            "accounting_identity_holds": true
+        },
+        "closed_positions_gross_gains": 232.1882,
+        "closed_positions_gross_losses": 94.2442,
+        "closed_positions_gross_pnl": 137.9441,
+        "closed_positions_profit_factor": 2.4637,
+        "partially_closed_realized_gross_pnl": 4.597,
+        "total_realized_gross_gains": 236.7852,
+        "total_realized_gross_losses": 94.2442,
+        "total_realized_profit_factor": 2.5125,
+        "r_metrics": {
+            "count": 28,
+            "mean_r": -0.0055,
+            "median_r": -0.0451,
+            "min_r": -0.9767033141,
+            "max_r": 1.2407726272
+        },
+        "counts": {
+            "closed": 28,
+            "partially_closed": 1,
+            "open": 0,
+            "win": 13,
+            "loss": 15,
+            "scratch": 0,
+            "gross_pos_net_neg": 6
+        },
+        "win_rate": 0.4643,
+        "profit_factor": 2.4637,
+        "gross_gains": 232.1882,
+        "gross_losses": 94.2442,
+        "cost_risk_ratio": 0.1771,
+        "breakdown_by_symbol": {
+            "BTCUSDT": {
+                "count": 22,
+                "gross_pnl": 134.4687,
+                "fees": 86.6184,
+                "funding": -0.4997,
+                "net_pnl": 47.3504
+            },
+            "ETHUSDT": {
+                "count": 7,
+                "gross_pnl": 8.0723,
+                "fees": 17.8815,
+                "funding": -0.0357,
+                "net_pnl": -9.8449
+            }
+        },
+        "breakdown_by_exit_reason": {
+            "CLOSED": {
+                "count": 28,
+                "net_pnl": 34.308
+            },
+            "OPEN": {
+                "count": 1,
+                "net_pnl": 3.1975
+            }
+        }
+    },
+    "shared_market_events": {
+        "total_clusters": 3,
+        "multi_position_clusters_count": 2,
+        "max_concurrent_cluster_size": 16,
+        "peak_instantaneous_active_positions": 9,
+        "peak_instantaneous_timestamp": "2026-10-18T16:35:00+00:00",
+        "directional_exposure_by_symbol": {
+            "BTCUSDT": {
+                "symbol": "BTCUSDT",
+                "total_positions": 22,
+                "concurrent_same_side_pairs": 30,
+                "concurrent_opposite_side_pairs": 22,
+                "directional_concentration_detected": true
+            },
+            "ETHUSDT": {
+                "symbol": "ETHUSDT",
+                "total_positions": 7,
+                "concurrent_same_side_pairs": 5,
+                "concurrent_opposite_side_pairs": 0,
+                "directional_concentration_detected": true
+            }
+        },
+        "cross_symbol_netting_prohibited": true,
+        "total_same_symbol_same_side_pairs": 35,
+        "total_same_symbol_opposite_pairs": 22,
+        "clusters": [
+            {
+                "cluster_id": "CLUSTER-001",
+                "positions_count": 16,
+                "position_ids": [
+                    "0ed5d00d-21d7-5d22-aa9f-762f07d74f4b",
+                    "27727a0d-e663-5983-a5c3-8b81e6ab2de5",
+                    "6f24929b-2579-5cb8-af4a-f529b7f23bbb",
+                    "abc204ab-cf89-5bfe-b122-d4a7b5d857aa",
+                    "d14933db-b6ce-5c88-8674-f11162b2ee3b",
+                    "5eb59ac6-6f42-53bc-85a5-6488b0b9a48e",
+                    "70c4543b-f2e8-5825-9649-1c4d9138ea13",
+                    "b7656d4a-0797-5efd-be11-e907e00c7156",
+                    "cd23668e-4de7-5e48-b139-dff36d6d7db3",
+                    "37ac46c7-39f8-590e-8e46-e873c0d324ed",
+                    "4e6a89b5-d5e7-5425-8f09-ae276a25b3a2",
+                    "5b446c88-4488-57b6-b9da-e6883900b038",
+                    "63092519-c48c-5692-bb33-b41eea3f2b6c",
+                    "ff2c331e-5a57-53cb-b2f9-96b34c0d98d3",
+                    "7bbebf79-4668-5c52-8cea-ef6e23f5b4e2",
+                    "7ef9ad83-3934-5b85-a6c8-d5ed2972f976"
+                ],
+                "start_time": "2026-10-19T03:05:00+00:00",
+                "end_time": "2026-10-19T14:57:47+00:00",
+                "duration_seconds": 42767,
+                "net_pnl_contribution": 5.7833,
+                "symbols": [
+                    "BTCUSDT",
+                    "ETHUSDT"
+                ],
+                "sides": [
+                    "SELL",
+                    "BUY"
+                ],
+                "is_multi_symbol": true,
+                "is_multi_side": true,
+                "accounts_count": 7
+            },
+            {
+                "cluster_id": "CLUSTER-002",
+                "positions_count": 12,
+                "position_ids": [
+                    "1a7b6ee8-e031-5b6c-8c34-f07629823eea",
+                    "1ac53897-2316-5e4b-b326-eb04a839c954",
+                    "2f33ff74-abe1-58ba-a8ec-5a2ce2f37dcd",
+                    "45fcd823-6194-5113-b290-8dffb23808b6",
+                    "7d469430-605a-5cee-af08-99413b71f1e5",
+                    "b0e2b06a-c171-5126-bcd8-20b173778c0c",
+                    "cbaf4440-666a-58d0-b631-7eeadc575a36",
+                    "d38cea9c-e4cc-59b1-9f57-952aa53f75ef",
+                    "ef531341-7a4c-520e-b947-193628766438",
+                    "b5736ff6-364c-5178-b161-81baf1538e54",
+                    "bc441eb0-07b7-5c56-bfff-d7a488c1b740",
+                    "f7c64532-e933-583b-b976-8bbb2aac5d6f"
+                ],
+                "start_time": "2026-10-18T13:50:00+00:00",
+                "end_time": "2026-10-18T22:10:00+00:00",
+                "duration_seconds": 30000,
+                "net_pnl_contribution": 8.8624,
+                "symbols": [
+                    "BTCUSDT",
+                    "ETHUSDT"
+                ],
+                "sides": [
+                    "BUY",
+                    "SELL"
+                ],
+                "is_multi_symbol": true,
+                "is_multi_side": true,
+                "accounts_count": 7
+            },
+            {
+                "cluster_id": "CLUSTER-003",
+                "positions_count": 1,
+                "position_ids": [
+                    "6dc93c30-6950-5981-a62a-f89dc8063582"
+                ],
+                "start_time": "2026-10-18T22:20:00+00:00",
+                "end_time": "2026-10-19T02:20:00+00:00",
+                "duration_seconds": 14400,
+                "net_pnl_contribution": 22.8599,
+                "symbols": [
+                    "ETHUSDT"
+                ],
+                "sides": [
+                    "BUY"
+                ],
+                "is_multi_symbol": false,
+                "is_multi_side": false,
+                "accounts_count": 1
+            }
+        ]
+    },
+    "source_provenance": {
+        "extractor": "QuantPortfolioMetricsService",
+        "positions_population_count": 29,
+        "discrete_clusters_count": 3
+    },
+    "point_in_time_reconstruction": {
+        "scope": "POINT_IN_TIME_RECONSTRUCTION",
+        "as_of_cutoff": "2026-10-18T16:42:14+00:00",
+        "positions_opened_count": 9,
+        "positions_open_at_cutoff_count": 9,
+        "positions_closed_before_cutoff_count": 0,
+        "retrospective_market_event_state": {
+            "clock": "MARKET_EVENT_TIME",
+            "rule": "market_event_at <= cutoff",
+            "executions_count": 8,
+            "realized_gross_pnl": 11.8735,
+            "commissions_paid": 15.3567,
+            "signed_funding_paid": 0,
+            "realized_net_cash_flow": -3.4832
+        },
+        "strict_system_knowledge_as_of_state": {
+            "clock": "SYSTEM_REGISTRATION_TIME",
+            "rule": "market_event_at <= cutoff AND registered_at <= cutoff",
+            "executions_count": 6,
+            "realized_gross_pnl": 11.8735,
+            "commissions_paid": 13.3298,
+            "signed_funding_paid": 0,
+            "realized_net_cash_flow": -1.4563
+        },
+        "registration_latency_reconciliation": {
+            "lagged_executions_count": 2,
+            "lagged_commissions_sum": 2.0269,
+            "lagged_executions": [
+                {
+                    "id": "053309aa-8afd-5287-9023-38229e94c122",
+                    "position_id": "d38cea9c-e4cc-59b1-9f57-952aa53f75ef",
+                    "type": "ENTRY",
+                    "market_event_at": "2026-10-18 16:35:00+00",
+                    "registered_at": "2026-10-18 16:44:06+00",
+                    "commission": 1.468223786502
+                },
+                {
+                    "id": "ac04b678-0f73-59a8-b4fc-878551a79b05",
+                    "position_id": "1ac53897-2316-5e4b-b326-eb04a839c954",
+                    "type": "ENTRY",
+                    "market_event_at": "2026-10-18 16:35:00+00",
+                    "registered_at": "2026-10-18 16:44:05+00",
+                    "commission": 0.558704626722
+                }
+            ],
+            "explanation": "Executions with market event time prior to cutoff but registered in database after cutoff timestamp."
+        },
+        "executions_at_cutoff_count": 8,
+        "realized_gross_pnl": 11.8735,
+        "commissions_paid": 15.3567,
+        "realized_net_cash_flow": -3.4832,
+        "post_cutoff_exit_pnl_excluded": true,
+        "future_positions_excluded": true,
+        "accounting_identity_holds": true
+    }
+}

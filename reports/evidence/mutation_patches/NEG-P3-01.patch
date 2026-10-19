@@ -1,0 +1,12 @@
+--- a/app/Research/Application/LedgerReconciliationService.php
++++ b/app/Research/Application/LedgerReconciliationService.php
+@@ -50,7 +50,8 @@
+ 
+         $totalFunding = BigDecimal::zero();
+         foreach ($fundingEvents as $fe) {
+-            $totalFunding = $totalFunding->plus(BigDecimal::of($fe->amount ?? '0'));
++            // MUTATION_MUTATED: inverted funding sign calculation
++            $totalFunding = $totalFunding->minus(BigDecimal::of($fe->amount ?? '0'));
+         }
+ 
+         // Open positions

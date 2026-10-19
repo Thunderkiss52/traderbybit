@@ -1,0 +1,25 @@
+{
+  "package_id": "P0",
+  "title": "Discovery, Forensic Fixtures & Defect Classification",
+  "status": "COMPLETED_AND_VERIFIED",
+  "timestamp_utc": "2026-10-19T23:38:12Z",
+  "actor": "Codex / Antigravity Lead Engineer",
+  "git_head_sha": "98cbe67906849ea8026441f19695c1462ddef9cc",
+  "working_tree_dirty": true,
+  "diff_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+  "source_archive_sha256": "54da31d20c396901c723f8f3255ba0bbda1e39d9918664d4b48a3a84d5d1c0b4",
+  "golden_fixtures": {
+    "golden_counterfactual_duplicates.json": "6e9e1c8c17fe2291c16e6c8b9401cfadcb29742424929f4073a91987b5f35240",
+    "golden_risk_decisions_109.json": "d66874d918f2418c8657fe8807660ca9fe42514fb2ea82d6f0159c9a19174e57",
+    "golden_positions_29.json": "b6f53e16887a11d6b2ea64b410503047e3bb438b58e6c56a697864194a1fa78e",
+    "golden_executions.json": "2caf8d3450b1118b30a585cff59329c58d737d82117ca6de8f0259a10b9849b9"
+  },
+  "scripts": {
+    "forensic_p0_verify.py": "eafdfa4cb5e0f78712f243ba8fa18e22a690df4aa9adef35e93caf1ec547541d",
+    "generate_golden_fixtures.py": "9fc9bd0b558dd3be313f4cdaf87beacbbacbdcfd5499c9b0d949a22885f2ba9e",
+    "measure_baseline.py": "fdaeea237a9f5842622e60f60005cab678b83ffc2ee5c23986517f1d860cf783"
+  },
+  "claims_count": 7,
+  "negative_controls_count": 0,
+  "claims_verified_count": 7
+}

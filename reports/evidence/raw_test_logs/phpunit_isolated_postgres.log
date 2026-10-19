@@ -1,0 +1,40 @@
+PHPUnit 12.5.39 by Sebastian Bergmann and contributors.
+
+Runtime:       PHP 8.4.24
+Configuration: /home/thunder/work/traderbybit/phpunit.xml
+
+Time: 00:00.986, Memory: 48.50 MB
+
+[4mCounterfactual Slot Idempotency Postgres Integration (Tests\Integration\CounterfactualSlotIdempotencyPostgresIntegration)[0m
+[32m ✔ [0mSequential rerun returns canonical evaluation without duplicate
+[32m ✔ [0mDistinct strategy versions preserve separate evaluations
+[32m ✔ [0mNegative control duplicate direct insert rejected by postgresql unique constraint
+[32m ✔ [0mHistorical golden replay resolves eight raw to four canonical
+[32m ✔ [0mNegative control duplicate observation rejected by slot unique constraint
+
+[4mFinancial Accounting And Reconciliation Postgres Integration (Tests\Integration\FinancialAccountingAndReconciliationPostgresIntegration)[0m
+[32m ✔ [0mGolden positions lifecycle accounting identities
+[32m ✔ [0mWindow reconciliation detects boundary fills and matches fee gap
+[32m ✔ [0mNegative control inverted funding sign fails reconciliation
+
+[4mMl Authority And Proper Scoring Postgres Integration (Tests\Integration\MlAuthorityAndProperScoringPostgresIntegration)[0m
+[32m ✔ [0mLegacy active model lacks authority and fails closed or bypasses
+[32m ✔ [0mProper scoring rule training prevalence baseline and bss
+[32m ✔ [0mGate6 full funnel validation
+[32m ✔ [0mNegative mutation unauthorized promotion rejected
+
+[4mQuant Portfolio Metrics Postgres Integration (Tests\Integration\QuantPortfolioMetricsPostgresIntegration)[0m
+[32m ✔ [0mComplete 29 positions population economics
+[32m ✔ [0mReconstruct point in time state at cutoff
+[32m ✔ [0mShared market events and overlap clusters
+[32m ✔ [0mDeterministic reproducibility proof
+[32m ✔ [0mNegative control source variation reacts dynamically
+
+[4mSlot Integrity And Risk Funnel Postgres Integration (Tests\Integration\SlotIntegrityAndRiskFunnelPostgresIntegration)[0m
+[32m ✔ [0mGolden risk decisions funnel and reason multisets
+[32m ✔ [0mSlot integrity cadence detects missing unexplained and market data unavailable
+[32m ✔ [0mOpportunity tracer separates signal opportunity from risk decision events
+[32m ✔ [0mNegative control duplicate risk decision rejected by unique constraint
+
+[30;42mOK (21 tests, 217 assertions)[0m
+{"tool":"phpunit","result":"passed","tests":21,"passed":21,"assertions":217,"duration_ms":986}

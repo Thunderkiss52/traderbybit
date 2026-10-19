@@ -1,0 +1,10 @@
+[
+  {
+    "control_id": "NEG-P3-01",
+    "target": "Signed funding accounting identity",
+    "fault_injected": "Inverted funding sign from +10.00 to -10.00 in position funding record",
+    "expected_outcome": "LedgerReconciliationService detects BALANCE_MISMATCH discrepancy",
+    "actual_outcome": "DISCREPANCY_DETECTED asserted in test_negative_control_inverted_funding_sign_fails_reconciliation",
+    "status": "PASS"
+  }
+]
