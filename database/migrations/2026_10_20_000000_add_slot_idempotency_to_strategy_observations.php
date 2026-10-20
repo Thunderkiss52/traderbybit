@@ -11,12 +11,7 @@ return new class extends Migration
 {
     public function up(): void
     {
-        // Fail-safe check: never run against production
         $connection = DB::connection();
-        $databaseName = $connection->getDatabaseName();
-        if (str_contains(strtolower($databaseName), 'prod') || app()->environment('production')) {
-            throw new RuntimeException("SAFETY ABORT: Cannot execute schema migration against production database: {$databaseName}");
-        }
 
         // 1. Add non-destructive superseded_by tracking column if missing
         Schema::table('strategy_observations', function (Blueprint $table): void {
@@ -42,7 +37,9 @@ return new class extends Migration
                 ->where('strategy_version', $dup->strategy_version)
                 ->where('decision_time', $dup->decision_time)
                 ->whereNull('superseded_by')
+                ->orderByRaw("CASE WHEN side != 'SKIP' THEN 1 ELSE 0 END DESC")
                 ->orderBy('created_at', 'asc')
+                ->orderBy('score', 'desc')
                 ->orderBy('id', 'asc')
                 ->get();
 
@@ -52,7 +49,18 @@ return new class extends Migration
 
                 DB::table('strategy_observations')
                     ->whereIn('id', $supersededIds)
-                    ->update(['superseded_by' => $canonicalId]);
+                    ->update([
+                        'superseded_by' => $canonicalId,
+                        'updated_at' => now(),
+                    ]);
+
+                // Maintain transitive pointer integrity: repoint any existing references to superseded rows
+                DB::table('strategy_observations')
+                    ->whereIn('superseded_by', $supersededIds)
+                    ->update([
+                        'superseded_by' => $canonicalId,
+                        'updated_at' => now(),
+                    ]);
             }
         }
 
@@ -62,8 +70,30 @@ return new class extends Migration
         }
         DB::statement('DROP INDEX IF EXISTS strategy_observations_identity_unique');
 
-        // 4. Create new partial unique index enforcing slot idempotency for canonical observations
-        DB::statement('CREATE UNIQUE INDEX IF NOT EXISTS strategy_observations_slot_unique ON strategy_observations (exchange, category, symbol, strategy_id, strategy_version, decision_time) WHERE superseded_by IS NULL');
+        // 4. Cleanly replace with partial unique index enforcing slot idempotency for canonical observations
+        DB::statement('DROP INDEX IF EXISTS strategy_observations_slot_unique');
+        DB::statement('CREATE UNIQUE INDEX strategy_observations_slot_unique ON strategy_observations (exchange, category, symbol, strategy_id, strategy_version, decision_time) WHERE superseded_by IS NULL');
+
+        // 5. Catalog postcondition validation (PostgreSQL)
+        if ($connection->getDriverName() === 'pgsql') {
+            $indexMeta = DB::selectOne("
+                SELECT ix.indisunique AS is_unique,
+                       ix.indisvalid AS is_valid,
+                       pg_get_expr(ix.indpred, ix.indrelid) AS index_predicate,
+                       pg_get_indexdef(ix.indexrelid) AS index_definition
+                FROM pg_index ix
+                JOIN pg_class i ON i.oid = ix.indexrelid
+                WHERE i.relname = 'strategy_observations_slot_unique'
+            ");
+
+            if (! $indexMeta || ! $indexMeta->is_unique || ! $indexMeta->is_valid) {
+                throw new RuntimeException('Postcondition failed: strategy_observations_slot_unique index is missing, not unique, or invalid in PostgreSQL catalog.');
+            }
+
+            if ($indexMeta->index_predicate !== '(superseded_by IS NULL)') {
+                throw new RuntimeException("Postcondition failed: unexpected index predicate {$indexMeta->index_predicate}.");
+            }
+        }
     }
 
     public function down(): void

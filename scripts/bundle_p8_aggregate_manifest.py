@@ -111,6 +111,7 @@ def main():
     # Individual integration test assertion counts (verified against isolated PostgreSQL 17 on 25432)
     isolated_pg_tests = [
         {"test": "CounterfactualSlotIdempotencyPostgresIntegrationTest", "package": "P1", "tests": 5, "passed": 5, "assertions": 21},
+        {"test": "StrategyObservationSlotMigrationPostgresIntegrationTest", "package": "P1", "tests": 5, "passed": 5, "assertions": 20},
         {"test": "SlotIntegrityAndRiskFunnelPostgresIntegrationTest", "package": "P2", "tests": 4, "passed": 4, "assertions": 33},
         {"test": "FinancialAccountingAndReconciliationPostgresIntegrationTest", "package": "P3", "tests": 3, "passed": 3, "assertions": 45},
         {"test": "MlAuthorityAndProperScoringPostgresIntegrationTest", "package": "P4", "tests": 4, "passed": 4, "assertions": 29},

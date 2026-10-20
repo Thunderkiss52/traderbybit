@@ -1,5 +1,5 @@
 {
-  "generated_at_utc": "2026-10-19T23:27:47Z",
+  "generated_at_utc": "2026-10-20T11:15:43Z",
   "total_controls": 7,
   "all_verified_sensitive": true,
   "controls": [
@@ -19,19 +19,19 @@
       },
       "baseline_pass": {
         "exit_code": 0,
-        "stdout": "{\"tool\":\"phpunit\",\"result\":\"passed\",\"tests\":1,\"passed\":1,\"assertions\":1,\"duration_ms\":157}",
+        "stdout": "{\"tool\":\"phpunit\",\"result\":\"passed\",\"tests\":1,\"passed\":1,\"assertions\":1,\"duration_ms\":137}",
         "stderr": "",
         "status": "PASS"
       },
       "deliberately_broken_fail": {
         "exit_code": 1,
-        "stdout": "{\"tool\":\"phpunit\",\"result\":\"failed\",\"tests\":1,\"passed\":0,\"assertions\":1,\"duration_ms\":149,\"failed\":1,\"failures\":[{\"test\":\"Tests\\\\Integration\\\\CounterfactualSlotIdempotencyPostgresIntegrationTest::test_negative_control_duplicate_direct_insert_rejected_by_postgresql_unique_constraint\",\"file\":\"/home/thunder/work/traderbybit/tests/Integration/CounterfactualSlotIdempotencyPostgresIntegrationTest.php\",\"line\":274,\"message\":\"Failed asserting that exception of type \\\"Illuminate\\\\Database\\\\UniqueConstraintViolationException\\\" is thrown.\"}]}",
+        "stdout": "{\"tool\":\"phpunit\",\"result\":\"failed\",\"tests\":1,\"passed\":0,\"assertions\":1,\"duration_ms\":135,\"failed\":1,\"failures\":[{\"test\":\"Tests\\\\Integration\\\\CounterfactualSlotIdempotencyPostgresIntegrationTest::test_negative_control_duplicate_direct_insert_rejected_by_postgresql_unique_constraint\",\"file\":\"/home/thunder/work/traderbybit/tests/Integration/CounterfactualSlotIdempotencyPostgresIntegrationTest.php\",\"line\":274,\"message\":\"Failed asserting that exception of type \\\"Illuminate\\\\Database\\\\UniqueConstraintViolationException\\\" is thrown.\"}]}",
         "stderr": "",
         "status": "FAIL_AS_EXPECTED"
       },
       "restored_pass": {
         "exit_code": 0,
-        "stdout": "{\"tool\":\"phpunit\",\"result\":\"passed\",\"tests\":1,\"passed\":1,\"assertions\":1,\"duration_ms\":173}",
+        "stdout": "{\"tool\":\"phpunit\",\"result\":\"passed\",\"tests\":1,\"passed\":1,\"assertions\":1,\"duration_ms\":154}",
         "stderr": "",
         "status": "PASS"
       },
@@ -53,19 +53,19 @@
       },
       "baseline_pass": {
         "exit_code": 0,
-        "stdout": "{\"tool\":\"phpunit\",\"result\":\"passed\",\"tests\":1,\"passed\":1,\"assertions\":1,\"duration_ms\":173}",
+        "stdout": "{\"tool\":\"phpunit\",\"result\":\"passed\",\"tests\":1,\"passed\":1,\"assertions\":1,\"duration_ms\":208}",
         "stderr": "",
         "status": "PASS"
       },
       "deliberately_broken_fail": {
         "exit_code": 1,
-        "stdout": "{\"tool\":\"phpunit\",\"result\":\"failed\",\"tests\":1,\"passed\":0,\"assertions\":1,\"duration_ms\":172,\"failed\":1,\"failures\":[{\"test\":\"Tests\\\\Integration\\\\SlotIntegrityAndRiskFunnelPostgresIntegrationTest::test_negative_control_duplicate_risk_decision_rejected_by_unique_constraint\",\"file\":\"/home/thunder/work/traderbybit/tests/Integration/SlotIntegrityAndRiskFunnelPostgresIntegrationTest.php\",\"line\":259,\"message\":\"Failed asserting that exception of type \\\"Illuminate\\\\Database\\\\UniqueConstraintViolationException\\\" is thrown.\"}]}",
+        "stdout": "{\"tool\":\"phpunit\",\"result\":\"failed\",\"tests\":1,\"passed\":0,\"assertions\":1,\"duration_ms\":180,\"failed\":1,\"failures\":[{\"test\":\"Tests\\\\Integration\\\\SlotIntegrityAndRiskFunnelPostgresIntegrationTest::test_negative_control_duplicate_risk_decision_rejected_by_unique_constraint\",\"file\":\"/home/thunder/work/traderbybit/tests/Integration/SlotIntegrityAndRiskFunnelPostgresIntegrationTest.php\",\"line\":259,\"message\":\"Failed asserting that exception of type \\\"Illuminate\\\\Database\\\\UniqueConstraintViolationException\\\" is thrown.\"}]}",
         "stderr": "",
         "status": "FAIL_AS_EXPECTED"
       },
       "restored_pass": {
         "exit_code": 0,
-        "stdout": "{\"tool\":\"phpunit\",\"result\":\"passed\",\"tests\":1,\"passed\":1,\"assertions\":1,\"duration_ms\":182}",
+        "stdout": "{\"tool\":\"phpunit\",\"result\":\"passed\",\"tests\":1,\"passed\":1,\"assertions\":1,\"duration_ms\":195}",
         "stderr": "",
         "status": "PASS"
       },
@@ -87,19 +87,19 @@
       },
       "baseline_pass": {
         "exit_code": 0,
-        "stdout": "{\"tool\":\"phpunit\",\"result\":\"passed\",\"tests\":1,\"passed\":1,\"assertions\":7,\"duration_ms\":179}",
+        "stdout": "{\"tool\":\"phpunit\",\"result\":\"passed\",\"tests\":1,\"passed\":1,\"assertions\":7,\"duration_ms\":149}",
         "stderr": "",
         "status": "PASS"
       },
       "deliberately_broken_fail": {
         "exit_code": 1,
-        "stdout": "{\"tool\":\"phpunit\",\"result\":\"failed\",\"tests\":1,\"passed\":0,\"assertions\":7,\"duration_ms\":163,\"failed\":1,\"failures\":[{\"test\":\"Tests\\\\Integration\\\\SlotIntegrityAndRiskFunnelPostgresIntegrationTest::test_slot_integrity_cadence_detects_missing_unexplained_and_market_data_unavailable\",\"file\":\"/home/thunder/work/traderbybit/tests/Integration/SlotIntegrityAndRiskFunnelPostgresIntegrationTest.php\",\"line\":179,\"message\":\"Failed asserting that an array contains 'MISSING_UNEXPLAINED_SLOTS_DETECTED'.\"}]}",
+        "stdout": "{\"tool\":\"phpunit\",\"result\":\"failed\",\"tests\":1,\"passed\":0,\"assertions\":7,\"duration_ms\":166,\"failed\":1,\"failures\":[{\"test\":\"Tests\\\\Integration\\\\SlotIntegrityAndRiskFunnelPostgresIntegrationTest::test_slot_integrity_cadence_detects_missing_unexplained_and_market_data_unavailable\",\"file\":\"/home/thunder/work/traderbybit/tests/Integration/SlotIntegrityAndRiskFunnelPostgresIntegrationTest.php\",\"line\":179,\"message\":\"Failed asserting that an array contains 'MISSING_UNEXPLAINED_SLOTS_DETECTED'.\"}]}",
         "stderr": "",
         "status": "FAIL_AS_EXPECTED"
       },
       "restored_pass": {
         "exit_code": 0,
-        "stdout": "{\"tool\":\"phpunit\",\"result\":\"passed\",\"tests\":1,\"passed\":1,\"assertions\":7,\"duration_ms\":155}",
+        "stdout": "{\"tool\":\"phpunit\",\"result\":\"passed\",\"tests\":1,\"passed\":1,\"assertions\":7,\"duration_ms\":168}",
         "stderr": "",
         "status": "PASS"
       },
@@ -121,13 +121,13 @@
       },
       "baseline_pass": {
         "exit_code": 0,
-        "stdout": "{\"tool\":\"phpunit\",\"result\":\"passed\",\"tests\":1,\"passed\":1,\"assertions\":4,\"duration_ms\":208}",
+        "stdout": "{\"tool\":\"phpunit\",\"result\":\"passed\",\"tests\":1,\"passed\":1,\"assertions\":4,\"duration_ms\":226}",
         "stderr": "",
         "status": "PASS"
       },
       "deliberately_broken_fail": {
         "exit_code": 1,
-        "stdout": "{\"tool\":\"phpunit\",\"result\":\"failed\",\"tests\":1,\"passed\":0,\"assertions\":1,\"duration_ms\":199,\"failed\":1,\"failures\":[{\"test\":\"Tests\\\\Integration\\\\FinancialAccountingAndReconciliationPostgresIntegrationTest::test_negative_control_inverted_funding_sign_fails_reconciliation\",\"file\":\"/home/thunder/work/traderbybit/tests/Integration/FinancialAccountingAndReconciliationPostgresIntegrationTest.php\",\"line\":380,\"message\":\"Failed asserting that two strings are identical.\\n--- Expected\\n+++ Actual\\n@@ @@\\n-'DISCREPANCY_DETECTED'\\n+'PASSED'\"}]}",
+        "stdout": "{\"tool\":\"phpunit\",\"result\":\"failed\",\"tests\":1,\"passed\":0,\"assertions\":1,\"duration_ms\":247,\"failed\":1,\"failures\":[{\"test\":\"Tests\\\\Integration\\\\FinancialAccountingAndReconciliationPostgresIntegrationTest::test_negative_control_inverted_funding_sign_fails_reconciliation\",\"file\":\"/home/thunder/work/traderbybit/tests/Integration/FinancialAccountingAndReconciliationPostgresIntegrationTest.php\",\"line\":380,\"message\":\"Failed asserting that two strings are identical.\\n--- Expected\\n+++ Actual\\n@@ @@\\n-'DISCREPANCY_DETECTED'\\n+'PASSED'\"}]}",
         "stderr": "",
         "status": "FAIL_AS_EXPECTED"
       },
@@ -161,13 +161,13 @@
       },
       "deliberately_broken_fail": {
         "exit_code": 1,
-        "stdout": "{\"tool\":\"phpunit\",\"result\":\"failed\",\"tests\":1,\"passed\":0,\"assertions\":1,\"duration_ms\":217,\"failed\":1,\"failures\":[{\"test\":\"Tests\\\\Integration\\\\MlAuthorityAndProperScoringPostgresIntegrationTest::test_negative_mutation_unauthorized_promotion_rejected\",\"file\":\"/home/thunder/work/traderbybit/tests/Integration/MlAuthorityAndProperScoringPostgresIntegrationTest.php\",\"line\":364,\"message\":\"Promotion of ineligible candidate MUST throw ValidationException.\\nFailed asserting that false is true.\"}]}",
+        "stdout": "{\"tool\":\"phpunit\",\"result\":\"failed\",\"tests\":1,\"passed\":0,\"assertions\":1,\"duration_ms\":169,\"failed\":1,\"failures\":[{\"test\":\"Tests\\\\Integration\\\\MlAuthorityAndProperScoringPostgresIntegrationTest::test_negative_mutation_unauthorized_promotion_rejected\",\"file\":\"/home/thunder/work/traderbybit/tests/Integration/MlAuthorityAndProperScoringPostgresIntegrationTest.php\",\"line\":364,\"message\":\"Promotion of ineligible candidate MUST throw ValidationException.\\nFailed asserting that false is true.\"}]}",
         "stderr": "",
         "status": "FAIL_AS_EXPECTED"
       },
       "restored_pass": {
         "exit_code": 0,
-        "stdout": "{\"tool\":\"phpunit\",\"result\":\"passed\",\"tests\":1,\"passed\":1,\"assertions\":4,\"duration_ms\":145}",
+        "stdout": "{\"tool\":\"phpunit\",\"result\":\"passed\",\"tests\":1,\"passed\":1,\"assertions\":4,\"duration_ms\":169}",
         "stderr": "",
         "status": "PASS"
       },
@@ -189,19 +189,19 @@
       },
       "baseline_pass": {
         "exit_code": 0,
-        "stdout": "{\"tool\":\"phpunit\",\"result\":\"passed\",\"tests\":1,\"passed\":1,\"assertions\":8,\"duration_ms\":191}",
+        "stdout": "{\"tool\":\"phpunit\",\"result\":\"passed\",\"tests\":1,\"passed\":1,\"assertions\":8,\"duration_ms\":173}",
         "stderr": "",
         "status": "PASS"
       },
       "deliberately_broken_fail": {
         "exit_code": 1,
-        "stdout": "{\"tool\":\"phpunit\",\"result\":\"failed\",\"tests\":1,\"passed\":0,\"assertions\":1,\"duration_ms\":147,\"failed\":1,\"failures\":[{\"test\":\"Tests\\\\Integration\\\\MlAuthorityAndProperScoringPostgresIntegrationTest::test_legacy_active_model_lacks_authority_and_fails_closed_or_bypasses\",\"file\":\"/home/thunder/work/traderbybit/tests/Integration/MlAuthorityAndProperScoringPostgresIntegrationTest.php\",\"line\":157,\"message\":\"Legacy active model must NOT be marked eligible without Gate 6 validation.\\nFailed asserting that true is false.\"}]}",
+        "stdout": "{\"tool\":\"phpunit\",\"result\":\"failed\",\"tests\":1,\"passed\":0,\"assertions\":1,\"duration_ms\":157,\"failed\":1,\"failures\":[{\"test\":\"Tests\\\\Integration\\\\MlAuthorityAndProperScoringPostgresIntegrationTest::test_legacy_active_model_lacks_authority_and_fails_closed_or_bypasses\",\"file\":\"/home/thunder/work/traderbybit/tests/Integration/MlAuthorityAndProperScoringPostgresIntegrationTest.php\",\"line\":157,\"message\":\"Legacy active model must NOT be marked eligible without Gate 6 validation.\\nFailed asserting that true is false.\"}]}",
         "stderr": "",
         "status": "FAIL_AS_EXPECTED"
       },
       "restored_pass": {
         "exit_code": 0,
-        "stdout": "{\"tool\":\"phpunit\",\"result\":\"passed\",\"tests\":1,\"passed\":1,\"assertions\":8,\"duration_ms\":184}",
+        "stdout": "{\"tool\":\"phpunit\",\"result\":\"passed\",\"tests\":1,\"passed\":1,\"assertions\":8,\"duration_ms\":208}",
         "stderr": "",
         "status": "PASS"
       },
@@ -223,19 +223,19 @@
       },
       "baseline_pass": {
         "exit_code": 0,
-        "stdout": "{\"tool\":\"phpunit\",\"result\":\"passed\",\"tests\":1,\"passed\":1,\"assertions\":5,\"duration_ms\":101}",
+        "stdout": "{\"tool\":\"phpunit\",\"result\":\"passed\",\"tests\":1,\"passed\":1,\"assertions\":5,\"duration_ms\":110}",
         "stderr": "",
         "status": "PASS"
       },
       "deliberately_broken_fail": {
         "exit_code": 1,
-        "stdout": "{\"tool\":\"phpunit\",\"result\":\"failed\",\"tests\":1,\"passed\":0,\"assertions\":4,\"duration_ms\":96,\"failed\":1,\"failures\":[{\"test\":\"Tests\\\\Integration\\\\QuantPortfolioMetricsPostgresIntegrationTest::test_negative_control_source_variation_reacts_dynamically\",\"file\":\"/home/thunder/work/traderbybit/tests/Integration/QuantPortfolioMetricsPostgresIntegrationTest.php\",\"line\":267,\"message\":\"Net PnL must decrease by exactly 10.00\\nFailed asserting that 37.5057 matches expected 27.505699999999997.\"}]}",
+        "stdout": "{\"tool\":\"phpunit\",\"result\":\"failed\",\"tests\":1,\"passed\":0,\"assertions\":4,\"duration_ms\":112,\"failed\":1,\"failures\":[{\"test\":\"Tests\\\\Integration\\\\QuantPortfolioMetricsPostgresIntegrationTest::test_negative_control_source_variation_reacts_dynamically\",\"file\":\"/home/thunder/work/traderbybit/tests/Integration/QuantPortfolioMetricsPostgresIntegrationTest.php\",\"line\":267,\"message\":\"Net PnL must decrease by exactly 10.00\\nFailed asserting that 37.5057 matches expected 27.505699999999997.\"}]}",
         "stderr": "",
         "status": "FAIL_AS_EXPECTED"
       },
       "restored_pass": {
         "exit_code": 0,
-        "stdout": "{\"tool\":\"phpunit\",\"result\":\"passed\",\"tests\":1,\"passed\":1,\"assertions\":5,\"duration_ms\":105}",
+        "stdout": "{\"tool\":\"phpunit\",\"result\":\"passed\",\"tests\":1,\"passed\":1,\"assertions\":5,\"duration_ms\":100}",
         "stderr": "",
         "status": "PASS"
       },

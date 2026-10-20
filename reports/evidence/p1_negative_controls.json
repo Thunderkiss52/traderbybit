@@ -12,7 +12,7 @@
     "target": "strategy_observations unique slot constraint",
     "fault_injected": "Attempt direct duplicate SQL insert of identical strategy observation slot with different configuration_hash",
     "expected_outcome": "UniqueConstraintViolationException thrown by PostgreSQL on strategy_observations_slot_unique",
-    "actual_outcome": "UniqueConstraintViolationException caught and asserted in test_negative_control_duplicate_observation_rejected_by_slot_unique_constraint",
+    "actual_outcome": "UniqueConstraintViolationException caught and asserted in test_negative_control_duplicate_canonical_direct_insert_rejected",
     "status": "PASS"
   }
 ]

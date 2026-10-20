@@ -1,18 +1,18 @@
 {
-  "generated_at_utc": "2026-10-19T23:38:12Z",
+  "generated_at_utc": "2026-10-20T11:19:45Z",
   "total_commands_executed": 10,
   "all_passed": true,
   "commands": [
     {
       "id": "CMD-01",
       "name": "Isolated PostgreSQL Integration Test Suite (P1-P5)",
-      "command": "php -d xdebug.mode=off vendor/bin/phpunit tests/Integration/CounterfactualSlotIdempotencyPostgresIntegrationTest.php tests/Integration/SlotIntegrityAndRiskFunnelPostgresIntegrationTest.php tests/Integration/FinancialAccountingAndReconciliationPostgresIntegrationTest.php tests/Integration/MlAuthorityAndProperScoringPostgresIntegrationTest.php tests/Integration/QuantPortfolioMetricsPostgresIntegrationTest.php",
+      "command": "TEST_DB_PORT=25432 php -d xdebug.mode=off vendor/bin/phpunit tests/Integration/CounterfactualSlotIdempotencyPostgresIntegrationTest.php tests/Integration/StrategyObservationSlotMigrationPostgresIntegrationTest.php tests/Integration/SlotIntegrityAndRiskFunnelPostgresIntegrationTest.php tests/Integration/FinancialAccountingAndReconciliationPostgresIntegrationTest.php tests/Integration/MlAuthorityAndProperScoringPostgresIntegrationTest.php tests/Integration/QuantPortfolioMetricsPostgresIntegrationTest.php",
       "cwd": "/home/thunder/work/traderbybit",
       "exit_code": 0,
       "status": "PASSED",
       "log_file": "reports/evidence/raw_test_logs/phpunit_isolated_postgres.log",
-      "tests_run": 21,
-      "assertions": 217,
+      "tests_run": 26,
+      "assertions": 237,
       "failures": 0
     },
     {
@@ -23,10 +23,10 @@
       "exit_code": 0,
       "status": "PASSED",
       "log_file": "reports/evidence/raw_test_logs/phpunit_full_stdout.log",
-      "tests_run": 351,
-      "passed": 346,
+      "tests_run": 356,
+      "passed": 351,
       "skipped": 5,
-      "assertions": 2159,
+      "assertions": 2179,
       "failures": 0
     },
     {

@@ -1,18 +1,75 @@
 {
-  "generated_at_utc": "2026-10-19T23:38:12Z",
-  "git_head_sha": "98cbe67906849ea8026441f19695c1462ddef9cc",
+  "generated_at_utc": "2026-10-20T11:19:45Z",
+  "git_head_sha": "a8c1028609b822485abd003302a1555b9064bc0d",
   "tracked_changes": {
-    "diff_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
-    "modified_files_count": 0,
-    "modified_files": []
+    "diff_sha256": "daaf5d9c8722477729669f406a3127986a171983481c752fb8f1b3ba7a387012",
+    "modified_files_count": 14,
+    "modified_files": [
+      {
+        "status": "M",
+        "path": "atabase/migrations/2026_10_20_000000_add_slot_idempotency_to_strategy_observations.php"
+      },
+      {
+        "status": "M",
+        "path": "reports/evidence/command_exit_codes.json"
+      },
+      {
+        "status": "M",
+        "path": "reports/evidence/negative_controls_failure_traces.json"
+      },
+      {
+        "status": "M",
+        "path": "reports/evidence/p1_concurrency_proof.json"
+      },
+      {
+        "status": "M",
+        "path": "reports/evidence/postgres_queries_and_results.json"
+      },
+      {
+        "status": "M",
+        "path": "reports/evidence/raw_test_logs/frontend_build_stdout.log"
+      },
+      {
+        "status": "M",
+        "path": "reports/evidence/raw_test_logs/frontend_test_stdout.log"
+      },
+      {
+        "status": "M",
+        "path": "reports/evidence/raw_test_logs/phpunit_full_stdout.log"
+      },
+      {
+        "status": "M",
+        "path": "reports/evidence/raw_test_logs/phpunit_isolated_postgres.log"
+      },
+      {
+        "status": "M",
+        "path": "scripts/build_evidence_zip.py"
+      },
+      {
+        "status": "M",
+        "path": "scripts/bundle_p1_evidence.py"
+      },
+      {
+        "status": "M",
+        "path": "scripts/bundle_p8_aggregate_manifest.py"
+      },
+      {
+        "status": "M",
+        "path": "scripts/generate_provenance_and_exit_codes.py"
+      },
+      {
+        "status": "M",
+        "path": "scripts/test_p1_postgres_concurrency.php"
+      }
+    ]
   },
   "untracked_files_provenance": {
     "count": 1,
     "files": [
       {
-        "path": "evidence.zip.sha256",
-        "sha256": "1da91eda45fd3aab81214b9ab4fcc18a0b37d0e784fee922771f3038b8fdaad9",
-        "size_bytes": 79
+        "path": "tests/Integration/StrategyObservationSlotMigrationPostgresIntegrationTest.php",
+        "sha256": "fef0ae77fb8f425835654c0062cf65d5562c48a6f4662c5fdff624a2c800aee1",
+        "size_bytes": 15087
       }
     ]
   }

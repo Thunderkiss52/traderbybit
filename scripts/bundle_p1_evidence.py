@@ -64,8 +64,8 @@ def main():
             "claim_id": "CLM-P1-05",
             "statement": "Slot idempotency enforced on strategy_observations via partial unique index on (exchange, category, symbol, strategy_id, strategy_version, decision_time) WHERE superseded_by IS NULL, preventing configuration_hash variations from inserting duplicate observation rows.",
             "status": "VERIFIED",
-            "method": "2026_10_20_000000_add_slot_idempotency_to_strategy_observations.php and test_p1_postgres_concurrency.php",
-            "evidence": "tests/Integration/CounterfactualSlotIdempotencyPostgresIntegrationTest.php"
+            "method": "2026_10_20_000000_add_slot_idempotency_to_strategy_observations.php, test_p1_postgres_concurrency.php, and StrategyObservationSlotMigrationPostgresIntegrationTest.php",
+            "evidence": "tests/Integration/StrategyObservationSlotMigrationPostgresIntegrationTest.php and tests/Integration/CounterfactualSlotIdempotencyPostgresIntegrationTest.php"
         }
     ]
 
@@ -88,7 +88,7 @@ def main():
             "target": "strategy_observations unique slot constraint",
             "fault_injected": "Attempt direct duplicate SQL insert of identical strategy observation slot with different configuration_hash",
             "expected_outcome": "UniqueConstraintViolationException thrown by PostgreSQL on strategy_observations_slot_unique",
-            "actual_outcome": "UniqueConstraintViolationException caught and asserted in test_negative_control_duplicate_observation_rejected_by_slot_unique_constraint",
+            "actual_outcome": "UniqueConstraintViolationException caught and asserted in test_negative_control_duplicate_canonical_direct_insert_rejected",
             "status": "PASS"
         }
     ]
@@ -110,11 +110,14 @@ def main():
             "database/migrations/2026_10_19_000000_add_slot_idempotency_to_counterfactual_evaluations.php",
             "database/migrations/2026_10_20_000000_add_slot_idempotency_to_strategy_observations.php"
         ],
-        "test_file": "tests/Integration/CounterfactualSlotIdempotencyPostgresIntegrationTest.php",
+        "test_files": [
+            "tests/Integration/CounterfactualSlotIdempotencyPostgresIntegrationTest.php",
+            "tests/Integration/StrategyObservationSlotMigrationPostgresIntegrationTest.php"
+        ],
         "test_suite_result": {
-            "tests": 5,
-            "passed": 5,
-            "assertions": 21,
+            "tests": 10,
+            "passed": 10,
+            "assertions": 41,
             "status": "PASSED"
         },
         "claims_count": len(claims),
@@ -126,7 +129,9 @@ def main():
         json.dump(manifest, f, indent=2)
 
     with open("reports/evidence/p1_commands.txt", "w") as f:
-        f.write("TEST_DB_PORT=25432 php -d xdebug.mode=off artisan test tests/Integration/CounterfactualSlotIdempotencyPostgresIntegrationTest.php\n")
+        f.write("TEST_DB_PORT=25432 php -d xdebug.mode=off vendor/bin/phpunit tests/Integration/CounterfactualSlotIdempotencyPostgresIntegrationTest.php\n")
+        f.write("TEST_DB_PORT=25432 php -d xdebug.mode=off vendor/bin/phpunit tests/Integration/StrategyObservationSlotMigrationPostgresIntegrationTest.php\n")
+        f.write("php -d xdebug.mode=off scripts/test_p1_postgres_concurrency.php\n")
 
     print("[OK] P1 Evidence Bundle successfully created in reports/evidence/")
 

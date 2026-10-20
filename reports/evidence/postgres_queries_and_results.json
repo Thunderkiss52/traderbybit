@@ -1,5 +1,5 @@
 {
-  "captured_at_utc": "2026-10-19T23:25:54Z",
+  "captured_at_utc": "2026-10-20T11:16:07Z",
   "database": "bybit_test",
   "host": "127.0.0.1",
   "port": 25432,
@@ -11,7 +11,7 @@
       "description": "Inspect all primary paper accounts, verifying 8 isolated accounts and their balances",
       "sql": "SELECT id, name, strategy_id, strategy_version, starting_balance, current_equity, peak_equity, realized_pnl, status FROM paper_accounts ORDER BY name;",
       "exit_code": 0,
-      "duration_ms": 152.88,
+      "duration_ms": 150.62,
       "row_count": 9,
       "rows": [
         {
@@ -135,7 +135,7 @@
       "description": "Verify latest ledger reconciliation runs and discrepancy status across accounts",
       "sql": "SELECT r.id, r.paper_account_id, a.name AS account_name, r.status, r.recalculated_balance, r.stored_balance, r.recalculated_equity, r.stored_equity, r.discrepancy_count, r.completed_at FROM reconciliation_runs r JOIN paper_accounts a ON r.paper_account_id = a.id ORDER BY r.completed_at DESC LIMIT 8;",
       "exit_code": 0,
-      "duration_ms": 152.94,
+      "duration_ms": 136.57,
       "row_count": 8,
       "rows": [
         {
@@ -257,7 +257,7 @@
       "description": "Inspect canonical vs superseded counterfactual evaluations count and slot uniqueness",
       "sql": "SELECT COUNT(*) AS total_rows, COUNT(CASE WHEN superseded_by IS NULL THEN 1 END) AS canonical_rows, COUNT(CASE WHEN superseded_by IS NOT NULL THEN 1 END) AS superseded_rows, COUNT(DISTINCT (strategy_id || '|' || strategy_version || '|' || symbol || '|' || timeframe || '|' || decision_time::text)) AS distinct_slots FROM counterfactual_evaluations;",
       "exit_code": 0,
-      "duration_ms": 145.48,
+      "duration_ms": 161.87,
       "row_count": 1,
       "rows": [
         {
@@ -286,7 +286,7 @@
       "description": "Strategy observations distribution by strategy_id, side, and quality class",
       "sql": "SELECT strategy_id, side, quality_class, COUNT(*) AS count FROM strategy_observations GROUP BY strategy_id, side, quality_class ORDER BY strategy_id, side;",
       "exit_code": 0,
-      "duration_ms": 157.39,
+      "duration_ms": 162.31,
       "row_count": 10,
       "rows": [
         {
@@ -368,7 +368,7 @@
       "description": "Risk decisions distribution by paper_account_id, allowed flag, and risk_version",
       "sql": "SELECT paper_account_id, allowed, risk_version, COUNT(*) AS count FROM risk_decisions GROUP BY paper_account_id, allowed, risk_version ORDER BY paper_account_id, allowed;",
       "exit_code": 0,
-      "duration_ms": 129.0,
+      "duration_ms": 137.43,
       "row_count": 10,
       "rows": [
         {
@@ -451,7 +451,7 @@
       "description": "Inspect registered ML model artifacts, statuses, and Gate 6 validation flags",
       "sql": "SELECT id, name, model_type, version, status, parameters->>'gate6_validation' AS gate6_validation_raw, parameters->>'approved_for_advisory' AS approved_for_advisory, created_at FROM learning_model_artifacts ORDER BY created_at DESC;",
       "exit_code": 0,
-      "duration_ms": 158.37,
+      "duration_ms": 147.07,
       "row_count": 1,
       "rows": [
         {
@@ -486,7 +486,7 @@
       "description": "Verify presence of partial unique indexes enforcing slot idempotency and account uniqueness",
       "sql": "SELECT schemaname, tablename, indexname, indexdef FROM pg_indexes WHERE tablename IN ('counterfactual_evaluations', 'strategy_observations', 'risk_decisions') AND indexname LIKE '%unique%' ORDER BY tablename, indexname;",
       "exit_code": 0,
-      "duration_ms": 136.04,
+      "duration_ms": 203.33,
       "row_count": 4,
       "rows": [
         {

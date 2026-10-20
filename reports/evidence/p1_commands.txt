@@ -1,1 +1,3 @@
-TEST_DB_PORT=25432 php -d xdebug.mode=off artisan test tests/Integration/CounterfactualSlotIdempotencyPostgresIntegrationTest.php
+TEST_DB_PORT=25432 php -d xdebug.mode=off vendor/bin/phpunit tests/Integration/CounterfactualSlotIdempotencyPostgresIntegrationTest.php
+TEST_DB_PORT=25432 php -d xdebug.mode=off vendor/bin/phpunit tests/Integration/StrategyObservationSlotMigrationPostgresIntegrationTest.php
+php -d xdebug.mode=off scripts/test_p1_postgres_concurrency.php

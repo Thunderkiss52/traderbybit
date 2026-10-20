@@ -85,6 +85,10 @@ FILES_TO_INCLUDE = [
     # Concurrency runner and worker source
     "scripts/test_p1_postgres_concurrency.php",
     "scripts/concurrency_worker.php",
+    "database/migrations/2026_10_19_000000_add_slot_idempotency_to_counterfactual_evaluations.php",
+    "database/migrations/2026_10_20_000000_add_slot_idempotency_to_strategy_observations.php",
+    "tests/Integration/CounterfactualSlotIdempotencyPostgresIntegrationTest.php",
+    "tests/Integration/StrategyObservationSlotMigrationPostgresIntegrationTest.php",
 
     # Raw test logs
     "reports/evidence/raw_test_logs/phpunit_full_stdout.log",

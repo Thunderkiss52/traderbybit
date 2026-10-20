@@ -1,10 +1,10 @@
 {
   "manifest_type": "VECTOR_V5_3_MANDATORY_CORE_AGGREGATE",
   "specification": "VECTOR_V5_3_EVIDENCE_VERIFIED_CODEX_SPEC.md",
-  "compiled_at_utc": "2026-10-19T23:38:12Z",
-  "git_head_sha": "98cbe67906849ea8026441f19695c1462ddef9cc",
+  "compiled_at_utc": "2026-10-20T11:19:52Z",
+  "git_head_sha": "a8c1028609b822485abd003302a1555b9064bc0d",
   "working_tree_dirty": true,
-  "diff_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+  "diff_sha256": "56ad2a53c9a225997592c16f35f21733e26453a65d732a8cf8b9e53c546dd321",
   "scope": {
     "mandatory_authorized": [
       "P0",
@@ -27,8 +27,8 @@
     "total_claims_verified": 26,
     "total_negative_controls_count": 7,
     "total_negative_controls_passed": 7,
-    "isolated_postgres_tests_count": 21,
-    "isolated_postgres_assertions_count": 217
+    "isolated_postgres_tests_count": 26,
+    "isolated_postgres_assertions_count": 237
   },
   "packages": {
     "P0": {
@@ -53,9 +53,9 @@
       "claims_count": 5,
       "negative_controls_count": 2,
       "test_suite_result": {
-        "tests": 5,
-        "passed": 5,
-        "assertions": 21,
+        "tests": 10,
+        "passed": 10,
+        "assertions": 41,
         "status": "PASSED"
       },
       "claims": [
@@ -147,9 +147,9 @@
     },
     "pass_2_isolated_postgres_integration": {
       "command": "php -d xdebug.mode=off vendor/bin/phpunit tests/Integration/CounterfactualSlotIdempotencyPostgresIntegrationTest.php tests/Integration/SlotIntegrityAndRiskFunnelPostgresIntegrationTest.php tests/Integration/FinancialAccountingAndReconciliationPostgresIntegrationTest.php tests/Integration/MlAuthorityAndProperScoringPostgresIntegrationTest.php tests/Integration/QuantPortfolioMetricsPostgresIntegrationTest.php",
-      "tests": 21,
-      "passed": 21,
-      "assertions": 217,
+      "tests": 26,
+      "passed": 26,
+      "assertions": 237,
       "exit_code": 0,
       "database": "PostgreSQL 17.6 on isolated port 25432 (bybit_test)",
       "subsuite_breakdown": [
@@ -159,6 +159,13 @@
           "tests": 5,
           "passed": 5,
           "assertions": 21
+        },
+        {
+          "test": "StrategyObservationSlotMigrationPostgresIntegrationTest",
+          "package": "P1",
+          "tests": 5,
+          "passed": 5,
+          "assertions": 20
         },
         {
           "test": "SlotIntegrityAndRiskFunnelPostgresIntegrationTest",
@@ -301,15 +308,15 @@
       "files_count": 6,
       "files": {
         "frontend_test_stdout.log": {
-          "sha256": "49e75ef770454f734887a8a23044eb5f7ee27cfd682f28c05602da7cc45f7ae4",
-          "size_bytes": 7620
+          "sha256": "f2184ffc4ee1e2fb48af1de795483f7ee3f4442281568bbb41021fdcfc1af63f",
+          "size_bytes": 7623
         },
         "pint_stdout.log": {
           "sha256": "cd1a94fc2cf6a965b86e1a4809d6c7fb9148b1ee374e1010ed2ac96ff4876ec2",
           "size_bytes": 33
         },
         "frontend_build_stdout.log": {
-          "sha256": "f63feae3d1c74af2a38a41aea1a0ac027dfbb80758d94478993d1d482e9ac36f",
+          "sha256": "d1ee088ccf140cc4d345a916b7a75e7e01775ed5722a7cf5f78600a84585e66b",
           "size_bytes": 4855
         },
         "go_test_stdout.log": {
@@ -317,12 +324,12 @@
           "size_bytes": 2780
         },
         "phpunit_isolated_postgres.log": {
-          "sha256": "464fa14a4e9060dea6e2ca3d0048934352ea438d268537d89ce13fbcb6844c1a",
-          "size_bytes": 2460
+          "sha256": "14a48970dd98e1ef0bbada1d0a093a43cbb6cc9dbf5fefc9bf42528c7e331582",
+          "size_bytes": 96
         },
         "phpunit_full_stdout.log": {
-          "sha256": "9dae82f25144bd7f76a360d521a69aaa370165545f4d2416e50fea8277684474",
-          "size_bytes": 32450
+          "sha256": "70549cab6a59ee3901e2b84ed1dad89358f26f2fd407bd8e94982e27ef62d9c8",
+          "size_bytes": 112
         }
       }
     },
@@ -421,201 +428,9 @@
     }
   },
   "source_provenance_untracked_files": {
-    "evidence.zip.sha256": {
-      "sha256": "1da91eda45fd3aab81214b9ab4fcc18a0b37d0e784fee922771f3038b8fdaad9",
-      "size_bytes": 79
-    },
-    "reports/evidence/p5_manifest.json": {
-      "sha256": "b360ed9afa8fa01c94a5e82f09b3cb78d1bfd083314d5bb0eb2ab99d0f652c92",
-      "size_bytes": 1048
-    },
-    "reports/evidence/p0_forensic_summary.json": {
-      "sha256": "207b247643eb8f9cf353f6551e272ee93adedfdfb3568de26f3bf67a8c2677f4",
-      "size_bytes": 7024
-    },
-    "reports/evidence/p0_unverified_paths.md": {
-      "sha256": "0ed9afea716b1469e454a09c49d98cf663e05726e912743627fcf61bf32eb069",
-      "size_bytes": 358
-    },
-    "reports/evidence/p3_manifest.json": {
-      "sha256": "e03db91de529b610cf21ce5fa4366632d5076c7a7388057d7f6d5e920432b555",
-      "size_bytes": 720
-    },
-    "reports/evidence/p1_claims.jsonl": {
-      "sha256": "a3a9c2d4e233df4717e25992b240110a7aac0fdace85fa535efef0e2b4230cf0",
-      "size_bytes": 2152
-    },
-    "reports/evidence/command_exit_codes.json": {
-      "sha256": "3e268635123e63335f4410848683ff5a68eb8326346c1d45229452735d6f03e0",
-      "size_bytes": 3993
-    },
-    "reports/evidence/p0_source_manifest.json": {
-      "sha256": "7a3b9f33b72710c695f7b3ac65e17ae3a4f2b63c939b0532bada4d85bdab9527",
-      "size_bytes": 1026
-    },
-    "reports/evidence/p3_commands.txt": {
-      "sha256": "0cdac714bfa0643371cbe54a2ee13b26a176a62e6c661f1f99aaa99ee96afa0c",
-      "size_bytes": 137
-    },
-    "reports/evidence/p2_manifest.json": {
-      "sha256": "1d1cf9c690983c53b0c8315176855b13c1c7bfb1ef100fe8049ec50bb671d6ed",
-      "size_bytes": 848
-    },
-    "reports/evidence/aggregate_manifest.json": {
-      "sha256": "08ba533acc0b3ac1da98ab0c3159db19643650d3911ad8f0a7d6de75b18422a3",
-      "size_bytes": 28106
-    },
-    "reports/evidence/hardcoding_audit.json": {
-      "sha256": "0173a93d0926c6bf69ccc8d1982cebe730e747d11f26e8c45edba05c21c630b4",
-      "size_bytes": 781
-    },
-    "reports/evidence/p4_claims.jsonl": {
-      "sha256": "4ea2f5bffa695eacab31a586e9f7e5ffe0fe9923a35a1eee0fa31dceb4a224ec",
-      "size_bytes": 1402
-    },
-    "reports/evidence/p0_performance_baseline.json": {
-      "sha256": "3ef9bc7ee228b15dfbfc93fdf5a076284216f82b737d062eaaece2167a379312",
-      "size_bytes": 1004
-    },
-    "reports/evidence/p3_claims.jsonl": {
-      "sha256": "983d87940aff898dd04ab1c54eeca44a1b40f16619cf160453f52836bd38e568",
-      "size_bytes": 1185
-    },
-    "reports/evidence/p1_manifest.json": {
-      "sha256": "907d5264f073232ed20402576d02c63e271e6870a1cdcdc61560ea69d30c7e17",
-      "size_bytes": 915
-    },
-    "reports/evidence/p2_negative_controls.json": {
-      "sha256": "d140c78b8893b2c45a0f72cc8d50a3a858064c1196dd47ae01b0aeba031d6a4d",
-      "size_bytes": 896
-    },
-    "reports/evidence/p0_manifest.json": {
-      "sha256": "114ee7d55400c6263f1c64859ecb698bb54b072eee39e8b9ae762b791aa10250",
-      "size_bytes": 1333
-    },
-    "reports/evidence/p3_negative_controls.json": {
-      "sha256": "f685093c4b7f8f72d964b25b53db1747624c8256baf66b02c164af09ce474ca2",
-      "size_bytes": 426
-    },
-    "reports/evidence/changed_code_provenance.json": {
-      "sha256": "4c9124b9b5f447b43754b1a7be07616e0a1553f3f411c93ef73e2aab22820cf2",
-      "size_bytes": 523
-    },
-    "reports/evidence/p2_claims.jsonl": {
-      "sha256": "11830d1ffd19fd71d1df68277be63ba7d1fb3a1941c27e9e909e3496fde0a022",
-      "size_bytes": 1586
-    },
-    "reports/evidence/p5_claims.jsonl": {
-      "sha256": "af984f3517ce198905a2bbc309fef4395ba4773fb399440f8a4bafd5d785cd0c",
-      "size_bytes": 2024
-    },
-    "reports/evidence/p2_commands.txt": {
-      "sha256": "1f2b190e1af4583a5ca35db9599aa7e6f32c3e66779f0c5537e5d8e7d7e402b0",
-      "size_bytes": 127
-    },
-    "reports/evidence/p1_negative_controls.json": {
-      "sha256": "078097593a42df71384183734af1dbefe198f0e0b8fffcbf1ff5b666bbc595a2",
-      "size_bytes": 1034
-    },
-    "reports/evidence/p0_claims.jsonl": {
-      "sha256": "74336a9a7eea1538d230a73390c3a079bbd9dad1ca4790e11db3b91c737302ab",
-      "size_bytes": 3587
-    },
-    "reports/evidence/p4_manifest.json": {
-      "sha256": "17c2739c6fb0de59e7eb8a9f02bd4c5de3b3d3a7dd3f3b4d1cbf5c840369e1a4",
-      "size_bytes": 1366
-    },
-    "reports/evidence/p4_negative_controls.json": {
-      "sha256": "893eb9af8ff4c76d40905be22bca6d754537604296ae9bc38f7f45a505c4956a",
-      "size_bytes": 1073
-    },
-    "reports/evidence/p1_commands.txt": {
-      "sha256": "37554f1b431d5bbbec916eec35cc244677ff7b76e6374de5411deeae16ca0359",
-      "size_bytes": 130
-    },
-    "reports/evidence/postgres_queries_and_results.json": {
-      "sha256": "75927d21769f8559a30b629132cdcbe2814f75326eb59904fe1980730a6928a9",
-      "size_bytes": 29269
-    },
-    "reports/evidence/p0_commands.txt": {
-      "sha256": "1c8b9b7cdf0c0ec6dd99197aa844202ab1d0603299547abaa7dbc58be2754e32",
-      "size_bytes": 118
-    },
-    "reports/evidence/negative_controls_failure_traces.json": {
-      "sha256": "bc157f674cb03fa6655152357364883e9c99f3602182682dba66d1e81a201bfa",
-      "size_bytes": 14684
-    },
-    "reports/evidence/p1_concurrency_proof.json": {
-      "sha256": "a0838d9cb591cdeb2f5353f58916c24cb1c062873856cbfb01117803f71a0444",
-      "size_bytes": 2404
-    },
-    "reports/evidence/p5_negative_controls.json": {
-      "sha256": "6a139e3508dd8b3ba595998f8666cda3cf3870c6a0ef7331a6253a7b5f5e0a09",
-      "size_bytes": 543
-    },
-    "reports/evidence/reproducibility/run_2_payload.json": {
-      "sha256": "15a71239ee776949f85fc016c603eab8f066fd0f5c07289c5810cbdf98f4b9d3",
-      "size_bytes": 10908
-    },
-    "reports/evidence/reproducibility/p5_reproducibility.json": {
-      "sha256": "f2873f479286e942ae6fc10e1585ba47fc1a31f014987a8571761ea45d0e7b1c",
-      "size_bytes": 675
-    },
-    "reports/evidence/reproducibility/run_1_payload.json": {
-      "sha256": "15a71239ee776949f85fc016c603eab8f066fd0f5c07289c5810cbdf98f4b9d3",
-      "size_bytes": 10908
-    },
-    "reports/evidence/raw_test_logs/frontend_test_stdout.log": {
-      "sha256": "49e75ef770454f734887a8a23044eb5f7ee27cfd682f28c05602da7cc45f7ae4",
-      "size_bytes": 7620
-    },
-    "reports/evidence/raw_test_logs/pint_stdout.log": {
-      "sha256": "cd1a94fc2cf6a965b86e1a4809d6c7fb9148b1ee374e1010ed2ac96ff4876ec2",
-      "size_bytes": 33
-    },
-    "reports/evidence/raw_test_logs/frontend_build_stdout.log": {
-      "sha256": "f63feae3d1c74af2a38a41aea1a0ac027dfbb80758d94478993d1d482e9ac36f",
-      "size_bytes": 4855
-    },
-    "reports/evidence/raw_test_logs/go_test_stdout.log": {
-      "sha256": "12acb1bdd699d7739c039be3bd9b42083fdcdb063656bf5baae00c866314f4f3",
-      "size_bytes": 2780
-    },
-    "reports/evidence/raw_test_logs/phpunit_isolated_postgres.log": {
-      "sha256": "464fa14a4e9060dea6e2ca3d0048934352ea438d268537d89ce13fbcb6844c1a",
-      "size_bytes": 2460
-    },
-    "reports/evidence/raw_test_logs/phpunit_full_stdout.log": {
-      "sha256": "9dae82f25144bd7f76a360d521a69aaa370165545f4d2416e50fea8277684474",
-      "size_bytes": 32450
-    },
-    "reports/evidence/mutation_patches/NEG-P3-01.patch": {
-      "sha256": "13d8138858522d5967905522b8f4083ee3d39f04bd8d819484a5a1cd0d75f2b1",
-      "size_bytes": 515
-    },
-    "reports/evidence/mutation_patches/NEG-P4-01.patch": {
-      "sha256": "131d0301353e7a7bb5c872a3b940e4536f0e55d51967ecaf92c46eb53a4ee62d",
-      "size_bytes": 592
-    },
-    "reports/evidence/mutation_patches/NEG-P1-01.patch": {
-      "sha256": "03e3df0bdf0b816393991b5618673f7d72858cd1fd847c240dd18df4511ddd61",
-      "size_bytes": 205
-    },
-    "reports/evidence/mutation_patches/NEG-P5-01.patch": {
-      "sha256": "dabf3c10509172ae60f08aef3cfb621dfc0bdb74b4dce9e8a51bf28c6e9c7258",
-      "size_bytes": 580
-    },
-    "reports/evidence/mutation_patches/NEG-P4-02.patch": {
-      "sha256": "620e33d239bfd56c086ed89c403b7adffc9f2235007ad969de6ce612f8ae2089",
-      "size_bytes": 490
-    },
-    "reports/evidence/mutation_patches/NEG-P2-02.patch": {
-      "sha256": "6ffff4b6adf2eb1691c5c05b8080ecf9e5c4017e7665d94bfbef3696e9c931ad",
-      "size_bytes": 665
-    },
-    "reports/evidence/mutation_patches/NEG-P2-01.patch": {
-      "sha256": "0bde09915728c27e7f140b70ef68c27e868af03ddadaafe091a3f11b1f337fcc",
-      "size_bytes": 206
+    "tests/Integration/StrategyObservationSlotMigrationPostgresIntegrationTest.php": {
+      "sha256": "fef0ae77fb8f425835654c0062cf65d5562c48a6f4662c5fdff624a2c800aee1",
+      "size_bytes": 15087
     }
   },
   "release_readiness": "READY_FOR_USER_REVIEW_AND_CI_DEPLOYMENT",
