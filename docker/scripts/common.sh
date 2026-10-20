@@ -142,12 +142,16 @@ check_service_readiness() {
             ;;
         research-worker)
             timeout 5 docker exec "${cid}" sh -c "tr '\\0' ' ' </proc/1/cmdline | grep -q 'research-worker'" || return 1
-            local started_at
-            started_at="$(docker inspect --format '{{.State.StartedAt}}' "${cid}" 2>/dev/null || true)"
-            [[ -n "${started_at}" ]] || return 1
+            local st
+            st="$(docker inspect --format '{{.State.Status}}' "${cid}" 2>/dev/null || echo "unknown")"
+            [[ "${st}" == "running" ]] || return 1
             # Operational heartbeat: Worker loop started, No queued jobs, Processed N jobs
-            # CRITICAL: Claim error must NOT independently qualify a worker as ready!
-            compose logs --tail=50 --since=60s research-worker 2>/dev/null | grep -Eq "Worker loop started|No queued jobs|Processed [0-9]+ jobs"
+            # Verify recent log tail contains operational start or execution without artificial 60s cutoff
+            docker logs --tail=50 "${cid}" 2>/dev/null | grep -Eq "Worker loop started|No queued jobs|Processed [0-9]+ jobs" || return 1
+            # Negative control: active claim errors must NOT pass readiness
+            if docker logs --tail=10 "${cid}" 2>/dev/null | grep -q "Claim error"; then
+                return 1
+            fi
             ;;
         *)
             return 1

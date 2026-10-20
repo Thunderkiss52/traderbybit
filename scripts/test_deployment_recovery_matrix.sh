@@ -123,7 +123,7 @@ JSON_EOF
     exit 0
 fi
 
-if [[ "$*" =~ compose.*logs ]]; then
+if [[ "$*" =~ logs ]]; then
     echo "Worker loop started"
     exit 0
 fi
