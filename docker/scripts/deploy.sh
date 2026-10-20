@@ -4,6 +4,8 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 # shellcheck source=common.sh
 source "${SCRIPT_DIR}/common.sh"
 
+acquire_deployment_lock "DEPLOYMENT"
+
 for command in docker curl ss; do
     command -v "${command}" >/dev/null || { echo "Required command is missing: ${command}" >&2; exit 1; }
 done
@@ -25,7 +27,7 @@ fi
 
 compose config --quiet
 if [[ "${DEPLOY_MODE:-build}" == "pull" ]]; then
-    compose pull app web
+    compose pull app web research-worker
 elif [[ "${SKIP_BUILD:-0}" != "1" ]]; then
     compose build --pull app web
 fi
@@ -38,13 +40,16 @@ wait_healthy redis 120
 
 compose run --rm --no-deps app php artisan migrate --force --no-interaction
 compose up -d --remove-orphans
-wait_healthy app 120
-wait_healthy web 120
-wait_healthy queue 120
-wait_healthy scheduler 120
-wait_healthy market-ws 120
-wait_healthy backtest-worker 120
+
+for svc in "${APPLICATION_SERVICES[@]}"; do
+    wait_service_ready "${svc}" 120
+done
 
 "${SCRIPT_DIR}/healthcheck.sh"
-printf '%s\n' "${IMAGE_TAG:-latest}" >"${DEPLOY_STATE_DIR}/.deploy-current"
+
+tag="${IMAGE_TAG:-latest}"
+rel="${tag#sha-}"
+commit_deployment_state "${tag}" "" "${rel}" "" "CONSISTENT"
+"${SCRIPT_DIR}/validate-deployment-state.sh" post-deploy
+
 echo "Deployment completed on http://${WEB_BIND_IP}:${WEB_PORT} (Basic Auth protected)."

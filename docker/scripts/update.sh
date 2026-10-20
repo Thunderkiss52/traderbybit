@@ -4,6 +4,9 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 # shellcheck source=common.sh
 source "${SCRIPT_DIR}/common.sh"
 
+acquire_deployment_lock "DEPLOYMENT"
+"${SCRIPT_DIR}/validate-deployment-state.sh" pre-deploy
+
 CURRENT_TAG="${IMAGE_TAG:-latest}"
 if [[ -f "${DEPLOY_STATE_DIR}/.deploy-current" ]]; then
     CURRENT_TAG="$(<"${DEPLOY_STATE_DIR}/.deploy-current")"
@@ -33,7 +36,6 @@ if [[ "${NEW_TAG}" == "${CURRENT_TAG}" ]]; then
 fi
 
 "${PROJECT_ROOT}/docker/postgres/backup.sh"
-printf '%s\n' "${CURRENT_TAG}" >"${DEPLOY_STATE_DIR}/.deploy-previous"
 
 export IMAGE_TAG="${NEW_TAG}"
 rollback_application() {
@@ -41,14 +43,14 @@ rollback_application() {
     trap - ERR
     echo "Deployment failed; attempting application rollback to ${CURRENT_TAG}. Database migrations are not rolled back." >&2
     export IMAGE_TAG="${CURRENT_TAG}"
-    compose up -d --no-deps app web queue scheduler market-ws backtest-worker || true
+    compose up -d --no-deps "${APPLICATION_SERVICES[@]}" || true
     "${SCRIPT_DIR}/healthcheck.sh" || true
     exit "${failure_code}"
 }
 trap rollback_application ERR
 
 if [[ "${DEPLOY_MODE:-pull}" == "pull" ]]; then
-    compose pull app web
+    compose pull app web research-worker
 else
     compose build --pull app web
 fi
@@ -58,8 +60,19 @@ wait_healthy postgres 180
 wait_healthy redis 120
 compose run --rm --no-deps app php artisan migrate --force --no-interaction
 compose up -d --remove-orphans
+
+for svc in "${APPLICATION_SERVICES[@]}"; do
+    wait_service_ready "${svc}" 120
+done
+
 "${SCRIPT_DIR}/healthcheck.sh"
-printf '%s\n' "${NEW_TAG}" >"${DEPLOY_STATE_DIR}/.deploy-current"
+
+# Commit canonical state and projection files atomically only after healthcheck passes
+new_rel="${NEW_TAG#sha-}"
+curr_rel="${CURRENT_TAG#sha-}"
+commit_deployment_state "${NEW_TAG}" "${CURRENT_TAG}" "${new_rel}" "${curr_rel}" "CONSISTENT"
+"${SCRIPT_DIR}/validate-deployment-state.sh" post-deploy
+
 trap - ERR
 
 CURRENT_IMAGE_TAG="${NEW_TAG}" PREVIOUS_IMAGE_TAG="${CURRENT_TAG}" "${SCRIPT_DIR}/cleanup-project-images.sh"

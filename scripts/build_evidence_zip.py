@@ -1,73 +1,29 @@
 #!/usr/bin/env python3
 """
-Packages all verified Section 15 evidence into evidence.zip per VECTOR V5.3 specification.
-Includes raw test logs, source fixture-generation scripts, golden fixtures, concurrency runner
-and worker source, mutation patches, command exit codes, and changed code provenance.
-Generates evidence.zip first, then calculates its final SHA-256 and byte size, and writes
-the checksum to evidence.zip.sha256.
+Packages all verified Section 15 evidence and deployment recovery evidence into:
+1. reports/archive.zip (and reports/archive.zip.sha256)
+2. reports/evidence.zip (and reports/evidence.zip.sha256)
+3. evidence.zip (and evidence.zip.sha256)
+Includes raw test logs, golden fixtures, concurrency runner, deployment recovery evidence,
+test matrices, mutation patches, command exit codes, and changed code provenance.
 """
 
-import glob
 import hashlib
 import os
+import shutil
 import sys
 import zipfile
 
 PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-OUTPUT_ZIP = os.path.join(PROJECT_ROOT, "evidence.zip")
-OUTPUT_SHA256 = os.path.join(PROJECT_ROOT, "evidence.zip.sha256")
 
-FILES_TO_INCLUDE = [
-    # Core manifests
-    "reports/evidence/aggregate_manifest.json",
-    "reports/evidence/p0_manifest.json",
-    "reports/evidence/p0_claims.jsonl",
-    "reports/evidence/p0_source_manifest.json",
-    "reports/evidence/p0_forensic_summary.json",
-    "reports/evidence/p0_performance_baseline.json",
-    "reports/evidence/p0_unverified_paths.md",
-    "reports/evidence/p0_commands.txt",
-
-    # Package P1
-    "reports/evidence/p1_manifest.json",
-    "reports/evidence/p1_claims.jsonl",
-    "reports/evidence/p1_negative_controls.json",
-    "reports/evidence/p1_commands.txt",
-    "reports/evidence/p1_concurrency_proof.json",
-
-    # Package P2
-    "reports/evidence/p2_manifest.json",
-    "reports/evidence/p2_claims.jsonl",
-    "reports/evidence/p2_negative_controls.json",
-    "reports/evidence/p2_commands.txt",
-
-    # Package P3
-    "reports/evidence/p3_manifest.json",
-    "reports/evidence/p3_claims.jsonl",
-    "reports/evidence/p3_negative_controls.json",
-    "reports/evidence/p3_commands.txt",
-
-    # Package P4
-    "reports/evidence/p4_manifest.json",
-    "reports/evidence/p4_claims.jsonl",
-    "reports/evidence/p4_negative_controls.json",
-
-    # Package P5
-    "reports/evidence/p5_manifest.json",
-    "reports/evidence/p5_claims.jsonl",
-    "reports/evidence/p5_negative_controls.json",
-
-    # Reproducibility run payloads
-    "reports/evidence/reproducibility/run_1_payload.json",
-    "reports/evidence/reproducibility/run_2_payload.json",
-    "reports/evidence/reproducibility/p5_reproducibility.json",
-
-    # Critical cross-package evidence
-    "reports/evidence/negative_controls_failure_traces.json",
-    "reports/evidence/hardcoding_audit.json",
-    "reports/evidence/postgres_queries_and_results.json",
-    "reports/evidence/command_exit_codes.json",
-    "reports/evidence/changed_code_provenance.json",
+BASE_FILES_TO_INCLUDE = [
+    # Deployment State Recovery Evidence & Scripts
+    "reports/evidence/deployment_state_recovery_evidence.json",
+    "tests/Unit/DeploymentStateValidationAndRecoveryTest.php",
+    "scripts/test_deployment_recovery_matrix.sh",
+    "scripts/generate_deployment_recovery_evidence.py",
+    "docker/scripts/validate-deployment-state.sh",
+    "docker/scripts/recover-deployment-state.sh",
 
     # Golden fixtures
     "tests/Fixtures/Golden/golden_counterfactual_duplicates.json",
@@ -89,32 +45,46 @@ FILES_TO_INCLUDE = [
     "database/migrations/2026_10_20_000000_add_slot_idempotency_to_strategy_observations.php",
     "tests/Integration/CounterfactualSlotIdempotencyPostgresIntegrationTest.php",
     "tests/Integration/StrategyObservationSlotMigrationPostgresIntegrationTest.php",
-
-    # Raw test logs
-    "reports/evidence/raw_test_logs/phpunit_full_stdout.log",
-    "reports/evidence/raw_test_logs/phpunit_isolated_postgres.log",
-    "reports/evidence/raw_test_logs/frontend_test_stdout.log",
-    "reports/evidence/raw_test_logs/frontend_build_stdout.log",
-    "reports/evidence/raw_test_logs/pint_stdout.log",
-    "reports/evidence/raw_test_logs/go_test_stdout.log",
-
-    # Mutation patches
-    "reports/evidence/mutation_patches/NEG-P1-01.patch",
-    "reports/evidence/mutation_patches/NEG-P2-01.patch",
-    "reports/evidence/mutation_patches/NEG-P2-02.patch",
-    "reports/evidence/mutation_patches/NEG-P3-01.patch",
-    "reports/evidence/mutation_patches/NEG-P4-01.patch",
-    "reports/evidence/mutation_patches/NEG-P4-02.patch",
-    "reports/evidence/mutation_patches/NEG-P5-01.patch",
 ]
 
-def main():
-    print("=== Building evidence.zip ===")
-    if os.path.exists(OUTPUT_ZIP):
-        os.remove(OUTPUT_ZIP)
+def collect_all_files():
+    files = list(BASE_FILES_TO_INCLUDE)
+    # Recursively include all files in reports/evidence
+    evidence_dir = os.path.join(PROJECT_ROOT, "reports", "evidence")
+    if os.path.exists(evidence_dir):
+        for root, _, filenames in os.walk(evidence_dir):
+            for fn in sorted(filenames):
+                rel_path = os.path.relpath(os.path.join(root, fn), PROJECT_ROOT)
+                if rel_path not in files:
+                    files.append(rel_path)
+    return sorted(files)
 
-    with zipfile.ZipFile(OUTPUT_ZIP, "w", zipfile.ZIP_DEFLATED) as z:
-        for rel_path in FILES_TO_INCLUDE:
+def compute_sha256(path):
+    h = hashlib.sha256()
+    with open(path, "rb") as f:
+        while chunk := f.read(65536):
+            h.update(chunk)
+    return h.hexdigest()
+
+def main():
+    print("=== Building Evidence Archives ===")
+    files_to_pack = collect_all_files()
+
+    reports_archive_zip = os.path.join(PROJECT_ROOT, "reports", "archive.zip")
+    reports_archive_sha = os.path.join(PROJECT_ROOT, "reports", "archive.zip.sha256")
+    reports_evidence_zip = os.path.join(PROJECT_ROOT, "reports", "evidence.zip")
+    reports_evidence_sha = os.path.join(PROJECT_ROOT, "reports", "evidence.zip.sha256")
+    root_evidence_zip = os.path.join(PROJECT_ROOT, "evidence.zip")
+    root_evidence_sha = os.path.join(PROJECT_ROOT, "evidence.zip.sha256")
+
+    # Remove stale files
+    for p in [reports_archive_zip, reports_archive_sha, reports_evidence_zip, reports_evidence_sha, root_evidence_zip, root_evidence_sha]:
+        if os.path.exists(p):
+            os.remove(p)
+
+    # Build primary reports/archive.zip
+    with zipfile.ZipFile(reports_archive_zip, "w", zipfile.ZIP_DEFLATED) as z:
+        for rel_path in files_to_pack:
             full_path = os.path.join(PROJECT_ROOT, rel_path)
             if not os.path.exists(full_path):
                 print(f"ERROR: Missing required evidence file: {rel_path}")
@@ -122,23 +92,32 @@ def main():
             z.write(full_path, arcname=rel_path)
             print(f"  Added: {rel_path} ({os.path.getsize(full_path):,} bytes)")
 
-    # Compute final archive SHA-256 and size
-    h = hashlib.sha256()
-    with open(OUTPUT_ZIP, "rb") as f:
-        while chunk := f.read(65536):
-            h.update(chunk)
-    zip_sha = h.hexdigest()
-    zip_size = os.path.getsize(OUTPUT_ZIP)
+    archive_sha = compute_sha256(reports_archive_zip)
+    archive_size = os.path.getsize(reports_archive_zip)
 
-    # Write separate checksum file
-    with open(OUTPUT_SHA256, "w", encoding="utf-8") as sf:
-        sf.write(f"{zip_sha}  evidence.zip\n")
+    with open(reports_archive_sha, "w", encoding="utf-8") as sf:
+        sf.write(f"{archive_sha}  archive.zip\n")
 
-    print(f"\nevidence.zip built successfully!")
-    print(f"File: {OUTPUT_ZIP}")
-    print(f"Size: {zip_size:,} bytes")
-    print(f"SHA-256: {zip_sha}")
-    print(f"Checksum file written to: {OUTPUT_SHA256}")
+    # Copy to reports/evidence.zip and root evidence.zip for spec compatibility
+    shutil.copy2(reports_archive_zip, reports_evidence_zip)
+    with open(reports_evidence_sha, "w", encoding="utf-8") as sf:
+        sf.write(f"{archive_sha}  evidence.zip\n")
+
+    shutil.copy2(reports_archive_zip, root_evidence_zip)
+    with open(root_evidence_sha, "w", encoding="utf-8") as sf:
+        sf.write(f"{archive_sha}  evidence.zip\n")
+
+    print("\n=== Archives Built Successfully ===")
+    print(f"Total files packaged : {len(files_to_pack)}")
+    print(f"Archive Size         : {archive_size:,} bytes")
+    print(f"Archive SHA-256      : {archive_sha}")
+    print(f"\nGenerated Files:")
+    print(f"  1. {reports_archive_zip}")
+    print(f"     Checksum: {reports_archive_sha}")
+    print(f"  2. {reports_evidence_zip}")
+    print(f"     Checksum: {reports_evidence_sha}")
+    print(f"  3. {root_evidence_zip}")
+    print(f"     Checksum: {root_evidence_sha}")
 
 if __name__ == "__main__":
     main()

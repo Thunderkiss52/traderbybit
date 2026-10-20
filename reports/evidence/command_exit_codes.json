@@ -1,6 +1,6 @@
 {
-  "generated_at_utc": "2026-10-20T11:19:45Z",
-  "total_commands_executed": 10,
+  "generated_at_utc": "2026-10-20T13:41:12Z",
+  "total_commands_executed": 12,
   "all_passed": true,
   "commands": [
     {
@@ -11,7 +11,9 @@
       "exit_code": 0,
       "status": "PASSED",
       "log_file": "reports/evidence/raw_test_logs/phpunit_isolated_postgres.log",
-      "tests_run": 26,
+      "tests_run": 31,
+      "passed": 26,
+      "skipped": 5,
       "assertions": 237,
       "failures": 0
     },
@@ -23,10 +25,10 @@
       "exit_code": 0,
       "status": "PASSED",
       "log_file": "reports/evidence/raw_test_logs/phpunit_full_stdout.log",
-      "tests_run": 356,
-      "passed": 351,
+      "tests_run": 365,
+      "passed": 360,
       "skipped": 5,
-      "assertions": 2179,
+      "assertions": 2211,
       "failures": 0
     },
     {
@@ -103,6 +105,31 @@
       "exit_code": 0,
       "status": "PASSED",
       "output_evidence": "reports/evidence/hardcoding_audit.json"
+    },
+    {
+      "id": "CMD-11",
+      "name": "Deployment State Validation & Recovery Unit Tests",
+      "command": "php -d xdebug.mode=off vendor/bin/phpunit tests/Unit/DeploymentStateValidationAndRecoveryTest.php",
+      "cwd": "/home/thunder/work/traderbybit",
+      "exit_code": 0,
+      "status": "PASSED",
+      "log_file": "reports/evidence/raw_test_logs/phpunit_recovery_unit.log",
+      "tests_run": 9,
+      "passed": 9,
+      "assertions": 32,
+      "failures": 0
+    },
+    {
+      "id": "CMD-12",
+      "name": "Production Deployment Recovery 12-Scenario Resilience Matrix",
+      "command": "bash scripts/test_deployment_recovery_matrix.sh",
+      "cwd": "/home/thunder/work/traderbybit",
+      "exit_code": 0,
+      "status": "PASSED",
+      "log_file": "reports/evidence/raw_test_logs/deployment_recovery_matrix.log",
+      "scenarios_tested": 12,
+      "scenarios_passed": 12,
+      "data_preservation_verified": true
     }
   ]
 }

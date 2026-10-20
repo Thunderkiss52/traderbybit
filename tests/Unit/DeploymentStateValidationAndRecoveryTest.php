@@ -1,0 +1,258 @@
+<?php
+
+declare(strict_types=1);
+
+namespace Tests\Unit;
+
+use PHPUnit\Framework\TestCase;
+
+class DeploymentStateValidationAndRecoveryTest extends TestCase
+{
+    private string $tempDir;
+
+    private string $scriptsDir;
+
+    private string $dummyEnv;
+
+    protected function setUp(): void
+    {
+        parent::setUp();
+        $this->tempDir = sys_get_temp_dir().'/bybit_test_state_'.bin2hex(random_bytes(6));
+        mkdir($this->tempDir, 0755, true);
+        $this->scriptsDir = dirname(__DIR__, 2).'/docker/scripts';
+
+        $this->dummyEnv = $this->tempDir.'/.env.test';
+        file_put_contents($this->dummyEnv, implode("\n", [
+            'APP_KEY=base64:u4/W3LqNf1EaM91kYn8X0gA5O1z2Y3X4V5U6T7S8R9Q=',
+            'POSTGRES_DB=bybit_test',
+            'POSTGRES_USER=postgres',
+            'POSTGRES_PASSWORD=testpass',
+            'REDIS_PASSWORD=bybit_redis_secret',
+            'UI_BASIC_AUTH_USER=testuser',
+            'UI_BASIC_AUTH_PASSWORD=testpassword',
+            'COMPOSE_PROJECT_NAME=bybit-signals-test',
+            'ALLOW_TEST_PROJECT=1',
+            'PG_PORT=25432',
+        ])."\n");
+    }
+
+    protected function tearDown(): void
+    {
+        $this->removeDirectory($this->tempDir);
+        parent::tearDown();
+    }
+
+    private function removeDirectory(string $dir): void
+    {
+        if (! is_dir($dir)) {
+            return;
+        }
+        $files = array_diff(scandir($dir) ?: [], ['.', '..']);
+        foreach ($files as $file) {
+            $path = "$dir/$file";
+            is_dir($path) ? $this->removeDirectory($path) : unlink($path);
+        }
+        rmdir($dir);
+    }
+
+    private function runScript(string $script, array $args = [], array $env = []): array
+    {
+        $defaultEnv = [
+            'ENV_FILE' => $this->dummyEnv,
+            'DEPLOY_STATE_DIR' => $this->tempDir,
+            'SKIP_DOCKER_INSPECT' => '1',
+            'ALLOW_TEST_PROJECT' => '1',
+            'MIN_FREE_DISK_GB' => '1',
+            'PG_PORT' => '25432',
+            'PGPASSWORD' => 'testpass',
+        ];
+        $mergedEnv = array_merge($defaultEnv, $env);
+
+        $envString = '';
+        foreach ($mergedEnv as $k => $v) {
+            $envString .= sprintf('%s=%s ', escapeshellarg($k), escapeshellarg($v));
+        }
+
+        $command = sprintf(
+            'env %s bash %s %s 2>&1',
+            $envString,
+            escapeshellarg($this->scriptsDir.'/'.$script),
+            implode(' ', array_map('escapeshellarg', $args))
+        );
+
+        $output = [];
+        $exitCode = 0;
+        exec($command, $output, $exitCode);
+
+        return [
+            'exitCode' => $exitCode,
+            'output' => implode("\n", $output),
+        ];
+    }
+
+    public function test_clean_state_validation_passes(): void
+    {
+        file_put_contents($this->tempDir.'/.deploy-current', "sha-94c853458e5a38f4bc46f32c4f95c56f52216e6c\n");
+        file_put_contents($this->tempDir.'/.deploy-previous', "sha-37d30ee343b6305bc764281c4baa7f755863e2f5\n");
+        file_put_contents($this->tempDir.'/release-current', "94c853458e5a38f4bc46f32c4f95c56f52216e6c\n");
+        file_put_contents($this->tempDir.'/release-previous', "37d30ee343b6305bc764281c4baa7f755863e2f5\n");
+
+        $result = $this->runScript('validate-deployment-state.sh', ['pre-deploy']);
+        $this->assertSame(0, $result['exitCode'], $result['output']);
+        $this->assertStringContainsString('Pre-deployment state validation passed', $result['output']);
+    }
+
+    public function test_corrupted_duplicate_tags_fails_closed_in_pre_deploy(): void
+    {
+        file_put_contents($this->tempDir.'/.deploy-current', "sha-94c853458e5a38f4bc46f32c4f95c56f52216e6c\n");
+        file_put_contents($this->tempDir.'/.deploy-previous', "sha-94c853458e5a38f4bc46f32c4f95c56f52216e6c\n");
+        file_put_contents($this->tempDir.'/release-current', "94c853458e5a38f4bc46f32c4f95c56f52216e6c\n");
+        file_put_contents($this->tempDir.'/release-previous', "37d30ee343b6305bc764281c4baa7f755863e2f5\n");
+
+        $result = $this->runScript('validate-deployment-state.sh', ['pre-deploy']);
+        $this->assertSame(1, $result['exitCode']);
+        $this->assertStringContainsString('Deployment state corruption detected', $result['output']);
+        $this->assertStringContainsString('Duplicate image tags', $result['output']);
+        $this->assertStringContainsString('recover-deployment-state.sh', $result['output']);
+    }
+
+    public function test_corrupted_state_blocks_rollback(): void
+    {
+        file_put_contents($this->tempDir.'/.deploy-current', "sha-94c853458e5a38f4bc46f32c4f95c56f52216e6c\n");
+        file_put_contents($this->tempDir.'/.deploy-previous', "sha-94c853458e5a38f4bc46f32c4f95c56f52216e6c\n");
+
+        $result = $this->runScript('validate-deployment-state.sh', ['pre-rollback']);
+        $this->assertSame(1, $result['exitCode']);
+        $this->assertStringContainsString('Cannot rollback', $result['output']);
+    }
+
+    public function test_missing_release_metadata_fails_closed(): void
+    {
+        file_put_contents($this->tempDir.'/.deploy-current', "sha-94c853458e5a38f4bc46f32c4f95c56f52216e6c\n");
+
+        $result = $this->runScript('validate-deployment-state.sh', ['pre-deploy']);
+        $this->assertSame(1, $result['exitCode']);
+        $this->assertStringContainsString('Missing release metadata', $result['output']);
+    }
+
+    public function test_inspect_mode_detects_corrupted_state(): void
+    {
+        file_put_contents($this->tempDir.'/.deploy-current', "sha-94c853458e5a38f4bc46f32c4f95c56f52216e6c\n");
+        file_put_contents($this->tempDir.'/.deploy-previous', "sha-94c853458e5a38f4bc46f32c4f95c56f52216e6c\n");
+        file_put_contents($this->tempDir.'/release-current', "94c853458e5a38f4bc46f32c4f95c56f52216e6c\n");
+        file_put_contents($this->tempDir.'/release-previous', "37d30ee343b6305bc764281c4baa7f755863e2f5\n");
+
+        $result = $this->runScript('validate-deployment-state.sh', ['inspect']);
+        $this->assertSame(1, $result['exitCode']);
+        $this->assertStringContainsString('Corrupted State      : YES', $result['output']);
+        $this->assertStringContainsString('recover-deployment-state.sh --repair', $result['output']);
+    }
+
+    public function test_recovery_refuses_silent_inference_on_conflicting_state(): void
+    {
+        file_put_contents($this->tempDir.'/.deploy-current', "sha-94c853458e5a38f4bc46f32c4f95c56f52216e6c\n");
+        file_put_contents($this->tempDir.'/.deploy-previous', "sha-94c853458e5a38f4bc46f32c4f95c56f52216e6c\n");
+        file_put_contents($this->tempDir.'/release-current', "94c853458e5a38f4bc46f32c4f95c56f52216e6c\n");
+        file_put_contents($this->tempDir.'/release-previous', "37d30ee343b6305bc764281c4baa7f755863e2f5\n");
+
+        // Attempting recovery without explicit targets must fail closed
+        $result = $this->runScript('recover-deployment-state.sh', ['--repair', '--skip-readiness']);
+        $this->assertSame(1, $result['exitCode']);
+        $this->assertStringContainsString('Ambiguous recovery state', $result['output']);
+        $this->assertStringContainsString('Automatic inference is prohibited', $result['output']);
+    }
+
+    public function test_recovery_succeeds_with_explicit_targets_and_deterministic_sha_resolution(): void
+    {
+        file_put_contents($this->tempDir.'/.deploy-current', "sha-94c853458e5a38f4bc46f32c4f95c56f52216e6c\n");
+        file_put_contents($this->tempDir.'/.deploy-previous', "sha-94c853458e5a38f4bc46f32c4f95c56f52216e6c\n");
+        file_put_contents($this->tempDir.'/release-current', "94c853458e5a38f4bc46f32c4f95c56f52216e6c\n");
+        file_put_contents($this->tempDir.'/release-previous', "37d30ee343b6305bc764281c4baa7f755863e2f5\n");
+
+        // Supply explicit target tags; release SHAs are deterministically extracted from sha-<40hex>
+        $result = $this->runScript('recover-deployment-state.sh', [
+            '--repair',
+            '--skip-readiness',
+            '--target-tag', 'sha-94c853458e5a38f4bc46f32c4f95c56f52216e6c',
+            '--previous-tag', 'sha-37d30ee343b6305bc764281c4baa7f755863e2f5',
+        ]);
+        $this->assertSame(0, $result['exitCode'], $result['output']);
+        $this->assertStringContainsString('Deployment State Recovery Successfully Completed', $result['output']);
+
+        $stateFile = $this->tempDir.'/deploy-state.json';
+        $this->assertFileExists($stateFile);
+        $state = json_decode(file_get_contents($stateFile), true);
+
+        // When skip-readiness is used, status is DEGRADED_UNVERIFIED
+        $this->assertSame('DEGRADED_UNVERIFIED', $state['status']);
+        $this->assertSame('sha-94c853458e5a38f4bc46f32c4f95c56f52216e6c', $state['current_image_tag']);
+        $this->assertSame('sha-37d30ee343b6305bc764281c4baa7f755863e2f5', $state['previous_image_tag']);
+        $this->assertSame('94c853458e5a38f4bc46f32c4f95c56f52216e6c', $state['current_release_sha']);
+        $this->assertSame('37d30ee343b6305bc764281c4baa7f755863e2f5', $state['previous_release_sha']);
+    }
+
+    public function test_deployment_lock_allows_nested_reentrancy_and_never_unlinks(): void
+    {
+        $lockFile = $this->tempDir.'/deployment.lock';
+
+        // Run bash script that acquires lock, invokes a nested script that reentrantly acquires lock, releases, and verifies lock file is NOT unlinked
+        $script = <<<BASH
+set -Eeuo pipefail
+DEPLOY_STATE_DIR="{$this->tempDir}"
+ENV_FILE="{$this->dummyEnv}"
+source "{$this->scriptsDir}/common.sh"
+
+acquire_deployment_lock "PARENT_OPERATION"
+echo "PARENT_LOCKED: \$\$"
+
+# Call nested child script in descendant subshell
+bash -c "
+DEPLOY_STATE_DIR='{$this->tempDir}'
+ENV_FILE='{$this->dummyEnv}'
+source '{$this->scriptsDir}/common.sh'
+acquire_deployment_lock 'NESTED_OPERATION'
+echo 'NESTED_SUCCESS'
+release_deployment_lock
+"
+
+release_deployment_lock
+echo "PARENT_RELEASED"
+BASH;
+
+        $cmd = sprintf('bash -c %s 2>&1', escapeshellarg($script));
+        $output = [];
+        $exitCode = 0;
+        exec($cmd, $output, $exitCode);
+        $outStr = implode("\n", $output);
+
+        $this->assertSame(0, $exitCode, $outStr);
+        $this->assertStringContainsString('Deployment lock reentrancy verified', $outStr);
+        $this->assertStringContainsString('NESTED_SUCCESS', $outStr);
+        $this->assertStringContainsString('PARENT_RELEASED', $outStr);
+
+        // Assert: Lockfile must NEVER be unlinked on release!
+        $this->assertFileExists($lockFile, 'Lockfile must not be unlinked on release');
+    }
+
+    public function test_competing_independent_process_blocked_by_lock(): void
+    {
+        $lockFile = $this->tempDir.'/deployment.lock';
+        $fp = fopen($lockFile, 'c+');
+        $this->assertTrue(flock($fp, LOCK_EX | LOCK_NB));
+        fwrite($fp, "pid=999999\n");
+        fflush($fp);
+
+        // Attempting recovery while lock is held by independent PID 999999 must fail closed
+        $result = $this->runScript('recover-deployment-state.sh', [
+            '--repair',
+            '--skip-readiness',
+            '--target-tag', 'sha-94c853458e5a38f4bc46f32c4f95c56f52216e6c',
+            '--previous-tag', 'sha-37d30ee343b6305bc764281c4baa7f755863e2f5',
+        ]);
+        $this->assertSame(1, $result['exitCode']);
+        $this->assertStringContainsString('Deployment lock is held by another process', $result['output']);
+
+        flock($fp, LOCK_UN);
+        fclose($fp);
+    }
+}

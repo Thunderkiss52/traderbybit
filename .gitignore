@@ -40,3 +40,6 @@ reports/*.xml
 reports/*.png
 reports/evidence-manifest.json
 storage/latency_benchmark.json
+
+# Windows WSL metadata
+*:Zone.Identifier
