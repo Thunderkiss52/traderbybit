@@ -368,9 +368,9 @@ if (( ! SKIP_READINESS )); then
     done
 
     # Run healthcheck
-    if [[ -x "${SCRIPT_DIR}/healthcheck.sh" ]]; then
+    if [[ -f "${SCRIPT_DIR}/healthcheck.sh" ]]; then
         echo "Running full healthcheck..."
-        "${SCRIPT_DIR}/healthcheck.sh"
+        bash "${SCRIPT_DIR}/healthcheck.sh"
     fi
 fi
 

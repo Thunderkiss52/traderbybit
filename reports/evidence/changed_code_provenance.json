@@ -1,10 +1,38 @@
 {
-  "generated_at_utc": "2026-10-20T14:05:00Z",
-  "git_head_sha": "9d3ac4b454647027cbab4dbd12c869bb6f3e19e7",
+  "generated_at_utc": "2026-10-20T14:16:50Z",
+  "git_head_sha": "c4600a520184ec9f705f8415eb2dd65ad9bfab34",
   "tracked_changes": {
-    "diff_sha256": "0e5226dedfb42eb8a332ee960ad62fa5d8019d52d4d897efac587dc4a952e56e",
-    "modified_files_count": 15,
+    "diff_sha256": "58a57d16ffd61bfe1fe4563edb5ad1cef388414f26ee87216390c303d7f1aadb",
+    "modified_files_count": 18,
     "modified_files": [
+      {
+        "status": "M",
+        "path": "docker/nginx/10-auth.sh"
+      },
+      {
+        "status": "M",
+        "path": "docker/php/entrypoint.sh"
+      },
+      {
+        "status": "M",
+        "path": "docker/postgres/backup.sh"
+      },
+      {
+        "status": "M",
+        "path": "docker/scripts/cleanup-project-images.sh"
+      },
+      {
+        "status": "M",
+        "path": "docker/scripts/common.sh"
+      },
+      {
+        "status": "M",
+        "path": "docker/scripts/deploy.sh"
+      },
+      {
+        "status": "M",
+        "path": "docker/scripts/healthcheck.sh"
+      },
       {
         "status": "M",
         "path": "docker/scripts/production-deploy-wrapper.sh"
@@ -12,6 +40,18 @@
       {
         "status": "M",
         "path": "docker/scripts/recover-deployment-state.sh"
+      },
+      {
+        "status": "M",
+        "path": "docker/scripts/restore.sh"
+      },
+      {
+        "status": "M",
+        "path": "docker/scripts/rollback.sh"
+      },
+      {
+        "status": "M",
+        "path": "docker/scripts/storage-report.sh"
       },
       {
         "status": "M",
@@ -23,47 +63,19 @@
       },
       {
         "status": "M",
-        "path": "evidence.zip.sha256"
-      },
-      {
-        "status": "M",
-        "path": "reports/archive.zip.sha256"
-      },
-      {
-        "status": "M",
-        "path": "reports/evidence.zip.sha256"
-      },
-      {
-        "status": "M",
-        "path": "reports/evidence/aggregate_manifest.json"
-      },
-      {
-        "status": "M",
-        "path": "reports/evidence/changed_code_provenance.json"
-      },
-      {
-        "status": "M",
         "path": "reports/evidence/command_exit_codes.json"
       },
       {
         "status": "M",
-        "path": "reports/evidence/deployment_state_recovery_evidence.json"
+        "path": "scripts/run-browser-e2e.sh"
       },
       {
         "status": "M",
-        "path": "reports/evidence/raw_test_logs/deployment_recovery_matrix.log"
+        "path": "scripts/test_deployment_recovery_matrix.sh"
       },
       {
         "status": "M",
-        "path": "reports/evidence/raw_test_logs/phpunit_recovery_unit.log"
-      },
-      {
-        "status": "M",
-        "path": "scripts/generate_provenance_and_exit_codes.py"
-      },
-      {
-        "status": "M",
-        "path": "tests/Unit/DeploymentStateValidationAndRecoveryTest.php"
+        "path": "scripts/verify-system.sh"
       }
     ]
   },

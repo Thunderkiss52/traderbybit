@@ -232,7 +232,7 @@ cat <<'EOF' >"${MOCK_CONFIG}"
 EOF
 
 if PATH="${MOCK_BIN}:${PATH}" MOCK_DOCKER_STATE="${MOCK_CONFIG}" SKIP_DOCKER_INSPECT=0 \
-   DEPLOY_STATE_DIR="${SC01_DIR}" "${PROJECT_ROOT}/docker/scripts/validate-deployment-state.sh" pre-deploy >"${SC01_DIR}/out.log" 2>&1; then
+   DEPLOY_STATE_DIR="${SC01_DIR}" bash "${PROJECT_ROOT}/docker/scripts/validate-deployment-state.sh" pre-deploy >"${SC01_DIR}/out.log" 2>&1; then
     echo "[PASS] SC-01: Pre-deploy validation succeeded on clean state."
     PASSED_COUNT=$((PASSED_COUNT + 1))
 else
@@ -254,7 +254,7 @@ printf "sha-94c853458e5a38f4bc46f32c4f95c56f52216e6c\n" >"${SC02_DIR}/.deploy-pr
 printf "94c853458e5a38f4bc46f32c4f95c56f52216e6c\n" >"${SC02_DIR}/release-current"
 printf "37d30ee343b6305bc764281c4baa7f755863e2f5\n" >"${SC02_DIR}/release-previous"
 
-if SKIP_DOCKER_INSPECT=1 DEPLOY_STATE_DIR="${SC02_DIR}" "${PROJECT_ROOT}/docker/scripts/validate-deployment-state.sh" pre-deploy >"${SC02_DIR}/out.log" 2>&1; then
+if SKIP_DOCKER_INSPECT=1 DEPLOY_STATE_DIR="${SC02_DIR}" bash "${PROJECT_ROOT}/docker/scripts/validate-deployment-state.sh" pre-deploy >"${SC02_DIR}/out.log" 2>&1; then
     echo "[FAIL] SC-02: Validation unexpectedly passed on corrupted duplicate state!"
     exit 1
 else
@@ -279,7 +279,7 @@ mkdir -p "${SC03_DIR}"
 printf "sha-94c853458e5a38f4bc46f32c4f95c56f52216e6c\n" >"${SC03_DIR}/.deploy-current"
 # release-current omitted
 
-if SKIP_DOCKER_INSPECT=1 DEPLOY_STATE_DIR="${SC03_DIR}" "${PROJECT_ROOT}/docker/scripts/validate-deployment-state.sh" pre-deploy >"${SC03_DIR}/out.log" 2>&1; then
+if SKIP_DOCKER_INSPECT=1 DEPLOY_STATE_DIR="${SC03_DIR}" bash "${PROJECT_ROOT}/docker/scripts/validate-deployment-state.sh" pre-deploy >"${SC03_DIR}/out.log" 2>&1; then
     echo "[FAIL] SC-03: Validation unexpectedly passed when release metadata was missing!"
     exit 1
 else
@@ -323,7 +323,7 @@ cat <<'EOF' >"${MOCK_CONFIG}"
 EOF
 
 if PATH="${MOCK_BIN}:${PATH}" MOCK_DOCKER_STATE="${MOCK_CONFIG}" SKIP_DOCKER_INSPECT=0 \
-   DEPLOY_STATE_DIR="${SC04_DIR}" "${PROJECT_ROOT}/docker/scripts/validate-deployment-state.sh" pre-deploy >"${SC04_DIR}/out.log" 2>&1; then
+   DEPLOY_STATE_DIR="${SC04_DIR}" bash "${PROJECT_ROOT}/docker/scripts/validate-deployment-state.sh" pre-deploy >"${SC04_DIR}/out.log" 2>&1; then
     echo "[FAIL] SC-04: Validation passed unexpectedly when containers had real drift!"
     exit 1
 else
@@ -359,7 +359,7 @@ EOF
 
 if PATH="${MOCK_BIN}:${PATH}" MOCK_DOCKER_STATE="${MOCK_CONFIG}" SKIP_DOCKER_INSPECT=0 \
    PG_PORT="${PG_PORT}" PGPASSWORD=testpass \
-   DEPLOY_STATE_DIR="${SC05_DIR}" "${PROJECT_ROOT}/docker/scripts/validate-deployment-state.sh" pre-rollback >"${SC05_DIR}/out.log" 2>&1; then
+   DEPLOY_STATE_DIR="${SC05_DIR}" bash "${PROJECT_ROOT}/docker/scripts/validate-deployment-state.sh" pre-rollback >"${SC05_DIR}/out.log" 2>&1; then
     echo "[FAIL] SC-05: Rollback passed unexpectedly with missing image!"
     exit 1
 else
@@ -387,7 +387,7 @@ printf "94c853458e5a38f4bc46f32c4f95c56f52216e6c\n" >"${SC06_DIR}/release-curren
 printf "37d30ee343b6305bc764281c4baa7f755863e2f5\n" >"${SC06_DIR}/release-previous"
 
 # Execute schema compatibility verification directly against PostgreSQL 17 on 25432
-schema_status=$(PG_PORT="${PG_PORT}" PGPASSWORD=testpass "${PROJECT_ROOT}/docker/scripts/validate-deployment-state.sh" verify-db "37d30ee343b6305bc764281c4baa7f755863e2f5" 2>&1 || echo "COMPAT_STATUS_$?")
+schema_status=$(PG_PORT="${PG_PORT}" PGPASSWORD=testpass bash "${PROJECT_ROOT}/docker/scripts/validate-deployment-state.sh" verify-db "37d30ee343b6305bc764281c4baa7f755863e2f5" 2>&1 || echo "COMPAT_STATUS_$?")
 
 if [[ "${schema_status}" =~ "Database schema compatibility contract verified" ]]; then
     echo "[PASS] SC-06: Real PostgreSQL catalog schema compatibility verified (read-only)."
@@ -424,7 +424,7 @@ printf "sha-94c853458e5a38f4bc46f32c4f95c56f52216e6c\n" >"${SC07_DIR}/.deploy-pr
 printf "94c853458e5a38f4bc46f32c4f95c56f52216e6c\n" >"${SC07_DIR}/release-current"
 printf "37d30ee343b6305bc764281c4baa7f755863e2f5\n" >"${SC07_DIR}/release-previous"
 
-if SKIP_DOCKER_INSPECT=1 DEPLOY_STATE_DIR="${SC07_DIR}" "${PROJECT_ROOT}/docker/scripts/recover-deployment-state.sh" \
+if SKIP_DOCKER_INSPECT=1 DEPLOY_STATE_DIR="${SC07_DIR}" bash "${PROJECT_ROOT}/docker/scripts/recover-deployment-state.sh" \
    --repair --skip-readiness \
    --target-tag "sha-94c853458e5a38f4bc46f32c4f95c56f52216e6c" \
    --previous-tag "sha-37d30ee343b6305bc764281c4baa7f755863e2f5" >"${SC07_DIR}/out.log" 2>&1; then
@@ -516,7 +516,7 @@ if [[ "${nested_test}" =~ CHILD_REENTRANT_SUCCESS && "${nested_test}" =~ PARENT_
         flock -n 202
         echo "pid=999999" >"${SC09_DIR}/deployment.lock"
         
-        competing_test=$(SKIP_DOCKER_INSPECT=1 DEPLOY_STATE_DIR="${SC09_DIR}" "${PROJECT_ROOT}/docker/scripts/recover-deployment-state.sh" \
+        competing_test=$(SKIP_DOCKER_INSPECT=1 DEPLOY_STATE_DIR="${SC09_DIR}" bash "${PROJECT_ROOT}/docker/scripts/recover-deployment-state.sh" \
             --repair --skip-readiness \
             --target-tag "sha-94c853458e5a38f4bc46f32c4f95c56f52216e6c" \
             --previous-tag "sha-37d30ee343b6305bc764281c4baa7f755863e2f5" 2>&1 || echo "COMPETING_BLOCKED_EXIT_1")
@@ -567,7 +567,7 @@ printf "sha-94c853458e5a38f4bc46f32c4f95c56f52216e6c\n" >"${SC10_DIR}/.deploy-pr
 printf "94c853458e5a38f4bc46f32c4f95c56f52216e6c\n" >"${SC10_DIR}/release-current"
 printf "37d30ee343b6305bc764281c4baa7f755863e2f5\n" >"${SC10_DIR}/release-previous"
 
-if SKIP_DOCKER_INSPECT=1 DEPLOY_STATE_DIR="${SC10_DIR}" "${PROJECT_ROOT}/docker/scripts/recover-deployment-state.sh" \
+if SKIP_DOCKER_INSPECT=1 DEPLOY_STATE_DIR="${SC10_DIR}" bash "${PROJECT_ROOT}/docker/scripts/recover-deployment-state.sh" \
    --repair --skip-readiness \
    --target-tag "sha-94c853458e5a38f4bc46f32c4f95c56f52216e6c" \
    --previous-tag "sha-37d30ee343b6305bc764281c4baa7f755863e2f5" >"${SC10_DIR}/out.log" 2>&1; then
@@ -593,7 +593,7 @@ printf "sha-94c853458e5a38f4bc46f32c4f95c56f52216e6c\n" >"${SC11_DIR}/.deploy-pr
 printf "94c853458e5a38f4bc46f32c4f95c56f52216e6c\n" >"${SC11_DIR}/release-current"
 printf "37d30ee343b6305bc764281c4baa7f755863e2f5\n" >"${SC11_DIR}/release-previous"
 
-if SKIP_DOCKER_INSPECT=1 DEPLOY_STATE_DIR="${SC11_DIR}" "${PROJECT_ROOT}/docker/scripts/recover-deployment-state.sh" \
+if SKIP_DOCKER_INSPECT=1 DEPLOY_STATE_DIR="${SC11_DIR}" bash "${PROJECT_ROOT}/docker/scripts/recover-deployment-state.sh" \
    --repair --skip-readiness \
    --target-tag "sha-94c853458e5a38f4bc46f32c4f95c56f52216e6c" \
    --target-release "94c853458e5a38f4bc46f32c4f95c56f52216e6c" \
@@ -626,7 +626,7 @@ echo "=== Running SC-12: Subsequent Clean Deployment Validation ==="
 # Fix flat file projections to match recovered state
 printf "sha-37d30ee343b6305bc764281c4baa7f755863e2f5\n" >"${SC11_DIR}/.deploy-previous"
 
-if SKIP_DOCKER_INSPECT=1 DEPLOY_STATE_DIR="${SC11_DIR}" "${PROJECT_ROOT}/docker/scripts/validate-deployment-state.sh" pre-deploy >"${SC11_DIR}/val_out.log" 2>&1; then
+if SKIP_DOCKER_INSPECT=1 DEPLOY_STATE_DIR="${SC11_DIR}" bash "${PROJECT_ROOT}/docker/scripts/validate-deployment-state.sh" pre-deploy >"${SC11_DIR}/val_out.log" 2>&1; then
     echo "[PASS] SC-12: Pre-deployment validation passed cleanly on recovered state."
     PASSED_COUNT=$((PASSED_COUNT + 1))
 else
@@ -648,5 +648,3 @@ if (( PASSED_COUNT == TOTAL_COUNT )); then
 else
     exit 1
 fi
-EOF
-chmod +x "${PROJECT_ROOT}/scripts/test_deployment_recovery_matrix.sh"

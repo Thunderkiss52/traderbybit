@@ -206,7 +206,7 @@ case "${MODE}" in
                 if [[ "${SKIP_READINESS:-0}" == "1" ]]; then
                     extra_recovery_flags+=(--skip-readiness)
                 fi
-                AUTO_RECOVER_ON_DEPLOY=0 "${SCRIPT_DIR}/recover-deployment-state.sh" --repair --realign-containers "${extra_recovery_flags[@]}" \
+                AUTO_RECOVER_ON_DEPLOY=0 bash "${SCRIPT_DIR}/recover-deployment-state.sh" --repair --realign-containers "${extra_recovery_flags[@]}" \
                     --target-tag "${CURRENT_TAG}" \
                     --target-release "${CURRENT_RELEASE}" \
                     --previous-tag "sha-${PREVIOUS_RELEASE}" \
@@ -215,7 +215,7 @@ case "${MODE}" in
                     exit 1
                 }
                 echo "[INFO] Automated pre-deploy recovery completed. Re-verifying deployment state..." >&2
-                exec "${BASH_SOURCE[0]}" pre-deploy
+                exec bash "${BASH_SOURCE[0]}" pre-deploy
             fi
             echo "[FATAL] Deployment state corruption detected." >&2
             echo "Details: ${CORRUPTION_REASON}" >&2

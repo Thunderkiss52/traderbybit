@@ -1,16 +1,28 @@
 {
-  "timestamp_utc": "2026-10-20T14:04:12Z",
+  "timestamp_utc": "2026-10-20T14:17:08Z",
   "specification": "VECTOR V5.3 - Production Deployment State Recovery & Resilient Lifecycle",
   "git": {
-    "commit_sha": "9d3ac4b454647027cbab4dbd12c869bb6f3e19e7",
+    "commit_sha": "c4600a520184ec9f705f8415eb2dd65ad9bfab34",
     "status_porcelain": [
-      "M docker/scripts/production-deploy-wrapper.sh",
-      " M docker/scripts/recover-deployment-state.sh",
-      " M docker/scripts/update.sh",
-      " M docker/scripts/validate-deployment-state.sh",
-      " M reports/evidence/raw_test_logs/deployment_recovery_matrix.log",
-      " M reports/evidence/raw_test_logs/phpunit_recovery_unit.log",
-      " M tests/Unit/DeploymentStateValidationAndRecoveryTest.php"
+      "M  docker/nginx/10-auth.sh",
+      "M  docker/php/entrypoint.sh",
+      "M  docker/postgres/backup.sh",
+      "M  docker/scripts/cleanup-project-images.sh",
+      "M  docker/scripts/common.sh",
+      "M  docker/scripts/deploy.sh",
+      "M  docker/scripts/healthcheck.sh",
+      "M  docker/scripts/production-deploy-wrapper.sh",
+      "M  docker/scripts/recover-deployment-state.sh",
+      "M  docker/scripts/restore.sh",
+      "M  docker/scripts/rollback.sh",
+      "M  docker/scripts/storage-report.sh",
+      "M  docker/scripts/update.sh",
+      "M  docker/scripts/validate-deployment-state.sh",
+      " M reports/evidence/changed_code_provenance.json",
+      " M reports/evidence/command_exit_codes.json",
+      "M  scripts/run-browser-e2e.sh",
+      "M  scripts/test_deployment_recovery_matrix.sh",
+      "M  scripts/verify-system.sh"
     ]
   },
   "target_application_services": [
@@ -29,7 +41,7 @@
       "paper_accounts": "cd7b54049320379fcc0be03b2b14f8a1177e619d3e7c299642ed8ad349c08fb4",
       "virtual_positions": "0e19a0aea884c32d3549d4edacb73d6898cdc4925be4c1581d73cb26dd734c69",
       "virtual_executions": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
-      "reconciliation_runs": "5289826d7846827f7673686a9ae16987a01175c30d268740f0ebedc8fa315d6e"
+      "reconciliation_runs": "d2470a2ad2006ca14ef9de0fc7aad00c81780b4425852496fbd79ee00bdf0114"
     },
     "redis_key_count": 1,
     "migration_rollbacks_executed": 0,
@@ -38,7 +50,7 @@
   "test_results": {
     "matrix_12_scenarios": {
       "exit_code": 0,
-      "duration_seconds": 8.363,
+      "duration_seconds": 8.405,
       "passed": 12,
       "total": 12,
       "scenarios": [
@@ -103,15 +115,15 @@
           "status": "PASSED"
         }
       ],
-      "raw_output": "=================================================================\n  PRODUCTION DEPLOYMENT STATE RECOVERY & RESILIENCE TEST MATRIX  \n=================================================================\n[INFO] Capturing baseline table SHA-256 digests on isolated PostgreSQL (127.0.0.1:25432)...\n  paper_accounts      : cd7b54049320379fcc0be03b2b14f8a1177e619d3e7c299642ed8ad349c08fb4\n  virtual_positions   : 0e19a0aea884c32d3549d4edacb73d6898cdc4925be4c1581d73cb26dd734c69\n  virtual_executions  : e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855\n  reconciliation_runs : 5289826d7846827f7673686a9ae16987a01175c30d268740f0ebedc8fa315d6e\n  redis_keys          : 1\n\n=== Running SC-01: Clean State Validation ===\n[PASS] SC-01: Pre-deploy validation succeeded on clean state.\n  [DATA PRESERVATION VERIFIED: All 4 table digests & Redis keys remain identical]\n\n=== Running SC-02: Corrupted Duplicate State ===\n[PASS] SC-02: Validator failed closed and emitted exact recovery diagnostics.\n  [DATA PRESERVATION VERIFIED: All 4 table digests & Redis keys remain identical]\n\n=== Running SC-03: Missing Release Metadata ===\n[PASS] SC-03: Validator failed closed when release-current was missing.\n  [DATA PRESERVATION VERIFIED: All 4 table digests & Redis keys remain identical]\n\n=== Running SC-04: Real Container Drift Detection ===\n[PASS] SC-04: Real container version drift detected across application services.\n  [DATA PRESERVATION VERIFIED: All 4 table digests & Redis keys remain identical]\n\n=== Running SC-05: Target Image Validation Path ===\n[PASS] SC-05: Missing Docker image detected before modifying containers.\n  [DATA PRESERVATION VERIFIED: All 4 table digests & Redis keys remain identical]\n\n=== Running SC-06: Real Database Schema Compatibility Verification ===\n[PASS] SC-06: Real PostgreSQL catalog schema compatibility verified (read-only).\n  [DATA PRESERVATION VERIFIED: All 4 table digests & Redis keys remain identical]\n\n=== Running SC-07: Interruption & Safe Resumption with Same Recovery ID ===\n[PASS] SC-07: Resumption retained exact recovery ID: recovery-id-sc07-fixed-uuid.\n  [DATA PRESERVATION VERIFIED: All 4 table digests & Redis keys remain identical]\n\n=== Running SC-08: Individual Service Readiness Failure Prevents State Commit ===\n[PASS] SC-08: Service readiness failure halts deployment before state commit.\n  [DATA PRESERVATION VERIFIED: All 4 table digests & Redis keys remain identical]\n\n=== Running SC-09: Lock Reentrancy & Competing Process Contention ===\n[PASS] SC-09: Reentrancy verified, lockfile preserved without unlink, competing process blocked fail-closed.\n  [DATA PRESERVATION VERIFIED: All 4 table digests & Redis keys remain identical]\n\n=== Running SC-10: Stage Failure Injection & Safe Retry ===\n[PASS] SC-10: Recovery cleanly recovered from injected stage interruption.\n  [DATA PRESERVATION VERIFIED: All 4 table digests & Redis keys remain identical]\n\n=== Running SC-11: Bootstrap Recovery with Explicit Targets ===\n[PASS] SC-11: Bootstrap recovery reconciled state with explicit targets: sha-94c853458e5a38f4bc46f32c4f95c56f52216e6c -> sha-37d30ee343b6305bc764281c4baa7f755863e2f5.\n  [DATA PRESERVATION VERIFIED: All 4 table digests & Redis keys remain identical]\n\n=== Running SC-12: Subsequent Clean Deployment Validation ===\n[PASS] SC-12: Pre-deployment validation passed cleanly on recovered state.\n  [DATA PRESERVATION VERIFIED: All 4 table digests & Redis keys remain identical]\n\n=================================================================\n  FINAL TEST MATRIX RESULTS: 12/12 SCENARIOS PASSED\n  PostgreSQL Table Digests 100% Preserved Across All Scenarios.\n  Zero Automated Migration Rollbacks Executed.\n================================================================="
+      "raw_output": "=================================================================\n  PRODUCTION DEPLOYMENT STATE RECOVERY & RESILIENCE TEST MATRIX  \n=================================================================\n[INFO] Capturing baseline table SHA-256 digests on isolated PostgreSQL (127.0.0.1:25432)...\n  paper_accounts      : cd7b54049320379fcc0be03b2b14f8a1177e619d3e7c299642ed8ad349c08fb4\n  virtual_positions   : 0e19a0aea884c32d3549d4edacb73d6898cdc4925be4c1581d73cb26dd734c69\n  virtual_executions  : e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855\n  reconciliation_runs : d2470a2ad2006ca14ef9de0fc7aad00c81780b4425852496fbd79ee00bdf0114\n  redis_keys          : 1\n\n=== Running SC-01: Clean State Validation ===\n[PASS] SC-01: Pre-deploy validation succeeded on clean state.\n  [DATA PRESERVATION VERIFIED: All 4 table digests & Redis keys remain identical]\n\n=== Running SC-02: Corrupted Duplicate State ===\n[PASS] SC-02: Validator failed closed and emitted exact recovery diagnostics.\n  [DATA PRESERVATION VERIFIED: All 4 table digests & Redis keys remain identical]\n\n=== Running SC-03: Missing Release Metadata ===\n[PASS] SC-03: Validator failed closed when release-current was missing.\n  [DATA PRESERVATION VERIFIED: All 4 table digests & Redis keys remain identical]\n\n=== Running SC-04: Real Container Drift Detection ===\n[PASS] SC-04: Real container version drift detected across application services.\n  [DATA PRESERVATION VERIFIED: All 4 table digests & Redis keys remain identical]\n\n=== Running SC-05: Target Image Validation Path ===\n[PASS] SC-05: Missing Docker image detected before modifying containers.\n  [DATA PRESERVATION VERIFIED: All 4 table digests & Redis keys remain identical]\n\n=== Running SC-06: Real Database Schema Compatibility Verification ===\n[PASS] SC-06: Real PostgreSQL catalog schema compatibility verified (read-only).\n  [DATA PRESERVATION VERIFIED: All 4 table digests & Redis keys remain identical]\n\n=== Running SC-07: Interruption & Safe Resumption with Same Recovery ID ===\n[PASS] SC-07: Resumption retained exact recovery ID: recovery-id-sc07-fixed-uuid.\n  [DATA PRESERVATION VERIFIED: All 4 table digests & Redis keys remain identical]\n\n=== Running SC-08: Individual Service Readiness Failure Prevents State Commit ===\n[PASS] SC-08: Service readiness failure halts deployment before state commit.\n  [DATA PRESERVATION VERIFIED: All 4 table digests & Redis keys remain identical]\n\n=== Running SC-09: Lock Reentrancy & Competing Process Contention ===\n[PASS] SC-09: Reentrancy verified, lockfile preserved without unlink, competing process blocked fail-closed.\n  [DATA PRESERVATION VERIFIED: All 4 table digests & Redis keys remain identical]\n\n=== Running SC-10: Stage Failure Injection & Safe Retry ===\n[PASS] SC-10: Recovery cleanly recovered from injected stage interruption.\n  [DATA PRESERVATION VERIFIED: All 4 table digests & Redis keys remain identical]\n\n=== Running SC-11: Bootstrap Recovery with Explicit Targets ===\n[PASS] SC-11: Bootstrap recovery reconciled state with explicit targets: sha-94c853458e5a38f4bc46f32c4f95c56f52216e6c -> sha-37d30ee343b6305bc764281c4baa7f755863e2f5.\n  [DATA PRESERVATION VERIFIED: All 4 table digests & Redis keys remain identical]\n\n=== Running SC-12: Subsequent Clean Deployment Validation ===\n[PASS] SC-12: Pre-deployment validation passed cleanly on recovered state.\n  [DATA PRESERVATION VERIFIED: All 4 table digests & Redis keys remain identical]\n\n=================================================================\n  FINAL TEST MATRIX RESULTS: 12/12 SCENARIOS PASSED\n  PostgreSQL Table Digests 100% Preserved Across All Scenarios.\n  Zero Automated Migration Rollbacks Executed.\n================================================================="
     },
     "phpunit_unit_tests": {
       "exit_code": 0,
-      "duration_seconds": 0.805,
+      "duration_seconds": 0.775,
       "tests_run": 7,
       "assertions": 30,
       "status": "PASSED",
-      "raw_output": "{\"tool\":\"phpunit\",\"result\":\"passed\",\"tests\":10,\"passed\":10,\"assertions\":37,\"duration_ms\":676}"
+      "raw_output": "{\"tool\":\"phpunit\",\"result\":\"passed\",\"tests\":10,\"passed\":10,\"assertions\":37,\"duration_ms\":651}"
     },
     "pint_code_style": {
       "exit_code": 0,
@@ -126,33 +138,33 @@
     },
     "docker/scripts/validate-deployment-state.sh": {
       "syntax_valid": true,
-      "sha256": "12179e2a5583c44558ed8aba0e502638c48d63ce59e412a7f547e6521df36240",
-      "size_bytes": 15447
+      "sha256": "5483d654327c9f35cd8e050487cf3e47bc13d613e3bbc6ef0e0c3c04219de4f7",
+      "size_bytes": 15457
     },
     "docker/scripts/recover-deployment-state.sh": {
       "syntax_valid": true,
-      "sha256": "515be66060c2bb711659ff5d39b80e88620d915d45658c5a91e982349983ae55",
-      "size_bytes": 15025
+      "sha256": "ff4e2359162ca4b0b55a5fb41f00bf869ef91508f40812744b046b43e9f0ae7e",
+      "size_bytes": 15030
     },
     "docker/scripts/update.sh": {
       "syntax_valid": true,
-      "sha256": "626cba81850afeb299b9df4ead45de2f1271bd5e174a43bb1da5e849546d4435",
-      "size_bytes": 3009
+      "sha256": "e2033233eeeca76a4420be49f2d059d8aec35d45a69efc82b0fbb44b578e54ce",
+      "size_bytes": 3049
     },
     "docker/scripts/rollback.sh": {
       "syntax_valid": true,
-      "sha256": "530178f4879733e3c445450389402b995ef30ecd18e5b76fded86955a468098b",
-      "size_bytes": 1190
+      "sha256": "07552740cba6c8709c49d56f0495d5b9db9d097274f6e521e17e05d56ccda3ab",
+      "size_bytes": 1205
     },
     "docker/scripts/deploy.sh": {
       "syntax_valid": true,
-      "sha256": "ee3c43d19bfdc45b09036c7bdf7b90efc0034d51739820694e49a4fd45c5cef5",
-      "size_bytes": 1614
+      "sha256": "d18de6ba62e7e60cfff22b8b53ec6fc49064295f86b0ad8afbf933264e0fc5e7",
+      "size_bytes": 1624
     },
     "docker/scripts/production-deploy-wrapper.sh": {
       "syntax_valid": true,
-      "sha256": "b01838295775182f0f5925629fbf8fbb032878d23248d4d7d513f474ddb72c59",
-      "size_bytes": 3659
+      "sha256": "2837a0042d912f4143dee55104ab9cdb944754c8a60f93c2d2cac54bd8ad2bd9",
+      "size_bytes": 3679
     }
   },
   "production_safety_invariants": {

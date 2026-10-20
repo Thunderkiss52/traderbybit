@@ -45,11 +45,11 @@ for svc in "${APPLICATION_SERVICES[@]}"; do
     wait_service_ready "${svc}" 120
 done
 
-"${SCRIPT_DIR}/healthcheck.sh"
+bash "${SCRIPT_DIR}/healthcheck.sh"
 
 tag="${IMAGE_TAG:-latest}"
 rel="${tag#sha-}"
 commit_deployment_state "${tag}" "" "${rel}" "" "CONSISTENT"
-"${SCRIPT_DIR}/validate-deployment-state.sh" post-deploy
+bash "${SCRIPT_DIR}/validate-deployment-state.sh" post-deploy
 
 echo "Deployment completed on http://${WEB_BIND_IP}:${WEB_PORT} (Basic Auth protected)."
