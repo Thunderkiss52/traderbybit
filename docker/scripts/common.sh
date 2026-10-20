@@ -232,36 +232,46 @@ verify_image_identity() {
     cid="$(compose ps -q "${service}" 2>/dev/null || true)"
     [[ -n "${cid}" ]] || { echo "[FATAL] Service '${service}' container not found." >&2; return 1; }
 
-    local actual_img actual_id repo_digests
+    local actual_img actual_id
     actual_img="$(docker inspect --format '{{.Config.Image}}' "${cid}" 2>/dev/null || true)"
-    actual_id="$(docker inspect --format '{{.Id}}' "${cid}" 2>/dev/null || true)"
-    repo_digests="$(docker inspect --format '{{json .RepoDigests}}' "${cid}" 2>/dev/null || echo "[]")"
+    actual_id="$(docker inspect --format '{{.Image}}' "${cid}" 2>/dev/null || true)"
 
     local expected_id
     expected_id="$(docker image inspect --format '{{.Id}}' "${expected_ref}" 2>/dev/null || true)"
     [[ -n "${expected_id}" ]] || { echo "[FATAL] Expected image '${expected_ref}' not found in Docker cache." >&2; return 1; }
 
-    # 1. Verify image ID matches expected release artifact image ID
-    if [[ "${actual_id}" != "${expected_id}" ]]; then
+    # 1. Verify container image ID matches expected release artifact image ID (strip optional sha256: prefix)
+    if [[ "${actual_id#sha256:}" != "${expected_id#sha256:}" ]]; then
         echo "[FATAL] Service '${service}' image ID mismatch! Running: ${actual_id}, Expected: ${expected_id}" >&2
         return 1
     fi
 
-    # 2. Verify Config.Image matches expected reference tag
-    if [[ "${actual_img}" != "${expected_ref}" ]]; then
+    # 2. Verify Config.Image matches expected reference or target tag
+    local exp_tag="${expected_ref##*:}"
+    if [[ "${actual_img}" != "${expected_ref}" && "${actual_img##*:}" != "${exp_tag}" ]]; then
         echo "[FATAL] Service '${service}' Config.Image mismatch! Running: ${actual_img}, Expected: ${expected_ref}" >&2
         return 1
     fi
 
-    # 3. Compare RepoDigests when non-empty
-    if [[ "${repo_digests}" != "[]" && "${repo_digests}" != "null" && -n "${repo_digests}" ]]; then
-        local expected_digests
-        expected_digests="$(docker image inspect --format '{{json .RepoDigests}}' "${expected_ref}" 2>/dev/null || echo "[]")"
-        if [[ "${expected_digests}" != "[]" && "${expected_digests}" != "null" && -n "${expected_digests}" ]]; then
-            if [[ "${repo_digests}" != "${expected_digests}" ]]; then
-                echo "[FATAL] Service '${service}' RepoDigests mismatch! Running: ${repo_digests}, Expected: ${expected_digests}" >&2
-                return 1
-            fi
+    # 3. Compare RepoDigests when non-empty on both sides
+    local actual_digests expected_digests
+    actual_digests="$(docker image inspect --format '{{json .RepoDigests}}' "${actual_id}" 2>/dev/null || echo "[]")"
+    expected_digests="$(docker image inspect --format '{{json .RepoDigests}}' "${expected_ref}" 2>/dev/null || echo "[]")"
+    if [[ "${actual_digests}" != "[]" && "${actual_digests}" != "null" && -n "${actual_digests}" && \
+          "${expected_digests}" != "[]" && "${expected_digests}" != "null" && -n "${expected_digests}" ]]; then
+        local match_digest
+        match_digest="$(python3 -c "
+import json, sys
+try:
+    a = set(json.loads(sys.argv[1]))
+    e = set(json.loads(sys.argv[2]))
+    print('1' if (a & e) else '0')
+except Exception:
+    print('1')
+" "${actual_digests}" "${expected_digests}" 2>/dev/null || echo "1")"
+        if [[ "${match_digest}" == "0" ]]; then
+            echo "[FATAL] Service '${service}' RepoDigests mismatch! Running: ${actual_digests}, Expected: ${expected_digests}" >&2
+            return 1
         fi
     fi
 

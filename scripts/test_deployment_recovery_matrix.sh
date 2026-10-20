@@ -174,12 +174,17 @@ if [[ "$*" =~ image.*inspect ]]; then
     exit 0
 fi
 
+if [[ "$*" =~ inspect.*--format.*Image ]]; then
+    echo "sha256:1111222233334444555566667777888899990000aaaa11112222333344445555"
+    exit 0
+fi
+
 if [[ "$*" =~ inspect.*--format.*Id ]]; then
     echo "sha256:1111222233334444555566667777888899990000aaaa11112222333344445555"
     exit 0
 fi
 
-if [[ "$*" =~ inspect.*--format.*RepoDigests ]]; then
+if [[ "$*" =~ RepoDigests ]]; then
     echo "[]"
     exit 0
 fi

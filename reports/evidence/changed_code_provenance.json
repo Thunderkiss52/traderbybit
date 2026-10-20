@@ -1,65 +1,13 @@
 {
-  "generated_at_utc": "2026-10-20T14:16:50Z",
-  "git_head_sha": "c4600a520184ec9f705f8415eb2dd65ad9bfab34",
+  "generated_at_utc": "2026-10-20T14:40:25Z",
+  "git_head_sha": "9646de69906d8e691ee8ba4ceaac4d32db357866",
   "tracked_changes": {
-    "diff_sha256": "58a57d16ffd61bfe1fe4563edb5ad1cef388414f26ee87216390c303d7f1aadb",
-    "modified_files_count": 18,
+    "diff_sha256": "f3e14f0b090211be5fe14a05bfd2169f270223c7b5ecf09c74a08fd330ac86f3",
+    "modified_files_count": 3,
     "modified_files": [
       {
         "status": "M",
-        "path": "docker/nginx/10-auth.sh"
-      },
-      {
-        "status": "M",
-        "path": "docker/php/entrypoint.sh"
-      },
-      {
-        "status": "M",
-        "path": "docker/postgres/backup.sh"
-      },
-      {
-        "status": "M",
-        "path": "docker/scripts/cleanup-project-images.sh"
-      },
-      {
-        "status": "M",
         "path": "docker/scripts/common.sh"
-      },
-      {
-        "status": "M",
-        "path": "docker/scripts/deploy.sh"
-      },
-      {
-        "status": "M",
-        "path": "docker/scripts/healthcheck.sh"
-      },
-      {
-        "status": "M",
-        "path": "docker/scripts/production-deploy-wrapper.sh"
-      },
-      {
-        "status": "M",
-        "path": "docker/scripts/recover-deployment-state.sh"
-      },
-      {
-        "status": "M",
-        "path": "docker/scripts/restore.sh"
-      },
-      {
-        "status": "M",
-        "path": "docker/scripts/rollback.sh"
-      },
-      {
-        "status": "M",
-        "path": "docker/scripts/storage-report.sh"
-      },
-      {
-        "status": "M",
-        "path": "docker/scripts/update.sh"
-      },
-      {
-        "status": "M",
-        "path": "docker/scripts/validate-deployment-state.sh"
       },
       {
         "status": "M",
@@ -67,15 +15,7 @@
       },
       {
         "status": "M",
-        "path": "scripts/run-browser-e2e.sh"
-      },
-      {
-        "status": "M",
         "path": "scripts/test_deployment_recovery_matrix.sh"
-      },
-      {
-        "status": "M",
-        "path": "scripts/verify-system.sh"
       }
     ]
   },
