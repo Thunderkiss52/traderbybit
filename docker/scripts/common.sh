@@ -146,10 +146,10 @@ check_service_readiness() {
             st="$(docker inspect --format '{{.State.Status}}' "${cid}" 2>/dev/null || echo "unknown")"
             [[ "${st}" == "running" ]] || return 1
             # Operational heartbeat: Worker loop started, No queued jobs, Processed N jobs
-            # Verify recent log tail contains operational start or execution without artificial 60s cutoff
-            docker logs --tail=50 "${cid}" 2>/dev/null | grep -Eq "Worker loop started|No queued jobs|Processed [0-9]+ jobs" || return 1
+            # Go standard library log package prints to stderr, so 2>&1 is required to pipe logs to grep
+            docker logs --tail=50 "${cid}" 2>&1 | grep -Eq "Worker loop started|No queued jobs|Processed [0-9]+ jobs" || return 1
             # Negative control: active claim errors must NOT pass readiness
-            if docker logs --tail=10 "${cid}" 2>/dev/null | grep -q "Claim error"; then
+            if docker logs --tail=10 "${cid}" 2>&1 | grep -q "Claim error"; then
                 return 1
             fi
             ;;

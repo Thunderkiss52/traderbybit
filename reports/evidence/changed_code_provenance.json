@@ -1,9 +1,9 @@
 {
-  "generated_at_utc": "2026-10-20T14:53:26Z",
-  "git_head_sha": "cc1f864bc9e4e0bcb0a0958709e656b24e5862c1",
+  "generated_at_utc": "2026-10-20T15:05:19Z",
+  "git_head_sha": "a97101104a4cb00bdad63ce0c9e60e7df41ada36",
   "tracked_changes": {
-    "diff_sha256": "13f3b328f0c0d15821b7d32e1c26be59910006620f0a50b029c9e3d8061dcb96",
-    "modified_files_count": 3,
+    "diff_sha256": "14be9d8394fdc244cbfb6a60f36a80f0d6a3c1d23e19a2e21732cf24155c9709",
+    "modified_files_count": 2,
     "modified_files": [
       {
         "status": "M",
@@ -12,10 +12,6 @@
       {
         "status": "M",
         "path": "reports/evidence/command_exit_codes.json"
-      },
-      {
-        "status": "M",
-        "path": "scripts/test_deployment_recovery_matrix.sh"
       }
     ]
   },
