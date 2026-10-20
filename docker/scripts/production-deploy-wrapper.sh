@@ -55,6 +55,7 @@ fi
 chmod 0755 "${release_dir}"/docker/scripts/*.sh "${release_dir}"/docker/postgres/*.sh
 
 mkdir -p "${STATE_DIR}"
+export AUTO_RECOVER_ON_DEPLOY="${AUTO_RECOVER_ON_DEPLOY:-1}"
 if [[ -x "${release_dir}/docker/scripts/validate-deployment-state.sh" ]]; then
     if ! ENV_FILE="${ENV_FILE}" DEPLOY_STATE_DIR="${STATE_DIR}" \
         "${release_dir}/docker/scripts/validate-deployment-state.sh" pre-deploy; then

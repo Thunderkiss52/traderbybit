@@ -1,42 +1,16 @@
 {
-  "timestamp_utc": "2026-10-20T13:19:06Z",
+  "timestamp_utc": "2026-10-20T14:04:12Z",
   "specification": "VECTOR V5.3 - Production Deployment State Recovery & Resilient Lifecycle",
   "git": {
-    "commit_sha": "19cf5046b6b1d00f2beafe0d8833e77d2e657b4d",
+    "commit_sha": "9d3ac4b454647027cbab4dbd12c869bb6f3e19e7",
     "status_porcelain": [
-      "M AGENTS.md",
-      " D BYBIT_QUANT_UNIFIED_EXECUTION_SPEC_V4_COMPLETE.md",
-      " D VECTOR_V5_3_EVIDENCE_VERIFIED_CODEX_SPEC.md",
-      " M docker/scripts/common.sh",
-      " M docker/scripts/deploy.sh",
-      " M docker/scripts/production-deploy-wrapper.sh",
-      " M docker/scripts/rollback.sh",
+      "M docker/scripts/production-deploy-wrapper.sh",
+      " M docker/scripts/recover-deployment-state.sh",
       " M docker/scripts/update.sh",
-      " M evidence.zip.sha256",
-      " M reports/evidence/changed_code_provenance.json",
-      " M reports/evidence/command_exit_codes.json",
-      " M reports/evidence/p0_performance_baseline.json",
-      " M reports/evidence/raw_test_logs/frontend_build_stdout.log",
-      " M reports/evidence/raw_test_logs/frontend_test_stdout.log",
-      " M reports/evidence/raw_test_logs/phpunit_full_stdout.log",
-      " M reports/evidence/raw_test_logs/phpunit_isolated_postgres.log",
-      " M reports/evidence/raw_test_logs/pint_stdout.log",
-      " M scripts/build_evidence_zip.py",
-      " M scripts/generate_provenance_and_exit_codes.py",
-      "?? AGENT.md",
-      "?? VECTOR_PROFIT_1_Revision_2_1_Full_Spec.md",
-      "?? VECTOR_PROFIT_1_Revision_2_1_Full_Spec.md:Zone.Identifier",
-      "?? docker/scripts/recover-deployment-state.sh",
-      "?? docker/scripts/validate-deployment-state.sh",
-      "?? reports/archive.zip.sha256",
-      "?? reports/evidence.zip.sha256",
-      "?? reports/evidence/deployment_state_recovery_evidence.json",
-      "?? reports/evidence/raw_test_logs/deployment_recovery_matrix.log",
-      "?? reports/evidence/raw_test_logs/phpunit_recovery_unit.log",
-      "?? reports/profitability/",
-      "?? scripts/generate_deployment_recovery_evidence.py",
-      "?? scripts/test_deployment_recovery_matrix.sh",
-      "?? tests/Unit/DeploymentStateValidationAndRecoveryTest.php"
+      " M docker/scripts/validate-deployment-state.sh",
+      " M reports/evidence/raw_test_logs/deployment_recovery_matrix.log",
+      " M reports/evidence/raw_test_logs/phpunit_recovery_unit.log",
+      " M tests/Unit/DeploymentStateValidationAndRecoveryTest.php"
     ]
   },
   "target_application_services": [
@@ -64,7 +38,7 @@
   "test_results": {
     "matrix_12_scenarios": {
       "exit_code": 0,
-      "duration_seconds": 8.29,
+      "duration_seconds": 8.363,
       "passed": 12,
       "total": 12,
       "scenarios": [
@@ -133,11 +107,11 @@
     },
     "phpunit_unit_tests": {
       "exit_code": 0,
-      "duration_seconds": 0.447,
+      "duration_seconds": 0.805,
       "tests_run": 7,
       "assertions": 30,
       "status": "PASSED",
-      "raw_output": "{\"tool\":\"phpunit\",\"result\":\"passed\",\"tests\":9,\"passed\":9,\"assertions\":32,\"duration_ms\":316}"
+      "raw_output": "{\"tool\":\"phpunit\",\"result\":\"passed\",\"tests\":10,\"passed\":10,\"assertions\":37,\"duration_ms\":676}"
     },
     "pint_code_style": {
       "exit_code": 0,
@@ -152,18 +126,18 @@
     },
     "docker/scripts/validate-deployment-state.sh": {
       "syntax_valid": true,
-      "sha256": "e2b4b924c81aee1520926184d01c45a030b76fe8471811655e46fd2c4813cb9e",
-      "size_bytes": 14023
+      "sha256": "12179e2a5583c44558ed8aba0e502638c48d63ce59e412a7f547e6521df36240",
+      "size_bytes": 15447
     },
     "docker/scripts/recover-deployment-state.sh": {
       "syntax_valid": true,
-      "sha256": "05f26b667b209c95f58a8bf3f7225747900e933cf1007bb2699d2b7ef402fd8d",
-      "size_bytes": 14834
+      "sha256": "515be66060c2bb711659ff5d39b80e88620d915d45658c5a91e982349983ae55",
+      "size_bytes": 15025
     },
     "docker/scripts/update.sh": {
       "syntax_valid": true,
-      "sha256": "a8718c6216aac524b05b6f4a441c69945f2ff4752ea5e61ad83948c53712591f",
-      "size_bytes": 2948
+      "sha256": "626cba81850afeb299b9df4ead45de2f1271bd5e174a43bb1da5e849546d4435",
+      "size_bytes": 3009
     },
     "docker/scripts/rollback.sh": {
       "syntax_valid": true,
@@ -177,8 +151,8 @@
     },
     "docker/scripts/production-deploy-wrapper.sh": {
       "syntax_valid": true,
-      "sha256": "398418163e8cb9d263e48e36dc170f64c1953333ed3da2a432cbbe3d73e87426",
-      "size_bytes": 3598
+      "sha256": "b01838295775182f0f5925629fbf8fbb032878d23248d4d7d513f474ddb72c59",
+      "size_bytes": 3659
     }
   },
   "production_safety_invariants": {

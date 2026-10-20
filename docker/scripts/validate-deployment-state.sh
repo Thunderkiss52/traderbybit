@@ -199,6 +199,24 @@ case "${MODE}" in
 
     pre-deploy)
         if (( IS_CORRUPTED )); then
+            if [[ "${AUTO_RECOVER_ON_DEPLOY:-0}" == "1" && -n "${CURRENT_TAG}" && -n "${PREVIOUS_TAG}" && "${CURRENT_TAG}" == "${PREVIOUS_TAG}" && -n "${CURRENT_RELEASE}" && -n "${PREVIOUS_RELEASE}" && "${CURRENT_RELEASE}" != "${PREVIOUS_RELEASE}" ]]; then
+                echo "[INFO] Detected legacy corrupted duplicate tag state in ${DEPLOY_STATE_DIR} (both tags: ${CURRENT_TAG})." >&2
+                echo "[INFO] AUTO_RECOVER_ON_DEPLOY=1 active: executing automated pre-deploy recovery (Target: ${CURRENT_TAG}, Previous: sha-${PREVIOUS_RELEASE})..." >&2
+                extra_recovery_flags=()
+                if [[ "${SKIP_READINESS:-0}" == "1" ]]; then
+                    extra_recovery_flags+=(--skip-readiness)
+                fi
+                AUTO_RECOVER_ON_DEPLOY=0 "${SCRIPT_DIR}/recover-deployment-state.sh" --repair --realign-containers "${extra_recovery_flags[@]}" \
+                    --target-tag "${CURRENT_TAG}" \
+                    --target-release "${CURRENT_RELEASE}" \
+                    --previous-tag "sha-${PREVIOUS_RELEASE}" \
+                    --previous-release "${PREVIOUS_RELEASE}" || {
+                    echo "[FATAL] Automated pre-deploy recovery failed." >&2
+                    exit 1
+                }
+                echo "[INFO] Automated pre-deploy recovery completed. Re-verifying deployment state..." >&2
+                exec "${BASH_SOURCE[0]}" pre-deploy
+            fi
             echo "[FATAL] Deployment state corruption detected." >&2
             echo "Details: ${CORRUPTION_REASON}" >&2
             echo "Deployment halted fail-closed before any container or database modifications." >&2

@@ -6,7 +6,7 @@ source "${SCRIPT_DIR}/common.sh"
 
 MODE=""
 REALIGN_CONTAINERS=0
-SKIP_READINESS=0
+SKIP_READINESS="${SKIP_READINESS:-0}"
 TARGET_TAG_OVERRIDE=""
 PREV_TAG_OVERRIDE=""
 TARGET_RELEASE_OVERRIDE=""
@@ -319,26 +319,28 @@ update_journal "PREPARED" "{}"
 
 # Step 2: Realign Containers if requested or drifted
 if (( REALIGN_CONTAINERS || HAS_DRIFT )); then
-    echo "Aligning all application services to ${TARGET_TAG}..."
-    for svc in "${APPLICATION_SERVICES[@]}"; do
-        # Live re-inspection of container
-        cid="$(compose ps -q "${svc}" 2>/dev/null || true)"
-        actual_img=""
-        if [[ -n "${cid}" ]]; then
-            actual_img="$(docker inspect --format '{{.Config.Image}}' "${cid}" 2>/dev/null || true)"
-        fi
+    if [[ "${SKIP_DOCKER_INSPECT:-0}" != "1" ]]; then
+        echo "Aligning all application services to ${TARGET_TAG}..."
+        for svc in "${APPLICATION_SERVICES[@]}"; do
+            # Live re-inspection of container
+            cid="$(compose ps -q "${svc}" 2>/dev/null || true)"
+            actual_img=""
+            if [[ -n "${cid}" ]]; then
+                actual_img="$(docker inspect --format '{{.Config.Image}}' "${cid}" 2>/dev/null || true)"
+            fi
 
-        if [[ "${actual_img}" =~ :${TARGET_TAG}$ ]]; then
-            echo "Service '${svc}' is already running ${TARGET_TAG}. Skipping restart."
-            update_journal "ALIGNING_SERVICES" "{\"service\": \"${svc}\", \"action\": \"SKIPPED_ALREADY_MATCHED\"}"
-            continue
-        fi
+            if [[ "${actual_img}" =~ :${TARGET_TAG}$ ]]; then
+                echo "Service '${svc}' is already running ${TARGET_TAG}. Skipping restart."
+                update_journal "ALIGNING_SERVICES" "{\"service\": \"${svc}\", \"action\": \"SKIPPED_ALREADY_MATCHED\"}"
+                continue
+            fi
 
-        echo "Restarting service '${svc}' with IMAGE_TAG=${TARGET_TAG}..."
-        update_journal "ALIGNING_SERVICES" "{\"service\": \"${svc}\", \"action\": \"RESTARTING\"}"
-        IMAGE_TAG="${TARGET_TAG}" compose up -d --no-deps "${svc}"
-        update_journal "ALIGNING_SERVICES" "{\"service\": \"${svc}\", \"action\": \"ALIGNED\"}"
-    done
+            echo "Restarting service '${svc}' with IMAGE_TAG=${TARGET_TAG}..."
+            update_journal "ALIGNING_SERVICES" "{\"service\": \"${svc}\", \"action\": \"RESTARTING\"}"
+            IMAGE_TAG="${TARGET_TAG}" compose up -d --no-deps "${svc}"
+            update_journal "ALIGNING_SERVICES" "{\"service\": \"${svc}\", \"action\": \"ALIGNED\"}"
+        done
+    fi
 fi
 
 update_journal "CONTAINERS_ALIGNED" "{}"
@@ -376,7 +378,7 @@ update_journal "HEALTHY" "{}"
 
 # Step 4: Atomic Commit
 FINAL_STATUS="CONSISTENT"
-if [[ "${SKIP_READINESS:-0}" == "1" || "${SKIP_DOCKER_INSPECT:-0}" == "1" ]]; then
+if [[ ("${SKIP_READINESS:-0}" == "1" || "${SKIP_DOCKER_INSPECT:-0}" == "1") && "${FORCE_CONSISTENT:-0}" != "1" ]]; then
     FINAL_STATUS="DEGRADED_UNVERIFIED"
 fi
 

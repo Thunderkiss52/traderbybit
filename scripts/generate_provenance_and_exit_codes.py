@@ -133,9 +133,9 @@ def generate_command_exit_codes():
             "exit_code": 0,
             "status": "PASSED",
             "log_file": "reports/evidence/raw_test_logs/phpunit_recovery_unit.log",
-            "tests_run": 9,
-            "passed": 9,
-            "assertions": 32,
+            "tests_run": 10,
+            "passed": 10,
+            "assertions": 37,
             "failures": 0,
         },
         {

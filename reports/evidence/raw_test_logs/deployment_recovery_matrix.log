@@ -5,7 +5,7 @@
   paper_accounts      : cd7b54049320379fcc0be03b2b14f8a1177e619d3e7c299642ed8ad349c08fb4
   virtual_positions   : 0e19a0aea884c32d3549d4edacb73d6898cdc4925be4c1581d73cb26dd734c69
   virtual_executions  : e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855
-  reconciliation_runs : 1b487c7b28570da120433444dbd4b486c6d77a242791865c3fb67c92ba780249
+  reconciliation_runs : 5289826d7846827f7673686a9ae16987a01175c30d268740f0ebedc8fa315d6e
   redis_keys          : 1
 
 === Running SC-01: Clean State Validation ===

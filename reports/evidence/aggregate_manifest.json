@@ -1,10 +1,10 @@
 {
   "manifest_type": "VECTOR_V5_3_MANDATORY_CORE_AGGREGATE",
   "specification": "VECTOR_V5_3_EVIDENCE_VERIFIED_CODEX_SPEC.md",
-  "compiled_at_utc": "2026-10-20T13:41:12Z",
-  "git_head_sha": "19cf5046b6b1d00f2beafe0d8833e77d2e657b4d",
+  "compiled_at_utc": "2026-10-20T14:05:00Z",
+  "git_head_sha": "9d3ac4b454647027cbab4dbd12c869bb6f3e19e7",
   "working_tree_dirty": true,
-  "diff_sha256": "32ec2e411fb5f29fc0c57e05867f7f7802833cbafe2c283d30351226b2e9b784",
+  "diff_sha256": "764ce9106a478a224065d05490c887f9a163d5566347a199c37e15268b40c7bc",
   "scope": {
     "mandatory_authorized": [
       "P0",
@@ -308,15 +308,15 @@
       "files_count": 8,
       "files": {
         "phpunit_recovery_unit.log": {
-          "sha256": "e9362f19145b17e94e8f4fdc956e1575d34823773afd11ede5a08710a179c3b4",
-          "size_bytes": 92
+          "sha256": "b6597143c84770a62097a594b4d74914796882e2f59d3444af7368d9de81085f",
+          "size_bytes": 94
         },
         "frontend_test_stdout.log": {
           "sha256": "3c7453fa0aab6bb8e436d9d7d96bc210b9ef8d75fa051be425db47f22194c5e7",
           "size_bytes": 7619
         },
         "deployment_recovery_matrix.log": {
-          "sha256": "9f1e9557fdd2e6ec3704a878a79f3862e51795b4347e476609ddbf39c3561406",
+          "sha256": "9d3a621796599ab9dacc3a4d2f5bb53afb8fbeb9530f99faaf88dcb82c1e14e3",
           "size_bytes": 3731
         },
         "pint_stdout.log": {
@@ -435,60 +435,7 @@
       "eight_account_equity_sum_usdt": 77.1221
     }
   },
-  "source_provenance_untracked_files": {
-    "AGENT.md": {
-      "sha256": "cb8156830c3772be4c04426be09b8bff849ffde2de616246e3cdb660c5413c01",
-      "size_bytes": 30861
-    },
-    "VECTOR_PROFIT_1_Revision_2_1_Full_Spec.md": {
-      "sha256": "6c56efe96f1d2d35263615b0b7608c7077e76a0a3734a92bd722afea7e5d86c0",
-      "size_bytes": 97919
-    },
-    "docker/scripts/recover-deployment-state.sh": {
-      "sha256": "05f26b667b209c95f58a8bf3f7225747900e933cf1007bb2699d2b7ef402fd8d",
-      "size_bytes": 14834
-    },
-    "docker/scripts/validate-deployment-state.sh": {
-      "sha256": "e2b4b924c81aee1520926184d01c45a030b76fe8471811655e46fd2c4813cb9e",
-      "size_bytes": 14023
-    },
-    "reports/archive.zip.sha256": {
-      "sha256": "3c2ee4354d7a7170d0e45bbc872e8224586cb95d3692cc4a81a654f159081f44",
-      "size_bytes": 78
-    },
-    "reports/evidence.zip.sha256": {
-      "sha256": "125032cea2a30bfd8fb8c91e6304d82f8fe17f021e189d9ec8700179f9c17422",
-      "size_bytes": 79
-    },
-    "reports/evidence/deployment_state_recovery_evidence.json": {
-      "sha256": "46b7a09195503cb41c126ae7fd164d94568ec511e09e53544d835006c55abef8",
-      "size_bytes": 10420
-    },
-    "reports/evidence/raw_test_logs/deployment_recovery_matrix.log": {
-      "sha256": "9f1e9557fdd2e6ec3704a878a79f3862e51795b4347e476609ddbf39c3561406",
-      "size_bytes": 3731
-    },
-    "reports/evidence/raw_test_logs/phpunit_recovery_unit.log": {
-      "sha256": "e9362f19145b17e94e8f4fdc956e1575d34823773afd11ede5a08710a179c3b4",
-      "size_bytes": 92
-    },
-    "reports/profitability/P0_baseline.md": {
-      "sha256": "2f42b13241d017e09ba16aae1899e61e9a83ebc064af529825643b02a9880447",
-      "size_bytes": 27118
-    },
-    "scripts/generate_deployment_recovery_evidence.py": {
-      "sha256": "adb8296feae18e7d93b7706f1b9962a673e93503245e895bdbed70baa5857bee",
-      "size_bytes": 7319
-    },
-    "scripts/test_deployment_recovery_matrix.sh": {
-      "sha256": "c555d595a7c04b5920d13c083351fc1df3f873c5a19078f34429b9d3ff291bea",
-      "size_bytes": 27857
-    },
-    "tests/Unit/DeploymentStateValidationAndRecoveryTest.php": {
-      "sha256": "5723fcbfa7a7eb40e0b3f16760640096ddc7ddd1f8697c73e58c8fc036355ee6",
-      "size_bytes": 11400
-    }
-  },
+  "source_provenance_untracked_files": {},
   "release_readiness": "READY_FOR_USER_REVIEW_AND_CI_DEPLOYMENT",
   "safeguards": {
     "real_exchange_trading_disabled": true,

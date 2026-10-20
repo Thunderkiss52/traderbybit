@@ -255,4 +255,36 @@ BASH;
         flock($fp, LOCK_UN);
         fclose($fp);
     }
+
+    public function test_auto_recover_on_deploy_heals_duplicate_state_automatically(): void
+    {
+        // Setup production corrupted state
+        file_put_contents($this->tempDir.'/.deploy-current', "sha-94c853458e5a38f4bc46f32c4f95c56f52216e6c\n");
+        file_put_contents($this->tempDir.'/.deploy-previous', "sha-94c853458e5a38f4bc46f32c4f95c56f52216e6c\n");
+        file_put_contents($this->tempDir.'/release-current', "94c853458e5a38f4bc46f32c4f95c56f52216e6c\n");
+        file_put_contents($this->tempDir.'/release-previous', "37d30ee343b6305bc764281c4baa7f755863e2f5\n");
+
+        // When AUTO_RECOVER_ON_DEPLOY=1, pre-deploy validation automatically recovers the state
+        $result = $this->runScript('validate-deployment-state.sh', ['pre-deploy'], [
+            'AUTO_RECOVER_ON_DEPLOY' => '1',
+            'SKIP_DOCKER_INSPECT' => '1',
+            'SKIP_READINESS' => '1',
+            'FORCE_CONSISTENT' => '1',
+            'ALLOW_EMERGENCY_SKIP' => '1',
+        ]);
+
+        $this->assertSame(0, $result['exitCode'], $result['output']);
+        $this->assertStringContainsString('AUTO_RECOVER_ON_DEPLOY=1 active', $result['output']);
+        $this->assertStringContainsString('Pre-deployment state validation passed', $result['output']);
+
+        // Assert: .deploy-previous has been automatically healed to sha-37d3...
+        $this->assertSame(
+            "sha-37d30ee343b6305bc764281c4baa7f755863e2f5\n",
+            file_get_contents($this->tempDir.'/.deploy-previous')
+        );
+        $this->assertSame(
+            "sha-94c853458e5a38f4bc46f32c4f95c56f52216e6c\n",
+            file_get_contents($this->tempDir.'/.deploy-current')
+        );
+    }
 }
