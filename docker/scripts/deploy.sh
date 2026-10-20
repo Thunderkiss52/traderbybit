@@ -27,9 +27,13 @@ fi
 
 compose config --quiet
 if [[ "${DEPLOY_MODE:-build}" == "pull" ]]; then
-    compose pull app web research-worker
+    compose pull app web
+    if ! docker image inspect "${RESEARCH_WORKER_IMAGE:-bybit-signals-research-worker}:${IMAGE_TAG:-latest}" >/dev/null 2>&1; then
+        echo "Building research-worker image for tag ${IMAGE_TAG:-latest}..."
+        compose build research-worker
+    fi
 elif [[ "${SKIP_BUILD:-0}" != "1" ]]; then
-    compose build --pull app web
+    compose build --pull app web research-worker
 fi
 
 assert_free_disk_space

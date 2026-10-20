@@ -51,9 +51,13 @@ rollback_application() {
 trap rollback_application ERR
 
 if [[ "${DEPLOY_MODE:-pull}" == "pull" ]]; then
-    compose pull app web research-worker
+    compose pull app web
+    if ! docker image inspect "${RESEARCH_WORKER_IMAGE:-bybit-signals-research-worker}:${NEW_TAG}" >/dev/null 2>&1; then
+        echo "Building research-worker image for tag ${NEW_TAG}..."
+        compose build research-worker
+    fi
 else
-    compose build --pull app web
+    compose build --pull app web research-worker
 fi
 assert_free_disk_space
 compose up -d postgres redis

@@ -1,10 +1,10 @@
 {
   "manifest_type": "VECTOR_V5_3_MANDATORY_CORE_AGGREGATE",
   "specification": "VECTOR_V5_3_EVIDENCE_VERIFIED_CODEX_SPEC.md",
-  "compiled_at_utc": "2026-10-20T15:05:39Z",
-  "git_head_sha": "a97101104a4cb00bdad63ce0c9e60e7df41ada36",
+  "compiled_at_utc": "2026-10-20T15:26:37Z",
+  "git_head_sha": "9f1ffd21ebfdcd68d791d931b4d1aeb70680cca8",
   "working_tree_dirty": true,
-  "diff_sha256": "674341d015c4759d986f6081cfc8981d9ad2064726a6f07526b73d18bcfec3d6",
+  "diff_sha256": "72e171ca8724b95f80ac97b6221da4927a443d05f3899b27bd85db9b10e16b41",
   "scope": {
     "mandatory_authorized": [
       "P0",
