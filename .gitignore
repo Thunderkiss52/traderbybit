@@ -43,3 +43,11 @@ storage/latency_benchmark.json
 
 # Windows WSL metadata
 *:Zone.Identifier
+
+/reports/
+/docs/
+/VECTOR_PROFIT_1_Revision_2_1_Full_Spec.md
+/IMPLEMENTATION_REPORT.md
+/CHANGED_FILES.txt
+/AGENTS.md
+/AGENT.md

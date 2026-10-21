@@ -59,7 +59,7 @@ const positionColumns: QTableColumn[] = [
   { name: 'entry_price', label: 'Entry Price', field: (r: any) => formatDecimal(r.entry_price), align: 'right' },
   { name: 'current_price', label: 'Current / Ref', field: (r: any) => formatDecimal(r.current_reference_price), align: 'right' },
   { name: 'net_pnl', label: 'Net PnL', field: (r: any) => r.net_pnl !== undefined ? formatDecimal(r.net_pnl) : '—', align: 'right' },
-  { name: 'r_multiple', label: 'R-Multiple', field: (r: any) => r.r_multiple !== null && r.r_multiple !== undefined ? `${Number(r.r_multiple) > 0 ? '+' : ''}${formatDecimal(r.r_multiple)} R` : '—', align: 'right' },
+  { name: 'r_multiple', label: 'R-Multiple', field: (r: any) => { const v = r.r_multiple; if (v === null || v === undefined) return '—'; const n = Number(v); if (!Number.isFinite(n)) return '—'; return `${n > 0 ? '+' : ''}${formatDecimal(n)} R`; }, align: 'right' },
   { name: 'duration', label: 'Duration', field: (r: any) => formatDuration(r.duration_seconds), align: 'right' },
   { name: 'opened_at', label: 'Opened (UTC)', field: 'opened_at', align: 'left', sortable: true },
 ];

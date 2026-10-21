@@ -446,11 +446,15 @@ final class CounterfactualAnalyzerService
 
         $records = $query->get();
         $byFilter = [];
+        $netMissedR = 0.0;
+        $totalRestrictive = 0;
+        $totalProtective = 0;
 
         foreach ($records as $r) {
-            $f = $r->filter_family;
+            $f = $r->filter_family ?: 'OTHER';
             if (! isset($byFilter[$f])) {
                 $byFilter[$f] = [
+                    'filter' => $f,
                     'filter_family' => $f,
                     'total_skips' => 0,
                     'tp_hit' => 0,
@@ -459,15 +463,36 @@ final class CounterfactualAnalyzerService
                     'ambiguous' => 0,
                     'protective_skips' => 0, // avoided loss
                     'restrictive_skips' => 0, // missed win
+                    'net_r' => 0.0,
+                    'missed_r' => 0.0,
+                    'saved_r' => 0.0,
                 ];
             }
             $byFilter[$f]['total_skips']++;
+            $rMultiple = null;
+            if (isset($r->r_multiple) && $r->r_multiple !== null && is_numeric((float) $r->r_multiple) && is_finite((float) $r->r_multiple)) {
+                $rMultiple = (float) $r->r_multiple;
+            }
             if ($r->status === 'RESOLVED_TP') {
                 $byFilter[$f]['tp_hit']++;
                 $byFilter[$f]['restrictive_skips']++;
+                $totalRestrictive++;
+                if ($rMultiple !== null) {
+                    $byFilter[$f]['missed_r'] += $rMultiple;
+                    $byFilter[$f]['net_r'] -= $rMultiple;
+                    $netMissedR -= $rMultiple;
+                }
             } elseif ($r->status === 'RESOLVED_SL') {
                 $byFilter[$f]['sl_hit']++;
                 $byFilter[$f]['protective_skips']++;
+                $totalProtective++;
+                if ($rMultiple !== null) {
+                    // Negative R means loss avoided
+                    $saved = abs($rMultiple);
+                    $byFilter[$f]['saved_r'] += $saved;
+                    $byFilter[$f]['net_r'] += $saved;
+                    $netMissedR += $saved;
+                }
             } elseif ($r->status === 'RESOLVED_TIMEOUT') {
                 $byFilter[$f]['timeout']++;
             } elseif ($r->status === 'AMBIGUOUS') {
@@ -475,9 +500,20 @@ final class CounterfactualAnalyzerService
             }
         }
 
+        $filters = array_values(array_map(static function (array $f): array {
+            $f['net_r'] = round((float) ($f['net_r'] ?? 0), 4);
+            $f['missed_r'] = round((float) ($f['missed_r'] ?? 0), 4);
+            $f['saved_r'] = round((float) ($f['saved_r'] ?? 0), 4);
+
+            return $f;
+        }, $byFilter));
+
         return [
             'total_evaluated' => $records->count(),
-            'filters' => array_values($byFilter),
+            'total_restrictive' => $totalRestrictive,
+            'total_protective' => $totalProtective,
+            'net_missed_r' => round($netMissedR, 4),
+            'filters' => $filters,
             'generated_at' => now('UTC')->toIso8601String(),
         ];
     }

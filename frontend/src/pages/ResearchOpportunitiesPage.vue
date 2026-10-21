@@ -100,8 +100,8 @@ onMounted(() => {
         <q-card flat bordered class="kpi-card">
           <q-card-section>
             <div class="text-caption text-grey">Net Missed R</div>
-            <div class="text-h5 text-bold" :class="Number(summary.net_missed_r || 0) > 0 ? 'text-negative' : 'text-positive'">
-              {{ Number(summary.net_missed_r || 0).toFixed(2) }} R
+            <div class="text-h5 text-bold" :class="Number(summary.net_missed_r) > 0 ? 'text-negative' : (Number(summary.net_missed_r) < 0 ? 'text-positive' : 'text-grey')">
+              {{ (summary.net_missed_r !== null && summary.net_missed_r !== undefined && isFinite(Number(summary.net_missed_r))) ? Number(summary.net_missed_r).toFixed(2) + ' R' : '—' }}
             </div>
             <div class="text-caption text-grey-6">Opportunity cost balance</div>
           </q-card-section>
@@ -146,8 +146,8 @@ onMounted(() => {
           </q-td>
         </template>
         <template #body-cell-net_r="props">
-          <q-td :props="props" :class="Number(props.value) > 0 ? 'text-negative' : 'text-positive'">
-            {{ Number(props.value).toFixed(2) }} R
+          <q-td :props="props" :class="Number(props.value) > 0 ? 'text-negative' : (Number(props.value) < 0 ? 'text-positive' : 'text-grey')">
+            {{ (props.value !== null && props.value !== undefined && isFinite(Number(props.value))) ? Number(props.value).toFixed(2) + ' R' : '—' }}
           </q-td>
         </template>
       </q-table>
@@ -192,8 +192,8 @@ onMounted(() => {
           </q-td>
         </template>
         <template #body-cell-r_multiple="props">
-          <q-td :props="props" :class="Number(props.value) > 0 ? 'text-positive' : (Number(props.value) < 0 ? 'text-negative' : '')">
-            {{ props.value ? Number(props.value).toFixed(2) + ' R' : '—' }}
+          <q-td :props="props" :class="Number(props.value) > 0 ? 'text-positive' : (Number(props.value) < 0 ? 'text-negative' : 'text-grey')">
+            {{ (props.value !== null && props.value !== undefined && isFinite(Number(props.value))) ? Number(props.value).toFixed(2) + ' R' : '—' }}
           </q-td>
         </template>
         <template #body-cell-actions="props">

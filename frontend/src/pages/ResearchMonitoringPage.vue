@@ -273,7 +273,7 @@ onMounted(() => {
           </template>
           <template #body-cell-max_drawdown="props">
             <q-td :props="props" :class="Number(props.value) >= 15 ? 'text-negative text-bold' : ''">
-              {{ props.value !== null ? Number(props.value).toFixed(2) + '%' : '0%' }}
+              {{ (typeof props.value === 'number' && isFinite(props.value)) ? props.value.toFixed(2) + '%' : (props.value === null || props.value === undefined ? '—' : (Number.isFinite(Number(props.value)) ? Number(props.value).toFixed(2) + '%' : '—')) }}
             </q-td>
           </template>
         </q-table>
