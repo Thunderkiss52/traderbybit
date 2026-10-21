@@ -1,0 +1,48 @@
+ M app/MarketData/Application/CandleSynchronizer.php
+ M app/MarketData/Application/ClosedCandleIngestor.php
+ M app/MarketData/Application/MarketStreamSupervisor.php
+ M app/MarketData/Infrastructure/Http/LaravelHttpTransport.php
+ M app/MarketData/Infrastructure/Http/TransportResponse.php
+ M app/Providers/AppServiceProvider.php
+ M app/Research/Application/SlippageAttributionService.php
+ M bootstrap/app.php
+A  docs/QUOTE_INTEGRITY_SPEC_FINAL.md
+ M frontend/src/layouts/MainLayout.vue
+ M frontend/src/pages/ProfitabilityResearchPage.vue
+ M frontend/src/router/index.ts
+ M frontend/tests/profitability_research.test.js
+ M reports/profit-growth/02-p1-slippage-attribution.md
+ M reports/profit-growth/P1_evidence.json
+ M routes/api.php
+?? VECTOR_AUTONOMOUS_PROFIT_RESEARCH_MASTER_SPEC_V1_EN.md
+?? VECTOR_NET_PROFIT_GROWTH_SPEC_V1_1.md
+?? VECTOR_OPENCODE_OVERNIGHT_FULL_EXECUTION_SPEC_EN.md
+?? app/Http/Controllers/Api/V1/QuoteIntegrityController.php
+?? app/Http/Middleware/EnsureQuoteIntegrityEnabled.php
+?? app/QuoteIntegrity/
+?? app/Research/Domain/SlippageAttribution/
+?? bybit_test
+?? config/quote_integrity.php
+?? database/migrations/2026_10_20_100000_create_qim_observations_table.php
+?? database/migrations/2026_10_20_100100_create_qim_gap_events_table.php
+?? database/migrations/2026_10_20_100200_create_qim_purge_audit_table.php
+?? database/migrations/2026_10_20_100300_create_qim_analysis_tables.php
+?? database/migrations/2026_10_20_100400_create_qim_evidence_files_table.php
+?? docs/QUOTE_INTEGRITY_SPEC_REV2.md
+?? docs/source-capability-matrix.md
+?? frontend/src/components/qim/
+?? frontend/src/pages/QuoteIntegrityPage.vue
+?? frontend/src/services/quoteIntegrityApi.ts
+?? frontend/tests/quote_integrity.test.js
+?? reports/evidence/qim_l1_evidence.json
+?? reports/evidence/qim_q0_evidence.json
+?? reports/overnight/
+?? research-go/backtest.test
+?? run-vector-opencode-overnight.sh
+?? run-vector-v11-completion-fixed-20261021.sh
+?? run-vector-v11-completion.sh
+?? scripts/p1_archive_evaluation.php
+?? tests/Feature/QuoteIntegrity/
+?? tests/Integration/QuoteIntegrity/
+?? tests/Unit/QuoteIntegrity/
+?? tests/Unit/Research/SlippageAllocationTest.php

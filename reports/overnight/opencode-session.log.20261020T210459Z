@@ -1,0 +1,97 @@
+# Preflight 2026-10-20T20:58:09Z
+# Repo: /home/thunder/work/traderbybit
+# User: thunder (uid=1000)
+# Git HEAD: f2e3ace7b65a0d60f9cae4bd0c1070b4f3721c55
+# Branch: main
+# Git status (first 100):
+ M app/Http/Middleware/RequireResearchToken.php
+ M app/MarketData/Application/CandleSynchronizer.php
+ M app/MarketData/Application/ClosedCandleIngestor.php
+ M app/MarketData/Application/MarketStreamSupervisor.php
+ M app/MarketData/Infrastructure/Http/LaravelHttpTransport.php
+ M app/MarketData/Infrastructure/Http/TransportResponse.php
+ M app/Providers/AppServiceProvider.php
+ M bootstrap/app.php
+ M config/paper.php
+ M config/services.php
+A  docs/QUOTE_INTEGRITY_SPEC_FINAL.md
+ M frontend/src/layouts/MainLayout.vue
+ M frontend/src/router/index.ts
+ M routes/api.php
+?? VECTOR_AUTONOMOUS_PROFIT_RESEARCH_MASTER_SPEC_V1_EN.md
+?? VECTOR_NET_PROFIT_GROWTH_SPEC_V1_1.md
+?? VECTOR_OPENCODE_OVERNIGHT_FULL_EXECUTION_SPEC_EN.md
+?? app/Http/Controllers/Api/V1/ProfitabilityResearchController.php
+?? app/Http/Controllers/Api/V1/QuoteIntegrityController.php
+?? app/Http/Middleware/EnsureQuoteIntegrityEnabled.php
+?? app/QuoteIntegrity/
+?? app/Research/Application/MetricRegistryService.php
+?? app/Research/Application/RiskCapitalMetricsService.php
+?? app/Research/Application/SlippageAttributionService.php
+?? app/Research/Domain/
+?? app/Research/Exceptions/
+?? config/quote_integrity.php
+?? database/migrations/2026_10_20_100000_create_qim_observations_table.php
+?? database/migrations/2026_10_20_100100_create_qim_gap_events_table.php
+?? database/migrations/2026_10_20_100200_create_qim_purge_audit_table.php
+?? database/migrations/2026_10_20_100300_create_qim_analysis_tables.php
+?? database/migrations/2026_10_20_100400_create_qim_evidence_files_table.php
+?? database/migrations/2026_10_20_200000_create_slippage_attribution_tables.php
+?? database/migrations/2026_10_20_300000_create_strategy_risk_metrics_tables.php
+?? docs/QUOTE_INTEGRITY_SPEC_REV2.md
+?? docs/source-capability-matrix.md
+?? frontend/src/components/qim/
+?? frontend/src/pages/ProfitabilityResearchPage.vue
+?? frontend/src/pages/QuoteIntegrityPage.vue
+?? frontend/src/services/quoteIntegrityApi.ts
+?? frontend/tests/profitability_research.test.js
+?? frontend/tests/quote_integrity.test.js
+?? reports/evidence/qim_l1_evidence.json
+?? reports/evidence/qim_q0_evidence.json
+?? reports/overnight/
+?? reports/profit-growth/
+?? run-vector-opencode-overnight.sh
+?? tests/Feature/QuoteIntegrity/
+?? tests/Feature/Research/ProfitabilityResearchApiTest.php
+?? tests/Feature/Research/SlippageAttributionApiTest.php
+?? tests/Integration/QuoteIntegrity/
+?? tests/Integration/SlippageAttributionPostgresIntegrationTest.php
+?? tests/Unit/Middleware/
+?? tests/Unit/QuoteIntegrity/
+?? tests/Unit/Research/MetricRegistryTest.php
+?? tests/Unit/Research/SlippageAttributionServiceTest.php
+?? vector-audit.tar.gz
+# Git diff stat (last 20):
+ app/Http/Middleware/RequireResearchToken.php       | 34 +++++++++
+ app/MarketData/Application/CandleSynchronizer.php  | 54 +++++++++++---
+ .../Application/ClosedCandleIngestor.php           | 21 ++++++
+ .../Application/MarketStreamSupervisor.php         | 82 +++++++++++++++++++++-
+ .../Infrastructure/Http/LaravelHttpTransport.php   |  1 +
+ .../Infrastructure/Http/TransportResponse.php      |  1 +
+ app/Providers/AppServiceProvider.php               | 38 ++++++++++
+ bootstrap/app.php                                  | 14 ++++
+ config/paper.php                                   | 13 ++++
+ config/services.php                                |  2 +
+ frontend/src/layouts/MainLayout.vue                |  2 +-
+ frontend/src/router/index.ts                       |  2 +-
+ routes/api.php                                     | 24 +++++++
+ 13 files changed, 277 insertions(+), 11 deletions(-)
+# Toolchain:
+  go: go version go1.18.1 linux/amd64
+  php: PHP 8.4.24 (cli) (built: Jul 30 2026 15:22:53) (NTS)
+  node: v20.20.0
+  npm: 10.8.2
+  psql: psql (PostgreSQL) 14.24 (Ubuntu 14.24-0ubuntu0.22.04.1)
+  opencode: 1.18.33
+# Model: default
+# Disk: /dev/sdd        1007G         121G  836G           13% /
+# Spec SHA-256: 6ece3d671ff7f63ca1bb4092cf47701886dc1f89e3a7b6e947b853fda57fbd96
+# Snapshot: /home/thunder/work/traderbybit/reports/overnight/worktree-snapshot-20261020T205807Z.tar.gz
+# Snapshot SHA-256: 75f3842e2c7cef18ef21d660f9ba563346277b7e262ad415a4abcd4ad88c411c
+# MAX_HOURS: 0.1
+# SOFT_DEADLINE_UTC: 2026-10-20T20:58:09Z
+# HARD_DEADLINE_UTC: 2026-10-20T21:04:09Z
+# DB isolation: UNVERIFIED (do not use production DB; verify test connection before migrations)
+# END PREFLIGHT
+[91m[1mError: [0mFile not found: Execute the attached VECTOR v1.1 overnight LOCAL engineering contract. Routine local edit/test permissions are approved within the contract only. Preserve dirty QIM/G1/P-1 changes; all production, live-order, P-3, ECONOM and destructive Git operations remain prohibited. Implement sequential evidence-gated stages, record durable checkpoints, and do not fake performance or financial results. SOFT SHUTDOWN UTC: 2026-10-20T20:58:09Z; HARD DEADLINE UTC: 2026-10-20T21:04:09Z. At the soft deadline stop starting phases and finalize logs, checksums, and NEXT_SESSION_PROMPT.md. If blocked, continue only safe independent work.
+# Finished UTC=2026-10-20T20:58:12Z exit=1

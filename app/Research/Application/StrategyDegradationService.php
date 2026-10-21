@@ -78,6 +78,8 @@ final class StrategyDegradationService
         foreach ($positions as $pos) {
             $net = (float) $pos->net_pnl;
             $gross = (float) $pos->gross_pnl;
+            $net = is_finite($net) ? $net : 0.0;
+            $gross = is_finite($gross) ? $gross : 0.0;
 
             if ($net > 0) {
                 $wins++;
@@ -86,8 +88,9 @@ final class StrategyDegradationService
                 $grossLosses += abs($gross);
             }
 
-            // Estimate R as net PnL / (entry * 0.015) if initial risk not recorded
-            $r = (float) ($pos->r_multiple ?? ($net > 0 ? 1.5 : -1.0));
+            // Estimate R from the recorded value only when it is finite.
+            $recordedR = $pos->r_multiple;
+            $r = is_numeric($recordedR) && is_finite((float) $recordedR) ? (float) $recordedR : ($net > 0 ? 1.5 : -1.0);
             $rMultiples[] = $r;
 
             $cumulativePnl += $net;
@@ -104,6 +107,7 @@ final class StrategyDegradationService
         $winRate = $wins / $sampleSize;
         $expectancyR = count($rMultiples) > 0 ? array_sum($rMultiples) / count($rMultiples) : 0.0;
         $profitFactor = $grossLosses > 0 ? $grossWins / $grossLosses : ($grossWins > 0 ? 99.0 : 0.0);
+        $profitFactor = is_finite($profitFactor) ? $profitFactor : 0.0;
 
         // Wilson 95% Confidence Interval for win rate
         $z = 1.96;

@@ -11,5 +11,6 @@ final readonly class TransportResponse
         public int $status,
         public ?array $json,
         public array $headers = [],
+        public ?string $body = null,
     ) {}
 }

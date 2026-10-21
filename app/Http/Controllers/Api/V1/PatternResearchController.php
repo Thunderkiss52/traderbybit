@@ -124,7 +124,7 @@ final class PatternResearchController extends Controller
                 $calibration[] = [
                     'forecast_bucket' => sprintf('%.1f-%.1f', $lower, $upper), 'count' => $count,
                     'mean_forecast' => (string) $query->avg('success_probability'),
-                    'observed_success_rate' => (string) ((clone $query)->where('outcome', 'SUCCESS')->count() / $count),
+                    'observed_success_rate' => (string) ((clone $query)->whereIn('outcome', ['SUCCESS', 'BOUNCE', 'BREAKOUT'])->count() / $count),
                 ];
             }
         }

@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Strategy\Application;
 
 use App\Strategy\Contracts\StrategyInterface;
+use Illuminate\Support\Arr;
 use App\Strategy\Research\BollingerMeanReversionStrategy;
 use App\Strategy\Research\DonchianBreakoutStrategy;
 use App\Strategy\Research\MarketRegimeClassifier;
@@ -37,7 +38,14 @@ final readonly class StrategyRegistry
     public function make(string $id, array $parameters): StrategyInterface
     {
         if ($id === 'baseline') {
-            return $this->get($id);
+            $overrides = Arr::undot($parameters);
+            unset($overrides['_research_strategy_id'], $overrides['_research_parameters'], $overrides['_research_optimization']);
+            $config = array_replace_recursive((array) config('strategy'), $overrides);
+            if (isset($parameters['version'])) {
+                $config['version'] = (string) $parameters['version'];
+            }
+
+            return new \App\Strategy\Research\BaselineStrategy($config);
         }
 
         return match ($id) {

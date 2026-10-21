@@ -57,7 +57,7 @@ final readonly class PaperAccountService
 
     public function strategyForward(string $strategyId, string $strategyVersion, array $parameters): PaperAccountRecord
     {
-        if ($strategyId === 'baseline') {
+        if ($strategyId === 'baseline' && $strategyVersion === (string) config('strategy.version') && $this->hash($parameters) === $this->hash((array) config('strategy'))) {
             return $this->default();
         }
 

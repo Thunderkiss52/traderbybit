@@ -1,0 +1,7 @@
+phase=phase_1a_residual
+utc=20261021T084202Z
+git_head=f2e3ace7b65a0d60f9cae4bd0c1070b4f3721c55
+snapshot=de9de7c9c177107a0daef160edac0ea2874ac892438d864ea22cb46779148244
+snapshot_bytes=18154847
+diff_sha256=2b9eaa494c1f3fdef62615695e8bb7ea84caf5e995a7c823d135574dcd05e024
+diff_bytes=96820

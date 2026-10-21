@@ -11,6 +11,8 @@ use App\MarketData\Contracts\WebSocketConnection;
 use App\MarketData\Contracts\WebSocketConnector;
 use App\MarketData\Domain\CandleQuery;
 use App\MarketData\Domain\Interval;
+use App\QuoteIntegrity\Application\QimGapRecorder;
+use Carbon\CarbonImmutable;
 use Psr\Log\LoggerInterface;
 use Throwable;
 
@@ -33,6 +35,7 @@ final class MarketStreamSupervisor
         private readonly int $heartbeatSeconds,
         private readonly int $recoveryLookbackMinutes,
         private readonly int $reconnectMaxSeconds,
+        private readonly ?QimGapRecorder $gapRecorder = null,
     ) {}
 
     public function requestStop(): void
@@ -133,7 +136,84 @@ final class MarketStreamSupervisor
                 $to = $interval->floor($nowMs);
 
                 if ($from < $to) {
-                    $this->synchronizer->sync(new CandleQuery('linear', $symbol, $interval, $from, $to));
+                    $gapFrom = CarbonImmutable::createFromTimestampMs($from);
+                    $gapTo = CarbonImmutable::createFromTimestampMs($to);
+                    $detectionId = null;
+
+                    if ($this->gapRecorder !== null) {
+                        try {
+                            $detectionId = $this->gapRecorder->recordGapDetected(
+                                symbol: $symbol,
+                                interval: $value,
+                                gapFrom: $gapFrom,
+                                gapTo: $gapTo,
+                                channel: 'WS',
+                                provider: 'bybit',
+                                category: 'linear',
+                            );
+                        } catch (Throwable $e) {
+                            $this->log->warning('QIM gap detection hook caught exception', [
+                                'exception' => $e::class,
+                                'message' => $e->getMessage(),
+                            ]);
+                        }
+                    }
+
+                    try {
+                        $report = $this->synchronizer->sync(new CandleQuery('linear', $symbol, $interval, $from, $to));
+
+                        if ($this->gapRecorder !== null && $detectionId !== null) {
+                            try {
+                                if ($report->missing === []) {
+                                    $this->gapRecorder->recordGapRecovered(
+                                        detectionId: $detectionId,
+                                        symbol: $symbol,
+                                        interval: $value,
+                                        gapFrom: $gapFrom,
+                                        gapTo: $gapTo,
+                                        outcome: 'RECOVERED',
+                                        remainingMissingCount: 0,
+                                    );
+                                } else {
+                                    $this->gapRecorder->recordGapRecoveryFailed(
+                                        detectionId: $detectionId,
+                                        symbol: $symbol,
+                                        interval: $value,
+                                        gapFrom: $gapFrom,
+                                        gapTo: $gapTo,
+                                        outcome: 'PARTIAL',
+                                        remainingMissingCount: count($report->missing),
+                                    );
+                                }
+                            } catch (Throwable $e) {
+                                $this->log->warning('QIM gap resolution hook caught exception', [
+                                    'exception' => $e::class,
+                                    'message' => $e->getMessage(),
+                                ]);
+                            }
+                        }
+                    } catch (Throwable $syncException) {
+                        if ($this->gapRecorder !== null && $detectionId !== null) {
+                            try {
+                                $this->gapRecorder->recordGapRecoveryFailed(
+                                    detectionId: $detectionId,
+                                    symbol: $symbol,
+                                    interval: $value,
+                                    gapFrom: $gapFrom,
+                                    gapTo: $gapTo,
+                                    outcome: 'FAILED',
+                                    remainingMissingCount: 0,
+                                    metadata: ['error' => $syncException->getMessage()],
+                                );
+                            } catch (Throwable $e) {
+                                $this->log->warning('QIM gap failure hook caught exception', [
+                                    'exception' => $e::class,
+                                    'message' => $e->getMessage(),
+                                ]);
+                            }
+                        }
+                        throw $syncException;
+                    }
                 }
             }
         }

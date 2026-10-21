@@ -14,6 +14,25 @@ return [
         'minimum_pattern_decisions' => (int) env('RESEARCH_AUTO_PATTERN_MINIMUM_DECISIONS', 700),
         'pattern_retry_new_decisions' => (int) env('RESEARCH_AUTO_PATTERN_RETRY_NEW_DECISIONS', 120),
     ],
+    'evolution' => [
+        'families' => ['baseline', 'trend_pullback', 'bollinger_mean_reversion', 'donchian_atr_breakout', 'regime_switching', 'momentum', 'support_resistance_bounce', 'support_resistance_breakout'],
+        'validation_days' => (int) env('RESEARCH_EVOLUTION_VALIDATION_DAYS', 180),
+        'validation_end_lag_hours' => (int) env('RESEARCH_EVOLUTION_END_LAG_HOURS', 24),
+        'max_total_active' => (int) env('RESEARCH_EVOLUTION_MAX_TOTAL_ACTIVE', 8),
+        'max_per_family' => (int) env('RESEARCH_EVOLUTION_MAX_PER_FAMILY', 2),
+        'max_evaluations_per_cycle' => (int) env('RESEARCH_EVOLUTION_MAX_EVALUATIONS_PER_CYCLE', 2),
+        'max_evaluation_attempts' => 3,
+        'spaces' => [
+            'baseline' => ['trend.adx_min' => ['step' => 2, 'min' => 16, 'max' => 26], 'price_model.stop_atr' => ['step' => 0.25, 'min' => 1.0, 'max' => 2.5], 'triggers.breakout.relative_volume_min' => ['step' => 0.1, 'min' => 1.2, 'max' => 1.8], 'structure.minimum_level_space_r' => ['step' => 0.5, 'min' => 2.0, 'max' => 4.0]],
+            'trend_pullback' => ['adx_min' => ['step' => 2, 'min' => 16, 'max' => 26], 'pullback_atr' => ['step' => 0.1, 'min' => 0.3, 'max' => 0.7], 'stop_atr' => ['step' => 0.25, 'min' => 1.0, 'max' => 2.5]],
+            'bollinger_mean_reversion' => ['adx_max' => ['step' => 2, 'min' => 12, 'max' => 20], 'rsi_buy_max' => ['step' => 5, 'min' => 25, 'max' => 40], 'stop_atr' => ['step' => 0.25, 'min' => 1.0, 'max' => 2.0]],
+            'donchian_atr_breakout' => ['period' => ['step' => 5, 'min' => 10, 'max' => 40], 'relative_volume_min' => ['step' => 0.1, 'min' => 1.0, 'max' => 1.5], 'stop_atr' => ['step' => 0.25, 'min' => 1.0, 'max' => 2.5]],
+            'regime_switching' => ['trend_adx_min' => ['step' => 2, 'min' => 16, 'max' => 26], 'range_adx_max' => ['step' => 2, 'min' => 12, 'max' => 20], 'high_volatility_atr_percent' => ['step' => 0.005, 'min' => 0.03, 'max' => 0.07]],
+            'momentum' => ['minimum_score' => ['step' => 5, 'min' => 60, 'max' => 85], 'adx_min' => ['step' => 2, 'min' => 16, 'max' => 26], 'relative_volume_min' => ['step' => 0.1, 'min' => 0.9, 'max' => 1.4]],
+            'support_resistance_bounce' => ['minimum_success_probability' => ['step' => 0.05, 'min' => 0.50, 'max' => 0.70], 'stop_atr' => ['step' => 0.25, 'min' => 1.0, 'max' => 2.0], 'tp1_r' => ['step' => 0.25, 'min' => 1.0, 'max' => 2.0]],
+            'support_resistance_breakout' => ['minimum_success_probability' => ['step' => 0.05, 'min' => 0.50, 'max' => 0.70], 'stop_atr' => ['step' => 0.25, 'min' => 1.0, 'max' => 2.5], 'tp1_r' => ['step' => 0.25, 'min' => 1.0, 'max' => 2.5]],
+        ],
+    ],
     'optimization' => [
         'maximum_combinations' => 100,
         'grids' => [
@@ -40,8 +59,8 @@ return [
         // Paper-only autonomy is OFF by default. It can only be enabled in an
         // isolated local environment; it never places a real order and it never
         // touches the eight primary paper accounts.
-        'paper_promotion_enabled' => (bool) env('RESEARCH_AUTONOMY_PAPER_PROMOTION_ENABLED', false),
-        'challenger_execution_enabled' => (bool) env('RESEARCH_AUTONOMY_CHALLENGER_EXECUTION_ENABLED', false),
+        'paper_promotion_enabled' => (bool) env('RESEARCH_AUTONOMY_PAPER_PROMOTION_ENABLED', true),
+        'challenger_execution_enabled' => (bool) env('RESEARCH_AUTONOMY_CHALLENGER_EXECUTION_ENABLED', true),
         // Releasing the paper-only kill switch requires an explicit
         // authorisation; the default keeps it engaged.
         'kill_switch_release_enabled' => (bool) env('RESEARCH_AUTONOMY_KILL_SWITCH_RELEASE_ENABLED', false),

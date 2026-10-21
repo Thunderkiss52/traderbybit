@@ -1,0 +1,7 @@
+phase=phase_p2_risk_capital
+utc=20261021T090444Z
+git_head=f2e3ace7b65a0d60f9cae4bd0c1070b4f3721c55
+snapshot=843b493b87a0c9e248f4d7b93fefc5f4fe27c4213fcb7f18dce55a3b0567ee0b
+snapshot_bytes=18169213
+diff_sha256=5d820b206944d023bdf5a7a17d0a4ae220e7404fdea19e3d0a47f593855df15b
+diff_bytes=97406

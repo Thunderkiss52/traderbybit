@@ -6,6 +6,7 @@ use App\Backtest\Console\CompareBacktestsCommand;
 use App\Backtest\Console\RunBacktestCommand;
 use App\Backtest\Console\WalkForwardCommand;
 use App\Http\Middleware\ApiRequestDiagnostics;
+use App\Http\Middleware\EnsureQuoteIntegrityEnabled;
 use App\Http\Middleware\RequireResearchToken;
 use App\MarketData\Console\StreamCandlesCommand;
 use App\MarketData\Console\SyncCandlesCommand;
@@ -13,6 +14,10 @@ use App\PaperTrading\Console\PaperAccountCommand;
 use App\PaperTrading\Console\PaperPositionsCommand;
 use App\PaperTrading\Console\PaperStatsCommand;
 use App\PaperTrading\Console\ProcessPaperTradingCommand;
+use App\QuoteIntegrity\Console\QimMeasurementReportCommand;
+use App\QuoteIntegrity\Console\QimPurgeExpiredCommand;
+use App\QuoteIntegrity\Console\QimRunChecksCommand;
+use App\QuoteIntegrity\Console\QimSampleBarsCommand;
 use App\Research\Console\ResearchBenchmarkCommand;
 use App\Strategy\Console\GenerateSignalsCommand;
 use Illuminate\Auth\Access\AuthorizationException;
@@ -38,6 +43,7 @@ return Application::configure(basePath: dirname(__DIR__))
         $middleware->api(append: [ApiRequestDiagnostics::class]);
         $middleware->alias([
             'research.token' => RequireResearchToken::class,
+            'quote_integrity.enabled' => EnsureQuoteIntegrityEnabled::class,
         ]);
     })
     ->withCommands([
@@ -54,6 +60,10 @@ return Application::configure(basePath: dirname(__DIR__))
         CompareBacktestsCommand::class,
         CancelBacktestCommand::class,
         ResearchBenchmarkCommand::class,
+        QimSampleBarsCommand::class,
+        QimRunChecksCommand::class,
+        QimMeasurementReportCommand::class,
+        QimPurgeExpiredCommand::class,
     ])
     ->withExceptions(function (Exceptions $exceptions): void {
         $exceptions->shouldRenderJsonWhen(

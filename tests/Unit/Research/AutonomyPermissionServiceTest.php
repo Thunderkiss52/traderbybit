@@ -21,7 +21,7 @@ final class AutonomyPermissionServiceTest extends TestCase
         self::assertFalse($settings->kill_switch_active);
         self::assertTrue($service->isAllowed('market_collection'));
         self::assertTrue($service->isAllowed('tune_parameters'));
-        self::assertFalse($service->isAllowed('auto_promote_paper')); // Default approval required
+        self::assertTrue($service->isAllowed('auto_promote_paper')); // Validated paper promotion is autonomous
 
         // Hard invariant: never allowed
         self::assertFalse($service->isAllowed('change_hard_risk_limits'));
@@ -37,6 +37,10 @@ final class AutonomyPermissionServiceTest extends TestCase
         self::assertFalse($service->isAllowed('change_hard_risk_limits'));
         self::assertFalse($service->isAllowed('live_exchange_trading'));
         self::assertTrue($service->isAllowed('auto_promote_paper'));
+
+        $disabled = $service->updateSettings(['auto_promote_paper' => false]);
+        self::assertFalse($disabled->capabilities['auto_promote_paper']);
+        self::assertFalse($service->isAllowed('auto_promote_paper'));
     }
 
     public function test_kill_switch_immediately_blocks_all_autonomy(): void

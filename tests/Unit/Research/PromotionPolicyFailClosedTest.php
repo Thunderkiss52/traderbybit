@@ -98,12 +98,15 @@ final class PromotionPolicyFailClosedTest extends TestCase
             'from_at' => now()->subDays(30),
             'to_at' => now(),
             'metrics' => [
-                'total_trades' => 15, // < 30 threshold!
-                'average_r' => -0.10, // negative expectancy!
-                'profit_factor' => 0.85,
-                'win_rate' => 0.35,
-                'maximum_drawdown_percent' => 18.5, // > 12.0 threshold!
-                'ece' => 0.25, // > 0.15 threshold!
+                'test' => [
+                    'total_trades' => 15, // < 30 threshold!
+                    'average_r' => -0.10, // negative expectancy!
+                    'profit_factor' => 0.85,
+                    'win_rate' => 0.35,
+                    'maximum_drawdown_percent' => 18.5, // > 12.0 threshold!
+                ],
+                'all_segments' => ['total_trades' => 40],
+                'test_is_out_of_sample' => true,
             ],
             'started_at' => now()->subHours(1),
             'completed_at' => now(),
@@ -116,7 +119,7 @@ final class PromotionPolicyFailClosedTest extends TestCase
         $this->assertFalse($evaluated->validation_gates['min_sample_size']['pass']);
         $this->assertFalse($evaluated->validation_gates['positive_expectancy']['pass']);
         $this->assertFalse($evaluated->validation_gates['max_drawdown']['pass']);
-        $this->assertFalse($evaluated->validation_gates['calibration_error']['pass']);
+        $this->assertFalse($evaluated->validation_gates['calibration_error']['applicable']);
     }
 
     public function test_candidate_with_passing_backtest_promotes_with_audit_trail(): void
@@ -141,13 +144,15 @@ final class PromotionPolicyFailClosedTest extends TestCase
             'from_at' => now()->subDays(30),
             'to_at' => now(),
             'metrics' => [
-                'total_trades' => 52,
-                'average_r' => 0.45,
-                'profit_factor' => 1.60,
-                'win_rate' => 0.58,
-                'maximum_drawdown_percent' => 6.8,
-                'ece' => 0.05,
-                'brier_score' => 0.16,
+                'test' => [
+                    'total_trades' => 52,
+                    'average_r' => 0.45,
+                    'profit_factor' => 1.60,
+                    'win_rate' => 0.58,
+                    'maximum_drawdown_percent' => 6.8,
+                ],
+                'all_segments' => ['total_trades' => 140],
+                'test_is_out_of_sample' => true,
             ],
             'started_at' => now()->subHours(1),
             'completed_at' => now(),
@@ -159,12 +164,8 @@ final class PromotionPolicyFailClosedTest extends TestCase
         $this->assertTrue($evaluated->validation_gates['all_gates_passed']);
         $this->assertSame($passingRun->id, $evaluated->validation_gates['validation_run_id']);
 
-        // Attempt promoting without operator approval when autonomous is false
-        $pending = $this->policy->promoteCandidate($candidate->id, 'SYSTEM_AUTONOMOUS');
-        $this->assertSame('PAPER_PROMOTION_PENDING', $pending->status);
-
-        // Operator promotes candidate
-        $promoted = $this->policy->promoteCandidate($candidate->id, 'USER_OPERATOR');
+        // Autonomous promotion is allowed for gate-validated candidates.
+        $promoted = $this->policy->promoteCandidate($candidate->id, 'SYSTEM_AUTONOMOUS');
         $this->assertSame('PAPER_PROMOTED', $promoted->status);
         $this->assertNotNull($promoted->paper_account_id);
     }

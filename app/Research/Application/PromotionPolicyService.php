@@ -419,7 +419,8 @@ final class PromotionPolicyService
 
         $runId = $validationRunId
             ?? ($candidate->search_metadata['backtest_run_id'] ?? null)
-            ?? ($candidate->search_metadata['validation_run_id'] ?? null);
+            ?? ($candidate->search_metadata['validation_run_id'] ?? null)
+            ?? ($candidate->search_metadata['evaluation_run_id'] ?? null);
 
         if ($runId === null || ! is_string($runId) || trim($runId) === '') {
             $candidate->update([
@@ -438,6 +439,7 @@ final class PromotionPolicyService
 
         $metrics = null;
         $sourceType = null;
+        $gate6Eval = null;
 
         // 1. Check BacktestRunRecord
         $backtestRun = BacktestRunRecord::query()->find($runId);
@@ -458,23 +460,7 @@ final class PromotionPolicyService
             }
 
             $sourceType = 'BACKTEST_RUN';
-            $bm = $backtestRun->metrics;
-            $metrics = [
-                'validation_run_id' => $backtestRun->id,
-                'validation_source' => $sourceType,
-                'sample_size' => (int) ($bm['total_trades'] ?? $bm['sample_size'] ?? 0),
-                'training_samples' => (int) ($bm['training_samples'] ?? $bm['total_trades'] ?? 0),
-                'oos_samples' => (int) ($bm['oos_samples'] ?? 0),
-                'shadow_samples' => (int) ($bm['shadow_samples'] ?? 0),
-                'challenger_duration_days' => (int) ($bm['challenger_duration_days'] ?? 0),
-                'challenger_samples' => (int) ($bm['challenger_samples'] ?? 0),
-                'expectancy_r' => (float) ($bm['average_r'] ?? $bm['expectancy_r'] ?? 0.0),
-                'profit_factor' => (float) ($bm['profit_factor'] ?? 0.0),
-                'win_rate' => (float) ($bm['win_rate'] ?? 0.0),
-                'max_drawdown_percent' => (float) ($bm['maximum_drawdown_percent'] ?? $bm['max_drawdown_percent'] ?? 100.0),
-                'brier_score' => (float) ($bm['brier_score'] ?? 0.20),
-                'ece' => (float) ($bm['ece'] ?? 0.05),
-            ];
+            $metrics = $this->parseBacktestMetrics((array) $backtestRun->metrics);
         } else {
             // 2. Check ResearchJobRecord
             $researchJob = ResearchJobRecord::query()->where('job_id', $runId)->first();
@@ -495,23 +481,7 @@ final class PromotionPolicyService
                 }
 
                 $sourceType = 'RESEARCH_JOB';
-                $jm = $researchJob->result_payload;
-                $metrics = [
-                    'validation_run_id' => $researchJob->job_id,
-                    'validation_source' => $sourceType,
-                    'sample_size' => (int) ($jm['trades_count'] ?? $jm['total_trades'] ?? $jm['sample_size'] ?? 0),
-                    'training_samples' => (int) ($jm['training_samples'] ?? $jm['trades_count'] ?? 0),
-                    'oos_samples' => (int) ($jm['oos_samples'] ?? 0),
-                    'shadow_samples' => (int) ($jm['shadow_samples'] ?? 0),
-                    'challenger_duration_days' => (int) ($jm['challenger_duration_days'] ?? 0),
-                    'challenger_samples' => (int) ($jm['challenger_samples'] ?? 0),
-                    'expectancy_r' => (float) ($jm['average_r'] ?? $jm['expectancy'] ?? 0.0),
-                    'profit_factor' => (float) ($jm['profit_factor'] ?? 0.0),
-                    'win_rate' => (float) ($jm['win_rate'] ?? 0.0),
-                    'max_drawdown_percent' => (float) ($jm['max_drawdown_percent'] ?? 100.0),
-                    'brier_score' => (float) ($jm['brier_score'] ?? 0.20),
-                    'ece' => (float) ($jm['ece'] ?? 0.05),
-                ];
+                $metrics = $this->parseResearchJobMetrics((array) $researchJob->result_payload);
             }
         }
 
@@ -530,23 +500,24 @@ final class PromotionPolicyService
             return $candidate->fresh();
         }
 
-        // Evaluate candidate parameter gates
-        $samplePass = ($metrics['sample_size'] ?? 0) >= 30;
-        $expectancyPass = ($metrics['expectancy_r'] ?? 0.0) > 0.0;
-        $drawdownPass = ($metrics['max_drawdown_percent'] ?? 99.0) <= 12.0;
-        $calibrationPass = ($metrics['ece'] ?? 1.0) <= 0.15;
+        $metrics['validation_run_id'] = $runId;
+        $metrics['validation_source'] = $sourceType;
 
-        // If candidate metrics include full Gate 6 fields, evaluate them
-        $hasGate6Fields = isset($metrics['oos_samples']) && $metrics['oos_samples'] > 0;
-        $gate6Eval = $hasGate6Fields ? $this->evaluateModelPromotion($metrics, null, ['is_test_fixture' => true]) : null;
+        // Evaluate candidate parameter gates against out-of-sample evidence only.
+        $samplePass = ($metrics['oos_samples'] ?? 0) >= 30;
+        $oosVerified = (bool) ($metrics['out_of_sample_verified'] ?? false);
+        $expectancyPass = is_numeric($metrics['expectancy_r'] ?? null) && (float) $metrics['expectancy_r'] > 0.0;
+        $drawdownPass = is_numeric($metrics['max_drawdown_percent'] ?? null) && (float) $metrics['max_drawdown_percent'] <= 12.0;
+        $calibrationApplicable = (bool) ($metrics['calibration_applicable'] ?? false);
+        $calibrationPass = ! $calibrationApplicable
+            || (is_numeric($metrics['ece'] ?? null) && (float) $metrics['ece'] <= 0.15);
 
-        $allGatesPass = $samplePass && $expectancyPass && $drawdownPass && $calibrationPass;
-        if ($gate6Eval !== null) {
-            $allGatesPass = $allGatesPass && $gate6Eval['all_gates_passed'];
-        }
+        $allGatesPass = $samplePass && $oosVerified && $expectancyPass && $drawdownPass && $calibrationPass;
 
         $failureReason = null;
-        if (! $samplePass) {
+        if (! $oosVerified) {
+            $failureReason = 'missing_out_of_sample_evidence';
+        } elseif (! $samplePass) {
             $failureReason = 'insufficient_sample_size';
         } elseif (! $expectancyPass) {
             $failureReason = 'negative_expectancy';
@@ -554,15 +525,14 @@ final class PromotionPolicyService
             $failureReason = 'excessive_drawdown';
         } elseif (! $calibrationPass) {
             $failureReason = 'excessive_calibration_error';
-        } elseif ($gate6Eval !== null && ! $gate6Eval['all_gates_passed']) {
-            $failureReason = $gate6Eval['failure_reason'];
         }
 
         $gates = [
-            'min_sample_size' => ['threshold' => 30, 'actual' => $metrics['sample_size'], 'pass' => $samplePass],
+            'out_of_sample_verified' => ['actual' => $oosVerified, 'pass' => $oosVerified],
+            'min_sample_size' => ['threshold' => 30, 'actual' => $metrics['oos_samples'], 'pass' => $samplePass],
             'positive_expectancy' => ['threshold' => 0.0, 'actual' => $metrics['expectancy_r'], 'pass' => $expectancyPass],
             'max_drawdown' => ['threshold' => 12.0, 'actual' => $metrics['max_drawdown_percent'], 'pass' => $drawdownPass],
-            'calibration_error' => ['threshold' => 0.15, 'actual' => $metrics['ece'], 'pass' => $calibrationPass],
+            'calibration_error' => ['threshold' => 0.15, 'actual' => $metrics['ece'] ?? null, 'applicable' => $calibrationApplicable, 'pass' => $calibrationPass],
             'all_gates_passed' => $allGatesPass,
             'failure_reason' => $failureReason,
             'validation_run_id' => $metrics['validation_run_id'],
@@ -574,10 +544,6 @@ final class PromotionPolicyService
                 'validation_source' => $metrics['validation_source'],
             ],
         ];
-
-        if ($gate6Eval !== null) {
-            $gates['gate6_evaluation'] = $gate6Eval;
-        }
 
         $newStatus = $allGatesPass ? 'PAPER_ELIGIBLE' : 'REJECTED';
 
@@ -591,6 +557,69 @@ final class PromotionPolicyService
     }
 
     /**
+     * Normalise the immutable BacktestRunService metrics shape into candidate gates.
+     *
+     * @param  array<string, mixed>  $metrics
+     * @return array<string, mixed>
+     */
+    private function parseBacktestMetrics(array $metrics): array
+    {
+        $hasSegments = isset($metrics['test']) || isset($metrics['out_of_sample']);
+        $oos = (array) ($metrics['test'] ?? $metrics['out_of_sample'] ?? []);
+        $all = (array) ($metrics['all_segments'] ?? $oos);
+        $oosVerified = $hasSegments
+            ? (bool) ($metrics['test_is_out_of_sample'] ?? $metrics['out_of_sample_only'] ?? true)
+            : (bool) ($metrics['out_of_sample_verified'] ?? false);
+
+        return [
+            'validation_source' => 'BACKTEST_RUN',
+            'out_of_sample_verified' => $oosVerified,
+            'sample_size' => (int) ($oos['total_trades'] ?? 0),
+            'oos_samples' => (int) ($oos['total_trades'] ?? 0),
+            'training_samples' => (int) ($all['total_trades'] ?? 0),
+            'expectancy_r' => $oos['average_r'] ?? null,
+            'expectancy' => $oos['expectancy'] ?? null,
+            'profit_factor' => $oos['profit_factor'] ?? null,
+            'win_rate' => $oos['win_rate'] ?? null,
+            'max_drawdown_percent' => $oos['maximum_drawdown_percent'] ?? null,
+            'fees' => $oos['fees'] ?? null,
+            'funding' => $oos['funding'] ?? null,
+            'net_pnl' => $oos['net_pnl'] ?? null,
+            'calibration_applicable' => false,
+        ];
+    }
+
+    /**
+     * @param  array<string, mixed>  $payload
+     * @return array<string, mixed>
+     */
+    private function parseResearchJobMetrics(array $payload): array
+    {
+        $hasSegments = isset($payload['test']) || isset($payload['out_of_sample']);
+        $oos = (array) ($payload['test'] ?? $payload['out_of_sample'] ?? $payload);
+        $all = (array) ($payload['all_segments'] ?? $oos);
+
+        return [
+            'validation_source' => 'RESEARCH_JOB',
+            'out_of_sample_verified' => $hasSegments || (bool) ($payload['out_of_sample_verified'] ?? false),
+            'sample_size' => (int) ($oos['total_trades'] ?? $oos['trades_count'] ?? 0),
+            'oos_samples' => (int) ($oos['total_trades'] ?? $oos['trades_count'] ?? 0),
+            'training_samples' => (int) ($all['total_trades'] ?? $all['trades_count'] ?? 0),
+            'expectancy_r' => $oos['average_r'] ?? $oos['expectancy'] ?? null,
+            'expectancy' => $oos['expectancy'] ?? null,
+            'profit_factor' => $oos['profit_factor'] ?? null,
+            'win_rate' => $oos['win_rate'] ?? null,
+            'max_drawdown_percent' => $oos['maximum_drawdown_percent'] ?? $oos['max_drawdown_percent'] ?? null,
+            'fees' => $oos['fees'] ?? null,
+            'funding' => $oos['funding'] ?? null,
+            'net_pnl' => $oos['net_pnl'] ?? null,
+            'calibration_applicable' => (bool) ($payload['calibration_applicable'] ?? false),
+            'ece' => $payload['ece'] ?? null,
+            'brier_score' => $payload['brier_score'] ?? null,
+        ];
+    }
+
+    /**
      * Promote a candidate to forward paper trading.
      *
      * @throws ValidationException
@@ -598,6 +627,10 @@ final class PromotionPolicyService
     public function promoteCandidate(string $candidateId, string $actor = 'USER_OPERATOR'): LearningCandidateStrategyRecord
     {
         $candidate = LearningCandidateStrategyRecord::query()->findOrFail($candidateId);
+
+        if ($candidate->status === 'PAPER_PROMOTED' && $candidate->paper_account_id !== null) {
+            return $candidate;
+        }
 
         // Verification: cannot promote without passing gates
         $gates = (array) $candidate->validation_gates;

@@ -1,0 +1,369 @@
+{
+  "generated_at_utc": "2026-10-21T14:48:59Z",
+  "mode": "RESEARCH_COHORT_EVALUATION",
+  "source_manifest": "/home/thunder/work/traderbybit/audit_data/manifest.json",
+  "source_sha256": {
+    "manifest.json": "a0613dcf12537d184a5d1995072df0fa39cd44f3fb69dfd2431380497461f014",
+    "market_candles.csv": "1434bb15d95ae83a8252773d81ddaa2a2e3734d023e6d9ed08256aeaafa96650",
+    "market_funding_events.csv": "df18f2fc66df68de0b12de04099970cc262ce73d1daba5190e4fb50ada55357c",
+    "market_open_interest_events.csv": "1b2aac23b232a8c36123a4fddf7534321e18db9b6355fb70b81cf966479f724b"
+  },
+  "dataset": {
+    "symbol": "BTCUSDT",
+    "peer_symbol": "ETHUSDT",
+    "entry_interval": "5",
+    "decision_interval": "60",
+    "entry_bars": 3168,
+    "htf_bars": 263,
+    "peer_bars": 3168,
+    "first_open_utc": "2026-10-07T07:45:00Z",
+    "last_close_utc": "2026-10-18T07:45:00Z",
+    "stale_after_hours": 79.06557477361028,
+    "gaps": null,
+    "funding_events": 3,
+    "funding_first_utc": "2026-10-17T08:00:00Z",
+    "funding_last_utc": "2026-10-18T00:00:00Z",
+    "open_interest_events": 95,
+    "open_interest_first_utc": "2026-10-17T07:45:00Z",
+    "open_interest_last_utc": "2026-10-18T07:15:00Z"
+  },
+  "candidates": [
+    {
+      "candidate_id": "funding_open_interest_squeeze",
+      "version": "1.0.0",
+      "cohort_kind": "RESEARCH_COHORT",
+      "status": "INSUFFICIENT_EVIDENCE",
+      "verification": "VERIFIED_ENGINE_AND_LOOK_AHEAD_CONTROLS",
+      "executable": true,
+      "signal_count": 0,
+      "signal_counts_per_split": {
+        "TEST": 0,
+        "TRAIN": 0,
+        "VALIDATION": 0
+      },
+      "split_metrics": {
+        "TEST": {
+          "trades": 0,
+          "wins": 0,
+          "losses": 0,
+          "win_rate": 0,
+          "net_pnl": "0.00000000",
+          "total_fees": "0.00000000",
+          "profit_factor": null,
+          "max_drawdown": "0.00000000",
+          "average_r": 0
+        },
+        "TRAIN": {
+          "trades": 0,
+          "wins": 0,
+          "losses": 0,
+          "win_rate": 0,
+          "net_pnl": "0.00000000",
+          "total_fees": "0.00000000",
+          "profit_factor": null,
+          "max_drawdown": "0.00000000",
+          "average_r": 0
+        },
+        "VALIDATION": {
+          "trades": 0,
+          "wins": 0,
+          "losses": 0,
+          "win_rate": 0,
+          "net_pnl": "0.00000000",
+          "total_fees": "0.00000000",
+          "profit_factor": null,
+          "max_drawdown": "0.00000000",
+          "average_r": 0
+        }
+      },
+      "look_ahead_controls": {
+        "HTFClosureEnforced": true,
+        "CausalChecksRun": 2,
+        "CausalChecksPassed": 2,
+        "NegativeControlRan": true,
+        "NegativeControlOK": true,
+        "PreviousBarChecks": 3,
+        "PreviousBarPassed": 3,
+        "Failures": null
+      },
+      "limitations": [
+        "NO_PROSPECTIVE_PAPER_HISTORY: a backtest split is not evidence of future performance.",
+        "RESEARCH_COHORT_ONLY: the candidate is not attached to any of the eight primary paper accounts.",
+        "INSUFFICIENT_OOS_TRADES: test split produced 0 trades, at least 30 are required."
+      ]
+    },
+    {
+      "candidate_id": "liquidity_sweep_reversal",
+      "version": "1.0.0",
+      "cohort_kind": "RESEARCH_COHORT",
+      "status": "NOT_ELIGIBLE",
+      "verification": "VERIFIED_ENGINE_AND_LOOK_AHEAD_CONTROLS",
+      "executable": true,
+      "signal_count": 333,
+      "signal_counts_per_split": {
+        "TEST": 61,
+        "TRAIN": 191,
+        "VALIDATION": 81
+      },
+      "split_metrics": {
+        "TEST": {
+          "trades": 33,
+          "wins": 10,
+          "losses": 23,
+          "win_rate": 0.303,
+          "net_pnl": "-2777.68891829",
+          "total_fees": "2190.19142230",
+          "profit_factor": 0.22091222018248552,
+          "max_drawdown": "2890.71735573",
+          "average_r": -0.972
+        },
+        "TRAIN": {
+          "trades": 111,
+          "wins": 34,
+          "losses": 77,
+          "win_rate": 0.3063,
+          "net_pnl": "-5835.77435038",
+          "total_fees": "4855.10874547",
+          "profit_factor": 0.29230711007455645,
+          "max_drawdown": "5886.99145535",
+          "average_r": -0.777
+        },
+        "VALIDATION": {
+          "trades": 37,
+          "wins": 19,
+          "losses": 18,
+          "win_rate": 0.5135,
+          "net_pnl": "-233.97268271",
+          "total_fees": "1565.71238795",
+          "profit_factor": 0.9050972333229281,
+          "max_drawdown": "729.45376325",
+          "average_r": -0.055
+        }
+      },
+      "look_ahead_controls": {
+        "HTFClosureEnforced": true,
+        "CausalChecksRun": 2,
+        "CausalChecksPassed": 2,
+        "NegativeControlRan": true,
+        "NegativeControlOK": true,
+        "PreviousBarChecks": 3,
+        "PreviousBarPassed": 3,
+        "Failures": null
+      },
+      "limitations": [
+        "NO_PROSPECTIVE_PAPER_HISTORY: a backtest split is not evidence of future performance.",
+        "RESEARCH_COHORT_ONLY: the candidate is not attached to any of the eight primary paper accounts."
+      ]
+    },
+    {
+      "candidate_id": "volatility_compression_breakout",
+      "version": "1.0.0",
+      "cohort_kind": "RESEARCH_COHORT",
+      "status": "INSUFFICIENT_EVIDENCE",
+      "verification": "VERIFIED_ENGINE_AND_LOOK_AHEAD_CONTROLS",
+      "executable": true,
+      "signal_count": 83,
+      "signal_counts_per_split": {
+        "TEST": 11,
+        "TRAIN": 60,
+        "VALIDATION": 12
+      },
+      "split_metrics": {
+        "TEST": {
+          "trades": 9,
+          "wins": 4,
+          "losses": 5,
+          "win_rate": 0.4444,
+          "net_pnl": "-430.09967023",
+          "total_fees": "578.00146024",
+          "profit_factor": 0.4416485438419233,
+          "max_drawdown": "459.93491879",
+          "average_r": -0.478
+        },
+        "TRAIN": {
+          "trades": 37,
+          "wins": 9,
+          "losses": 28,
+          "win_rate": 0.2432,
+          "net_pnl": "-3495.78340044",
+          "total_fees": "2316.57325646",
+          "profit_factor": 0.1491698626458514,
+          "max_drawdown": "3725.91286569",
+          "average_r": -1.146
+        },
+        "VALIDATION": {
+          "trades": 7,
+          "wins": 1,
+          "losses": 6,
+          "win_rate": 0.1429,
+          "net_pnl": "-828.30750944",
+          "total_fees": "274.90688729",
+          "profit_factor": 0.05481585532029498,
+          "max_drawdown": "828.30750944",
+          "average_r": -1.225
+        }
+      },
+      "look_ahead_controls": {
+        "HTFClosureEnforced": true,
+        "CausalChecksRun": 2,
+        "CausalChecksPassed": 2,
+        "NegativeControlRan": true,
+        "NegativeControlOK": true,
+        "PreviousBarChecks": 3,
+        "PreviousBarPassed": 3,
+        "Failures": null
+      },
+      "limitations": [
+        "NO_PROSPECTIVE_PAPER_HISTORY: a backtest split is not evidence of future performance.",
+        "RESEARCH_COHORT_ONLY: the candidate is not attached to any of the eight primary paper accounts.",
+        "INSUFFICIENT_OOS_TRADES: test split produced 9 trades, at least 30 are required."
+      ]
+    },
+    {
+      "candidate_id": "btc_eth_lead_lag",
+      "version": "1.0.0",
+      "cohort_kind": "RESEARCH_COHORT",
+      "status": "NOT_EVALUATED_EXECUTION_NOT_VALIDATED",
+      "verification": "VERIFIED_ENGINE_AND_LOOK_AHEAD_CONTROLS",
+      "executable": false,
+      "execution_note": "TWO_LEG_EXECUTION_FINANCING_AND_CONCURRENCY_NOT_MODELLED",
+      "signal_count": 53,
+      "signal_counts_per_split": {
+        "TEST": 4,
+        "TRAIN": 30,
+        "VALIDATION": 19
+      },
+      "split_metrics": {
+        "TEST": {
+          "trades": 3,
+          "wins": 2,
+          "losses": 1,
+          "win_rate": 0.6667,
+          "net_pnl": "74.96549130",
+          "total_fees": "145.24019269",
+          "profit_factor": 1.471921040945363,
+          "max_drawdown": "158.85176713",
+          "average_r": 0.258
+        },
+        "TRAIN": {
+          "trades": 23,
+          "wins": 11,
+          "losses": 12,
+          "win_rate": 0.4783,
+          "net_pnl": "-644.21767757",
+          "total_fees": "1074.61281122",
+          "profit_factor": 0.6582332171790055,
+          "max_drawdown": "875.58119712",
+          "average_r": -0.279
+        },
+        "VALIDATION": {
+          "trades": 9,
+          "wins": 2,
+          "losses": 7,
+          "win_rate": 0.2222,
+          "net_pnl": "-633.27566246",
+          "total_fees": "335.97080635",
+          "profit_factor": 0.281669205195376,
+          "max_drawdown": "633.27566246",
+          "average_r": -0.718
+        }
+      },
+      "look_ahead_controls": {
+        "HTFClosureEnforced": true,
+        "CausalChecksRun": 2,
+        "CausalChecksPassed": 2,
+        "NegativeControlRan": true,
+        "NegativeControlOK": true,
+        "PreviousBarChecks": 3,
+        "PreviousBarPassed": 3,
+        "Failures": null
+      },
+      "limitations": [
+        "NO_PROSPECTIVE_PAPER_HISTORY: a backtest split is not evidence of future performance.",
+        "RESEARCH_COHORT_ONLY: the candidate is not attached to any of the eight primary paper accounts.",
+        "INSUFFICIENT_OOS_TRADES: test split produced 3 trades, at least 30 are required.",
+        "EXECUTION_NOT_VALIDATED: no pair fill, financing or concurrency model exists; the signal was not scored as an executed trade."
+      ]
+    },
+    {
+      "candidate_id": "multi_timeframe_trend_following",
+      "version": "1.0.0",
+      "cohort_kind": "RESEARCH_COHORT",
+      "status": "INSUFFICIENT_EVIDENCE",
+      "verification": "VERIFIED_ENGINE_AND_LOOK_AHEAD_CONTROLS",
+      "executable": true,
+      "signal_count": 58,
+      "signal_counts_per_split": {
+        "TEST": 13,
+        "TRAIN": 29,
+        "VALIDATION": 16
+      },
+      "split_metrics": {
+        "TEST": {
+          "trades": 12,
+          "wins": 6,
+          "losses": 6,
+          "win_rate": 0.5,
+          "net_pnl": "-649.95349498",
+          "total_fees": "870.53365703",
+          "profit_factor": 0.4446455813044826,
+          "max_drawdown": "847.58007702",
+          "average_r": -0.547
+        },
+        "TRAIN": {
+          "trades": 28,
+          "wins": 6,
+          "losses": 22,
+          "win_rate": 0.2143,
+          "net_pnl": "-3160.54927612",
+          "total_fees": "2202.43985452",
+          "profit_factor": 0.10254601386007127,
+          "max_drawdown": "3160.54927612",
+          "average_r": -1.338
+        },
+        "VALIDATION": {
+          "trades": 14,
+          "wins": 8,
+          "losses": 6,
+          "win_rate": 0.5714,
+          "net_pnl": "34.32953166",
+          "total_fees": "694.89436330",
+          "profit_factor": 1.041292362604853,
+          "max_drawdown": "448.01792794",
+          "average_r": 0.032
+        }
+      },
+      "look_ahead_controls": {
+        "HTFClosureEnforced": true,
+        "CausalChecksRun": 2,
+        "CausalChecksPassed": 2,
+        "NegativeControlRan": true,
+        "NegativeControlOK": true,
+        "PreviousBarChecks": 3,
+        "PreviousBarPassed": 3,
+        "Failures": null
+      },
+      "limitations": [
+        "NO_PROSPECTIVE_PAPER_HISTORY: a backtest split is not evidence of future performance.",
+        "RESEARCH_COHORT_ONLY: the candidate is not attached to any of the eight primary paper accounts.",
+        "INSUFFICIENT_OOS_TRADES: test split produced 12 trades, at least 30 are required."
+      ]
+    }
+  ],
+  "cost_model": {
+    "ambiguity": "CONSERVATIVE_STOP_LOSS_FIRST",
+    "fill_model": "NEXT_CANDLE_OPEN",
+    "max_holding_bar": "48",
+    "risk_per_trade": "0.01000000",
+    "slippage": "0.00020000",
+    "taker_fee": "0.00055000"
+  },
+  "limitations": [
+    "NO_PROSPECTIVE_PAPER_HISTORY: the archive is a historical export, not a forward paper observation stream.",
+    "RESEARCH_COHORT_ONLY: no primary paper account was created, read or modified.",
+    "NO_EXCHANGE_ORDER_PATH: the evaluation never opens an order and never uses a trade credential.",
+    "BACKTEST_SPLIT_IS_NOT_EVIDENCE: a split result never establishes future performance."
+  ],
+  "primary_paper_accounts_touched": false,
+  "exchange_order_path_used": false
+}

@@ -4,6 +4,7 @@ use App\Audit\Http\AuditExportController as A;
 use App\Http\Controllers\Api\V1\AutonomousLearningController;
 use App\Http\Controllers\Api\V1\PatternResearchController as P;
 use App\Http\Controllers\Api\V1\ProfitabilityResearchController;
+use App\Http\Controllers\Api\V1\QuoteIntegrityController as QIM;
 use App\Http\Controllers\Api\V1\ResearchController as C;
 use App\Http\Controllers\Api\V1\ResearchHealthController as H;
 use App\Http\Controllers\Api\V1\ResearchIntelligenceController as I;
@@ -124,4 +125,17 @@ Route::prefix('v1')->middleware('throttle:api')->group(function () {
     Route::get('backtests/{id}/equity', [C::class, 'backtestEquity']);
     Route::get('backtests/{id}/optimizations', [C::class, 'backtestOptimizations']);
     Route::post('backtests', [C::class, 'store']);
+
+    // Quote Integrity Monitor (QIM) Level 1 APIs
+    Route::middleware('quote_integrity.enabled')->group(function () {
+        Route::get('quote-integrity/status', [QIM::class, 'status']);
+        Route::get('quote-integrity/summary', [QIM::class, 'summary']);
+        Route::get('quote-integrity/comparisons', [QIM::class, 'comparisons']);
+        Route::get('quote-integrity/incidents', [QIM::class, 'incidents']);
+        Route::get('quote-integrity/incidents/{id}', [QIM::class, 'showIncident']);
+        Route::get('quote-integrity/alerts', [QIM::class, 'alerts']);
+        Route::post('quote-integrity/evidence', [QIM::class, 'storeEvidence'])->middleware('research.token');
+        Route::get('quote-integrity/evidence/{id}', [QIM::class, 'downloadEvidence'])->middleware('research.token');
+        Route::post('quote-integrity/incidents/{id}/transitions', [QIM::class, 'transitionIncident'])->middleware('research.token');
+    });
 });

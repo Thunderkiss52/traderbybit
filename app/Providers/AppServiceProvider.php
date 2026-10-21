@@ -29,6 +29,7 @@ use App\MarketData\Contracts\InstrumentMetadataProvider;
 use App\MarketData\Contracts\Sleeper;
 use App\MarketData\Contracts\WebSocketConnector;
 use App\MarketData\Infrastructure\Bybit\BybitRestClient;
+use App\MarketData\Infrastructure\Bybit\BybitWebSocketMessageParser;
 use App\MarketData\Infrastructure\Http\ExponentialJitterBackoff;
 use App\MarketData\Infrastructure\Http\LaravelHttpTransport;
 use App\MarketData\Infrastructure\Http\NativeSleeper;
@@ -50,6 +51,13 @@ use App\PatternDiscovery\Application\MarketStructurePatternDetector;
 use App\PatternDiscovery\Application\PatternMatcher;
 use App\PatternDiscovery\Application\PatternMatchService;
 use App\PatternDiscovery\Application\PatternOccurrenceOutcomeService;
+use App\QuoteIntegrity\Application\QimFeatureFlag;
+use App\QuoteIntegrity\Application\QimGapRecorder;
+use App\QuoteIntegrity\Application\QimObservationService;
+use App\QuoteIntegrity\Application\QimRestObserver;
+use App\QuoteIntegrity\Application\QimWsObserver;
+use App\QuoteIntegrity\Infrastructure\Persistence\QimGapEventRepository;
+use App\QuoteIntegrity\Infrastructure\Persistence\QimObservationRepository;
 use App\Research\Application\ModelAdvisoryService;
 use App\Strategy\Application\LevelInteractionAnalyzer;
 use App\Strategy\Application\LevelProbabilityService;
@@ -192,6 +200,35 @@ class AppServiceProvider extends ServiceProvider
             logger: $app->make('log'),
             receiveTimeoutSeconds: (int) config('market_data.websocket.receive_timeout_seconds'),
         ));
+        $this->app->singleton(QimFeatureFlag::class);
+        $this->app->singleton(QimObservationRepository::class);
+        $this->app->singleton(QimGapEventRepository::class);
+        $this->app->singleton(QimObservationService::class, fn ($app): QimObservationService => new QimObservationService(
+            repository: $app->make(QimObservationRepository::class),
+            featureFlag: $app->make(QimFeatureFlag::class),
+            log: $app->make('log'),
+        ));
+        $this->app->singleton(QimGapRecorder::class, fn ($app): QimGapRecorder => new QimGapRecorder(
+            repository: $app->make(QimGapEventRepository::class),
+            featureFlag: $app->make(QimFeatureFlag::class),
+            log: $app->make('log'),
+        ));
+        $this->app->singleton(QimWsObserver::class, fn ($app): QimWsObserver => new QimWsObserver(
+            observationService: $app->make(QimObservationService::class),
+            log: $app->make('log'),
+        ));
+        $this->app->singleton(QimRestObserver::class, fn ($app): QimRestObserver => new QimRestObserver(
+            observationService: $app->make(QimObservationService::class),
+            log: $app->make('log'),
+        ));
+
+        $this->app->singleton(ClosedCandleIngestor::class, fn ($app): ClosedCandleIngestor => new ClosedCandleIngestor(
+            parser: $app->make(BybitWebSocketMessageParser::class),
+            store: $app->make(CandleStore::class),
+            qimObserver: $app->make(QimWsObserver::class),
+            log: $app->make('log'),
+        ));
+
         $this->app->when(CandleSynchronizer::class)
             ->needs('$backfillPasses')
             ->giveConfig('market_data.sync.backfill_passes');
@@ -212,6 +249,7 @@ class AppServiceProvider extends ServiceProvider
             heartbeatSeconds: (int) config('market_data.websocket.heartbeat_seconds'),
             recoveryLookbackMinutes: (int) config('market_data.websocket.recovery_lookback_minutes'),
             reconnectMaxSeconds: (int) config('market_data.websocket.reconnect_max_seconds'),
+            gapRecorder: $app->make(QimGapRecorder::class),
         ));
         //
     }

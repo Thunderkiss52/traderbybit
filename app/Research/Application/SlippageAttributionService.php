@@ -8,10 +8,12 @@ use App\PaperTrading\Application\PaperAccountService;
 use App\PaperTrading\Infrastructure\Persistence\VirtualExecutionRecord;
 use App\PaperTrading\Infrastructure\Persistence\VirtualPositionRecord;
 use App\Research\Domain\ResearchGenerationRecord;
+use App\Research\Domain\SlippageAttribution\SlippageAllocation;
 use App\Research\Domain\SlippageAttributionFillRecord;
 use App\Research\Domain\SlippageAttributionRecord;
 use App\Research\Exceptions\IdempotencyConflictException;
 use Brick\Math\BigDecimal;
+use Brick\Math\Exception\MathException;
 use Brick\Math\RoundingMode;
 use Carbon\CarbonImmutable;
 use Ramsey\Uuid\Uuid;
@@ -376,55 +378,76 @@ final class SlippageAttributionService
             ->get();
 
         $baselineNetPnl = BigDecimal::zero();
-        $realizedAllocatedDrag = BigDecimal::zero();
-        $openUnallocatedDrag = BigDecimal::zero();
-        $hasPartiallyClosedPosition = false;
 
         $posAttrMap = $positionAttributions->keyBy('position_id');
 
+        $allocationRows = [];
         foreach ($reconciledPositions as $pos) {
-            $baselineNetPnl = $baselineNetPnl->plus(BigDecimal::of($pos->net_pnl ?? '0'));
             $attr = $posAttrMap->get($pos->id);
 
-            if ($attr !== null) {
-                $initQty = BigDecimal::of($pos->initial_quantity ?? '0');
-                $remQty = BigDecimal::of($pos->remaining_quantity ?? '0');
-                $posEntryDrag = BigDecimal::of($attr->entry_slippage_usdt ?? '0');
-                $posExitDrag = BigDecimal::of($attr->partial_exit_slippage_usdt ?? '0')
-                    ->plus(BigDecimal::of($attr->final_exit_slippage_usdt ?? '0'));
-
-                if (! $remQty->isZero() && $initQty->isGreaterThan($remQty)) {
-                    $hasPartiallyClosedPosition = true;
-                    $closedFraction = $initQty->minus($remQty)->dividedBy($initQty, 12, RoundingMode::HalfEven);
-                    $openFraction = $remQty->dividedBy($initQty, 12, RoundingMode::HalfEven);
-
-                    $realizedEntry = $posEntryDrag->multipliedBy($closedFraction);
-                    $openEntry = $posEntryDrag->multipliedBy($openFraction);
-
-                    $realizedAllocatedDrag = $realizedAllocatedDrag->plus($realizedEntry)->plus($posExitDrag);
-                    $openUnallocatedDrag = $openUnallocatedDrag->plus($openEntry);
-                } else {
-                    $realizedAllocatedDrag = $realizedAllocatedDrag->plus(BigDecimal::of($attr->total_slippage_drag_usdt));
-                }
+            if ($attr === null) {
+                // A source position without an attribution is not part of the
+                // attributed population. Keep it out of the totals; the allocator
+                // population check below detects the mismatch.
+                continue;
             }
+
+            $netPnl = $this->numericOrNull($pos->net_pnl);
+            if ($netPnl !== null) {
+                $baselineNetPnl = $baselineNetPnl->plus(BigDecimal::of($netPnl));
+            }
+
+            $partialExitDrag = $this->numericOrNull($attr->partial_exit_slippage_usdt);
+            $finalExitDrag = $this->numericOrNull($attr->final_exit_slippage_usdt);
+            $exitDrag = ($partialExitDrag !== null && $finalExitDrag !== null)
+                ? (string) BigDecimal::of($partialExitDrag)->plus(BigDecimal::of($finalExitDrag))
+                : '';
+
+            $allocationRows[] = [
+                'position_id' => (string) $pos->id,
+                'initial_quantity' => $pos->initial_quantity === null ? '' : (string) $pos->initial_quantity,
+                'remaining_quantity' => $pos->remaining_quantity === null ? '' : (string) $pos->remaining_quantity,
+                'net_pnl' => $netPnl ?? '',
+                'entry_slippage_usdt' => $this->numericOrNull($attr->entry_slippage_usdt) ?? '',
+                'exit_slippage_usdt' => $exitDrag,
+            ];
         }
 
-        $hasPopulationMatch = count($reconciledPositions) === count($positionAttributions) && count($positionAttributions) > 0;
+        $allocation = (new SlippageAllocation)->allocate($allocationRows, count($positionAttributions));
+
+        // Never coerce unavailable allocation values to zero: the counterfactual
+        // stays NULL unless the population reconciles, every position is valid,
+        // the allocator allows a verified calculation, and the realized PnL scope
+        // is established (no unresolved partial close).
+        $populationReconciled = (bool) $allocation['population_match']
+            && (int) $allocation['invalid_position_count'] === 0;
+
+        $rawFullFillCounterfactual = $populationReconciled
+            ? (string) $baselineNetPnl->plus($totalDrag)
+            : null;
+
         $counterfactual = [
             'scope' => $accountingScope,
-            'status' => $hasPopulationMatch ? ($hasPartiallyClosedPosition ? 'COMPUTED_RECONCILED' : 'COMPUTED') : 'INSUFFICIENT_DATA',
-            'provenance' => $hasPopulationMatch ? 'HYPOTHETICAL' : 'NOT_VERIFIED',
+            'status' => $allocation['status'],
+            'provenance' => $allocation['provenance'],
             'baseline_actual_net_pnl' => (string) $baselineNetPnl,
+            'baseline_scope' => 'ALL_RECONCILED_POSITIONS',
+            'realized_scope_net_pnl' => $allocation['realized_scope_net_pnl'],
+            'realized_pnl_scope_status' => $allocation['realized_pnl_scope_status'],
+            'realized_pnl_scope_reason' => $allocation['realized_pnl_scope_reason'],
             'raw_total_slippage_drag' => (string) $totalDrag,
-            'realized_allocated_slippage_drag' => (string) $realizedAllocatedDrag,
-            'open_unallocated_slippage_drag' => (string) $openUnallocatedDrag,
-            'attributable_slippage_drag' => (string) $realizedAllocatedDrag,
-            'hypothetical_net_pnl_zero_slippage' => $hasPopulationMatch ? (string) $baselineNetPnl->plus($realizedAllocatedDrag) : null,
-            'raw_unallocated_counterfactual_net_pnl' => $hasPopulationMatch ? (string) $baselineNetPnl->plus($totalDrag) : null,
-            'raw_counterfactual_status' => $hasPartiallyClosedPosition ? 'NOT_VERIFIED_SCOPE_MISMATCH' : ($hasPopulationMatch ? 'COMPUTED' : 'INSUFFICIENT_DATA'),
-            'reconciliation_note' => $hasPartiallyClosedPosition
-                ? 'Entry slippage drag on partially closed positions is allocated proportionally to realized closed volume. Raw unallocated drag (+72.6789 USDT) mixes open entry volume and is classified NOT_VERIFIED_SCOPE_MISMATCH.'
-                : 'All positions fully closed; realized drag equals total raw execution drag.',
+            'realized_allocated_slippage_drag' => $allocation['realized_allocated_slippage_drag'],
+            'open_unallocated_slippage_drag' => $allocation['open_unallocated_slippage_drag'],
+            'attributable_slippage_drag' => $allocation['realized_allocated_slippage_drag'],
+            'open_position_net_pnl' => $allocation['open_position_net_pnl'],
+            'closed_position_count' => $allocation['closed_position_count'],
+            'partial_position_count' => $allocation['partial_position_count'],
+            'open_position_count' => $allocation['open_position_count'],
+            'invalid_position_count' => $allocation['invalid_position_count'],
+            'hypothetical_net_pnl_zero_slippage' => $allocation['hypothetical_net_pnl_zero_slippage'],
+            'raw_unallocated_counterfactual_net_pnl' => $rawFullFillCounterfactual,
+            'raw_counterfactual_status' => $allocation['raw_counterfactual_status'],
+            'reconciliation_note' => $allocation['reconciliation_note'],
             'disclaimer' => 'Hypothetical counterfactual for research calibration only. Commissions and funding held constant. Real-market liquidity friction cannot be eliminated.',
             'double_deduction_prohibited' => true,
         ];
@@ -450,5 +473,29 @@ final class SlippageAttributionService
             'by_strategy' => $byStrategy,
             'counterfactual' => $counterfactual,
         ];
+    }
+
+    /**
+     * Return the trimmed decimal string when the value is a valid number,
+     * otherwise NULL. NULL is never coerced to zero downstream.
+     */
+    private function numericOrNull(mixed $value): ?string
+    {
+        if ($value === null) {
+            return null;
+        }
+
+        $raw = trim((string) $value);
+        if ($raw === '') {
+            return null;
+        }
+
+        try {
+            BigDecimal::of($raw);
+
+            return $raw;
+        } catch (MathException) {
+            return null;
+        }
     }
 }

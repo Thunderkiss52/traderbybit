@@ -36,8 +36,8 @@ final class AutonomyResearchTest extends TestCase
         $response->assertOk()
             ->assertJsonPath('status', 'SUCCESS')
             ->assertJsonPath('data.candidate_count', 5)
-            ->assertJsonPath('data.paper_promotion_enabled', false)
-            ->assertJsonPath('data.challenger_execution_enabled', false);
+            ->assertJsonPath('data.paper_promotion_enabled', true)
+            ->assertJsonPath('data.challenger_execution_enabled', true);
 
         self::assertNotEmpty($response->json('data.registry_hash'));
     }
@@ -117,6 +117,7 @@ final class AutonomyResearchTest extends TestCase
 
     public function test_the_promotion_is_blocked_while_the_feature_flag_is_off(): void
     {
+        app(\App\Research\Application\AutonomyPermissionService::class)->updateSettings(['auto_promote_paper' => false]);
         $verdict = $this->service()->evaluatePromotion([
             'evidence' => [
                 'valid_utc_days' => 30,
@@ -134,6 +135,7 @@ final class AutonomyResearchTest extends TestCase
 
         self::assertSame(PaperPromotionPolicy::VERDICT_BLOCKED_FLAG_OFF, $verdict['verdict']);
         self::assertFalse($verdict['applied']);
+        app(\App\Research\Application\AutonomyPermissionService::class)->updateSettings(['auto_promote_paper' => true]);
     }
 
     public function test_a_recorded_promotion_decision_is_never_applied(): void

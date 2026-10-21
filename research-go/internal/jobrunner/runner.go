@@ -271,12 +271,17 @@ func (r *Runner) ExecuteJob(ctx context.Context, req *contracts.JobRequest, fenc
 	go func() {
 		ticker := time.NewTicker(5 * time.Second)
 		defer ticker.Stop()
+		progress := 5
+		_ = r.Heartbeat(hbCtx, req.JobID, fencingToken, progress, "Processing", 60*time.Second)
 		for {
 			select {
 			case <-hbCtx.Done():
 				return
 			case <-ticker.C:
-				_ = r.Heartbeat(hbCtx, req.JobID, fencingToken, 50, "Processing", 60*time.Second)
+				if progress < 95 {
+					progress += 5
+				}
+				_ = r.Heartbeat(hbCtx, req.JobID, fencingToken, progress, "Processing", 60*time.Second)
 			}
 		}
 	}()

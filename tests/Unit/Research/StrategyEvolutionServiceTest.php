@@ -25,11 +25,28 @@ final class StrategyEvolutionServiceTest extends TestCase
         self::assertNotEmpty($c1->parameter_diff);
         self::assertNotEmpty($c1->hypothesis);
 
-        // Verify parameter bounds
+        // Verify every mutated value stays inside its configured bound.
         $params = (array) $c1->parameters;
-        self::assertGreaterThanOrEqual(15.0, (float) $params['adx_threshold']);
-        self::assertLessThanOrEqual(30.0, (float) $params['adx_threshold']);
-        self::assertGreaterThanOrEqual(1.0, (float) $params['atr_multiplier']);
-        self::assertLessThanOrEqual(3.0, (float) $params['atr_multiplier']);
+        self::assertSame($c1->candidate_version, $params['version']);
+        foreach ((array) $c1->parameter_diff as $key => $change) {
+            $spec = (array) config('research.evolution.spaces.trend_pullback.'.$key);
+            self::assertGreaterThanOrEqual((float) $spec['min'], (float) $change['to']);
+            self::assertLessThanOrEqual((float) $spec['max'], (float) $change['to']);
+            self::assertSame((string) $c1->candidate_version, (string) $params['version']);
+        }
+    }
+
+    public function test_generates_candidates_for_every_family(): void
+    {
+        $service = new StrategyEvolutionService;
+
+        foreach ($service->families() as $index => $family) {
+            $candidate = $service->generateCandidate($family, 20000 + $index);
+            self::assertSame($family, $candidate->parent_strategy_id);
+            self::assertSame('RESEARCH_ONLY', $candidate->status);
+            self::assertNotEmpty($candidate->parameter_diff);
+            $config = $service->strategyConfig($candidate);
+            self::assertSame($candidate->candidate_version, $config['version']);
+        }
     }
 }

@@ -37,6 +37,7 @@ final readonly class LaravelHttpTransport implements HttpTransport
                 status: $response->status(),
                 json: is_array($json) ? $json : null,
                 headers: $response->headers(),
+                body: $response->body(),
             );
         } catch (ConnectionException $exception) {
             throw new TransportException('Bybit HTTP connection failed.', previous: $exception);

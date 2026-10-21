@@ -1,0 +1,17 @@
+ app/MarketData/Application/CandleSynchronizer.php  |  54 ++-
+ .../Application/ClosedCandleIngestor.php           |  21 ++
+ .../Application/MarketStreamSupervisor.php         |  82 ++++-
+ .../Infrastructure/Http/LaravelHttpTransport.php   |   1 +
+ .../Infrastructure/Http/TransportResponse.php      |   1 +
+ app/Providers/AppServiceProvider.php               |  38 ++
+ .../Application/SlippageAttributionService.php     |  70 ++--
+ bootstrap/app.php                                  |  10 +
+ docs/QUOTE_INTEGRITY_SPEC_FINAL.md                 | 391 +++++++++++++++++++++
+ frontend/src/layouts/MainLayout.vue                |   2 +-
+ frontend/src/pages/ProfitabilityResearchPage.vue   |  34 +-
+ frontend/src/router/index.ts                       |   2 +-
+ frontend/tests/profitability_research.test.js      |   7 +
+ .../profit-growth/02-p1-slippage-attribution.md    |  72 +++-
+ reports/profit-growth/P1_evidence.json             | 188 ++++++----
+ routes/api.php                                     |  14 +
+ 16 files changed, 860 insertions(+), 127 deletions(-)

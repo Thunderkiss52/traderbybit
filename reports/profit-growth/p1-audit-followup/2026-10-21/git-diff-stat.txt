@@ -1,0 +1,7 @@
+ .../Application/SlippageAttributionService.php     | 117 ++++++++----
+ frontend/src/pages/ProfitabilityResearchPage.vue   |  92 +++++++--
+ frontend/tests/profitability_research.test.js      |  73 ++++++++
+ .../profit-growth/02-p1-slippage-attribution.md    | 122 ++++++++++--
+ reports/profit-growth/P1_evidence.json             | 206 ++++++++++++++-------
+ .../Research/SlippageAttributionServiceTest.php    | 162 ++++++++++++++++
+ 6 files changed, 632 insertions(+), 140 deletions(-)

@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Research\Application;
 
+use App\Research\Infrastructure\Persistence\LearningModelArtifactRecord;
 use Carbon\CarbonImmutable;
 
 final class ResearchReportService
@@ -32,7 +33,7 @@ final class ResearchReportService
         $healthOverview = $this->health->overview($horizon === '24h' ? '24h' : '7d');
 
         // 2. Degradation on primary strategies
-        $strategies = ['baseline', 'trend_pullback', 'bollinger_mean_reversion', 'donchian_atr_breakout', 'regime_switching'];
+        $strategies = ['baseline', 'trend_pullback', 'bollinger_mean_reversion', 'donchian_atr_breakout', 'regime_switching', 'momentum', 'support_resistance_bounce', 'support_resistance_breakout'];
         $degradationReports = [];
         foreach ($strategies as $strat) {
             $snap = $this->degradation->evaluate($strat, $period === 'weekly' ? '7d' : '14d');
@@ -82,9 +83,14 @@ final class ResearchReportService
             'counterfactual_filter_effectiveness' => $filterReport,
             'probability_calibration' => [
                 'status' => $calibReport['status'],
+                'scope' => $calibReport['scope'] ?? 'ALL_MATURED_LEVEL_INTERACTION_FORECASTS',
+                'population_note' => $calibReport['population_note'] ?? null,
                 'brier_score' => $calibReport['brier_score'],
                 'expected_calibration_error' => $calibReport['ece'],
                 'total_samples' => $calibReport['total_samples'],
+                'excluded_samples' => $calibReport['excluded_samples'] ?? 0,
+                'by_event' => $calibReport['by_event'] ?? [],
+                'model_artifact_validation' => $this->artifactValidationMetrics(),
             ],
             'portfolio_correlation_and_risk' => [
                 'concentration_score' => $corrSnap->concentration_score,
@@ -102,5 +108,32 @@ final class ResearchReportService
         ];
 
         return $payload;
+    }
+
+    /**
+     * @return array<string, mixed>|null
+     */
+    private function artifactValidationMetrics(): ?array
+    {
+        $artifact = LearningModelArtifactRecord::query()
+            ->where('target_event', 'TP_BEFORE_SL')
+            ->where('status', 'ACTIVE')
+            ->latest('created_at')
+            ->first();
+        if ($artifact === null) {
+            return null;
+        }
+
+        return [
+            'artifact_id' => $artifact->id,
+            'name' => $artifact->name,
+            'version' => $artifact->version,
+            'scope' => 'MODEL_HOLDOUT_VALIDATION',
+            'population_note' => 'Holdout metrics from model training, not live forecast calibration.',
+            'sample_size' => $artifact->metrics['sample_size'] ?? null,
+            'brier_score' => $artifact->metrics['brier_score'] ?? null,
+            'ece' => $artifact->metrics['ece'] ?? null,
+            'log_loss' => $artifact->metrics['log_loss'] ?? null,
+        ];
     }
 }

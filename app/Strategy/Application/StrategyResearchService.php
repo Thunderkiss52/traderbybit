@@ -7,6 +7,7 @@ namespace App\Strategy\Application;
 use App\PaperTrading\Application\PaperAccountService;
 use App\PaperTrading\Application\PaperProcessingService;
 use App\PaperTrading\Infrastructure\Persistence\PaperAccountRecord;
+use App\Research\Infrastructure\Persistence\LearningCandidateStrategyRecord;
 use App\Strategy\Contracts\SignalRepository;
 
 final readonly class StrategyResearchService
@@ -36,8 +37,13 @@ final readonly class StrategyResearchService
                 // Previous versions/configs remain readable and must exit existing positions,
                 // but they may not silently start new trades after a version rotation.
                 $current = $metadata->get($account->strategy_id);
+                $promotedCandidate = LearningCandidateStrategyRecord::query()
+                    ->where('paper_account_id', $account->id)
+                    ->where('status', 'PAPER_PROMOTED')
+                    ->where('candidate_version', $account->strategy_version)
+                    ->exists();
                 $allowNew = $account->status === 'ACTIVE'
-                    && ($account->mode === 'RESEARCH_FORWARD_PAPER' || (in_array($account->strategy_id, $enabled, true)
+                    && ($account->mode === 'RESEARCH_FORWARD_PAPER' || $promotedCandidate || (in_array($account->strategy_id, $enabled, true)
                         && $current !== null && $current['version'] === $account->strategy_version
                         && $current['configuration_hash'] === $account->configuration_hash));
                 $strategy = $allowNew

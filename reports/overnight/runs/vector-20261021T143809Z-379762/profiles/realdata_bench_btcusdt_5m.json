@@ -1,0 +1,91 @@
+{
+  "generated_at_utc": "2026-10-21T14:44:01Z",
+  "go_version": "go1.18.1",
+  "goos": "linux",
+  "num_cpu": 8,
+  "data_dir": "/home/thunder/work/traderbybit/audit_data",
+  "symbol": "BTCUSDT",
+  "interval": "5",
+  "candle_count": 3168,
+  "dataset_hash": "e3108afd040ffc8a7817ff628410587d5cdf6d527a7a6305904f1f925f723ef3",
+  "first_open_utc": "2026-10-07T07:45:00Z",
+  "last_open_utc": "2026-10-18T07:40:00Z",
+  "strategy_id": "trend_pullback",
+  "trials": [
+    {
+      "index": 1,
+      "wall_time_ms": 171,
+      "cpu_time_ms": 232,
+      "backtest_wall_time_ms": 82,
+      "backtest_cpu_time_ms": 110,
+      "pattern_wall_time_ms": 89,
+      "trades": 289,
+      "win_rate": 0.2457,
+      "net_pnl": "-9778.82229158",
+      "patterns_found": 6,
+      "allocated_bytes_total": 85813104,
+      "allocation_count_total": 2705842,
+      "peak_rss_bytes": 17694720
+    },
+    {
+      "index": 2,
+      "wall_time_ms": 147,
+      "cpu_time_ms": 200,
+      "backtest_wall_time_ms": 76,
+      "backtest_cpu_time_ms": 107,
+      "pattern_wall_time_ms": 71,
+      "trades": 289,
+      "win_rate": 0.2457,
+      "net_pnl": "-9778.82229158",
+      "patterns_found": 6,
+      "allocated_bytes_total": 85795168,
+      "allocation_count_total": 2705831,
+      "peak_rss_bytes": 19230720
+    },
+    {
+      "index": 3,
+      "wall_time_ms": 160,
+      "cpu_time_ms": 213,
+      "backtest_wall_time_ms": 78,
+      "backtest_cpu_time_ms": 110,
+      "pattern_wall_time_ms": 82,
+      "trades": 289,
+      "win_rate": 0.2457,
+      "net_pnl": "-9778.82229158",
+      "patterns_found": 6,
+      "allocated_bytes_total": 85790120,
+      "allocation_count_total": 2705796,
+      "peak_rss_bytes": 19623936
+    }
+  ],
+  "backtest_stats": {
+    "trials_ms": [
+      82,
+      76,
+      78
+    ],
+    "min_ms": 76,
+    "max_ms": 82,
+    "mean_ms": 78.66666666666667,
+    "std_dev_ms": 6.222222222222221
+  },
+  "pattern_stats": {
+    "trials_ms": [
+      89,
+      71,
+      82
+    ],
+    "min_ms": 71,
+    "max_ms": 89,
+    "mean_ms": 80.66666666666667,
+    "std_dev_ms": 54.88888888888889
+  },
+  "peak_rss_bytes_process": 19705856,
+  "cpu_profile": "/home/thunder/work/traderbybit/reports/overnight/runs/vector-20261021T143809Z-379762/profiles/realdata_btcusdt_5m_cpu.pprof",
+  "heap_profile": "/home/thunder/work/traderbybit/reports/overnight/runs/vector-20261021T143809Z-379762/profiles/realdata_btcusdt_5m_heap.pprof",
+  "limitations": [
+    "The archive is a bounded single export, not a prospective observation stream; the measurement describes engine cost on this dataset only.",
+    "CPUTimeMS is the sum of user and system CPU time of the whole process for the measured stage, therefore it includes the runtime bookkeeping of the process and is an upper bound for the stage.",
+    "PeakRSSBytes is the process high water mark and therefore includes the loader, the JSON report writer and the Go runtime, not only the measured stage."
+  ]
+}

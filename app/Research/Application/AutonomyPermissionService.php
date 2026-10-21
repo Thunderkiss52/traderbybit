@@ -18,7 +18,7 @@ final class AutonomyPermissionService
         'tune_parameters' => true,
         'launch_shadow' => true,
         'start_paper_trials' => true,
-        'auto_promote_paper' => false, // Approval required by default
+        'auto_promote_paper' => true, // Paper-only promotion of gate-validated candidates
         'change_hard_risk_limits' => false, // Never automatic
         'live_exchange_trading' => false, // Strictly prohibited
     ];

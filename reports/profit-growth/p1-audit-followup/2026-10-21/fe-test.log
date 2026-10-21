@@ -1,0 +1,284 @@
+
+> test
+> node --test tests/*.test.js
+
+TAP version 13
+# Subtest: pattern page is routed and listed
+ok 1 - pattern page is routed and listed
+  ---
+  duration_ms: 2.574457
+  ...
+# Subtest: paginated pattern research uses bounded server requests
+ok 2 - paginated pattern research uses bounded server requests
+  ---
+  duration_ms: 0.515887
+  ...
+# Subtest: pattern UI distinguishes observations from trading signals
+ok 3 - pattern UI distinguishes observations from trading signals
+  ---
+  duration_ms: 1.481472
+  ...
+# Subtest: pattern discovery starts with a safe complete window and explains asynchronous empty states
+ok 4 - pattern discovery starts with a safe complete window and explains asynchronous empty states
+  ---
+  duration_ms: 0.327969
+  ...
+# Subtest: pattern page shows automatic discovery readiness instead of an unexplained empty table
+ok 5 - pattern page shows automatic discovery readiness instead of an unexplained empty table
+  ---
+  duration_ms: 0.319409
+  ...
+# Subtest: pattern page preserves top-level pagination metadata instead of unwrapping it
+ok 6 - pattern page preserves top-level pagination metadata instead of unwrapping it
+  ---
+  duration_ms: 0.38035
+  ...
+# Subtest: pattern page exposes all strategy BUY SELL and SKIP context by symbol
+ok 7 - pattern page exposes all strategy BUY SELL and SKIP context by symbol
+  ---
+  duration_ms: 0.646942
+  ...
+# Subtest: router exposes /research/profitability route mapping to ProfitabilityResearchPage
+ok 8 - router exposes /research/profitability route mapping to ProfitabilityResearchPage
+  ---
+  duration_ms: 1.553089
+  ...
+# Subtest: main layout sidebar contains link to profitability page
+ok 9 - main layout sidebar contains link to profitability page
+  ---
+  duration_ms: 0.347881
+  ...
+# Subtest: profitability research page enforces disclaimers and scope separation
+ok 10 - profitability research page enforces disclaimers and scope separation
+  ---
+  duration_ms: 0.900402
+  ...
+# Subtest: profitability research page includes P-1 slippage attribution and hypothetical counterfactual
+ok 11 - profitability research page includes P-1 slippage attribution and hypothetical counterfactual
+  ---
+  duration_ms: 0.478217
+  ...
+# Subtest: P-1 counterfactual semantics never render unavailable values as zero
+ok 12 - P-1 counterfactual semantics never render unavailable values as zero
+  ---
+  duration_ms: 0.338156
+  ...
+# Subtest: P-1 counterfactual semantics preserve a legitimate zero
+ok 13 - P-1 counterfactual semantics preserve a legitimate zero
+  ---
+  duration_ms: 0.140907
+  ...
+# Subtest: P-1 counterfactual semantics do not trust the legacy reconciled status
+ok 14 - P-1 counterfactual semantics do not trust the legacy reconciled status
+  ---
+  duration_ms: 0.208916
+  ...
+# Subtest: quote integrity page is routed and listed in navigation
+ok 15 - quote integrity page is routed and listed in navigation
+  ---
+  duration_ms: 2.559729
+  ...
+# Subtest: status banner enforces mandatory disclaimers and cross-source unavailable panel
+ok 16 - status banner enforces mandatory disclaimers and cross-source unavailable panel
+  ---
+  duration_ms: 0.319674
+  ...
+# Subtest: evidence import enforces SHA-256 disclaimer and no auto-promotion invariant
+ok 17 - evidence import enforces SHA-256 disclaimer and no auto-promotion invariant
+  ---
+  duration_ms: 0.268573
+  ...
+# Subtest: quote integrity main page orchestrates all L1 components
+ok 18 - quote integrity main page orchestrates all L1 components
+  ---
+  duration_ms: 0.233607
+  ...
+# Subtest: quote integrity api service exports all required endpoints and types
+ok 19 - quote integrity api service exports all required endpoints and types
+  ---
+  duration_ms: 1.371178
+  ...
+# Subtest: SignalCard renders BUY SELL and SKIP semantics
+ok 20 - SignalCard renders BUY SELL and SKIP semantics
+  ---
+  duration_ms: 1.775774
+  ...
+# Subtest: SignalCard contains entry, SL and both targets
+ok 21 - SignalCard contains entry, SL and both targets
+  ---
+  duration_ms: 0.317644
+  ...
+# Subtest: signal expiration is deterministic at an injected timestamp
+ok 22 - signal expiration is deterministic at an injected timestamp
+  ---
+  duration_ms: 0.281075
+  ...
+# Subtest: position table has a detailed audit route
+ok 23 - position table has a detailed audit route
+  ---
+  duration_ms: 0.276142
+  ...
+# Subtest: position detail exposes partial executions through backend payload
+ok 24 - position detail exposes partial executions through backend payload
+  ---
+  duration_ms: 0.201101
+  ...
+# Subtest: net PnL and portfolio PnL are rendered without frontend calculation
+ok 25 - net PnL and portfolio PnL are rendered without frontend calculation
+  ---
+  duration_ms: 0.365734
+  ...
+# Subtest: equity chart maps backend timestamps and equity values
+ok 26 - equity chart maps backend timestamps and equity values
+  ---
+  duration_ms: 0.263006
+  ...
+# Subtest: finite metric formatting preserves zero and rejects null
+ok 27 - finite metric formatting preserves zero and rejects null
+  ---
+  duration_ms: 12.363679
+  ...
+# Subtest: non-finite metrics are not displayed as numbers
+ok 28 - non-finite metrics are not displayed as numbers
+  ---
+  duration_ms: 0.274327
+  ...
+# Subtest: API errors use a unified human-readable fallback with request IDs
+ok 29 - API errors use a unified human-readable fallback with request IDs
+  ---
+  duration_ms: 0.365017
+  ...
+# Subtest: stale data handling has a configurable threshold
+ok 30 - stale data handling has a configurable threshold
+  ---
+  duration_ms: 0.280752
+  ...
+# Subtest: pagination parameters remain server-side
+ok 31 - pagination parameters remain server-side
+  ---
+  duration_ms: 0.958275
+  ...
+# Subtest: signals filters and debounced search are sent to API
+ok 32 - signals filters and debounced search are sent to API
+  ---
+  duration_ms: 2.139152
+  ...
+# Subtest: UTC timestamps can be converted with an explicit timezone
+ok 33 - UTC timestamps can be converted with an explicit timezone
+  ---
+  duration_ms: 3.888188
+  ...
+# Subtest: Russian and English translations exist
+ok 34 - Russian and English translations exist
+  ---
+  duration_ms: 0.352304
+  ...
+# Subtest: polling reconnect uses bounded exponential backoff
+ok 35 - polling reconnect uses bounded exponential backoff
+  ---
+  duration_ms: 0.301367
+  ...
+# Subtest: research mode warning is globally mounted
+ok 36 - research mode warning is globally mounted
+  ---
+  duration_ms: 0.202828
+  ...
+# Subtest: backtest form queues only a research job and shows status
+ok 37 - backtest form queues only a research job and shows status
+  ---
+  duration_ms: 0.265603
+  ...
+# Subtest: frontend contains no real order or trading action
+ok 38 - frontend contains no real order or trading action
+  ---
+  duration_ms: 0.3727
+  ...
+# Subtest: all required application routes exist
+ok 39 - all required application routes exist
+  ---
+  duration_ms: 0.290382
+  ...
+# Subtest: research lab uses paginated real API results and labels missing evaluations
+ok 40 - research lab uses paginated real API results and labels missing evaluations
+  ---
+  duration_ms: 0.208825
+  ...
+# Subtest: research lab provides a safe fast-start window and explains asynchronous evaluation
+ok 41 - research lab provides a safe fast-start window and explains asynchronous evaluation
+  ---
+  duration_ms: 0.214638
+  ...
+# Subtest: research lab declares all eight strategies and the four-timeframe hierarchy
+ok 42 - research lab declares all eight strategies and the four-timeframe hierarchy
+  ---
+  duration_ms: 0.176392
+  ...
+# Subtest: dashboard displays actual account summary and paper-return fields
+ok 43 - dashboard displays actual account summary and paper-return fields
+  ---
+  duration_ms: 0.233861
+  ...
+# Subtest: statistics expose backend data quality flags, not nonexistent aliases
+ok 44 - statistics expose backend data quality flags, not nonexistent aliases
+  ---
+  duration_ms: 0.138275
+  ...
+# Subtest: period PnL chart maps persisted net and cumulative PnL without fabricated points
+ok 45 - period PnL chart maps persisted net and cumulative PnL without fabricated points
+  ---
+  duration_ms: 0.147331
+  ...
+# Subtest: statistics charts guard against non-array payloads and PHP incomplete classes
+ok 46 - statistics charts guard against non-array payloads and PHP incomplete classes
+  ---
+  duration_ms: 0.67501
+  ...
+# Subtest: dashboard explains real SKIP reasons instead of hiding strategy evaluations
+ok 47 - dashboard explains real SKIP reasons instead of hiding strategy evaluations
+  ---
+  duration_ms: 0.450114
+  ...
+# Subtest: all ledger pages request ten records and use server-side pagination
+ok 48 - all ledger pages request ten records and use server-side pagination
+  ---
+  duration_ms: 0.420116
+  ...
+# Subtest: statistics paginates equity, R distribution, and reporting periods
+ok 49 - statistics paginates equity, R distribution, and reporting periods
+  ---
+  duration_ms: 0.160675
+  ...
+# Subtest: daily paper performance is bounded, timezone aware, and disposes charts
+ok 50 - daily paper performance is bounded, timezone aware, and disposes charts
+  ---
+  duration_ms: 0.267397
+  ...
+# Subtest: market chart limits history and permits window navigation
+ok 51 - market chart limits history and permits window navigation
+  ---
+  duration_ms: 0.134575
+  ...
+# Subtest: backtest details use bounded independent endpoints and lazy optimizations
+ok 52 - backtest details use bounded independent endpoints and lazy optimizations
+  ---
+  duration_ms: 0.27905
+  ...
+# Subtest: research monitoring page exposes compute workers and tasks management
+ok 53 - research monitoring page exposes compute workers and tasks management
+  ---
+  duration_ms: 0.210124
+  ...
+# Subtest: api client exposes research job management endpoints
+ok 54 - api client exposes research job management endpoints
+  ---
+  duration_ms: 0.155674
+  ...
+1..54
+# tests 54
+# suites 0
+# pass 54
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 724.054026

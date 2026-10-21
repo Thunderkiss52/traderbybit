@@ -1,6 +1,7 @@
 <script setup lang="ts">
-import { onMounted, ref } from 'vue';
+import { computed, onMounted, ref } from 'vue';
 import { get } from '../services/api';
+import { counterfactualView, formatMetric } from '../researchSemantics';
 
 const activeTab = ref('finance');
 const loading = ref(false);
@@ -9,6 +10,13 @@ const summaryData = ref<any>(null);
 const registryData = ref<any>(null);
 const slippageData = ref<any>(null);
 const showRegistryDialog = ref(false);
+
+const counterfactual = computed(() => counterfactualView(slippageData.value?.counterfactual));
+const slippageTotalDrag = computed(() => (
+  slippageData.value?.summary?.total_slippage_drag_usdt
+  ?? summaryData.value?.accounting_scopes?.execution_slippage_diagnostic?.total_attributable_dollar_drag
+  ?? null
+));
 
 // Position Trace Dialog State
 const showTraceDialog = ref(false);
@@ -147,7 +155,7 @@ onMounted(() => {
         <q-card flat bordered class="q-pa-sm">
           <div class="text-caption text-grey-7">Атрибуция проскальзывания (P-1)</div>
           <div class="text-h6 text-bold text-warning">
-            {{ slippageData?.summary?.total_slippage_drag_usdt || summaryData?.accounting_scopes?.execution_slippage_diagnostic?.total_attributable_dollar_drag || '0.00' }} USDT
+            {{ formatMetric(slippageTotalDrag) }} USDT
           </div>
           <div class="text-caption text-grey-6">
             {{ slippageData?.summary?.weighted_slippage_bps ? `${slippageData.summary.weighted_slippage_bps} bps (взвешенное)` : 'Диагностика (НЕ вычитается из Net)' }}
@@ -264,10 +272,10 @@ onMounted(() => {
             <q-card flat bordered class="q-pa-sm">
               <div class="text-caption text-grey-7">Совокупный Drag (Сумма потерь)</div>
               <div class="text-h6 text-bold text-warning">
-                {{ slippageData?.summary?.total_slippage_drag_usdt || '0.00' }} USDT
+                {{ formatMetric(slippageData?.summary?.total_slippage_drag_usdt) }} USDT
               </div>
               <div class="text-caption text-grey-6">
-                Взвешенное: {{ slippageData?.summary?.weighted_slippage_bps || '0.00' }} bps
+                Взвешенное: {{ slippageData?.summary?.weighted_slippage_bps != null ? `${slippageData.summary.weighted_slippage_bps} bps` : '—' }}
               </div>
             </q-card>
           </div>
@@ -276,7 +284,7 @@ onMounted(() => {
             <q-card flat bordered class="q-pa-sm">
               <div class="text-caption text-grey-7">Проскальзывание на входе (Entry)</div>
               <div class="text-h6 text-bold">
-                {{ slippageData?.summary?.entry_slippage_drag_usdt || '0.00' }} USDT
+                {{ formatMetric(slippageData?.summary?.entry_slippage_drag_usdt) }} USDT
               </div>
               <div class="text-caption text-grey-6">Открытие позиций</div>
             </q-card>
@@ -286,7 +294,7 @@ onMounted(() => {
             <q-card flat bordered class="q-pa-sm">
               <div class="text-caption text-grey-7">Частичный выход (TP1)</div>
               <div class="text-h6 text-bold">
-                {{ slippageData?.summary?.partial_exit_slippage_drag_usdt || '0.00' }} USDT
+                {{ formatMetric(slippageData?.summary?.partial_exit_slippage_drag_usdt) }} USDT
               </div>
               <div class="text-caption text-grey-6">Фиксация части объёма</div>
             </q-card>
@@ -296,7 +304,7 @@ onMounted(() => {
             <q-card flat bordered class="q-pa-sm">
               <div class="text-caption text-grey-7">Финальный выход (SL / TP2 / Close)</div>
               <div class="text-h6 text-bold">
-                {{ slippageData?.summary?.final_exit_slippage_drag_usdt || '0.00' }} USDT
+                {{ formatMetric(slippageData?.summary?.final_exit_slippage_drag_usdt) }} USDT
               </div>
               <div class="text-caption text-grey-6">Полное закрытие позиций</div>
             </q-card>
@@ -314,10 +322,46 @@ onMounted(() => {
                 Гипотетический сценарий нулевого проскальзывания (Counterfactual Calibration)
               </div>
             </div>
-            <q-badge outline color="grey-7">
-              Контур: {{ slippageData?.counterfactual?.scope || 'FULL_LIFECYCLE' }}
-            </q-badge>
+            <div class="row items-center q-gutter-sm">
+              <q-badge outline color="grey-7">
+                Контур: {{ slippageData?.counterfactual?.scope || 'FULL_LIFECYCLE' }}
+              </q-badge>
+              <q-badge outline :color="counterfactual.verified ? 'positive' : 'negative'">
+                Статус: {{ counterfactual.status }}
+              </q-badge>
+              <q-badge outline :color="counterfactual.realizedScopeStatus === 'ESTABLISHED' ? 'positive' : 'warning'">
+                Реализованный контур: {{ counterfactual.realizedScopeStatus }}
+              </q-badge>
+            </div>
           </div>
+
+          <q-banner
+            v-if="counterfactual.showUnavailable"
+            dense
+            class="bg-negative text-white rounded-borders q-mb-md"
+          >
+            <template #avatar>
+              <q-icon name="block" color="white" />
+            </template>
+            <div class="text-caption">
+              <b>НЕДОСТУПНО / НЕ ВЕРИФИЦИРОВАНО</b> ({{ counterfactual.status }}):
+              {{ counterfactual.unavailableReason }}
+            </div>
+          </q-banner>
+
+          <q-banner
+            v-if="slippageData?.counterfactual?.raw_counterfactual_status && slippageData.counterfactual.raw_counterfactual_status !== 'COMPUTED'"
+            dense
+            class="bg-orange-10 text-black rounded-borders q-mb-md"
+          >
+            <template #avatar>
+              <q-icon name="warning" color="orange" />
+            </template>
+            <div class="text-caption">
+              <b>{{ slippageData.counterfactual.raw_counterfactual_status }}</b>:
+              {{ slippageData?.counterfactual?.reconciliation_note }}
+            </div>
+          </q-banner>
 
           <q-banner dense class="bg-blue-grey-10 text-white rounded-borders q-mb-md">
             <template #avatar>
@@ -331,11 +375,15 @@ onMounted(() => {
           <div class="row q-col-gutter-md">
             <div class="col-12 col-md-4">
               <q-card flat class="bg-grey-10 text-white q-pa-sm rounded-borders">
-                <div class="text-caption text-grey-4">Фактический реализованный Net PnL (Baseline)</div>
-                <div class="text-h6 text-bold" :class="Number(slippageData?.counterfactual?.baseline_actual_net_pnl) >= 0 ? 'text-positive' : 'text-negative'">
-                  {{ slippageData?.counterfactual?.baseline_actual_net_pnl || '0.00' }} USDT
+                <div class="text-caption text-grey-4">Реализованный Net PnL (закрытый контур)</div>
+                <div class="text-h6 text-bold" :class="counterfactual.realizedScopePositive === false ? 'text-negative' : (counterfactual.realizedScopePositive ? 'text-positive' : 'text-grey-5')">
+                  {{ counterfactual.realizedScopeFormatted }} USDT
                 </div>
-                <div class="text-caption text-grey-5">С учетом реальных симулированных потерь</div>
+                <div class="text-caption text-grey-5" v-if="counterfactual.realizedScopeAvailable">Только PnL реализованного объёма</div>
+                <div class="text-caption text-negative" v-else>Недоступно: контур реализованного PnL не установлен</div>
+                <div class="text-caption text-grey-6 q-mt-xs">
+                  Справочно, все позиции (другой контур): {{ counterfactual.baselineAllPositionsFormatted }} USDT
+                </div>
               </q-card>
             </div>
 
@@ -343,19 +391,25 @@ onMounted(() => {
               <q-card flat class="bg-grey-10 text-white q-pa-sm rounded-borders">
                 <div class="text-caption text-grey-4">Атрибутированный Drag проскальзывания</div>
                 <div class="text-h6 text-bold text-warning">
-                  +{{ slippageData?.counterfactual?.attributable_slippage_drag || '0.00' }} USDT
+                  <template v-if="counterfactual.attributableDragAvailable">+{{ counterfactual.attributableDragFormatted }}</template>
+                  <template v-else>—</template>
+                  USDT
                 </div>
                 <div class="text-caption text-grey-5">Потери на неоптимальной цене исполнения</div>
+                <div class="text-caption text-grey-5">
+                  Не распределено по открытым позициям: {{ counterfactual.openUnallocatedDragFormatted }} USDT
+                </div>
               </q-card>
             </div>
 
             <div class="col-12 col-md-4">
               <q-card flat class="bg-grey-10 text-white q-pa-sm rounded-borders">
                 <div class="text-caption text-grey-4">Гипотетический Net PnL (Zero Slippage)</div>
-                <div class="text-h6 text-bold text-positive">
-                  {{ slippageData?.counterfactual?.hypothetical_net_pnl_zero_slippage || '—' }} USDT
+                <div class="text-h6 text-bold" :class="counterfactual.hypotheticalPositive === false ? 'text-negative' : (counterfactual.hypotheticalPositive ? 'text-positive' : 'text-grey-5')">
+                  {{ counterfactual.hypotheticalFormatted }} USDT
                 </div>
-                <div class="text-caption text-grey-5">Baseline Net + Drag (исследовательский верхний предел)</div>
+                <div class="text-caption text-grey-5" v-if="counterfactual.hypotheticalAvailable">Реализованный Net + атрибутированный Drag</div>
+                <div class="text-caption text-negative" v-else>Недоступно / не верифицировано — значение не подставляется нулём</div>
               </q-card>
             </div>
           </div>
@@ -539,7 +593,7 @@ onMounted(() => {
             <div class="col-4">
               <div class="text-caption text-grey-7">Slippage Drag:</div>
               <div class="text-subtitle1 text-bold text-warning">
-                {{ traceAttribution?.total_slippage_drag_usdt || '0.00' }} USDT
+                {{ formatMetric(traceAttribution?.total_slippage_drag_usdt) }} USDT
               </div>
             </div>
           </div>

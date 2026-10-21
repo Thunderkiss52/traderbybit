@@ -7,10 +7,11 @@ namespace App\Research\Jobs;
 use App\Research\Application\AutonomyPermissionService;
 use App\Research\Application\LearningFeatureStoreService;
 use App\Research\Application\LearningPredictorService;
-use App\Research\Application\PromotionPolicyService;
+use App\Research\Application\ResearchJobService;
 use App\Research\Application\StrategyDegradationService;
 use App\Research\Application\StrategyEvolutionService;
 use App\Research\Infrastructure\Persistence\LearningCandidateStrategyRecord;
+use Carbon\CarbonImmutable;
 use App\Strategy\Application\StrategyRegistry;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
@@ -42,12 +43,18 @@ final class ProcessAutonomousLearningJob implements ShouldQueue
         LearningFeatureStoreService $featureStore,
         LearningPredictorService $predictor,
         StrategyEvolutionService $evolution,
-        PromotionPolicyService $promotion,
         StrategyDegradationService $degradation,
         StrategyRegistry $strategyRegistry,
-        AutonomyPermissionService $autonomy
+        AutonomyPermissionService $autonomy,
+        ResearchJobService $researchJobs
     ): void {
         Log::info('[AutonomousLearning] Starting autonomous research & quantitative learning cycle.');
+
+        // 0. Recover leased jobs whose worker disappeared before the retry budget expired.
+        $reconciled = $researchJobs->reconcileStaleLeases();
+        if ($reconciled > 0) {
+            Log::warning("[AutonomousLearning] Requeued or expired {$reconciled} stale research job leases.");
+        }
 
         // 1. Mature pending feature labels using post-facto closed candles
         $matured = $featureStore->maturePendingLabels(100);
@@ -67,25 +74,49 @@ final class ProcessAutonomousLearningJob implements ShouldQueue
             }
         }
 
-        // 3. Strategy hypothesis generation & candidate validation
-        $activeCandidates = LearningCandidateStrategyRecord::query()
-            ->whereIn('status', ['RESEARCH_ONLY', 'PAPER_ELIGIBLE', 'PAPER_PROMOTION_PENDING', 'PAPER_PROMOTED'])
+        // 3. Fair, round-robin candidate generation across every strategy family.
+        $maxTotalActive = max(1, (int) config('research.evolution.max_total_active', 8));
+        $maxPerFamily = max(1, (int) config('research.evolution.max_per_family', 2));
+        $perCycle = max(1, (int) config('research.evolution.max_evaluations_per_cycle', 2));
+        $activeTotal = LearningCandidateStrategyRecord::query()
+            ->whereIn('status', ['RESEARCH_ONLY', 'PAPER_ELIGIBLE'])
             ->count();
 
-        if ($activeCandidates < 4 && $autonomy->isAllowed('discover_hypotheses')) {
-            $parentStrategies = ['trend_pullback', 'bollinger_mean_reversion', 'donchian_atr_breakout'];
-            $selectedParent = $parentStrategies[array_rand($parentStrategies)];
-            $candidate = $evolution->generateCandidate($selectedParent);
-            Log::info("[AutonomousLearning] Generated new strategy candidate {$candidate->name} ({$candidate->id}).");
+        if ($activeTotal < $maxTotalActive && $autonomy->isAllowed('discover_hypotheses') && $autonomy->isAllowed('tune_parameters')) {
+            $eligible = [];
+            foreach ($evolution->families() as $family) {
+                $activeForFamily = LearningCandidateStrategyRecord::query()
+                    ->where('parent_strategy_id', $family)
+                    ->whereIn('status', ['RESEARCH_ONLY', 'PAPER_ELIGIBLE'])
+                    ->count();
+                if ($activeForFamily >= $maxPerFamily) {
+                    continue;
+                }
+                $last = LearningCandidateStrategyRecord::query()
+                    ->where('parent_strategy_id', $family)
+                    ->latest('created_at')
+                    ->value('created_at');
+                $eligible[] = ['family' => $family, 'last' => $last === null ? null : CarbonImmutable::parse($last)->getTimestamp()];
+            }
 
-            // Evaluate candidate against mandatory validation gates
-            $evaluated = $promotion->evaluateCandidate($candidate->id);
-            Log::info("[AutonomousLearning] Candidate {$evaluated->name} validation status: {$evaluated->status}.");
-
-            // If eligible and autonomous promotion is permitted, promote to paper trading
-            if ($evaluated->status === 'PAPER_ELIGIBLE' && $autonomy->isAllowed('auto_promote_paper')) {
-                $promoted = $promotion->promoteCandidate($evaluated->id, 'SYSTEM_AUTONOMOUS');
-                Log::info("[AutonomousLearning] Promoted candidate {$promoted->name} to forward paper trading.");
+            usort($eligible, static fn (array $a, array $b): int => ($a['last'] ?? 0) <=> ($b['last'] ?? 0));
+            $slots = min($perCycle, $maxTotalActive - $activeTotal, count($eligible));
+            foreach (array_slice($eligible, 0, $slots) as $row) {
+                try {
+                    $retry = $this->retryableCandidate((string) $row['family']);
+                    $candidate = $retry ?? $evolution->generateCandidate((string) $row['family']);
+                    EvaluateStrategyCandidateJob::dispatch($candidate->id);
+                    Log::info('[AutonomousLearning] Queued candidate evaluation.', [
+                        'candidate_id' => $candidate->id,
+                        'family' => $candidate->parent_strategy_id,
+                        'retry' => $retry !== null,
+                    ]);
+                } catch (\Throwable $error) {
+                    Log::warning('[AutonomousLearning] Candidate generation failed.', [
+                        'family' => $row['family'],
+                        'error' => $error->getMessage(),
+                    ]);
+                }
             }
         }
 
@@ -98,5 +129,27 @@ final class ProcessAutonomousLearningJob implements ShouldQueue
         }
 
         Log::info('[AutonomousLearning] Completed autonomous research & learning cycle successfully.');
+    }
+
+    private function retryableCandidate(string $family): ?LearningCandidateStrategyRecord
+    {
+        $maxAttempts = max(1, (int) config('research.evolution.max_evaluation_attempts', 3));
+        $staleBefore = CarbonImmutable::now('UTC')->subMinutes(10);
+
+        return LearningCandidateStrategyRecord::query()
+            ->where('parent_strategy_id', $family)
+            ->where('status', 'RESEARCH_ONLY')
+            ->where('search_metadata->evaluation_status', 'FAILED')
+            ->oldest('created_at')
+            ->limit(20)
+            ->get()
+            ->first(function (LearningCandidateStrategyRecord $candidate) use ($maxAttempts, $staleBefore): bool {
+                $metadata = (array) $candidate->search_metadata;
+                $failedAt = $metadata['evaluation_failed_at'] ?? null;
+
+                return (int) ($metadata['evaluation_attempts'] ?? 0) < $maxAttempts
+                    && is_string($failedAt)
+                    && CarbonImmutable::parse($failedAt)->lt($staleBefore);
+            });
     }
 }

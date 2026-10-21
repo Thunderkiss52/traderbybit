@@ -1,0 +1,2 @@
+Xdebug: [Step Debug] Time-out connecting to debugging client, waited: 200 ms. Tried: 127.0.0.1:9003 (through xdebug.client_host/xdebug.client_port).
+P-1 archive evaluation written to reports/profit-growth/P1_evidence.json (positions=38, fills=76, status=COMPUTED, verified=true, sha256=d100f079cbe3326b7f9f8f82f5bd0ce061c2213bf712cc43284774a7f9ba627f)

@@ -12,12 +12,14 @@ use App\Research\Infrastructure\Persistence\AutonomyApprovalEventRecord;
 use App\Research\Infrastructure\Persistence\LearningCandidateStrategyRecord;
 use App\Research\Infrastructure\Persistence\LearningFeatureSnapshotRecord;
 use App\Research\Infrastructure\Persistence\LearningModelArtifactRecord;
+use App\Research\Jobs\EvaluateStrategyCandidateJob;
 use App\Research\Jobs\ProcessAutonomousLearningJob;
 use App\Strategy\Domain\QualityClass;
 use App\Strategy\Domain\SignalDecision;
 use App\Strategy\Domain\SignalSide;
 use Carbon\CarbonImmutable;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Queue;
 use Tests\TestCase;
 
 final class AutonomousLearningPipelineTest extends TestCase
@@ -103,6 +105,7 @@ final class AutonomousLearningPipelineTest extends TestCase
         );
 
         // 5. Execute ProcessAutonomousLearningJob
+        Queue::fake();
         $job = new ProcessAutonomousLearningJob;
         app()->call([$job, 'handle']);
 
@@ -120,8 +123,9 @@ final class AutonomousLearningPipelineTest extends TestCase
         // 7. Assert strategy candidate was evolved and evaluated
         $candidate = LearningCandidateStrategyRecord::query()->first();
         $this->assertNotNull($candidate);
-        $this->assertNotNull($candidate->validation_gates);
-        $this->assertContains($candidate->status, ['PAPER_ELIGIBLE', 'PAPER_PROMOTED', 'RESEARCH_ONLY', 'REJECTED']);
+        $this->assertSame('RESEARCH_ONLY', $candidate->status);
+        $this->assertSame('PENDING', $candidate->search_metadata['evaluation_status']);
+        Queue::assertPushed(EvaluateStrategyCandidateJob::class);
 
         // 8. Assert audit approval trail recorded actions
         $auditCount = AutonomyApprovalEventRecord::query()->count();
@@ -163,5 +167,20 @@ final class AutonomousLearningPipelineTest extends TestCase
         $this->assertArrayHasKey('model_advisory', $advised->indicatorSnapshot);
         $this->assertSame($activeModel->id, $advised->indicatorSnapshot['model_advisory']['model_id']);
         $this->assertArrayHasKey('calibrated_probability', $advised->indicatorSnapshot['model_advisory']);
+    }
+
+    public function test_candidate_generation_rotates_fairly_across_all_families(): void
+    {
+        Queue::fake();
+        config(['research.evolution.max_evaluations_per_cycle' => 2, 'research.evolution.max_total_active' => 8]);
+
+        $job = new ProcessAutonomousLearningJob;
+
+        app()->call([$job, 'handle']);
+        app()->call([$job, 'handle']);
+
+        $families = LearningCandidateStrategyRecord::query()->orderBy('created_at')->pluck('parent_strategy_id')->all();
+        $this->assertSame(['baseline', 'trend_pullback', 'bollinger_mean_reversion', 'donchian_atr_breakout'], $families);
+        Queue::assertPushed(EvaluateStrategyCandidateJob::class, 4);
     }
 }

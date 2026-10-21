@@ -1,0 +1,358 @@
+# Preflight 2026-10-20T21:12:02Z
+# Repo: /home/thunder/work/traderbybit
+# User: thunder (uid=1000)
+# Git HEAD: f2e3ace7b65a0d60f9cae4bd0c1070b4f3721c55
+# Branch: main
+# Git status (first 100):
+ M app/Http/Middleware/RequireResearchToken.php
+ M app/MarketData/Application/CandleSynchronizer.php
+ M app/MarketData/Application/ClosedCandleIngestor.php
+ M app/MarketData/Application/MarketStreamSupervisor.php
+ M app/MarketData/Infrastructure/Http/LaravelHttpTransport.php
+ M app/MarketData/Infrastructure/Http/TransportResponse.php
+ M app/Providers/AppServiceProvider.php
+ M bootstrap/app.php
+ M config/paper.php
+ M config/services.php
+A  docs/QUOTE_INTEGRITY_SPEC_FINAL.md
+ M frontend/src/layouts/MainLayout.vue
+ M frontend/src/router/index.ts
+ M routes/api.php
+?? VECTOR_AUTONOMOUS_PROFIT_RESEARCH_MASTER_SPEC_V1_EN.md
+?? VECTOR_NET_PROFIT_GROWTH_SPEC_V1_1.md
+?? VECTOR_OPENCODE_OVERNIGHT_FULL_EXECUTION_SPEC_EN.md
+?? app/Http/Controllers/Api/V1/ProfitabilityResearchController.php
+?? app/Http/Controllers/Api/V1/QuoteIntegrityController.php
+?? app/Http/Middleware/EnsureQuoteIntegrityEnabled.php
+?? app/QuoteIntegrity/
+?? app/Research/Application/MetricRegistryService.php
+?? app/Research/Application/RiskCapitalMetricsService.php
+?? app/Research/Application/SlippageAttributionService.php
+?? app/Research/Domain/
+?? app/Research/Exceptions/
+?? config/quote_integrity.php
+?? database/migrations/2026_10_20_100000_create_qim_observations_table.php
+?? database/migrations/2026_10_20_100100_create_qim_gap_events_table.php
+?? database/migrations/2026_10_20_100200_create_qim_purge_audit_table.php
+?? database/migrations/2026_10_20_100300_create_qim_analysis_tables.php
+?? database/migrations/2026_10_20_100400_create_qim_evidence_files_table.php
+?? database/migrations/2026_10_20_200000_create_slippage_attribution_tables.php
+?? database/migrations/2026_10_20_300000_create_strategy_risk_metrics_tables.php
+?? docs/QUOTE_INTEGRITY_SPEC_REV2.md
+?? docs/source-capability-matrix.md
+?? frontend/src/components/qim/
+?? frontend/src/pages/ProfitabilityResearchPage.vue
+?? frontend/src/pages/QuoteIntegrityPage.vue
+?? frontend/src/services/quoteIntegrityApi.ts
+?? frontend/tests/profitability_research.test.js
+?? frontend/tests/quote_integrity.test.js
+?? reports/evidence/qim_l1_evidence.json
+?? reports/evidence/qim_q0_evidence.json
+?? reports/overnight/
+?? reports/profit-growth/
+?? run-vector-opencode-overnight.sh
+?? tests/Feature/QuoteIntegrity/
+?? tests/Feature/Research/ProfitabilityResearchApiTest.php
+?? tests/Feature/Research/SlippageAttributionApiTest.php
+?? tests/Integration/QuoteIntegrity/
+?? tests/Integration/SlippageAttributionPostgresIntegrationTest.php
+?? tests/Unit/Middleware/
+?? tests/Unit/QuoteIntegrity/
+?? tests/Unit/Research/MetricRegistryTest.php
+?? tests/Unit/Research/SlippageAttributionServiceTest.php
+?? vector-audit.tar.gz
+# Git diff stat (last 20):
+ app/Http/Middleware/RequireResearchToken.php       | 34 +++++++++
+ app/MarketData/Application/CandleSynchronizer.php  | 54 +++++++++++---
+ .../Application/ClosedCandleIngestor.php           | 21 ++++++
+ .../Application/MarketStreamSupervisor.php         | 82 +++++++++++++++++++++-
+ .../Infrastructure/Http/LaravelHttpTransport.php   |  1 +
+ .../Infrastructure/Http/TransportResponse.php      |  1 +
+ app/Providers/AppServiceProvider.php               | 38 ++++++++++
+ bootstrap/app.php                                  | 14 ++++
+ config/paper.php                                   | 13 ++++
+ config/services.php                                |  2 +
+ frontend/src/layouts/MainLayout.vue                |  2 +-
+ frontend/src/router/index.ts                       |  2 +-
+ routes/api.php                                     | 24 +++++++
+ 13 files changed, 277 insertions(+), 11 deletions(-)
+# Toolchain:
+  go: go version go1.18.1 linux/amd64
+  php: PHP 8.4.24 (cli) (built: Jul 30 2026 15:22:53) (NTS)
+  node: v20.20.0
+  npm: 10.8.2
+  psql: psql (PostgreSQL) 14.24 (Ubuntu 14.24-0ubuntu0.22.04.1)
+  opencode: 1.18.33
+# Model: default
+# Disk: /dev/sdd        1007G         121G  836G           13% /
+# Spec SHA-256: 6ece3d671ff7f63ca1bb4092cf47701886dc1f89e3a7b6e947b853fda57fbd96
+# Snapshot: /home/thunder/work/traderbybit/reports/overnight/worktree-snapshot-20261020T211200Z.tar.gz
+# Snapshot SHA-256: 519f54a361cfad9aa74704b74940120a39c0baa13bea4908d0429e9fa3f66d1c
+# MAX_HOURS: 0.1
+# SOFT_DEADLINE_UTC: 2026-10-20T21:12:02Z
+# HARD_DEADLINE_UTC: 2026-10-20T21:18:02Z
+# Docker group present: 1 (risk opt-in: 1)
+# DB isolation: UNVERIFIED (do not use production DB; verify test connection before migrations)
+# END PREFLIGHT
+[0m
+> build · big-pickle
+[0m
+[0m$ [0mdate -u +%Y-%m-%dT%H:%M:%SZ && git rev-parse HEAD && git status --short | head -80 && echo "---BRANCHES---" && git branch --show-current && git log --oneline -5
+2026-10-20T21:12:14Z
+f2e3ace7b65a0d60f9cae4bd0c1070b4f3721c55
+ M app/Http/Middleware/RequireResearchToken.php
+ M app/MarketData/Application/CandleSynchronizer.php
+ M app/MarketData/Application/ClosedCandleIngestor.php
+ M app/MarketData/Application/MarketStreamSupervisor.php
+ M app/MarketData/Infrastructure/Http/LaravelHttpTransport.php
+ M app/MarketData/Infrastructure/Http/TransportResponse.php
+ M app/Providers/AppServiceProvider.php
+ M bootstrap/app.php
+ M config/paper.php
+ M config/services.php
+A  docs/QUOTE_INTEGRITY_SPEC_FINAL.md
+ M frontend/src/layouts/MainLayout.vue
+ M frontend/src/router/index.ts
+ M routes/api.php
+?? VECTOR_AUTONOMOUS_PROFIT_RESEARCH_MASTER_SPEC_V1_EN.md
+?? VECTOR_NET_PROFIT_GROWTH_SPEC_V1_1.md
+?? VECTOR_OPENCODE_OVERNIGHT_FULL_EXECUTION_SPEC_EN.md
+?? app/Http/Controllers/Api/V1/ProfitabilityResearchController.php
+?? app/Http/Controllers/Api/V1/QuoteIntegrityController.php
+?? app/Http/Middleware/EnsureQuoteIntegrityEnabled.php
+?? app/QuoteIntegrity/
+?? app/Research/Application/MetricRegistryService.php
+?? app/Research/Application/RiskCapitalMetricsService.php
+?? app/Research/Application/SlippageAttributionService.php
+?? app/Research/Domain/
+?? app/Research/Exceptions/
+?? config/quote_integrity.php
+?? database/migrations/2026_10_20_100000_create_qim_observations_table.php
+?? database/migrations/2026_10_20_100100_create_qim_gap_events_table.php
+?? database/migrations/2026_10_20_100200_create_qim_purge_audit_table.php
+?? database/migrations/2026_10_20_100300_create_qim_analysis_tables.php
+?? database/migrations/2026_10_20_100400_create_qim_evidence_files_table.php
+?? database/migrations/2026_10_20_200000_create_slippage_attribution_tables.php
+?? database/migrations/2026_10_20_300000_create_strategy_risk_metrics_tables.php
+?? docs/QUOTE_INTEGRITY_SPEC_REV2.md
+?? docs/source-capability-matrix.md
+?? frontend/src/components/qim/
+?? frontend/src/pages/ProfitabilityResearchPage.vue
+?? frontend/src/pages/QuoteIntegrityPage.vue
+?? frontend/src/services/quoteIntegrityApi.ts
+?? frontend/tests/profitability_research.test.js
+?? frontend/tests/quote_integrity.test.js
+?? reports/evidence/qim_l1_evidence.json
+?? reports/evidence/qim_q0_evidence.json
+?? reports/overnight/
+?? reports/profit-growth/
+?? run-vector-opencode-overnight.sh
+?? tests/Feature/QuoteIntegrity/
+?? tests/Feature/Research/ProfitabilityResearchApiTest.php
+?? tests/Feature/Research/SlippageAttributionApiTest.php
+?? tests/Integration/QuoteIntegrity/
+?? tests/Integration/SlippageAttributionPostgresIntegrationTest.php
+?? tests/Unit/Middleware/
+?? tests/Unit/QuoteIntegrity/
+?? tests/Unit/Research/MetricRegistryTest.php
+?? tests/Unit/Research/SlippageAttributionServiceTest.php
+?? vector-audit.tar.gz
+---BRANCHES---
+main
+f2e3ace fix(deploy): build research-worker locally from source instead of pulling from Docker Hub
+9f1ffd2 fix(deploy): capture container stderr via 2>&1 in research-worker readiness check
+a971011 fix(deploy): remove artificial 60s cutoff in research-worker readiness check
+cc1f864 fix(deploy): use container image ID instead of container ID in verify_image_identity
+9646de6 fix(deploy): invoke deployment scripts via bash and set git executable permissions (100755)
+[0m
+[0m✱ [0mGlob "reports/overnight/**"[90m in . · 9 matches[0m
+[0m✱ [0mGlob "reports/profit-growth/*.md"[90m in . · 3 matches[0m
+[0m
+[0m$ [0mphp -v 2>/dev/null | head -2; go version 2>/dev/null; node -v 2>/dev/null; psql --version 2>/dev/null; redis-cli -h localhost ping 2>/dev/null; psql -h localhost -p 5432 -U postgres -lqt 2>/dev/null | cut -d\| -f1 | head -20
+PHP 8.4.24 (cli) (built: Jul 30 2026 15:22:53) (NTS)
+Copyright (c) The PHP Group
+go version go1.18.1 linux/amd64
+v20.20.0
+psql (PostgreSQL) 14.24 (Ubuntu 14.24-0ubuntu0.22.04.1)
+
+
+<shell_metadata>
+shell tool terminated command after exceeding timeout 120000 ms. If this command is expected to take longer and is not waiting for interactive input, retry with a larger timeout value in milliseconds.
+</shell_metadata>
+[0m
+[0m→ [0mRead reports/overnight/RUN_STATUS.md
+[0m→ [0mRead reports/overnight/BLOCKERS.md
+[0m→ [0mRead reports/overnight/CHANGES.md
+[0m→ [0mRead reports/overnight/PREFLIGHT.md
+[0m
+[0m$ [0mls -la reports/overnight/ && ls reports/profit-growth/ 2>/dev/null; ls NEXT_SESSION_PROMPT.md 2>/dev/null; df -h . | tail -1; wc -l app/Research/Application/RiskCapitalMetricsService.php database/migrations/2026_10_20_300000_create_strategy_risk_metrics_tables.php 2>/dev/null
+итого 59176
+drwx------ 2 thunder thunder     4096 окт 21 00:12 .
+drwxr-xr-x 6 thunder thunder     4096 окт 20 23:58 ..
+-rw------- 1 thunder thunder        0 окт 21 00:12 BLOCKERS.md
+-rw------- 1 thunder thunder        0 окт 21 00:12 CHANGES.md
+-rw------- 1 thunder thunder     8997 окт 21 00:14 opencode-session.log
+-rw------- 1 thunder thunder     5257 окт 20 23:58 opencode-session.log.20261020T210459Z
+-rw------- 1 thunder thunder      691 окт 21 00:12 PREFLIGHT.md
+-rw------- 1 thunder thunder      308 окт 21 00:12 RUN_STATUS.md
+-rw------- 1 thunder thunder 20184614 окт 20 23:58 worktree-snapshot-20261020T205807Z.tar.gz
+-rw------- 1 thunder thunder 20185037 окт 21 00:05 worktree-snapshot-20261020T210459Z.tar.gz
+-rw------- 1 thunder thunder 20186031 окт 21 00:12 worktree-snapshot-20261020T211200Z.tar.gz
+00-capability-and-data-inventory.md
+01-g1-read-only-economics-foundation.md
+02-p1-slippage-attribution.md
+G1_evidence.json
+P1_evidence.json
+/dev/sdd        1007G         121G  836G           13% /
+  585 app/Research/Application/RiskCapitalMetricsService.php
+   81 database/migrations/2026_10_20_300000_create_strategy_risk_metrics_tables.php
+  666 итого
+[0m
+[0m$ [0mtail -60 reports/overnight/opencode-session.log 2>/dev/null
+?? tests/Feature/Research/ProfitabilityResearchApiTest.php
+?? tests/Feature/Research/SlippageAttributionApiTest.php
+?? tests/Integration/QuoteIntegrity/
+?? tests/Integration/SlippageAttributionPostgresIntegrationTest.php
+?? tests/Unit/Middleware/
+?? tests/Unit/QuoteIntegrity/
+?? tests/Unit/Research/MetricRegistryTest.php
+?? tests/Unit/Research/SlippageAttributionServiceTest.php
+?? vector-audit.tar.gz
+---BRANCHES---
+main
+f2e3ace fix(deploy): build research-worker locally from source instead of pulling from Docker Hub
+9f1ffd2 fix(deploy): capture container stderr via 2>&1 in research-worker readiness check
+a971011 fix(deploy): remove artificial 60s cutoff in research-worker readiness check
+cc1f864 fix(deploy): use container image ID instead of container ID in verify_image_identity
+9646de6 fix(deploy): invoke deployment scripts via bash and set git executable permissions (100755)
+[0m
+[0m✱ [0mGlob "reports/overnight/**"[90m in . · 9 matches[0m
+[0m✱ [0mGlob "reports/profit-growth/*.md"[90m in . · 3 matches[0m
+[0m
+[0m$ [0mphp -v 2>/dev/null | head -2; go version 2>/dev/null; node -v 2>/dev/null; psql --version 2>/dev/null; redis-cli -h localhost ping 2>/dev/null; psql -h localhost -p 5432 -U postgres -lqt 2>/dev/null | cut -d\| -f1 | head -20
+PHP 8.4.24 (cli) (built: Jul 30 2026 15:22:53) (NTS)
+Copyright (c) The PHP Group
+go version go1.18.1 linux/amd64
+v20.20.0
+psql (PostgreSQL) 14.24 (Ubuntu 14.24-0ubuntu0.22.04.1)
+
+
+<shell_metadata>
+shell tool terminated command after exceeding timeout 120000 ms. If this command is expected to take longer and is not waiting for interactive input, retry with a larger timeout value in milliseconds.
+</shell_metadata>
+[0m
+[0m→ [0mRead reports/overnight/RUN_STATUS.md
+[0m→ [0mRead reports/overnight/BLOCKERS.md
+[0m→ [0mRead reports/overnight/CHANGES.md
+[0m→ [0mRead reports/overnight/PREFLIGHT.md
+[0m
+[0m$ [0mls -la reports/overnight/ && ls reports/profit-growth/ 2>/dev/null; ls NEXT_SESSION_PROMPT.md 2>/dev/null; df -h . | tail -1; wc -l app/Research/Application/RiskCapitalMetricsService.php database/migrations/2026_10_20_300000_create_strategy_risk_metrics_tables.php 2>/dev/null
+итого 59176
+drwx------ 2 thunder thunder     4096 окт 21 00:12 .
+drwxr-xr-x 6 thunder thunder     4096 окт 20 23:58 ..
+-rw------- 1 thunder thunder        0 окт 21 00:12 BLOCKERS.md
+-rw------- 1 thunder thunder        0 окт 21 00:12 CHANGES.md
+-rw------- 1 thunder thunder     8997 окт 21 00:14 opencode-session.log
+-rw------- 1 thunder thunder     5257 окт 20 23:58 opencode-session.log.20261020T210459Z
+-rw------- 1 thunder thunder      691 окт 21 00:12 PREFLIGHT.md
+-rw------- 1 thunder thunder      308 окт 21 00:12 RUN_STATUS.md
+-rw------- 1 thunder thunder 20184614 окт 20 23:58 worktree-snapshot-20261020T205807Z.tar.gz
+-rw------- 1 thunder thunder 20185037 окт 21 00:05 worktree-snapshot-20261020T210459Z.tar.gz
+-rw------- 1 thunder thunder 20186031 окт 21 00:12 worktree-snapshot-20261020T211200Z.tar.gz
+00-capability-and-data-inventory.md
+01-g1-read-only-economics-foundation.md
+02-p1-slippage-attribution.md
+G1_evidence.json
+P1_evidence.json
+/dev/sdd        1007G         121G  836G           13% /
+  585 app/Research/Application/RiskCapitalMetricsService.php
+   81 database/migrations/2026_10_20_300000_create_strategy_risk_metrics_tables.php
+  666 итого
+[0m
+[0m
+[0m✱ [0mGrep "public function|class RiskCapitalMetricsService"[90m in app/Research/Application/RiskCapitalMetricsService.php · 76 matches[0m
+[0m→ [0mRead database/migrations/2026_10_20_300000_create_strategy_risk_metrics_tables.php
+[0m
+[0m$ [0mdate -u +%Y-%m-%dT%H:%M:%SZ; ls tests/Unit/Research/ tests/Feature/Research/ 2>/dev/null; rg -l "RiskCapital" tests/ app/ 2>/dev/null | head
+2026-10-20T21:15:23Z
+tests/Feature/Research/:
+AdaptiveTimeframeResearchTest.php
+AutonomousLearningApiTest.php
+AutonomousLearningPipelineTest.php
+ExitHorizonResearchTest.php
+Gate6PromotionPolicyTest.php
+LearningPredictorRollbackTest.php
+LegacyActiveModelSafetyTest.php
+MetaLabelingResearchTest.php
+ModelAdvisoryDecisionVetoTest.php
+ProfitabilityResearchApiTest.php
+PromotedCandidateExecutionTest.php
+ReconcileLedgerJobExecutionPathTest.php
+ResearchBenchmarkCommandTest.php
+ResearchHealthApiTest.php
+ResearchJobApiTest.php
+ScheduledResearchJobsTest.php
+SlippageAttributionApiTest.php
+StageThreeApiTest.php
+StageTwoApiTest.php
+
+tests/Unit/Research/:
+AutonomyPermissionServiceTest.php
+ChampionChallengerLifecycleTest.php
+CounterfactualAccurateRCalculationTest.php
+CounterfactualAnalyzerServiceTest.php
+CounterfactualNoHindsightTest.php
+DecisionReplayServiceTest.php
+LearningFeatureStoreServiceTest.php
+LearningPredictorServiceTest.php
+LedgerReconciliationServiceTest.php
+LogisticRegressionTrainingTest.php
+MetricRegistryTest.php
+ModelAdvisoryIntegrationTest.php
+PortfolioCorrelationServiceTest.php
+ProbabilityCalibrationServiceTest.php
+PromotionPolicyFailClosedTest.php
+PromotionPolicyServiceTest.php
+ResearchJobServiceTest.php
+ResearchRecommendationServiceTest.php
+ResearchReportServiceTest.php
+ShadowExperimentServiceTest.php
+SlippageAttributionServiceTest.php
+StrategyDegradationServiceTest.php
+StrategyEvolutionServiceTest.php
+StrategyHealthServiceTest.php
+SystemFreshnessServiceTest.php
+[0m
+[0m← [0mWrite reports/overnight/RUN_STATUS.md
+Wrote file successfully.
+[0m
+[0m← [0mWrite reports/overnight/BLOCKERS.md
+Wrote file successfully.
+[0m
+[0m← [0mWrite reports/overnight/CHANGES.md
+Wrote file successfully.
+[0m
+Soft deadline (21:12:02Z) already passed at session start; hard deadline is 21:18:02Z. Per §10.6 I will not start new phases — finalizing status, blockers, and NEXT_SESSION_PROMPT.md now.
+[0m← [0mWrite reports/overnight/NEXT_SESSION_PROMPT.md
+Wrote file successfully.
+[0m
+[0m$ [0msha256sum reports/overnight/worktree-snapshot-20261020T211200Z.tar.gz 2>/dev/null; tar -tzf reports/overnight/worktree-snapshot-20261020T211200Z.tar.gz >/dev/null 2>&1 && echo "ARCHIVE_OK" || echo "ARCHIVE_BAD"; ls -la reports/overnight/NEXT_SESSION_PROMPT.md
+519f54a361cfad9aa74704b74940120a39c0baa13bea4908d0429e9fa3f66d1c  reports/overnight/worktree-snapshot-20261020T211200Z.tar.gz
+ARCHIVE_OK
+-rw------- 1 thunder thunder 4905 окт 21 00:16 reports/overnight/NEXT_SESSION_PROMPT.md
+[0m
+Finalization complete. No development phases were started (soft deadline = session start).
+
+1. IMPLEMENTED — Only soft-shutdown finalization: `reports/overnight/RUN_STATUS.md`, `BLOCKERS.md`, `CHANGES.md`, `NEXT_SESSION_PROMPT.md`. No source changes.
+2. VERIFIED — Archive integrity: `tar -tzf` OK; snapshot SHA-256 `519f54a3…66d1c` matches PREFLIGHT. Worktree unchanged → reused snapshot; no new archive (hard deadline ~6 min left).
+3. OPEN DEFECTS — All SPEC work queued: 1A/1B/1C, Go profiling, P-1 closeout, P-2 (uncommitted WIP present), P-5/P-4/P-6, five candidates, A0–A3.
+4. PERFORMANCE BEFORE/AFTER — None measured.
+5. PROFIT-1 GATES — None passed; P-2 `RiskCapitalMetricsService.php` (585 L) + migration `2026_10_20_300000` inspected only; not tested.
+6. FIVE CANDIDATES — Not started.
+7. AUTONOMY FLAGS / GATE 6 — Not started; feature OFF.
+8. SECURITY — No docker/sudo/git-mutation/production/DB writes, no ECONOM, no P-3, eight primary ledgers untouched.
+9. FILES — `reports/overnight/{RUN_STATUS,BLOCKERS,CHANGES,NEXT_SESSION_PROMPT}.md`.
+10. NEXT ACTIONS — Relaunch with future SOFT/HARD deadlines; start at NEXT_SESSION_PROMPT §0 then §3 (finish P-2 WIP) → §1 audits → §2 Go → §4 → §5.
+
+Blocker `B-20261020-DEADLINE-001`: deadline exhausted before implementation; `B-20261020-TESTDB-001`: test DB isolation unverified.
+# Finished UTC=2026-10-20T21:16:33Z exit=0

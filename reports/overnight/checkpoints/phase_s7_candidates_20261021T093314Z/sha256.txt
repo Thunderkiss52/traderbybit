@@ -1,0 +1,7 @@
+phase=phase_s7_candidates
+utc=20261021T093314Z
+git_head=f2e3ace7b65a0d60f9cae4bd0c1070b4f3721c55
+snapshot=b814b5cfb69aa66301c4faf7d8068db0131b57a889f1657dd5e7dbc43730eafe
+snapshot_bytes=18204145
+diff_sha256=dd7af38910495e3b2eb283f071c1a60309a423fb7947251a4edf69715510fc02
+diff_bytes=119061

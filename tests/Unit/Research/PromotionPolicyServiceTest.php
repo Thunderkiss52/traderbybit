@@ -66,13 +66,15 @@ final class PromotionPolicyServiceTest extends TestCase
             'from_at' => now()->subDays(30),
             'to_at' => now(),
             'metrics' => [
-                'total_trades' => 45,
-                'average_r' => 0.35,
-                'profit_factor' => 1.45,
-                'win_rate' => 0.55,
-                'maximum_drawdown_percent' => 7.5,
-                'ece' => 0.06,
-                'brier_score' => 0.18,
+                'test' => [
+                    'total_trades' => 45,
+                    'average_r' => 0.35,
+                    'profit_factor' => 1.45,
+                    'win_rate' => 0.55,
+                    'maximum_drawdown_percent' => 7.5,
+                ],
+                'all_segments' => ['total_trades' => 120],
+                'test_is_out_of_sample' => true,
             ],
             'warnings' => [],
             'errors' => [],
@@ -88,19 +90,105 @@ final class PromotionPolicyServiceTest extends TestCase
         self::assertSame($backtestRun->id, $evaluated->validation_gates['validation_run_id']);
         self::assertSame('BACKTEST_RUN', $evaluated->validation_gates['validation_source']);
 
-        // 3. Autonomous attempt when auto_promote_paper is false -> sets PAPER_PROMOTION_PENDING
-        $pending = $policy->promoteCandidate($candidate->id, 'SYSTEM_AUTONOMOUS');
-        self::assertSame('PAPER_PROMOTION_PENDING', $pending->status);
-
-        // 4. Operator promotion -> PAPER_PROMOTED and dedicated account provisioned
-        $promoted = $policy->promoteCandidate($candidate->id, 'USER_OPERATOR');
+        // 3. Autonomous promotion is allowed for a gate-validated candidate.
+        $promoted = $policy->promoteCandidate($candidate->id, 'SYSTEM_AUTONOMOUS');
         self::assertSame('PAPER_PROMOTED', $promoted->status);
         self::assertNotNull($promoted->paper_account_id);
         self::assertNotNull($promoted->promoted_at);
 
-        // 5. Rollback candidate
+        // 4. Rollback candidate
         $rolledBack = $policy->rollbackCandidate($candidate->id, 'Excessive live drawdown observed', 'USER_OPERATOR');
         self::assertSame('ROLLED_BACK', $rolledBack->status);
         self::assertSame('Excessive live drawdown observed', $rolledBack->rollback_reason);
+    }
+
+    public function test_rejects_candidate_without_out_of_sample_validation(): void
+    {
+        $this->app->make(PaperAccountService::class)->default();
+        $evolution = new StrategyEvolutionService;
+        $policy = $this->app->make(PromotionPolicyService::class);
+        $candidate = $evolution->generateCandidate('trend_pullback', 501);
+
+        $run = BacktestRunRecord::query()->create([
+            'id' => (string) Str::uuid(),
+            'fingerprint' => 'fp-'.Str::random(16),
+            'symbols' => ['BTCUSDT'],
+            'strategy_config' => ['id' => 'trend_pullback'],
+            'risk_config' => [],
+            'execution_config' => [],
+            'strategy_version' => '1.3.0',
+            'risk_version' => '1.0.0',
+            'execution_version' => '1.0.0',
+            'backtest_version' => '1.0.0',
+            'schema_version' => '1.0.0',
+            'dataset_checksum' => 'checksum-'.Str::random(16),
+            'status' => 'COMPLETED',
+            'type' => 'SPLIT',
+            'from_at' => now()->subDays(30),
+            'to_at' => now(),
+            'metrics' => [
+                'total_trades' => 60,
+                'average_r' => 0.5,
+                'profit_factor' => 1.7,
+                'maximum_drawdown_percent' => 5.0,
+            ],
+            'warnings' => [],
+            'errors' => [],
+            'started_at' => now()->subMinutes(10),
+            'completed_at' => now(),
+        ]);
+
+        $evaluated = $policy->evaluateCandidate($candidate->id, $run->id);
+
+        self::assertSame('REJECTED', $evaluated->status);
+        self::assertFalse($evaluated->validation_gates['out_of_sample_verified']['pass']);
+        self::assertFalse($evaluated->validation_gates['calibration_error']['applicable']);
+    }
+
+    public function test_calibration_gate_is_not_applicable_to_strategy_candidates(): void
+    {
+        $this->app->make(PaperAccountService::class)->default();
+        $evolution = new StrategyEvolutionService;
+        $policy = $this->app->make(PromotionPolicyService::class);
+        $candidate = $evolution->generateCandidate('momentum', 502);
+
+        $run = BacktestRunRecord::query()->create([
+            'id' => (string) Str::uuid(),
+            'fingerprint' => 'fp-'.Str::random(16),
+            'symbols' => ['BTCUSDT'],
+            'strategy_config' => ['id' => 'momentum'],
+            'risk_config' => [],
+            'execution_config' => [],
+            'strategy_version' => '1.3.0',
+            'risk_version' => '1.0.0',
+            'execution_version' => '1.0.0',
+            'backtest_version' => '1.0.0',
+            'schema_version' => '1.0.0',
+            'dataset_checksum' => 'checksum-'.Str::random(16),
+            'status' => 'COMPLETED',
+            'type' => 'WALK_FORWARD',
+            'from_at' => now()->subDays(30),
+            'to_at' => now(),
+            'metrics' => [
+                'test' => [
+                    'total_trades' => 60,
+                    'average_r' => 0.5,
+                    'profit_factor' => 1.7,
+                    'maximum_drawdown_percent' => 5.0,
+                ],
+                'all_segments' => ['total_trades' => 200],
+                'test_is_out_of_sample' => true,
+            ],
+            'warnings' => [],
+            'errors' => [],
+            'started_at' => now()->subMinutes(10),
+            'completed_at' => now(),
+        ]);
+
+        $evaluated = $policy->evaluateCandidate($candidate->id, $run->id);
+
+        self::assertSame('PAPER_ELIGIBLE', $evaluated->status);
+        self::assertFalse($evaluated->validation_gates['calibration_error']['applicable']);
+        self::assertTrue($evaluated->validation_gates['calibration_error']['pass']);
     }
 }

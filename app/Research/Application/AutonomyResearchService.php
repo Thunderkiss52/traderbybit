@@ -36,6 +36,7 @@ final class AutonomyResearchService
         private readonly DataSufficiencyPolicy $sufficiency = new DataSufficiencyPolicy,
         private readonly PaperPromotionPolicy $promotion = new PaperPromotionPolicy,
         private readonly AllocationProposal $allocation = new AllocationProposal,
+        private readonly AutonomyPermissionService $permissions = new AutonomyPermissionService,
     ) {}
 
     /**
@@ -55,8 +56,8 @@ final class AutonomyResearchService
             'candidate_count' => count($candidates),
             'candidates' => $candidates,
             'familywise_experiment_count' => (int) config('research.autonomy.familywise_experiment_count', 5),
-            'paper_promotion_enabled' => (bool) config('research.autonomy.paper_promotion_enabled', false),
-            'challenger_execution_enabled' => (bool) config('research.autonomy.challenger_execution_enabled', false),
+            'paper_promotion_enabled' => $this->permissions->isAllowed('auto_promote_paper'),
+            'challenger_execution_enabled' => $this->permissions->isAllowed('start_paper_trials'),
             'note' => 'Research candidates only. They are not strategies, not accounts and they never trade.',
         ];
     }
@@ -197,8 +198,12 @@ final class AutonomyResearchService
     {
         $evidence = (array) ($request['evidence'] ?? []);
         $gates = (array) config('research.autonomy.gates', []);
-        $flagEnabled = (bool) config('research.autonomy.paper_promotion_enabled', false);
-        $killSwitchActive = $this->killSwitchActive();
+        if (config()->has('research.autonomy.paper_promotion_enabled') && config('research.autonomy.paper_promotion_enabled') === false) {
+            $flagEnabled = false;
+        } else {
+            $flagEnabled = $this->permissions->isAllowed('auto_promote_paper');
+        }
+        $killSwitchActive = $this->killSwitchActive() || $this->permissions->getSettings()->kill_switch_active;
 
         $verdict = $this->promotion->evaluate($evidence, $gates, $flagEnabled, $killSwitchActive);
 
@@ -224,7 +229,28 @@ final class AutonomyResearchService
             'decided_at' => CarbonImmutable::now('UTC'),
         ]);
 
-        return $verdict + ['record_id' => (string) $record->id];
+        $applied = false;
+        $promotion = null;
+        if ($verdict['verdict'] === PaperPromotionPolicy::VERDICT_ELIGIBLE
+            && $flagEnabled
+            && ! $killSwitchActive
+            && is_string($request['candidate_id'] ?? null)
+            && $request['candidate_id'] !== '') {
+            try {
+                $promoted = app(PromotionPolicyService::class)->promoteCandidate((string) $request['candidate_id'], 'SYSTEM_AUTONOMOUS');
+                $applied = $promoted->status === 'PAPER_PROMOTED';
+                $promotion = [
+                    'candidate_id' => $promoted->id,
+                    'status' => $promoted->status,
+                    'paper_account_id' => $promoted->paper_account_id,
+                ];
+                $record->update(['applied' => $applied]);
+            } catch (\Throwable $error) {
+                $promotion = ['candidate_id' => (string) $request['candidate_id'], 'status' => 'PROMOTION_FAILED', 'error' => $error->getMessage()];
+            }
+        }
+
+        return $verdict + ['record_id' => (string) $record->id, 'applied' => $applied, 'promotion' => $promotion];
     }
 
     /**

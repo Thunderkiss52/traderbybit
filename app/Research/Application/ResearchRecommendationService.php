@@ -31,6 +31,9 @@ final class ResearchRecommendationService
 
         $byFilter = [];
         foreach ($counterfactuals as $cf) {
+            if ($cf->r_multiple === null || ! is_numeric($cf->r_multiple) || ! is_finite((float) $cf->r_multiple)) {
+                continue;
+            }
             $key = "{$cf->strategy_id}:{$cf->filter_family}";
             $byFilter[$key]['count'] = ($byFilter[$key]['count'] ?? 0) + 1;
             $byFilter[$key]['missed_r'] = ($byFilter[$key]['missed_r'] ?? 0.0) + (float) $cf->r_multiple;
