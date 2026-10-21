@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Tests\Feature\Research;
 
 use App\PaperTrading\Application\PaperAccountService;
+use App\Research\Application\AutonomyPermissionService;
 use App\Research\Application\AutonomyResearchService;
 use App\Research\Domain\Autonomy\ChallengerExperiment;
 use App\Research\Domain\Autonomy\PaperPromotionPolicy;
@@ -117,7 +118,7 @@ final class AutonomyResearchTest extends TestCase
 
     public function test_the_promotion_is_blocked_while_the_feature_flag_is_off(): void
     {
-        app(\App\Research\Application\AutonomyPermissionService::class)->updateSettings(['auto_promote_paper' => false]);
+        app(AutonomyPermissionService::class)->updateSettings(['auto_promote_paper' => false]);
         $verdict = $this->service()->evaluatePromotion([
             'evidence' => [
                 'valid_utc_days' => 30,
@@ -135,7 +136,7 @@ final class AutonomyResearchTest extends TestCase
 
         self::assertSame(PaperPromotionPolicy::VERDICT_BLOCKED_FLAG_OFF, $verdict['verdict']);
         self::assertFalse($verdict['applied']);
-        app(\App\Research\Application\AutonomyPermissionService::class)->updateSettings(['auto_promote_paper' => true]);
+        app(AutonomyPermissionService::class)->updateSettings(['auto_promote_paper' => true]);
     }
 
     public function test_a_recorded_promotion_decision_is_never_applied(): void

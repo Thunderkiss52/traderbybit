@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace App\Strategy\Application;
 
 use App\Strategy\Contracts\StrategyInterface;
-use Illuminate\Support\Arr;
+use App\Strategy\Research\BaselineStrategy;
 use App\Strategy\Research\BollingerMeanReversionStrategy;
 use App\Strategy\Research\DonchianBreakoutStrategy;
 use App\Strategy\Research\MarketRegimeClassifier;
@@ -14,6 +14,7 @@ use App\Strategy\Research\RegimeSwitchingStrategy;
 use App\Strategy\Research\SupportResistanceBounceStrategy;
 use App\Strategy\Research\SupportResistanceBreakoutStrategy;
 use App\Strategy\Research\TrendPullbackStrategy;
+use Illuminate\Support\Arr;
 
 final readonly class StrategyRegistry
 {
@@ -45,7 +46,7 @@ final readonly class StrategyRegistry
                 $config['version'] = (string) $parameters['version'];
             }
 
-            return new \App\Strategy\Research\BaselineStrategy($config);
+            return new BaselineStrategy($config);
         }
 
         return match ($id) {

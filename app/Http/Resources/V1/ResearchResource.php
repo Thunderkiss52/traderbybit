@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Http\Resources\V1;
 
+use Illuminate\Contracts\Support\Arrayable;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
 
@@ -24,7 +25,7 @@ final class ResearchResource extends JsonResource
         if (is_array($value)) {
             return array_map(fn (mixed $item): mixed => $this->sanitize($item), $value);
         }
-        if ($value instanceof \Illuminate\Contracts\Support\Arrayable) {
+        if ($value instanceof Arrayable) {
             return $this->sanitize($value->toArray());
         }
         if ($value instanceof \JsonSerializable) {
