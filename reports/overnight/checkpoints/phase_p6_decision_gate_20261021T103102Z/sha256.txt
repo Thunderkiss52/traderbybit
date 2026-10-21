@@ -1,7 +1,0 @@
-phase=phase_p6_decision_gate
-utc=20261021T103102Z
-git_head=f2e3ace7b65a0d60f9cae4bd0c1070b4f3721c55
-snapshot=4e00919ee3fa13a0d749474d10119f7cf5bb18de22da64702371dcb39aa02df4
-snapshot_bytes=18321947
-diff_sha256=7effa992f88ccc1ba58c2160a34d7e8e9fe67d97e77aabeba280b1667c2040eb
-diff_bytes=119881

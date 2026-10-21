@@ -1,7 +1,0 @@
-RUN_ID=vector-20261021T143106Z-373450
-SPEC=/home/thunder/work/traderbybit/VECTOR_OPENCODE_OVERNIGHT_FULL_EXECUTION_SPEC_EN.md
-SPEC_SHA256=6ece3d671ff7f63ca1bb4092cf47701886dc1f89e3a7b6e947b853fda57fbd96
-PREFLIGHT=/home/thunder/work/traderbybit/reports/overnight/runs/vector-20261021T143106Z-373450/PREFLIGHT.md
-SNAPSHOT=/home/thunder/work/traderbybit/reports/overnight/runs/vector-20261021T143106Z-373450/worktree-snapshot-vector-20261021T143106Z-373450.tar.gz
-SNAPSHOT_SHA256=b3942f707998a816b4e5c66c5f49320e22a5afa8bc31cf1540b405fb422a9a60
-LOG=/home/thunder/work/traderbybit/reports/overnight/runs/vector-20261021T143106Z-373450/opencode-session.log
