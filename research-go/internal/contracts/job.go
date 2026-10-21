@@ -32,9 +32,9 @@ const (
 )
 
 type JobLimits struct {
-	MaxRows       int `json:"max_rows"`
-	MaxDurationS  int `json:"max_duration_s"`
-	MaxMemoryMiB  int `json:"max_memory_mib"`
+	MaxRows      int `json:"max_rows"`
+	MaxDurationS int `json:"max_duration_s"`
+	MaxMemoryMiB int `json:"max_memory_mib"`
 }
 
 type JobRequest struct {

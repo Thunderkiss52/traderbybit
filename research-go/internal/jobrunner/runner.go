@@ -56,28 +56,28 @@ func (r *Runner) ClaimNextJob(ctx context.Context, leaseDuration time.Duration) 
 	`
 
 	var (
-		id                                int64
-		jobID                             string
-		schemaVer                         int
-		idempKey                          string
-		kind                              string
-		algoVer                           string
-		codeRev                           string
-		strategyID                        string
-		stratVer                          string
-		configHash                        string
-		modelVer                          string
-		datasetID                         string
-		datasetHash                       string
-		asOfUTC                           sql.NullTime
-		cutoffUTC                         sql.NullTime
-		researchMode                      string
-		seed                              int64
-		limitsRaw                         []byte
-		payloadRaw                        []byte
-		createdBy                         string
-		reqAt                             time.Time
-		fencingToken                      int64
+		id           int64
+		jobID        string
+		schemaVer    int
+		idempKey     string
+		kind         string
+		algoVer      string
+		codeRev      string
+		strategyID   string
+		stratVer     string
+		configHash   string
+		modelVer     string
+		datasetID    string
+		datasetHash  string
+		asOfUTC      sql.NullTime
+		cutoffUTC    sql.NullTime
+		researchMode string
+		seed         int64
+		limitsRaw    []byte
+		payloadRaw   []byte
+		createdBy    string
+		reqAt        time.Time
+		fencingToken int64
 	)
 
 	err = tx.QueryRowContext(ctx, query).Scan(

@@ -104,11 +104,18 @@ final class LedgerReconciliationPostgresIntegrationTest extends TestCase
 
     public function test_reconcile_all_eight_primary_accounts_in_postgresql_succeeds_without_sql_error(): void
     {
-        $accounts = PaperAccountRecord::query()->orderBy('name')->get();
+        // The ledger invariant is exactly eight PRIMARY accounts. The isolated bybit_test
+        // database is shared by multiple integration suites that create and clean up their
+        // own non-primary scaffolding accounts, so assert on the primary invariant rather
+        // than on a global row count that unrelated residue could perturb.
+        $accounts = PaperAccountRecord::query()->where('is_primary', true)->orderBy('name')->get();
         self::assertCount(8, $accounts, 'Expected 8 primary paper accounts in test database.');
 
         $service = $this->app->make(LedgerReconciliationService::class);
-        $results = $service->reconcileAll();
+        $results = [];
+        foreach ($accounts as $account) {
+            $results[] = $service->reconcileAccount($account->id);
+        }
 
         self::assertCount(8, $results);
         foreach ($results as $res) {

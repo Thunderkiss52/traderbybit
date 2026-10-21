@@ -12,8 +12,8 @@ import (
 
 type BacktestConfig struct {
 	StartingBalance       decimal.Decimal `json:"starting_balance"`
-	TakerFeeRate          decimal.Decimal `json:"taker_fee_rate"` // e.g. 0.00055 (0.055%)
-	SlippageRate          decimal.Decimal `json:"slippage_rate"`  // e.g. 0.0002 (0.02%)
+	TakerFeeRate          decimal.Decimal `json:"taker_fee_rate"`      // e.g. 0.00055 (0.055%)
+	SlippageRate          decimal.Decimal `json:"slippage_rate"`       // e.g. 0.0002 (0.02%)
 	RiskPerTradeRate      decimal.Decimal `json:"risk_per_trade_rate"` // e.g. 0.01 (1%)
 	MaxHoldingBars        int             `json:"max_holding_bars"`
 	ConservativeAmbiguity bool            `json:"conservative_ambiguity"` // true: SL takes precedence if both hit
@@ -79,8 +79,108 @@ type Engine struct {
 	config BacktestConfig
 }
 
+// activePosition is the shared in-flight position state used by every simulation path.
+type activePosition struct {
+	side       string
+	entryPrice decimal.Decimal
+	quantity   decimal.Decimal
+	stopLoss   decimal.Decimal
+	takeProfit decimal.Decimal
+	entryTime  time.Time
+	entryBar   int
+	entryFee   decimal.Decimal
+	riskAmount decimal.Decimal
+}
+
 func NewEngine(cfg BacktestConfig) *Engine {
 	return &Engine{config: cfg}
+}
+
+// evaluateExit applies the exit rules of the engine to an open position.
+// It returns the exit price, the exit reason, whether the bar was ambiguous
+// (stop loss and take profit both touched) and whether an exit happened at all.
+// The intrabar sequence is never invented: on ambiguity the configured policy
+// decides, and the conservative default gives the stop loss precedence.
+func (e *Engine) evaluateExit(pos *activePosition, c datasets.Candle, barsHeld int) (decimal.Decimal, string, bool, bool) {
+	exitPrice := decimal.Zero()
+	exitReason := ""
+	ambiguous := false
+
+	if pos.side == "BUY" {
+		hitSL := c.Low.Cmp(pos.stopLoss) <= 0
+		hitTP := c.High.Cmp(pos.takeProfit) >= 0
+
+		if hitSL && hitTP {
+			ambiguous = true
+			if e.config.ConservativeAmbiguity {
+				exitPrice = pos.stopLoss.Sub(pos.stopLoss.Mul(e.config.SlippageRate))
+				exitReason = "STOP_LOSS"
+			} else {
+				exitPrice = pos.takeProfit.Sub(pos.takeProfit.Mul(e.config.SlippageRate))
+				exitReason = "TAKE_PROFIT"
+			}
+		} else if hitSL {
+			exitPrice = pos.stopLoss.Sub(pos.stopLoss.Mul(e.config.SlippageRate))
+			exitReason = "STOP_LOSS"
+		} else if hitTP {
+			exitPrice = pos.takeProfit.Sub(pos.takeProfit.Mul(e.config.SlippageRate))
+			exitReason = "TAKE_PROFIT"
+		} else if barsHeld >= e.config.MaxHoldingBars {
+			exitPrice = c.Close
+			exitReason = "TIMEOUT"
+		}
+	} else { // SELL (Short)
+		hitSL := c.High.Cmp(pos.stopLoss) >= 0
+		hitTP := c.Low.Cmp(pos.takeProfit) <= 0
+
+		if hitSL && hitTP {
+			ambiguous = true
+			if e.config.ConservativeAmbiguity {
+				exitPrice = pos.stopLoss.Add(pos.stopLoss.Mul(e.config.SlippageRate))
+				exitReason = "STOP_LOSS"
+			} else {
+				exitPrice = pos.takeProfit.Add(pos.takeProfit.Mul(e.config.SlippageRate))
+				exitReason = "TAKE_PROFIT"
+			}
+		} else if hitSL {
+			exitPrice = pos.stopLoss.Add(pos.stopLoss.Mul(e.config.SlippageRate))
+			exitReason = "STOP_LOSS"
+		} else if hitTP {
+			exitPrice = pos.takeProfit.Add(pos.takeProfit.Mul(e.config.SlippageRate))
+			exitReason = "TAKE_PROFIT"
+		} else if barsHeld >= e.config.MaxHoldingBars {
+			exitPrice = c.Close
+			exitReason = "TIMEOUT"
+		}
+	}
+
+	return exitPrice, exitReason, ambiguous, exitReason != ""
+}
+
+// openPosition sizes a new position from the configured risk budget and returns nil when the
+// stop distance does not allow a positive quantity.
+func (e *Engine) openPosition(side string, entryPrice decimal.Decimal, slDistance decimal.Decimal, equity decimal.Decimal, entryTime time.Time, entryBar int) *activePosition {
+	if !slDistance.IsPositive() {
+		return nil
+	}
+
+	riskAmount := equity.Mul(e.config.RiskPerTradeRate)
+	qty, err := riskAmount.Div(slDistance)
+	if err != nil || !qty.IsPositive() {
+		return nil
+	}
+
+	entryFee := qty.Mul(entryPrice).Mul(e.config.TakerFeeRate)
+
+	return &activePosition{
+		side:       side,
+		entryPrice: entryPrice,
+		quantity:   qty,
+		entryTime:  entryTime,
+		entryBar:   entryBar,
+		entryFee:   entryFee,
+		riskAmount: riskAmount,
+	}
 }
 
 // Run executes deterministic historical backtest over closed candles
@@ -118,18 +218,6 @@ func (e *Engine) Run(candles []datasets.Candle, strategyID string, params map[st
 	trades := make([]Trade, 0, 100)
 	equitySeries := make([]EquityPoint, 0, n)
 
-	type activePosition struct {
-		side       string
-		entryPrice decimal.Decimal
-		quantity   decimal.Decimal
-		stopLoss   decimal.Decimal
-		takeProfit decimal.Decimal
-		entryTime  time.Time
-		entryBar   int
-		entryFee   decimal.Decimal
-		riskAmount decimal.Decimal
-	}
-
 	var pos *activePosition
 	tradeCounter := 0
 
@@ -140,59 +228,9 @@ func (e *Engine) Run(candles []datasets.Candle, strategyID string, params map[st
 		// 1. Check open position exit on current candle
 		if pos != nil {
 			barsHeld := i - pos.entryBar
-			exitPrice := decimal.Zero()
-			exitReason := ""
-			ambiguous := false
+			exitPrice, exitReason, ambiguous, hasExit := e.evaluateExit(pos, c, barsHeld)
 
-			if pos.side == "BUY" {
-				hitSL := c.Low.Cmp(pos.stopLoss) <= 0
-				hitTP := c.High.Cmp(pos.takeProfit) >= 0
-
-				if hitSL && hitTP {
-					ambiguous = true
-					if e.config.ConservativeAmbiguity {
-						exitPrice = pos.stopLoss.Sub(pos.stopLoss.Mul(e.config.SlippageRate))
-						exitReason = "STOP_LOSS"
-					} else {
-						exitPrice = pos.takeProfit.Sub(pos.takeProfit.Mul(e.config.SlippageRate))
-						exitReason = "TAKE_PROFIT"
-					}
-				} else if hitSL {
-					exitPrice = pos.stopLoss.Sub(pos.stopLoss.Mul(e.config.SlippageRate))
-					exitReason = "STOP_LOSS"
-				} else if hitTP {
-					exitPrice = pos.takeProfit.Sub(pos.takeProfit.Mul(e.config.SlippageRate))
-					exitReason = "TAKE_PROFIT"
-				} else if barsHeld >= e.config.MaxHoldingBars {
-					exitPrice = c.Close
-					exitReason = "TIMEOUT"
-				}
-			} else { // SELL (Short)
-				hitSL := c.High.Cmp(pos.stopLoss) >= 0
-				hitTP := c.Low.Cmp(pos.takeProfit) <= 0
-
-				if hitSL && hitTP {
-					ambiguous = true
-					if e.config.ConservativeAmbiguity {
-						exitPrice = pos.stopLoss.Add(pos.stopLoss.Mul(e.config.SlippageRate))
-						exitReason = "STOP_LOSS"
-					} else {
-						exitPrice = pos.takeProfit.Add(pos.takeProfit.Mul(e.config.SlippageRate))
-						exitReason = "TAKE_PROFIT"
-					}
-				} else if hitSL {
-					exitPrice = pos.stopLoss.Add(pos.stopLoss.Mul(e.config.SlippageRate))
-					exitReason = "STOP_LOSS"
-				} else if hitTP {
-					exitPrice = pos.takeProfit.Add(pos.takeProfit.Mul(e.config.SlippageRate))
-					exitReason = "TAKE_PROFIT"
-				} else if barsHeld >= e.config.MaxHoldingBars {
-					exitPrice = c.Close
-					exitReason = "TIMEOUT"
-				}
-			}
-
-			if exitReason != "" {
+			if hasExit {
 				tradeCounter++
 				// Calculate PnL
 				exitFee := pos.quantity.Mul(exitPrice).Mul(e.config.TakerFeeRate)
@@ -254,7 +292,7 @@ func (e *Engine) Run(candles []datasets.Candle, strategyID string, params map[st
 					// Re-entry inside lower band from below with oversold RSI
 					if closes[prevIdx-1].Cmp(*bb.Lower[prevIdx-1]) < 0 && closes[prevIdx].Cmp(*bb.Lower[prevIdx]) > 0 && rsiVal < 45 {
 						signalSide = "BUY"
-					// Re-entry inside upper band from above with overbought RSI
+						// Re-entry inside upper band from above with overbought RSI
 					} else if closes[prevIdx-1].Cmp(*bb.Upper[prevIdx-1]) > 0 && closes[prevIdx].Cmp(*bb.Upper[prevIdx]) < 0 && rsiVal > 55 {
 						signalSide = "SELL"
 					}
@@ -346,21 +384,10 @@ func (e *Engine) Run(candles []datasets.Candle, strategyID string, params map[st
 				}
 
 				// Position sizing based on risk per trade
-				riskAmount := equity.Mul(e.config.RiskPerTradeRate)
-				qty, err := riskAmount.Div(slDistance)
-				if err == nil && qty.IsPositive() {
-					entryFee := qty.Mul(entryPrice).Mul(e.config.TakerFeeRate)
-					pos = &activePosition{
-						side:       signalSide,
-						entryPrice: entryPrice,
-						quantity:   qty,
-						stopLoss:   stopLoss,
-						takeProfit: takeProfit,
-						entryTime:  c.OpenTime,
-						entryBar:   i,
-						entryFee:   entryFee,
-						riskAmount: riskAmount,
-					}
+				pos = e.openPosition(signalSide, entryPrice, slDistance, equity, c.OpenTime, i)
+				if pos != nil {
+					pos.stopLoss = stopLoss
+					pos.takeProfit = takeProfit
 				}
 			}
 		}

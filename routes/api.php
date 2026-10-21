@@ -3,6 +3,7 @@
 use App\Audit\Http\AuditExportController as A;
 use App\Http\Controllers\Api\V1\AutonomousLearningController;
 use App\Http\Controllers\Api\V1\PatternResearchController as P;
+use App\Http\Controllers\Api\V1\ProfitabilityResearchController;
 use App\Http\Controllers\Api\V1\ResearchController as C;
 use App\Http\Controllers\Api\V1\ResearchHealthController as H;
 use App\Http\Controllers\Api\V1\ResearchIntelligenceController as I;
@@ -91,6 +92,30 @@ Route::prefix('v1')->middleware('throttle:api')->group(function () {
     Route::post('research/experiments', [R::class, 'store']);
     Route::post('research/experiments/{id}/cancel', [R::class, 'cancel']);
     Route::post('research/experiments/{id}/approve-forward', [R::class, 'approveForward']);
+
+    // Profitability Research (VECTOR G1 Read-Only Economics Foundation & P-1 Slippage Attribution)
+    Route::get('research/profitability/summary', [ProfitabilityResearchController::class, 'summary']);
+    Route::get('research/profitability/strategies', [ProfitabilityResearchController::class, 'strategies']);
+    Route::get('research/profitability/strategies/{strategyId}', [ProfitabilityResearchController::class, 'strategyDetail']);
+    Route::get('research/profitability/metric-registry', [ProfitabilityResearchController::class, 'metricRegistry']);
+    Route::get('research/profitability/slippage-attribution', [ProfitabilityResearchController::class, 'slippageAttribution']);
+    Route::get('research/profitability/slippage-attribution/positions/{positionId}', [ProfitabilityResearchController::class, 'positionSlippageAttribution']);
+    Route::get('research/profitability/risk-capital-metrics', [ProfitabilityResearchController::class, 'riskCapitalMetrics']);
+    Route::post('research/profitability/generations', [ProfitabilityResearchController::class, 'storeGeneration'])->middleware('research.token');
+    Route::post('research/profitability/generations/p2', [ProfitabilityResearchController::class, 'storeP2Generation'])->middleware('research.token');
+    Route::get('research/profitability/concentration-dependence', [ProfitabilityResearchController::class, 'concentrationDependence']);
+    Route::post('research/profitability/generations/p5', [ProfitabilityResearchController::class, 'storeP5Generation'])->middleware('research.token');
+    Route::get('research/profitability/cost-mfe-mae', [ProfitabilityResearchController::class, 'costMfeMae']);
+    Route::post('research/profitability/generations/p4', [ProfitabilityResearchController::class, 'storeP4Generation'])->middleware('research.token');
+    Route::get('research/profitability/decision-gate', [ProfitabilityResearchController::class, 'decisionGate']);
+    Route::post('research/profitability/generations/p6', [ProfitabilityResearchController::class, 'storeP6Generation'])->middleware('research.token');
+    Route::get('research/autonomy/registry', [ProfitabilityResearchController::class, 'autonomyRegistry']);
+    Route::get('research/autonomy/experiments', [ProfitabilityResearchController::class, 'autonomyExperiments']);
+    Route::post('research/autonomy/experiments', [ProfitabilityResearchController::class, 'storeAutonomyExperiment'])->middleware('research.token');
+    Route::post('research/autonomy/promotions', [ProfitabilityResearchController::class, 'storeAutonomyPromotion'])->middleware('research.token');
+    Route::get('research/autonomy/promotion-controls', [ProfitabilityResearchController::class, 'autonomyPromotionControls']);
+    Route::post('research/autonomy/kill-switch', [ProfitabilityResearchController::class, 'storeAutonomyKillSwitch'])->middleware('research.token');
+    Route::post('research/autonomy/rollbacks', [ProfitabilityResearchController::class, 'storeAutonomyRollback'])->middleware('research.token');
     Route::get('risk', [C::class, 'risk']);
     Route::get('backtests', [C::class, 'backtests']);
     Route::get('backtests/{id}', [C::class, 'backtest']);

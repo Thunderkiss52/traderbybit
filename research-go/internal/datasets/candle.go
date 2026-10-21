@@ -11,18 +11,18 @@ import (
 )
 
 type Candle struct {
-	Exchange  string          `json:"exchange"`
-	Category  string          `json:"category"`
-	Symbol    string          `json:"symbol"`
-	Interval  string          `json:"interval"`
-	OpenTime  time.Time       `json:"open_time"`
-	Open      decimal.Decimal `json:"open"`
-	High      decimal.Decimal `json:"high"`
-	Low       decimal.Decimal `json:"low"`
-	Close     decimal.Decimal `json:"close"`
-	Volume    decimal.Decimal `json:"volume"`
-	Turnover  decimal.Decimal `json:"turnover"`
-	IsClosed  bool            `json:"is_closed"`
+	Exchange string          `json:"exchange"`
+	Category string          `json:"category"`
+	Symbol   string          `json:"symbol"`
+	Interval string          `json:"interval"`
+	OpenTime time.Time       `json:"open_time"`
+	Open     decimal.Decimal `json:"open"`
+	High     decimal.Decimal `json:"high"`
+	Low      decimal.Decimal `json:"low"`
+	Close    decimal.Decimal `json:"close"`
+	Volume   decimal.Decimal `json:"volume"`
+	Turnover decimal.Decimal `json:"turnover"`
+	IsClosed bool            `json:"is_closed"`
 }
 
 // ComputeDatasetHash calculates deterministic SHA256 of candles sequence

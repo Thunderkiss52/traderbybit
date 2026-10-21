@@ -137,6 +137,26 @@ func (d Decimal) String() string {
 	return sign + intPart + "." + decPart
 }
 
+// ScaledInt returns a copy of the unscaled integer value of the decimal.
+//
+// The value is the decimal number multiplied by 10^Scale, so it can be used for exact integer
+// arithmetic without a rational normalisation.
+func (d Decimal) ScaledInt() *big.Int {
+	if d.value == nil {
+		return new(big.Int)
+	}
+	return new(big.Int).Set(d.value)
+}
+
+// FromScaledInt builds a decimal from an unscaled integer value that is already expressed in the
+// decimal scale, so the resulting decimal equals value / 10^Scale.
+func FromScaledInt(value *big.Int) Decimal {
+	if value == nil {
+		return Zero()
+	}
+	return Decimal{value: new(big.Int).Set(value)}
+}
+
 func (d Decimal) ToRat() *big.Rat {
 	if d.value == nil {
 		return new(big.Rat)
@@ -149,6 +169,47 @@ func FromRat(r *big.Rat) Decimal {
 		return Zero()
 	}
 	return MustFromString(r.FloatString(Scale))
+}
+
+// RatQuantize rounds a rational to a fixed decimal scale using round-half-even,
+// mirroring PHP Brick\Math BigDecimal with an explicit internal scale (HalfEven).
+// Keeping the scale bounded prevents unbounded denominator growth (O(N^2)).
+func RatQuantize(r *big.Rat, scale int) *big.Rat {
+	if r == nil {
+		return new(big.Rat)
+	}
+	pow := new(big.Int).Exp(big.NewInt(10), big.NewInt(int64(scale)), nil)
+	scaled := new(big.Rat).Mul(r, new(big.Rat).SetInt(pow))
+
+	num := scaled.Num()
+	den := scaled.Denom()
+
+	q := new(big.Int)
+	rem := new(big.Int)
+	q.QuoRem(num, den, rem) // truncated toward zero
+	if rem.Sign() != 0 {
+		// compare 2*|rem| with den for half-even
+		twiceRem := new(big.Int).Abs(rem)
+		twiceRem.Lsh(twiceRem, 1)
+		cmp := twiceRem.Cmp(den)
+		roundUp := false
+		if cmp > 0 {
+			roundUp = true
+		} else if cmp == 0 {
+			// exactly half -> round to even
+			if q.Bit(0) == 1 {
+				roundUp = true
+			}
+		}
+		if roundUp {
+			if num.Sign() < 0 {
+				q.Sub(q, big.NewInt(1))
+			} else {
+				q.Add(q, big.NewInt(1))
+			}
+		}
+	}
+	return new(big.Rat).SetFrac(q, pow)
 }
 
 func (d Decimal) MarshalJSON() ([]byte, error) {

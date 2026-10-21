@@ -112,3 +112,17 @@ func TestCalculateBollingerBands(t *testing.T) {
 		t.Fatalf("expected upper band 100 with 0 stdDev, got %v", bb.Upper[19])
 	}
 }
+
+func TestCalculateRSIWilderReferenceParity(t *testing.T) {
+	closes := []decimal.Decimal{
+		decimal.MustFromString("44.34"), decimal.MustFromString("44.09"), decimal.MustFromString("44.15"),
+		decimal.MustFromString("43.61"), decimal.MustFromString("44.33"), decimal.MustFromString("44.83"),
+		decimal.MustFromString("45.10"), decimal.MustFromString("45.42"), decimal.MustFromString("45.84"),
+		decimal.MustFromString("46.08"), decimal.MustFromString("45.89"), decimal.MustFromString("46.03"),
+		decimal.MustFromString("45.61"), decimal.MustFromString("46.28"), decimal.MustFromString("46.28"),
+	}
+	rsi := CalculateRSI(closes, 14)
+	if rsi[14] == nil || rsi[14].String() != "70.46413502" {
+		t.Fatalf("RSI Wilder parity mismatch: expected 70.46413502, got %v", rsi[14])
+	}
+}

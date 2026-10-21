@@ -1,0 +1,78 @@
+{
+  "deliverable": "PROFIT-1_P-1_SLIPPAGE_ATTRIBUTION",
+  "spec": "VECTOR_AUTONOMOUS_PROFIT_RESEARCH_MASTER_SPEC_V1_EN.md v1.0",
+  "governing_spec": "VECTOR_PROFIT_1_Revision_2_1_Full_Spec.md Rev 2.1 §7",
+  "timestamp_utc": "2026-10-20T17:55:00Z",
+  "git": {
+    "head": "f2e3ace7b65a0d60f9cae4bd0c1070b4f3721c55",
+    "branch": "main",
+    "dirty_worktree": true,
+    "uncommitted_qim_preserved": true
+  },
+  "prohibitions_enforced": {
+    "live_trading": "STRICTLY_PROHIBITED",
+    "p3_rejected_signal_replay": "STRICTLY_PROHIBITED",
+    "real_exchange_credentials": "NONE",
+    "production_migrations": "NONE",
+    "git_commit_push": "NONE_WITHOUT_OPERATOR_APPROVAL",
+    "econom_resources_touched": false
+  },
+  "slippage_attribution_reproduction": {
+    "population_executions_count": 65,
+    "total_slippage_drag_usdt": 35.1732,
+    "total_reference_notional_usdt": 175866.0895,
+    "weighted_slippage_bps": 2.0000,
+    "double_deduction_prohibited": true,
+    "counterfactual_provenance": "HYPOTHETICAL",
+    "baseline_net_pnl_usdt": 37.5057,
+    "hypothetical_net_pnl_zero_slippage_usdt": 72.6789,
+    "disclaimer": "Hypothetical counterfactual for research calibration only. Commissions and funding held constant. Real-market liquidity friction cannot be eliminated."
+  },
+  "database_tables_created": [
+    "research_generations",
+    "slippage_attribution_fills",
+    "slippage_attribution"
+  ],
+  "invariants_verified": {
+    "read_only_get_endpoints_write_queries": 0,
+    "postgres_unique_constraints_enforced": true,
+    "idempotency_conflict_409_enforced": true,
+    "research_token_auth_enforced": true,
+    "primary_accounts_count": 8,
+    "trading_tables_zero_writes": true
+  },
+  "test_results": {
+    "phpunit": {
+      "command": "XDEBUG_MODE=off php artisan test --no-ansi",
+      "exit_code": 0,
+      "total_tests": 435,
+      "passed": 430,
+      "skipped": 5,
+      "failed": 0,
+      "assertions": 2685
+    },
+    "pint": {
+      "command": "vendor/bin/pint --test",
+      "exit_code": 0,
+      "result": "passed"
+    },
+    "frontend_node_tests": {
+      "command": "npm test",
+      "exit_code": 0,
+      "total_tests": 51,
+      "passed": 51,
+      "skipped": 0,
+      "failed": 0
+    },
+    "frontend_build": {
+      "command": "npm run build",
+      "exit_code": 0,
+      "artifact": "ProfitabilityResearchPage-BcIqO2oV.js"
+    },
+    "go_tests": {
+      "command": "go test ./...",
+      "exit_code": 0,
+      "result": "all passed"
+    }
+  }
+}

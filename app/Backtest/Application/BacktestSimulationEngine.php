@@ -61,7 +61,7 @@ final readonly class BacktestSimulationEngine
                 $bar = $this->bar($row, $at);
                 $lastBars[$symbol] = $bar;
                 foreach ($positions as $key => &$position) {
-                    if ($position['symbol'] !== $symbol || $position['status'] === 'CLOSED') {
+                    if ($position['symbol'] !== $symbol || ! in_array($position['status'], ['PENDING', 'OPEN', 'PARTIALLY_CLOSED'], true)) {
                         continue;
                     }
                     if ($position['status'] === 'PENDING') {
@@ -232,6 +232,12 @@ final readonly class BacktestSimulationEngine
 
     private function applyFunding(array &$position, DateTimeImmutable $at, PaperExecutionEngine $execution, BigDecimal &$equity): void
     {
+        // A position only accrues funding after it was actually filled. Never build a
+        // comparison query with a null operand: Laravel rejects `where(col, '>', null)`
+        // with "Illegal operator and value combination".
+        if (! isset($position['opened_at']) || ! $position['opened_at'] instanceof DateTimeImmutable) {
+            return;
+        }
         $events = MarketFundingEventRecord::query()->where(['exchange' => 'bybit', 'category' => 'linear', 'symbol' => $position['symbol']])
             ->where('funding_at', '>', $position['opened_at'])->where('funding_at', '<=', $at)->orderBy('funding_at')->get();
         foreach ($events as $event) {

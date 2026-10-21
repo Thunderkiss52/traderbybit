@@ -26,16 +26,16 @@ func DefaultWFOConfig() WFOConfig {
 }
 
 type FoldReport struct {
-	FoldIndex       int             `json:"fold_index"`
-	TrainCandles    int             `json:"train_candles"`
-	TestCandles     int             `json:"test_candles"`
-	TrainNetPnL     decimal.Decimal `json:"train_net_pnl"`
-	TestNetPnL      decimal.Decimal `json:"test_net_pnl"`
-	TrainWinRate    float64         `json:"train_win_rate"`
-	TestWinRate     float64         `json:"test_win_rate"`
-	TrainTrades     int             `json:"train_trades"`
-	TestTrades      int             `json:"test_trades"`
-	FoldEfficiency  float64         `json:"fold_efficiency"`
+	FoldIndex      int             `json:"fold_index"`
+	TrainCandles   int             `json:"train_candles"`
+	TestCandles    int             `json:"test_candles"`
+	TrainNetPnL    decimal.Decimal `json:"train_net_pnl"`
+	TestNetPnL     decimal.Decimal `json:"test_net_pnl"`
+	TrainWinRate   float64         `json:"train_win_rate"`
+	TestWinRate    float64         `json:"test_win_rate"`
+	TrainTrades    int             `json:"train_trades"`
+	TestTrades     int             `json:"test_trades"`
+	FoldEfficiency float64         `json:"fold_efficiency"`
 }
 
 type WFOResult struct {

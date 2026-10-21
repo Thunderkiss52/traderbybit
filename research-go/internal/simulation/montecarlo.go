@@ -38,16 +38,16 @@ type PercentileStats struct {
 }
 
 type MonteCarloResult struct {
-	TotalTrades        int             `json:"total_trades"`
-	Iterations         int             `json:"iterations"`
-	RandomSeed         int64           `json:"random_seed"`
-	StartingBalance    decimal.Decimal `json:"starting_balance"`
+	TotalTrades         int             `json:"total_trades"`
+	Iterations          int             `json:"iterations"`
+	RandomSeed          int64           `json:"random_seed"`
+	StartingBalance     decimal.Decimal `json:"starting_balance"`
 	DrawdownPercentiles PercentileStats `json:"drawdown_percentiles"`
-	FinalEquityP50     decimal.Decimal `json:"final_equity_p50"`
-	FinalEquityP5      decimal.Decimal `json:"final_equity_p5"`
-	FinalEquityP95     decimal.Decimal `json:"final_equity_p95"`
-	ProbabilityOfRuin  float64         `json:"probability_of_ruin"` // Fraction of paths hitting RuinThreshold
-	ExpectancyRange    [2]float64      `json:"expectancy_range_90ci"`
+	FinalEquityP50      decimal.Decimal `json:"final_equity_p50"`
+	FinalEquityP5       decimal.Decimal `json:"final_equity_p5"`
+	FinalEquityP95      decimal.Decimal `json:"final_equity_p95"`
+	ProbabilityOfRuin   float64         `json:"probability_of_ruin"` // Fraction of paths hitting RuinThreshold
+	ExpectancyRange     [2]float64      `json:"expectancy_range_90ci"`
 }
 
 // RunMonteCarlo executes deterministic block-bootstrap resampling on historical trades
@@ -136,15 +136,15 @@ func RunMonteCarlo(trades []backtest.Trade, cfg MonteCarloConfig) (res *MonteCar
 	probRuin := math.Round((float64(ruinCount)/float64(cfg.Iterations))*1000) / 1000
 
 	return &MonteCarloResult{
-		TotalTrades:        nTrades,
-		Iterations:         cfg.Iterations,
-		RandomSeed:         cfg.RandomSeed,
-		StartingBalance:    cfg.StartingBalance,
+		TotalTrades:         nTrades,
+		Iterations:          cfg.Iterations,
+		RandomSeed:          cfg.RandomSeed,
+		StartingBalance:     cfg.StartingBalance,
 		DrawdownPercentiles: ddStats,
-		FinalEquityP5:      decimal.FromFloat64(finalEquities[int(float64(len(finalEquities)-1)*0.05)]),
-		FinalEquityP50:     decimal.FromFloat64(finalEquities[int(float64(len(finalEquities)-1)*0.50)]),
-		FinalEquityP95:     decimal.FromFloat64(finalEquities[int(float64(len(finalEquities)-1)*0.95)]),
-		ProbabilityOfRuin:  probRuin,
+		FinalEquityP5:       decimal.FromFloat64(finalEquities[int(float64(len(finalEquities)-1)*0.05)]),
+		FinalEquityP50:      decimal.FromFloat64(finalEquities[int(float64(len(finalEquities)-1)*0.50)]),
+		FinalEquityP95:      decimal.FromFloat64(finalEquities[int(float64(len(finalEquities)-1)*0.95)]),
+		ProbabilityOfRuin:   probRuin,
 		ExpectancyRange: [2]float64{
 			getPercentile(finalEquities, 0.05),
 			getPercentile(finalEquities, 0.95),

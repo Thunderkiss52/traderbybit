@@ -36,4 +36,34 @@ return [
     ],
     'context_filter' => ['funding_extreme' => '0.001', 'open_interest_change_extreme' => '0.10'],
     'ranking' => ['profit_factor_min' => '1.3', 'max_drawdown_percent' => '10', 'minimum_trades' => 100],
+    'autonomy' => [
+        // Paper-only autonomy is OFF by default. It can only be enabled in an
+        // isolated local environment; it never places a real order and it never
+        // touches the eight primary paper accounts.
+        'paper_promotion_enabled' => (bool) env('RESEARCH_AUTONOMY_PAPER_PROMOTION_ENABLED', false),
+        'challenger_execution_enabled' => (bool) env('RESEARCH_AUTONOMY_CHALLENGER_EXECUTION_ENABLED', false),
+        // Releasing the paper-only kill switch requires an explicit
+        // authorisation; the default keeps it engaged.
+        'kill_switch_release_enabled' => (bool) env('RESEARCH_AUTONOMY_KILL_SWITCH_RELEASE_ENABLED', false),
+        'familywise_experiment_count' => 5,
+        'gates' => [
+            'min_valid_utc_days' => 20,
+            'min_ess' => 20,
+            'min_train_observations' => 300,
+            'min_oos_observations' => 100,
+            'min_shadow_observations' => 100,
+            'min_shadow_days' => 14,
+            'min_shadow_trades' => 50,
+            'min_net_improvement_lcb' => '0',
+            'max_drawdown_degradation_pct' => '0',
+            'max_concentration_degradation' => '0',
+        ],
+        'allocation' => [
+            // Correlation-aware budgeting: the strategies whose pairwise
+            // correlation reaches the threshold form a cluster and the total
+            // risk of a cluster is capped. The proposal is research-only.
+            'correlation_cluster_threshold' => 0.8,
+            'max_cluster_share' => 0.6,
+        ],
+    ],
 ];

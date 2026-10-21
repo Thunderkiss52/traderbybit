@@ -6,6 +6,7 @@ use App\Backtest\Console\CompareBacktestsCommand;
 use App\Backtest\Console\RunBacktestCommand;
 use App\Backtest\Console\WalkForwardCommand;
 use App\Http\Middleware\ApiRequestDiagnostics;
+use App\Http\Middleware\RequireResearchToken;
 use App\MarketData\Console\StreamCandlesCommand;
 use App\MarketData\Console\SyncCandlesCommand;
 use App\PaperTrading\Console\PaperAccountCommand;
@@ -35,6 +36,9 @@ return Application::configure(basePath: dirname(__DIR__))
     )
     ->withMiddleware(function (Middleware $middleware): void {
         $middleware->api(append: [ApiRequestDiagnostics::class]);
+        $middleware->alias([
+            'research.token' => RequireResearchToken::class,
+        ]);
     })
     ->withCommands([
         SyncCandlesCommand::class,

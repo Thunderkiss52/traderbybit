@@ -72,62 +72,124 @@ func CalculateRSI(closes []decimal.Decimal, period int) []*decimal.Decimal {
 		return result
 	}
 
-	gainSum := new(big.Rat)
-	lossSum := new(big.Rat)
+	const internalScale = 24
+
+	// The averages are kept as exact integers in the internal scale, so every step is an integer
+	// operation. The previous implementation used exact rationals, whose normalisation ran a GCD
+	// per bar and dominated the CPU profile of the research engine.
+	//
+	// scaleBridge converts a scale-8 price difference into the scale-24 average representation.
+	scaleBridge := new(big.Int).Exp(big.NewInt(10), big.NewInt(int64(internalScale-decimal.Scale)), nil)
+	scaleHundred := new(big.Int).Exp(big.NewInt(10), big.NewInt(int64(decimal.Scale)), nil)
+
+	// Seed with simple average over the first `period` movements (Wilder's smoothing),
+	// matching the PHP Decimal internal scale (24) and HalfEven rounding.
+	gainSum := new(big.Int)
+	lossSum := new(big.Int)
 
 	for i := 1; i <= period; i++ {
 		diff := closes[i].Sub(closes[i-1])
 		if diff.IsPositive() {
-			gainSum.Add(gainSum, diff.ToRat())
+			gainSum.Add(gainSum, new(big.Int).Mul(diff.ScaledInt(), scaleBridge))
 		} else if diff.IsNegative() {
-			lossSum.Add(lossSum, diff.Neg().ToRat())
+			lossSum.Add(lossSum, new(big.Int).Mul(diff.Neg().ScaledInt(), scaleBridge))
 		}
 	}
 
-	periodRat := new(big.Rat).SetInt64(int64(period))
-	avgGain := new(big.Rat).Quo(gainSum, periodRat)
-	avgLoss := new(big.Rat).Quo(lossSum, periodRat)
+	periodBig := big.NewInt(int64(period))
+	avgGain := roundHalfEvenDiv(gainSum, periodBig)
+	avgLoss := roundHalfEvenDiv(lossSum, periodBig)
 
-	calcRSI := func(ag, al *big.Rat) decimal.Decimal {
+	calcRSI := func(ag, al *big.Int) decimal.Decimal {
 		if ag.Sign() == 0 && al.Sign() == 0 {
 			return decimal.FromInt64(50)
 		}
 		if al.Sign() == 0 {
 			return decimal.FromInt64(100)
 		}
-		rs := new(big.Rat).Quo(ag, al)
-		onePlusRs := new(big.Rat).Add(new(big.Rat).SetInt64(1), rs)
-		hundredDiv := new(big.Rat).Quo(new(big.Rat).SetInt64(100), onePlusRs)
-		rsiVal := new(big.Rat).Sub(new(big.Rat).SetInt64(100), hundredDiv)
-		return decimal.FromRat(rsiVal)
+		// RSI = 100 * ag / (ag + al). The rational is exact, so only the final rounding to the
+		// decimal scale is left, with the same half away from zero rule as the rational path.
+		den := new(big.Int).Add(ag, al)
+		num := new(big.Int).Mul(ag, big.NewInt(100))
+		num.Mul(num, scaleHundred)
+		return decimal.FromScaledInt(roundHalfAwayDiv(num, den))
 	}
 
 	firstRsi := calcRSI(avgGain, avgLoss)
 	result[period] = &firstRsi
 
-	periodMinusOne := new(big.Rat).SetInt64(int64(period - 1))
+	periodMinusOne := big.NewInt(int64(period - 1))
 
 	for i := period + 1; i < count; i++ {
 		diff := closes[i].Sub(closes[i-1])
-		currentGain := new(big.Rat)
-		currentLoss := new(big.Rat)
+		currentGain := new(big.Int)
+		currentLoss := new(big.Int)
 		if diff.IsPositive() {
-			currentGain = diff.ToRat()
+			currentGain.Mul(diff.ScaledInt(), scaleBridge)
 		} else if diff.IsNegative() {
-			currentLoss = diff.Neg().ToRat()
+			currentLoss.Mul(diff.Neg().ScaledInt(), scaleBridge)
 		}
 
-		numGain := new(big.Rat).Add(new(big.Rat).Mul(avgGain, periodMinusOne), currentGain)
-		avgGain = new(big.Rat).Quo(numGain, periodRat)
+		numGain := new(big.Int).Mul(avgGain, periodMinusOne)
+		numGain.Add(numGain, currentGain)
+		avgGain = roundHalfEvenDiv(numGain, periodBig)
 
-		numLoss := new(big.Rat).Add(new(big.Rat).Mul(avgLoss, periodMinusOne), currentLoss)
-		avgLoss = new(big.Rat).Quo(numLoss, periodRat)
+		numLoss := new(big.Int).Mul(avgLoss, periodMinusOne)
+		numLoss.Add(numLoss, currentLoss)
+		avgLoss = roundHalfEvenDiv(numLoss, periodBig)
 
 		val := calcRSI(avgGain, avgLoss)
 		result[i] = &val
 	}
 
 	return result
+}
+
+// roundHalfEvenDiv divides x by the positive divisor d and rounds the result to the nearest
+// integer with halves rounded to even, mirroring the rational quantisation of the PHP decimal
+// implementation.
+func roundHalfEvenDiv(x *big.Int, d *big.Int) *big.Int {
+	q := new(big.Int)
+	rem := new(big.Int)
+	q.QuoRem(x, d, rem)
+	if rem.Sign() == 0 {
+		return q
+	}
+
+	twiceRem := new(big.Int).Abs(rem)
+	twiceRem.Lsh(twiceRem, 1)
+	cmp := twiceRem.Cmp(d)
+	roundUp := false
+	if cmp > 0 {
+		roundUp = true
+	} else if cmp == 0 && q.Bit(0) == 1 {
+		roundUp = true
+	}
+	if roundUp {
+		if x.Sign() < 0 {
+			q.Sub(q, big.NewInt(1))
+		} else {
+			q.Add(q, big.NewInt(1))
+		}
+	}
+	return q
+}
+
+// roundHalfAwayDiv divides the positive numerator by the positive denominator and rounds the
+// result to the nearest integer with halves rounded away from zero, mirroring the rounding of the
+// rational to string conversion of the big integer package.
+func roundHalfAwayDiv(num *big.Int, den *big.Int) *big.Int {
+	q := new(big.Int)
+	rem := new(big.Int)
+	q.QuoRem(num, den, rem)
+	if rem.Sign() == 0 {
+		return q
+	}
+	twiceRem := new(big.Int).Lsh(rem, 1)
+	if twiceRem.Cmp(den) >= 0 {
+		q.Add(q, big.NewInt(1))
+	}
+	return q
 }
 
 // CalculateATR computes Average True Range matching PHP implementation

@@ -134,10 +134,10 @@ func TestExecuteJob_RejectsUnsupportedKind(t *testing.T) {
 	runner := NewRunner(db, "test-worker-1")
 
 	req := &contracts.JobRequest{
-		JobID:    "job-model-train-123",
-		Kind:     contracts.KindModelTrain,
-		Payload:  map[string]interface{}{"symbol": "BTCUSDT"},
-		Limits:   contracts.JobLimits{MaxRows: 100},
+		JobID:   "job-model-train-123",
+		Kind:    contracts.KindModelTrain,
+		Payload: map[string]interface{}{"symbol": "BTCUSDT"},
+		Limits:  contracts.JobLimits{MaxRows: 100},
 	}
 
 	err := runner.ExecuteJob(context.Background(), req, 1)

@@ -32,17 +32,17 @@ func generatePatternCandles(count int) []datasets.Candle {
 
 		price = close
 		candles[i] = datasets.Candle{
-			Exchange:  "bybit",
-			Category:  "linear",
-			Symbol:    "BTCUSDT",
-			Interval:  "5",
-			OpenTime:  baseTime.Add(time.Duration(i*5) * time.Minute),
-			Open:      decimal.FromFloat64(open),
-			High:      decimal.FromFloat64(high),
-			Low:       decimal.FromFloat64(low),
-			Close:     decimal.FromFloat64(close),
-			Volume:    decimal.FromFloat64(30.0),
-			IsClosed:  true,
+			Exchange: "bybit",
+			Category: "linear",
+			Symbol:   "BTCUSDT",
+			Interval: "5",
+			OpenTime: baseTime.Add(time.Duration(i*5) * time.Minute),
+			Open:     decimal.FromFloat64(open),
+			High:     decimal.FromFloat64(high),
+			Low:      decimal.FromFloat64(low),
+			Close:    decimal.FromFloat64(close),
+			Volume:   decimal.FromFloat64(30.0),
+			IsClosed: true,
 		}
 	}
 	return candles

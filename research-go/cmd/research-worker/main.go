@@ -47,18 +47,18 @@ func generateSyntheticCandles(count int) []datasets.Candle {
 
 		price = close
 		candles[i] = datasets.Candle{
-			Exchange:  "bybit",
-			Category:  "linear",
-			Symbol:    "BTCUSDT",
-			Interval:  "5",
-			OpenTime:  baseTime.Add(time.Duration(i*5) * time.Minute),
-			Open:      decimal.FromFloat64(open),
-			High:      decimal.FromFloat64(high),
-			Low:       decimal.FromFloat64(low),
-			Close:     decimal.FromFloat64(close),
-			Volume:    decimal.FromFloat64(vol),
-			Turnover:  decimal.FromFloat64(vol * close),
-			IsClosed:  true,
+			Exchange: "bybit",
+			Category: "linear",
+			Symbol:   "BTCUSDT",
+			Interval: "5",
+			OpenTime: baseTime.Add(time.Duration(i*5) * time.Minute),
+			Open:     decimal.FromFloat64(open),
+			High:     decimal.FromFloat64(high),
+			Low:      decimal.FromFloat64(low),
+			Close:    decimal.FromFloat64(close),
+			Volume:   decimal.FromFloat64(vol),
+			Turnover: decimal.FromFloat64(vol * close),
+			IsClosed: true,
 		}
 	}
 	return candles

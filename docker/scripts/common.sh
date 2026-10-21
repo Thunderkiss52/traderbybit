@@ -175,11 +175,12 @@ wait_service_ready() {
 
 is_ancestor_pid() {
     local target_pid="$1"
+    [[ "${target_pid}" =~ ^[0-9]+$ ]] || return 1
     local cur_pid="$$"
     while [[ -n "${cur_pid}" && "${cur_pid}" -ne 0 && "${cur_pid}" -ne 1 ]]; do
         local ppid
         ppid="$(awk '{print $4}' "/proc/${cur_pid}/stat" 2>/dev/null || echo "")"
-        [[ -n "${ppid}" ]] || break
+        [[ "${ppid}" =~ ^[0-9]+$ ]] || break
         if [[ "${ppid}" -eq "${target_pid}" ]]; then
             return 0
         fi

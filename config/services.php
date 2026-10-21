@@ -35,4 +35,6 @@ return [
         ],
     ],
 
+    'research_api_token' => env('RESEARCH_API_TOKEN'),
+
 ];

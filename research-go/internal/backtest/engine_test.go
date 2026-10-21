@@ -1,6 +1,9 @@
 package backtest
 
 import (
+	"crypto/sha256"
+	"encoding/hex"
+	"fmt"
 	"math/rand"
 	"testing"
 	"time"
@@ -32,17 +35,17 @@ func makeSyntheticCandles(count int) []datasets.Candle {
 
 		price = close
 		candles[i] = datasets.Candle{
-			Exchange:  "bybit",
-			Category:  "linear",
-			Symbol:    "BTCUSDT",
-			Interval:  "5",
-			OpenTime:  baseTime.Add(time.Duration(i*5) * time.Minute),
-			Open:      decimal.FromFloat64(open),
-			High:      decimal.FromFloat64(high),
-			Low:       decimal.FromFloat64(low),
-			Close:     decimal.FromFloat64(close),
-			Volume:    decimal.FromFloat64(25.0),
-			IsClosed:  true,
+			Exchange: "bybit",
+			Category: "linear",
+			Symbol:   "BTCUSDT",
+			Interval: "5",
+			OpenTime: baseTime.Add(time.Duration(i*5) * time.Minute),
+			Open:     decimal.FromFloat64(open),
+			High:     decimal.FromFloat64(high),
+			Low:      decimal.FromFloat64(low),
+			Close:    decimal.FromFloat64(close),
+			Volume:   decimal.FromFloat64(25.0),
+			IsClosed: true,
 		}
 	}
 	return candles
@@ -81,5 +84,31 @@ func TestBacktestInsufficientWarmup(t *testing.T) {
 	_, err := engine.Run(candles, "trend_pullback", nil)
 	if err == nil {
 		t.Fatalf("expected error for insufficient warmup candles (<50)")
+	}
+}
+
+// TestBacktestGoldenParityHash locks the full trade-event output hash. RSI
+// rational-growth fix must preserve exact trade events, prices and PnL.
+func TestBacktestGoldenParityHash(t *testing.T) {
+	candles := makeSyntheticCandles(300)
+	engine := NewEngine(DefaultConfig())
+	report, err := engine.Run(candles, "trend_pullback", nil)
+	if err != nil {
+		t.Fatalf("run failed: %v", err)
+	}
+	if report.NetPnL.String() != "-3224.17089853" {
+		t.Fatalf("NetPnL parity mismatch: got %s", report.NetPnL.String())
+	}
+	if report.TotalTrades != 21 {
+		t.Fatalf("trades parity mismatch: got %d", report.TotalTrades)
+	}
+	h := sha256.New()
+	for _, tr := range report.Trades {
+		fmt.Fprintf(h, "%d|%s|%s|%s|%s|%s|%s|%s|%s\n", tr.ID, tr.Side, tr.EntryTime.UTC().Format("2006-01-02T15:04:05Z"), tr.ExitTime.UTC().Format("2006-01-02T15:04:05Z"), tr.EntryPrice.String(), tr.ExitPrice.String(), tr.Quantity.String(), tr.NetPnL.String(), tr.ExitReason)
+	}
+	got := hex.EncodeToString(h.Sum(nil))
+	want := "670795e1e0b269515d6ea0e9fdf0af098fb9cee9a12b3a58b54009f72645f83f"
+	if got != want {
+		t.Fatalf("golden trade-event hash mismatch: got %s want %s", got, want)
 	}
 }
