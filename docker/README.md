@@ -2,7 +2,7 @@
 
 Конфигурация предназначена для Ubuntu 24.04 с Docker Engine и Compose v2. Она не меняет глобальный Nginx, контейнеры или volumes других проектов.
 
-Production image использует PHP 8.4 FPM: текущий `composer.lock` содержит Symfony 8.1, которому требуется PHP 8.4. Node.js присутствует только в build stage и в runtime-контейнеры не попадает.
+The production image uses PHP 8.5.12 FPM on Alpine 3.24. All PHP workers and Composer builds share this runtime; startup rejects a different PHP version or missing required extensions. Node.js is confined to the frontend build stage. Use the `test` Docker target for local Composer, Artisan and PHPUnit commands instead of an older host PHP executable.
 
 ## Изоляция
 

@@ -7,13 +7,13 @@ RUN npm ci --no-audit --no-fund
 COPY frontend/ ./
 RUN npm run build
 
-FROM php:8.4-fpm-alpine AS php-extensions
-RUN apk add --no-cache $PHPIZE_DEPS postgresql-dev icu-dev libzip-dev linux-headers \
-    && docker-php-ext-install -j"$(nproc)" pdo_pgsql intl zip pcntl opcache \
-    && pecl install redis \
+FROM php:8.5.12-fpm-alpine3.24 AS php-extensions
+RUN apk add --no-cache $PHPIZE_DEPS libpq-dev icu-dev libzip-dev linux-headers \
+    && docker-php-ext-install -j"$(nproc)" pdo_pgsql intl zip pcntl bcmath \
+    && pecl install redis-6.3.0 \
     && docker-php-ext-enable redis
 
-FROM php:8.4-fpm-alpine AS php-base
+FROM php:8.5.12-fpm-alpine3.24 AS php-base
 ARG APP_UID=10001
 ARG APP_GID=10001
 RUN apk add --no-cache ca-certificates curl su-exec icu-libs libpq libzip \
@@ -24,9 +24,15 @@ COPY --from=php-extensions /usr/local/lib/php/extensions/ /usr/local/lib/php/ext
 COPY --from=php-extensions /usr/local/etc/php/conf.d/ /usr/local/etc/php/conf.d/
 COPY docker/php/php.ini /usr/local/etc/php/conf.d/99-production.ini
 COPY docker/php/entrypoint.sh /usr/local/bin/bybit-entrypoint
+COPY scripts/verify-php-runtime.php /usr/local/bin/verify-php-runtime.php
+RUN php /usr/local/bin/verify-php-runtime.php && php-fpm -v | grep -F 'PHP 8.5.12'
 RUN chmod 0755 /usr/local/bin/bybit-entrypoint
 WORKDIR /var/www/html
 ENTRYPOINT ["bybit-entrypoint"]
+
+FROM php-base AS test
+COPY --from=composer:2.8 /usr/bin/composer /usr/local/bin/composer
+RUN apk add --no-cache git unzip bash python3 go
 
 FROM php-base AS vendor
 COPY --from=composer:2.8 /usr/bin/composer /usr/local/bin/composer

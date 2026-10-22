@@ -1,6 +1,8 @@
 #!/bin/sh
 set -eu
 
+php /usr/local/bin/verify-php-runtime.php >/dev/null
+
 install -d -o app -g app \
     /var/www/html/storage/framework/cache \
     /var/www/html/storage/framework/sessions \
