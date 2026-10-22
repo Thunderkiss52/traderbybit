@@ -38,6 +38,7 @@ use App\Strategy\Infrastructure\Persistence\SignalRecord;
 use App\Strategy\Infrastructure\Persistence\StrategyObservationRecord;
 use Brick\Math\BigDecimal;
 use Carbon\CarbonImmutable;
+use Carbon\CarbonInterface;
 use DateTimeImmutable;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -287,7 +288,7 @@ final class ResearchController extends Controller
         $viewMode = (string) $r->input('view_mode', 'today');
 
         if (! $r->filled('to') && ! $r->filled('from')) {
-            $cacheKey = "market:analysis:v5:{$symbol}:{$interval}:{$viewMode}:{$limit}";
+            $cacheKey = "market:analysis:v6:{$symbol}:{$interval}:{$viewMode}:{$limit}";
 
             return $this->ok(Cache::remember($cacheKey, 10, fn (): array => $this->buildAnalysisPayload($r, $symbol, $interval, $engine)));
         }
@@ -295,6 +296,13 @@ final class ResearchController extends Controller
         return $this->ok($this->buildAnalysisPayload($r, $symbol, $interval, $engine));
     }
 
+    /**
+     * Builds a payload that only contains scalars and arrays.
+     *
+     * The result is cached, and the cache stores refuse to unserialise PHP objects
+     * (config/cache.php serializable_classes = false), so every nested model must be
+     * converted to a plain array before it reaches the cache.
+     */
     private function buildAnalysisPayload(MarketSeriesRequest $r, string $symbol, string $interval, IndicatorEngine $engine): array
     {
         $rows = $this->marketRows($r, $symbol);
@@ -302,24 +310,27 @@ final class ResearchController extends Controller
         $levelObservation = StrategyObservationRecord::query()->where('symbol', $symbol)
             ->when($through, fn ($query) => $query->where('decision_time', '<=', $through))
             ->latest('decision_time')->first(['analysis']);
+        $context = MarketContextRecord::query()->where('symbol', $symbol)
+            ->when($through, fn ($query) => $query->where('observed_at', '<=', $through))
+            ->latest('observed_at')->first();
 
         return [
-            'candles' => $rows,
+            'candles' => $rows->map(static fn (CandleRecord $candle): array => $candle->toArray())->values()->all(),
             'indicators' => $this->indicatorPayload($rows, $interval, $engine),
-            'context' => MarketContextRecord::query()->where('symbol', $symbol)
-                ->when($through, fn ($query) => $query->where('observed_at', '<=', $through))
-                ->latest('observed_at')->first(),
+            'context' => $context?->toArray(),
             'level_interaction' => data_get($levelObservation, 'analysis.level_interaction'),
             'candlestick_patterns' => CandlestickPatternOccurrenceRecord::query()->where('symbol', $symbol)
                 ->where('timeframe', $interval)
                 ->when($rows->isNotEmpty(), fn ($query) => $query->where('detected_at', '>=', $rows->first()->open_time)
                     ->where('detected_at', '<=', $rows->last()->open_time->addMinutes((int) $interval)))
-                ->latest('detected_at')->limit(100)->get(['id', 'pattern_name', 'pattern_type', 'direction', 'formation_time', 'detected_at', 'timeframe', 'version']),
+                ->latest('detected_at')->limit(100)->get(['id', 'pattern_name', 'pattern_type', 'direction', 'formation_time', 'detected_at', 'timeframe', 'version'])
+                ->map(static fn (CandlestickPatternOccurrenceRecord $pattern): array => $pattern->toArray())->values()->all(),
             'signals' => SignalRecord::query()->where('symbol', $symbol)->where('timeframe', $interval)
                 ->when($rows->isNotEmpty(), fn ($query) => $query->where('decision_time', '>=', $rows->first()->open_time)
                     ->where('decision_time', '<=', $through))
                 ->latest('decision_time')->latest('id')->limit(10)
-                ->get(['id', 'symbol', 'side', 'quality_class', 'decision_time', 'candle_close_time', 'entry_low', 'entry_high', 'stop_loss', 'take_profit_1', 'take_profit_2']),
+                ->get(['id', 'symbol', 'side', 'quality_class', 'decision_time', 'candle_close_time', 'entry_low', 'entry_high', 'stop_loss', 'take_profit_1', 'take_profit_2'])
+                ->map(static fn (SignalRecord $signal): array => $signal->toArray())->values()->all(),
         ];
     }
 
@@ -383,12 +394,31 @@ final class ResearchController extends Controller
         };
 
         if (! $request->filled('to') && ! $request->filled('from')) {
-            $cacheKey = "market:candles:v4:{$symbol}:{$interval}:{$viewMode}:{$limit}:".$fromTime->format('Ymd');
+            $cacheKey = "market:candles:v5:{$symbol}:{$interval}:{$viewMode}:{$limit}:".$fromTime->format('Ymd');
+            $cached = Cache::get($cacheKey);
 
-            return Cache::remember($cacheKey, 5, $fetcher);
+            if (is_array($cached)) {
+                return $this->hydrateCandles($cached);
+            }
+
+            $rows = $fetcher();
+
+            Cache::put($cacheKey, $rows->map(static fn (CandleRecord $candle): array => $candle->getAttributes())->all(), 5);
+
+            return $rows;
         }
 
         return $fetcher();
+    }
+
+    /**
+     * Restores candle models from a cached payload of raw attributes.
+     *
+     * @param  array<int, array<string, mixed>>  $rows
+     */
+    private function hydrateCandles(array $rows): Collection
+    {
+        return CandleRecord::query()->hydrate($rows);
     }
 
     private function indicatorPayload(Collection $rows, string $interval, IndicatorEngine $engine): array
@@ -411,7 +441,12 @@ final class ResearchController extends Controller
             return json_decode(json_encode($calculated, JSON_THROW_ON_ERROR), true);
         });
 
-        return ['times' => $rows->pluck('open_time'), 'series' => $series];
+        return [
+            'times' => $rows->pluck('open_time')
+                ->map(static fn (mixed $openTime): ?string => $openTime instanceof CarbonInterface ? $openTime->toISOString() : null)
+                ->values()->all(),
+            'series' => $series,
+        ];
     }
 
     public function context(string $symbol): ResearchResource
