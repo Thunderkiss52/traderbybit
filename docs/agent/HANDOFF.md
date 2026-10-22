@@ -16,8 +16,9 @@ Deliver verified PHP **8.5.12** and latest compatible Laravel **13.x**, preservi
 | 3 compatibility | `4ee1358` | Go benchmark unblocked; cache object-serialisation bug fixed + regression test |
 | 4 security | `39c5078` | Runtime/transport hardening, origin/CSRF protection, nginx 1.30.6, Trivy 0 HIGH/CRITICAL |
 | 5 business regression | `d461033` | Ledger guard env fix; full suite 643 tests / 3,805 assertions, 0 failures; Go, scheduler, queue, frontend verified |
+| 6 Docker/CI/endpoints | `5b32dee` | Go image 1.27/Alpine 3.24 (Trivy 29 → 0); isolated 7-service Compose smoke; CI reviewed + simulated 643/3,513, 0 failures; 118 routes inventoried |
 
-Current stage: **6 Docker/CI/endpoints**. Stage 7 three final verification passes remain incomplete. No release readiness certification.
+Current stage: **7 final verification** (three recorded passes). No release readiness certification.
 
 ## Stage 3 evidence (committed `4ee1358`)
 
@@ -52,6 +53,16 @@ Current stage: **6 Docker/CI/endpoints**. Stage 7 three final verification passe
 - Safety: no order-placement code or Bybit API keys exist; all DB work was against isolated `bybit_test`; eight primary accounts/history untouched; no VECTOR work.
 - Report: `docs/security/php-85-laravel-13-business-regression.md`.
 
+## Stage 6 evidence (committed `5b32dee`)
+
+- Runtime images: `traderbybit-php85-app:local` reports PHP 8.5.12 / Laravel 13.38.0; web image nginx 1.30.6 (Alpine 3.24.3); `traderbybit-php85-research-worker:local` on Alpine 3.24.3, `--standalone` benchmark exits 0.
+- Defect fixed: `docker/go/Dockerfile` `golang:1.21-alpine`/`alpine:3.19` → `golang:1.27-alpine`/`alpine:3.24`; Trivy baseline 29 HIGH/CRITICAL (1 CRITICAL, 26 HIGH Go stdlib 1.21.13, 2 HIGH musl) → **0** (`evidence/trivy-go-baseline.json`, `evidence/trivy-go-fixed.json`, `stage6-go-image.log`).
+- Isolated stack (project `traderbybit-php85-smoke`, port 18098, own volumes): postgres, redis, app, web, queue, scheduler, audit-worker all healthy; migrations applied (`stage6-compose-up.log`, `stage6-migrate.log`). Teardown with `down -v` left no containers/volumes/networks (`stage6-compose-down.log`).
+- Live HTTP (`stage6-http-smoke.log`): `/up` 200; dashboard 401/200 with `schema_version=1.0.0` and `research_mode=true`; invalid backtest 422 with `X-Request-ID`; QIM flag off 503 `FEATURE_DISABLED`; foreign-origin preflight 204 without ACAO; audit export 202 → audit-worker `GenerateAuditExportJob` → READY (416,802 B) → signed download 200 with 35 CSV/JSON files (`signals.csv` etc.), unsigned 403. Queue worker processed scheduler jobs; scheduler runs 22 tasks.
+- CI review (not triggered, unmodified): single `deploy.yml`, `workflow_dispatch` only; jobs backend-tests (PHP 8.5.12/sqlite), frontend-tests (Node 22), publish-images (app+web), deploy (SSH). CI-equivalent run (no DB, no network): **643 tests / 3,513 assertions, 0 failures, 35 skipped, exit 0** (`stage6-ci-simulation.log`). Findings: no push/PR CI gate; CI skips all PostgreSQL integration tests (no service); Go image not published by CI.
+- Routes (`stage6-routes.json`): 118 total, 114 API (86 GET, 31 POST, 1 PUT); 12 research-token, 1 signed, 9 QIM-gated. Frontend: 39 unique API calls, 38 exact matches; one dynamic action path (`experiments/{id}/{name}`) matches registered actions. Client-side table CSV export has no automated test (gap).
+- Report: `docs/security/php-85-laravel-13-docker-ci-endpoints.md`.
+
 ## Earlier evidence still valid
 
 - `docker/php/Dockerfile`: pinned PHP stages, Redis 6.3.0, bcmath, built-in OPcache, test-only Go/Python/Bash tools. `scripts/verify-php-runtime.php`, entrypoint fail closed on incorrect PHP/extensions.
@@ -63,7 +74,7 @@ Current stage: **6 Docker/CI/endpoints**. Stage 7 three final verification passe
 
 - Full suite note: with the isolated Postgres reachable, the default run now executes the PostgreSQL integration suites (except the Go worker, skipped on sqlite) and the strict `bybit_test` guard. CI must still run the explicit `RUN_DB=bybit_test` integration job. Keep `cache.serializable_classes=false`, JSON sessions and cache names/prefixes.
 - Trivy is not a repository dependency: the binary was downloaded to ignored `/tmp/opencode/trivy/trivy` (cache `/tmp/opencode/trivy/cache`). Re-download/verify before relying on it after a host restart; image scans reflect local builds, re-scan in CI on release.
-- Stage 6 (next): inventory 118 registered routes (114 API); existing `CompleteApiEndpointAuditTest` only tests 41 GETs despite its name. Extend non-deploying CI gates, build app/web/Go, isolated FPM/Nginx/Redis/queue/scheduler smoke tests.
+- Stage 6 closed; remaining gaps are CI coverage (no push/PR gate, integration tests skip in CI, Go image not published) and the untested client-side CSV export — documented, not changed (operator-owned pipeline).
 - Stage 7: three recorded full passes (compatibility/regression/final); exact counts/skips, PHP lint/Pint, Composer, frontend, containers, smoke/security. Write final report with commits, remaining risks, rollback. Do not certify incomplete gates.
 
 ## Local resources and commands
@@ -71,7 +82,7 @@ Current stage: **6 Docker/CI/endpoints**. Stage 7 three final verification passe
 All resources below were created by this task; do not inspect/mutate other projects. `econom-group-*`, `bybit-signals-test-*`, `toolma-bot` and the shared builders belong to someone else — leave untouched.
 
 - Buildx builder: `traderbybit-php85-20261022` (docker-container), container `buildx_buildkit_traderbybit-php85-202610220`.
-- Images: `traderbybit-php85-test:local` (PHP 8.5.12 + Go); `traderbybit-php85-app:local` (rebuilt from current source at stage 4); `traderbybit-php85-web:local` (nginx 1.30.6).
+- Images: `traderbybit-php85-test:local` (PHP 8.5.12 + Go); `traderbybit-php85-app:local` (current source); `traderbybit-php85-web:local` (nginx 1.30.6); `traderbybit-php85-research-worker:local` (Go 1.27, Alpine 3.24.3).
 - Network `traderbybit-php85-testnet`; containers `traderbybit-php85-postgres` (tmpfs DB `bybit_test`) and `traderbybit-php85-redis`. No host ports, no aliases — use the full container names (`traderbybit-php85-postgres`, `traderbybit-php85-redis`); `run.py` was corrected accordingly.
 - PostgreSQL migrations applied to this DB; test role `bybit_signals` created for QIM permission tests. Test credentials confined to ignored runner.
 - `reports/php85-upgrade/run.py` syncs source into `reports/php85-upgrade/workspace`, excludes `.env`, `docs/`, `reports/`, `VECTOR_*` and `research-go/bin/`, and runs a disposable PHP test container as host UID. `RUN_DB=bybit_test` adds pgsql env overrides; `CONTRACT_LABEL` is forwarded for contract dumps. Vendor installed in the workspace; static Go binary persists there. No Docker socket mounted.
