@@ -35,3 +35,11 @@ Discovery date: 2026-10-22. Baseline commit: `e99c55010012759fb2355481df3701f044
 7. Record three full verification passes, exact counts/skips/failures, image identities, endpoint evidence and local commits. Baseline logs and subsequent evidence live under `reports/php85-upgrade`.
 
 No production runtime was inspected; production versions, data and performance remain unverified. Image pinning alone is not acceptance: built binaries and application behavior must pass verification. Existing user data, eight-account safeguards and current strategy inventory must be preserved.
+
+## Stage 1 and 2 results
+
+Both application and test targets built locally with official PHP 8.5.12 CLI/FPM and 21 required extensions loaded (Redis 6.3.0, zip 1.22.8). The runtime gate rejected host PHP 8.4.24. PHP 8.5's built-in OPcache replaces the old explicit extension compilation. Test-only Go tooling supports the existing comparative benchmark. Isolated PostgreSQL uses a new tmpfs-backed container; no existing database is connected.
+
+Composer update ran in the PHP 8.5.12 test container with minimal dependency changes: Laravel **13.36.0 -> 13.38.0**, PHPUnit **12.5.39 -> 12.5.40**; other package versions were retained. Root PHP requirement is `~8.5.12`, resolution platform `8.5.12`, and platform checks include extensions. Predis is constrained to compatible 3.x (`^3.7`) instead of `*`. No platform requirement was ignored.
+
+`composer validate --strict`, `composer install`, `composer check-platform-reqs`, `composer audit --locked` and `php artisan --version` all exited 0 under target PHP. Audit found no advisories or abandoned packages after retrying a network timeout. Logs: `reports/php85-upgrade/{runtime-app-stage1,stage2-checks,composer-update}.log`. Engine remediation is established by the official advisory's patched-version list and actual binary verification; no RCE exploit was executed.
