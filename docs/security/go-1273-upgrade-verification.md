@@ -75,7 +75,7 @@ Baseline before the PHP migration stage was 29 HIGH/CRITICAL for the Go worker (
 ## Known warnings and limitations
 
 - `research-go/backtest.test` was a tracked, unreferenced go1.18.1 test binary. Removed from Git in `fccf38e`; `/research-go/*.test` is ignored as of `037dcc8`. The required `research-go/bin/research-worker` artifact was rebuilt with Go 1.27.3 and is preserved.
-- The Go toolchain in the deployment workflow is pinned to 1.27.3 (for Go-dependent PHP tests); dedicated Go unit tests run in the new non-deploying `CI` workflow (`.github/workflows/ci.yml`) on pushes to `main` and pull requests.
+- The Go toolchain in the deployment workflow is pinned to 1.27.3 (for Go-dependent PHP tests); the `go-tests` job in `deploy.yml` runs `go mod verify`, build, vet, gofmt, tests and the race detector, and gates `backend-tests`/`frontend-tests`, image publishing and deployment. `deploy.yml` remains the only workflow and is `workflow_dispatch`-only; the interim `ci.yml` was removed.
 - The deploy workflow was not dispatched; the VPS build path was not exercised here.
 - The first `docker buildx` run of the Go image failed once at `go mod download` (transient network); the retry succeeded and the image was verified by metadata and execution.
 
@@ -85,7 +85,7 @@ Verification of the final cleanup: local run of the new CI steps with Go 1.27.3 
 
 - `2acf3e8` — `chore(go): pin toolchain and builders to Go 1.27.3` (module, Dockerfiles, CI setup-go)
 - `969fe31` — `chore(go): rebuild tracked research worker with Go 1.27.3`
-- `fccf38e` — `ci: add non-deploying Go 1.27.3 verification workflow` (also removed the stale test binary)
+- `fccf38e` — `ci: add non-deploying Go 1.27.3 verification workflow` (also removed the stale test binary; the workflow was later folded into `deploy.yml` as the `go-tests` job)
 - `037dcc8` — `chore(go): ignore compiled Go test artifacts`
 - `8c9ed49` — `docs: record Go 1.27.3 cleanup and CI integration`
 
