@@ -15,8 +15,9 @@ Deliver verified PHP **8.5.12** and latest compatible Laravel **13.x**, preservi
 | 2 dependencies | `4be18be` | Laravel 13.36.0 → 13.38.0; PHPUnit 12.5.39 → 12.5.40; other package versions retained |
 | 3 compatibility | `4ee1358` | Go benchmark unblocked; cache object-serialisation bug fixed + regression test |
 | 4 security | `39c5078` | Runtime/transport hardening, origin/CSRF protection, nginx 1.30.6, Trivy 0 HIGH/CRITICAL |
+| 5 business regression | `d461033` | Ledger guard env fix; full suite 643 tests / 3,805 assertions, 0 failures; Go, scheduler, queue, frontend verified |
 
-Current stage: **5 business regression**. Stages 6 Docker/CI/endpoints and 7 three final verification passes remain incomplete. No release readiness certification.
+Current stage: **6 Docker/CI/endpoints**. Stage 7 three final verification passes remain incomplete. No release readiness certification.
 
 ## Stage 3 evidence (committed `4ee1358`)
 
@@ -40,6 +41,17 @@ Current stage: **5 business regression**. Stages 6 Docker/CI/endpoints and 7 thr
 - `.dockerignore` excludes `.env*` (examples only); built app image contains no `.env`.
 - Written report: `docs/security/php-85-laravel-13-security-verification.md` (residual risks: no CSP, shared basic-auth credential, token-less mutations rely on basic auth + origin checks).
 
+## Stage 5 evidence (committed `d461033`)
+
+- Three previous failures were an env-contract defect in `LedgerReconciliationPostgresIntegrationTest` (read `DB_*`, whose `DB_DATABASE` is `:memory:` in the default suite, instead of `TEST_DB_*`). Fixed; the strict `bybit_test` + non-production guards are unchanged. The 3 tests now run against the isolated container and pass (38 assertions).
+- Targeted: Unit/Strategy/PaperTrading/Backtest/Indicators/MarketData **414 tests / 2,246 assertions OK** (`stage5-targeted.log`); API/Research/QuoteIntegrity/Audit/PatternDiscovery/Security **190 / 1,216 OK** (`stage5-api-research.log`).
+- Full suite: **643 tests / 3,805 assertions, 0 failures, 2 skipped, 1 pre-existing notice** (exit 0) — `stage5-full-1.log`, `stage5-full-2.log` (skips: opt-in public Bybit API test; Go worker test in the default sqlite run, which runs under `RUN_DB`).
+- `RUN_DB=bybit_test tests/Integration`: **35 / 304, 1 skipped OK** (`stage5-integration.log`).
+- Go: `go -C research-go test ./...` OK for all packages (`stage5-go-tests.log`). Scheduler lists 22 tasks; `queue:work redis` + SIGTERM exits 0 (`stage5-queue-sigterm.log`); isolated Redis `PING` OK, 0 keys.
+- Frontend: 54 tests passed, `vue-tsc` + production build OK (`stage5-frontend-tests.log`, `stage5-frontend-build.log`). Pint PASS on the changed test.
+- Safety: no order-placement code or Bybit API keys exist; all DB work was against isolated `bybit_test`; eight primary accounts/history untouched; no VECTOR work.
+- Report: `docs/security/php-85-laravel-13-business-regression.md`.
+
 ## Earlier evidence still valid
 
 - `docker/php/Dockerfile`: pinned PHP stages, Redis 6.3.0, bcmath, built-in OPcache, test-only Go/Python/Bash tools. `scripts/verify-php-runtime.php`, entrypoint fail closed on incorrect PHP/extensions.
@@ -49,9 +61,9 @@ Current stage: **5 business regression**. Stages 6 Docker/CI/endpoints and 7 thr
 
 ## Remaining work / known issues
 
-- Stage 5 full business regression (next): rerun the complete applicable suites and include the isolated PostgreSQL integration run (`RUN_DB=bybit_test`); preserve the eight primary accounts and strategy configuration. Keep `cache.serializable_classes=false`, JSON sessions and cache names/prefixes.
+- Full suite note: with the isolated Postgres reachable, the default run now executes the PostgreSQL integration suites (except the Go worker, skipped on sqlite) and the strict `bybit_test` guard. CI must still run the explicit `RUN_DB=bybit_test` integration job. Keep `cache.serializable_classes=false`, JSON sessions and cache names/prefixes.
 - Trivy is not a repository dependency: the binary was downloaded to ignored `/tmp/opencode/trivy/trivy` (cache `/tmp/opencode/trivy/cache`). Re-download/verify before relying on it after a host restart; image scans reflect local builds, re-scan in CI on release.
-- Stage 6: inventory 118 registered routes (114 API); existing `CompleteApiEndpointAuditTest` only tests 41 GETs despite its name. Extend non-deploying CI gates, build app/web/Go, isolated FPM/Nginx/Redis/queue/scheduler smoke tests.
+- Stage 6 (next): inventory 118 registered routes (114 API); existing `CompleteApiEndpointAuditTest` only tests 41 GETs despite its name. Extend non-deploying CI gates, build app/web/Go, isolated FPM/Nginx/Redis/queue/scheduler smoke tests.
 - Stage 7: three recorded full passes (compatibility/regression/final); exact counts/skips, PHP lint/Pint, Composer, frontend, containers, smoke/security. Write final report with commits, remaining risks, rollback. Do not certify incomplete gates.
 
 ## Local resources and commands
