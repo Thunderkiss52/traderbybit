@@ -14,8 +14,9 @@ Deliver verified PHP **8.5.12** and latest compatible Laravel **13.x**, preservi
 | 1 runtime | `d230adc` | Official PHP 8.5.12 Alpine 3.24 app/test images built; CLI/FPM and 21 extensions verified |
 | 2 dependencies | `4be18be` | Laravel 13.36.0 → 13.38.0; PHPUnit 12.5.39 → 12.5.40; other package versions retained |
 | 3 compatibility | `4ee1358` | Go benchmark unblocked; cache object-serialisation bug fixed + regression test |
+| 4 security | `39c5078` | Runtime/transport hardening, origin/CSRF protection, nginx 1.30.6, Trivy 0 HIGH/CRITICAL |
 
-Current stage: **4 security**. Stages 5 business regression, 6 Docker/CI/endpoints and 7 three final verification passes remain incomplete. No release readiness certification.
+Current stage: **5 business regression**. Stages 6 Docker/CI/endpoints and 7 three final verification passes remain incomplete. No release readiness certification.
 
 ## Stage 3 evidence (committed `4ee1358`)
 
@@ -27,6 +28,18 @@ Current stage: **4 security**. Stages 5 business regression, 6 Docker/CI/endpoin
 - Full PHPUnit run (PHP 8.5.12): 632 tests, 3,726 assertions; 629 passed, 3 failed only because `tests/Integration` requires PostgreSQL (`stage3-tests.log`). Integration suite separately with `RUN_DB=bybit_test`: **35 tests, 304 assertions, 1 skipped (live Bybit opt-in), OK** (`stage3-integration.log`).
 - Pint: `app/Http/Controllers/Api/V1/ResearchController.php`, `tests/Feature/MarketData/MarketCacheSerializationTest.php` — PASS.
 
+## Stage 4 evidence (committed `39c5078`)
+
+- PHP runtime (`docker/php/php.ini`) verified inside the rebuilt `traderbybit-php85-app:local`: `session.upload_progress.enabled=0`, `session.use_strict_mode=1`, `session.use_only_cookies=1`, `session.cookie_httponly=1`, `session.cookie_samesite=Lax`, `post_max_size=21M`, `upload_max_filesize=21M`, `opcache.enable=1`, `expose_php`/`display_errors` off.
+- Upload bounds aligned so the app can enforce its own contract: nginx 22m > PHP 21M > application 20 MiB (413 `EVIDENCE_TOO_LARGE`). Previously PHP/nginx were 16M, making the documented 20 MiB limit unreachable.
+- `app/Http/Middleware/ValidateBrowserOrigin` appended to the API group: configured `CORS_ALLOWED_ORIGINS` allowed; browsers with `Sec-Fetch-Site` other than `same-origin`/`none` rejected 403 `ORIGIN_NOT_ALLOWED`; foreign Origin host rejected; requests without Origin (curl/workers/tests) unchanged; GET/HEAD/OPTIONS never blocked. Cannot bypass `research.token` (tested).
+- nginx: `nginx:1.27-alpine` (Alpine 3.21.3) → `nginx:1.30-alpine` (1.30.6, Alpine 3.24.3); security headers (`nosniff`, `DENY`, `no-referrer`, `Permissions-Policy`) via `docker/nginx/security-headers.conf` included in server block and every `add_header` location. Verified in the built `traderbybit-php85-web:local`: `nginx -t` OK, headers present on 200/401/502.
+- Dev only: `frontend/vite.config.ts` removes the proxied `Origin` header so `npm run dev` keeps working with the new check.
+- Trivy 0.76.1 (checksum-verified binary, DB 2026-10-22): app 0, test 0, web 0 HIGH/CRITICAL; baseline `nginx:1.27-alpine` had 59 (2 CRITICAL OpenSSL) — `evidence/trivy-*.json`, `evidence/trivy-summary.log`.
+- Tests: new `tests/Feature/Security/*` 11 tests / 44 assertions PASS. Full suite 643 tests / 3,770 assertions, 3 failures only from the integration DB guard (`stage4-tests.log`); `RUN_DB=bybit_test` integration 35 / 304 / 1 skipped OK (`stage4-integration.log`). Pint PASS. Frontend 54 tests PASS, `vue-tsc` + build PASS.
+- `.dockerignore` excludes `.env*` (examples only); built app image contains no `.env`.
+- Written report: `docs/security/php-85-laravel-13-security-verification.md` (residual risks: no CSP, shared basic-auth credential, token-less mutations rely on basic auth + origin checks).
+
 ## Earlier evidence still valid
 
 - `docker/php/Dockerfile`: pinned PHP stages, Redis 6.3.0, bcmath, built-in OPcache, test-only Go/Python/Bash tools. `scripts/verify-php-runtime.php`, entrypoint fail closed on incorrect PHP/extensions.
@@ -36,9 +49,8 @@ Current stage: **4 security**. Stages 5 business regression, 6 Docker/CI/endpoin
 
 ## Remaining work / known issues
 
-- Stage 4 security (next): disable upload progress, review bounded limits/origin/errors/auth/uploads, add security tests, scan images, write `docs/security/php-85-laravel-13-security-verification.md`. Basic auth at Nginx protects general API routes; many mutations intentionally lack a research token — preserve clients. Review browser request-origin/CSRF protection and caught exception leakage. Keep `cache.serializable_classes=false`, JSON sessions and cache names/prefixes.
-- No image vulnerability scanner installed. GitHub API query for Trivy latest timed out; scanner verification remains pending (record as unverified if unavailable).
-- Stage 5 full regression must include the isolated PostgreSQL integration run (use `RUN_DB=bybit_test`); preserve the eight primary accounts and strategy configuration.
+- Stage 5 full business regression (next): rerun the complete applicable suites and include the isolated PostgreSQL integration run (`RUN_DB=bybit_test`); preserve the eight primary accounts and strategy configuration. Keep `cache.serializable_classes=false`, JSON sessions and cache names/prefixes.
+- Trivy is not a repository dependency: the binary was downloaded to ignored `/tmp/opencode/trivy/trivy` (cache `/tmp/opencode/trivy/cache`). Re-download/verify before relying on it after a host restart; image scans reflect local builds, re-scan in CI on release.
 - Stage 6: inventory 118 registered routes (114 API); existing `CompleteApiEndpointAuditTest` only tests 41 GETs despite its name. Extend non-deploying CI gates, build app/web/Go, isolated FPM/Nginx/Redis/queue/scheduler smoke tests.
 - Stage 7: three recorded full passes (compatibility/regression/final); exact counts/skips, PHP lint/Pint, Composer, frontend, containers, smoke/security. Write final report with commits, remaining risks, rollback. Do not certify incomplete gates.
 
@@ -47,13 +59,14 @@ Current stage: **4 security**. Stages 5 business regression, 6 Docker/CI/endpoin
 All resources below were created by this task; do not inspect/mutate other projects. `econom-group-*`, `bybit-signals-test-*`, `toolma-bot` and the shared builders belong to someone else — leave untouched.
 
 - Buildx builder: `traderbybit-php85-20261022` (docker-container), container `buildx_buildkit_traderbybit-php85-202610220`.
-- Images: `traderbybit-php85-test:local` (PHP 8.5.12 + Go); `traderbybit-php85-app:local` (stage-1 image, still Laravel 13.36.0; rebuild after source/dependency changes).
+- Images: `traderbybit-php85-test:local` (PHP 8.5.12 + Go); `traderbybit-php85-app:local` (rebuilt from current source at stage 4); `traderbybit-php85-web:local` (nginx 1.30.6).
 - Network `traderbybit-php85-testnet`; containers `traderbybit-php85-postgres` (tmpfs DB `bybit_test`) and `traderbybit-php85-redis`. No host ports, no aliases — use the full container names (`traderbybit-php85-postgres`, `traderbybit-php85-redis`); `run.py` was corrected accordingly.
 - PostgreSQL migrations applied to this DB; test role `bybit_signals` created for QIM permission tests. Test credentials confined to ignored runner.
 - `reports/php85-upgrade/run.py` syncs source into `reports/php85-upgrade/workspace`, excludes `.env`, `docs/`, `reports/`, `VECTOR_*` and `research-go/bin/`, and runs a disposable PHP test container as host UID. `RUN_DB=bybit_test` adds pgsql env overrides; `CONTRACT_LABEL` is forwarded for contract dumps. Vendor installed in the workspace; static Go binary persists there. No Docker socket mounted.
 - Shell prefix: `/home/thunder/.headroom/bin/rtk proxy` (RTK absent from PATH; plain commands also fine).
 - Test: `python3 reports/php85-upgrade/run.py vendor/bin/phpunit <path>`; full suite `vendor/bin/phpunit`; Postgres `RUN_DB=bybit_test python3 reports/php85-upgrade/run.py vendor/bin/phpunit tests/Integration`.
-- Build: `docker buildx build --builder traderbybit-php85-20261022 --load --target app -f docker/php/Dockerfile -t traderbybit-php85-app:local .`
+- Build: `docker buildx build --builder traderbybit-php85-20261022 --load --target app -f docker/php/Dockerfile -t traderbybit-php85-app:local .`; web target uses `--target web -t traderbybit-php85-web:local`.
+- Trivy scan: `/tmp/opencode/trivy/trivy image --scanners vuln --severity HIGH,CRITICAL --no-progress <image>` (cache in `/tmp/opencode/trivy/cache`).
 - Frontend: prefix PATH with `/home/thunder/.nvm/versions/node/v24.19.0/bin`; `npm test --prefix frontend`, `npm run build --prefix frontend`.
 - Evidence lives in ignored `reports/php85-upgrade/` (including `evidence/`). No build/test process is active; reconfirm narrowly before duplicating work.
 
