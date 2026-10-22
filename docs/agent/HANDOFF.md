@@ -18,6 +18,8 @@ Deliver verified PHP **8.5.12** and latest compatible Laravel **13.x**, preservi
 | 5 business regression | `d461033` | Ledger guard env fix; full suite 643 tests / 3,805 assertions, 0 failures; Go, scheduler, queue, frontend verified |
 | 6 Docker/CI/endpoints | `5b32dee` | Go image 1.27/Alpine 3.24 (Trivy 29 → 0); isolated 7-service Compose smoke; CI reviewed + simulated 643/3,513, 0 failures; 118 routes inventoried |
 
+Go toolchain upgrade to **Go 1.27.3** completed after stage 7 (`2acf3e8`, `969fe31`; report `docs/security/go-1273-upgrade-verification.md`).
+
 Current stage: **7 final verification complete** (three recorded passes, `docs/security/php-85-laravel-13-final-verification.md`). No production deployment performed; production verification and release approval remain with the operator.
 
 ## Stage 3 evidence (committed `4ee1358`)
@@ -71,6 +73,17 @@ Current stage: **7 final verification complete** (three recorded passes, `docs/s
 - No migrations changed during the upgrade; rollback = revert commits / redeploy previous tag, no schema rollback.
 - Report: `docs/security/php-85-laravel-13-final-verification.md`.
 
+## Go 1.27.3 toolchain upgrade (committed `2acf3e8`, `969fe31`)
+
+- `golang:1.27-alpine` (floating) → `golang:1.27.3-alpine3.24` with `GOTOOLCHAIN=local`; test image now uses the official Go 1.27.3 toolchain instead of Alpine's Go 1.26.9; `research-go/go.mod` `go 1.18` → `go 1.27.3`; CI gained `actions/setup-go@v5` (`1.27.3`, `cache: false`).
+- Tracked `research-go/bin/research-worker` rebuilt with Go 1.27.3 (was go1.18.1); `go version -m` confirms go1.27.3 for it and for the image binary.
+- Go 1.27 review: `encoding/json` v1 now backed by v2 with v1 behavior; no code or contract change needed (no JSON v2 migration). `go mod tidy` only dropped the stale `// indirect` marker.
+- Verification: `go mod verify`, `go build ./...`, `go vet ./...`, `gofmt -l` clean; `go test ./...` all packages OK; `go test -race ./...` OK; tests pass in the configured test image; Laravel↔Go integration `2 tests / 16 assertions` OK on the isolated DB; worker SIGTERM exit 0.
+- Determinism: `--standalone` output identical (Trades=67, NetPnL=-3161.74311831, WFE 0.000, MC median 6864.87501489, RuinRisk 93.8%) before/after.
+- Trivy: research-worker and test images 0 HIGH/CRITICAL.
+- Deferred: `research-go/backtest.test` is still a stale tracked go1.18 test artifact (unreferenced); Go unit tests are not in CI; deploy workflow not dispatched.
+- Evidence: `go1273-*.log`, `evidence/trivy-*-go1273.json`, `evidence/trivy-go-1273.json`.
+
 ## Earlier evidence still valid
 
 - `docker/php/Dockerfile`: pinned PHP stages, Redis 6.3.0, bcmath, built-in OPcache, test-only Go/Python/Bash tools. `scripts/verify-php-runtime.php`, entrypoint fail closed on incorrect PHP/extensions.
@@ -90,7 +103,7 @@ Current stage: **7 final verification complete** (three recorded passes, `docs/s
 All resources below were created by this task; do not inspect/mutate other projects. `econom-group-*`, `bybit-signals-test-*`, `toolma-bot` and the shared builders belong to someone else — leave untouched.
 
 - Buildx builder: `traderbybit-php85-20261022` (docker-container), container `buildx_buildkit_traderbybit-php85-202610220`.
-- Images: `traderbybit-php85-test:local` (PHP 8.5.12 + Go); `traderbybit-php85-app:local` (current source); `traderbybit-php85-web:local` (nginx 1.30.6); `traderbybit-php85-research-worker:local` (Go 1.27, Alpine 3.24.3).
+- Images: `traderbybit-php85-test:local` (PHP 8.5.12 + Go 1.27.3); `traderbybit-php85-app:local` (current source); `traderbybit-php85-web:local` (nginx 1.30.6); `traderbybit-php85-research-worker:local` (Go 1.27.3, Alpine 3.24.3).
 - Network `traderbybit-php85-testnet`; containers `traderbybit-php85-postgres` (tmpfs DB `bybit_test`) and `traderbybit-php85-redis`. No host ports, no aliases — use the full container names (`traderbybit-php85-postgres`, `traderbybit-php85-redis`); `run.py` was corrected accordingly.
 - PostgreSQL migrations applied to this DB; test role `bybit_signals` created for QIM permission tests. Test credentials confined to ignored runner.
 - `reports/php85-upgrade/run.py` syncs source into `reports/php85-upgrade/workspace`, excludes `.env`, `docs/`, `reports/`, `VECTOR_*` and `research-go/bin/`, and runs a disposable PHP test container as host UID. `RUN_DB=bybit_test` adds pgsql env overrides; `CONTRACT_LABEL` is forwarded for contract dumps. Vendor installed in the workspace; static Go binary persists there. No Docker socket mounted.
