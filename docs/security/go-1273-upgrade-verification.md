@@ -74,17 +74,20 @@ Baseline before the PHP migration stage was 29 HIGH/CRITICAL for the Go worker (
 
 ## Known warnings and limitations
 
-- `research-go/backtest.test` was a tracked, unreferenced go1.18.1 test binary. Removed from Git in `f2b1c07`; `/research-go/*.test` is now ignored. The required `research-go/bin/research-worker` artifact was rebuilt with Go 1.27.3 and is preserved.
+- `research-go/backtest.test` was a tracked, unreferenced go1.18.1 test binary. Removed from Git in `fccf38e`; `/research-go/*.test` is ignored as of `037dcc8`. The required `research-go/bin/research-worker` artifact was rebuilt with Go 1.27.3 and is preserved.
 - The Go toolchain in the deployment workflow is pinned to 1.27.3 (for Go-dependent PHP tests); dedicated Go unit tests run in the new non-deploying `CI` workflow (`.github/workflows/ci.yml`) on pushes to `main` and pull requests.
 - The deploy workflow was not dispatched; the VPS build path was not exercised here.
 - The first `docker buildx` run of the Go image failed once at `go mod download` (transient network); the retry succeeded and the image was verified by metadata and execution.
 
 ## Commits
 
+Verification of the final cleanup: local run of the new CI steps with Go 1.27.3 on a cold module/build cache (working directory `research-go`): `go mod verify`, `go build ./...`, `go vet ./...`, `gofmt -l` clean, `go test ./...`, `go test -race ./...` — all passed (`go1273-ci-local.log`). Workflow triggers: `ci.yml` on push/pull_request to `main`; `deploy.yml` remains `workflow_dispatch` only.
+
 - `2acf3e8` — `chore(go): pin toolchain and builders to Go 1.27.3` (module, Dockerfiles, CI setup-go)
 - `969fe31` — `chore(go): rebuild tracked research worker with Go 1.27.3`
-- `f2b1c07` — `chore(go): remove stale compiled test binary`
-- see also `ci:` commit for `.github/workflows/ci.yml`
+- `fccf38e` — `ci: add non-deploying Go 1.27.3 verification workflow` (also removed the stale test binary)
+- `037dcc8` — `chore(go): ignore compiled Go test artifacts`
+- `8c9ed49` — `docs: record Go 1.27.3 cleanup and CI integration`
 
 ## Release readiness
 
