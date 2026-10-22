@@ -74,8 +74,8 @@ Baseline before the PHP migration stage was 29 HIGH/CRITICAL for the Go worker (
 
 ## Known warnings and limitations
 
-- `research-go/backtest.test` remains a tracked test-binary artifact built with go1.18.1; it is not referenced by any build or runtime path and was intentionally not rewritten. Consider deleting tracked build artifacts in a separate change.
-- The Go unit tests are still not part of CI (CI only gained the pinned toolchain so Go-dependent PHP tests use 1.27.3). Adding a dedicated Go test job is a separate CI change.
+- `research-go/backtest.test` was a tracked, unreferenced go1.18.1 test binary. Removed from Git in `f2b1c07`; `/research-go/*.test` is now ignored. The required `research-go/bin/research-worker` artifact was rebuilt with Go 1.27.3 and is preserved.
+- The Go toolchain in the deployment workflow is pinned to 1.27.3 (for Go-dependent PHP tests); dedicated Go unit tests run in the new non-deploying `CI` workflow (`.github/workflows/ci.yml`) on pushes to `main` and pull requests.
 - The deploy workflow was not dispatched; the VPS build path was not exercised here.
 - The first `docker buildx` run of the Go image failed once at `go mod download` (transient network); the retry succeeded and the image was verified by metadata and execution.
 
@@ -83,6 +83,8 @@ Baseline before the PHP migration stage was 29 HIGH/CRITICAL for the Go worker (
 
 - `2acf3e8` — `chore(go): pin toolchain and builders to Go 1.27.3` (module, Dockerfiles, CI setup-go)
 - `969fe31` — `chore(go): rebuild tracked research worker with Go 1.27.3`
+- `f2b1c07` — `chore(go): remove stale compiled test binary`
+- see also `ci:` commit for `.github/workflows/ci.yml`
 
 ## Release readiness
 

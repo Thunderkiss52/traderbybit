@@ -81,7 +81,7 @@ Current stage: **7 final verification complete** (three recorded passes, `docs/s
 - Verification: `go mod verify`, `go build ./...`, `go vet ./...`, `gofmt -l` clean; `go test ./...` all packages OK; `go test -race ./...` OK; tests pass in the configured test image; Laravel↔Go integration `2 tests / 16 assertions` OK on the isolated DB; worker SIGTERM exit 0.
 - Determinism: `--standalone` output identical (Trades=67, NetPnL=-3161.74311831, WFE 0.000, MC median 6864.87501489, RuinRisk 93.8%) before/after.
 - Trivy: research-worker and test images 0 HIGH/CRITICAL.
-- Deferred: `research-go/backtest.test` is still a stale tracked go1.18 test artifact (unreferenced); Go unit tests are not in CI; deploy workflow not dispatched.
+- Cleanup/CI: `research-go/backtest.test` (unreferenced go1.18.1 test binary) removed from Git and `/research-go/*.test` ignored; new non-deploying `.github/workflows/ci.yml` runs `go mod verify`, build, vet, gofmt, tests and race tests on push/PR to `main`. `deploy.yml` remains `workflow_dispatch`-only.
 - Evidence: `go1273-*.log`, `evidence/trivy-*-go1273.json`, `evidence/trivy-go-1273.json`.
 
 ## Earlier evidence still valid
