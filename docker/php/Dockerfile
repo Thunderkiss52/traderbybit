@@ -61,10 +61,11 @@ RUN mkdir -p storage/framework/cache storage/framework/sessions storage/framewor
 EXPOSE 9000
 CMD ["php-fpm", "-F"]
 
-FROM nginx:1.27-alpine AS web
+FROM nginx:1.30-alpine AS web
 LABEL io.bybit-signals.component="web"
 RUN apk add --no-cache apache2-utils
 COPY docker/nginx/default.conf /etc/nginx/conf.d/default.conf
+COPY docker/nginx/security-headers.conf /etc/nginx/snippets/security-headers.conf
 COPY docker/nginx/10-auth.sh /docker-entrypoint.d/10-auth.sh
 COPY public/ /var/www/html/public/
 COPY --from=frontend /build/frontend/dist /var/www/html/public

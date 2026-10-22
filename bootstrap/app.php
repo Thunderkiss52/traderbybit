@@ -8,6 +8,7 @@ use App\Backtest\Console\WalkForwardCommand;
 use App\Http\Middleware\ApiRequestDiagnostics;
 use App\Http\Middleware\EnsureQuoteIntegrityEnabled;
 use App\Http\Middleware\RequireResearchToken;
+use App\Http\Middleware\ValidateBrowserOrigin;
 use App\MarketData\Console\StreamCandlesCommand;
 use App\MarketData\Console\SyncCandlesCommand;
 use App\PaperTrading\Console\PaperAccountCommand;
@@ -40,7 +41,7 @@ return Application::configure(basePath: dirname(__DIR__))
         health: '/up',
     )
     ->withMiddleware(function (Middleware $middleware): void {
-        $middleware->api(append: [ApiRequestDiagnostics::class]);
+        $middleware->api(append: [ApiRequestDiagnostics::class, ValidateBrowserOrigin::class]);
         $middleware->alias([
             'research.token' => RequireResearchToken::class,
             'quote_integrity.enabled' => EnsureQuoteIntegrityEnabled::class,
