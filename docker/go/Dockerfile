@@ -1,5 +1,7 @@
 # Multi-stage minimal build for Go research worker
-FROM golang:1.27-alpine AS builder
+FROM golang:1.27.3-alpine3.24 AS builder
+
+ENV GOTOOLCHAIN=local
 
 WORKDIR /build
 

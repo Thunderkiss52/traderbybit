@@ -32,7 +32,9 @@ ENTRYPOINT ["bybit-entrypoint"]
 
 FROM php-base AS test
 COPY --from=composer:2.8 /usr/bin/composer /usr/local/bin/composer
-RUN apk add --no-cache git unzip bash python3 go
+COPY --from=golang:1.27.3-alpine3.24 /usr/local/go /usr/local/go
+ENV PATH=/usr/local/go/bin:$PATH GOTOOLCHAIN=local
+RUN apk add --no-cache git unzip bash python3
 
 FROM php-base AS vendor
 COPY --from=composer:2.8 /usr/bin/composer /usr/local/bin/composer
