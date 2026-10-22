@@ -40,12 +40,11 @@ final class LedgerReconciliationPostgresIntegrationTest extends TestCase
 
         $driver = DB::connection()->getDriverName();
         if ($driver !== 'pgsql') {
-            // Attempt connecting to the isolated postgres test container if reachable
-            $testPort = (int) env('DB_PORT', 25432);
-            $testHost = env('DB_HOST', '127.0.0.1');
-            $testDb = env('DB_DATABASE', 'bybit_test');
-            $testUser = env('DB_USERNAME', 'postgres');
-            $testPass = env('DB_PASSWORD', 'testpass');
+            $testPort = (int) env('TEST_DB_PORT', 25432);
+            $testHost = env('TEST_DB_HOST', '127.0.0.1');
+            $testDb = (string) env('TEST_DB_DATABASE', 'bybit_test');
+            $testUser = env('TEST_DB_USERNAME', 'postgres');
+            $testPass = env('TEST_DB_PASSWORD', 'testpass');
 
             $connectionOk = @fsockopen($testHost, $testPort, $errno, $errstr, 1);
             if (! $connectionOk) {
