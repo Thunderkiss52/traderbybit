@@ -18,6 +18,7 @@ frontend/dist/
 
 # Build artifacts
 /frontend/dist/
+/research-go/*.test
 
 # PHPUnit
 .phpunit.result.cache
