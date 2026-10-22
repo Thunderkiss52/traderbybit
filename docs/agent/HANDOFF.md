@@ -18,7 +18,7 @@ Deliver verified PHP **8.5.12** and latest compatible Laravel **13.x**, preservi
 | 5 business regression | `d461033` | Ledger guard env fix; full suite 643 tests / 3,805 assertions, 0 failures; Go, scheduler, queue, frontend verified |
 | 6 Docker/CI/endpoints | `5b32dee` | Go image 1.27/Alpine 3.24 (Trivy 29 → 0); isolated 7-service Compose smoke; CI reviewed + simulated 643/3,513, 0 failures; 118 routes inventoried |
 
-Current stage: **7 final verification** (three recorded passes). No release readiness certification.
+Current stage: **7 final verification complete** (three recorded passes, `docs/security/php-85-laravel-13-final-verification.md`). No production deployment performed; production verification and release approval remain with the operator.
 
 ## Stage 3 evidence (committed `4ee1358`)
 
@@ -63,6 +63,14 @@ Current stage: **7 final verification** (three recorded passes). No release read
 - Routes (`stage6-routes.json`): 118 total, 114 API (86 GET, 31 POST, 1 PUT); 12 research-token, 1 signed, 9 QIM-gated. Frontend: 39 unique API calls, 38 exact matches; one dynamic action path (`experiments/{id}/{name}`) matches registered actions. Client-side table CSV export has no automated test (gap).
 - Report: `docs/security/php-85-laravel-13-docker-ci-endpoints.md`.
 
+## Stage 7 final verification (three passes, baseline `6a0751f`)
+
+- Pass 1 — full suite: 643 tests / 3,805 assertions, 0 failures, 2 skipped, 1 pre-existing notice, exit 0 (`stage7-pass1-full-suite.log`). CI-equivalent run (no DB): 643 / 3,513, 35 skipped, exit 0 (`stage6-ci-simulation.log`).
+- Pass 2 — Pint 584 files PASS; composer validate/audit/platform OK; `php -l` clean; Go test/vet/gofmt OK (`stage7-pass2-*.log`).
+- Pass 3 — frontend 54 tests + typecheck/build OK; Trivy app/test/web/Go all 0 HIGH/CRITICAL; deployment-shape Compose smoke on the committed tree (`/up` 200, dashboard 401/200 with `research_mode=true`, QIM 503, clean teardown) (`stage7-pass3-*.log`, `stage7-smoke-*.log`).
+- No migrations changed during the upgrade; rollback = revert commits / redeploy previous tag, no schema rollback.
+- Report: `docs/security/php-85-laravel-13-final-verification.md`.
+
 ## Earlier evidence still valid
 
 - `docker/php/Dockerfile`: pinned PHP stages, Redis 6.3.0, bcmath, built-in OPcache, test-only Go/Python/Bash tools. `scripts/verify-php-runtime.php`, entrypoint fail closed on incorrect PHP/extensions.
@@ -75,7 +83,7 @@ Current stage: **7 final verification** (three recorded passes). No release read
 - Full suite note: with the isolated Postgres reachable, the default run now executes the PostgreSQL integration suites (except the Go worker, skipped on sqlite) and the strict `bybit_test` guard. CI must still run the explicit `RUN_DB=bybit_test` integration job. Keep `cache.serializable_classes=false`, JSON sessions and cache names/prefixes.
 - Trivy is not a repository dependency: the binary was downloaded to ignored `/tmp/opencode/trivy/trivy` (cache `/tmp/opencode/trivy/cache`). Re-download/verify before relying on it after a host restart; image scans reflect local builds, re-scan in CI on release.
 - Stage 6 closed; remaining gaps are CI coverage (no push/PR gate, integration tests skip in CI, Go image not published) and the untested client-side CSV export — documented, not changed (operator-owned pipeline).
-- Stage 7: three recorded full passes (compatibility/regression/final); exact counts/skips, PHP lint/Pint, Composer, frontend, containers, smoke/security. Write final report with commits, remaining risks, rollback. Do not certify incomplete gates.
+- Stage 7 complete. Remaining external actions: operator-approved deployment via `.github/workflows/deploy.yml`, then production healthcheck and forward-paper data review. Unverified: deploy job/VPS script, `market-ws`/`backtest-worker` in stack, browser UI, client-side CSV export, load/soak.
 
 ## Local resources and commands
 
