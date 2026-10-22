@@ -1,5 +1,5 @@
 # Multi-stage minimal build for Go research worker
-FROM golang:1.21-alpine AS builder
+FROM golang:1.27-alpine AS builder
 
 WORKDIR /build
 
@@ -10,7 +10,7 @@ COPY research-go/ ./
 RUN CGO_ENABLED=0 GOOS=linux go build -ldflags="-s -w" -o /research-worker ./cmd/research-worker
 
 # Minimal secure runtime image
-FROM alpine:3.19
+FROM alpine:3.24
 
 RUN addgroup -g 10001 -S research && \
     adduser -u 10001 -S research -G research
