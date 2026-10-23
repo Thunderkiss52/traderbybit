@@ -95,51 +95,98 @@ final class PromotionControlPolicy
         ];
     }
 
+    public const STATUS_ROLLBACK_REQUIRED = 'ROLLBACK_REQUIRED';
+
+    public const STATUS_NO_TRIGGER_BREACHED = 'NO_TRIGGER_BREACHED';
+
+    public const STATUS_INCOMPLETE_EVIDENCE = 'INCOMPLETE_EVIDENCE';
+
     /**
      * Evaluate the monitoring metrics against the precommitted rollback
-     * triggers. A missing metric never counts as a breach: the trigger stays
-     * `UNOBSERVED` and the promotion is not rolled back by it.
+     * triggers.
+     *
+     * Missing, malformed or ambiguous evidence is never treated as proof that
+     * a trigger is safe: it is classified as `unobserved` (missing/null) or
+     * `invalid` (wrong type, non-finite number) and makes the overall status
+     * `INCOMPLETE_EVIDENCE`. A genuine breach always wins and is preserved
+     * even when other observations are unavailable.
      *
      * @param  array<string, mixed>  $monitoring
-     * @return array{breached: list<string>, unobserved: list<string>, satisfied: list<string>, status: string}
+     * @return array{breached: list<string>, unobserved: list<string>, invalid: list<string>, satisfied: list<string>, status: string}
      */
     public static function evaluateTriggers(array $monitoring): array
     {
         $breached = [];
         $unobserved = [];
+        $invalid = [];
         $satisfied = [];
 
         foreach (self::rollbackTriggers() as $trigger) {
+            $id = (string) $trigger['id'];
             $metric = (string) $trigger['metric'];
-            $value = $monitoring[$metric] ?? null;
 
-            if ($value === null) {
-                $unobserved[] = (string) $trigger['id'];
+            if (! array_key_exists($metric, $monitoring) || $monitoring[$metric] === null) {
+                $unobserved[] = $id;
 
                 continue;
             }
 
-            $breach = match ($trigger['operator']) {
-                '>=' => (float) $value >= (float) $trigger['threshold'],
-                '>' => (float) $value > (float) $trigger['threshold'],
-                '<' => (float) $value < (float) $trigger['threshold'],
-                '<=' => (float) $value <= (float) $trigger['threshold'],
-                '==' => (string) $value === (string) $trigger['threshold'],
-                default => false,
-            };
+            $value = $monitoring[$metric];
+
+            if ($metric === 'source_generation_revoked') {
+                if (! is_bool($value)) {
+                    $invalid[] = $id;
+
+                    continue;
+                }
+
+                $breach = $value === true;
+            } else {
+                $numeric = self::finiteNumber($value);
+                if ($numeric === null) {
+                    $invalid[] = $id;
+
+                    continue;
+                }
+
+                $threshold = (float) $trigger['threshold'];
+                $breach = match ($trigger['operator']) {
+                    '>=' => $numeric >= $threshold,
+                    '>' => $numeric > $threshold,
+                    '<' => $numeric < $threshold,
+                    '<=' => $numeric <= $threshold,
+                    default => false,
+                };
+            }
 
             if ($breach) {
-                $breached[] = (string) $trigger['id'];
+                $breached[] = $id;
             } else {
-                $satisfied[] = (string) $trigger['id'];
+                $satisfied[] = $id;
             }
         }
 
         return [
             'breached' => $breached,
             'unobserved' => $unobserved,
+            'invalid' => $invalid,
             'satisfied' => $satisfied,
-            'status' => $breached === [] ? 'NO_TRIGGER_BREACHED' : 'ROLLBACK_REQUIRED',
+            'status' => match (true) {
+                $breached !== [] => self::STATUS_ROLLBACK_REQUIRED,
+                $unobserved !== [] || $invalid !== [] => self::STATUS_INCOMPLETE_EVIDENCE,
+                default => self::STATUS_NO_TRIGGER_BREACHED,
+            },
         ];
+    }
+
+    private static function finiteNumber(mixed $value): ?float
+    {
+        if (! is_int($value) && ! is_float($value) && ! (is_string($value) && is_numeric($value))) {
+            return null;
+        }
+
+        $number = (float) $value;
+
+        return is_finite($number) ? $number : null;
     }
 }

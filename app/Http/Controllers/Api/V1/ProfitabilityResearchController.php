@@ -6,7 +6,6 @@ namespace App\Http\Controllers\Api\V1;
 
 use App\Http\Controllers\Controller;
 use App\PaperTrading\Application\DailyPerformanceService;
-use App\PaperTrading\Application\PaperAccountService;
 use App\PaperTrading\Application\PerformanceStatisticsService;
 use App\PaperTrading\Infrastructure\Persistence\PaperAccountRecord;
 use App\PaperTrading\Infrastructure\Persistence\VirtualExecutionRecord;
@@ -28,22 +27,11 @@ use Carbon\CarbonImmutable;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Str;
 
 final class ProfitabilityResearchController extends Controller
 {
-    private const PRIMARY_STRATEGIES = [
-        'baseline',
-        'trend_pullback',
-        'bollinger_mean_reversion',
-        'donchian_atr_breakout',
-        'regime_switching',
-        'momentum',
-        'support_resistance_bounce',
-        'support_resistance_breakout',
-    ];
-
     public function __construct(
-        private readonly PaperAccountService $accountService,
         private readonly PerformanceStatisticsService $performanceStatistics,
         private readonly DailyPerformanceService $dailyPerformance,
         private readonly QuantPortfolioMetricsService $quantPortfolioMetrics,
@@ -56,8 +44,14 @@ final class ProfitabilityResearchController extends Controller
         private readonly AutonomyResearchService $autonomy,
     ) {}
 
+    /** @return list<string> */
+    private function primaryStrategies(): array
+    {
+        return array_values((array) config('paper.primary_strategies', ['baseline']));
+    }
+
     /**
-     * Overall profitability research summary across the 8 primary accounts.
+     * Overall profitability research summary across the primary accounts.
      * Enforces strict accounting scope separation:
      * - FULL_LIFECYCLE: complete position economics
      * - WINDOW_FLOW: time-bounded cashflows and equity changes
@@ -204,7 +198,7 @@ final class ProfitabilityResearchController extends Controller
     }
 
     /**
-     * List of the 8 primary strategies with separated accounting scopes.
+     * List of the primary strategies with separated accounting scopes.
      * Purely read-only.
      */
     public function strategies(Request $request): JsonResponse
@@ -373,7 +367,7 @@ final class ProfitabilityResearchController extends Controller
      */
     public function positionSlippageAttribution(string $positionId, Request $request): JsonResponse
     {
-        $position = VirtualPositionRecord::query()->find($positionId);
+        $position = Str::isUuid($positionId) ? VirtualPositionRecord::query()->find($positionId) : null;
         if ($position === null) {
             return response()->json([
                 'error' => [
@@ -657,10 +651,15 @@ final class ProfitabilityResearchController extends Controller
 
         $result = $this->autonomy->rollbackPromotion($payload);
 
+        $statusCode = 201;
+        if ($result['status'] === 'ROLLBACK_REFUSED') {
+            $statusCode = ($result['reason'] ?? '') === 'PROMOTION_DECISION_NOT_FOUND' ? 404 : 409;
+        }
+
         return response()->json([
             'status' => $result['status'],
             'data' => $result,
-        ], $result['status'] === 'ROLLBACK_REFUSED' ? 404 : 201);
+        ], $statusCode);
     }
 
     /**
@@ -812,18 +811,13 @@ final class ProfitabilityResearchController extends Controller
      */
     private function getPrimaryAccountsReadOnly(): Collection
     {
-        $existing = PaperAccountRecord::query()
-            ->where(function ($query): void {
-                $query->whereIn('primary_strategy_id', self::PRIMARY_STRATEGIES)
-                    ->orWhereIn('strategy_id', self::PRIMARY_STRATEGIES);
-            })
+        // Read endpoints must never provision or repair accounts. Missing primary
+        // accounts are surfaced through an empty/incomplete response; provisioning
+        // belongs to migrations, scheduled jobs or explicit mutation endpoints.
+        return PaperAccountRecord::query()
+            ->where('is_primary', true)
+            ->whereIn('primary_strategy_id', $this->primaryStrategies())
+            ->orderBy('primary_strategy_id')
             ->get();
-
-        if ($existing->count() === count(self::PRIMARY_STRATEGIES)) {
-            return $existing;
-        }
-
-        // If not all 8 accounts exist in the database, fallback to accountService to retrieve/provision them
-        return $this->accountService->allPrimaryAccounts();
     }
 }

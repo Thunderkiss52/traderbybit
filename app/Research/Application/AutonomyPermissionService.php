@@ -18,41 +18,43 @@ final class AutonomyPermissionService
         'tune_parameters' => true,
         'launch_shadow' => true,
         'start_paper_trials' => true,
-        'auto_promote_paper' => true, // Paper-only promotion of gate-validated candidates
+        'auto_promote_paper' => false, // Requires explicit operator authorization
         'change_hard_risk_limits' => false, // Never automatic
         'live_exchange_trading' => false, // Strictly prohibited
     ];
 
     /**
-     * Get or initialize global autonomy settings.
+     * Read effective defaults without persistence for GET consumers.
+     * Explicit mutation and worker paths may initialize the singleton.
      */
-    public function getSettings(): AutonomySettingRecord
+    public function getSettings(bool $persist = true): AutonomySettingRecord
     {
-        return AutonomySettingRecord::query()->firstOrCreate(
-            ['id' => 'default'],
-            [
-                'capabilities' => self::DEFAULT_CAPABILITIES,
-                'kill_switch_active' => false,
-                'max_active_shadow_experiments' => 4,
-                'max_forward_paper_trials' => 2,
-                'max_promotions_per_week' => 2,
-                'min_shadow_observation_days' => 7,
-                'max_allowed_drawdown_percent' => 12.0,
-            ]
-        );
+        $defaults = [
+            'capabilities' => self::DEFAULT_CAPABILITIES,
+            'kill_switch_active' => false,
+            'max_active_shadow_experiments' => 4,
+            'max_forward_paper_trials' => 2,
+            'max_promotions_per_week' => 2,
+            'min_shadow_observation_days' => 7,
+            'max_allowed_drawdown_percent' => 12.0,
+        ];
+
+        return $persist
+            ? AutonomySettingRecord::query()->firstOrCreate(['id' => 'default'], $defaults)
+            : AutonomySettingRecord::query()->firstOrNew(['id' => 'default'], $defaults);
     }
 
     /**
      * Check if an autonomous capability is allowed.
      */
-    public function isAllowed(string $capability): bool
+    public function isAllowed(string $capability, bool $persist = true): bool
     {
         // Absolute invariants
         if (in_array($capability, ['change_hard_risk_limits', 'live_exchange_trading'], true)) {
             return false;
         }
 
-        $settings = $this->getSettings();
+        $settings = $this->getSettings($persist);
         if ($settings->kill_switch_active) {
             return false;
         }
@@ -88,10 +90,10 @@ final class AutonomyPermissionService
             action: 'PERMISSION_CHANGE',
             targetType: 'AUTONOMY_SETTINGS',
             targetId: 'default',
-            previousState: json_encode($previous),
-            newState: json_encode($settings->capabilities),
+            previousState: 'CONFIGURED',
+            newState: 'CONFIGURED',
             reason: 'Autonomy permissions and resource limits updated.',
-            evidence: ['limits' => $limits]
+            evidence: ['limits' => $limits, 'previous_capabilities' => $previous, 'capabilities' => $settings->capabilities]
         );
 
         return $settings->fresh();

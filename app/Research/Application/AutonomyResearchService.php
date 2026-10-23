@@ -25,7 +25,7 @@ use Ramsey\Uuid\Uuid;
  *
  * Everything in this service is research-only:
  *  - it never places an order and never touches an exchange credential;
- *  - it never writes to the eight primary paper accounts, never merges a
+ *  - it never writes to the primary paper accounts, never merges a
  *    ledger and never changes a risk budget;
  *  - the paper-promotion feature flag is OFF by default and the promotion
  *    verdict is fail-closed.
@@ -56,8 +56,8 @@ final class AutonomyResearchService
             'candidate_count' => count($candidates),
             'candidates' => $candidates,
             'familywise_experiment_count' => (int) config('research.autonomy.familywise_experiment_count', 5),
-            'paper_promotion_enabled' => $this->permissions->isAllowed('auto_promote_paper'),
-            'challenger_execution_enabled' => $this->permissions->isAllowed('start_paper_trials'),
+            'paper_promotion_enabled' => $this->permissions->isAllowed('auto_promote_paper', false),
+            'challenger_execution_enabled' => $this->permissions->isAllowed('start_paper_trials', false),
             'note' => 'Research candidates only. They are not strategies, not accounts and they never trade.',
         ];
     }
@@ -324,11 +324,15 @@ final class AutonomyResearchService
     }
 
     /**
-     * A2 — roll a paper challenger back.
+     * A2 — refuse an operational rollback until previous-version restoration
+     * is actually supported.
      *
-     * The promotion was never applied, so the rollback cannot change an
-     * operational state. It is recorded as an append-only control event so
-     * that the rollback of a challenger is an auditable, testable path.
+     * A promotion creates/updates a dedicated forward paper account. No
+     * verified routine exists to restore the previously applied paper version,
+     * so recording a `ROLLBACK_RECORDED` event would falsely imply a
+     * successful operational rollback. This path therefore returns an accurate
+     * refusal without writing a success audit event or mutating any account,
+     * position, execution or ledger.
      *
      * @param  array<string, mixed>  $request
      * @return array<string, mixed>
@@ -336,7 +340,9 @@ final class AutonomyResearchService
     public function rollbackPromotion(array $request = []): array
     {
         $decisionId = (string) ($request['promotion_decision_id'] ?? '');
-        $decision = ResearchPromotionDecisionRecord::query()->where('id', $decisionId)->first();
+        $decision = Str::isUuid($decisionId)
+            ? ResearchPromotionDecisionRecord::query()->find($decisionId)
+            : null;
 
         if ($decision === null) {
             return [
@@ -348,25 +354,14 @@ final class AutonomyResearchService
             ];
         }
 
-        $monitoring = (array) ($request['monitoring'] ?? []);
-        $triggers = PromotionControlPolicy::evaluateTriggers($monitoring);
-
-        $record = $this->recordControl([
-            'promotion_decision_id' => $decisionId,
-            'action' => PromotionControlPolicy::ACTION_ROLLBACK_RECORDED,
-            'reason' => (string) ($request['reason'] ?? 'MANUAL_ROLLBACK'),
-            'actor' => $request['actor'] ?? null,
-            'payload' => [
-                'trigger_evaluation' => $triggers,
-                'operational_change' => false,
-                'paper_ledger_mutated' => false,
-            ],
-        ]);
+        $monitoring = $request['monitoring'] ?? [];
+        $triggers = PromotionControlPolicy::evaluateTriggers(is_array($monitoring) ? $monitoring : []);
 
         return [
-            'status' => 'ROLLBACK_RECORDED',
+            'status' => 'ROLLBACK_REFUSED',
+            'reason' => 'OPERATIONAL_ROLLBACK_UNSUPPORTED',
+            'message' => 'Rollback was not applied: restoring the previous paper strategy version is not supported.',
             'promotion_decision_id' => $decisionId,
-            'record_id' => (string) $record->id,
             'trigger_evaluation' => $triggers,
             'operational_change' => false,
             'paper_ledger_mutated' => false,
