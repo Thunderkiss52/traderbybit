@@ -7,6 +7,7 @@ namespace App\Research\Application;
 use App\MarketData\Infrastructure\Persistence\CandleRecord;
 use App\PaperTrading\Infrastructure\Persistence\JournalEventRecord;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Redis;
 
 final class SystemFreshnessService
@@ -69,6 +70,7 @@ final class SystemFreshnessService
         // Check Redis queues
         $queues = ['default', 'audit', 'backtests', 'research'];
         $queueHealth = [];
+        $queuesAvailable = true;
         try {
             $redis = Redis::connection();
             foreach ($queues as $q) {
@@ -79,7 +81,13 @@ final class SystemFreshnessService
                 ];
             }
         } catch (\Throwable $e) {
-            $queueHealth = ['error' => 'Redis connection failed: '.$e->getMessage()];
+            $queuesAvailable = false;
+            $queueHealth = ['status' => 'UNAVAILABLE', 'error' => 'Queue health is unavailable.'];
+            Log::warning('Research queue health unavailable.', [
+                'code' => 'QUEUE_HEALTH_UNAVAILABLE',
+                'exception' => $e::class,
+                'request_id' => request()->attributes->get('request_id'),
+            ]);
         }
 
         // Database connection ping
@@ -99,7 +107,7 @@ final class SystemFreshnessService
             ->where('occurred_at', '>=', $now->subDay())
             ->count();
 
-        $overallStatus = ($hasMissingIntervals || $dbStatus !== 'HEALTHY') ? 'WARNING' : 'HEALTHY';
+        $overallStatus = ($hasMissingIntervals || $dbStatus !== 'HEALTHY' || ! $queuesAvailable) ? 'WARNING' : 'HEALTHY';
         if ($executionFailures24h > 5) {
             $overallStatus = 'CRITICAL';
         }
