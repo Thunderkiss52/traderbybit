@@ -44,6 +44,8 @@ final class RiskAndSizingTest extends TestCase
     public static function riskFailures(): array
     {
         return [
+            'zero risk' => [['risk_percent' => '0'], 'invalid_signal_risk'],
+            'negative risk' => [['risk_percent' => '-0.50'], 'invalid_signal_risk'],
             'maximum positions' => [['open_positions' => 3], 'maximum_positions_reached'],
             'portfolio risk' => [['total_risk_percent' => '1.25', 'risk_percent' => '0.50'], 'portfolio_risk_limit'],
             'correlation' => [['same_direction_correlated_exposure' => true, 'correlation' => '0.85'], 'correlation_limit'],

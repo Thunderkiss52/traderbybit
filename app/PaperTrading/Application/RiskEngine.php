@@ -33,6 +33,9 @@ final readonly class RiskEngine
             $reasons[] = 'insufficient_free_capital';
         }
         $riskPercent = BigDecimal::of((string) $input['risk_percent']);
+        if (! $riskPercent->isPositive()) {
+            $reasons[] = 'invalid_signal_risk';
+        }
         $classLimit = BigDecimal::of((string) $this->config['risk_by_quality'][(string) $input['quality_class']]);
         if ($riskPercent->isGreaterThan($classLimit)) {
             $reasons[] = 'signal_risk_above_class_limit';
