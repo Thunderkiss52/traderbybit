@@ -6,7 +6,11 @@ import { api } from '../services/api';
 const router = useRouter();
 const loading = ref(false);
 const error = ref('');
-const summary = ref<any>(null);
+const summary = ref<any>(null)
+const formatR = (value: unknown): string =>
+  (value !== null && value !== undefined && isFinite(Number(value)))
+    ? `${Number(value).toFixed(2)} R`
+    : '—'
 const evaluations = ref<any[]>([]);
 const strategyId = ref('');
 const evalPage = ref(1);
@@ -56,6 +60,12 @@ onMounted(() => {
       </div>
     </div>
 
+    <q-banner class="bg-warning text-black q-mb-md" rounded dense>
+      Legacy read-only. SKIP counterfactual replay is quarantined: rejected-signal replay (P-3) is
+      prohibited, so no new hypothetical entries, targets or outcomes are generated or resolved.
+      Rows below are historical and must not be treated as executed trades.
+    </q-banner>
+
     <q-banner v-if="error" class="bg-negative text-white q-mb-md" rounded dense>
       {{ error }}
     </q-banner>
@@ -99,11 +109,11 @@ onMounted(() => {
       <div class="col-12 col-md-3">
         <q-card flat bordered class="kpi-card">
           <q-card-section>
-            <div class="text-caption text-grey">Net Missed R</div>
-            <div class="text-h5 text-bold" :class="Number(summary.net_missed_r) > 0 ? 'text-negative' : (Number(summary.net_missed_r) < 0 ? 'text-positive' : 'text-grey')">
-              {{ (summary.net_missed_r !== null && summary.net_missed_r !== undefined && isFinite(Number(summary.net_missed_r))) ? Number(summary.net_missed_r).toFixed(2) + ' R' : '—' }}
+            <div class="text-caption text-grey">Net Filter Benefit R</div>
+            <div class="text-h5 text-bold" :class="Number(summary.net_filter_benefit_r) > 0 ? 'text-positive' : (Number(summary.net_filter_benefit_r) < 0 ? 'text-negative' : 'text-grey')">
+              {{ (summary.net_filter_benefit_r !== null && summary.net_filter_benefit_r !== undefined && isFinite(Number(summary.net_filter_benefit_r))) ? Number(summary.net_filter_benefit_r).toFixed(2) + ' R' : '—' }}
             </div>
-            <div class="text-caption text-grey-6">Opportunity cost balance</div>
+            <div class="text-caption text-grey-6">Includes recorded timeouts; descriptive, dependent legacy observations</div>
           </q-card-section>
         </q-card>
       </div>
@@ -124,7 +134,11 @@ onMounted(() => {
           { name: 'restrictive_skips', label: 'Restrictive (Missed TP)', field: 'restrictive_skips', align: 'right' },
           { name: 'protective_skips', label: 'Protective (Saved SL)', field: 'protective_skips', align: 'right' },
           { name: 'total_skips', label: 'Total Skips', field: 'total_skips', align: 'right' },
-          { name: 'net_r', label: 'Net Missed R', field: 'net_r', align: 'right' },
+          { name: 'missed_tp_r', label: 'Missed TP R', field: 'missed_tp_r', align: 'right' },
+          { name: 'avoided_sl_r', label: 'Avoided SL R', field: 'avoided_sl_r', align: 'right' },
+          { name: 'timeout_r', label: 'Timeout R', field: 'timeout_r', align: 'right' },
+          { name: 'net_filter_benefit_r', label: 'Net Filter Benefit R', field: 'net_filter_benefit_r', align: 'right' },
+          { name: 'net_r', label: 'Legacy TP/SL Net R', field: 'net_r', align: 'right' },
         ]"
         row-key="filter"
         hide-pagination
@@ -145,9 +159,29 @@ onMounted(() => {
             {{ props.value }}
           </q-td>
         </template>
+        <template #body-cell-missed_tp_r="props">
+          <q-td :props="props" class="text-warning">
+            {{ formatR(props.value) }}
+          </q-td>
+        </template>
+        <template #body-cell-avoided_sl_r="props">
+          <q-td :props="props" class="text-positive">
+            {{ formatR(props.value) }}
+          </q-td>
+        </template>
+        <template #body-cell-timeout_r="props">
+          <q-td :props="props" :class="Number(props.value) < 0 ? 'text-negative' : 'text-grey'">
+            {{ formatR(props.value) }}
+          </q-td>
+        </template>
+        <template #body-cell-net_filter_benefit_r="props">
+          <q-td :props="props" :class="Number(props.value) > 0 ? 'text-positive' : (Number(props.value) < 0 ? 'text-negative' : 'text-grey')">
+            {{ formatR(props.value) }}
+          </q-td>
+        </template>
         <template #body-cell-net_r="props">
-          <q-td :props="props" :class="Number(props.value) > 0 ? 'text-negative' : (Number(props.value) < 0 ? 'text-positive' : 'text-grey')">
-            {{ (props.value !== null && props.value !== undefined && isFinite(Number(props.value))) ? Number(props.value).toFixed(2) + ' R' : '—' }}
+          <q-td :props="props" :class="Number(props.value) > 0 ? 'text-positive' : (Number(props.value) < 0 ? 'text-negative' : 'text-grey')">
+            {{ formatR(props.value) }}
           </q-td>
         </template>
       </q-table>

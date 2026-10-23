@@ -15,12 +15,33 @@ use Illuminate\Support\Facades\Log;
 final class CounterfactualAnalyzerService
 {
     /**
+     * Whether the legacy SKIP counterfactual engine may run.
+     *
+     * Replaying rejected signals into simulated fills is P-3 behaviour and is
+     * prohibited. Historical rows stay readable, but the engine is quarantined
+     * by default and must not create or resolve new evaluations.
+     */
+    public function legacyAnalysisEnabled(): bool
+    {
+        return app()->runningUnitTests() && (bool) config('research.counterfactual.legacy_analysis_enabled', false);
+    }
+
+    /**
      * Create or resolve counterfactual evaluations for SKIP signals.
      *
-     * @return array{analyzed_count: int, resolved_count: int}
+     * @return array{analyzed_count: int, resolved_count: int, legacy_analysis: string, reason: string}
      */
     public function analyzeAndResolve(int $limit = 50): array
     {
+        if (! $this->legacyAnalysisEnabled()) {
+            return [
+                'analyzed_count' => 0,
+                'resolved_count' => 0,
+                'legacy_analysis' => 'DISABLED',
+                'reason' => (string) config('research.counterfactual.legacy_reason', 'P3_REJECTED_SIGNAL_REPLAY_PROHIBITED'),
+            ];
+        }
+
         $analyzed = 0;
         $resolved = 0;
 
@@ -59,6 +80,8 @@ final class CounterfactualAnalyzerService
         return [
             'analyzed_count' => $analyzed,
             'resolved_count' => $resolved,
+            'legacy_analysis' => 'ENABLED',
+            'reason' => 'LEGACY_ANALYSIS_EXPLICITLY_ENABLED',
         ];
     }
 
@@ -67,6 +90,10 @@ final class CounterfactualAnalyzerService
      */
     public function createFromObservation(StrategyObservationRecord $obs): ?CounterfactualEvaluationRecord
     {
+        if (! $this->legacyAnalysisEnabled()) {
+            return null;
+        }
+
         $reasons = (array) ($obs->reasons ?? []);
         $skipReason = 'UNKNOWN_SKIP';
         $filterFamily = 'OTHER';
@@ -277,6 +304,10 @@ final class CounterfactualAnalyzerService
      */
     public function resolveHypotheticalOutcome(CounterfactualEvaluationRecord $record): bool
     {
+        if (! $this->legacyAnalysisEnabled()) {
+            return false;
+        }
+
         if ($record->status === 'NON_EVALUABLE') {
             return false;
         }
@@ -449,6 +480,9 @@ final class CounterfactualAnalyzerService
         $netMissedR = 0.0;
         $totalRestrictive = 0;
         $totalProtective = 0;
+        $totals = ['missed_tp_r' => 0.0, 'avoided_sl_r' => 0.0, 'timeout_r' => 0.0];
+        $eligible = 0;
+        $missing = 0;
 
         foreach ($records as $r) {
             $f = $r->filter_family ?: 'OTHER';
@@ -466,12 +500,34 @@ final class CounterfactualAnalyzerService
                     'net_r' => 0.0,
                     'missed_r' => 0.0,
                     'saved_r' => 0.0,
+                    'missed_tp_r' => 0.0,
+                    'avoided_sl_r' => 0.0,
+                    'timeout_r' => 0.0,
+                    'eligible_records' => 0,
+                    'missing_r_records' => 0,
                 ];
             }
             $byFilter[$f]['total_skips']++;
             $rMultiple = null;
-            if (isset($r->r_multiple) && $r->r_multiple !== null && is_numeric((float) $r->r_multiple) && is_finite((float) $r->r_multiple)) {
+            if (isset($r->r_multiple) && $r->r_multiple !== null && is_numeric($r->r_multiple) && is_finite((float) $r->r_multiple)) {
                 $rMultiple = (float) $r->r_multiple;
+            }
+            if (in_array($r->status, ['RESOLVED_TP', 'RESOLVED_SL', 'RESOLVED_TIMEOUT'], true)) {
+                if ($rMultiple === null) {
+                    $missing++;
+                    $byFilter[$f]['missing_r_records']++;
+                } else {
+                    $eligible++;
+                    $byFilter[$f]['eligible_records']++;
+                    $key = match ($r->status) {
+                        'RESOLVED_TP' => 'missed_tp_r',
+                        'RESOLVED_SL' => 'avoided_sl_r',
+                        default => 'timeout_r',
+                    };
+                    $value = $r->status === 'RESOLVED_SL' ? -$rMultiple : $rMultiple;
+                    $totals[$key] += $value;
+                    $byFilter[$f][$key] += $value;
+                }
             }
             if ($r->status === 'RESOLVED_TP') {
                 $byFilter[$f]['tp_hit']++;
@@ -504,15 +560,41 @@ final class CounterfactualAnalyzerService
             $f['net_r'] = round((float) ($f['net_r'] ?? 0), 4);
             $f['missed_r'] = round((float) ($f['missed_r'] ?? 0), 4);
             $f['saved_r'] = round((float) ($f['saved_r'] ?? 0), 4);
+            $f['missed_tp_r'] = round((float) $f['missed_tp_r'], 4);
+            $f['avoided_sl_r'] = round((float) $f['avoided_sl_r'], 4);
+            $f['timeout_r'] = round((float) $f['timeout_r'], 4);
+            $f['net_filter_benefit_r'] = $f['eligible_records'] > 0
+                ? round($f['avoided_sl_r'] - $f['missed_tp_r'] - $f['timeout_r'], 4)
+                : null;
 
             return $f;
         }, $byFilter));
 
         return [
+            'legacy_analysis' => $this->legacyAnalysisEnabled() ? 'ENABLED' : 'DISABLED',
+            'analysis_status' => (string) config('research.counterfactual.legacy_status', 'LEGACY_READ_ONLY'),
+            'analysis_reason' => (string) config('research.counterfactual.legacy_reason', 'P3_REJECTED_SIGNAL_REPLAY_PROHIBITED'),
             'total_evaluated' => $records->count(),
             'total_restrictive' => $totalRestrictive,
             'total_protective' => $totalProtective,
+            // Deprecated TP/SL-only filter benefit, retained for old clients.
             'net_missed_r' => round($netMissedR, 4),
+            'missed_tp_r' => $eligible ? round($totals['missed_tp_r'], 4) : null,
+            'avoided_sl_r' => $eligible ? round($totals['avoided_sl_r'], 4) : null,
+            'timeout_r' => $eligible ? round($totals['timeout_r'], 4) : null,
+            'net_filter_benefit_r' => $eligible ? round($totals['avoided_sl_r'] - $totals['missed_tp_r'] - $totals['timeout_r'], 4) : null,
+            'metric_contract' => [
+                'version' => '2.0.0',
+                'population' => 'LEGACY_RESOLVED_TP_SL_TIMEOUT_WITH_FINITE_R',
+                'window' => 'ALL_STORED_HISTORY',
+                'eligible_records' => $eligible,
+                'missing_r_records' => $missing,
+                'formula' => 'net_filter_benefit_r = avoided_sl_r - missed_tp_r - timeout_r',
+                'sign' => 'Positive filter benefit means hypothetical losses avoided, not missed profit.',
+                'denominator' => 'SUM; no independent-trade or capital denominator',
+                'limitations' => 'Dependent/overlapping legacy observations; descriptive only, not portfolio PnL or promotion evidence. Missing R excluded, never simulated.',
+                'legacy_net_missed_r' => 'Deprecated TP/SL-only filter benefit; excludes timeouts.',
+            ],
             'filters' => $filters,
             'generated_at' => now('UTC')->toIso8601String(),
         ];
