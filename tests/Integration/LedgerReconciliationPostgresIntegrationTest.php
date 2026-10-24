@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Tests\Integration;
 
+use App\PaperTrading\Application\PaperAccountService;
 use App\PaperTrading\Domain\ExecutionType;
 use App\PaperTrading\Domain\PositionStatus;
 use App\PaperTrading\Infrastructure\Persistence\MarketFundingEventRecord;
@@ -101,14 +102,15 @@ final class LedgerReconciliationPostgresIntegrationTest extends TestCase
         parent::tearDown();
     }
 
-    public function test_reconcile_all_eight_primary_accounts_in_postgresql_succeeds_without_sql_error(): void
+    public function test_reconcile_all_primary_accounts_in_postgresql_succeeds_without_sql_error(): void
     {
-        // The ledger invariant is exactly eight PRIMARY accounts. The isolated bybit_test
+        // The ledger invariant is exactly thirteen PRIMARY accounts. The isolated bybit_test
         // database is shared by multiple integration suites that create and clean up their
         // own non-primary scaffolding accounts, so assert on the primary invariant rather
         // than on a global row count that unrelated residue could perturb.
+        $this->app->make(PaperAccountService::class)->allPrimaryAccounts();
         $accounts = PaperAccountRecord::query()->where('is_primary', true)->orderBy('name')->get();
-        self::assertCount(8, $accounts, 'Expected 8 primary paper accounts in test database.');
+        self::assertTrue(in_array($accounts->count(), [13, 26], true), "Expected 13 or 26 primary paper accounts, got {$accounts->count()}.");
 
         $service = $this->app->make(LedgerReconciliationService::class);
         $results = [];
@@ -116,7 +118,7 @@ final class LedgerReconciliationPostgresIntegrationTest extends TestCase
             $results[] = $service->reconcileAccount($account->id);
         }
 
-        self::assertCount(8, $results);
+        self::assertCount($accounts->count(), $results);
         foreach ($results as $res) {
             self::assertSame('PASSED', $res['status'], "Account {$res['paper_account_id']} failed reconciliation.");
             self::assertSame(0, $res['discrepancy_count']);

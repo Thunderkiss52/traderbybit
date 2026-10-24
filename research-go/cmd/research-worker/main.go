@@ -166,8 +166,14 @@ func main() {
 		dbSSL = "disable"
 	}
 
-	connStr := fmt.Sprintf("host=%s port=%s user=%s password=%s dbname=%s sslmode=%s",
-		dbHost, dbPort, dbUser, dbPass, dbName, dbSSL)
+	var connStr string
+	if dbPass != "" {
+		connStr = fmt.Sprintf("host=%s port=%s user=%s password='%s' dbname=%s sslmode=%s",
+			dbHost, dbPort, dbUser, dbPass, dbName, dbSSL)
+	} else {
+		connStr = fmt.Sprintf("host=%s port=%s user=%s dbname=%s sslmode=%s",
+			dbHost, dbPort, dbUser, dbName, dbSSL)
+	}
 
 	hostname, _ := os.Hostname()
 	workerID := fmt.Sprintf("go-research-worker-%s-%d", hostname, os.Getpid())
@@ -211,6 +217,10 @@ func main() {
 			req, token, err := runner.ClaimNextJob(ctx, 60*time.Second)
 			if err != nil {
 				log.Printf("[worker] Claim error: %v", err)
+				if *onceFlag {
+					log.Printf("[worker] Exiting on claim error in -once mode.")
+					return
+				}
 				continue
 			}
 			if req == nil {

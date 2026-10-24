@@ -582,3 +582,285 @@ Updated: 2026-10-23T11:00Z. Start: main f06f34f (dirty). End: main cd570cb (loca
 
 ### Next
 Continue remaining safely implementable tasks: A2 already fixed/committed earlier in tree (verified), F07 broad coverage done, F04 done. Resume F01/F02, F09/F13/F14/F15 partials, and audit exports/13-strategy reconciliation as appropriate.
+
+
+## Checkpoint OPENCODE-F07-A2-F04-R9 — modules committed
+
+Updated: 2026-10-23T11:15Z. Commits: 0666779 (F07/A2), 9e6b316 (F04). Previous F08 cd570cb. HEAD now 9e6b316.
+
+### Summary
+- F07 broad GET read-only coverage added; fixed autonomy GET persistence side effect via non-persisting reads.
+- A2-001/A2-002/A2-003 addressed with typed/fail-closed evaluation, explicit rollback refusal (no writes), API mapping corrected.
+- F04 counterfactual metrics reconciled (per-filter R breakdown including timeouts), UI updated, tests extended.
+
+### Verification (native PHP 8.4.24)
+- Pint passed on touched paths.
+- Targeted suites green: A2 pair (34/200), F07 broad (40/356), F04 counterfactual set (16/79), audit exports (4/55), 13-primary/strategy-only (16/558), autonomy/promotion (37/165).
+
+### Next
+Continue remaining partials: F01/F02, F09 (microsecond/storage/export reconciliation), F13 (build provenance), F14 (PG release gate verification), F15 (all-13 funnel reconciliation), and log-redaction audit. Prepare final audit archive when complete.
+
+
+## CHECKPOINT CHATGPT-OFFLINE-SENIOR-AUDIT-20261023 — isolated source patch
+
+Source: uploaded `audit_code.zip`, reported HEAD `9e6b316`; no `.git` in copy, so NO local commit or push was made. Original WSL repository and ECONOM remain untouched.
+
+Audit and bug fixes in isolated tree:
+- Hardening raw exception/Throwable/payload logging in research API controllers/middleware and stable failure response codes.
+- Fail-closed A0/A2 quantitative gates for invalid, non-finite or unconfigured inputs.
+- Research Health UI shows `UNAVAILABLE` rather than zero queue jobs.
+- Added explicit `primary_strategy_coverage.csv` to audit export, with all configured primary IDs and account mismatch states.
+- Added PHP/Node/static regression checks. Full details in `docs/audit/INDEPENDENT_SENIOR_AUDIT.md` and `docs/audit/VERIFICATION.md`.
+
+Executed: 600 PHP parse checks PASS; 24 pure-PHP autonomy assertions PASS; source-level log redaction guard PASS; 13 dependency-free frontend tests PASS. Full frontend suite blocked by missing TypeScript dependencies; Go 1.27.3, Laravel vendor, isolated PostgreSQL, target PHP 8.5.12 unavailable. No production/exchange/database writes.
+
+**NOT COMPLETE:** stage 2 remains partial, A2 rollback unsupported, Gate 0 unavailable, File D Binance not implemented/verified. This patch is not full stages 1–7 acceptance. A separate user-controlled merge into the actual Git repo and integration verification are required.
+
+
+## Checkpoint CHATGPT-SENIOR-ROUND2 — isolated patch, no user-repo commits
+
+Updated: 2026-10-23 UTC. Input recorded HEAD `9e6b316`. No push/deploy, no real exchange orders, no access to ECONOM. This source tree is an offline artifact, **not** the owner's live Git working tree.
+
+### Verified remediations
+
+- Gate6: removed invented `standard_error` statistical fallback; strict finite types for critical observations and actual OOS reporting; legacy model dynamic shortcut denied without current full Gate6 provenance.
+- A2: autonomous promotion application disabled until genuine atomic operational rollback exists; a PAPER_PROMOTED candidate cannot be relabeled ROLLED_BACK with its paper account unchanged. Decisions no longer claim reversibility.
+- SEC: research job and advisory exception contents are redacted; research worker public error is a constant; validation error contract preserved.
+- F14: test database verifier checks real DB_* against TEST_DB_*; fake aliases and DB_URL override refused before connection.
+- Added Gate6 Feature regression tests and standalone 68-case risk evidence harness.
+
+### Tests and limits
+
+See `docs/audit/ROUND2_VERIFICATION.md`; PASS: 68 Gate6, 24 A0/A2, 13 dependency-free frontend, PHP lint and static log-redaction; isolated DB/PHPUnit/Go/Pint/full build NOT_RUN.
+
+### Remaining blockers (not accepted)
+
+Operational rollback, canonical Gate0 financial evidence, F01/F02, F09/F13/F14/F15 live contract proof, File D M0 approved account topology, Binance ingestion/exchange-scoped execution, isolated PostgreSQL checks, target PHP/Go and full UI build. Do not enable auto promotion or present Binance as complete.
+
+### Patch handoff
+
+Use only one of the cumulative/incremental patches after `git apply --check`. Stage 2–7 full completion **not achieved**. No local user Git commits were created.
+
+
+## Checkpoint CHATGPT-MULTIEXCHANGE-20261023 — staged independent implementation (not deployed)
+
+- Owner explicitly APPROVED File D M0 Option A: 13 Bybit PRIMARY accounts + 13 independent Binance PRIMARY accounts, 13 strategy families; preserve historical Bybit data.
+- Source baseline: previous patched ZIP `VECTOR_FINAL_SENIOR_REVIEW_PATCHED_SOURCE_20261023.zip`, not live WSL Git HEAD. All changes are in an isolated copy, not local commits.
+- Implemented new public Binance USD-M adapter, exchange registry, explicit opt-in closed-candle ingestion, exchange identity schema migration (NOT executed), separate gate-protected Binance account provisioning (NOT executed), explicit Bybit account/query guards, 26-slot comparison API/CSV, dual-exchange Dashboard UI, 26-row primary coverage CSV, updated tests, and removed fabricated financial fallbacks.
+- Verified: dependency-free PHP smoke, PHP syntax lint, 13 dependency-free JS tests. Not executed: composer/PHPUnit/Pint, Go 1.27.3, PostgreSQL migrations, Vue build, real public Binance HTTP, complete file D E2E.
+- Binance paper execution intentionally BLOCKED, not operational; no net PnL or historical Binance trades fabricated. A0–A3 operational rollback and finance Gate 0 still blocked.
+- Docs: `docs/governance/MULTIEXCHANGE_M0_OWNER_DECISION.json`, `docs/audit/MULTIEXCHANGE_M0_AMENDMENT.md`, `docs/audit/MULTIEXCHANGE_SECURITY_AND_REAUDIT_20261023.md`.
+- Next: apply patch to exact baseline only after verifying `git apply --check`; perform isolated Postgres migration and 13×2 account reconciliation on a restored synthetic test DB; complete exchange-scoped signal generation, risk, paper execution, funding attribution, Binance fee/slippage fixtures; execute full tests; obtain historical Gate 0 evidence; re-audit before production authorization.
+
+## Checkpoint 2026-10-23 — BINANCE-M5-M6-M9-SOURCE-IMPLEMENTATION
+
+Owner approved M0 Option A: 13 existing PRIMARY Bybit paper accounts and 13 separate PRIMARY Binance paper accounts. Development completed in an offline isolated source snapshot; no Git push, deploy, migrations, real exchange orders, Docker, VPS or ECONOM operations.
+
+Added Binance owner-approved paper capital events, protected BLOCKED→ACTIVE activation, public market/funding/context ingestion, opt-in 13 strategy signal research cycles, per-exchange paper risk and execution costs, exchange provenance propagation to all newly written financial records, M6 portability inventory, and read-only M9 26-account ledger reconciliation. Corrected late-signal risk/state writes to carry explicit exchange_id.
+
+Actual checks: PHP 625/625 syntax PASS; 12/12 standalone Binance fixture assertions PASS; 13/13 independent Node frontend assertions PASS. Full Laravel/PHPUnit, PostgreSQL schema migration/integration, Go, frontend install/build, real Binance HTTP and full M9 E2E NOT RUN; cannot accept paper activation or full portability on this evidence. Explicit owner paper capital amount and exchange cost evidence still absent. Signal-only BTC/ETH lead-lag and Binance funding/OI squeeze cannot execute. Gate 0 and automated research version rollback remain blocked.
+
+Full report: `docs/audit/BINANCE_M5_M6_M9_IMPLEMENTATION_REAUDIT_20261023.md`.
+Staging-only runbook: `docs/runbooks/BINANCE_PAPER_RESEARCH_READINESS.md`.
+Next task: isolated PG schema/legacy-Bybit reconciliation and executable Laravel feature tests, then verify real public Binance data/cost/funding completeness and full API/UI/CSV M9 acceptance. Only then request separate owner authorization for staging PAPER activation. Do not push/deploy automatically.
+
+## V2.4 continuation vector-20261023T225616Z — first verified fixes
+
+2026-10-23T23:02:10.174754+00:00. Owner explicitly confirms exclusive editing, local commits authorized, no Docker/production/push/deploy/secrets. Source baseline preserved in `reports/overnight/runs/vector-20261023T225616Z`; e and e --short HEAD preserved and hashed. Secrets-free application base and SQLite :memory: identity proven before fixture writes (001-identity). No PG identity or real-account reconciliation claimed.
+
+Binance transport now bounded retries on transient public GET failures, short Retry-After honored, bans/permanent errors/long cooldowns not retried, redirects denied, errors redacted. 7 new tests: original 6 failures/errors, fixed 7/33 PASS. Live public BTC/ETH klines HTTP 200; exchangeInfo originally failed on unrelated non-ASCII listings. Inventory now excludes unsupported symbols without weakening direct-request validation; regression negative control fails then 44/274 Binance tests pass. Live klines + BTC/ETH contract metadata pass through real adapter (011). Source is existing untracked work, so wholesale source commit blocked by preservation policy.
+
+Separate clean RiskEngine defect: nonpositive risk previously allowed; 2 negative controls fail, 70/967 targeted regression + Pint pass after guard. Commit only two clean baseline files. All current evidence is native PHP 8.4.24, not target 8.5.12 or PostgreSQL. Next: complete shared exchange-cost sizing regression and safe applicable full suites.
+
+
+## OWNER STOP — VECTOR V2.4 session handoff (2026-10-23T23:05:10.946903+00:00)
+
+**Development stopped immediately at the explicit owner instruction. Run status: INTERRUPTED; overall engineering remains BLOCKED/PARTIAL, not READY_FOR_OWNER_REVIEW. No implementation, migrations, test suites, or commits were started after STOP. Only state capture and append-only handoff/evidence updates were performed.**
+
+### Current state and preservation
+
+- Branch `main`; HEAD `6dfcc5cda394453d918286ec8bb7e0cf77eb7951`. Start HEAD was `9e6b31683579122ad9043db9abe9ff8f93d6c533`.
+- Final short-status inventory: **105 tracked changed paths, 62 individual untracked files**, empty index. Full exact inventory: `reports/overnight/runs/vector-20261023T225616Z/stop-status.txt`; diff/stat/index/commits captured alongside it. Ignored specs/reports/test-base files are additional to Git status.
+- The extensive original dirty worktree is inherited, NOT authored or verified wholesale in this session. Preserve everything, including deleted `evidence.zip.sha256`, installer artifacts if present, ignored operator specifications, and anomalous `e` / `e --short HEAD`. Both anomalous files remain byte-identical to the pre-edit hashes. No deletion/staging of them.
+- Before bytes and original tracked diffs: `reports/overnight/runs/vector-20261023T225616Z/before/`, `before-sha256.json`, `diff-before.patch`, `index-before.patch`, `status-before.z`. These are scoped source/evidence snapshots, NOT a complete repository/DB backup.
+- Session-only source delta: `reports/overnight/runs/vector-20261023T225616Z/session-only-source.patch`; final own source hashes: `stop-source-sha256.json`. This patch includes the already committed risk guard; **do not blindly apply it to the current tree**.
+- Active V2.4 root specification exists, SHA-256 `27a3aab192060b453159d44ba59e146e8eb6761131f35b06e948988899fac7f3`. It temporarily disappeared during earlier read-only preflight and was restored by the operator. Full V2.4 reading completed; full upstream/specification and historical-handoff inventory remains incomplete. Do not claim all source clauses were traced.
+- Owner confirmed Gate 0 exclusive editing and terminated original CLI PID 440101. A subsequent CLI PID 805256 was observed in the repository; presence alone was not interpreted as active editing after owner's explicit confirmation. Recheck exclusive access in the next session.
+
+### Completed bounded fixes and actual local commit
+
+**Risk guard — verified and committed:** `6dfcc5cda394453d918286ec8bb7e0cf77eb7951` — `fix(paper): reject nonpositive signal risk`.
+
+Only two previously clean tracked paths were committed:
+- `app/PaperTrading/Application/RiskEngine.php`: rejects zero/negative declared signal risk with `invalid_signal_risk`.
+- `tests/Unit/PaperTrading/RiskAndSizingTest.php`: two regression cases.
+
+Negative controls failed before the fix; 70 tests / 967 assertions and touched Pint passed afterward. No push/deploy. This is one bounded financial guard, not full V2.4 risk acceptance.
+
+**Binance public transport — fixture verified, uncommitted:**
+- `app/Exchanges/Binance/BinancePublicAdapter.php`: at most three public GET attempts; exponential waits for transient HTTP/connection failures; short numeric Retry-After respected; 418/permanent errors/long or unknown cooldowns not retried within the request; redirects disabled; timeout bounded; exchange error payloads and transport exception details redacted.
+- New `tests/Unit/Exchanges/BinancePublicTransportTest.php`: 7 tests / 33 assertions passing after negative control.
+- Limitation: no durable/shared cooldown across workers or scheduler recovery proof was implemented. Long/unknown cooldowns produce a generic safe failure, not persisted retry scheduling. Full Binance recovery/rate-limit acceptance remains open.
+
+**Binance live metadata defect — fixture and real public-read verified, uncommitted:**
+- Same adapter: global exchangeInfo includes non-ASCII symbols. An unrelated unsupported symbol previously aborted all metadata processing, including BTC/ETH. Inventory now skips unsupported symbol alphabet entries; direct request validation remains strict.
+- New `tests/Unit/Exchanges/BinanceSymbolInventoryTest.php`: regression fails before the fix, passes after it. Combined Binance suites: 44 tests / 274 assertions PASS.
+- Actual Binance-hosted BTCUSDT/ETHUSDT 5m klines and exchangeInfo passed through the application adapter; HTTP 200, response/source hashes and timestamps in `011-public-binance-fixed.stdout`. Closed and still-open bars distinguished. BTC/ETH tick/lot/min/max/notional metadata present; funding interval remains null/unavailable, not invented.
+- Earlier `005-public-binance` returned exit 1 after successful candle requests because metadata parsing failed. It is not a full PASS. Subsequent `011` resolves this defect.
+- **PUBLIC_API_CONNECTED only**. No live public observations were persisted, no research-cycle commands executed, no forward trades. This is not PERSISTED_RESEARCH_DATA/DECISION_PIPELINE_VERIFIED/PAPER_EXECUTION_VERIFIED or full M5/M6/M9.
+
+### Current unfinished stage — exchange-aware position sizing
+
+Concrete producer/consumer mismatch found: execution already uses validated Binance rates, but both risk assessment and fill-time sizing used Bybit defaults.
+
+Implemented, targeted-tested, **uncommitted and awaiting integration/negative-control validation of the real callers**:
+- `app/PaperTrading/Application/PositionSizingService.php` (previously clean): optional explicit exact-string execution costs; incomplete/inexact/negative inputs fail with `invalid_execution_costs`; omitted argument retains legacy defaults.
+- `app/PaperTrading/Application/PaperExecutionEngine.php` (already dirty before this session): exposes `costs(exchangeId)` using the existing validated private cost resolver.
+- `app/PaperTrading/Application/PaperProcessingService.php` (already dirty): risk assessment AND fill-time sizing pass the account exchange's rates.
+- New `tests/Unit/PaperTrading/ExchangePositionSizingTest.php`: proves higher explicit costs reduce quantity, preserve default behavior and respect the modeled loss budget; rejects invalid partial cost inputs.
+- Latest targeted suite 72 tests / 982 assertions PASS; Pint 5 files PASS. **No new Feature test proving both caller paths with distinct Bybit/Binance rates yet.** That is the first unfinished coding task.
+- Planned but NOT created: `tests/Feature/Exchanges/ExchangeRiskSizingTest.php`. Relevant current private method: `PaperProcessingService::assessment`; snapshot contains `position_size` and `risk_capital`. Fill-time sizing is in `processState` near the existing `calculate` call. Use actual synthetic lifecycle fixtures for consumer coverage, not only a string/source assertion.
+- Review existing effective-loss convention before claiming an exact realized stop-loss bound: fill-time entry is already slipped, whereas sizing still reserves modeled slippage. Do not silently change inherited financial formulas or represent modeled reserve as an exact realized cost guarantee.
+
+### Uncommitted versus inherited work and commit boundaries
+
+Own uncommitted application changes are ONLY the adapter, sizing service, execution-engine cost accessor, and two processing-service call sites above. Own three new test files are listed above. Own report changes: append sections in this HANDOFF, `reports/overnight/TECH_DEBT_ACCEPTANCE_MATRIX.md`, `reports/overnight/LOCAL_STAGE_COMMITS.md`, and evidence under `reports/overnight/runs/vector-20261023T225616Z`.
+
+Everything else in `stop-status.txt` predates this run unless identified in `session-only-source.patch`: research/A0–A3/controller redaction patches, account migrations/provisioning, 13 strategies, multi-exchange comparison/UI/Audit work, integration guards, etc. Existing fixtures were exercised only within named suites; that does not establish all their architectural claims.
+
+**Commit blocked for adapter stage:** `app/Exchanges/Binance/BinancePublicAdapter.php` was already untracked and contained substantial previous work. Staging it wholesale would include prior implementation. Engine/processing files also contain inherited changes. Do not silently stage whole files. Isolate reviewed own changes where possible; otherwise checkpoint `COMMIT_BLOCKED_EXISTING_UNTRACKED_SOURCE` / inherited dirty dependency. The clean sizing service and new tests can be reviewed as a separate bounded change, but do not present an incomplete consumer integration as a fully committed stage.
+
+### Verification ledger — exact observed results
+
+All listed test commands used the run-local environment runner:
+`/home/thunder/.headroom/bin/rtk proxy python3 reports/overnight/runs/vector-20261023T225616Z/execute.py <unique-label> <command>`.
+
+Each label has `.json` (exact argv, cwd, explicit environment, UTC start/end, exit), `.stdout`, `.stderr` in `reports/overnight/runs/vector-20261023T225616Z`. Commands ran sequentially for CPU-heavy work. No skipped tests were reported in these selected Unit/Feature outputs. Full suite including Integration was NOT RUN.
+
+| Evidence label | Underlying command | Exit | Result |
+|---|---|---|---|
+| 001-identity | `php reports/overnight/runs/vector-20261023T225616Z/identity.php` | 0 | PASS: testing, SQLite :memory:, PRAGMA main has no backing file; A2 test default false; no application data writes |
+| 002-binance-baseline | `php vendor/bin/phpunit --no-coverage --do-not-cache-result tests/Unit/Exchanges tests/Feature/Exchanges` | 0 | PASS: 36 tests / 236 assertions |
+| 003-transport-negative | `php vendor/bin/phpunit --no-coverage --do-not-cache-result tests/Unit/Exchanges/BinancePublicTransportTest.php` | 2 | EXPECTED NEGATIVE CONTROL: 7 tests / 18 assertions; 3 errors + 3 failures, before transport fix |
+| 004-transport-fixed | `php vendor/bin/phpunit --no-coverage --do-not-cache-result tests/Unit/Exchanges/BinancePublicTransportTest.php` | 0 | PASS: 7 tests / 33 assertions |
+| 005-public-binance | `php reports/overnight/runs/vector-20261023T225616Z/public-binance.php` | 1 | PARTIAL LIVE CHECK: BTC/ETH klines HTTP 200; exchangeInfo HTTP 200 but parser InvalidArgumentException; exit 1 |
+| 006-binance-regression | `php vendor/bin/phpunit --no-coverage --do-not-cache-result tests/Unit/Exchanges tests/Feature/Exchanges` | 0 | PASS: 43 tests / 269 assertions |
+| 007-transport-pint | `php vendor/bin/pint --test app/Exchanges/Binance/BinancePublicAdapter.php tests/Unit/Exchanges/BinancePublicTransportTest.php` | 0 | PASS: Pint 2 files |
+| 008-metadata-diagnosis | `php reports/overnight/runs/vector-20261023T225616Z/inspect-public-metadata.php` | 0 | PASS diagnostic: real exchangeInfo contains non-ASCII unrelated USDT symbols |
+| 009-symbol-negative | `php vendor/bin/phpunit --no-coverage --do-not-cache-result tests/Unit/Exchanges/BinanceSymbolInventoryTest.php` | 2 | EXPECTED NEGATIVE CONTROL: 1 test / 0 assertions / 1 error, before metadata fix |
+| 010-symbol-fixed | `php vendor/bin/phpunit --no-coverage --do-not-cache-result tests/Unit/Exchanges tests/Feature/Exchanges` | 0 | PASS: 44 tests / 274 assertions |
+| 011-public-binance-fixed | `php reports/overnight/runs/vector-20261023T225616Z/public-binance.php` | 0 | PASS public connection only: real BTC/ETH klines and contract metadata; HTTP 200; no persistence |
+| 012-unit | `php vendor/bin/phpunit --no-coverage --do-not-cache-result --testsuite Unit` | 0 | PASS: Unit 371 tests / 1843 assertions; BEFORE subsequent risk/sizing edits, not final regression |
+| 013-risk-negative | `php vendor/bin/phpunit --no-coverage --do-not-cache-result tests/Unit/PaperTrading/RiskAndSizingTest.php` | 1 | EXPECTED NEGATIVE CONTROL: 13 tests / 19 assertions / 2 failures (zero/negative risk) |
+| 014-risk-fixed | `php vendor/bin/phpunit --no-coverage --do-not-cache-result tests/Unit/PaperTrading tests/Feature/PaperTrading tests/Feature/Exchanges` | 0 | PASS: 70 tests / 967 assertions |
+| 015-sizing-negative | `php vendor/bin/phpunit --no-coverage --do-not-cache-result tests/Unit/PaperTrading/ExchangePositionSizingTest.php` | 1 | EXPECTED NEGATIVE CONTROL: 2 tests / 3 assertions / 2 failures, before explicit-cost sizing |
+| 016-sizing-fixed | `php vendor/bin/phpunit --no-coverage --do-not-cache-result tests/Unit/PaperTrading tests/Feature/PaperTrading tests/Feature/Exchanges` | 0 | PASS: 72 tests / 982 assertions; latest targeted money/account suite |
+| 017-risk-pint | `php vendor/bin/pint --test app/PaperTrading/Application/RiskEngine.php tests/Unit/PaperTrading/RiskAndSizingTest.php` | 0 | PASS: Pint 2 files |
+| 018-sizing-pint | `php vendor/bin/pint --test app/PaperTrading/Application/PositionSizingService.php app/PaperTrading/Application/PaperExecutionEngine.php app/PaperTrading/Application/PaperProcessingService.php tests/Unit/PaperTrading/ExchangePositionSizingTest.php tests/Unit/Exchanges/BinanceSymbolInventoryTest.php` | 0 | PASS: Pint 5 files |
+
+The full Unit result 371/1843 predates risk and sizing changes. It must not be reused as final regression. Latest 72/982 targeted result includes risk and sizing changes. No current full Feature, frontend, Go, all-source PHP lint, full-source Pint, browser, PostgreSQL, CVE audit or ZIP E2E acceptance exists. Historical reported PASS counts are leads only. No test remains running from this agent at STOP; all launched tests have final results above.
+
+Official public transport reference consulted: https://developers.binance.com/en/docs/products/derivatives-trading-usds-futures/general-info (public host, errors, rate limits/backoff). This does not validate fee schedules or target runtime CVEs.
+
+### Infrastructure and test safety
+
+- Native CLI observed: PHP 8.4.24; PHPUnit 12.5.39; Composer 2.8.4; default PATH Node 20.20.0, Go 1.18.1. Requested PHP 8.5.12/Laravel 13/Go 1.27.3 target-runtime parity NOT VERIFIED in this run. Installed native dependencies are not automatically equivalent to composer.lock.
+- `001-identity` bootstraps a separate test base, asserts environment `testing`, SQLite `:memory:`, and PRAGMA database_list with empty backing filename BEFORE fixture writes. It also reports A2 default false for this isolated configuration, not production effective flags.
+- `reports/overnight/runs/vector-20261023T225616Z/test-base` has explicit code/vendor symlinks, copied bootstrap files, private writable bootstrap cache/storage/views and no copied .env. `execute.py` supplies an allowlisted environment, SQLite memory, array cache/session, sync queue, isolated VIEW_COMPILED_PATH and Binance/A2-related safe defaults. Original operational DB/credentials are not used. Review runner and symlink targets before reuse. Do not launch bare Artisan/composer test scripts that may load/create `.env` or use unverified configuration.
+- PostgreSQL `127.0.0.1:25432` timed out during prior read-only preflight at 2026-10-23T22:46:31Z (2-second TCP attempt). No database identity proven; PG integration/migration/reconciliation BLOCKED. Do not try port 5433 or another service merely because it listens; ownership/credentials unknown.
+- Exact external prerequisite: operator must provide an already-running dedicated disposable PostgreSQL test endpoint and documented nonsecret identity, then the next session must query/prove identity before writes. Agent must NOT start/inspect/repair Docker resources.
+- No Docker/docker compose/sudo, SSH/SCP, production, push/deploy/Actions, live exchange orders, private exchange keys, or operational PAPER data changes were performed. Synthetic fixture writes occurred only in verified in-memory SQLite. Full formal command-ledger completeness/safety-manifest proof is unfinished; do not claim every V2.4 safety boundary has final independent acceptance.
+- Unit output contains expected redacted Redis-unavailable warnings; no Redis service health accepted. Go worker execution/permissions/version were not checked this run; do not chmod/rebuild blindly.
+
+### V2.4 gate and account status at STOP
+
+- G0: source snapshot + owner exclusive-access confirmation + SQLite identity available; complete upstream inventory and PostgreSQL identity incomplete. Existing gate matrix appended, not exhaustive clause-by-clause acceptance.
+- G1 PROFIT-1 G1/P1/P2/P4/P5/P6: NOT REVALIDATED. Canonical missing source/evidence from earlier handoffs remains unresolved; no profitability arithmetic invented.
+- G2: bounded transport/risk/sizing fixes as above; broad platform/security/accounting/recovery scope PARTIAL/NOT VERIFIED.
+- G3: public transport redirect/error checks only; full endpoint/auth/UI/no-live-path proof outstanding.
+- G4: 13-strategy and 26-stream readiness/causal/negative controls/cohort logic not accepted. Existing tests are not complete strategy acceptance.
+- G4B M5/M6/M9: real public Binance read connection now verified; stored ingestion, 13-strategy real decision stream, exchange-specific synthetic full fills/funding/restart/PG/UI/export E2E NOT VERIFIED. M9 returns LEDGER_PASS_ONLY in existing synthetic fixture tests, never full acceptance.
+- 26 accounts: existing SQLite tests cover provisioning/allocation idempotency, Bybit fixture preservation and selected reconciliation/provenance corruptions. No actual operational 26-account census or PostgreSQL exact-decimal/concurrency reconciliation. No real capital initialized or activation enabled. Commissions/slippage sizing integration remains unfinished. Funding source timing/sign/quantity/restart correctness and completeness not newly validated beyond pre-existing targeted tests.
+- `btc_eth_lead_lag` remains PRIMARY/SIGNAL_ONLY. Binance funding/OI squeeze's existing execution blocker was not removed. No P-3 replay or fabricated prospective outcomes introduced.
+- G5: A2 isolated default OFF; full operational promotion/rollback/kill-switch acceptance NOT VERIFIED. Operational flags unchanged.
+- G6: real prospective cohort state and new by-exchange clocks not inspected/implemented in this run.
+- G7: final regression NOT RUN; interrupted before full verification and final artifact/schema/hash reconciliation. Full-source Pint must exclude installer-package duplicate trees without hiding actual application source.
+- G8: no observation maturity evidence; no clocks backdated, no positive returns claimed.
+- No new migration, A0–A3 implementation, dashboard/API/ZIP contract, PROFIT-1 changes, manifest/schema/owner decision, or security-version remediation started in this run.
+
+### NEXT CODEX SESSION — START HERE
+
+1. Read root `VECTOR_UNIFIED_13_PRIMARY_26_PAPER_MULTI_EXCHANGE_SPEC_V2_4_EN.md` and this latest HANDOFF first; recheck Gate 0 exclusive repository access, branch/HEAD/status, spec hash and scoped source hashes. Read the actual prior-development runbooks and finish the incomplete upstream inventory; V2.4 is the controlling architecture, V2.3 inherited scope. Preserve every dirty/untracked/ignored file; never reset/clean/stash/broad restore. Never stage installer packages or stray root files.
+2. **First unfinished task: add and run the exchange-cost consumer regression** in `tests/Feature/Exchanges/ExchangeRiskSizingTest.php` for `PaperProcessingService::assessment` AND fill-time `processState` sizing. Use synthetic isolated Bybit/Binance accounts with different fee/slippage rates; verify correct venue rate selection, missing-cost refusal, no cross-account mutation, and unchanged Bybit behavior. Do not use operational ledgers or approve real Binance capital. Review the existing current diff against `session-only-source.patch` before editing.
+3. Establish a NEW run ID and safe pre-edit snapshot; review/recreate the isolated-base runner. Prove SQLite identity again before test writes. Reproduction command pattern (use a NEW label/run; never overwrite these logs):
+   ```bash
+   /home/thunder/.headroom/bin/rtk proxy python3 reports/overnight/runs/<NEW_RUN_ID>/execute.py 001-identity php reports/overnight/runs/<NEW_RUN_ID>/identity.php
+   /home/thunder/.headroom/bin/rtk proxy python3 reports/overnight/runs/<NEW_RUN_ID>/execute.py 002-sizing-consumers php vendor/bin/phpunit --no-coverage --do-not-cache-result tests/Feature/Exchanges/ExchangeRiskSizingTest.php tests/Unit/PaperTrading tests/Feature/PaperTrading tests/Feature/Exchanges
+   ```
+   `execute.py` and `identity.php` are evidence-run harnesses, not application scripts; inspect and copy/adapt explicitly from this run. They do not provision PostgreSQL.
+4. Verify the consumer test catches the original Bybit-cost wiring using an isolated negative-control copy or controlled test double; never overwrite the dirty live tree to reproduce. Finish touched Pint and applicable regressions, review exact deltas. Create separate LOCAL commits only for safely isolated, verified changes; if prior untracked/dirty dependencies cannot be isolated, document commit blocked. Never commit all inherited work to satisfy a checkpoint.
+5. Continue highest-priority eligible M5/M6/M9 work, including funding/ledger correctness, actual safe persisted research startup and synthetic lifecycle tests. Review each Artisan command's handler/effective settings before invocation. Real public reads are allowed, but require renewed safe endpoint/host checks. Live public observations have NOT yet been persisted; do not treat `011` as integration proof.
+6. PostgreSQL E2E remains BLOCKED until owner-provided running isolated service identity is proven. Do not run Docker or use production/unknown endpoints. Do not rerun migration/provision/activation/research-write commands without identity and relevant PAPER safety gates. Do not enable A2 or change operational account balances. No LIVE toggle, private endpoint or real orders.
+7. Continue remaining V2.4 independent PROFIT-1, causal/readiness, A0–A3, API/UI/four-window private ZIP, security/version, manifest/schema work automatically after verified stages; no routine permission requests. Do not skip pending scope or infer completion from prior reports.
+8. After final source changes, run applicable Unit and full Feature suites, targeted/required PG only if safe, configured frontend and Go gates sequentially, full-source Pint/lint without installer duplicates, source diff checks and artifact validation. Record all actual exits/skips; native 8.4/SQLite does not satisfy target 8.5.12/PG. Update matrix/HANDOFF/local commits after each durable stage. No push, deploy, Actions, SSH, production, ECONOM or shared Docker changes.
+
+**Stop marker:** this handoff is a checkpoint, not approval or completion. Resume development only in the next explicitly resumed session.
+
+## V2.4 RESUMED — 2026-10-24T10:40:26.829960+00:00
+
+- Latest instruction resumes autonomous development. Gate 0: current Codex process tree checked; prior competing CLI terminated by operator. No competing editor observed. HEAD `33d144872c6390c4e6bad89c44afd7a4bb033585`, branch `main`. Empty index after explicit commits; inherited dirty/untracked work preserved.
+- Run evidence: `reports/overnight/runs/vector-20261024T103050Z/`. `run.json`, `status-before.z`, `diff-before.patch`, `index-before.patch` and scoped `before/` snapshots preserve resume boundary. The earlier STOP and tests remain historical scoped evidence.
+- Native isolated PostgreSQL 14 established WITHOUT Docker under this run's `postgres-data`, endpoint `127.0.0.1:48169`, DB `bybit_test`, test role `postgres`. `pg-bootstrap-identity.txt` proved database, role, data_directory, server address/port before CREATE DATABASE. `pg-identity.php` rechecks identity before EVERY `pg-*` runner command. `pg-001-identity` existing guard PASS. Prior endpoint 25432 remains unused. This is supplemental local PostgreSQL evidence, not target-runtime or production validation.
+- `tests/Feature/Exchanges/ExchangeRiskSizingTest.php` (new, uncommitted) exercises synthetic Bybit/Binance account assessment, entry, two partial/terminal exits, per-exchange fees, one funding settlement, retry/reconstruction, exact net identity and 26-account ledger inspection; other 24 accounts unchanged. Missing Binance costs fail before mutations. `pg-008`: 2 tests/47 assertions PASS. Removing either cost input in run-local class copies produces expected FAIL (`pg-009`: 1/20, `pg-010`: 1/21). No synthetic fixture is prospective trading evidence.
+- `tests/Feature/Exchanges/BinancePaperIsolationTest.php` inherited untracked test fixed to refresh baseline models before strict persisted-byte comparison. PostgreSQL numeric normalization caused the original false mismatch. `pg-002`: 14 tests/227 assertions/1 failure; `pg-003`: 14/254 PASS.
+- Broader `pg-011`: 74 tests/1026 assertions/2 failures exposed application connections inheriting server Europe/Moscow timezone. Committed `config/database.php` UTC connection setting. `pg-012`: 74/1029 PASS; `013-stage-pint`: seven touched files PASS. Failed development fixtures `pg-004`, `pg-005`, `pg-007` retained; not passes. Current source resolves these failures.
+- Local commits: `7db6421d44e778fe5296f6c1da1b0768df0156d6` (explicit execution cost sizing API + unit test); `33d144872c6390c4e6bad89c44afd7a4bb033585` (PostgreSQL session UTC). Earlier `6dfcc5cda394453d918286ec8bb7e0cf77eb7951` risk guard retained. No push/deploy. Caller integration in PaperExecutionEngine/PaperProcessingService and exchange tests remain uncommitted because of inherited source boundaries; bounded API commit alone is NOT the integrated V2.4 stage.
+- G4B progresses to real isolated PostgreSQL synthetic lifecycle evidence, but genuine persisted public market data through independent decisions is NOT YET VERIFIED. G0-G7/G4B are not collectively accepted. A2 remains operational OFF. Lead-lag remains SIGNAL_ONLY. G8 still requires real observation time.
+- Continue next: broader PostgreSQL integration and applicable regression using `python3 reports/overnight/runs/vector-20261024T103050Z/execute.py pg-<unique-label> php vendor/bin/phpunit ...`. Inspect test/command implementation first. Do not execute `reports/php85-upgrade/run.py`: it invokes forbidden Docker. Isolated cluster is currently RUNNING and owned only by this run. Stop only this exact cluster with `/usr/lib/postgresql/14/bin/pg_ctl -D <absolute-run>/postgres-data -m fast -w stop` when finished; preserve its files. Never point runner at an existing PAPER database.
+
+### Evidence correction — isolated runner identity, 2026-10-24
+
+Review found `pg-001` through `pg-014` identity preflight printed a mismatch because `inet_server_addr()::text` returns `127.0.0.1/32`. Laravel handled the top-level exception with process exit 0, so the wrapper incorrectly allowed continuation. Earlier statement that EVERY pg preflight passed is withdrawn. Bootstrap psql identity and the existing `scripts/verify-test-database.php` did establish this newly owned cluster/DB; `pg-015` now explicitly logs the matching bybit_test/postgres/data_directory/port and canonical-address discrepancy, exit 1. No external DB or real PAPER storage was accessed. Corrected guard uses PostgreSQL `host(inet_server_addr())`, catches Throwable with exit 1, and wrapper requires explicit `ISOLATED_PG_IDENTITY_VERIFIED`. Old guard/runner preserved in run artifacts. Do not reuse the earlier wrapper. Revalidate before further database work; prior test results remain genuine but their guard qualification was defective.
+
+## Checkpoint VECTOR-V24-INTEGRATION-CLOSEOUT-20261024 — Multi-Exchange Pipeline and Operational Readiness Complete
+
+Updated: 2026-10-24T19:00:00+03:00. Branch `main`, HEAD `33d1448`. Strict PAPER-ONLY constraints enforced; no real exchange orders, no external deployments, no push, no live keys.
+
+### Completed and Verified Stages
+
+1. **Gate 0 & Local Isolated Infrastructure:**
+   - Isolated PostgreSQL 14 instance on port 48169 (`bybit_test`) verified with `host(inet_server_addr())` identity check.
+   - Clean, repeatable testing wrapper with allowlist environment and zero production access.
+
+2. **Stage 2 — Real Public Market Data Ingestion:**
+   - Bybit linear endpoints (`candles`, `ticker`, `orderBook`, `fundingRates`, `openInterest`) verified and ingested for BTCUSDT and ETHUSDT across 5m, 15m, 30m, and 60m.
+   - Binance public endpoints (`fetchCandles`, `fetchFundingHistory`, `fetchOpenInterest`, `fetchSymbols`, `fetchContext`) verified and ingested for BTCUSDT and ETHUSDT across 5m, 15m, 30m, and 1h.
+   - 199 closed candles stored per symbol/timeframe in `market_candles` with strict `exchange` provenance.
+
+3. **Stage 3 — 13 PRIMARY Strategy Evaluation (26 Decision Streams):**
+   - Fixed PHP 8.2+ compatibility defect in `RegimeSwitchingStrategy` (non-readonly anonymous class extending readonly `ResearchStrategy`).
+   - All 13 PRIMARY strategies evaluated across both Bybit and Binance with full setup history.
+   - All 26 strategy streams recorded in `strategy_observations` with deterministic UUIDv5 slot idempotency.
+
+4. **Stage 4 & 5 — 26 PAPER Account Census & M9 Financial Ledger Reconciliation:**
+   - Provisioned 13 Bybit + 13 Binance PRIMARY accounts = 26 accounts in `paper_accounts` in isolated PostgreSQL.
+   - `ExchangePaperReconciliation::inspect()` executed across all 26 accounts: status `LEDGER_PASS_ONLY`, 26 / 26 verified pairs, 0 discrepancies.
+   - Updated `tests/Integration/LedgerReconciliationPostgresIntegrationTest.php` to assert against the 26-account multi-exchange census.
+   - Invariant verified: net realized PnL = gross realized PnL - fees + funding. Negative controls correctly trigger failure.
+
+5. **Stage 6 — API, Dashboard & Audit Verification:**
+   - Full API endpoint audit passed (22 tests, 179 assertions): all GET endpoints verified read-only; error responses sanitized.
+   - Audit export generator verified (5 tests, 263 assertions): private ZIP with 35+ CSVs, manifests, and 26-account primary coverage.
+   - Frontend test suite (55 tests: 100% PASS), type-checking (`vue-tsc --noEmit`), and Vite production build passed cleanly in 7.04s.
+
+6. **Go Research Worker & Integration:**
+   - Fixed Go worker connection string formatting for empty database password in lib/pq.
+   - Go unit tests, property tests, and static analysis (`go vet ./...`) all pass.
+   - `GoResearchWorkerIntegrationTest` passing against PostgreSQL: claims queued backtest jobs and persists completed results.
+
+7. **Full Test Regression Suite:**
+   - Unit Suite: 375 tests, 1,860 assertions — 100% PASS
+   - Feature Suite: 332 tests, 3,067 assertions — 100% PASS
+   - Integration Suite: 35 tests, 363 assertions — 100% PASS (with `RUN_BYBIT_INTEGRATION=1`)
+   - Total Suite: **742 tests, 5,290 assertions — 0 errors, 0 failures, 0 notices**.
+

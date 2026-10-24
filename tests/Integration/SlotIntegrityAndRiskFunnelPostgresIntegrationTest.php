@@ -141,8 +141,8 @@ final class SlotIntegrityAndRiskFunnelPostgresIntegrationTest extends TestCase
     {
         $service = $this->app->make(SlotIntegrityService::class);
 
-        // Historical time in past (>2 hours ago)
-        $pastTime = CarbonImmutable::now('UTC')->subHours(3)->setMinute(0)->setSecond(0)->setMicrosecond(0);
+        // Historical time in past (>2 hours ago, outside recent live candle windows)
+        $pastTime = CarbonImmutable::now('UTC')->subDays(10)->setMinute(0)->setSecond(0)->setMicrosecond(0);
         $slot1 = $pastTime;
         $slot2 = $pastTime->addMinutes(15);
 

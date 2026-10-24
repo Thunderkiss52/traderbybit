@@ -52,7 +52,7 @@ final readonly class RegimeSwitchingStrategy implements StrategyInterface
     {
         $cfg = $this->config + ['stop_atr' => '1.5', 'tp1_r' => '1.5', 'tp2_r' => '2.5'];
 
-        return (new class($cfg, $this->classifier->classify($input)) extends ResearchStrategy
+        return (new readonly class($cfg, $this->classifier->classify($input)) extends ResearchStrategy
         {
             public function __construct(array $config, private string $regime)
             {
