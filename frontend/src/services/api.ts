@@ -1,6 +1,16 @@
 import axios from 'axios';
 
 export const api = axios.create({ baseURL: '/api/v1', timeout: 15000 });
+api.interceptors.request.use(config => {
+  try {
+    const saved = JSON.parse(localStorage.getItem('ui-settings') || '{}');
+    const exchange = saved.exchange || 'bybit';
+    config.headers['X-Exchange'] = exchange;
+  } catch {
+    // ignore
+  }
+  return config;
+});
 api.interceptors.response.use(response => response, error => {
   const payload = error.response?.data?.error;
   const message = payload?.message || error.response?.data?.message || 'API unavailable';

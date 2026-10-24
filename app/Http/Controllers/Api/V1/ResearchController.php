@@ -66,15 +66,21 @@ final class ResearchController extends Controller
         return max(1, min(100, $request->integer('per_page', 10)));
     }
 
-    public function dashboard(PerformanceStatisticsService $statistics, StrategyRegistry $strategies): ResearchResource
+    public function dashboard(Request $request, PerformanceStatisticsService $statistics, StrategyRegistry $strategies): ResearchResource
     {
-        $payload = Cache::remember('paper:dashboard:full_payload:v5', 10, function () use ($statistics, $strategies): array {
-            $account = PaperAccountRecord::query()->where('exchange_id', 'bybit')->oldest()->first();
+        $exchange = $request->header('X-Exchange') ?: $request->string('exchange', 'bybit')->toString();
+        if (! in_array($exchange, ['bybit', 'binance'], true)) {
+            $exchange = 'bybit';
+        }
+
+        $cacheKey = "paper:dashboard:full_payload:{$exchange}:v6";
+        $payload = Cache::remember($cacheKey, 10, function () use ($statistics, $strategies, $exchange): array {
+            $account = PaperAccountRecord::query()->where('exchange_id', $exchange)->oldest()->first();
             $contexts = collect(config('ui.symbols'))->map(
                 static fn (string $symbol) => MarketContextRecord::query()->where('symbol', $symbol)->latest('observed_at')->first()
             )->filter()->values();
-            $skipReasons = Cache::remember('paper:dashboard:skip_reasons_24h', 60, function (): array {
-                $recentSkips = SignalRecord::query()->where('side', 'SKIP')
+            $skipReasons = Cache::remember("paper:dashboard:skip_reasons_24h:{$exchange}", 60, function () use ($exchange): array {
+                $recentSkips = SignalRecord::query()->where('exchange', $exchange)->where('side', 'SKIP')
                     ->where('decision_time', '>=', now('UTC')->subDay())
                     ->whereIn('symbol', config('ui.symbols'))
                     ->latest('decision_time')
@@ -91,7 +97,7 @@ final class ResearchController extends Controller
 
                 return array_slice($skipCounts, 0, 8, true);
             });
-            $recentDecisions = SignalRecord::query()->whereIn('symbol', config('ui.symbols'))
+            $recentDecisions = SignalRecord::query()->where('exchange', $exchange)->whereIn('symbol', config('ui.symbols'))
                 ->latest('decision_time')->latest('id')->limit(8)
                 ->get(['id', 'symbol', 'side', 'decision_time', 'reasons', 'indicator_snapshot'])
                 ->map(static fn (SignalRecord $decision): array => [
@@ -103,8 +109,8 @@ final class ResearchController extends Controller
                     'level_interaction' => data_get($decision->indicator_snapshot, 'level_interaction'),
                 ])->values()->all();
 
-            $signals = SignalRecord::query()->whereIn('side', ['BUY', 'SELL'])->latest('decision_time')->latest('id')->limit(8)->get(['id', 'symbol', 'side', 'quality_class', 'score', 'entry_low', 'entry_high', 'stop_loss', 'take_profit_1', 'take_profit_2', 'expires_at', 'reasons', 'decision_time'])->map(fn ($s) => $s->toArray())->all();
-            $positions = VirtualPositionRecord::query()->whereNull('closed_at')->latest('opened_at')->limit(10)->get(['id', 'symbol', 'side', 'status', 'entry_price', 'net_pnl', 'unrealized_pnl'])->map(fn ($p) => $p->toArray())->all();
+            $signals = SignalRecord::query()->where('exchange', $exchange)->whereIn('side', ['BUY', 'SELL'])->latest('decision_time')->latest('id')->limit(8)->get(['id', 'symbol', 'side', 'quality_class', 'score', 'entry_low', 'entry_high', 'stop_loss', 'take_profit_1', 'take_profit_2', 'expires_at', 'reasons', 'decision_time'])->map(fn ($s) => $s->toArray())->all();
+            $positions = VirtualPositionRecord::query()->where('exchange_id', $exchange)->whereNull('closed_at')->latest('opened_at')->limit(10)->get(['id', 'symbol', 'side', 'status', 'entry_price', 'net_pnl', 'unrealized_pnl'])->map(fn ($p) => $p->toArray())->all();
 
             return [
                 'market' => $contexts->map(fn ($c) => $c->toArray())->values()->all(),
@@ -116,26 +122,27 @@ final class ResearchController extends Controller
                 'signals' => $signals,
                 'recent_decisions' => $recentDecisions,
                 'skip_reasons_24h' => $skipReasons,
-                'strategy_observations_24h' => Cache::remember('paper:dashboard:strategy_observations_24h:v5', 60, fn () => $this->strategyObservations($strategies)),
-                'strategy_portfolios' => collect($strategies->metadata())->map(function (array $strategy): array {
+                'strategy_observations_24h' => Cache::remember("paper:dashboard:strategy_observations_24h:{$exchange}:v6", 60, fn () => $this->strategyObservations($strategies, $exchange)),
+                'strategy_portfolios' => collect($strategies->metadata())->map(function (array $strategy) use ($exchange): array {
                     $account = PaperAccountRecord::query()
-                        ->where('primary_strategy_id', $strategy['id'])->where('exchange_id', 'bybit')
+                        ->where('primary_strategy_id', $strategy['id'])->where('exchange_id', $exchange)
                         ->first()
                         ?? PaperAccountRecord::query()
-                            ->where('strategy_id', $strategy['id'])->where('exchange_id', 'bybit')
+                            ->where('strategy_id', $strategy['id'])->where('exchange_id', $exchange)
                             ->whereIn('mode', ['FORWARD_PAPER', 'STRATEGY_FORWARD_PAPER', 'RESEARCH_FORWARD_PAPER'])
                             ->latest('created_at')
                             ->first();
 
                     if ($account === null && $strategy['id'] === 'baseline') {
                         $account = PaperAccountRecord::query()
-                            ->where('exchange_id', 'bybit')->where(fn ($q) => $q->where('strategy_id', 'baseline')->orWhereNull('strategy_id'))
+                            ->where('exchange_id', $exchange)->where(fn ($q) => $q->where('strategy_id', 'baseline')->orWhereNull('strategy_id'))
                             ->whereIn('mode', ['FORWARD_PAPER', 'STRATEGY_FORWARD_PAPER'])
                             ->oldest('created_at')
                             ->first();
                     }
 
                     $latestObs = StrategyObservationRecord::query()
+                        ->where('exchange', $exchange)
                         ->where('strategy_id', $strategy['id'])
                         ->latest('decision_time')
                         ->first(['side', 'decision_time', 'reasons']);
@@ -186,13 +193,13 @@ final class ResearchController extends Controller
                     ];
                 })->values()->all(),
                 'paper_execution_health' => [
-                    'execution_failures_24h' => JournalEventRecord::query()->where('event_type', 'EXECUTION_FAILED')->where('occurred_at', '>=', now('UTC')->subDay())->count(),
-                    'last_journal_event_at' => JournalEventRecord::query()->max('occurred_at'),
-                    'latest_strategy_evaluation_at' => StrategyObservationRecord::query()->max('decision_time'),
+                    'execution_failures_24h' => JournalEventRecord::query()->where('exchange_id', $exchange)->where('event_type', 'EXECUTION_FAILED')->where('occurred_at', '>=', now('UTC')->subDay())->count(),
+                    'last_journal_event_at' => JournalEventRecord::query()->where('exchange_id', $exchange)->max('occurred_at'),
+                    'latest_strategy_evaluation_at' => StrategyObservationRecord::query()->where('exchange', $exchange)->max('decision_time'),
                 ],
                 'positions' => $positions,
                 'performance' => $account ? Cache::remember('paper:dashboard:performance:'.$account->id, 60, fn () => $statistics->calculate($account->id)->metrics) : null,
-                'exchange_scope' => 'bybit',
+                'exchange_scope' => $exchange,
                 'research_settings' => [
                     'starting_balance' => config('backtest.starting_balance'),
                     'strategy_version' => config('strategy.version'),
@@ -204,12 +211,13 @@ final class ResearchController extends Controller
         return $this->ok($payload);
     }
 
-    private function strategyObservations(StrategyRegistry $strategies): array
+    private function strategyObservations(StrategyRegistry $strategies, string $exchange = 'bybit'): array
     {
         $since = now('UTC')->subDay();
 
-        return collect($strategies->metadata())->map(function (array $strategy) use ($since): array {
+        return collect($strategies->metadata())->map(function (array $strategy) use ($since, $exchange): array {
             $query = StrategyObservationRecord::query()
+                ->where('exchange', $exchange)
                 ->where('strategy_id', $strategy['id'])
                 ->where(fn ($q) => $q->where('configuration_hash', $strategy['configuration_hash'])->orWhereNull('configuration_hash'))
                 ->where('decision_time', '>=', $since);
@@ -463,6 +471,10 @@ final class ResearchController extends Controller
             'signals.stop_loss', 'signals.take_profit_1', 'signals.take_profit_2', 'signals.reasons', 'signals.risks',
             'signals.strategy_id', 'signals.strategy_version',
         ]);
+        $exchange = $r->header('X-Exchange') ?: $r->string('exchange')->toString();
+        if ($exchange && in_array($exchange, ['bybit', 'binance'], true)) {
+            $q->where('exchange', $exchange);
+        }
         foreach (['symbol', 'side', 'quality_class', 'strategy_id', 'strategy_version'] as $f) {
             if ($r->filled($f)) {
                 $q->where($f, $r->string($f));
@@ -515,6 +527,10 @@ final class ResearchController extends Controller
     public function positions(Request $r): ResearchResource
     {
         $q = VirtualPositionRecord::query();
+        $exchange = $r->header('X-Exchange') ?: $r->string('exchange')->toString();
+        if ($exchange && in_array($exchange, ['bybit', 'binance'], true)) {
+            $q->where('exchange_id', $exchange);
+        }
         if ($r->filled('account')) {
             $q->where('paper_account_id', $r->string('account'));
         }
@@ -582,6 +598,10 @@ final class ResearchController extends Controller
         ]);
         $days = (int) ($validated['period_days'] ?? 7);
         $q = JournalEventRecord::query()->where('occurred_at', '>=', now('UTC')->subDays($days));
+        $exchange = $r->header('X-Exchange') ?: $r->string('exchange')->toString();
+        if ($exchange && in_array($exchange, ['bybit', 'binance'], true)) {
+            $q->where('exchange_id', $exchange);
+        }
         if (! empty($validated['account'])) {
             $q->where('paper_account_id', $validated['account']);
         }
@@ -595,7 +615,11 @@ final class ResearchController extends Controller
 
     public function statistics(Request $r, PerformanceStatisticsService $s): ResearchResource
     {
-        $a = $r->string('account')->toString() ?: PaperAccountRecord::query()->where('exchange_id', 'bybit')->value('id');
+        $exchange = $r->header('X-Exchange') ?: $r->string('exchange', 'bybit')->toString();
+        if (! in_array($exchange, ['bybit', 'binance'], true)) {
+            $exchange = 'bybit';
+        }
+        $a = $r->string('account')->toString() ?: PaperAccountRecord::query()->where('exchange_id', $exchange)->value('id');
         if (! $a) {
             return $this->ok([
                 'metrics' => null,
@@ -698,7 +722,11 @@ final class ResearchController extends Controller
 
     public function dailyPerformance(Request $request, DailyPerformanceService $service): ResearchResource
     {
-        $account = $request->string('account')->toString() ?: PaperAccountRecord::query()->where('exchange_id', 'bybit')->value('id');
+        $exchange = $request->header('X-Exchange') ?: $request->string('exchange', 'bybit')->toString();
+        if (! in_array($exchange, ['bybit', 'binance'], true)) {
+            $exchange = 'bybit';
+        }
+        $account = $request->string('account')->toString() ?: PaperAccountRecord::query()->where('exchange_id', $exchange)->value('id');
         if (! $account) {
             return $this->ok(['summary' => null, 'days' => ['data' => [], 'meta' => ['current_page' => 1, 'per_page' => 10, 'total' => 0, 'last_page' => 1]]]);
         }
@@ -769,7 +797,11 @@ final class ResearchController extends Controller
 
     public function risk(Request $r): ResearchResource
     {
-        $a = $r->string('account')->toString() ?: PaperAccountRecord::query()->where('exchange_id', 'bybit')->value('id');
+        $exchange = $r->header('X-Exchange') ?: $r->string('exchange', 'bybit')->toString();
+        if (! in_array($exchange, ['bybit', 'binance'], true)) {
+            $exchange = 'bybit';
+        }
+        $a = $r->string('account')->toString() ?: PaperAccountRecord::query()->where('exchange_id', $exchange)->value('id');
         $decisions = $a ? RiskDecisionRecord::query()->where('paper_account_id', $a)
             ->latest('decided_at')->latest('id')->paginate($this->perPage($r), ['id', 'signal_id', 'allowed', 'reasons', 'decided_at']) : null;
 
