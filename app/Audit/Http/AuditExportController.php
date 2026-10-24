@@ -42,8 +42,12 @@ final class AuditExportController extends Controller
     public function funnel(Request $request, StrategyFunnelService $funnel): JsonResponse
     {
         $validated = $request->validate(['days' => ['nullable', 'integer', 'in:1,7,14,30']]);
+        $exchange = $request->header('X-Exchange') ?: $request->string('exchange', 'bybit')->toString();
+        if (! in_array($exchange, ['bybit', 'binance'], true)) {
+            $exchange = 'bybit';
+        }
 
-        return response()->json(['data' => $funnel->report((int) ($validated['days'] ?? 7))]);
+        return response()->json(['data' => $funnel->report((int) ($validated['days'] ?? 7), $exchange)]);
     }
 
     public function download(string $id, AuditExportService $service): BinaryFileResponse

@@ -1,6 +1,9 @@
 <script setup lang="ts">
 import { onBeforeUnmount, onMounted, ref } from 'vue';
 import { api } from '../services/api';
+import { useSettings } from '../stores/settings';
+
+const s = useSettings();
 
 type AuditStatus = {
   id: string; period_days: number; from_at: string; to_at: string;
@@ -120,7 +123,7 @@ onBeforeUnmount(() => { disposed = true; stopPolling(); });
       </div>
     </div>
     <div class="panel q-pa-md q-mb-md">
-      <div class="row items-center justify-between q-mb-sm"><h2>7-day strategy funnel</h2>
+      <div class="row items-center justify-between q-mb-sm"><h2>7-day strategy funnel ({{ s.exchange.toUpperCase() }})</h2>
         <q-btn flat icon="refresh" label="Analyze no-trade strategies" :loading="loading" @click="refreshFunnel" /></div>
       <q-table flat bordered :rows="funnel" row-key="strategy_id" :columns="[
         {name:'strategy',label:'Strategy',field:'strategy_id',align:'left'},

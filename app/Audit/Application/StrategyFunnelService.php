@@ -14,17 +14,21 @@ final readonly class StrategyFunnelService
 {
     public function __construct(private StrategyRegistry $strategies) {}
 
-    public function report(int $days = 7): array
+    public function report(int $days = 7, string $exchange = 'bybit'): array
     {
         if (! in_array($days, [1, 7, 14, 30], true)) {
             throw new \InvalidArgumentException('Invalid funnel window.');
         }
+        if (! in_array($exchange, ['bybit', 'binance'], true)) {
+            $exchange = 'bybit';
+        }
 
-        return Cache::remember('audit:funnel:v2:'.$days, 60, function () use ($days): array {
+        return Cache::remember("audit:funnel:v3:{$exchange}:{$days}", 60, function () use ($days, $exchange): array {
             $since = now('UTC')->subDays($days);
             $rows = [];
             foreach ($this->strategies->metadata() as $strategy) {
                 $base = StrategyObservationRecord::query()
+                    ->where('exchange', $exchange)
                     ->where('strategy_id', $strategy['id'])
                     ->where('strategy_version', $strategy['version'])
                     ->where('configuration_hash', $strategy['configuration_hash'])
@@ -38,7 +42,7 @@ final readonly class StrategyFunnelService
                     $reasons[$primary] = ($reasons[$primary] ?? 0) + 1;
                 }
                 arsort($reasons);
-                $accounts = DB::table('paper_accounts')->where('exchange_id', 'bybit')->where('strategy_id', $strategy['id'])
+                $accounts = DB::table('paper_accounts')->where('exchange_id', $exchange)->where('strategy_id', $strategy['id'])
                     ->where('strategy_version', $strategy['version'])->get(['id', 'mode', 'configuration_hash']);
                 $riskApproved = $riskRejected = $opened = $closed = 0;
                 foreach ($accounts as $account) {
@@ -65,7 +69,7 @@ final readonly class StrategyFunnelService
                 ];
             }
 
-            return ['days' => $days, 'exchange_scope' => 'bybit', 'strategies' => $rows];
+            return ['days' => $days, 'exchange_scope' => $exchange, 'strategies' => $rows];
         });
     }
 }
