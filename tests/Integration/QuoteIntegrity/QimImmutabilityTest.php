@@ -39,8 +39,11 @@ final class QimImmutabilityTest extends TestCase
             BEGIN
                 IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'bybit_signals') THEN
                     CREATE ROLE bybit_signals WITH LOGIN PASSWORD 'signals_test_pass';
+                ELSE
+                    ALTER ROLE bybit_signals WITH LOGIN PASSWORD 'signals_test_pass';
                 END IF;
             END \$\$;
+            GRANT CONNECT ON DATABASE {$this->testDb} TO bybit_signals;
             GRANT USAGE ON SCHEMA public TO bybit_signals;
             GRANT SELECT, INSERT ON qim_observations TO bybit_signals;
             REVOKE UPDATE, DELETE ON qim_observations FROM bybit_signals;

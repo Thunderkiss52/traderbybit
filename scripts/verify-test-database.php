@@ -41,8 +41,12 @@ $pdo->exec("
     BEGIN
         IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'bybit_signals') THEN
             CREATE ROLE bybit_signals WITH LOGIN PASSWORD 'signals_test_pass';
+        ELSE
+            ALTER ROLE bybit_signals WITH LOGIN PASSWORD 'signals_test_pass';
         END IF;
     END \$\$;
+    GRANT CONNECT ON DATABASE bybit_test TO bybit_signals;
+    GRANT USAGE ON SCHEMA public TO bybit_signals;
 ");
 
 echo "Isolated test database identity verified.\n";
