@@ -13,17 +13,24 @@ final readonly class PositionSizingService
 {
     public function __construct(private array $config) {}
 
-    public function calculate(string $equity, string $riskPercent, string $entry, string $stop, InstrumentConstraints $limits): PositionSize
+    /** @param array{taker_rate: string, slippage_rate: string}|null $executionCosts */
+    public function calculate(string $equity, string $riskPercent, string $entry, string $stop, InstrumentConstraints $limits, ?array $executionCosts = null): PositionSize
     {
         $d = static fn (string $v): BigDecimal => BigDecimal::of($v);
+        $costs = $executionCosts ?? ['taker_rate' => (string) $this->config['fees']['taker_rate'], 'slippage_rate' => (string) $this->config['slippage_rate']];
+        foreach (['taker_rate', 'slippage_rate'] as $key) {
+            if (! is_string($costs[$key] ?? null) || ! preg_match('/^[0-9]+(?:\.[0-9]+)?$/D', $costs[$key])) {
+                return new PositionSize(false, null, '0', null, null, 'invalid_execution_costs');
+            }
+        }
         foreach ([$limits->qtyStep, $limits->minOrderQty, $limits->maxOrderQty, $limits->minNotionalValue] as $value) {
             if ($d($value)->isLessThanOrEqualTo(BigDecimal::zero())) {
                 return new PositionSize(false, null, '0', null, null, 'invalid_instrument_constraints');
             }
         }
         $riskCapital = $d($equity)->multipliedBy($riskPercent)->dividedBy(100, 24, RoundingMode::HalfEven);
-        $fee = (string) $this->config['fees']['taker_rate'];
-        $slippage = (string) $this->config['slippage_rate'];
+        $fee = $costs['taker_rate'];
+        $slippage = $costs['slippage_rate'];
         $effectiveLoss = $d($entry)->minus($stop)->abs()
             ->plus($d($entry)->multipliedBy($slippage))
             ->plus($d($stop)->multipliedBy($slippage))
