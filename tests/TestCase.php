@@ -28,8 +28,8 @@ abstract class TestCase extends BaseTestCase
         if (! app()->runningUnitTests() || $db->transactionLevel() < 1) {
             throw new \RuntimeException('Fixture reset requires a rolled-back test transaction.');
         }
-        if ($db->getDriverName() !== 'sqlite' && $db->getDatabaseName() !== env('TEST_DB_DATABASE', 'bybit_test')) {
-            throw new \RuntimeException('Test database identity mismatch.');
+        if ($db->getDriverName() !== 'pgsql' || $db->getDatabaseName() !== env('TEST_DB_DATABASE', 'bybit_test')) {
+            throw new \RuntimeException('Test database identity mismatch: strictly isolated PostgreSQL bybit_test required.');
         }
         // This is fixture setup, not migration behavior. Never remove history.
         foreach (['virtual_positions', 'virtual_executions', 'trading_journal_events', 'paper_signal_states'] as $table) {

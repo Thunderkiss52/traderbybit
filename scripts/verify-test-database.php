@@ -15,18 +15,13 @@ if (getenv('DB_URL') !== false && trim((string) getenv('DB_URL')) !== '') {
     throw new RuntimeException('Database URL override is not permitted in isolated release tests.');
 }
 $connection = getenv('DB_CONNECTION');
-if ($connection === 'pgsql') {
-    foreach (['HOST', 'PORT', 'DATABASE', 'USERNAME', 'PASSWORD'] as $key) {
-        if (getenv('DB_'.$key) !== getenv('TEST_DB_'.$key)) {
-            throw new RuntimeException('Actual PostgreSQL connection differs from verified test configuration.');
-        }
+if ($connection !== 'pgsql') {
+    throw new RuntimeException('PostgreSQL (pgsql) connection required for isolated release tests.');
+}
+foreach (['HOST', 'PORT', 'DATABASE', 'USERNAME', 'PASSWORD'] as $key) {
+    if (getenv('DB_'.$key) !== getenv('TEST_DB_'.$key)) {
+        throw new RuntimeException('Actual PostgreSQL connection differs from verified test configuration.');
     }
-} elseif ($connection === 'sqlite') {
-    if (getenv('DB_DATABASE') !== ':memory:') {
-        throw new RuntimeException('SQLite release tests must run in memory.');
-    }
-} else {
-    throw new RuntimeException('Unsupported release-test database driver.');
 }
 
 $pdo = new PDO('pgsql:host='.getenv('TEST_DB_HOST').';port='.getenv('TEST_DB_PORT').';dbname=bybit_test', getenv('TEST_DB_USERNAME'), getenv('TEST_DB_PASSWORD'));
