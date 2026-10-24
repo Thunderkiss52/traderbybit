@@ -44,9 +44,9 @@ final class ExchangeRiskSizingTest extends TestCase
             // Binance loss/unit=6+196*(0.001+0.002)=6.588; floor to .001.
             $expectedRiskSize = $exchange === 'binance' ? '7.589' : '8.134';
             $expectedFillSize = $exchange === 'binance' ? '7.363' : '8.107';
-            self::assertTrue(BigDecimal::of($risk->snapshot['position_size'])->isEqualTo($expectedRiskSize));
+            self::assertTrue(BigDecimal::of((string) $risk->snapshot['position_size'])->isEqualTo($expectedRiskSize));
             $position = VirtualPositionRecord::query()->where('signal_id', $signal->id)->firstOrFail();
-            self::assertTrue(BigDecimal::of($position->initial_quantity)->isEqualTo($expectedFillSize));
+            self::assertTrue(BigDecimal::of((string) $position->initial_quantity)->isEqualTo($expectedFillSize));
             self::assertSame($exchange, $position->exchange_id);
             self::assertSame($accounts[$exchange]->id, $position->paper_account_id);
 
@@ -63,16 +63,16 @@ final class ExchangeRiskSizingTest extends TestCase
             $fees = BigDecimal::zero();
             foreach ($executions as $execution) {
                 self::assertSame($exchange, $execution->exchange_id);
-                $fee = BigDecimal::of($execution->quantity)->multipliedBy($execution->price)
+                $fee = BigDecimal::of((string) $execution->quantity)->multipliedBy((string) $execution->price)
                     ->multipliedBy($exchange === 'binance' ? '0.001' : '0.00055');
-                self::assertTrue($fee->isEqualTo($execution->commission));
+                self::assertTrue($fee->isEqualTo((string) $execution->commission));
                 $fees = $fees->plus($fee);
             }
             $funding = DB::table('position_funding_events')->where('position_id', $position->id)->sole();
             self::assertSame($exchange, $funding->exchange_id);
-            self::assertTrue(BigDecimal::of($funding->amount)->isEqualTo(BigDecimal::of($expectedFillSize)->multipliedBy('102')->multipliedBy('-0.001')));
-            self::assertTrue(BigDecimal::of($position->gross_pnl)->plus($funding->amount)->minus($fees)->isEqualTo($position->net_pnl));
-            self::assertTrue(BigDecimal::of($accounts[$exchange]->refresh()->reserved_risk)->isZero());
+            self::assertTrue(BigDecimal::of((string) $funding->amount)->isEqualTo(BigDecimal::of((string) $expectedFillSize)->multipliedBy('102')->multipliedBy('-0.001')));
+            self::assertTrue(BigDecimal::of((string) $position->gross_pnl)->plus((string) $funding->amount)->minus($fees)->isEqualTo((string) $position->net_pnl));
+            self::assertTrue(BigDecimal::of((string) $accounts[$exchange]->refresh()->reserved_risk)->isZero());
         }
         self::assertSame($untouched, DB::table('paper_accounts')->whereNotIn('id', $accountIds)->orderBy('id')->get()->toJson());
         $report = app(ExchangePaperReconciliation::class)->inspect();

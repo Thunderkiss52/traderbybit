@@ -21,15 +21,32 @@ final class QimImmutabilityTest extends TestCase
     {
         parent::setUp();
 
+        $this->ensurePostgresTestDatabaseReady('qim_observations');
+
         $this->testPort = (int) env('TEST_DB_PORT', 25432);
         $this->testHost = (string) env('TEST_DB_HOST', '127.0.0.1');
         $this->testDb = (string) env('TEST_DB_DATABASE', 'bybit_test');
 
-        $connectionOk = @fsockopen($this->testHost, $this->testPort, $errno, $errstr, 1);
-        if (! $connectionOk) {
-            $this->markTestSkipped("PostgreSQL test container is not reachable on {$this->testHost}:{$this->testPort}.");
-        }
-        fclose($connectionOk);
+        $adminPdo = new PDO(
+            "pgsql:host={$this->testHost};port={$this->testPort};dbname={$this->testDb}",
+            'postgres',
+            'testpass',
+            [PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION]
+        );
+
+        $adminPdo->exec("
+            DO \$\$
+            BEGIN
+                IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'bybit_signals') THEN
+                    CREATE ROLE bybit_signals WITH LOGIN PASSWORD 'signals_test_pass';
+                END IF;
+            END \$\$;
+            GRANT USAGE ON SCHEMA public TO bybit_signals;
+            GRANT SELECT, INSERT ON qim_observations TO bybit_signals;
+            REVOKE UPDATE, DELETE ON qim_observations FROM bybit_signals;
+            GRANT SELECT, INSERT ON qim_gap_events TO bybit_signals;
+            REVOKE UPDATE, DELETE ON qim_gap_events FROM bybit_signals;
+        ");
     }
 
     public function test_bybit_signals_role_cannot_update_or_delete_qim_observations(): void

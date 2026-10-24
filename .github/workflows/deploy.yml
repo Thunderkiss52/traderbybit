@@ -107,6 +107,8 @@ jobs:
           chmod 600 .env
       - name: Verify isolated PostgreSQL identity
         run: php scripts/verify-test-database.php
+      - name: Migrate PostgreSQL test database
+        run: php artisan migrate --database=pgsql --force
       - name: Run PHPUnit
         run: php artisan test --no-ansi
       - name: Check PHP formatting

@@ -145,7 +145,14 @@ final readonly class PositionLifecycleService
             $realizedDelta = BigDecimal::of($gross)->minus($fee);
             $realized = BigDecimal::of($account->realized_pnl)->plus($realizedDelta);
             $portfolioUnrealized = $this->portfolioUnrealized($account->id);
-            $reservedRisk = BigDecimal::of($account->reserved_risk)->minus($release);
+            $hasOtherPositions = VirtualPositionRecord::query()
+                ->where('paper_account_id', $account->id)
+                ->where('id', '!=', $locked->id)
+                ->whereIn('status', [PositionStatus::Open->value, PositionStatus::PartiallyClosed->value])
+                ->exists();
+            $reservedRisk = ($closed && ! $hasOtherPositions)
+                ? BigDecimal::zero()
+                : BigDecimal::max(BigDecimal::of($account->reserved_risk)->minus($release)->toScale(12, RoundingMode::HalfEven), BigDecimal::zero());
             $this->refreshAccountMetrics($account, $realized, $portfolioUnrealized, $reservedRisk);
             if ($closed) {
                 SignalLifecycle::Active->transitionTo(SignalLifecycle::Completed);

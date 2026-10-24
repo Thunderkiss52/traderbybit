@@ -6,7 +6,6 @@ namespace Tests\Integration;
 
 use App\Research\Application\QuantPortfolioMetricsService;
 use Carbon\CarbonImmutable;
-use Illuminate\Support\Facades\DB;
 use Tests\TestCase;
 
 final class QuantPortfolioMetricsPostgresIntegrationTest extends TestCase
@@ -18,37 +17,7 @@ final class QuantPortfolioMetricsPostgresIntegrationTest extends TestCase
     protected function setUp(): void
     {
         parent::setUp();
-
-        $testPort = (int) env('TEST_DB_PORT', 25432);
-        $testHost = env('TEST_DB_HOST', '127.0.0.1');
-        $testDb = env('TEST_DB_DATABASE', 'bybit_test');
-        $testUser = env('TEST_DB_USERNAME', 'postgres');
-        $testPass = env('TEST_DB_PASSWORD', 'testpass');
-
-        $connectionOk = @fsockopen($testHost, $testPort, $errno, $errstr, 1);
-        if (! $connectionOk) {
-            $this->markTestSkipped("PostgreSQL test container is not reachable on {$testHost}:{$testPort}.");
-        }
-        fclose($connectionOk);
-
-        config([
-            'database.default' => 'pgsql',
-            'database.connections.pgsql.host' => $testHost,
-            'database.connections.pgsql.port' => $testPort,
-            'database.connections.pgsql.database' => $testDb,
-            'database.connections.pgsql.username' => $testUser,
-            'database.connections.pgsql.password' => $testPass,
-        ]);
-        DB::purge('pgsql');
-        DB::reconnect('pgsql');
-
-        $currentDb = DB::connection()->getDatabaseName();
-        if ($currentDb !== 'bybit_test') {
-            $this->fail("SAFETY ABORT: PostgreSQL test must run strictly against isolated 'bybit_test' database (current: {$currentDb}).");
-        }
-        if (app()->environment('production')) {
-            $this->fail('SAFETY ABORT: Cannot run integration tests in production environment.');
-        }
+        $this->ensurePostgresTestDatabaseReady('paper_accounts');
 
         $goldenPath = base_path('tests/Fixtures/Golden/golden_positions_29.json');
         self::assertFileExists($goldenPath, 'Golden positions fixture must exist.');

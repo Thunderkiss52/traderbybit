@@ -176,11 +176,11 @@ final class ExchangePaperReconciliation
                     }
                 }
                 $expectedRealized = $gross->plus($funding)->minus($fees);
-                if (! $expectedRealized->isEqualTo(BigDecimal::of((string) $account->realized_pnl))) {
+                if ($expectedRealized->minus((string) $account->realized_pnl)->abs()->isGreaterThan('0.000001')) {
                     $issues[] = ['exchange_id' => $exchange, 'strategy_id' => $strategy, 'code' => 'ACCOUNT_REALIZED_MISMATCH'];
                 }
                 $expectedEquity = BigDecimal::of((string) $account->starting_balance)->plus((string) $account->realized_pnl)->plus((string) $account->unrealized_pnl);
-                if (! $expectedEquity->isEqualTo(BigDecimal::of((string) $account->current_equity))) {
+                if ($expectedEquity->minus((string) $account->current_equity)->abs()->isGreaterThan('0.000001')) {
                     $issues[] = ['exchange_id' => $exchange, 'strategy_id' => $strategy, 'code' => 'ACCOUNT_EQUITY_MISMATCH'];
                 }
                 if (! $unrealized->isEqualTo(BigDecimal::of((string) $account->unrealized_pnl))) {

@@ -34,4 +34,15 @@ $identity = $pdo->query('select current_database(), current_user')->fetch(PDO::F
 if ($identity !== ['bybit_test', 'postgres']) {
     throw new RuntimeException('Test database identity mismatch.');
 }
+
+// Ensure bybit_signals test role exists for QIM immutability verification.
+$pdo->exec("
+    DO \$\$
+    BEGIN
+        IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'bybit_signals') THEN
+            CREATE ROLE bybit_signals WITH LOGIN PASSWORD 'signals_test_pass';
+        END IF;
+    END \$\$;
+");
+
 echo "Isolated test database identity verified.\n";
