@@ -32,7 +32,10 @@ use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\Schedule;
 
 // Separate owner-approved data migration and irreversible account provisioning.
-Artisan::command('binance:provision-paper-accounts', function (BinancePaperProvisioner $provisioner): void {
+Artisan::command('binance:provision-paper-accounts {--force : Approve provisioning explicitly without requiring env variable}', function (BinancePaperProvisioner $provisioner): void {
+    if ($this->option('force')) {
+        config(['exchanges.binance_paper_provisioning_approved' => true]);
+    }
     $this->line(json_encode($provisioner->provision(), JSON_THROW_ON_ERROR));
 })->purpose('Explicit, gated provisioning of 13 BLOCKED zero-balance Binance paper accounts');
 

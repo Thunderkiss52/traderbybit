@@ -13,7 +13,11 @@ const data = shallowRef<any>({ market: [], signals: [], positions: [], portfolio
 const error = ref('');
 const exchangeComparison = shallowRef<any>(null);
 const exchangeError = ref('');
-const selectedExchange = ref('bybit');
+const settings = useSettings();
+const selectedExchange = computed({
+  get: () => settings.exchange,
+  set: (val: string) => settings.exchange = val as 'bybit' | 'binance',
+});
 const selectedAccounts = computed(() => (exchangeComparison.value?.accounts || []).filter((row: any) => row.exchange_id === selectedExchange.value));
 async function loadExchangeComparison() {
   try {

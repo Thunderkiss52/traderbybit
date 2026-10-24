@@ -19,6 +19,7 @@ use App\Research\Infrastructure\Persistence\ResearchRecommendationRecord;
 use App\Strategy\Application\StrategyRegistry;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Log;
 use Symfony\Component\HttpFoundation\Response;
 use Throwable;
@@ -143,10 +144,15 @@ final class ResearchIntelligenceController extends Controller
                 return $this->ok($snap);
             }
 
-            $snapshots = [];
-            foreach ($registry->metadata() as $meta) {
-                $snapshots[] = $service->evaluate($meta['id'], $horizon, $symbol, persist: false);
-            }
+            $cacheKey = "research:degradation:all:{$horizon}:".($symbol ?? 'all');
+            $snapshots = Cache::remember($cacheKey, 30, function () use ($registry, $service, $horizon, $symbol) {
+                $res = [];
+                foreach ($registry->metadata() as $meta) {
+                    $res[] = $service->evaluate($meta['id'], $horizon, $symbol, persist: false);
+                }
+
+                return $res;
+            });
 
             return $this->ok([
                 'horizon' => $horizon,
@@ -167,7 +173,13 @@ final class ResearchIntelligenceController extends Controller
         try {
             $horizon = $request->string('horizon', '14d')->toString();
 
-            return $this->ok($service->evaluate($horizon, persist: false));
+            $data = Cache::remember(
+                "research:correlations:{$horizon}",
+                30,
+                fn () => $service->evaluate($horizon, persist: false)
+            );
+
+            return $this->ok($data);
         } catch (Throwable $e) {
             Log::error('Research API operation failed.', ['operation' => __METHOD__, 'exception_type' => $e::class]);
 
@@ -245,7 +257,13 @@ final class ResearchIntelligenceController extends Controller
         try {
             $period = $request->string('period', 'daily')->toString();
 
-            return $this->ok($service->generateReport($period));
+            $report = Cache::remember(
+                "research:report:{$period}",
+                30,
+                fn () => $service->generateReport($period)
+            );
+
+            return $this->ok($report);
         } catch (Throwable $e) {
             Log::error('Research API operation failed.', ['operation' => __METHOD__, 'exception_type' => $e::class]);
 

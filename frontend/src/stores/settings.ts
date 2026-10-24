@@ -11,16 +11,18 @@ export const useSettings = defineStore('settings', () => {
   const account = ref(saved.account || '');
   const preferredSymbol = ref(saved.preferredSymbol || 'BTCUSDT');
   const preferredInterval = ref(saved.preferredInterval || '15');
+  const exchange = ref<'bybit' | 'binance'>(saved.exchange === 'binance' ? 'binance' : 'bybit');
 
   watch(
-    [locale, dark, timezone, numberLocale, autoRefresh, account, preferredSymbol, preferredInterval],
+    [locale, dark, timezone, numberLocale, autoRefresh, account, preferredSymbol, preferredInterval, exchange],
     () => localStorage.setItem('ui-settings', JSON.stringify({
       locale: locale.value, dark: dark.value, timezone: timezone.value,
       numberLocale: numberLocale.value, autoRefresh: autoRefresh.value, account: account.value,
       preferredSymbol: preferredSymbol.value, preferredInterval: preferredInterval.value,
+      exchange: exchange.value,
     })),
     { deep: true },
   );
 
-  return { locale, dark, timezone, numberLocale, autoRefresh, account, preferredSymbol, preferredInterval };
+  return { locale, dark, timezone, numberLocale, autoRefresh, account, preferredSymbol, preferredInterval, exchange };
 });

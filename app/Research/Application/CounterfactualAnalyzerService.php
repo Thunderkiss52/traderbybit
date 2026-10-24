@@ -475,7 +475,7 @@ final class CounterfactualAnalyzerService
             $query->where('strategy_id', $strategyId);
         }
 
-        $records = $query->get();
+        $records = $query->select(['id', 'filter_family', 'status', 'r_multiple'])->get();
         $byFilter = [];
         $netMissedR = 0.0;
         $totalRestrictive = 0;
