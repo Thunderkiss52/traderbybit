@@ -74,10 +74,10 @@ final class ProfitabilityResearchController extends Controller
         $accountSummaries = [];
 
         foreach ($accounts as $account) {
-            $starting = BigDecimal::of($account->starting_balance ?? '10000');
-            $equity = BigDecimal::of($account->current_equity ?? (string) $starting);
-            $peak = BigDecimal::of($account->peak_equity ?? (string) $starting);
-            $realized = BigDecimal::of($account->realized_pnl ?? '0');
+            $starting = BigDecimal::of($account->starting_balance ?? throw new \DomainException('Missing starting balance.'));
+            $equity = BigDecimal::of($account->current_equity ?? throw new \DomainException('Missing current equity.'));
+            $peak = BigDecimal::of($account->peak_equity ?? throw new \DomainException('Missing peak equity.'));
+            $realized = BigDecimal::of($account->realized_pnl ?? throw new \DomainException('Missing realized PnL.'));
 
             $totalStartingBalance = $totalStartingBalance->plus($starting);
             $totalCurrentEquity = $totalCurrentEquity->plus($equity);
@@ -95,6 +95,7 @@ final class ProfitabilityResearchController extends Controller
                 'strategy_id' => $account->primary_strategy_id ?? $account->strategy_id,
                 'name' => $account->name,
                 'is_primary' => (bool) $account->is_primary,
+                'exchange_id' => (string) $account->exchange_id,
                 'starting_balance' => (string) $starting,
                 'current_equity' => (string) $equity,
                 'peak_equity' => (string) $peak,
@@ -255,6 +256,7 @@ final class ProfitabilityResearchController extends Controller
     public function strategyDetail(string $strategyId, Request $request): JsonResponse
     {
         $account = PaperAccountRecord::query()
+            ->where('exchange_id', 'bybit')
             ->where(function ($query) use ($strategyId): void {
                 $query->where('primary_strategy_id', $strategyId)
                     ->orWhere('strategy_id', $strategyId);
@@ -300,6 +302,7 @@ final class ProfitabilityResearchController extends Controller
                 'name' => $account->name,
                 'mode' => $account->mode,
                 'is_primary' => (bool) $account->is_primary,
+                'exchange_id' => (string) $account->exchange_id,
                 'starting_balance' => (string) $account->starting_balance,
                 'current_equity' => (string) $account->current_equity,
                 'peak_equity' => (string) $account->peak_equity,
@@ -442,7 +445,7 @@ final class ProfitabilityResearchController extends Controller
             return response()->json([
                 'error' => [
                     'code' => 'IDEMPOTENCY_CONFLICT',
-                    'message' => $e->getMessage(),
+                    'message' => 'A generation with this idempotency key has conflicting inputs.',
                 ],
             ], 409);
         }
@@ -527,7 +530,7 @@ final class ProfitabilityResearchController extends Controller
             return response()->json([
                 'error' => [
                     'code' => 'IDEMPOTENCY_CONFLICT',
-                    'message' => $e->getMessage(),
+                    'message' => 'A generation with this idempotency key has conflicting inputs.',
                 ],
             ], 409);
         }
@@ -713,7 +716,7 @@ final class ProfitabilityResearchController extends Controller
             return response()->json([
                 'error' => [
                     'code' => 'IDEMPOTENCY_CONFLICT',
-                    'message' => $e->getMessage(),
+                    'message' => 'A generation with this idempotency key has conflicting inputs.',
                 ],
             ], 409);
         }
@@ -757,7 +760,7 @@ final class ProfitabilityResearchController extends Controller
             return response()->json([
                 'error' => [
                     'code' => 'IDEMPOTENCY_CONFLICT',
-                    'message' => $e->getMessage(),
+                    'message' => 'A generation with this idempotency key has conflicting inputs.',
                 ],
             ], 409);
         }
@@ -800,7 +803,7 @@ final class ProfitabilityResearchController extends Controller
             return response()->json([
                 'error' => [
                     'code' => 'IDEMPOTENCY_CONFLICT',
-                    'message' => $e->getMessage(),
+                    'message' => 'A generation with this idempotency key has conflicting inputs.',
                 ],
             ], 409);
         }
@@ -816,6 +819,7 @@ final class ProfitabilityResearchController extends Controller
         // belongs to migrations, scheduled jobs or explicit mutation endpoints.
         return PaperAccountRecord::query()
             ->where('is_primary', true)
+            ->where('exchange_id', 'bybit')
             ->whereIn('primary_strategy_id', $this->primaryStrategies())
             ->orderBy('primary_strategy_id')
             ->get();

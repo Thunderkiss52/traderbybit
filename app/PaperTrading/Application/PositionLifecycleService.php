@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\PaperTrading\Application;
 
+use App\Exchanges\Binance\BinancePaperSafety;
 use App\PaperTrading\Domain\ExecutionQuote;
 use App\PaperTrading\Domain\ExecutionType;
 use App\PaperTrading\Domain\PositionSize;
@@ -33,18 +34,37 @@ final readonly class PositionLifecycleService
 
     public function open(PaperAccountRecord $account, PaperSignalStateRecord $state, SignalRecord $signal, PositionSize $size, ExecutionQuote $quote, DateTimeImmutable $at): VirtualPositionRecord
     {
+        if ($account->exchange_id !== $signal->exchange || $signal->category !== 'linear') {
+            throw new \DomainException('Cross-exchange paper execution prohibited.');
+        }
+        if ($account->exchange_id === 'binance') {
+            BinancePaperSafety::assertExecutable($account);
+        } elseif ($account->exchange_id !== 'bybit') {
+            throw new \DomainException('Unknown paper exchange.');
+        }
+
         return DB::transaction(function () use ($account, $state, $signal, $size, $quote, $at): VirtualPositionRecord {
             $lockedAccount = PaperAccountRecord::query()->lockForUpdate()->findOrFail($account->id);
             $lockedState = PaperSignalStateRecord::query()->lockForUpdate()->findOrFail($state->id);
+            // Recheck authorization *inside* the account lock. A previously
+            // loaded ACTIVE model is not evidence that the account is still
+            // permitted to open an entry when concurrent risk/jobs change it.
+            if ($lockedAccount->exchange_id !== $signal->exchange || $lockedAccount->status !== 'ACTIVE'
+                || $lockedState->paper_account_id !== $lockedAccount->id || $lockedState->signal_id !== $signal->id) {
+                throw new \DomainException('Locked paper account or signal is no longer entry eligible.');
+            }
+            if ($lockedAccount->exchange_id === 'binance') {
+                BinancePaperSafety::assertExecutable($lockedAccount);
+            }
             $positionId = Uuid::uuid5(Uuid::NAMESPACE_URL, "traderbybit:position:{$account->id}:{$signal->id}")->toString();
             if ($existing = VirtualPositionRecord::query()->find($positionId)) {
                 return $existing;
             }
             SignalLifecycle::from($lockedState->status)->transitionTo(SignalLifecycle::Active);
             $quantity = (string) $size->quantity;
-            $fee = $this->execution->commission($quantity, $quote->price);
+            $fee = $this->execution->commission($quantity, $quote->price, $account->exchange_id);
             $position = VirtualPositionRecord::query()->create([
-                'id' => $positionId, 'paper_account_id' => $account->id, 'signal_id' => $signal->id, 'symbol' => $signal->symbol,
+                'id' => $positionId, 'paper_account_id' => $account->id, 'exchange_id' => $account->exchange_id, 'signal_id' => $signal->id, 'symbol' => $signal->symbol,
                 'side' => $signal->side, 'quality_class' => $signal->quality_class, 'status' => PositionStatus::Open->value,
                 'entry_price' => $quote->price, 'stop_loss' => $signal->stop_loss, 'take_profit_1' => $signal->take_profit_1, 'take_profit_2' => $signal->take_profit_2,
                 'initial_quantity' => $quantity, 'remaining_quantity' => $quantity, 'qty_step' => $size->qtyStep, 'risk_capital' => $size->riskCapital,
@@ -86,7 +106,12 @@ final readonly class PositionLifecycleService
                 ? (string) BigDecimal::of($locked->initial_quantity)->multipliedBy((string) $this->config['tp1_fraction'])->dividedBy($locked->qty_step, 0, RoundingMode::Floor)->multipliedBy($locked->qty_step)
                 : $locked->remaining_quantity;
             $gross = $this->execution->grossPnl($locked->side, $locked->entry_price, $quote->price, $quantity);
-            $fee = $this->execution->commission($quantity, $quote->price);
+            // Verify exchange provenance before charging exchange-specific costs.
+            $positionAccount = PaperAccountRecord::query()->whereKey($locked->paper_account_id)->firstOrFail();
+            if ($locked->exchange_id !== $positionAccount->exchange_id) {
+                throw new \DomainException('Position/account exchange provenance mismatch.');
+            }
+            $fee = $this->execution->commission($quantity, $quote->price, $positionAccount->exchange_id);
             $remainingBefore = BigDecimal::of($locked->remaining_quantity);
             $remaining = $remainingBefore->minus($quantity);
             $next = match ($quote->type) {
@@ -140,6 +165,9 @@ final readonly class PositionLifecycleService
     public function applyFunding(VirtualPositionRecord $position, DateTimeImmutable $through): void
     {
         $signal = SignalRecord::query()->findOrFail($position->signal_id, ['exchange', 'category']);
+        if ($signal->exchange !== $position->exchange_id || $signal->category !== 'linear') {
+            throw new \DomainException('Funding source/position exchange mismatch.');
+        }
         $events = MarketFundingEventRecord::query()->where('exchange', $signal->exchange)
             ->where('category', $signal->category)->where('symbol', $position->symbol)->where('funding_at', '>', $position->opened_at)->where('funding_at', '<=', $through)->oldest('funding_at')->get();
         foreach ($events as $event) {
@@ -151,7 +179,7 @@ final readonly class PositionLifecycleService
                 $amount = $this->execution->funding($locked->side, $locked->remaining_quantity, $event->mark_price, $event->rate);
                 PositionFundingEventRecord::query()->create([
                     'id' => Uuid::uuid5(Uuid::NAMESPACE_URL, "traderbybit:funding:{$locked->id}:{$event->id}")->toString(),
-                    'position_id' => $locked->id, 'market_funding_event_id' => $event->id, 'quantity' => $locked->remaining_quantity,
+                    'position_id' => $locked->id, 'exchange_id' => $locked->exchange_id, 'market_funding_event_id' => $event->id, 'quantity' => $locked->remaining_quantity,
                     'mark_price' => $event->mark_price, 'rate' => $event->rate, 'amount' => $amount, 'funding_at' => $event->funding_at,
                 ]);
                 $funding = BigDecimal::of($locked->funding)->plus($amount);
@@ -186,7 +214,7 @@ final readonly class PositionLifecycleService
     {
         $key = "{$position->id}:{$at->format('U.u')}:{$type->value}";
         VirtualExecutionRecord::query()->insertOrIgnore([[
-            'id' => Uuid::uuid5(Uuid::NAMESPACE_URL, 'traderbybit:execution:'.$key)->toString(), 'position_id' => $position->id,
+            'id' => Uuid::uuid5(Uuid::NAMESPACE_URL, 'traderbybit:execution:'.$key)->toString(), 'position_id' => $position->id, 'exchange_id' => $position->exchange_id,
             'type' => $type->value, 'side' => $side, 'quantity' => $quantity, 'price' => $quote->price, 'gross_pnl' => $gross,
             'commission' => $fee, 'slippage' => $quote->slippage, 'market_event_at' => $at, 'registered_at' => now(),
             'price_source' => $quote->priceSource, 'ambiguous_execution' => $quote->ambiguous, 'idempotency_key' => $key,
@@ -198,7 +226,7 @@ final readonly class PositionLifecycleService
     private function snapshot(PaperAccountRecord $account, DateTimeImmutable $at, string $key): void
     {
         EquitySnapshotRecord::query()->insertOrIgnore([[
-            'paper_account_id' => $account->id, 'recorded_at' => $at, 'equity' => $account->current_equity,
+            'paper_account_id' => $account->id, 'exchange_id' => $account->exchange_id, 'recorded_at' => $at, 'equity' => $account->current_equity,
             'realized_pnl' => $account->realized_pnl, 'unrealized_pnl' => $account->unrealized_pnl,
             'drawdown_percent' => $account->current_drawdown_percent, 'source_event_key' => $key, 'created_at' => now(), 'updated_at' => now(),
         ]]);
@@ -235,7 +263,10 @@ final readonly class PositionLifecycleService
             $status = 'HALTED';
         } elseif ($drawdown->isGreaterThanOrEqualTo(BigDecimal::of((string) $this->config['drawdown']['block_new_entries_percent']))) {
             $status = 'BLOCKED';
-        } elseif ($status === 'BLOCKED') {
+        } elseif ($status === 'BLOCKED' && $account->exchange_id !== 'binance') {
+            // Binance BLOCKED also represents an owner-controlled activation gate.
+            // Market marks, funding settlements and equity recovery must never
+            // silently turn an explicitly blocked Binance paper account ACTIVE.
             $status = 'ACTIVE';
         }
 

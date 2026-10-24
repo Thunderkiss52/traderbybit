@@ -5,6 +5,15 @@
 > **Исследовательский режим. Не является инвестиционной рекомендацией.**
 > Приложение не размещает ордера, не содержит торговых endpoints и на этапе MarketData не использует API-ключи.
 
+
+## Multi-exchange (File D) — staged implementation, NOT production-ready
+
+Owner approved **13 PRIMARY strategy families × Bybit/Binance = 26 isolated paper accounts**. The 13 existing Bybit accounts and histories must remain intact. In this source snapshot, Binance **public USD-M REST market data** is supported through an isolated adapter and an opt-in closed-candle ingestion command; a read-only API, side-by-side dashboard and CSV present per-exchange account status without blending PnL.
+
+Binance accounts are **not automatically provisioned or funded** during migration. After proven isolated PostgreSQL migration tests, authoritative Gate 0 evidence, owner approval and provenance verification, the separate `binance:provision-paper-accounts` command can create 13 **BLOCKED, zero-balance** paper accounts. This command requires `VECTOR_BINANCE_PAPER_PROVISIONING_APPROVED=true`. The Binance execution pipeline is not complete; NEVER change the Binance accounts to ACTIVE to bypass these gates. Real exchange orders remain prohibited.
+
+Docs: `docs/audit/MULTIEXCHANGE_M0_AMENDMENT.md` and `docs/audit/MULTIEXCHANGE_SECURITY_AND_REAUDIT_20261023.md`.
+
 ## Реализованные этапы
 
 ### MarketData

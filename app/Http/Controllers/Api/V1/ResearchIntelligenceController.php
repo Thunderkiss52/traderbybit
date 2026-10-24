@@ -47,11 +47,11 @@ final class ResearchIntelligenceController extends Controller
                 'evaluations' => $records,
             ]);
         } catch (Throwable $e) {
-            Log::error('ResearchIntelligenceController opportunities failed: '.$e->getMessage(), ['exception' => $e]);
+            Log::error('Research API operation failed.', ['operation' => __METHOD__, 'exception_type' => $e::class]);
 
             return response()->json([
                 'success' => false,
-                'message' => 'Failed to retrieve opportunities: '.$e->getMessage(),
+                'message' => 'Request failed. Please try again.',
             ], Response::HTTP_INTERNAL_SERVER_ERROR);
         }
     }
@@ -61,7 +61,7 @@ final class ResearchIntelligenceController extends Controller
         try {
             return $this->ok(CounterfactualEvaluationRecord::query()->findOrFail($id));
         } catch (Throwable $e) {
-            Log::error("ResearchIntelligenceController opportunityDetail failed for {$id}: ".$e->getMessage(), ['exception' => $e]);
+            Log::error('Research API operation failed.', ['operation' => __METHOD__, 'exception_type' => $e::class]);
 
             return response()->json([
                 'success' => false,
@@ -77,11 +77,11 @@ final class ResearchIntelligenceController extends Controller
 
             return $this->ok($service->replay($evaluationId, $mode));
         } catch (Throwable $e) {
-            Log::error("ResearchIntelligenceController replay failed for {$evaluationId}: ".$e->getMessage(), ['exception' => $e]);
+            Log::error('Research API operation failed.', ['operation' => __METHOD__, 'exception_type' => $e::class]);
 
             return response()->json([
                 'success' => false,
-                'message' => 'Failed to reconstruct decision replay: '.$e->getMessage(),
+                'message' => 'Request failed. Please try again.',
             ], Response::HTTP_INTERNAL_SERVER_ERROR);
         }
     }
@@ -93,11 +93,11 @@ final class ResearchIntelligenceController extends Controller
 
             return $this->ok($service->evaluateCalibration($symbol));
         } catch (Throwable $e) {
-            Log::error('ResearchIntelligenceController calibration failed: '.$e->getMessage(), ['exception' => $e]);
+            Log::error('Research API operation failed.', ['operation' => __METHOD__, 'exception_type' => $e::class]);
 
             return response()->json([
                 'success' => false,
-                'message' => 'Failed to evaluate probability calibration: '.$e->getMessage(),
+                'message' => 'Request failed. Please try again.',
             ], Response::HTTP_INTERNAL_SERVER_ERROR);
         }
     }
@@ -107,11 +107,11 @@ final class ResearchIntelligenceController extends Controller
         try {
             return $this->ok($service->startExperiment($id));
         } catch (Throwable $e) {
-            Log::error("ResearchIntelligenceController startShadow failed for {$id}: ".$e->getMessage(), ['exception' => $e]);
+            Log::error('Research API operation failed.', ['operation' => __METHOD__, 'exception_type' => $e::class]);
 
             return response()->json([
                 'success' => false,
-                'message' => 'Failed to start shadow experiment: '.$e->getMessage(),
+                'message' => 'Request failed. Please try again.',
             ], Response::HTTP_INTERNAL_SERVER_ERROR);
         }
     }
@@ -121,11 +121,11 @@ final class ResearchIntelligenceController extends Controller
         try {
             return $this->ok($service->stopExperiment($id));
         } catch (Throwable $e) {
-            Log::error("ResearchIntelligenceController stopShadow failed for {$id}: ".$e->getMessage(), ['exception' => $e]);
+            Log::error('Research API operation failed.', ['operation' => __METHOD__, 'exception_type' => $e::class]);
 
             return response()->json([
                 'success' => false,
-                'message' => 'Failed to stop shadow experiment: '.$e->getMessage(),
+                'message' => 'Request failed. Please try again.',
             ], Response::HTTP_INTERNAL_SERVER_ERROR);
         }
     }
@@ -138,14 +138,14 @@ final class ResearchIntelligenceController extends Controller
             $symbol = $request->string('symbol')->toString() ?: null;
 
             if ($strategyId) {
-                $snap = $service->evaluate($strategyId, $horizon, $symbol);
+                $snap = $service->evaluate($strategyId, $horizon, $symbol, persist: false);
 
                 return $this->ok($snap);
             }
 
             $snapshots = [];
             foreach ($registry->metadata() as $meta) {
-                $snapshots[] = $service->evaluate($meta['id'], $horizon, $symbol);
+                $snapshots[] = $service->evaluate($meta['id'], $horizon, $symbol, persist: false);
             }
 
             return $this->ok([
@@ -153,11 +153,11 @@ final class ResearchIntelligenceController extends Controller
                 'strategies' => $snapshots,
             ]);
         } catch (Throwable $e) {
-            Log::error('ResearchIntelligenceController degradation failed: '.$e->getMessage(), ['exception' => $e]);
+            Log::error('Research API operation failed.', ['operation' => __METHOD__, 'exception_type' => $e::class]);
 
             return response()->json([
                 'success' => false,
-                'message' => 'Failed to evaluate strategy degradation: '.$e->getMessage(),
+                'message' => 'Request failed. Please try again.',
             ], Response::HTTP_INTERNAL_SERVER_ERROR);
         }
     }
@@ -167,13 +167,13 @@ final class ResearchIntelligenceController extends Controller
         try {
             $horizon = $request->string('horizon', '14d')->toString();
 
-            return $this->ok($service->evaluate($horizon));
+            return $this->ok($service->evaluate($horizon, persist: false));
         } catch (Throwable $e) {
-            Log::error('ResearchIntelligenceController correlations failed: '.$e->getMessage(), ['exception' => $e]);
+            Log::error('Research API operation failed.', ['operation' => __METHOD__, 'exception_type' => $e::class]);
 
             return response()->json([
                 'success' => false,
-                'message' => 'Failed to evaluate correlations: '.$e->getMessage(),
+                'message' => 'Request failed. Please try again.',
             ], Response::HTTP_INTERNAL_SERVER_ERROR);
         }
     }
@@ -181,21 +181,26 @@ final class ResearchIntelligenceController extends Controller
     public function recommendations(ResearchRecommendationService $service): ResearchResource|JsonResponse
     {
         try {
-            $service->generateRecommendations();
             $records = ResearchRecommendationRecord::query()
                 ->where('status', 'OPEN')
+                ->where('category', '!=', 'ALPHA_IMPROVEMENT')
                 ->latest('created_at')
                 ->get();
 
             return $this->ok($records);
         } catch (Throwable $e) {
-            Log::error('ResearchIntelligenceController recommendations failed: '.$e->getMessage(), ['exception' => $e]);
+            Log::error('Research API operation failed.', ['operation' => __METHOD__, 'exception_type' => $e::class]);
 
             return response()->json([
                 'success' => false,
-                'message' => 'Failed to fetch recommendations: '.$e->getMessage(),
+                'message' => 'Request failed. Please try again.',
             ], Response::HTTP_INTERNAL_SERVER_ERROR);
         }
+    }
+
+    public function generateRecommendations(ResearchRecommendationService $service): ResearchResource
+    {
+        return $this->ok($service->generateRecommendations());
     }
 
     public function dismissRecommendation(string $id): ResearchResource|JsonResponse
@@ -206,11 +211,11 @@ final class ResearchIntelligenceController extends Controller
 
             return $this->ok($rec->fresh());
         } catch (Throwable $e) {
-            Log::error("ResearchIntelligenceController dismissRecommendation failed for {$id}: ".$e->getMessage(), ['exception' => $e]);
+            Log::error('Research API operation failed.', ['operation' => __METHOD__, 'exception_type' => $e::class]);
 
             return response()->json([
                 'success' => false,
-                'message' => 'Failed to dismiss recommendation: '.$e->getMessage(),
+                'message' => 'Request failed. Please try again.',
             ], Response::HTTP_INTERNAL_SERVER_ERROR);
         }
     }
@@ -219,15 +224,18 @@ final class ResearchIntelligenceController extends Controller
     {
         try {
             $rec = ResearchRecommendationRecord::query()->findOrFail($id);
+            if ($rec->category === 'ALPHA_IMPROVEMENT') {
+                return response()->json(['success' => false, 'code' => 'LEGACY_EVIDENCE_INELIGIBLE'], 422);
+            }
             $rec->update(['status' => 'ACCEPTED']);
 
             return $this->ok($rec->fresh());
         } catch (Throwable $e) {
-            Log::error("ResearchIntelligenceController acceptRecommendation failed for {$id}: ".$e->getMessage(), ['exception' => $e]);
+            Log::error('Research API operation failed.', ['operation' => __METHOD__, 'exception_type' => $e::class]);
 
             return response()->json([
                 'success' => false,
-                'message' => 'Failed to accept recommendation: '.$e->getMessage(),
+                'message' => 'Request failed. Please try again.',
             ], Response::HTTP_INTERNAL_SERVER_ERROR);
         }
     }
@@ -239,11 +247,11 @@ final class ResearchIntelligenceController extends Controller
 
             return $this->ok($service->generateReport($period));
         } catch (Throwable $e) {
-            Log::error('ResearchIntelligenceController report failed: '.$e->getMessage(), ['exception' => $e]);
+            Log::error('Research API operation failed.', ['operation' => __METHOD__, 'exception_type' => $e::class]);
 
             return response()->json([
                 'success' => false,
-                'message' => 'Failed to generate report: '.$e->getMessage(),
+                'message' => 'Request failed. Please try again.',
             ], Response::HTTP_INTERNAL_SERVER_ERROR);
         }
     }

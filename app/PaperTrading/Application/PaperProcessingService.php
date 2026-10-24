@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\PaperTrading\Application;
 
+use App\Exchanges\Binance\BinancePaperSafety;
 use App\MarketData\Infrastructure\Persistence\CandleRecord;
 use App\MarketData\Jobs\RecoverCandleGapsJob;
 use App\PaperTrading\Domain\InstrumentConstraints;
@@ -41,8 +42,16 @@ final readonly class PaperProcessingService
     public function process(?string $accountId = null, ?string $symbol = null, ?DateTimeImmutable $at = null, bool $allowNewEntries = true): array
     {
         $account = $accountId === null ? $this->accounts->default() : PaperAccountRecord::query()->findOrFail($accountId);
+        if ($account->exchange_id === 'binance') {
+            BinancePaperSafety::assertProvenance($account);
+            if ($account->status === 'ACTIVE' && $allowNewEntries) {
+                BinancePaperSafety::assertExecutable($account);
+            }
+        } elseif ($account->exchange_id !== 'bybit') {
+            throw new \DomainException('Unknown paper account exchange.');
+        }
         $historical = $at !== null;
-        $at ??= $this->latestClosedTime($symbol) ?? new DateTimeImmutable('now UTC');
+        $at ??= $this->latestClosedTime($account->exchange_id, $symbol) ?? new DateTimeImmutable('now UTC');
         $lock = $this->cache->lock("paper:process:{$account->id}", (int) $this->config['processing']['lock_seconds']);
         if (! $lock->get()) {
             throw new \RuntimeException('Paper account is already being processed.');
@@ -85,7 +94,7 @@ final readonly class PaperProcessingService
     {
         // Scheduled forward paper trading must never backfill old strategy decisions
         // into an account that did not yet exist. Historical --at replay is explicit.
-        $signals = SignalRecord::query()->where('decision_time', '<=', $at)
+        $signals = SignalRecord::query()->where('exchange', $account->exchange_id)->whereIn('category', ['linear', 'spot'])->where('decision_time', '<=', $at)
             ->where('strategy_id', $account->strategy_id ?? 'baseline')
             ->when($account->mode === 'STRATEGY_FORWARD_PAPER',
                 fn ($q) => $q->where('strategy_version', $account->strategy_version))
@@ -103,7 +112,7 @@ final readonly class PaperProcessingService
                     $decisionId = Uuid::uuid5(Uuid::NAMESPACE_URL, "traderbybit:risk:{$account->id}:{$signal->id}:{$this->config['risk_version']}")->toString();
                     RiskDecisionRecord::query()->insertOrIgnore([[
                         'id' => $decisionId,
-                        'paper_account_id' => $account->id,
+                        'paper_account_id' => $account->id, 'exchange_id' => $account->exchange_id,
                         'signal_id' => $signal->id,
                         'allowed' => false,
                         'reasons' => json_encode(['late_signal_not_executable'], JSON_THROW_ON_ERROR),
@@ -119,7 +128,7 @@ final readonly class PaperProcessingService
                         'updated_at' => now(),
                     ]]);
                     PaperSignalStateRecord::query()->firstOrCreate([
-                        'paper_account_id' => $account->id,
+                        'paper_account_id' => $account->id, 'exchange_id' => $account->exchange_id,
                         'signal_id' => $signal->id,
                     ], [
                         'id' => Uuid::uuid5(Uuid::NAMESPACE_URL, "traderbybit:signal-state:{$account->id}:{$signal->id}")->toString(),
@@ -154,7 +163,7 @@ final readonly class PaperProcessingService
             if ($signal->side === 'SKIP') {
                 DB::transaction(function () use ($account, $signal): void {
                     PaperSignalStateRecord::query()->firstOrCreate([
-                        'paper_account_id' => $account->id, 'signal_id' => $signal->id,
+                        'paper_account_id' => $account->id, 'exchange_id' => $account->exchange_id, 'signal_id' => $signal->id,
                     ], [
                         'id' => Uuid::uuid5(Uuid::NAMESPACE_URL, "traderbybit:signal-state:{$account->id}:{$signal->id}")->toString(),
                         'status' => SignalLifecycle::Completed->value, 'reason' => $signal->reasons[0] ?? 'analytical_skip',
@@ -170,14 +179,14 @@ final readonly class PaperProcessingService
                 $assessment = $this->assessment($locked, $signal);
                 $decisionId = Uuid::uuid5(Uuid::NAMESPACE_URL, "traderbybit:risk:{$locked->id}:{$signal->id}:{$this->config['risk_version']}")->toString();
                 RiskDecisionRecord::query()->insertOrIgnore([[
-                    'id' => $decisionId, 'paper_account_id' => $locked->id, 'signal_id' => $signal->id, 'allowed' => $assessment['allowed'],
+                    'id' => $decisionId, 'paper_account_id' => $locked->id, 'exchange_id' => $locked->exchange_id, 'signal_id' => $signal->id, 'allowed' => $assessment['allowed'],
                     'reasons' => json_encode($assessment['reasons'], JSON_THROW_ON_ERROR), 'snapshot' => json_encode($assessment['snapshot'], JSON_THROW_ON_ERROR),
                     'risk_version' => (string) $this->config['risk_version'], 'decided_at' => $signal->decision_time, 'created_at' => now(), 'updated_at' => now(),
                 ]]);
                 $status = $assessment['allowed'] ? SignalLifecycle::PendingEntry : SignalLifecycle::Rejected;
                 PaperSignalStateRecord::query()->create([
                     'id' => Uuid::uuid5(Uuid::NAMESPACE_URL, "traderbybit:signal-state:{$locked->id}:{$signal->id}")->toString(),
-                    'paper_account_id' => $locked->id, 'signal_id' => $signal->id, 'status' => $status->value,
+                    'paper_account_id' => $locked->id, 'exchange_id' => $locked->exchange_id, 'signal_id' => $signal->id, 'status' => $status->value,
                     'reason' => $assessment['reasons'][0] ?? null, 'processed_at' => $signal->decision_time,
                 ]);
                 $this->journal->append($locked->id, $signal->id, null, $assessment['allowed'] ? 'RISK_ACCEPTED' : 'RISK_REJECTED', $signal->decision_time->toDateTimeImmutable(), $assessment, "risk:{$decisionId}");
@@ -195,8 +204,17 @@ final readonly class PaperProcessingService
         $context = MarketContextRecord::query()->where('exchange', $signal->exchange)->where('category', $signal->category)->where('symbol', $signal->symbol)
             ->where('observed_at', '<=', $signal->decision_time)->latest('observed_at')->first();
         $failures = [];
+        if ($signal->exchange !== $account->exchange_id || $signal->strategy_id !== $account->strategy_id) {
+            $failures[] = 'signal_account_provenance_mismatch';
+        }
+        if ($signal->category !== 'linear') {
+            $failures[] = 'unsupported_market_category';
+        }
         if ($signal->category === 'spot' && $signal->side === 'SELL') {
             $failures[] = 'spot_short_unsupported';
+        }
+        if ($account->exchange_id === 'binance' && ($context === null || $context->funding_rate === null)) {
+            $failures[] = 'binance_funding_context_unavailable';
         }
         $limits = null;
         if ($context === null) {
@@ -242,7 +260,7 @@ final readonly class PaperProcessingService
             }
         }
         $entry = $signal->side === 'BUY' ? $signal->entry_high : $signal->entry_low;
-        $size = $limits === null ? null : $this->sizing->calculate($account->current_equity, $signal->model_risk_percent, $entry, $signal->stop_loss, $limits);
+        $size = $limits === null ? null : $this->sizing->calculate($account->current_equity, $signal->model_risk_percent, $entry, $signal->stop_loss, $limits, $this->execution->costs($account->exchange_id));
         if ($size !== null && ! $size->allowed) {
             $failures[] = (string) $size->reason;
         }
@@ -256,7 +274,7 @@ final readonly class PaperProcessingService
             }
         }
         $same = $active->first(fn (VirtualPositionRecord $p): bool => $p->side === $signal->side && $p->symbol !== $signal->symbol);
-        $corr = $same === null ? null : $this->correlation->between($signal->symbol, $same->symbol, $signal->decision_time->toDateTimeImmutable());
+        $corr = $same === null ? null : $this->correlation->between($signal->symbol, $same->symbol, $signal->decision_time->toDateTimeImmutable(), $account->exchange_id);
         $totalRiskPercent = BigDecimal::of($account->current_equity)->isZero() ? '999' : (string) BigDecimal::of($account->reserved_risk)->dividedBy($account->current_equity, 24, RoundingMode::HalfEven)->multipliedBy(100);
         $notional = $active->reduce(fn (BigDecimal $sum, VirtualPositionRecord $p): BigDecimal => $sum->plus(BigDecimal::of($p->entry_price)->multipliedBy($p->remaining_quantity)), BigDecimal::zero());
         $result = $this->risk->assess([
@@ -275,6 +293,10 @@ final readonly class PaperProcessingService
     private function processState(PaperAccountRecord $account, PaperSignalStateRecord $state, DateTimeImmutable $at, bool $historical): int
     {
         $signal = SignalRecord::query()->findOrFail($state->signal_id);
+        if ($signal->exchange !== $account->exchange_id || $signal->category !== 'linear'
+            || $signal->strategy_id !== $account->strategy_id) {
+            throw new \DomainException('Cross-exchange paper signal/account mismatch.');
+        }
         $watermark = $state->processed_at?->toDateTimeImmutable() ?? $signal->decision_time->toDateTimeImmutable();
         $bars = $this->bars($signal->exchange, $signal->category, $signal->symbol, $watermark, $at);
         $processed = 0;
@@ -306,7 +328,7 @@ final readonly class PaperProcessingService
                     $this->journal->append($account->id, $signal->id, null, 'SIGNAL_EXPIRED', $bar->closeTime, [], "expired:{$account->id}:{$signal->id}");
                     break;
                 }
-                $quote = $this->execution->entry($signal->side, $signal->entry_low, $signal->entry_high, $signal->stop_loss, $signal->take_profit_1, $signal->take_profit_2, $signal->decision_time->toDateTimeImmutable(), $signal->expires_at->toDateTimeImmutable(), $bar);
+                $quote = $this->execution->entry($signal->side, $signal->entry_low, $signal->entry_high, $signal->stop_loss, $signal->take_profit_1, $signal->take_profit_2, $signal->decision_time->toDateTimeImmutable(), $signal->expires_at->toDateTimeImmutable(), $bar, $account->exchange_id);
                 $this->journal->append($account->id, $signal->id, null, 'ENTRY_EVALUATED', $bar->closeTime, [
                     'paper' => true, 'price_source' => $bar->source, 'entry_reached' => $quote !== null,
                     'bar' => ['open' => $bar->open, 'high' => $bar->high, 'low' => $bar->low, 'close' => $bar->close],
@@ -323,7 +345,7 @@ final readonly class PaperProcessingService
                     $context = MarketContextRecord::query()->where('exchange', $signal->exchange)->where('category', $signal->category)
                         ->where('symbol', $signal->symbol)->where('observed_at', '<=', $signal->decision_time)->latest('observed_at')->firstOrFail();
                     $limits = new InstrumentConstraints($context->qty_step, $context->min_order_qty, $context->max_order_qty, $context->min_notional_value);
-                    $size = $this->sizing->calculate($account->refresh()->current_equity, $signal->model_risk_percent, $quote->price, $signal->stop_loss, $limits);
+                    $size = $this->sizing->calculate($account->refresh()->current_equity, $signal->model_risk_percent, $quote->price, $signal->stop_loss, $limits, $this->execution->costs($account->exchange_id));
                     if (! $size->allowed) {
                         SignalLifecycle::from($state->status)->transitionTo(SignalLifecycle::Rejected);
                         $state->update(['status' => SignalLifecycle::Rejected->value, 'reason' => $size->reason, 'processed_at' => $bar->closeTime]);
@@ -335,7 +357,7 @@ final readonly class PaperProcessingService
                     }
                     $position = $this->lifecycle->open($account->refresh(), $state, $signal, $size, $quote, $bar->closeTime);
                     $this->updateObservationDiagnostics($account, $signal, ['paper_execution' => 'OPENED', 'position_id' => $position->id]);
-                    $exit = $this->execution->exit($position->side, $position->status, $position->stop_loss, $position->take_profit_1, $position->take_profit_2, $position->maximum_holding_until->toDateTimeImmutable(), $bar);
+                    $exit = $this->execution->exit($position->side, $position->status, $position->stop_loss, $position->take_profit_1, $position->take_profit_2, $position->maximum_holding_until->toDateTimeImmutable(), $bar, $account->exchange_id);
                     if ($quote->ambiguous && $exit !== null) {
                         $position = $this->lifecycle->executeExit($position, $exit, $bar->closeTime);
                         if (PositionStatus::from($position->status)->isClosed()) {
@@ -352,14 +374,14 @@ final readonly class PaperProcessingService
                     break;
                 }
                 $this->lifecycle->applyFunding($position, $bar->closeTime);
-                $quote = $this->execution->exit($position->side, $position->status, $position->stop_loss, $position->take_profit_1, $position->take_profit_2, $position->maximum_holding_until->toDateTimeImmutable(), $bar);
+                $quote = $this->execution->exit($position->side, $position->status, $position->stop_loss, $position->take_profit_1, $position->take_profit_2, $position->maximum_holding_until->toDateTimeImmutable(), $bar, $account->exchange_id);
                 if ($quote !== null) {
                     $position = $this->lifecycle->executeExit($position, $quote, $bar->closeTime);
                 } else {
                     $this->lifecycle->markToMarket($position, $bar->close, $bar->closeTime);
                     $freshAccount = PaperAccountRecord::query()->findOrFail($account->id);
                     if (BigDecimal::of($freshAccount->current_drawdown_percent)->isGreaterThanOrEqualTo(BigDecimal::of((string) $this->config['drawdown']['risk_closure_percent']))) {
-                        $position = $this->lifecycle->executeExit($position->refresh(), $this->execution->riskClosure($position->side, $bar->close, $bar->source), $bar->closeTime);
+                        $position = $this->lifecycle->executeExit($position->refresh(), $this->execution->riskClosure($position->side, $bar->close, $bar->source, $account->exchange_id), $bar->closeTime);
                     }
                 }
                 $state->update(['processed_at' => $bar->closeTime]);
@@ -379,9 +401,9 @@ final readonly class PaperProcessingService
             ->map(fn (CandleRecord $c): MarketBar => new MarketBar($c->open_time->toDateTimeImmutable(), $c->open_time->toDateTimeImmutable()->modify('+5 minutes'), $c->open, $c->high, $c->low, $c->close, true))->all();
     }
 
-    private function latestClosedTime(?string $symbol): ?DateTimeImmutable
+    private function latestClosedTime(string $exchange, ?string $symbol): ?DateTimeImmutable
     {
-        $record = CandleRecord::query()->where('interval', '5')->where('is_closed', true)->when($symbol, fn ($q) => $q->where('symbol', $symbol))->latest('open_time')->first();
+        $record = CandleRecord::query()->where('exchange', $exchange)->where('category', 'linear')->where('interval', '5')->where('is_closed', true)->when($symbol, fn ($q) => $q->where('symbol', $symbol))->latest('open_time')->first();
 
         return $record?->open_time->toDateTimeImmutable()->modify('+5 minutes');
     }
@@ -391,7 +413,7 @@ final readonly class PaperProcessingService
         if ($account->mode === 'RESEARCH_FORWARD_PAPER') {
             return;
         }
-        $observation = StrategyObservationRecord::query()->where('strategy_id', $signal->strategy_id)
+        $observation = StrategyObservationRecord::query()->where('exchange', $signal->exchange)->where('strategy_id', $signal->strategy_id)
             ->where('strategy_version', $signal->strategy_version)->where('symbol', $signal->symbol)
             ->where('decision_time', $signal->decision_time)->latest('id')->first();
         if ($observation === null) {

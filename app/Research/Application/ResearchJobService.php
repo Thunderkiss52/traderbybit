@@ -41,7 +41,7 @@ final readonly class ResearchJobService
         try {
             $kind = strtoupper((string) ($data['kind'] ?? ''));
             if (! in_array($kind, self::VALID_KINDS, true)) {
-                throw new InvalidArgumentException("Invalid research job kind: {$kind}");
+                throw new InvalidArgumentException('Unsupported research job kind.');
             }
 
             $idempotencyKey = (string) ($data['idempotency_key'] ?? '');
@@ -93,11 +93,11 @@ final readonly class ResearchJobService
                 ]);
             });
         } catch (InvalidArgumentException $e) {
-            Log::warning('Research job submission validation failed: '.$e->getMessage(), ['data' => $data]);
+            Log::warning('Research job submission validation failed.', ['exception_type' => $e::class]);
             throw $e;
         } catch (Throwable $e) {
-            Log::error('Failed to submit research job: '.$e->getMessage(), ['exception' => $e, 'data' => $data]);
-            throw new RuntimeException('Failed to submit research job: '.$e->getMessage(), 0, $e);
+            Log::error('Research job submission failed.', ['exception_type' => $e::class]);
+            throw new RuntimeException('Research job submission failed.', 0, $e);
         }
     }
 
@@ -136,8 +136,8 @@ final readonly class ResearchJobService
                 return $job->fresh();
             });
         } catch (Throwable $e) {
-            Log::error("Failed to claim next research job for worker {$workerId}: ".$e->getMessage(), ['exception' => $e]);
-            throw new RuntimeException("Claim job transaction failed: {$e->getMessage()}", 0, $e);
+            Log::error('Research job claim failed.', ['exception_type' => $e::class]);
+            throw new RuntimeException('Research job claim failed.', 0, $e);
         }
     }
 
@@ -159,7 +159,7 @@ final readonly class ResearchJobService
 
             return $affected > 0;
         } catch (Throwable $e) {
-            Log::error("Failed to start research job {$jobId}: ".$e->getMessage(), ['worker' => $workerId, 'token' => $fencingToken]);
+            Log::error('Research job operation failed.', ['worker' => $workerId, 'token' => $fencingToken]);
 
             return false;
         }
@@ -184,7 +184,7 @@ final readonly class ResearchJobService
 
             return $affected > 0;
         } catch (Throwable $e) {
-            Log::error("Heartbeat failed for research job {$jobId}: ".$e->getMessage(), ['worker' => $workerId]);
+            Log::error('Research job operation failed.', ['worker' => $workerId]);
 
             return false;
         }
@@ -219,7 +219,7 @@ final readonly class ResearchJobService
 
             return $affected > 0;
         } catch (Throwable $e) {
-            Log::error("Failed to complete research job {$jobId}: ".$e->getMessage(), ['worker' => $workerId]);
+            Log::error('Research job operation failed.', ['worker' => $workerId]);
 
             return false;
         }
@@ -240,7 +240,9 @@ final readonly class ResearchJobService
             }
 
             $now = CarbonImmutable::now('UTC');
-            $sanitizedError = substr(strip_tags($error), 0, 2000);
+            // Worker failures may contain URLs, tokens or connection strings.
+            // Public job state must never store a raw exception message.
+            $sanitizedError = 'Research worker execution failed; internal details suppressed.';
 
             if ($job->retry_count + 1 < $job->max_retries) {
                 $job->update([
@@ -263,7 +265,7 @@ final readonly class ResearchJobService
 
             return true;
         } catch (Throwable $e) {
-            Log::error("Failed to fail research job {$jobId}: ".$e->getMessage(), ['worker' => $workerId]);
+            Log::error('Research job operation failed.', ['worker' => $workerId]);
 
             return false;
         }
@@ -287,7 +289,7 @@ final readonly class ResearchJobService
 
             return $affected > 0;
         } catch (Throwable $e) {
-            Log::error("Failed to cancel research job {$jobId}: ".$e->getMessage());
+            Log::error('Research job operation failed.');
 
             return false;
         }
@@ -328,7 +330,7 @@ final readonly class ResearchJobService
 
             return $reconciled;
         } catch (Throwable $e) {
-            Log::error('Failed to reconcile stale research leases: '.$e->getMessage(), ['exception' => $e]);
+            Log::error('Research job lease reconciliation failed.', ['exception_type' => $e::class]);
 
             return 0;
         }
@@ -386,7 +388,7 @@ final readonly class ResearchJobService
                 ],
             ];
         } catch (Throwable $e) {
-            Log::error('Failed to fetch capability routing: '.$e->getMessage());
+            Log::error('Research capability routing failed.', ['exception_type' => $e::class]);
 
             return [
                 'capabilities' => [],

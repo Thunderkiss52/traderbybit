@@ -20,5 +20,6 @@ final readonly class StrategyInput
         public ?MarketContext $marketContext,
         /** @var list<string> */
         public array $validationErrors = [],
+        public ?TimeframeState $peerEntry = null,
     ) {}
 }

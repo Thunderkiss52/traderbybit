@@ -55,7 +55,7 @@ return new class extends Migration
                         'primary_strategy_id' => $strategyId,
                         'is_primary' => true,
                     ]);
-            } elseif (! app()->runningUnitTests()) {
+            } else {
                 $id = $strategyId === 'baseline'
                     ? Uuid::uuid5(Uuid::NAMESPACE_URL, 'traderbybit:paper:default')->toString()
                     : Uuid::uuid5(Uuid::NAMESPACE_URL, "traderbybit:paper:primary:{$strategyId}")->toString();

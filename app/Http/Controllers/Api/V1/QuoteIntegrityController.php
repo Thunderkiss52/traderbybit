@@ -28,6 +28,7 @@ use Carbon\CarbonImmutable;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Str;
 use Symfony\Component\HttpFoundation\BinaryFileResponse;
 use Symfony\Component\HttpFoundation\StreamedResponse;
 
@@ -207,8 +208,8 @@ class QuoteIntegrityController extends Controller
         }
 
         $incident = QimIncidentRecord::with('events')
-            ->where('id', $id)
-            ->orWhere('incident_key', $id)
+            ->where('incident_key', $id)
+            ->when(ctype_digit($id), fn ($query) => $query->orWhere('id', $id))
             ->first();
 
         if ($incident === null) {
@@ -281,8 +282,16 @@ class QuoteIntegrityController extends Controller
             return $disabledResponse;
         }
 
-        $record = QimEvidenceFileRecord::where('id', $id)
-            ->orWhere('file_uuid', $id)
+        $record = QimEvidenceFileRecord::query()
+            ->where(function ($query) use ($id): void {
+                if (ctype_digit($id)) {
+                    $query->where('id', $id);
+                } elseif (Str::isUuid($id)) {
+                    $query->where('file_uuid', $id);
+                } else {
+                    $query->whereRaw('1 = 0');
+                }
+            })
             ->first();
 
         if ($record === null) {
@@ -317,8 +326,8 @@ class QuoteIntegrityController extends Controller
         }
 
         $incident = QimIncidentRecord::with('events')
-            ->where('id', $id)
-            ->orWhere('incident_key', $id)
+            ->where('incident_key', $id)
+            ->when(ctype_digit($id), fn ($query) => $query->orWhere('id', $id))
             ->first();
 
         if ($incident === null) {
@@ -349,7 +358,7 @@ class QuoteIntegrityController extends Controller
             return response()->json([
                 'error' => [
                     'code' => 'INVALID_TRANSITION',
-                    'message' => $e->getMessage(),
+                    'message' => 'The requested incident transition is invalid.',
                 ],
             ], 422);
         }

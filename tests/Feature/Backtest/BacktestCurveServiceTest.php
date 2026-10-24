@@ -7,6 +7,7 @@ namespace Tests\Feature\Backtest;
 use App\Backtest\Application\BacktestCurveService;
 use App\Backtest\Infrastructure\Persistence\BacktestRunRecord;
 use App\Backtest\Infrastructure\Persistence\BacktestSegmentRecord;
+use Brick\Math\BigDecimal;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
 use Ramsey\Uuid\Uuid;
@@ -58,7 +59,7 @@ final class BacktestCurveServiceTest extends TestCase
         self::assertTrue($result['downsampled']);
         self::assertSame(1201, $result['original_points']);
         self::assertLessThanOrEqual(100, $result['returned_points']);
-        self::assertContains('-999', $equities);
-        self::assertContains('999', $equities);
+        self::assertTrue($equities->contains(fn ($value) => BigDecimal::of($value)->isEqualTo('-999')));
+        self::assertTrue($equities->contains(fn ($value) => BigDecimal::of($value)->isEqualTo('999')));
     }
 }

@@ -22,3 +22,4 @@ reports
 .phpunit.result.cache
 tests
 docker-compose*.override.yml
+last_development_for_full_service

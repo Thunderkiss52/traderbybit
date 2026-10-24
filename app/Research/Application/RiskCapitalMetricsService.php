@@ -52,16 +52,11 @@ final class RiskCapitalMetricsService
 
     public const MIN_ESS = 20.0;
 
-    public const PRIMARY_STRATEGIES = [
-        'baseline',
-        'trend_pullback',
-        'bollinger_mean_reversion',
-        'donchian_atr_breakout',
-        'regime_switching',
-        'momentum',
-        'support_resistance_bounce',
-        'support_resistance_breakout',
-    ];
+    /** @return list<string> */
+    private function primaryStrategies(): array
+    {
+        return array_values((array) config('paper.primary_strategies', ['baseline']));
+    }
 
     /**
      * Compute and store an immutable research generation of P-2 risk and
@@ -159,7 +154,7 @@ final class RiskCapitalMetricsService
                 );
             }
 
-            $missingAccounts = count(self::PRIMARY_STRATEGIES) - count($accounts);
+            $missingAccounts = count($this->primaryStrategies()) - count($accounts);
             $outputHash = hash('sha256', json_encode([
                 'generation_id' => $generationId,
                 'records_count' => count($records),
@@ -174,7 +169,7 @@ final class RiskCapitalMetricsService
                 'missing_data_count' => $missingAccounts,
                 'metadata' => [
                     'accounts_processed' => count($accounts),
-                    'expected_primary_accounts' => count(self::PRIMARY_STRATEGIES),
+                    'expected_primary_accounts' => count($this->primaryStrategies()),
                     'missing_primary_accounts' => $missingAccounts,
                     'missing_data_count' => $missingAccounts,
                     'accounting_scope' => $accountingScope,
@@ -186,7 +181,7 @@ final class RiskCapitalMetricsService
                 'coverage_manifest' => [
                     'primary_accounts_found' => $accounts->pluck('primary_strategy_id')->sort()->values()->all(),
                     'primary_accounts_missing' => array_values(array_diff(
-                        self::PRIMARY_STRATEGIES,
+                        $this->primaryStrategies(),
                         $accounts->pluck('primary_strategy_id')->filter()->sort()->values()->all()
                     )),
                 ],
@@ -198,7 +193,7 @@ final class RiskCapitalMetricsService
         } catch (\Throwable $e) {
             $generation->update([
                 'status' => 'FAILED',
-                'error_message' => $e->getMessage(),
+                'error_message' => 'Research calculation unavailable.',
                 'failure_code' => 'GENERATION_FAILED',
                 'heartbeat_at' => CarbonImmutable::now('UTC'),
                 'completed_at' => CarbonImmutable::now('UTC'),
@@ -209,7 +204,7 @@ final class RiskCapitalMetricsService
     }
 
     /**
-     * Read-only resolution of the eight independent primary paper accounts.
+     * Read-only resolution of the independent primary paper accounts.
      * Never provisions, merges or mutates accounts.
      *
      * @return Collection<int, PaperAccountRecord>
@@ -218,6 +213,7 @@ final class RiskCapitalMetricsService
     {
         return PaperAccountRecord::query()
             ->where('is_primary', true)
+            ->where('exchange_id', 'bybit')
             ->whereNotNull('primary_strategy_id')
             ->orderBy('primary_strategy_id')
             ->get();

@@ -24,7 +24,7 @@ final readonly class StrategyComparisonService
                 ->latest('completed_at')
                 ->first();
             $metrics = $experiment?->metrics['test'] ?? $experiment?->metrics['out_of_sample'] ?? null;
-            $account = PaperAccountRecord::query()->where('strategy_id', $strategy['id'])
+            $account = PaperAccountRecord::query()->where('exchange_id', 'bybit')->where('strategy_id', $strategy['id'])
                 ->whereIn('mode', ['FORWARD_PAPER', 'STRATEGY_FORWARD_PAPER', 'RESEARCH_FORWARD_PAPER'])
                 ->latest('created_at')->first();
             $forward = $account === null ? null : $this->performance->calculate($account->id)->metrics;

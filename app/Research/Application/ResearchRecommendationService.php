@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace App\Research\Application;
 
-use App\Research\Infrastructure\Persistence\CounterfactualEvaluationRecord;
 use App\Research\Infrastructure\Persistence\PortfolioCorrelationSnapshotRecord;
 use App\Research\Infrastructure\Persistence\ResearchRecommendationRecord;
 use App\Research\Infrastructure\Persistence\StrategyDegradationSnapshotRecord;
@@ -23,66 +22,8 @@ final class ResearchRecommendationService
     {
         $recommendations = [];
 
-        // 1. Check for restrictive filters from counterfactual evaluations
-        $counterfactuals = CounterfactualEvaluationRecord::query()
-            ->where('status', 'RESOLVED_TP')
-            ->where('decision_time', '>=', CarbonImmutable::now()->subDays(14))
-            ->get();
-
-        $byFilter = [];
-        foreach ($counterfactuals as $cf) {
-            if ($cf->r_multiple === null || ! is_numeric($cf->r_multiple) || ! is_finite((float) $cf->r_multiple)) {
-                continue;
-            }
-            $key = "{$cf->strategy_id}:{$cf->filter_family}";
-            $byFilter[$key]['count'] = ($byFilter[$key]['count'] ?? 0) + 1;
-            $byFilter[$key]['missed_r'] = ($byFilter[$key]['missed_r'] ?? 0.0) + (float) $cf->r_multiple;
-            $byFilter[$key]['strategy_id'] = $cf->strategy_id;
-            $byFilter[$key]['filter'] = $cf->filter_family;
-        }
-
-        foreach ($byFilter as $item) {
-            if ($item['count'] >= 3 && $item['missed_r'] >= 4.0) {
-                $title = "Relax restrictive {$item['filter']} filter threshold for {$item['strategy_id']}";
-                $evidence = [
-                    'evaluated_filter' => $item['filter'],
-                    'missed_tp_trades' => $item['count'],
-                    'missed_r_multiple' => round($item['missed_r'], 2),
-                ];
-
-                $existing = ResearchRecommendationRecord::query()
-                    ->where('category', 'ALPHA_IMPROVEMENT')
-                    ->where('strategy_id', $item['strategy_id'])
-                    ->where('status', 'OPEN')
-                    ->first();
-
-                if ($existing !== null) {
-                    $existing->update([
-                        'title' => $title,
-                        'evidence' => $evidence,
-                        'updated_at' => now(),
-                    ]);
-                    $recommendations[] = $existing;
-
-                    continue;
-                }
-
-                $rec = ResearchRecommendationRecord::query()->create([
-                    'id' => (string) Str::uuid(),
-                    'category' => 'ALPHA_IMPROVEMENT',
-                    'strategy_id' => $item['strategy_id'],
-                    'title' => $title,
-                    'description' => "Counterfactual analyzer detected that {$item['count']} skipped candidates resolved at TP (+{$item['missed_r']} R missed). Relaxing this filter may capture profitable trades without excessive risk.",
-                    'evidence' => $evidence,
-                    'proposed_changes' => [
-                        'filter' => $item['filter'],
-                        'action' => 'REDUCE_THRESHOLD_BY_10_PERCENT',
-                    ],
-                    'status' => 'OPEN',
-                ]);
-                $recommendations[] = $rec;
-            }
-        }
+        // P-3 is historical/descriptive only. Never derive trading-rule changes
+        // from rejected-signal counterfactuals, regardless of feature flags.
 
         // 2. Check for strategy degradation alerts
         $degradations = StrategyDegradationSnapshotRecord::query()

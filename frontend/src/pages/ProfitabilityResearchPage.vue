@@ -123,11 +123,11 @@ onMounted(() => {
     <div class="row q-col-gutter-md q-mb-md">
       <div class="col-12 col-md-3">
         <q-card flat bordered class="q-pa-sm">
-          <div class="text-caption text-grey-7">Стартовый капитал (8 счетов)</div>
+          <div class="text-caption text-grey-7">Стартовый капитал (13 счетов)</div>
           <div class="text-h6 text-bold">
-            {{ summaryData?.accounting_scopes?.point_in_time?.total_starting_balance || '80000.00' }} USDT
+            {{ summaryData?.accounting_scopes?.point_in_time?.total_starting_balance || '130000.00' }} USDT
           </div>
-          <div class="text-caption text-grey-6">Изолированный баланс 8 стратегий</div>
+          <div class="text-caption text-grey-6">Изолированный баланс 13 стратегий</div>
         </q-card>
       </div>
 

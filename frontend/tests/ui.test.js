@@ -79,7 +79,7 @@ test('research lab provides a safe fast-start window and explains asynchronous e
   assert.match(text, /:disable="!canQueue"/);
   assert.match(text, /q-select/);
 });
-test('research lab declares all eight strategies and the four-timeframe hierarchy', () => {
+test('research lab declares all thirteen strategies and the four-timeframe hierarchy', () => {
   const source = read('pages/ResearchPage.vue');
   for (const strategy of [
     'baseline',
@@ -89,7 +89,12 @@ test('research lab declares all eight strategies and the four-timeframe hierarch
     'regime_switching',
     'momentum',
     'support_resistance_bounce',
-    'support_resistance_breakout'
+    'support_resistance_breakout',
+    'funding_open_interest_squeeze',
+    'liquidity_sweep_reversal',
+    'volatility_compression_breakout',
+    'btc_eth_lead_lag',
+    'multi_timeframe_trend_following'
   ]) {
     assert.match(source, new RegExp(strategy));
   }

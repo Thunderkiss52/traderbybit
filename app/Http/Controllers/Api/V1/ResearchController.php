@@ -69,7 +69,7 @@ final class ResearchController extends Controller
     public function dashboard(PerformanceStatisticsService $statistics, StrategyRegistry $strategies): ResearchResource
     {
         $payload = Cache::remember('paper:dashboard:full_payload:v5', 10, function () use ($statistics, $strategies): array {
-            $account = PaperAccountRecord::query()->oldest()->first();
+            $account = PaperAccountRecord::query()->where('exchange_id', 'bybit')->oldest()->first();
             $contexts = collect(config('ui.symbols'))->map(
                 static fn (string $symbol) => MarketContextRecord::query()->where('symbol', $symbol)->latest('observed_at')->first()
             )->filter()->values();
@@ -119,17 +119,17 @@ final class ResearchController extends Controller
                 'strategy_observations_24h' => Cache::remember('paper:dashboard:strategy_observations_24h:v5', 60, fn () => $this->strategyObservations($strategies)),
                 'strategy_portfolios' => collect($strategies->metadata())->map(function (array $strategy): array {
                     $account = PaperAccountRecord::query()
-                        ->where('primary_strategy_id', $strategy['id'])
+                        ->where('primary_strategy_id', $strategy['id'])->where('exchange_id', 'bybit')
                         ->first()
                         ?? PaperAccountRecord::query()
-                            ->where('strategy_id', $strategy['id'])
+                            ->where('strategy_id', $strategy['id'])->where('exchange_id', 'bybit')
                             ->whereIn('mode', ['FORWARD_PAPER', 'STRATEGY_FORWARD_PAPER', 'RESEARCH_FORWARD_PAPER'])
                             ->latest('created_at')
                             ->first();
 
                     if ($account === null && $strategy['id'] === 'baseline') {
                         $account = PaperAccountRecord::query()
-                            ->where(fn ($q) => $q->where('strategy_id', 'baseline')->orWhereNull('strategy_id'))
+                            ->where('exchange_id', 'bybit')->where(fn ($q) => $q->where('strategy_id', 'baseline')->orWhereNull('strategy_id'))
                             ->whereIn('mode', ['FORWARD_PAPER', 'STRATEGY_FORWARD_PAPER'])
                             ->oldest('created_at')
                             ->first();
@@ -192,6 +192,7 @@ final class ResearchController extends Controller
                 ],
                 'positions' => $positions,
                 'performance' => $account ? Cache::remember('paper:dashboard:performance:'.$account->id, 60, fn () => $statistics->calculate($account->id)->metrics) : null,
+                'exchange_scope' => 'bybit',
                 'research_settings' => [
                     'starting_balance' => config('backtest.starting_balance'),
                     'strategy_version' => config('strategy.version'),
@@ -594,7 +595,7 @@ final class ResearchController extends Controller
 
     public function statistics(Request $r, PerformanceStatisticsService $s): ResearchResource
     {
-        $a = $r->string('account')->toString() ?: PaperAccountRecord::query()->value('id');
+        $a = $r->string('account')->toString() ?: PaperAccountRecord::query()->where('exchange_id', 'bybit')->value('id');
         if (! $a) {
             return $this->ok([
                 'metrics' => null,
@@ -697,7 +698,7 @@ final class ResearchController extends Controller
 
     public function dailyPerformance(Request $request, DailyPerformanceService $service): ResearchResource
     {
-        $account = $request->string('account')->toString() ?: PaperAccountRecord::query()->value('id');
+        $account = $request->string('account')->toString() ?: PaperAccountRecord::query()->where('exchange_id', 'bybit')->value('id');
         if (! $account) {
             return $this->ok(['summary' => null, 'days' => ['data' => [], 'meta' => ['current_page' => 1, 'per_page' => 10, 'total' => 0, 'last_page' => 1]]]);
         }
@@ -768,7 +769,7 @@ final class ResearchController extends Controller
 
     public function risk(Request $r): ResearchResource
     {
-        $a = $r->string('account')->toString() ?: PaperAccountRecord::query()->value('id');
+        $a = $r->string('account')->toString() ?: PaperAccountRecord::query()->where('exchange_id', 'bybit')->value('id');
         $decisions = $a ? RiskDecisionRecord::query()->where('paper_account_id', $a)
             ->latest('decided_at')->latest('id')->paginate($this->perPage($r), ['id', 'signal_id', 'allowed', 'reasons', 'decided_at']) : null;
 

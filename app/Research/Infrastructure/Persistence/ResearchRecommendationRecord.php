@@ -19,6 +19,13 @@ final class ResearchRecommendationRecord extends Model
 
     protected $guarded = [];
 
+    protected $appends = ['eligibility_status'];
+
+    public function getEligibilityStatusAttribute(): string
+    {
+        return $this->category === 'ALPHA_IMPROVEMENT' ? 'LEGACY_INELIGIBLE' : 'REVIEW_REQUIRED';
+    }
+
     protected function casts(): array
     {
         return [

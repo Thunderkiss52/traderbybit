@@ -20,6 +20,7 @@ use App\Strategy\Domain\SignalSide;
 use Carbon\CarbonImmutable;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Queue;
+use Ramsey\Uuid\Uuid;
 use Tests\TestCase;
 
 final class AutonomousLearningPipelineTest extends TestCase
@@ -68,7 +69,7 @@ final class AutonomousLearningPipelineTest extends TestCase
         // 3. Seed additional matured snapshots so training threshold (10) is satisfied
         for ($j = 0; $j < 15; $j++) {
             LearningFeatureSnapshotRecord::query()->create([
-                'id' => "snap-matured-{$j}",
+                'id' => (string) Uuid::uuid5(Uuid::NAMESPACE_URL, "snap-matured-{$j}"),
                 'symbol' => $symbol,
                 'timeframe' => '15',
                 'decision_time' => $t0->addMinutes($j * 15),

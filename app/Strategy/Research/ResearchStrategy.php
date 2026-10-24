@@ -52,7 +52,8 @@ abstract readonly class ResearchStrategy implements StrategyInterface
         return null;
     }
 
-    protected function emit(StrategyInput $input, SignalSide $side, array $reasons, ?string $targetR = null, int $score = 70): SignalDecision
+    /** @param list<string> $risks @param array<string, mixed> $extraSnapshot */
+    protected function emit(StrategyInput $input, SignalSide $side, array $reasons, ?string $targetR = null, int $score = 70, array $risks = [], array $extraSnapshot = []): SignalDecision
     {
         $bar = $input->entry->latest();
         if ($bar === null || $bar->atr === null || BigDecimal::of($bar->atr)->isZero()) {
@@ -84,7 +85,7 @@ abstract readonly class ResearchStrategy implements StrategyInterface
 
         $quality = $score >= 85 ? QualityClass::A : ($score >= 70 ? QualityClass::B : QualityClass::C);
 
-        return $this->decision($input, $side, $quality, $score, new PricePlan((string) $low, (string) $high, (string) $stop, (string) $tp1, (string) $tp2, $r1, $r2), $reasons);
+        return $this->decision($input, $side, $quality, $score, new PricePlan((string) $low, (string) $high, (string) $stop, (string) $tp1, (string) $tp2, $r1, $r2), $reasons, $risks, $extraSnapshot);
     }
 
     protected function setupAligned(StrategyInput $input, SignalSide $side): bool
@@ -146,7 +147,7 @@ abstract readonly class ResearchStrategy implements StrategyInterface
         return $this->decision($input, SignalSide::Skip, null, $score, null, $reasons);
     }
 
-    private function decision(StrategyInput $input, SignalSide $side, ?QualityClass $quality, int $score, ?PricePlan $plan, array $reasons): SignalDecision
+    private function decision(StrategyInput $input, SignalSide $side, ?QualityClass $quality, int $score, ?PricePlan $plan, array $reasons, array $risks = [], array $extraSnapshot = []): SignalDecision
     {
         $identity = implode('|', [$input->exchange, $input->category, $input->symbol, $input->decisionTime->format('U.u'), $this->id(), $this->version()]);
         $bar = static fn (?BarState $value): ?array => $value === null ? null : [
@@ -167,6 +168,7 @@ abstract readonly class ResearchStrategy implements StrategyInterface
         ];
         $snapshot = [
             'strategy_id' => $this->id(),
+            ...$extraSnapshot,
             'confirmation_mode' => $this->confirmationMode(),
             '1h' => $bar($input->trend->latest()),
             '30m' => $bar($input->setup->latest()),
@@ -174,7 +176,7 @@ abstract readonly class ResearchStrategy implements StrategyInterface
             '5m' => $bar($input->confirmation->latest()),
         ];
 
-        return new SignalDecision(Uuid::uuid5(Uuid::NAMESPACE_URL, 'traderbybit:research:'.$identity)->toString(), $input->exchange, $input->category, $input->symbol, '15', $input->decisionTime, $input->decisionTime, $side, $quality, $score, $plan, $side === SignalSide::Skip ? null : (string) ($this->config['model_risk_percent'] ?? '0.25'), $input->decisionTime->add(new DateInterval('PT30M')), (int) ($this->config['maximum_holding_minutes'] ?? 240), $reasons, [], $snapshot, $this->version(), '1.0.0');
+        return new SignalDecision(Uuid::uuid5(Uuid::NAMESPACE_URL, 'traderbybit:research:'.$identity)->toString(), $input->exchange, $input->category, $input->symbol, '15', $input->decisionTime, $input->decisionTime, $side, $quality, $score, $plan, $side === SignalSide::Skip ? null : (string) ($this->config['model_risk_percent'] ?? '0.25'), $input->decisionTime->add(new DateInterval('PT30M')), (int) ($this->config['maximum_holding_minutes'] ?? 240), $reasons, $risks, $snapshot, $this->version(), '1.0.0');
     }
 
     protected function d(?string $value): ?BigDecimal

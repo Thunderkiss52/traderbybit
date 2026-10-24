@@ -21,6 +21,7 @@ final class CounterfactualNoHindsightTest extends TestCase
     protected function setUp(): void
     {
         parent::setUp();
+        config(['research.counterfactual.legacy_analysis_enabled' => true]);
         $this->service = app(CounterfactualAnalyzerService::class);
     }
 
@@ -44,7 +45,7 @@ final class CounterfactualNoHindsightTest extends TestCase
         ]);
 
         $obs = StrategyObservationRecord::query()->create([
-            'id' => 'obs-non-evaluable',
+            'id' => 'b960220b-153a-5645-b267-445591e5cc86',
             'exchange' => 'bybit',
             'category' => 'linear',
             'symbol' => 'BTCUSDT',
@@ -89,7 +90,7 @@ final class CounterfactualNoHindsightTest extends TestCase
 
         // Bearish observation should strictly produce SELL
         $obsBearish = StrategyObservationRecord::query()->create([
-            'id' => 'obs-bearish',
+            'id' => 'b7bf0cdc-d140-5448-9c22-27746b7071b7',
             'exchange' => 'bybit',
             'category' => 'linear',
             'symbol' => 'BTCUSDT',
@@ -132,7 +133,7 @@ final class CounterfactualNoHindsightTest extends TestCase
         ]);
 
         $obs = StrategyObservationRecord::query()->create([
-            'id' => 'obs-cost-test',
+            'id' => 'fa332203-d641-5cf1-a39a-344fceeb07e2',
             'exchange' => 'bybit',
             'category' => 'linear',
             'symbol' => 'BTCUSDT',

@@ -7,6 +7,7 @@ namespace Tests\Feature\Research;
 use App\PaperTrading\Application\PaperAccountService;
 use App\Research\Application\CounterfactualAnalyzerService;
 use App\Research\Application\LedgerReconciliationService;
+use App\Research\Infrastructure\Persistence\CounterfactualEvaluationRecord;
 use App\Research\Infrastructure\Persistence\ReconciliationRunRecord;
 use App\Research\Jobs\ProcessCounterfactualAnalysisJob;
 use App\Research\Jobs\ReconcileLedgerJob;
@@ -48,14 +49,22 @@ final class ScheduledResearchJobsTest extends TestCase
         self::assertSame(0, $run->discrepancy_count);
     }
 
-    public function test_scheduled_events_include_counterfactual_and_ledger_jobs(): void
+    public function test_scheduled_events_exclude_quarantined_counterfactual_analysis(): void
     {
         $events = collect(Schedule::events());
 
         $cfEvent = $events->first(fn ($e): bool => str_contains((string) $e->description, 'research:counterfactual-analysis'));
-        self::assertNotNull($cfEvent, 'research:counterfactual-analysis must be scheduled');
+        self::assertNull($cfEvent, 'Legacy SKIP counterfactual analysis must not be scheduled (P-3 replay prohibited).');
 
         $reconcileEvent = $events->first(fn ($e): bool => str_contains((string) $e->description, 'audit:reconcile-ledger'));
         self::assertNotNull($reconcileEvent, 'audit:reconcile-ledger must be scheduled');
+    }
+
+    public function test_counterfactual_job_is_a_no_op_while_quarantined(): void
+    {
+        $job = new ProcessCounterfactualAnalysisJob(limit: 25);
+        $job->handle($this->app->make(CounterfactualAnalyzerService::class));
+
+        self::assertSame(0, CounterfactualEvaluationRecord::query()->count());
     }
 }

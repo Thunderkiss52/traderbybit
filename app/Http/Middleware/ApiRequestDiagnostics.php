@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Http\Middleware;
 
 use Closure;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
@@ -27,9 +28,22 @@ final class ApiRequestDiagnostics
                 'method' => $request->method(),
                 'path' => $request->path(),
                 'exception' => $exception::class,
-                'message' => $exception->getMessage(),
             ]);
             throw $exception;
+        }
+
+        $payload = $response instanceof JsonResponse ? $response->getData(true) : [];
+        $featureDisabled = $response->getStatusCode() === 503 && ($payload['error']['code'] ?? null) === 'FEATURE_DISABLED';
+        if ($response->getStatusCode() >= 500 && ! config('app.debug') && ! $featureDisabled) {
+            $response = response()->json([
+                'schema_version' => '1.0.0',
+                'research_mode' => true,
+                'error' => [
+                    'code' => 'server_error',
+                    'message' => 'The server could not complete the request.',
+                    'request_id' => $requestId,
+                ],
+            ], $response->getStatusCode());
         }
 
         $durationMs = (hrtime(true) - $startedAt) / 1_000_000;

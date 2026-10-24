@@ -190,7 +190,7 @@ final class DependenceConcentrationService
         } catch (\Throwable $e) {
             $generation->update([
                 'status' => 'FAILED',
-                'error_message' => $e->getMessage(),
+                'error_message' => 'Research calculation unavailable.',
                 'heartbeat_at' => CarbonImmutable::now('UTC'),
             ]);
 
@@ -414,6 +414,7 @@ final class DependenceConcentrationService
     {
         return PaperAccountRecord::query()
             ->where('is_primary', true)
+            ->where('exchange_id', 'bybit')
             ->whereNotNull('primary_strategy_id')
             ->orderBy('primary_strategy_id')
             ->get();

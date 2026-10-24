@@ -43,8 +43,8 @@ final class SignalGenerationTest extends TestCase
         $returned = $repository->createIfAbsent((new StrategyEngine($changed))->evaluate(StrategyFixture::input()));
 
         $this->assertDatabaseCount('signals', 1);
-        self::assertSame('0.5', $returned->modelRiskPercent);
-        self::assertSame('0.50', SignalRecord::query()->firstOrFail()->contract['model_risk_percent']);
+        self::assertDecimalSame('0.5', $returned->modelRiskPercent);
+        self::assertDecimalSame('0.50', SignalRecord::query()->firstOrFail()->contract['model_risk_percent']);
     }
 
     public function test_time_alignment_excludes_future_context_and_open_candles(): void
@@ -88,9 +88,9 @@ final class SignalGenerationTest extends TestCase
             $this->app->make(StrategyObservationService::class),
         );
 
-        $this->assertDatabaseCount('signals', 8);
-        self::assertSame(8, SignalRecord::query()->distinct()->count('strategy_id'));
-        $this->assertDatabaseCount('strategy_observations', 8);
+        $this->assertDatabaseCount('signals', 13);
+        self::assertSame(13, SignalRecord::query()->distinct()->count('strategy_id'));
+        $this->assertDatabaseCount('strategy_observations', 13);
     }
 
     public function test_all_registered_strategies_are_observed_once_per_closed_candle(): void
@@ -102,16 +102,21 @@ final class SignalGenerationTest extends TestCase
         $observations = $service->observe('BTCUSDT', $this->at);
         $service->observe('BTCUSDT', $this->at);
 
-        self::assertCount(8, $observations);
+        self::assertCount(13, $observations);
         self::assertSame([
             'baseline',
             'bollinger_mean_reversion',
+            'btc_eth_lead_lag',
             'donchian_atr_breakout',
+            'funding_open_interest_squeeze',
+            'liquidity_sweep_reversal',
             'momentum',
+            'multi_timeframe_trend_following',
             'regime_switching',
             'support_resistance_bounce',
             'support_resistance_breakout',
             'trend_pullback',
+            'volatility_compression_breakout',
         ], StrategyObservationRecord::query()->orderBy('strategy_id')->pluck('strategy_id')->all());
         StrategyObservationRecord::query()->each(function (StrategyObservationRecord $observation): void {
             self::assertArrayHasKey('level_interaction', $observation->analysis);
@@ -120,8 +125,8 @@ final class SignalGenerationTest extends TestCase
             self::assertArrayHasKey('diagnostics', $observation->analysis);
             self::assertContains($observation->analysis['diagnostics']['paper_execution'], ['NOT_ATTEMPTED', 'PENDING_RISK']);
         });
-        $this->assertDatabaseCount('signals', 8);
-        $this->assertDatabaseCount('strategy_observations', 8);
+        $this->assertDatabaseCount('signals', 13);
+        $this->assertDatabaseCount('strategy_observations', 13);
         self::assertGreaterThan(0, DB::table('candlestick_pattern_occurrences')->count());
         $this->getJson('/api/v1/research/candlestick-patterns?symbol=BTCUSDT&per_page=10')
             ->assertOk()
@@ -137,7 +142,7 @@ final class SignalGenerationTest extends TestCase
 
         self::assertSame(2, $service->observeRecent('BTCUSDT', 1, 2));
         self::assertSame(2, $service->observeRecent('BTCUSDT', 1, 2));
-        $this->assertDatabaseCount('strategy_observations', 32);
+        $this->assertDatabaseCount('strategy_observations', 52);
     }
 
     public function test_no_trading_endpoint_is_present_in_application_source(): void

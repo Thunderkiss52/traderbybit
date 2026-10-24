@@ -61,13 +61,13 @@ final class FundingHistorySynchronizerTest extends TestCase
         self::assertSame(1, $first['inserted'], json_encode($first, JSON_THROW_ON_ERROR));
         self::assertSame(0, $service->sync('BTCUSDT', $through)['inserted']);
         $event = MarketFundingEventRecord::query()->sole();
-        self::assertSame('101', $event->mark_price);
-        self::assertSame('0.0001', $event->rate);
+        self::assertDecimalSame('101', $event->mark_price);
+        self::assertDecimalSame('0.0001', $event->rate);
     }
 
     public function test_missing_closed_mark_candle_does_not_fabricate_funding_price(): void
     {
-        $client = $this->createMock(BybitMarketDataClient::class);
+        $client = $this->createStub(BybitMarketDataClient::class);
         $client->method('fundingRates')->willReturn([[
             'symbol' => 'BTCUSDT', 'fundingRate' => '0.0001',
             'fundingRateTimestamp' => (string) ((new DateTimeImmutable('2026-10-15T08:00:00Z'))->getTimestamp() * 1000),

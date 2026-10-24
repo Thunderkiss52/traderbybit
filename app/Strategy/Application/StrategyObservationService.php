@@ -56,7 +56,10 @@ final readonly class StrategyObservationService
             $observations = [];
             $baselineDecision = null;
             foreach ($this->strategies->all() as $strategy) {
-                $decision = $strategy->evaluate($input);
+                $strategyInput = $strategy->id() === 'btc_eth_lead_lag'
+                    ? $this->inputs->make($exchange, $category, $symbol, $at, StrategyInputFactory::peerSymbol($symbol))
+                    : $input;
+                $decision = $strategy->evaluate($strategyInput);
                 if ($strategy->id() === 'baseline') {
                     if ($this->advisory !== null) {
                         $decision = $this->advisory->advise($decision, $this->extractFeatures($input));
@@ -222,7 +225,7 @@ final readonly class StrategyObservationService
                         $observations[] = $candObs;
                     }
                 } catch (\Throwable $e) {
-                    Log::warning("Failed to evaluate candidate {$candidate->id}: {$e->getMessage()}");
+                    Log::warning('Candidate evaluation failed.', ['exception_type' => $e::class]);
                 }
             }
 

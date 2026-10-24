@@ -6,6 +6,7 @@ namespace Tests\Feature\PaperTrading;
 
 use App\PaperTrading\Application\PaperAccountService;
 use App\PaperTrading\Infrastructure\Persistence\EquitySnapshotRecord;
+use Brick\Math\BigDecimal;
 use DateTimeImmutable;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
@@ -31,12 +32,12 @@ final class DailyPerformanceTest extends TestCase
             ->assertJsonPath('data.days.meta.total', 3)
             ->assertJsonPath('data.days.meta.last_page', 2)
             ->assertJsonPath('data.days.data.0.date', '2026-10-12')
-            ->assertJsonPath('data.days.data.0.net_pnl', '-50')
-            ->assertJsonPath('data.days.data.0.realized_pnl', '-10')
-            ->assertJsonPath('data.days.data.0.unrealized_pnl_change', '-40')
+            ->assertJsonPath('data.days.data.0.net_pnl', fn ($value) => is_string($value) && BigDecimal::of($value)->isEqualTo('-50'))
+            ->assertJsonPath('data.days.data.0.realized_pnl', fn ($value) => is_string($value) && BigDecimal::of($value)->isEqualTo('-10'))
+            ->assertJsonPath('data.days.data.0.unrealized_pnl_change', fn ($value) => is_string($value) && BigDecimal::of($value)->isEqualTo('-40'))
             ->assertJsonPath('data.days.data.0.complete', true)
             ->assertJsonPath('data.days.data.1.date', '2026-10-11')
-            ->assertJsonPath('data.days.data.1.net_pnl', '100');
+            ->assertJsonPath('data.days.data.1.net_pnl', fn ($value) => is_string($value) && BigDecimal::of($value)->isEqualTo('100'));
     }
 
     public function test_symbol_filter_does_not_fabricate_historical_mark_to_market_returns(): void

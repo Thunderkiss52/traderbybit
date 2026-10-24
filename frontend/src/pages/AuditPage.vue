@@ -125,6 +125,7 @@ onBeforeUnmount(() => { disposed = true; stopPolling(); });
       <q-table flat bordered :rows="funnel" row-key="strategy_id" :columns="[
         {name:'strategy',label:'Strategy',field:'strategy_id',align:'left'},
         {name:'buy',label:'BUY',field:'buy'}, {name:'sell',label:'SELL',field:'sell'},
+        {name:'mode',label:'Execution mode',field:'execution_mode'},
         {name:'skip',label:'SKIP',field:'skip'}, {name:'approved',label:'Risk OK',field:'risk_approved'},
         {name:'opened',label:'Opened',field:'opened'}, {name:'closed',label:'Closed',field:'closed'},
         {name:'reasons',label:'Top SKIP blockers',field: row => Object.keys(row.primary_skip_blockers || {}).join(', '),align:'left'}

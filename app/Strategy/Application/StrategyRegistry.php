@@ -7,13 +7,18 @@ namespace App\Strategy\Application;
 use App\Strategy\Contracts\StrategyInterface;
 use App\Strategy\Research\BaselineStrategy;
 use App\Strategy\Research\BollingerMeanReversionStrategy;
+use App\Strategy\Research\BtcEthLeadLagStrategy;
 use App\Strategy\Research\DonchianBreakoutStrategy;
+use App\Strategy\Research\FundingOpenInterestSqueezeStrategy;
+use App\Strategy\Research\LiquiditySweepReversalStrategy;
 use App\Strategy\Research\MarketRegimeClassifier;
 use App\Strategy\Research\MomentumStrategy;
+use App\Strategy\Research\MultiTimeframeTrendFollowingStrategy;
 use App\Strategy\Research\RegimeSwitchingStrategy;
 use App\Strategy\Research\SupportResistanceBounceStrategy;
 use App\Strategy\Research\SupportResistanceBreakoutStrategy;
 use App\Strategy\Research\TrendPullbackStrategy;
+use App\Strategy\Research\VolatilityCompressionBreakoutStrategy;
 use Illuminate\Support\Arr;
 
 final readonly class StrategyRegistry
@@ -63,14 +68,22 @@ final readonly class StrategyRegistry
             'momentum' => new MomentumStrategy($parameters),
             'support_resistance_bounce' => new SupportResistanceBounceStrategy($parameters, $this->levels, $this->probabilities),
             'support_resistance_breakout' => new SupportResistanceBreakoutStrategy($parameters, $this->levels, $this->probabilities),
+            'funding_open_interest_squeeze' => new FundingOpenInterestSqueezeStrategy($parameters),
+            'liquidity_sweep_reversal' => new LiquiditySweepReversalStrategy($parameters),
+            'volatility_compression_breakout' => new VolatilityCompressionBreakoutStrategy($parameters),
+            'btc_eth_lead_lag' => new BtcEthLeadLagStrategy($parameters),
+            'multi_timeframe_trend_following' => new MultiTimeframeTrendFollowingStrategy($parameters),
             default => throw new \InvalidArgumentException("Unknown strategy: {$id}"),
         };
     }
 
     public function metadata(): array
     {
+        $signalOnly = (array) config('research.forward_paper.signal_only_strategies', []);
+
         return array_map(fn (StrategyInterface $s) => ['id' => $s->id(), 'version' => $s->version(), 'description' => $s->description(),
             'timeframes' => ['trend' => '1h', 'setup' => '30m', 'entry' => '15m', 'confirmation' => '5m'],
+            'execution_eligible' => ! in_array($s->id(), $signalOnly, true),
             'configuration_hash' => $this->hash($s->parameters()), 'parameters' => $s->parameters()], $this->strategies);
     }
 

@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Research\Application;
 
 use App\Research\Infrastructure\Persistence\LearningModelArtifactRecord;
+use App\Research\Infrastructure\Persistence\ResearchRecommendationRecord;
 use Carbon\CarbonImmutable;
 
 final class ResearchReportService
@@ -30,13 +31,13 @@ final class ResearchReportService
 
         // 1. Freshness & Health
         $freshnessData = $this->freshness->check();
-        $healthOverview = $this->health->overview($horizon === '24h' ? '24h' : '7d');
+        $healthOverview = $this->health->overview($horizon === '24h' ? '24h' : '7d', persist: false);
 
         // 2. Degradation on primary strategies
-        $strategies = ['baseline', 'trend_pullback', 'bollinger_mean_reversion', 'donchian_atr_breakout', 'regime_switching', 'momentum', 'support_resistance_bounce', 'support_resistance_breakout'];
+        $strategies = (array) config('paper.primary_strategies', ['baseline']);
         $degradationReports = [];
         foreach ($strategies as $strat) {
-            $snap = $this->degradation->evaluate($strat, $period === 'weekly' ? '7d' : '14d');
+            $snap = $this->degradation->evaluate($strat, $period === 'weekly' ? '7d' : '14d', persist: false);
             $degradationReports[] = [
                 'strategy_id' => $snap->strategy_id,
                 'status' => $snap->status,
@@ -56,10 +57,11 @@ final class ResearchReportService
         $calibReport = $this->calibration->evaluateCalibration();
 
         // 5. Portfolio Correlation & Overlap
-        $corrSnap = $this->correlation->evaluate($corrHorizon);
+        $corrSnap = $this->correlation->evaluate($corrHorizon, persist: false);
 
         // 6. Generated Recommendations
-        $activeRecs = $this->recommendations->generateRecommendations();
+        $activeRecs = ResearchRecommendationRecord::query()
+            ->where('status', 'OPEN')->where('category', '!=', 'ALPHA_IMPROVEMENT')->get()->all();
         $recommendationsSummary = array_map(fn ($r) => [
             'id' => $r->id,
             'category' => $r->category,

@@ -24,6 +24,15 @@ final readonly class StrategyInputFactory
         private array $config,
     ) {}
 
+    public static function peerSymbol(string $symbol): ?string
+    {
+        return match ($symbol) {
+            'BTCUSDT' => 'ETHUSDT',
+            'ETHUSDT' => 'BTCUSDT',
+            default => null,
+        };
+    }
+
     public function latestDecisionTime(string $exchange, string $category, string $symbol): ?DateTimeImmutable
     {
         $record = CandleRecord::query()->where(compact('exchange', 'category', 'symbol'))->where('interval', (string) $this->config['decision_timeframe'])->where('is_closed', true)->latest('open_time')->first();
@@ -31,7 +40,7 @@ final readonly class StrategyInputFactory
         return $record === null ? null : $record->open_time->toDateTimeImmutable()->modify('+15 minutes');
     }
 
-    public function make(string $exchange, string $category, string $symbol, DateTimeImmutable $at): StrategyInput
+    public function make(string $exchange, string $category, string $symbol, DateTimeImmutable $at, ?string $peerSymbol = null): StrategyInput
     {
         $states = [];
         $errors = [];
@@ -56,11 +65,21 @@ final readonly class StrategyInputFactory
             }
         }
 
+        $peer = null;
+        if ($peerSymbol !== null) {
+            try {
+                $peer = $this->state($exchange, $category, $peerSymbol, Interval::parse((string) $this->config['timeframes']['entry']), $at);
+            } catch (InvalidSeriesException) {
+                $peer = new TimeframeState((string) $this->config['timeframes']['entry'], [], false);
+            }
+        }
+
         return new StrategyInput(
             exchange: $exchange, category: $category, symbol: $symbol, decisionTime: $at,
             trend: $states['trend'], setup: $states['setup'], entry: $states['entry'], confirmation: $states['confirmation'],
             marketContext: $this->contexts->latestAt($exchange, $category, $symbol, $at),
             validationErrors: array_values(array_unique($errors)),
+            peerEntry: $peer,
         );
     }
 

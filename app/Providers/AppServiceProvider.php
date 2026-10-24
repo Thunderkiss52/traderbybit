@@ -12,6 +12,9 @@ use App\Backtest\Application\GridOptimizer;
 use App\Backtest\Application\PerformanceMetricCalculator;
 use App\Backtest\Application\StrategySignalEvaluator;
 use App\Backtest\Contracts\HistoricalSignalEvaluator;
+use App\Exchanges\Binance\BinancePublicAdapter;
+use App\Exchanges\Bybit\BybitAdapter;
+use App\Exchanges\ExchangeRegistry;
 use App\Indicators\Application\IndicatorEngine;
 use App\Indicators\Application\WarmupPolicy;
 use App\Indicators\Domain\IndicatorParameters;
@@ -72,13 +75,18 @@ use App\Strategy\Infrastructure\Persistence\EloquentMarketContextRepository;
 use App\Strategy\Infrastructure\Persistence\EloquentSignalRepository;
 use App\Strategy\Research\BaselineStrategy;
 use App\Strategy\Research\BollingerMeanReversionStrategy;
+use App\Strategy\Research\BtcEthLeadLagStrategy;
 use App\Strategy\Research\DonchianBreakoutStrategy;
+use App\Strategy\Research\FundingOpenInterestSqueezeStrategy;
+use App\Strategy\Research\LiquiditySweepReversalStrategy;
 use App\Strategy\Research\MarketRegimeClassifier;
 use App\Strategy\Research\MomentumStrategy;
+use App\Strategy\Research\MultiTimeframeTrendFollowingStrategy;
 use App\Strategy\Research\RegimeSwitchingStrategy;
 use App\Strategy\Research\SupportResistanceBounceStrategy;
 use App\Strategy\Research\SupportResistanceBreakoutStrategy;
 use App\Strategy\Research\TrendPullbackStrategy;
+use App\Strategy\Research\VolatilityCompressionBreakoutStrategy;
 use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Contracts\Cache\Factory;
 use Illuminate\Support\Facades\RateLimiter;
@@ -91,6 +99,10 @@ class AppServiceProvider extends ServiceProvider
      */
     public function register(): void
     {
+        $this->app->singleton(ExchangeRegistry::class, fn ($app): ExchangeRegistry => new ExchangeRegistry([
+            'bybit' => $app->make(BybitAdapter::class),
+            'binance' => $app->make(BinancePublicAdapter::class),
+        ]));
         $this->app->singleton(Decimal::class, fn (): Decimal => new Decimal(
             internalScale: (int) config('indicators.internal_scale'),
             outputScale: (int) config('indicators.output_scale'),
@@ -127,6 +139,11 @@ class AppServiceProvider extends ServiceProvider
                 new MomentumStrategy($research['momentum']),
                 new SupportResistanceBounceStrategy($research['support_resistance_bounce'], $levels, $probabilities),
                 new SupportResistanceBreakoutStrategy($research['support_resistance_breakout'], $levels, $probabilities),
+                new FundingOpenInterestSqueezeStrategy($research['funding_open_interest_squeeze']),
+                new LiquiditySweepReversalStrategy($research['liquidity_sweep_reversal']),
+                new VolatilityCompressionBreakoutStrategy($research['volatility_compression_breakout']),
+                new BtcEthLeadLagStrategy($research['btc_eth_lead_lag']),
+                new MultiTimeframeTrendFollowingStrategy($research['multi_timeframe_trend_following']),
             ], $levels, $probabilities);
         });
         $this->app->singleton(StrategyRankingService::class, fn (): StrategyRankingService => new StrategyRankingService((array) config('research.ranking')));

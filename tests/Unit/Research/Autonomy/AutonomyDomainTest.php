@@ -109,6 +109,31 @@ final class AutonomyDomainTest extends TestCase
         self::assertSame([], $result['missing']);
     }
 
+    public function test_data_sufficiency_rejects_invalid_numbers_and_missing_gates(): void
+    {
+        $policy = new DataSufficiencyPolicy;
+        $valid = [
+            'valid_utc_days' => 30, 'ess' => 25, 'train_observations' => 400,
+            'oos_observations' => 150, 'shadow_observations' => 120,
+            'shadow_days' => 15, 'shadow_trades' => 60,
+        ];
+        $gates = [
+            'min_valid_utc_days' => 20, 'min_ess' => 20,
+            'min_train_observations' => 300, 'min_oos_observations' => 100,
+            'min_shadow_observations' => 100, 'min_shadow_days' => 14,
+            'min_shadow_trades' => 50,
+        ];
+        foreach ([true, INF, NAN, 'bad', []] as $bad) {
+            $result = $policy->evaluate(array_replace($valid, ['ess' => $bad]), $gates);
+            self::assertSame(DataSufficiencyPolicy::STATUS_INSUFFICIENT, $result['status']);
+            self::assertContains('ess', $result['missing']);
+        }
+        unset($gates['min_shadow_trades']);
+        $result = $policy->evaluate($valid, $gates);
+        self::assertSame(DataSufficiencyPolicy::STATUS_INSUFFICIENT, $result['status']);
+        self::assertContains('MISSING_GATE_THRESHOLD:min_shadow_trades', $result['reasons']);
+    }
+
     public function test_the_experiment_cannot_skip_the_data_check(): void
     {
         $transition = ChallengerExperiment::canTransition(

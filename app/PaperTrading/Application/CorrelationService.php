@@ -13,12 +13,12 @@ final readonly class CorrelationService
 {
     public function __construct(private array $config) {}
 
-    public function between(string $left, string $right, DateTimeImmutable $at): ?string
+    public function between(string $left, string $right, DateTimeImmutable $at, string $exchange = 'bybit'): ?string
     {
         $window = (int) $this->config['correlation']['window'];
         $series = [];
         foreach ([$left, $right] as $symbol) {
-            $rows = CandleRecord::query()->where('exchange', 'bybit')->where('category', 'linear')->where('symbol', $symbol)
+            $rows = CandleRecord::query()->where('exchange', $exchange)->where('category', 'linear')->where('symbol', $symbol)
                 ->where('interval', '60')->where('is_closed', true)->where('open_time', '<=', $at->modify('-1 hour'))
                 ->latest('open_time')->limit($window + 1)->get(['open_time', 'close'])->reverse()->values();
             $returns = [];

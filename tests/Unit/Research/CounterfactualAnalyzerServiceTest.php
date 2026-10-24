@@ -16,6 +16,12 @@ final class CounterfactualAnalyzerServiceTest extends TestCase
 {
     use RefreshDatabase;
 
+    protected function setUp(): void
+    {
+        parent::setUp();
+        config(['research.counterfactual.legacy_analysis_enabled' => true]);
+    }
+
     public function test_creates_and_resolves_counterfactual_evaluation(): void
     {
         $service = new CounterfactualAnalyzerService;

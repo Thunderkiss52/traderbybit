@@ -94,31 +94,28 @@ final class PaperPromotionPolicy
             $reasons[] = self::REASON_SHADOW_HISTORY_ABSENT;
         }
 
-        $netImprovementLcb = $evidence['net_improvement_lcb'] ?? null;
-        if ($netImprovementLcb === null) {
-            $failedGates[] = 'net_improvement_lcb';
-            $reasons[] = 'MISSING_OBSERVATION:net_improvement_lcb';
-        } elseif ((float) $netImprovementLcb <= (float) ($gates['min_net_improvement_lcb'] ?? 0)) {
-            $failedGates[] = 'net_improvement_lcb';
-            $reasons[] = 'NET_IMPROVEMENT_LCB_NOT_POSITIVE:'.$netImprovementLcb;
-        }
+        foreach ([
+            'net_improvement_lcb' => ['gate' => 'min_net_improvement_lcb', 'comparison' => 'positive'],
+            'max_drawdown_degradation_pct' => ['gate' => 'max_drawdown_degradation_pct', 'comparison' => 'maximum'],
+            'max_concentration_degradation' => ['gate' => 'max_concentration_degradation', 'comparison' => 'maximum'],
+        ] as $metric => $rule) {
+            $rawValue = $evidence[$metric] ?? null;
+            $value = DataSufficiencyPolicy::finiteNumber($rawValue);
+            $limit = DataSufficiencyPolicy::finiteNumber($gates[$rule['gate']] ?? null);
 
-        $drawdownDegradation = $evidence['max_drawdown_degradation_pct'] ?? null;
-        if ($drawdownDegradation === null) {
-            $failedGates[] = 'max_drawdown_degradation_pct';
-            $reasons[] = 'MISSING_OBSERVATION:max_drawdown_degradation_pct';
-        } elseif ((float) $drawdownDegradation > (float) ($gates['max_drawdown_degradation_pct'] ?? 0)) {
-            $failedGates[] = 'max_drawdown_degradation_pct';
-            $reasons[] = 'DRAWDOWN_DEGRADED:'.$drawdownDegradation;
-        }
-
-        $concentrationDegradation = $evidence['max_concentration_degradation'] ?? null;
-        if ($concentrationDegradation === null) {
-            $failedGates[] = 'max_concentration_degradation';
-            $reasons[] = 'MISSING_OBSERVATION:max_concentration_degradation';
-        } elseif ((float) $concentrationDegradation > (float) ($gates['max_concentration_degradation'] ?? 0)) {
-            $failedGates[] = 'max_concentration_degradation';
-            $reasons[] = 'CONCENTRATION_DEGRADED:'.$concentrationDegradation;
+            if ($rawValue === null) {
+                $failedGates[] = $metric;
+                $reasons[] = 'MISSING_OBSERVATION:'.$metric;
+            } elseif ($value === null) {
+                $failedGates[] = $metric;
+                $reasons[] = 'INVALID_OBSERVATION:'.$metric;
+            } elseif ($limit === null) {
+                $failedGates[] = $metric;
+                $reasons[] = 'INVALID_GATE_THRESHOLD:'.$rule['gate'];
+            } elseif ($rule['comparison'] === 'positive' ? $value <= $limit : $value > $limit) {
+                $failedGates[] = $metric;
+                $reasons[] = 'THRESHOLD_BREACHED:'.$metric;
+            }
         }
 
         $failedGates = array_values(array_unique($failedGates));
@@ -150,6 +147,13 @@ final class PaperPromotionPolicy
             return false;
         }
 
-        return (int) $observations > 0 && (int) $days > 0 && (int) $trades > 0;
+        foreach ([$observations, $days, $trades] as $count) {
+            $number = DataSufficiencyPolicy::finiteNumber($count);
+            if ($number === null || $number <= 0 || floor($number) !== $number) {
+                return false;
+            }
+        }
+
+        return true;
     }
 }

@@ -17,6 +17,7 @@ use App\Research\Infrastructure\Persistence\LearningModelArtifactRecord;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Validation\ValidationException;
 use Symfony\Component\HttpFoundation\Response;
 use Throwable;
 
@@ -30,7 +31,7 @@ final class AutonomousLearningController extends Controller
     public function overview(AutonomyPermissionService $autonomy): ResearchResource|JsonResponse
     {
         try {
-            $settings = $autonomy->getSettings();
+            $settings = $autonomy->getSettings(persist: false);
             $totalSnapshots = LearningFeatureSnapshotRecord::query()->count();
             $maturedSnapshots = LearningFeatureSnapshotRecord::query()->where('label_status', 'MATURED')->count();
             $activeModels = LearningModelArtifactRecord::query()->where('status', 'ACTIVE')->count();
@@ -54,11 +55,11 @@ final class AutonomousLearningController extends Controller
                 'operating_mode' => 'PAPER_TRADING_RESEARCH_ONLY',
             ]);
         } catch (Throwable $e) {
-            Log::error('AutonomousLearningController overview failed: '.$e->getMessage(), ['exception' => $e]);
+            Log::error('Research API operation failed.', ['operation' => __METHOD__, 'exception_type' => $e::class]);
 
             return response()->json([
                 'success' => false,
-                'message' => 'Failed to load autonomous learning overview: '.$e->getMessage(),
+                'message' => 'Request failed. Please try again.',
             ], Response::HTTP_INTERNAL_SERVER_ERROR);
         }
     }
@@ -66,13 +67,13 @@ final class AutonomousLearningController extends Controller
     public function autonomySettings(AutonomyPermissionService $autonomy): ResearchResource|JsonResponse
     {
         try {
-            return $this->ok($autonomy->getSettings());
+            return $this->ok($autonomy->getSettings(persist: false));
         } catch (Throwable $e) {
-            Log::error('AutonomousLearningController autonomySettings failed: '.$e->getMessage(), ['exception' => $e]);
+            Log::error('Research API operation failed.', ['operation' => __METHOD__, 'exception_type' => $e::class]);
 
             return response()->json([
                 'success' => false,
-                'message' => 'Failed to load autonomy settings: '.$e->getMessage(),
+                'message' => 'Request failed. Please try again.',
             ], Response::HTTP_INTERNAL_SERVER_ERROR);
         }
     }
@@ -85,11 +86,11 @@ final class AutonomousLearningController extends Controller
 
             return $this->ok($autonomy->updateSettings($capabilities, $limits, 'USER_OPERATOR'));
         } catch (Throwable $e) {
-            Log::error('AutonomousLearningController updateAutonomySettings failed: '.$e->getMessage(), ['exception' => $e]);
+            Log::error('Research API operation failed.', ['operation' => __METHOD__, 'exception_type' => $e::class]);
 
             return response()->json([
                 'success' => false,
-                'message' => 'Failed to update autonomy settings: '.$e->getMessage(),
+                'message' => 'Request failed. Please try again.',
             ], Response::HTTP_INTERNAL_SERVER_ERROR);
         }
     }
@@ -102,11 +103,11 @@ final class AutonomousLearningController extends Controller
 
             return $this->ok($autonomy->toggleKillSwitch($active, 'USER_OPERATOR', $reason));
         } catch (Throwable $e) {
-            Log::error('AutonomousLearningController killSwitch failed: '.$e->getMessage(), ['exception' => $e]);
+            Log::error('Research API operation failed.', ['operation' => __METHOD__, 'exception_type' => $e::class]);
 
             return response()->json([
                 'success' => false,
-                'message' => 'Failed to toggle kill switch: '.$e->getMessage(),
+                'message' => 'Request failed. Please try again.',
             ], Response::HTTP_INTERNAL_SERVER_ERROR);
         }
     }
@@ -126,11 +127,11 @@ final class AutonomousLearningController extends Controller
 
             return $this->ok($records);
         } catch (Throwable $e) {
-            Log::error('AutonomousLearningController candidates failed: '.$e->getMessage(), ['exception' => $e]);
+            Log::error('Research API operation failed.', ['operation' => __METHOD__, 'exception_type' => $e::class]);
 
             return response()->json([
                 'success' => false,
-                'message' => 'Failed to fetch candidate strategies: '.$e->getMessage(),
+                'message' => 'Request failed. Please try again.',
             ], Response::HTTP_INTERNAL_SERVER_ERROR);
         }
     }
@@ -143,11 +144,11 @@ final class AutonomousLearningController extends Controller
 
             return $this->ok($evolution->generateCandidate($parentStrategyId, $seed));
         } catch (Throwable $e) {
-            Log::error('AutonomousLearningController generateCandidate failed: '.$e->getMessage(), ['exception' => $e]);
+            Log::error('Research API operation failed.', ['operation' => __METHOD__, 'exception_type' => $e::class]);
 
             return response()->json([
                 'success' => false,
-                'message' => 'Failed to generate strategy candidate: '.$e->getMessage(),
+                'message' => 'Request failed. Please try again.',
             ], Response::HTTP_INTERNAL_SERVER_ERROR);
         }
     }
@@ -159,11 +160,11 @@ final class AutonomousLearningController extends Controller
 
             return $this->ok($policy->evaluateCandidate($id, is_string($runId) ? $runId : null));
         } catch (Throwable $e) {
-            Log::error("AutonomousLearningController evaluateCandidate failed for {$id}: ".$e->getMessage(), ['exception' => $e]);
+            Log::error('Research API operation failed.', ['operation' => __METHOD__, 'exception_type' => $e::class]);
 
             return response()->json([
                 'success' => false,
-                'message' => 'Failed to evaluate candidate: '.$e->getMessage(),
+                'message' => 'Request failed. Please try again.',
             ], Response::HTTP_INTERNAL_SERVER_ERROR);
         }
     }
@@ -174,12 +175,14 @@ final class AutonomousLearningController extends Controller
             $actor = $request->string('actor', 'USER_OPERATOR')->toString();
 
             return $this->ok($policy->promoteCandidate($id, $actor));
+        } catch (ValidationException $e) {
+            throw $e;
         } catch (Throwable $e) {
-            Log::error("AutonomousLearningController promoteCandidate failed for {$id}: ".$e->getMessage(), ['exception' => $e]);
+            Log::error('Research API operation failed.', ['operation' => __METHOD__, 'exception_type' => $e::class]);
 
             return response()->json([
                 'success' => false,
-                'message' => 'Failed to promote candidate: '.$e->getMessage(),
+                'message' => 'Request failed. Please try again.',
             ], Response::HTTP_INTERNAL_SERVER_ERROR);
         }
     }
@@ -191,12 +194,14 @@ final class AutonomousLearningController extends Controller
             $actor = $request->string('actor', 'USER_OPERATOR')->toString();
 
             return $this->ok($policy->rollbackCandidate($id, $reason, $actor));
+        } catch (ValidationException $e) {
+            throw $e;
         } catch (Throwable $e) {
-            Log::error("AutonomousLearningController rollbackCandidate failed for {$id}: ".$e->getMessage(), ['exception' => $e]);
+            Log::error('Research API operation failed.', ['operation' => __METHOD__, 'exception_type' => $e::class]);
 
             return response()->json([
                 'success' => false,
-                'message' => 'Failed to rollback candidate: '.$e->getMessage(),
+                'message' => 'Request failed. Please try again.',
             ], Response::HTTP_INTERNAL_SERVER_ERROR);
         }
     }
@@ -210,11 +215,11 @@ final class AutonomousLearningController extends Controller
 
             return $this->ok($records);
         } catch (Throwable $e) {
-            Log::error('AutonomousLearningController models failed: '.$e->getMessage(), ['exception' => $e]);
+            Log::error('Research API operation failed.', ['operation' => __METHOD__, 'exception_type' => $e::class]);
 
             return response()->json([
                 'success' => false,
-                'message' => 'Failed to fetch model artifacts: '.$e->getMessage(),
+                'message' => 'Request failed. Please try again.',
             ], Response::HTTP_INTERNAL_SERVER_ERROR);
         }
     }
@@ -229,11 +234,11 @@ final class AutonomousLearningController extends Controller
 
             return $this->ok($artifact ?? ['status' => 'INSUFFICIENT_DATA', 'message' => 'Minimum 10 matured observations required to train model.']);
         } catch (Throwable $e) {
-            Log::error('AutonomousLearningController trainModel failed: '.$e->getMessage(), ['exception' => $e]);
+            Log::error('Research API operation failed.', ['operation' => __METHOD__, 'exception_type' => $e::class]);
 
             return response()->json([
                 'success' => false,
-                'message' => 'Failed to train model: '.$e->getMessage(),
+                'message' => 'Request failed. Please try again.',
             ], Response::HTTP_INTERNAL_SERVER_ERROR);
         }
     }
@@ -249,11 +254,11 @@ final class AutonomousLearningController extends Controller
 
             return $this->ok($records);
         } catch (Throwable $e) {
-            Log::error('AutonomousLearningController auditTrail failed: '.$e->getMessage(), ['exception' => $e]);
+            Log::error('Research API operation failed.', ['operation' => __METHOD__, 'exception_type' => $e::class]);
 
             return response()->json([
                 'success' => false,
-                'message' => 'Failed to fetch audit trail: '.$e->getMessage(),
+                'message' => 'Request failed. Please try again.',
             ], Response::HTTP_INTERNAL_SERVER_ERROR);
         }
     }

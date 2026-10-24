@@ -28,6 +28,7 @@ final class CounterfactualSlotIdempotencyPostgresIntegrationTest extends TestCas
     protected function setUp(): void
     {
         parent::setUp();
+        config(['research.counterfactual.legacy_analysis_enabled' => true]);
 
         $testPort = (int) env('TEST_DB_PORT', 25432);
         $testHost = env('TEST_DB_HOST', '127.0.0.1');

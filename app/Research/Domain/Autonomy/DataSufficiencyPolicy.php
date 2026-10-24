@@ -40,22 +40,39 @@ final class DataSufficiencyPolicy
 
         foreach ($requirements as $gateKey => $observationKey) {
             if (! array_key_exists($gateKey, $gates)) {
+                $missing[] = $observationKey;
+                $reasons[] = 'MISSING_GATE_THRESHOLD:'.$gateKey;
+
                 continue;
             }
 
-            $required = (float) $gates[$gateKey];
-            $value = $observations[$observationKey] ?? null;
+            $required = self::finiteNumber($gates[$gateKey]);
+            if ($required === null || $required < 0) {
+                $missing[] = $observationKey;
+                $reasons[] = 'INVALID_GATE_THRESHOLD:'.$gateKey;
 
-            if ($value === null) {
+                continue;
+            }
+
+            $rawValue = $observations[$observationKey] ?? null;
+            if ($rawValue === null) {
                 $missing[] = $observationKey;
                 $reasons[] = 'MISSING_OBSERVATION:'.$observationKey;
 
                 continue;
             }
 
-            if ((float) $value < $required) {
+            $value = self::finiteNumber($rawValue);
+            if ($value === null || $value < 0) {
                 $missing[] = $observationKey;
-                $reasons[] = 'INSUFFICIENT_OBSERVATION:'.$observationKey.'='.$value.' < '.$gateKey.'='.$required;
+                $reasons[] = 'INVALID_OBSERVATION:'.$observationKey;
+
+                continue;
+            }
+
+            if ($value < $required) {
+                $missing[] = $observationKey;
+                $reasons[] = 'INSUFFICIENT_OBSERVATION:'.$observationKey;
 
                 continue;
             }
@@ -69,5 +86,17 @@ final class DataSufficiencyPolicy
             'passed' => $passed,
             'missing' => $missing,
         ];
+    }
+
+    /** Reject booleans, malformed strings and non-finite numbers without coercing to zero. */
+    public static function finiteNumber(mixed $value): ?float
+    {
+        if (! is_int($value) && ! is_float($value) && ! (is_string($value) && is_numeric($value))) {
+            return null;
+        }
+
+        $number = (float) $value;
+
+        return is_finite($number) ? $number : null;
     }
 }

@@ -16,8 +16,9 @@ final class StrategyDegradationService
     /**
      * Evaluate strategy degradation over a given lookback horizon.
      */
-    public function evaluate(string $strategyId, string $horizon = '14d', ?string $symbol = null): StrategyDegradationSnapshotRecord
+    public function evaluate(string $strategyId, string $horizon = '14d', ?string $symbol = null, bool $persist = true): StrategyDegradationSnapshotRecord
     {
+        $method = $persist ? 'create' : 'make';
         $days = match ($horizon) {
             '7d' => 7,
             '30d' => 30,
@@ -39,7 +40,7 @@ final class StrategyDegradationService
         $sampleSize = $positions->count();
 
         if ($sampleSize < 3) {
-            return StrategyDegradationSnapshotRecord::query()->create([
+            return StrategyDegradationSnapshotRecord::query()->{$method}([
                 'id' => (string) Str::uuid(),
                 'strategy_id' => $strategyId,
                 'strategy_version' => '1.0.0',
@@ -158,7 +159,7 @@ final class StrategyDegradationService
             $degradationType = $regimeMismatch ? 'REGIME_MISMATCH' : 'NONE';
         }
 
-        return StrategyDegradationSnapshotRecord::query()->create([
+        return StrategyDegradationSnapshotRecord::query()->{$method}([
             'id' => (string) Str::uuid(),
             'strategy_id' => $strategyId,
             'strategy_version' => '1.0.0',

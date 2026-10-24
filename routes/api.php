@@ -1,6 +1,7 @@
 <?php
 
 use App\Audit\Http\AuditExportController as A;
+use App\Exchanges\Http\ExchangeComparisonController as EX;
 use App\Http\Controllers\Api\V1\AutonomousLearningController;
 use App\Http\Controllers\Api\V1\PatternResearchController as P;
 use App\Http\Controllers\Api\V1\ProfitabilityResearchController;
@@ -30,6 +31,7 @@ Route::prefix('v1')->middleware('throttle:api')->group(function () {
 
     Route::get('research/degradation', [I::class, 'degradation']);
     Route::get('research/correlations', [I::class, 'correlations']);
+    Route::post('research/recommendations/generate', [I::class, 'generateRecommendations'])->middleware('research.token');
     Route::get('research/recommendations', [I::class, 'recommendations']);
     Route::post('research/recommendations/{id}/dismiss', [I::class, 'dismissRecommendation']);
     Route::post('research/recommendations/{id}/accept', [I::class, 'acceptRecommendation']);
@@ -59,6 +61,9 @@ Route::prefix('v1')->middleware('throttle:api')->group(function () {
     Route::get('audit/exports', [A::class, 'index']);
     Route::get('audit/exports/{id}', [A::class, 'show']);
     Route::get('audit/exports/{id}/download', [A::class, 'download'])->name('audit.download')->middleware('signed:relative');
+    Route::get('exchanges/comparison', [EX::class, 'index']);
+    Route::get('exchanges/comparison.csv', [EX::class, 'csv']);
+    Route::get('exchanges/binance/market/{symbol}/candles', [EX::class, 'binanceCandles']);
     Route::get('dashboard', [C::class, 'dashboard']);
     Route::get('market/{symbol}/candles', [C::class, 'candles']);
     Route::get('market/{symbol}/indicators', [C::class, 'indicators']);

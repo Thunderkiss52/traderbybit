@@ -11,7 +11,7 @@ use Brick\Math\RoundingMode;
  * A3 — research-only allocation and risk-budget proposals.
  *
  * The proposal is a *research artefact*: it never writes a risk budget, never
- * merges the eight primary ledgers and never increases the total risk. The
+ * merges the primary ledgers and never increases the total risk. The
  * total allocated risk is always less than or equal to the total before, and
  * a per-strategy cap is never exceeded.
  */

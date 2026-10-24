@@ -114,7 +114,7 @@ final class ProcessAutonomousLearningJob implements ShouldQueue
                 } catch (\Throwable $error) {
                     Log::warning('[AutonomousLearning] Candidate generation failed.', [
                         'family' => $row['family'],
-                        'error' => $error->getMessage(),
+                        'exception_type' => $error::class,
                     ]);
                 }
             }

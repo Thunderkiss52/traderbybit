@@ -39,7 +39,7 @@ final class PromotedCandidateExecutionTest extends TestCase
 
         // 2. Persist promoted candidate record
         $candidateRecord = LearningCandidateStrategyRecord::query()->create([
-            'id' => 'cand-exec-test-1',
+            'id' => '857e8ebb-ebc6-5009-8d5a-d093c51dadfd',
             'name' => 'Trend Pullback Optimized Candidate',
             'parent_strategy_id' => $parentStrategyId,
             'base_version' => '1.0.0',

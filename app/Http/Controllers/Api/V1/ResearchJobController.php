@@ -11,6 +11,7 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Validation\Rule;
+use Illuminate\Validation\ValidationException;
 use Symfony\Component\HttpFoundation\Response;
 use Throwable;
 
@@ -50,11 +51,11 @@ final class ResearchJobController extends Controller
                 ],
             ]);
         } catch (Throwable $e) {
-            Log::error('ResearchJobController index failed: '.$e->getMessage(), ['exception' => $e]);
+            Log::error('Research API operation failed.', ['operation' => __METHOD__, 'exception_type' => $e::class]);
 
             return response()->json([
                 'success' => false,
-                'message' => 'Failed to retrieve research jobs: '.$e->getMessage(),
+                'message' => 'Request failed. Please try again.',
             ], Response::HTTP_INTERNAL_SERVER_ERROR);
         }
     }
@@ -97,15 +98,19 @@ final class ResearchJobController extends Controller
                     'requested_at_utc' => $job->requested_at_utc?->toIso8601String(),
                 ],
             ], Response::HTTP_ACCEPTED);
+        } catch (ValidationException $e) {
+            throw $e;
         } catch (Throwable $e) {
-            Log::error('ResearchJobController store failed: '.$e->getMessage(), [
-                'exception' => $e,
-                'payload' => $request->all(),
+            // Do not log request payloads, Throwable objects or their messages:
+            // research payloads can contain credentials or private input.
+            Log::error('Research API operation failed.', [
+                'operation' => __METHOD__,
+                'exception_type' => $e::class,
             ]);
 
             return response()->json([
                 'success' => false,
-                'message' => 'Failed to submit research job: '.$e->getMessage(),
+                'message' => 'Request failed. Please try again.',
             ], Response::HTTP_UNPROCESSABLE_ENTITY);
         }
     }
@@ -127,11 +132,11 @@ final class ResearchJobController extends Controller
                 'data' => $job,
             ]);
         } catch (Throwable $e) {
-            Log::error("ResearchJobController show failed for job {$id}: ".$e->getMessage(), ['exception' => $e]);
+            Log::error('Research API operation failed.', ['operation' => __METHOD__, 'exception_type' => $e::class]);
 
             return response()->json([
                 'success' => false,
-                'message' => 'Error fetching job: '.$e->getMessage(),
+                'message' => 'Request failed. Please try again.',
             ], Response::HTTP_INTERNAL_SERVER_ERROR);
         }
     }
@@ -154,11 +159,11 @@ final class ResearchJobController extends Controller
                 'message' => "Research job {$id} cancelled successfully",
             ]);
         } catch (Throwable $e) {
-            Log::error("ResearchJobController cancel failed for job {$id}: ".$e->getMessage(), ['exception' => $e]);
+            Log::error('Research API operation failed.', ['operation' => __METHOD__, 'exception_type' => $e::class]);
 
             return response()->json([
                 'success' => false,
-                'message' => 'Error cancelling job: '.$e->getMessage(),
+                'message' => 'Request failed. Please try again.',
             ], Response::HTTP_INTERNAL_SERVER_ERROR);
         }
     }
@@ -173,11 +178,11 @@ final class ResearchJobController extends Controller
                 'data' => $routing,
             ]);
         } catch (Throwable $e) {
-            Log::error('ResearchJobController capabilities failed: '.$e->getMessage(), ['exception' => $e]);
+            Log::error('Research API operation failed.', ['operation' => __METHOD__, 'exception_type' => $e::class]);
 
             return response()->json([
                 'success' => false,
-                'message' => 'Failed to fetch capability routing: '.$e->getMessage(),
+                'message' => 'Request failed. Please try again.',
             ], Response::HTTP_INTERNAL_SERVER_ERROR);
         }
     }

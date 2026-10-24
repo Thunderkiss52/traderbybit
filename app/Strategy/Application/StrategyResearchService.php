@@ -32,7 +32,8 @@ final readonly class StrategyResearchService
         $processed = [];
         $metadata = collect($this->registry->metadata())->keyBy('id');
         $enabled = (array) config('research.forward_paper.enabled_strategies', []);
-        foreach (PaperAccountRecord::query()->whereIn('mode', ['RESEARCH_FORWARD_PAPER', 'STRATEGY_FORWARD_PAPER'])->whereIn('status', ['ACTIVE', 'BLOCKED', 'HALTED'])->orderBy('id')->cursor() as $account) {
+        $signalOnly = (array) config('research.forward_paper.signal_only_strategies', []);
+        foreach (PaperAccountRecord::query()->where('exchange_id', 'bybit')->whereIn('mode', ['RESEARCH_FORWARD_PAPER', 'STRATEGY_FORWARD_PAPER'])->whereIn('status', ['ACTIVE', 'BLOCKED', 'HALTED'])->orderBy('id')->cursor() as $account) {
             try {
                 // Previous versions/configs remain readable and must exit existing positions,
                 // but they may not silently start new trades after a version rotation.
@@ -49,15 +50,17 @@ final readonly class StrategyResearchService
                 $strategy = $allowNew
                     ? $this->registry->make($account->strategy_id, $account->strategy_parameters ?? $this->registry->get($account->strategy_id)->parameters())
                     : null;
+                $executionEligible = ! in_array($account->strategy_id, $signalOnly, true);
                 foreach ((array) config('market_data.symbols', ['BTCUSDT', 'ETHUSDT']) as $symbol) {
                     $at = $this->inputs->latestDecisionTime('bybit', 'linear', $symbol);
                     if ($at === null) {
                         continue;
                     }
                     if ($strategy !== null) {
-                        $this->signals->createIfAbsent($strategy->evaluate($this->inputs->make('bybit', 'linear', $symbol, $at)));
+                        $peer = $account->strategy_id === 'btc_eth_lead_lag' ? StrategyInputFactory::peerSymbol($symbol) : null;
+                        $this->signals->createIfAbsent($strategy->evaluate($this->inputs->make('bybit', 'linear', $symbol, $at, $peer)));
                     }
-                    $processed[] = $this->paper->process($account->id, $symbol, allowNewEntries: $allowNew);
+                    $processed[] = $this->paper->process($account->id, $symbol, allowNewEntries: $allowNew && $executionEligible);
                 }
             } catch (\Throwable $error) {
                 report($error);

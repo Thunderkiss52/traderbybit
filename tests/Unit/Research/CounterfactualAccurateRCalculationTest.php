@@ -15,6 +15,12 @@ final class CounterfactualAccurateRCalculationTest extends TestCase
 {
     use RefreshDatabase;
 
+    protected function setUp(): void
+    {
+        parent::setUp();
+        config(['research.counterfactual.legacy_analysis_enabled' => true]);
+    }
+
     public function test_buy_take_profit_calculates_accurate_net_r_with_execution_costs(): void
     {
         $service = new CounterfactualAnalyzerService;
@@ -26,8 +32,8 @@ final class CounterfactualAccurateRCalculationTest extends TestCase
         // Net return = 6.0 - 0.13 = +5.87%
         // Net R-multiple = 5.87 / 2.0 = +2.935 R
         $evaluation = CounterfactualEvaluationRecord::query()->create([
-            'id' => 'eval-buy-tp-1',
-            'signal_id' => 'sig-1',
+            'id' => '67a29d35-b39c-5e4e-bb7e-055e78f6650f',
+            'signal_id' => '1ef4ca1a-9694-5294-94d1-1a1d6ee70d1a',
             'strategy_id' => 'ema_pullback',
             'strategy_version' => 'v1.0.0',
             'symbol' => 'BTCUSDT',
@@ -74,8 +80,8 @@ final class CounterfactualAccurateRCalculationTest extends TestCase
         // Net return = -2.0 - 0.13 = -2.13%
         // Net R-multiple = -2.13 / 2.0 = -1.065 R
         $evaluation = CounterfactualEvaluationRecord::query()->create([
-            'id' => 'eval-sell-sl-1',
-            'signal_id' => 'sig-2',
+            'id' => '9b32da84-0bf2-5694-b558-7e45dec32e8e',
+            'signal_id' => '080847b0-c3c3-5556-8b62-d44682d4c8fe',
             'strategy_id' => 'ema_pullback',
             'strategy_version' => 'v1.0.0',
             'symbol' => 'ETHUSDT',
@@ -117,8 +123,8 @@ final class CounterfactualAccurateRCalculationTest extends TestCase
 
         // Entry: 100.00, SL: 95.00 (Risk: 5.0%), TP: 110.00
         $evaluation = CounterfactualEvaluationRecord::query()->create([
-            'id' => 'eval-buy-timeout-1',
-            'signal_id' => 'sig-3',
+            'id' => '07c2513c-3618-5f65-8b93-464b61a856a1',
+            'signal_id' => '1ba15b36-994a-53f3-b4fc-1e1ecfb218aa',
             'strategy_id' => 'ema_pullback',
             'strategy_version' => 'v1.0.0',
             'symbol' => 'BTCUSDT',

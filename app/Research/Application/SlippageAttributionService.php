@@ -80,7 +80,7 @@ final class SlippageAttributionService
         ]);
 
         try {
-            // Retrieve 8 primary accounts
+            // Retrieve the configured independent primary accounts.
             $accounts = $this->accountService->allPrimaryAccounts();
             $accountIds = $accounts->pluck('id')->filter()->all();
 
@@ -280,7 +280,7 @@ final class SlippageAttributionService
         } catch (\Throwable $e) {
             $generation->update([
                 'status' => 'FAILED',
-                'error_message' => $e->getMessage(),
+                'error_message' => 'Research calculation unavailable.',
                 'heartbeat_at' => CarbonImmutable::now('UTC'),
             ]);
 

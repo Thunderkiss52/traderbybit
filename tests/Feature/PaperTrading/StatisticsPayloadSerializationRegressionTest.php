@@ -190,11 +190,11 @@ final class StatisticsPayloadSerializationRegressionTest extends TestCase
         self::assertStringNotContainsString('App\\PaperTrading\\Infrastructure', $serialized);
     }
 
-    public function test_all_eight_primary_strategy_accounts_generate_valid_statistics_dtos(): void
+    public function test_all_primary_strategy_accounts_generate_valid_statistics_dtos(): void
     {
         $accountService = app(PaperAccountService::class);
         $accounts = $accountService->allPrimaryAccounts();
-        self::assertCount(8, $accounts);
+        self::assertCount(13, $accounts);
 
         foreach ($accounts as $account) {
             $response = $this->getJson('/api/v1/statistics?account='.$account->id);

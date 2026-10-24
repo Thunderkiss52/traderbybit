@@ -87,16 +87,18 @@ final class EvaluateStrategyCandidateJob implements ShouldQueue
             ]);
 
             if ($evaluated->status === 'PAPER_ELIGIBLE' && $autonomy->isAllowed('auto_promote_paper')) {
-                $promoted = $promotion->promoteCandidate($evaluated->id, 'SYSTEM_AUTONOMOUS');
-                Log::info('[ResearchEvolution] Candidate promoted to isolated forward paper.', [
-                    'candidate_id' => $promoted->id,
-                    'family' => $promoted->parent_strategy_id,
-                    'paper_account_id' => $promoted->paper_account_id,
+                // Autonomous promotion is intentionally suspended until a
+                // version-restoring, audited operational rollback is verified.
+                // This is not a failed candidate evaluation: retain the
+                // eligible research verdict and do not provision an account.
+                Log::warning('[ResearchEvolution] Autonomous paper promotion deferred: operational rollback unsupported.', [
+                    'candidate_id' => $candidate->id,
+                    'family' => $candidate->parent_strategy_id,
                 ]);
             }
         } catch (Throwable $error) {
             $metadata['evaluation_status'] = 'FAILED';
-            $metadata['evaluation_error'] = substr($error->getMessage(), 0, 1000);
+            $metadata['evaluation_error'] = 'Candidate evaluation failed; details suppressed.';
             $metadata['evaluation_failed_at'] = CarbonImmutable::now('UTC')->toIso8601String();
             $candidate->update(['search_metadata' => $metadata]);
 
@@ -107,7 +109,7 @@ final class EvaluateStrategyCandidateJob implements ShouldQueue
                     'validation_gates' => [
                         'all_gates_passed' => false,
                         'failure_reason' => 'backtest_execution_failed',
-                        'detail' => substr($error->getMessage(), 0, 1000),
+                        'detail' => 'Candidate evaluation failed; details suppressed.',
                         'attempts' => $attempts,
                     ],
                 ]);
@@ -117,7 +119,7 @@ final class EvaluateStrategyCandidateJob implements ShouldQueue
                 'candidate_id' => $candidate->id,
                 'family' => $candidate->parent_strategy_id,
                 'attempt' => $attempts,
-                'error' => $error->getMessage(),
+                'exception_type' => $error::class,
             ]);
 
             if ($attempts < $maxAttempts) {

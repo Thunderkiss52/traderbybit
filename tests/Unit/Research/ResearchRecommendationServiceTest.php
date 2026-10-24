@@ -16,7 +16,7 @@ final class ResearchRecommendationServiceTest extends TestCase
 {
     use RefreshDatabase;
 
-    public function test_generates_recommendations_from_counterfactual_and_degradation(): void
+    public function test_legacy_counterfactuals_cannot_generate_recommendations(): void
     {
         $service = new ResearchRecommendationService;
         $now = CarbonImmutable::now();
@@ -68,15 +68,15 @@ final class ResearchRecommendationServiceTest extends TestCase
 
         $recommendations = $service->generateRecommendations();
 
-        self::assertCount(2, $recommendations);
+        self::assertCount(1, $recommendations);
 
         $categories = array_map(fn ($r) => $r->category, $recommendations);
-        self::assertContains('ALPHA_IMPROVEMENT', $categories);
+        self::assertNotContains('ALPHA_IMPROVEMENT', $categories);
         self::assertContains('RISK_MITIGATION', $categories);
 
         // Verify deduplication: repeated runs must update existing OPEN records, not create duplicates
         $secondRun = $service->generateRecommendations();
-        self::assertCount(2, $secondRun);
-        $this->assertDatabaseCount('research_recommendations', 2);
+        self::assertCount(1, $secondRun);
+        $this->assertDatabaseCount('research_recommendations', 1);
     }
 }

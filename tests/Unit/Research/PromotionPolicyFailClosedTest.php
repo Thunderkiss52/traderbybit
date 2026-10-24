@@ -122,7 +122,7 @@ final class PromotionPolicyFailClosedTest extends TestCase
         $this->assertFalse($evaluated->validation_gates['calibration_error']['applicable']);
     }
 
-    public function test_candidate_with_passing_backtest_promotes_with_audit_trail(): void
+    public function test_profitable_backtest_does_not_replace_forward_evidence(): void
     {
         $candidate = $this->evolution->generateCandidate('trend_pullback', 104);
 
@@ -160,14 +160,12 @@ final class PromotionPolicyFailClosedTest extends TestCase
 
         $evaluated = $this->policy->evaluateCandidate($candidate->id, $passingRun->id);
 
-        $this->assertSame('PAPER_ELIGIBLE', $evaluated->status);
-        $this->assertTrue($evaluated->validation_gates['all_gates_passed']);
+        $this->assertSame('REJECTED', $evaluated->status);
+        $this->assertFalse($evaluated->validation_gates['all_gates_passed']);
         $this->assertSame($passingRun->id, $evaluated->validation_gates['validation_run_id']);
 
-        // Autonomous promotion is allowed for gate-validated candidates.
-        $promoted = $this->policy->promoteCandidate($candidate->id, 'SYSTEM_AUTONOMOUS');
-        $this->assertSame('PAPER_PROMOTED', $promoted->status);
-        $this->assertNotNull($promoted->paper_account_id);
+        $this->expectException(ValidationException::class);
+        $this->policy->promoteCandidate($candidate->id, 'USER_OPERATOR');
     }
 
     public function test_adversarial_attempt_to_promote_rejected_candidate_throws(): void

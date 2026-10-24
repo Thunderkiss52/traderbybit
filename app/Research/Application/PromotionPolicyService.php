@@ -6,10 +6,12 @@ namespace App\Research\Application;
 
 use App\Backtest\Infrastructure\Persistence\BacktestRunRecord;
 use App\PaperTrading\Application\PaperAccountService;
+use App\Research\Domain\Autonomy\PaperPromotionPolicy;
 use App\Research\Infrastructure\Persistence\LearningCandidateStrategyRecord;
 use App\Research\Infrastructure\Persistence\LearningModelArtifactRecord;
 use App\Research\Infrastructure\Persistence\ResearchJobRecord;
 use Carbon\CarbonImmutable;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
 
 final class PromotionPolicyService
@@ -24,7 +26,7 @@ final class PromotionPolicyService
      */
     public function getPolicyHash(): string
     {
-        $config = (array) config('strategy.promotion_policy', []);
+        $config = ['model' => (array) config('strategy.promotion_policy', []), 'candidate' => (array) config('research.autonomy.gates', [])];
 
         return hash('sha256', json_encode($config, JSON_THROW_ON_ERROR));
     }
@@ -66,12 +68,61 @@ final class PromotionPolicyService
     }
 
     /**
+     * Parse a genuine finite observation, never an implicit PHP cast.
+     * Numeric strings remain supported for metrics serialized by a DB driver.
+     */
+    private static function observedNumber(mixed $value): ?float
+    {
+        if (! (is_int($value) || is_float($value) || (is_string($value) && trim($value) !== '' && is_numeric($value)))) {
+            return null;
+        }
+
+        $number = (float) $value;
+
+        return is_finite($number) ? $number : null;
+    }
+
+    private static function observedCount(mixed $value): ?int
+    {
+        $number = self::observedNumber($value);
+        if ($number === null || $number < 0 || $number > PHP_INT_MAX || floor($number) !== $number) {
+            return null;
+        }
+
+        return (int) $number;
+    }
+
+    /**
      * Compute Multiplicity-Adjusted Lower Confidence Bound (LCB) with Newey-West HAC variance.
      * Accounts for serial correlation in overlapping trading observations and controls FWER across M candidate trials.
      */
     public function computeMultiplicityAdjustedLcb(array $rDifferences, int $trialCount = 1, float $alpha = 0.05, int $maxLag = 4): array
     {
         $n = count($rDifferences);
+        foreach ($rDifferences as $difference) {
+            if (self::observedNumber($difference) === null) {
+                return [
+                    'mean_difference' => 0.0,
+                    'standard_error' => 0.0,
+                    'critical_z' => null,
+                    'lcb95' => 0.0,
+                    'pass' => false,
+                    'effective_sample_size' => $n,
+                    'failure_reason' => 'invalid_paired_observations',
+                ];
+            }
+        }
+        if ($trialCount < 1 || $alpha <= 0.0 || $alpha >= 1.0 || ! is_finite($alpha) || $maxLag < 0) {
+            return [
+                'mean_difference' => 0.0,
+                'standard_error' => 0.0,
+                'critical_z' => null,
+                'lcb95' => 0.0,
+                'pass' => false,
+                'effective_sample_size' => $n,
+                'failure_reason' => 'invalid_statistical_policy',
+            ];
+        }
         if ($n < 2) {
             return [
                 'mean_difference' => $n === 1 ? (float) $rDifferences[0] : 0.0,
@@ -189,15 +240,41 @@ final class PromotionPolicyService
         $maxTrials = max(1, $precommittedCandidates, $registryCandidates, $callerTrials);
         $hacLag = (int) ($policy['hac_lag_truncation'] ?? 4);
 
-        $trainingSamples = (int) ($candidateMetrics['training_samples'] ?? $candidateMetrics['sample_size'] ?? 0);
-        $oosSamples = (int) ($candidateMetrics['oos_samples'] ?? $candidateMetrics['holdout_samples'] ?? 0);
-        $shadowSamples = (int) ($candidateMetrics['shadow_samples'] ?? 0);
-        $challengerDurationDays = (int) ($candidateMetrics['challenger_duration_days'] ?? 0);
-        $challengerOps = (int) ($candidateMetrics['challenger_samples'] ?? $candidateMetrics['challenger_operations'] ?? 0);
-        $candidateDd = (float) ($candidateMetrics['max_drawdown_percent'] ?? 100.0);
-        $candidateBrier = (float) ($candidateMetrics['brier_score'] ?? 1.0);
-        $candidateEce = (float) ($candidateMetrics['ece'] ?? 1.0);
-        $candidateExpR = (float) ($candidateMetrics['expectancy_r'] ?? $candidateMetrics['average_r'] ?? 0.0);
+        // Reject missing/non-finite values before evaluating Gate 6. Casting null,
+        // booleans or malformed strings to zero can fabricate passing risk data.
+        $observed = [
+            'training_samples' => self::observedCount($candidateMetrics['training_samples'] ?? $candidateMetrics['sample_size'] ?? null),
+            'oos_samples' => self::observedCount($candidateMetrics['oos_samples'] ?? $candidateMetrics['holdout_samples'] ?? null),
+            'shadow_samples' => self::observedCount($candidateMetrics['shadow_samples'] ?? null),
+            'challenger_duration_days' => self::observedCount($candidateMetrics['challenger_duration_days'] ?? null),
+            'challenger_samples' => self::observedCount($candidateMetrics['challenger_samples'] ?? $candidateMetrics['challenger_operations'] ?? null),
+            'max_drawdown_percent' => self::observedNumber($candidateMetrics['max_drawdown_percent'] ?? null),
+            'brier_score' => self::observedNumber($candidateMetrics['brier_score'] ?? null),
+            'ece' => self::observedNumber($candidateMetrics['ece'] ?? null),
+            'candidate_expectancy_r' => self::observedNumber($candidateMetrics['expectancy_r'] ?? $candidateMetrics['average_r'] ?? null),
+            'champion_expectancy_r' => self::observedNumber($championMetrics['expectancy_r'] ?? $championMetrics['average_r'] ?? null),
+            'champion_drawdown_percent' => self::observedNumber($championMetrics['max_drawdown_percent'] ?? null),
+        ];
+        $invalidEvidenceFields = array_keys(array_filter($observed, static fn (mixed $v): bool => $v === null));
+        foreach (['max_drawdown_percent', 'champion_drawdown_percent', 'brier_score', 'ece'] as $nonnegativeField) {
+            if ($observed[$nonnegativeField] !== null && $observed[$nonnegativeField] < 0.0) {
+                $invalidEvidenceFields[] = $nonnegativeField;
+            }
+        }
+        foreach (['brier_score', 'ece'] as $probabilityField) {
+            if ($observed[$probabilityField] !== null && $observed[$probabilityField] > 1.0) {
+                $invalidEvidenceFields[] = $probabilityField;
+            }
+        }
+        $trainingSamples = $observed['training_samples'] ?? 0;
+        $oosSamples = $observed['oos_samples'] ?? 0;
+        $shadowSamples = $observed['shadow_samples'] ?? 0;
+        $challengerDurationDays = $observed['challenger_duration_days'] ?? 0;
+        $challengerOps = $observed['challenger_samples'] ?? 0;
+        $candidateDd = $observed['max_drawdown_percent'] ?? 0.0;
+        $candidateBrier = $observed['brier_score'] ?? 0.0;
+        $candidateEce = $observed['ece'] ?? 0.0;
+        $candidateExpR = $observed['candidate_expectancy_r'] ?? 0.0;
 
         $isTestFixture = (bool) ($context['is_synthetic_fixture'] ?? $context['is_test_fixture'] ?? false);
         $isForwardProduction = (bool) ($context['is_forward_production'] ?? (! app()->runningUnitTests()));
@@ -216,31 +293,29 @@ final class PromotionPolicyService
         $challengerOpsPass = $challengerOps >= $minChallengerOps;
 
         // Gate 5 & 6: Paired risk-adjusted improvement and Multiplicity-adjusted 95% LCB
-        $champExpR = (float) ($championMetrics['expectancy_r'] ?? $championMetrics['average_r'] ?? 0.0);
+        $champExpR = $observed['champion_expectancy_r'] ?? 0.0;
         $rDiffs = $candidateMetrics['r_differences'] ?? null;
-        if (is_array($rDiffs) && count($rDiffs) > 0) {
+        if (is_array($rDiffs) && count($rDiffs) >= max(2, $minChallengerOps, $challengerOps)) {
             $lcbResult = $this->computeMultiplicityAdjustedLcb($rDiffs, $maxTrials, $alphaFwer, $hacLag);
-            $riskAdjPass = ($lcbResult['mean_difference'] ?? 0.0) > 0.0;
+            $riskAdjPass = ! isset($lcbResult['failure_reason']) && ($lcbResult['mean_difference'] ?? 0.0) > 0.0;
             $lcbPass = (bool) ($lcbResult['pass'] ?? false);
         } else {
-            $deltaR = $candidateExpR - $champExpR;
-            $riskAdjPass = $deltaR > 0.0;
-            // Conservative approximation when individual diffs are aggregated
-            $seApprox = (float) ($candidateMetrics['standard_error'] ?? 0.05);
-            $critZ = self::invNormCdf(1.0 - ($alphaFwer / (2.0 * $maxTrials)));
-            $lcbApprox = $deltaR - ($critZ * $seApprox);
-            $lcbPass = $lcbApprox > 0.0;
+            // Aggregate expectancy and a caller supplied/assumed standard error
+            // do not establish paired prospective evidence or a valid HAC LCB.
+            $riskAdjPass = false;
+            $lcbPass = false;
             $lcbResult = [
-                'mean_difference' => round($deltaR, 4),
-                'standard_error' => round($seApprox, 4),
-                'critical_z' => round($critZ, 4),
-                'lcb95' => round($lcbApprox, 4),
-                'pass' => $lcbPass,
+                'mean_difference' => null,
+                'standard_error' => null,
+                'critical_z' => null,
+                'lcb95' => null,
+                'pass' => false,
+                'failure_reason' => is_array($rDiffs) && $rDiffs !== [] ? 'insufficient_paired_r_differences' : 'missing_paired_r_differences',
             ];
         }
 
         // Gate 7: Drawdown ceiling
-        $champDd = (float) ($championMetrics['max_drawdown_percent'] ?? 0.0);
+        $champDd = $observed['champion_drawdown_percent'] ?? 0.0;
         $ddMarginPass = $candidateDd <= ($champDd + $maxDdMargin);
         $hardDdPass = $candidateDd <= $hardDdCeiling;
         $ddPass = $ddMarginPass && $hardDdPass;
@@ -252,13 +327,14 @@ final class PromotionPolicyService
         $authenticityPass = true;
         if ($isForwardProduction && ! $isTestFixture) {
             // Require explicit genuine forward observation evidence
-            $genuineCount = (int) ($context['genuine_forward_observations'] ?? 0);
+            $genuineCount = self::observedCount($context['genuine_forward_observations'] ?? null) ?? 0;
             if ($genuineCount < $minChallengerOps) {
                 $authenticityPass = false;
             }
         }
 
-        $allPass = $trainPass
+        $allPass = $invalidEvidenceFields === []
+            && $trainPass
             && $oosPass
             && $shadowPass
             && $challengerDurationPass
@@ -286,6 +362,12 @@ final class PromotionPolicyService
         } elseif (! $challengerOpsPass) {
             $failureReason = 'insufficient_challenger_samples';
             $failureDetail = "Challenger operations {$challengerOps} < required {$minChallengerOps}.";
+        } elseif ($observed['candidate_expectancy_r'] !== null && $observed['candidate_expectancy_r'] <= 0.0) {
+            $failureReason = 'inferior_risk_adjusted_expectancy';
+            $failureDetail = 'Challenger net expectancy is not positive.';
+        } elseif ($invalidEvidenceFields !== []) {
+            $failureReason = 'invalid_or_missing_gate6_evidence';
+            $failureDetail = 'Invalid or missing required metrics: '.implode(', ', array_unique($invalidEvidenceFields));
         } elseif (! $riskAdjPass) {
             $failureReason = 'inferior_risk_adjusted_expectancy';
             $failureDetail = 'Challenger net expectancy does not exceed champion.';
@@ -311,7 +393,7 @@ final class PromotionPolicyService
             'policy_hash' => $policyHash,
             'gates' => [
                 'min_training_samples' => ['threshold' => $minTrain, 'actual' => $trainingSamples, 'pass' => $trainPass],
-                'min_oos_samples' => ['threshold' => $minOos, 'actual' => $minOos, 'pass' => $oosPass],
+                'min_oos_samples' => ['threshold' => $minOos, 'actual' => $oosSamples, 'pass' => $oosPass],
                 'min_shadow_samples' => ['threshold' => $minShadow, 'actual' => $shadowSamples, 'pass' => $shadowPass],
                 'challenger_duration' => ['threshold' => $minChallengerDays, 'actual' => $challengerDurationDays, 'pass' => $challengerDurationPass],
                 'challenger_samples' => ['threshold' => $minChallengerOps, 'actual' => $challengerOps, 'pass' => $challengerOpsPass],
@@ -320,6 +402,7 @@ final class PromotionPolicyService
                 'drawdown_ceiling' => ['threshold' => $hardDdCeiling, 'actual' => $candidateDd, 'pass' => $ddPass],
                 'calibration' => ['pass' => $calibrationPass, 'brier' => $candidateBrier, 'ece' => $candidateEce],
                 'forward_authenticity' => ['pass' => $authenticityPass],
+                'evidence_integrity' => ['pass' => $invalidEvidenceFields === [], 'invalid_fields' => array_values(array_unique($invalidEvidenceFields))],
             ],
             'metrics' => $candidateMetrics,
             'evidence_identifiers' => [
@@ -343,7 +426,10 @@ final class PromotionPolicyService
         $metrics = (array) ($model->metrics ?? []);
 
         // 1. Explicit Gate 6 promotion validation approval
-        if (($params['gate6_validation']['all_gates_passed'] ?? false) === true) {
+        if (($params['gate6_validation']['all_gates_passed'] ?? false) === true
+            && ($params['gate6_validation']['policy_hash'] ?? null) === $this->getPolicyHash()
+            && ! empty($params['gate6_validation']['evidence_identifiers']['validation_run_id'])
+            && ! empty($params['gate6_validation']['evidence_identifiers']['challenger_account_id'])) {
             return [
                 'eligible' => true,
                 'reason' => 'gate6_promotion_verified',
@@ -360,51 +446,14 @@ final class PromotionPolicyService
             ];
         }
 
-        // 3. Dynamic evaluation against Gate 6 promotion policy
-        $policy = (array) config('strategy.promotion_policy', []);
-        $minTrain = (int) ($policy['min_training_samples'] ?? 300);
-        $minOos = (int) ($policy['min_oos_samples'] ?? 100);
-        $minChallengerDays = (int) ($policy['min_challenger_duration_days'] ?? 14);
-        $minChallengerOps = (int) ($policy['min_challenger_samples'] ?? 50);
-        $maxBrier = (float) ($policy['max_brier'] ?? 0.28);
-        $maxEce = (float) ($policy['max_ece'] ?? 0.15);
-
-        $trainSamples = (int) ($params['train_sample_size'] ?? $metrics['sample_size'] ?? 0);
-        $oosSamples = (int) ($params['validation_sample_size'] ?? $metrics['oos_samples'] ?? 0);
-        $brier = (float) ($metrics['brier_score'] ?? 1.0);
-        $ece = (float) ($metrics['ece'] ?? 1.0);
-
-        $ageDays = $model->created_at ? CarbonImmutable::parse($model->created_at)->diffInDays(now('UTC')) : 0;
-        $challengerOps = (int) ($params['challenger_samples'] ?? $metrics['challenger_samples'] ?? 0);
-
-        $samplePass = $trainSamples >= $minTrain && $oosSamples >= $minOos;
-        $challengerPass = $ageDays >= $minChallengerDays && $challengerOps >= $minChallengerOps;
-        $calibPass = $brier <= $maxBrier && $ece <= $maxEce;
-
-        if ($samplePass && $challengerPass && $calibPass) {
-            return [
-                'eligible' => true,
-                'reason' => 'dynamic_gate6_requirements_satisfied',
-                'policy_version' => $this->getPolicyVersion(),
-            ];
-        }
-
-        $failures = [];
-        if (! $samplePass) {
-            $failures[] = "insufficient_samples (train: {$trainSamples}/{$minTrain}, oos: {$oosSamples}/{$minOos})";
-        }
-        if (! $challengerPass) {
-            $failures[] = "insufficient_challenger_observation (days: {$ageDays}/{$minChallengerDays}, ops: {$challengerOps}/{$minChallengerOps})";
-        }
-        if (! $calibPass) {
-            $failures[] = "calibration_gates_breached (Brier: {$brier}/{$maxBrier}, ECE: {$ece}/{$maxEce})";
-        }
-
+        // 3. Legacy model statistics are NOT a substitute for prospective
+        // paired evidence, candidate-bound immutable history or all Gate 6
+        // conditions. Never dynamically approve from sample counts alone.
         return [
             'eligible' => false,
-            'reason' => 'legacy_model_unverified_by_gate6: '.implode('; ', $failures),
+            'reason' => 'legacy_model_unverified_by_gate6: full prospective evidence required',
             'policy_version' => $this->getPolicyVersion(),
-            'failures' => $failures,
+            'failures' => ['missing_verified_gate6_promotion'],
         ];
     }
 
@@ -414,6 +463,22 @@ final class PromotionPolicyService
      * Missing or unverified evidence fails closed.
      */
     public function evaluateCandidate(string $candidateId, ?string $validationRunId = null): LearningCandidateStrategyRecord
+    {
+        return DB::transaction(function () use ($candidateId, $validationRunId): LearningCandidateStrategyRecord {
+            $before = LearningCandidateStrategyRecord::query()->lockForUpdate()->findOrFail($candidateId);
+            $result = $this->evaluateCandidateEvidence($candidateId, $validationRunId);
+            $this->autonomy->recordEvent(
+                actor: 'SYSTEM_VALIDATION', action: 'CANDIDATE_EVALUATION', targetType: 'CANDIDATE_STRATEGY',
+                targetId: $candidateId, previousState: $before->status, newState: $result->status,
+                reason: 'Current authoritative candidate eligibility evaluation.',
+                evidence: ['previous_gates' => $before->validation_gates, 'validation_gates' => $result->validation_gates]
+            );
+
+            return $result;
+        });
+    }
+
+    private function evaluateCandidateEvidence(string $candidateId, ?string $validationRunId): LearningCandidateStrategyRecord
     {
         $candidate = LearningCandidateStrategyRecord::query()->findOrFail($candidateId);
 
@@ -504,7 +569,8 @@ final class PromotionPolicyService
         $metrics['validation_source'] = $sourceType;
 
         // Evaluate candidate parameter gates against out-of-sample evidence only.
-        $samplePass = ($metrics['oos_samples'] ?? 0) >= 30;
+        $minimumOos = max(100, (int) config('strategy.promotion_policy.min_oos_samples', 100), (int) config('research.autonomy.gates.min_oos_observations', 100));
+        $samplePass = ($metrics['oos_samples'] ?? 0) >= $minimumOos;
         $oosVerified = (bool) ($metrics['out_of_sample_verified'] ?? false);
         $expectancyPass = is_numeric($metrics['expectancy_r'] ?? null) && (float) $metrics['expectancy_r'] > 0.0;
         $drawdownPass = is_numeric($metrics['max_drawdown_percent'] ?? null) && (float) $metrics['max_drawdown_percent'] <= 12.0;
@@ -512,7 +578,15 @@ final class PromotionPolicyService
         $calibrationPass = ! $calibrationApplicable
             || (is_numeric($metrics['ece'] ?? null) && (float) $metrics['ece'] <= 0.15);
 
-        $allGatesPass = $samplePass && $oosVerified && $expectancyPass && $drawdownPass && $calibrationPass;
+        // Backtests/research jobs do not establish prospective candidate evidence.
+        // Do not accept caller metadata or a stored verdict as a substitute for
+        // a candidate-bound, immutable forward evidence source.
+        $prospective = (new PaperPromotionPolicy)->evaluate([
+            'train_observations' => $metrics['training_samples'] ?? null,
+            'oos_observations' => $metrics['oos_samples'] ?? null,
+        ], (array) config('research.autonomy.gates'), true);
+        $prospectivePass = $prospective['verdict'] === PaperPromotionPolicy::VERDICT_ELIGIBLE;
+        $allGatesPass = $samplePass && $oosVerified && $expectancyPass && $drawdownPass && $calibrationPass && $prospectivePass;
 
         $failureReason = null;
         if (! $oosVerified) {
@@ -525,11 +599,14 @@ final class PromotionPolicyService
             $failureReason = 'excessive_drawdown';
         } elseif (! $calibrationPass) {
             $failureReason = 'excessive_calibration_error';
+        } elseif (! $prospectivePass) {
+            $failureReason = 'missing_verified_prospective_evidence';
         }
 
         $gates = [
             'out_of_sample_verified' => ['actual' => $oosVerified, 'pass' => $oosVerified],
-            'min_sample_size' => ['threshold' => 30, 'actual' => $metrics['oos_samples'], 'pass' => $samplePass],
+            'prospective_gate' => $prospective,
+            'min_sample_size' => ['threshold' => $minimumOos, 'actual' => $metrics['oos_samples'], 'pass' => $samplePass],
             'positive_expectancy' => ['threshold' => 0.0, 'actual' => $metrics['expectancy_r'], 'pass' => $expectancyPass],
             'max_drawdown' => ['threshold' => 12.0, 'actual' => $metrics['max_drawdown_percent'], 'pass' => $drawdownPass],
             'calibration_error' => ['threshold' => 0.15, 'actual' => $metrics['ece'] ?? null, 'applicable' => $calibrationApplicable, 'pass' => $calibrationPass],
@@ -626,68 +703,63 @@ final class PromotionPolicyService
      */
     public function promoteCandidate(string $candidateId, string $actor = 'USER_OPERATOR'): LearningCandidateStrategyRecord
     {
-        $candidate = LearningCandidateStrategyRecord::query()->findOrFail($candidateId);
+        return DB::transaction(function () use ($candidateId, $actor): LearningCandidateStrategyRecord {
+            // Serialize authorization with permission changes and competing promotions.
+            $settings = $this->autonomy->getSettings()->newQuery()->lockForUpdate()->findOrFail('default');
+            $candidate = LearningCandidateStrategyRecord::query()->lockForUpdate()->findOrFail($candidateId);
+            if ($settings->kill_switch_active || app(AutonomyResearchService::class)->killSwitchActive()) {
+                throw ValidationException::withMessages(['gates' => 'Paper promotion is blocked by the kill switch.']);
+            }
+            if ($actor === 'SYSTEM_AUTONOMOUS' && (! config('research.autonomy.paper_promotion_enabled', false)
+                || ! $this->autonomy->isAllowed('auto_promote_paper'))) {
+                throw ValidationException::withMessages(['gates' => 'Automatic paper promotion is disabled.']);
+            }
+            if ($actor === 'SYSTEM_AUTONOMOUS') {
+                // No operational reversal of a promoted account/version exists.
+                // Permissions cannot make an irreversible autonomous change safe.
+                throw ValidationException::withMessages(['gates' => 'Automatic paper promotion requires a verified operational rollback implementation.']);
+            }
+            if ($candidate->status === 'PAPER_PROMOTED' && $candidate->paper_account_id !== null) {
+                return $candidate;
+            }
+            $previousGates = (array) $candidate->validation_gates;
+            $candidate = $this->evaluateCandidate($candidateId, $previousGates['validation_run_id'] ?? null);
+            if (! ($candidate->validation_gates['all_gates_passed'] ?? false)) {
+                throw ValidationException::withMessages(['gates' => 'Cannot promote candidate: current authoritative evidence does not pass all applicable gates.']);
+            }
 
-        if ($candidate->status === 'PAPER_PROMOTED' && $candidate->paper_account_id !== null) {
-            return $candidate;
-        }
+            // Provision an isolated forward paper trading account for this candidate version
+            $account = $this->paperAccounts->strategyForward(
+                $candidate->parent_strategy_id,
+                $candidate->candidate_version,
+                (array) $candidate->parameters
+            );
 
-        // Verification: cannot promote without passing gates
-        $gates = (array) $candidate->validation_gates;
-        if (! ($gates['all_gates_passed'] ?? false)) {
-            throw ValidationException::withMessages([
-                'gates' => 'Cannot promote candidate: mandatory statistical validation gates have not passed.',
+            $prev = $candidate->status;
+            $candidate->update([
+                'status' => 'PAPER_PROMOTED',
+                'paper_account_id' => $account->id,
+                'promoted_at' => CarbonImmutable::now(),
             ]);
-        }
-
-        // Check autonomy permission if automated
-        if ($actor === 'SYSTEM_AUTONOMOUS' && ! $this->autonomy->isAllowed('auto_promote_paper')) {
-            $candidate->update(['status' => 'PAPER_PROMOTION_PENDING']);
 
             $this->autonomy->recordEvent(
                 actor: $actor,
-                action: 'PROMOTION_PENDING',
+                action: 'CANDIDATE_PROMOTION',
                 targetType: 'CANDIDATE_STRATEGY',
                 targetId: $candidate->id,
-                previousState: $candidate->status,
-                newState: 'PAPER_PROMOTION_PENDING',
-                reason: 'Candidate passed gates; awaiting explicit operator approval (AUTO_PROMOTE_PAPER is disabled).'
+                previousState: $prev,
+                newState: 'PAPER_PROMOTED',
+                reason: "Promoted to forward paper trading on dedicated account {$account->id}.",
+                evidence: [
+                    'parameters' => $candidate->parameters,
+                    'validation_gates' => $candidate->validation_gates,
+                    'policy_version' => $this->getPolicyVersion(),
+                    'policy_hash' => $this->getPolicyHash(),
+                ]
             );
 
             return $candidate->fresh();
-        }
-
-        // Provision an isolated forward paper trading account for this candidate version
-        $account = $this->paperAccounts->strategyForward(
-            $candidate->parent_strategy_id,
-            $candidate->candidate_version,
-            (array) $candidate->parameters
-        );
-
-        $prev = $candidate->status;
-        $candidate->update([
-            'status' => 'PAPER_PROMOTED',
-            'paper_account_id' => $account->id,
-            'promoted_at' => CarbonImmutable::now(),
-        ]);
-
-        $this->autonomy->recordEvent(
-            actor: $actor,
-            action: 'CANDIDATE_PROMOTION',
-            targetType: 'CANDIDATE_STRATEGY',
-            targetId: $candidate->id,
-            previousState: $prev,
-            newState: 'PAPER_PROMOTED',
-            reason: "Promoted to forward paper trading on dedicated account {$account->id}.",
-            evidence: [
-                'parameters' => $candidate->parameters,
-                'validation_gates' => $candidate->validation_gates,
-                'policy_version' => $this->getPolicyVersion(),
-                'policy_hash' => $this->getPolicyHash(),
-            ]
-        );
-
-        return $candidate->fresh();
+        });
     }
 
     /**
@@ -696,6 +768,12 @@ final class PromotionPolicyService
     public function rollbackCandidate(string $candidateId, string $reason, string $actor = 'USER_OPERATOR'): LearningCandidateStrategyRecord
     {
         $candidate = LearningCandidateStrategyRecord::query()->findOrFail($candidateId);
+
+        if ($candidate->status === 'PAPER_PROMOTED' || $candidate->paper_account_id !== null) {
+            throw ValidationException::withMessages([
+                'gates' => 'Operational rollback is unsupported for a promoted paper account; no state was changed.',
+            ]);
+        }
 
         $prev = $candidate->status;
         $candidate->update([

@@ -47,7 +47,7 @@ final readonly class ResearchExperimentRunner
             [$selected, $stability] = $this->selectedParameters($run->id, $experiment->parameters, $strategy->id());
             $experiment->update(['status' => $run->status, 'backtest_run_id' => $run->id, 'metrics' => $run->metrics, 'warnings' => $run->warnings, 'tested_combinations' => BacktestOptimizationRecord::query()->where('backtest_run_id', $run->id)->count(), 'selected_parameters' => $selected, 'parameter_stability' => $stability, 'completed_at' => now('UTC')]);
         } catch (\Throwable $error) {
-            $experiment->update(['status' => 'FAILED', 'warnings' => [['class' => $error::class, 'message' => $error->getMessage()]], 'completed_at' => now('UTC')]);
+            $experiment->update(['status' => 'FAILED', 'warnings' => [['class' => $error::class, 'message' => 'Research experiment failed; internal details suppressed.']], 'completed_at' => now('UTC')]);
             throw $error;
         }
     }

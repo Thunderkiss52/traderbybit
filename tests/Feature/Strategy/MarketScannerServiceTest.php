@@ -25,7 +25,7 @@ final class MarketScannerServiceTest extends TestCase
         $this->at = new DateTimeImmutable('2026-10-13T10:15:00Z');
     }
 
-    public function test_scanner_evaluates_all_eight_strategies_across_both_symbols_and_is_idempotent(): void
+    public function test_scanner_evaluates_all_registered_strategies_across_both_symbols_and_is_idempotent(): void
     {
         $this->seedHistory('BTCUSDT');
         $this->seedHistory('ETHUSDT');
@@ -38,12 +38,12 @@ final class MarketScannerServiceTest extends TestCase
         $result1 = $scanner->scan($this->at, ['BTCUSDT', 'ETHUSDT']);
 
         self::assertSame(2, count($result1['symbols']));
-        self::assertSame(8, $result1['strategies_per_symbol']);
-        self::assertSame(16, $result1['total_evaluations']);
+        self::assertSame(13, $result1['strategies_per_symbol']);
+        self::assertSame(26, $result1['total_evaluations']);
 
-        // 16 signals (8 per symbol) and 16 strategy observations
-        $this->assertDatabaseCount('signals', 16);
-        $this->assertDatabaseCount('strategy_observations', 16);
+        // 26 signals (13 per symbol) and 26 strategy observations
+        $this->assertDatabaseCount('signals', 26);
+        $this->assertDatabaseCount('strategy_observations', 26);
 
         // Feature store snapshots assembled for both symbols
         self::assertGreaterThanOrEqual(2, LearningFeatureSnapshotRecord::query()->count());
@@ -51,8 +51,8 @@ final class MarketScannerServiceTest extends TestCase
         // Run cycle 2 at same timestamp: must be idempotent and non-duplicating
         $result2 = $scanner->scan($this->at, ['BTCUSDT', 'ETHUSDT']);
 
-        $this->assertDatabaseCount('signals', 16);
-        $this->assertDatabaseCount('strategy_observations', 16);
+        $this->assertDatabaseCount('signals', 26);
+        $this->assertDatabaseCount('strategy_observations', 26);
     }
 
     private function seedHistory(string $symbol): void

@@ -27,7 +27,7 @@ final class ResearchApiTest extends TestCase
     {
         $this->getJson('/api/v1/dashboard')->assertOk()->assertJsonPath('schema_version', '1.0.0')->assertJsonPath('research_mode', true)
             ->assertJsonCount(0, 'data.market')->assertJsonCount(0, 'data.recent_decisions')->assertJsonPath('data.skip_reasons_24h', [])
-            ->assertJsonCount(8, 'data.strategy_observations_24h')
+            ->assertJsonCount(13, 'data.strategy_observations_24h')
             ->assertJsonPath('data.strategy_observations_24h.0.strategy_id', 'baseline')
             ->assertJsonPath('data.strategy_observations_24h.0.total', 0);
     }
@@ -46,7 +46,7 @@ final class ResearchApiTest extends TestCase
             ]);
         }
 
-        $response = $this->getJson('/api/v1/dashboard')->assertOk()->assertJsonCount(8, 'data.strategy_observations_24h');
+        $response = $this->getJson('/api/v1/dashboard')->assertOk()->assertJsonCount(13, 'data.strategy_observations_24h');
         $response->assertJsonPath('data.strategy_observations_24h.0.sell', 1)
             ->assertJsonPath('data.strategy_observations_24h.0.symbols.0.symbol', 'BTCUSDT')
             ->assertJsonPath('data.strategy_observations_24h.0.symbols.0.latest.analysis.level_interaction.momentum_side', 'SELL')
@@ -252,7 +252,7 @@ final class ResearchApiTest extends TestCase
                 'paper_only',
             ])
             ->assertJsonPath('market_category', 'linear')
-            ->assertJsonPath('active_strategies_count', 8)
+            ->assertJsonPath('active_strategies_count', 13)
             ->assertJsonPath('paper_only', true);
     }
 

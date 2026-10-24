@@ -43,13 +43,13 @@ final class SlippageAttributionServiceTest extends TestCase
         $multiplier = BigDecimal::of('1.0');
 
         $buyDrag = $buyFillPrice->minus($buyRefPrice)->multipliedBy($qty)->multipliedBy($multiplier);
-        $this->assertSame('0.0500', (string) $buyDrag->toScale(4));
+        $this->assertDecimalSame('0.0500', (string) $buyDrag->toScale(4));
 
         $buyRefNotional = $buyRefPrice->multipliedBy($qty)->multipliedBy($multiplier);
-        $this->assertSame('250.0000', (string) $buyRefNotional->toScale(4));
+        $this->assertDecimalSame('250.0000', (string) $buyRefNotional->toScale(4));
 
         $buyBps = $buyDrag->dividedBy($buyRefNotional, 8)->multipliedBy(10000)->toScale(4);
-        $this->assertSame('2.0000', (string) $buyBps);
+        $this->assertDecimalSame('2.0000', (string) $buyBps);
 
         // SELL execution: adverse drag = (ref_price - fill_price) * qty * multiplier
         // where ref_price = fill_price + slippage
@@ -58,13 +58,13 @@ final class SlippageAttributionServiceTest extends TestCase
         $sellRefPrice = $sellFillPrice->plus($sellSlippage); // 100.00
 
         $sellDrag = $sellRefPrice->minus($sellFillPrice)->multipliedBy($qty)->multipliedBy($multiplier);
-        $this->assertSame('0.0500', (string) $sellDrag->toScale(4));
+        $this->assertDecimalSame('0.0500', (string) $sellDrag->toScale(4));
 
         $sellRefNotional = $sellRefPrice->multipliedBy($qty)->multipliedBy($multiplier);
-        $this->assertSame('250.0000', (string) $sellRefNotional->toScale(4));
+        $this->assertDecimalSame('250.0000', (string) $sellRefNotional->toScale(4));
 
         $sellBps = $sellDrag->dividedBy($sellRefNotional, 8)->multipliedBy(10000)->toScale(4);
-        $this->assertSame('2.0000', (string) $sellBps);
+        $this->assertDecimalSame('2.0000', (string) $sellBps);
     }
 
     public function test_returns_no_generation_available_when_table_empty(): void
@@ -255,15 +255,15 @@ final class SlippageAttributionServiceTest extends TestCase
 
         $this->assertSame('SUCCEEDED', $summary['status']);
         $this->assertSame(1, $summary['summary']['total_fills']);
-        $this->assertSame('20', (string) $summary['summary']['total_slippage_drag_usdt']);
+        $this->assertDecimalSame('20', (string) $summary['summary']['total_slippage_drag_usdt']);
 
         // Check counterfactual
         $counterfactual = $summary['counterfactual'];
         $this->assertSame('COMPUTED', $counterfactual['status']);
         $this->assertSame('HYPOTHETICAL', $counterfactual['provenance']);
         $this->assertTrue($counterfactual['double_deduction_prohibited']);
-        $this->assertSame('980', (string) $counterfactual['baseline_actual_net_pnl']);
-        $this->assertSame('20', (string) $counterfactual['attributable_slippage_drag']);
+        $this->assertDecimalSame('980', (string) $counterfactual['baseline_actual_net_pnl']);
+        $this->assertDecimalSame('20', (string) $counterfactual['attributable_slippage_drag']);
         // Hypothetical Net PnL = 980 + 20 = 1000
         $this->assertStringStartsWith('1000', (string) $counterfactual['hypothetical_net_pnl_zero_slippage']);
     }
@@ -358,13 +358,13 @@ final class SlippageAttributionServiceTest extends TestCase
         $this->assertSame('PARTIAL_CLOSE_UNRESOLVED', $counterfactual['realized_pnl_scope_status']);
         $this->assertSame(1, $counterfactual['partial_position_count']);
         // The proportional drag is a pure quantity attribution and is still available.
-        $this->assertSame('0.013', $counterfactual['realized_allocated_slippage_drag']);
+        $this->assertDecimalSame('0.013', $counterfactual['realized_allocated_slippage_drag']);
         // The whole net_pnl of a partial close is NOT treated as realized-scope PnL.
         $this->assertNull($counterfactual['realized_scope_net_pnl']);
         $this->assertNull($counterfactual['hypothetical_net_pnl_zero_slippage']);
         // The raw all-positions figure may stay available for diagnostics, but it
         // is explicitly labelled unverified and is not a realized-scope result.
-        $this->assertSame('5.014', $counterfactual['raw_unallocated_counterfactual_net_pnl']);
+        $this->assertDecimalSame('5.014', $counterfactual['raw_unallocated_counterfactual_net_pnl']);
         $this->assertSame('NOT_VERIFIED_SCOPE_MISMATCH', $counterfactual['raw_counterfactual_status']);
     }
 

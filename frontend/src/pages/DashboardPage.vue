@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { onBeforeUnmount, ref, shallowRef } from 'vue';
+import { onBeforeUnmount, onMounted, ref, shallowRef, computed } from 'vue';
 import { storeToRefs } from 'pinia';
 import { get } from '../services/api';
 import { usePolling } from '../composables/usePolling';
@@ -11,6 +11,19 @@ import DailyPerformance from '../components/DailyPerformance.vue';
 
 const data = shallowRef<any>({ market: [], signals: [], positions: [], portfolio: null, performance: null, recent_decisions: [], skip_reasons_24h: {}, strategy_observations_24h: [], strategy_portfolios: [] });
 const error = ref('');
+const exchangeComparison = shallowRef<any>(null);
+const exchangeError = ref('');
+const selectedExchange = ref('bybit');
+const selectedAccounts = computed(() => (exchangeComparison.value?.accounts || []).filter((row: any) => row.exchange_id === selectedExchange.value));
+async function loadExchangeComparison() {
+  try {
+    exchangeComparison.value = await get<any>('/exchanges/comparison');
+    exchangeError.value = '';
+  } catch {
+    exchangeError.value = 'Exchange comparison unavailable';
+  }
+}
+onMounted(loadExchangeComparison);
 const controller = new AbortController();
 const { autoRefresh } = storeToRefs(useSettings());
 const { loading, connected } = usePolling(async () => {
@@ -89,6 +102,29 @@ const evidence = (value: unknown) => value === null || value === undefined ? '�
       </q-markup-table>
       <EmptyState v-if="!(data.strategy_portfolios || []).length" />
       <div class="muted q-mt-sm">Execution failures (24h): {{ data.paper_execution_health?.execution_failures_24h ?? 0 }} · Latest evaluation: {{ data.paper_execution_health?.latest_strategy_evaluation_at ?? '—' }}</div>
+    </section>
+    <section>
+      <div class="row items-center justify-between q-mb-sm">
+        <h2>Bybit / Binance · Independent Paper Results</h2>
+        <a href="/api/v1/exchanges/comparison.csv" download>Export both exchanges (CSV)</a>
+      </div>
+      <p class="muted">13 PRIMARY strategy families × 2 exchange-specific accounts. Never merged automatically. Binance paper execution remains blocked until separately verified.</p>
+      <q-btn-toggle v-model="selectedExchange" :options="[{ label: 'Bybit', value: 'bybit' }, { label: 'Binance', value: 'binance' }]" unelevated toggle-color="primary" />
+      <q-btn flat dense label="Refresh" @click="loadExchangeComparison" />
+      <q-banner v-if="exchangeError" class="bg-warning text-black">{{ exchangeError }}</q-banner>
+      <q-markup-table v-if="exchangeComparison" flat bordered class="q-mt-md">
+        <thead><tr><th class="text-left">Strategy</th><th>Status</th><th>Evaluation</th><th>Balance (USDT)</th><th>Equity (USDT)</th><th>Realized PnL</th><th>Unrealized PnL</th></tr></thead>
+        <tbody>
+          <tr v-for="account in selectedAccounts" :key="`${account.exchange_id}:${account.strategy_id}`">
+            <td class="text-left">{{ account.strategy_id }}</td>
+            <td>{{ account.status }}</td><td>{{ account.evaluation_status }}</td>
+            <td class="text-right">{{ account.starting_balance ?? '—' }}</td>
+            <td class="text-right">{{ account.current_equity ?? '—' }}</td>
+            <td class="text-right">{{ account.realized_pnl ?? '—' }}</td>
+            <td class="text-right">{{ account.unrealized_pnl ?? '—' }}</td>
+          </tr>
+        </tbody>
+      </q-markup-table>
     </section>
     <section>
       <h2>All Strategy Decisions · Last 24 Hours</h2>

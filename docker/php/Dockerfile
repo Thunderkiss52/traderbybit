@@ -46,6 +46,8 @@ RUN --mount=type=cache,target=/home/app/.cache/composer,uid=10001,gid=10001 \
     COMPOSER_PROCESS_TIMEOUT=30 su-exec app composer install --no-dev --no-interaction --no-progress --prefer-dist --optimize-autoloader --no-scripts
 
 FROM php-base AS app
+ARG BUILD_COMMIT=unknown
+ARG BUILD_TIMESTAMP=unknown
 ENV APP_ENV=production
 LABEL io.bybit-signals.component="app"
 COPY --chown=app:app app ./app
@@ -60,6 +62,7 @@ COPY --from=vendor --chown=app:app /var/www/html/vendor ./vendor
 COPY --from=frontend --chown=app:app /build/frontend/dist ./public
 RUN mkdir -p storage/framework/cache storage/framework/sessions storage/framework/views storage/logs bootstrap/cache \
     && chown -R app:app storage bootstrap/cache
+RUN php -r 'file_put_contents("build-metadata.json", json_encode(["git_sha" => getenv("BUILD_COMMIT"), "build_timestamp" => getenv("BUILD_TIMESTAMP")], JSON_THROW_ON_ERROR));'
 EXPOSE 9000
 CMD ["php-fpm", "-F"]
 

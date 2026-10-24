@@ -191,7 +191,7 @@ final class DecisionEvidenceService
         } catch (\Throwable $e) {
             $generation->update([
                 'status' => 'FAILED',
-                'error_message' => $e->getMessage(),
+                'error_message' => 'Research calculation unavailable.',
                 'heartbeat_at' => CarbonImmutable::now('UTC'),
             ]);
 

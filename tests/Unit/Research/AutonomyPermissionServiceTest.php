@@ -21,7 +21,7 @@ final class AutonomyPermissionServiceTest extends TestCase
         self::assertFalse($settings->kill_switch_active);
         self::assertTrue($service->isAllowed('market_collection'));
         self::assertTrue($service->isAllowed('tune_parameters'));
-        self::assertTrue($service->isAllowed('auto_promote_paper')); // Validated paper promotion is autonomous
+        self::assertFalse($service->isAllowed('auto_promote_paper')); // A2 is off by default
 
         // Hard invariant: never allowed
         self::assertFalse($service->isAllowed('change_hard_risk_limits'));

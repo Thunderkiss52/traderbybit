@@ -14,8 +14,9 @@ final class PortfolioCorrelationService
     /**
      * Compute portfolio correlations, concurrent overlap, and concentration.
      */
-    public function evaluate(string $horizon = '14d'): PortfolioCorrelationSnapshotRecord
+    public function evaluate(string $horizon = '14d', bool $persist = true): PortfolioCorrelationSnapshotRecord
     {
+        $method = $persist ? 'create' : 'make';
         $days = match ($horizon) {
             '7d' => 7,
             '30d' => 30,
@@ -118,7 +119,7 @@ final class PortfolioCorrelationService
             $alerts[] = "High portfolio concentration: single strategy dominates {$concentrationScore} of trade allocation";
         }
 
-        return PortfolioCorrelationSnapshotRecord::query()->create([
+        return PortfolioCorrelationSnapshotRecord::query()->{$method}([
             'id' => (string) Str::uuid(),
             'horizon' => $horizon,
             'pair_matrix' => $pairMatrix,

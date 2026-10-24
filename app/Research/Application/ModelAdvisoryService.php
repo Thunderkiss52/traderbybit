@@ -228,10 +228,10 @@ final class ModelAdvisoryService
                     $finalReasons = array_merge($finalReasons, ['ml_advisory_inference_error_fail_closed']);
                     $altered = true;
                     $action = 'MODEL_ADVISORY_FAIL_CLOSED';
-                    $reasonText = "Active model inference exception: {$inferenceException->getMessage()}. Fail-closed to SKIP.";
+                    $reasonText = 'Active model inference failed. Fail-closed to SKIP.';
                 } else {
                     $action = 'MODEL_ADVISORY_FALLBACK_BASELINE';
-                    $reasonText = "Active model inference exception: {$inferenceException->getMessage()}. Fallback to authorized unfiltered execution.";
+                    $reasonText = 'Active model inference failed. Fallback to authorized unfiltered execution.';
                 }
             } elseif (! $gatesPassed) {
                 if (! $isAllowUnfiltered) {
@@ -273,7 +273,7 @@ final class ModelAdvisoryService
             'eligible_for_advisory' => true,
         ];
         if ($inferenceException !== null) {
-            $advisoryData['inference_error'] = $inferenceException->getMessage();
+            $advisoryData['inference_error'] = 'Model inference failed; internal details suppressed.';
         }
 
         // Audit logging

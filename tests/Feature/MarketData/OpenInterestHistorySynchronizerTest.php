@@ -34,7 +34,7 @@ final class OpenInterestHistorySynchronizerTest extends TestCase
         self::assertSame(['received' => 2, 'inserted' => 1, 'pages' => 2], $service->sync('BTCUSDT', $through));
         self::assertSame(0, $service->sync('BTCUSDT', $through)['inserted']);
         $event = OpenInterestEventRecord::query()->sole();
-        self::assertSame('1000', $event->open_interest);
+        self::assertDecimalSame('1000', $event->open_interest);
         self::assertSame('15min', $event->interval);
     }
 
@@ -57,8 +57,8 @@ final class OpenInterestHistorySynchronizerTest extends TestCase
 
         $context = (new AsOfMarketContextService)->at('bybit', 'linear', 'BTCUSDT', new DateTimeImmutable('2026-10-15T08:00:00Z'));
 
-        self::assertSame('-0.0001', $context['funding_rate']);
-        self::assertSame('0.100000000000', $context['open_interest_change']);
+        self::assertDecimalSame('-0.0001', $context['funding_rate']);
+        self::assertDecimalSame('0.100000000000', $context['open_interest_change']);
         self::assertSame((new DateTimeImmutable('2026-10-15T07:45:00Z'))->getTimestamp(), $context['open_interest_observed_at']);
     }
 }

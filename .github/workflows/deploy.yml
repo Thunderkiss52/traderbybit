@@ -46,6 +46,37 @@ jobs:
     needs: go-tests
     if: github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        database: [sqlite, pgsql]
+    services:
+      postgres:
+        image: postgres:17-alpine
+        env:
+          POSTGRES_DB: bybit_test
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: testpass
+        ports:
+          - 25432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d bybit_test"
+          --health-interval 5s --health-timeout 5s --health-retries 10
+    env:
+      APP_ENV: testing
+      DB_CONNECTION: ${{ matrix.database }}
+      DB_DATABASE: ${{ matrix.database == 'pgsql' && 'bybit_test' || ':memory:' }}
+      DB_HOST: 127.0.0.1
+      DB_PORT: 25432
+      DB_USERNAME: postgres
+      DB_PASSWORD: testpass
+      DB_URL: ''
+      TEST_DB_HOST: 127.0.0.1
+      TEST_DB_PORT: 25432
+      TEST_DB_DATABASE: bybit_test
+      TEST_DB_USERNAME: postgres
+      TEST_DB_PASSWORD: testpass
+      RUN_DB: bybit_test
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-go@v5
@@ -74,6 +105,8 @@ jobs:
         run: |
           cp .env.example .env
           chmod 600 .env
+      - name: Verify isolated PostgreSQL identity
+        run: php scripts/verify-test-database.php
       - name: Run PHPUnit
         run: php artisan test --no-ansi
       - name: Check PHP formatting
@@ -124,6 +157,9 @@ jobs:
           registry: ghcr.io
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
+      - name: Capture immutable build metadata
+        id: build-metadata
+        run: echo "timestamp=$(date -u +%Y-%m-%dT%H:%M:%SZ)" >> "$GITHUB_OUTPUT"
       - name: Build and publish ${{ matrix.target }}
         uses: docker/build-push-action@v6
         with:
@@ -131,6 +167,9 @@ jobs:
           file: docker/php/Dockerfile
           target: ${{ matrix.target }}
           push: true
+          build-args: |
+            BUILD_COMMIT=${{ github.sha }}
+            BUILD_TIMESTAMP=${{ steps.build-metadata.outputs.timestamp }}
           tags: ${{ steps.images.outputs.tag }}
           cache-from: type=gha,scope=bybit-${{ matrix.target }}
           cache-to: type=gha,scope=bybit-${{ matrix.target }},mode=max

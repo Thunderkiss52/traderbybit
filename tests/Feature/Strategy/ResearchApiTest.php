@@ -20,7 +20,7 @@ final class ResearchApiTest extends TestCase
 
     public function test_strategy_catalog_and_empty_leaderboard_are_bounded_and_do_not_fabricate_metrics(): void
     {
-        $this->getJson('/api/v1/research/strategies?per_page=10')->assertOk()->assertJsonPath('data.meta.total', 8)->assertJsonPath('data.data.0.id', 'baseline');
+        $this->getJson('/api/v1/research/strategies?per_page=10')->assertOk()->assertJsonPath('data.meta.total', 13)->assertJsonPath('data.data.0.id', 'baseline');
         $this->getJson('/api/v1/research/strategies?per_page=10')->assertJsonPath('data.data.0.timeframes.setup', '30m');
         $this->getJson('/api/v1/research/strategies/baseline')->assertOk()->assertJsonPath('data.strategy.id', 'baseline');
         $this->getJson('/api/v1/research/strategies/baseline/diagnostics')
@@ -33,8 +33,8 @@ final class ResearchApiTest extends TestCase
             ->assertJsonPath('meta.per_page', 10)
             ->assertJsonPath('meta.calibration.resolved_forecasts', 0);
         $response = $this->getJson('/api/v1/research/leaderboard')->assertOk();
-        $response->assertJsonPath('data.meta.total', 8)->assertJsonPath('data.data.0.metrics', null)->assertJsonPath('data.data.0.ranking.status', 'NOT_EVALUATED');
-        $this->getJson('/api/v1/research/comparison')->assertOk()->assertJsonPath('data.meta.total', 8);
+        $response->assertJsonPath('data.meta.total', 13)->assertJsonPath('data.data.0.metrics', null)->assertJsonPath('data.data.0.ranking.status', 'NOT_EVALUATED');
+        $this->getJson('/api/v1/research/comparison')->assertOk()->assertJsonPath('data.meta.total', 13);
     }
 
     public function test_authorized_experiment_is_persisted_and_queued_on_dedicated_worker(): void
@@ -63,7 +63,7 @@ final class ResearchApiTest extends TestCase
     {
         (new ProcessResearchPaperJob)->handle($this->app->make(StrategyResearchService::class));
 
-        $this->assertDatabaseCount('paper_accounts', 7);
+        $this->assertDatabaseCount('paper_accounts', 12);
         $this->assertDatabaseHas('paper_accounts', ['mode' => 'STRATEGY_FORWARD_PAPER', 'strategy_id' => 'trend_pullback']);
         $this->assertDatabaseHas('paper_accounts', ['mode' => 'STRATEGY_FORWARD_PAPER', 'strategy_id' => 'bollinger_mean_reversion']);
         $this->assertDatabaseHas('paper_accounts', ['mode' => 'STRATEGY_FORWARD_PAPER', 'strategy_id' => 'donchian_atr_breakout']);
@@ -71,6 +71,11 @@ final class ResearchApiTest extends TestCase
         $this->assertDatabaseHas('paper_accounts', ['mode' => 'STRATEGY_FORWARD_PAPER', 'strategy_id' => 'momentum']);
         $this->assertDatabaseHas('paper_accounts', ['mode' => 'STRATEGY_FORWARD_PAPER', 'strategy_id' => 'support_resistance_bounce']);
         $this->assertDatabaseHas('paper_accounts', ['mode' => 'STRATEGY_FORWARD_PAPER', 'strategy_id' => 'support_resistance_breakout']);
+        $this->assertDatabaseHas('paper_accounts', ['mode' => 'STRATEGY_FORWARD_PAPER', 'strategy_id' => 'multi_timeframe_trend_following']);
+        $this->assertDatabaseHas('paper_accounts', ['mode' => 'STRATEGY_FORWARD_PAPER', 'strategy_id' => 'btc_eth_lead_lag']);
+        $this->assertDatabaseHas('paper_accounts', ['mode' => 'STRATEGY_FORWARD_PAPER', 'strategy_id' => 'volatility_compression_breakout']);
+        $this->assertDatabaseHas('paper_accounts', ['mode' => 'STRATEGY_FORWARD_PAPER', 'strategy_id' => 'liquidity_sweep_reversal']);
+        $this->assertDatabaseHas('paper_accounts', ['mode' => 'STRATEGY_FORWARD_PAPER', 'strategy_id' => 'funding_open_interest_squeeze']);
     }
 
     public function test_leaderboard_uses_only_experiments_for_the_current_strategy_identity(): void

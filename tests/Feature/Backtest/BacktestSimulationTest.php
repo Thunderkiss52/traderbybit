@@ -58,11 +58,11 @@ final class BacktestSimulationTest extends TestCase
 
         self::assertCount(1, $first->trades);
         self::assertSame('TAKE_PROFIT_2', $first->trades[0]['close_reason']);
-        self::assertSame('51.59905156581000000000000000000', $first->trades[0]['net_pnl']);
-        self::assertSame('1.0319810313', $first->trades[0]['r_multiple']);
-        self::assertSame('8.134', $first->trades[0]['quantity']);
-        self::assertSame('52.531812200000000000000000', $first->trades[0]['gross_pnl']);
-        self::assertSame('0.93276063419000000000000000000', $first->trades[0]['fees']);
+        self::assertDecimalSame('51.59905156581000000000000000000', $first->trades[0]['net_pnl']);
+        self::assertDecimalSame('1.0319810313', $first->trades[0]['r_multiple']);
+        self::assertDecimalSame('8.134', $first->trades[0]['quantity']);
+        self::assertDecimalSame('52.531812200000000000000000', $first->trades[0]['gross_pnl']);
+        self::assertDecimalSame('0.93276063419000000000000000000', $first->trades[0]['fees']);
         self::assertSame(['ENTRY', 'TAKE_PROFIT_1', 'TAKE_PROFIT_2'], array_column($first->trades[0]['executions'], 'type'));
         self::assertEquals($first->trades, $second->trades);
         self::assertSame(0, DB::table('signals')->count());
@@ -151,8 +151,8 @@ final class BacktestSimulationTest extends TestCase
 
         $method->invokeArgs($engine, [&$position, new DateTimeImmutable('2026-01-01T00:00:00Z'), $execution, &$equity]);
 
-        self::assertSame('0', $position['funding'], 'No funding may be booked for a position without an open timestamp.');
-        self::assertSame('1000', (string) $equity);
+        self::assertDecimalSame('0', $position['funding'], 'No funding may be booked for a position without an open timestamp.');
+        self::assertDecimalSame('1000', (string) $equity);
     }
 
     public function test_no_signals_produces_zero_trades_and_no_writes(): void
@@ -180,7 +180,7 @@ final class BacktestSimulationTest extends TestCase
 
         self::assertCount(0, $result->trades);
         self::assertNotEmpty($result->equity);
-        self::assertSame('10000', (string) $result->equity[array_key_last($result->equity)]['equity']);
+        self::assertDecimalSame('10000', (string) $result->equity[array_key_last($result->equity)]['equity']);
         self::assertSame(0, DB::table('signals')->count());
         self::assertSame(0, DB::table('virtual_positions')->count());
     }

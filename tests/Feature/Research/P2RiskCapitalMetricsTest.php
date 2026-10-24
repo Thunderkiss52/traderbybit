@@ -39,6 +39,11 @@ final class P2RiskCapitalMetricsTest extends TestCase
         'momentum',
         'support_resistance_bounce',
         'support_resistance_breakout',
+        'funding_open_interest_squeeze',
+        'liquidity_sweep_reversal',
+        'volatility_compression_breakout',
+        'btc_eth_lead_lag',
+        'multi_timeframe_trend_following',
     ];
 
     private int $signalSequence = 1;
@@ -48,7 +53,7 @@ final class P2RiskCapitalMetricsTest extends TestCase
         return new RiskCapitalMetricsService;
     }
 
-    public function test_generation_reports_eight_accounts_separately_and_never_provisions_accounts(): void
+    public function test_generation_reports_all_primary_accounts_separately_and_never_provisions_accounts(): void
     {
         $accounts = $this->seedEightPrimaryAccounts();
         $this->seedClosedPosition($accounts[1], [
@@ -72,8 +77,8 @@ final class P2RiskCapitalMetricsTest extends TestCase
         self::assertSame($before, DB::table('paper_accounts')->count(), 'P-2 generation must not create, merge or delete paper accounts.');
 
         $rows = StrategyRiskMetricRecord::query()->where('generation_id', $generation->id)->get();
-        self::assertCount(8, $rows);
-        self::assertCount(8, $rows->pluck('paper_account_id')->unique());
+        self::assertCount(13, $rows);
+        self::assertCount(13, $rows->pluck('paper_account_id')->unique());
         $expected = self::STRATEGIES;
         sort($expected);
         self::assertSame($expected, $rows->pluck('strategy_id')->sort()->values()->all());
@@ -272,7 +277,7 @@ final class P2RiskCapitalMetricsTest extends TestCase
             'weighted_slippage_bps' => '0',
             'fill_count' => 2,
             'ambiguous_fill_count' => 0,
-            'provenance_status' => 'RECORDED_SIMULATOR_ADVERSE_RECONSTRUCTED',
+            'provenance_status' => 'RECOMPUTED_FROM_SOURCE',
             'algorithm_version' => '1.0.0',
         ]);
 
@@ -281,9 +286,9 @@ final class P2RiskCapitalMetricsTest extends TestCase
         // (fees 2 + drag 4 - funding 0) / risk 100
         self::assertSame('0.06000000', $row->cost_to_risk_ratio);
         self::assertNull($row->cost_to_risk_reason);
-        self::assertSame('RECORDED_SIMULATOR_ADVERSE_RECONSTRUCTED=1', $row->cost_to_risk_provenance);
+        self::assertSame('RECOMPUTED_FROM_SOURCE=1', $row->cost_to_risk_provenance);
         // The diagnostic must never alter ledger PnL.
-        self::assertSame('10', $row->position_population['included'][0]['net_pnl']);
+        self::assertDecimalSame('10', $row->position_population['included'][0]['net_pnl']);
     }
 
     public function test_daily_realized_net_r_allocates_risk_capital_to_the_quantity_actually_closed(): void

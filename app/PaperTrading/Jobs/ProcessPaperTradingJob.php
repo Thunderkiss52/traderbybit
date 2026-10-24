@@ -43,7 +43,7 @@ final class ProcessPaperTradingJob implements ShouldQueue
         $defaultProcessed = $service->process(null, $this->symbol, $at);
         $defaultId = $defaultProcessed['account_id'] ?? null;
 
-        foreach (PaperAccountRecord::query()->whereIn('status', ['ACTIVE', 'BLOCKED', 'HALTED'])->cursor() as $account) {
+        foreach (PaperAccountRecord::query()->where('exchange_id', 'bybit')->whereIn('status', ['ACTIVE', 'BLOCKED', 'HALTED'])->cursor() as $account) {
             if ($account->id === $defaultId) {
                 continue;
             }

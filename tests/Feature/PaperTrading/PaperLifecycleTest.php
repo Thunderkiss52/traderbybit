@@ -150,6 +150,22 @@ final class PaperLifecycleTest extends TestCase
         self::assertContains('spot_short_unsupported', RiskDecisionRecord::query()->where('signal_id', $signal->id)->firstOrFail()->reasons);
     }
 
+    public function test_spot_buy_is_rejected_by_linear_paper_with_an_audited_reason(): void
+    {
+        $signal = $this->signal('BUY');
+        $signal->update(['category' => 'spot']);
+
+        $processor = $this->app->make(PaperProcessingService::class);
+        $processor->process(symbol: 'BTCUSDT', at: new DateTimeImmutable('2026-10-14T10:15:00Z'));
+        $processor->process(symbol: 'BTCUSDT', at: new DateTimeImmutable('2026-10-14T10:15:00Z'));
+
+        self::assertFalse(VirtualPositionRecord::query()->exists());
+        self::assertSame('REJECTED', PaperSignalStateRecord::query()->where('signal_id', $signal->id)->value('status'));
+        self::assertContains('unsupported_market_category', RiskDecisionRecord::query()->where('signal_id', $signal->id)->firstOrFail()->reasons);
+        self::assertSame(1, PaperSignalStateRecord::query()->where('signal_id', $signal->id)->count());
+        self::assertSame(1, RiskDecisionRecord::query()->where('signal_id', $signal->id)->count());
+    }
+
     public function test_extreme_funding_and_open_interest_are_hard_risk_rejections(): void
     {
         $signal = $this->signal('BUY');

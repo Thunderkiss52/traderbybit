@@ -20,7 +20,7 @@ final class PrimaryAccountMigrationRehearsalTest extends TestCase
 {
     use RefreshDatabase;
 
-    public function test_migration_rehearsal_preserves_account_ids_balances_and_history(): void
+    public function test_migration_rehearsal_preserves_eight_accounts_and_adds_five_without_history_loss(): void
     {
         $strategies = [
             'baseline',
@@ -33,7 +33,12 @@ final class PrimaryAccountMigrationRehearsalTest extends TestCase
             'support_resistance_breakout',
         ];
 
-        // 1. Seed pre-existing accounts with fixed UUIDs and custom balances
+        // RefreshDatabase runs production migrations; restore the pre-migration
+        // fixture only inside this rolled-back isolated test transaction.
+        DB::table('equity_snapshots')->delete();
+        DB::table('paper_accounts')->delete();
+
+        // 1. Seed the eight pre-existing accounts with fixed UUIDs and custom balances
         $seededAccounts = [];
         foreach ($strategies as $index => $strategyId) {
             $customId = (string) Uuid::uuid5(Uuid::NAMESPACE_URL, "custom:pre_existing:{$strategyId}");
@@ -152,15 +157,44 @@ final class PrimaryAccountMigrationRehearsalTest extends TestCase
                 ]);
         }
 
-        // 3. Verify exactly 8 primary accounts remain, with 100% preserved IDs and balances
+        $newStrategies = [
+            'funding_open_interest_squeeze',
+            'liquidity_sweep_reversal',
+            'volatility_compression_breakout',
+            'btc_eth_lead_lag',
+            'multi_timeframe_trend_following',
+        ];
+
+        $migration = require database_path('migrations/2026_10_22_020000_add_five_primary_strategy_accounts.php');
+        $previousEnvironment = $this->app['env'];
+        $this->app['env'] = 'local';
+        try {
+            $migration->up();
+            self::assertCount(13, PaperAccountRecord::query()->where('is_primary', true)->get());
+            $migration->up();
+        } finally {
+            $this->app['env'] = $previousEnvironment;
+        }
+
+        self::assertCount(13, PaperAccountRecord::query()->where('is_primary', true)->get());
+        self::assertSame(13, PaperAccountRecord::query()->distinct()->count('primary_strategy_id'));
+
+        // 3. Verify all 13 primary accounts exist; the original 8 keep their IDs and balances
         $accountService = $this->app->make(PaperAccountService::class);
         $accounts = $accountService->allPrimaryAccounts();
 
-        self::assertCount(8, $accounts);
+        self::assertCount(13, $accounts);
 
         foreach ($accounts as $account) {
             $strat = (string) $account->primary_strategy_id;
-            self::assertArrayHasKey($strat, $seededAccounts);
+            if (! array_key_exists($strat, $seededAccounts)) {
+                self::assertContains($strat, $newStrategies);
+                self::assertTrue(BigDecimal::of((string) $account->starting_balance)->isEqualTo(10000));
+                self::assertTrue(BigDecimal::of((string) $account->current_equity)->isEqualTo(10000));
+                self::assertTrue((bool) $account->is_primary);
+
+                continue;
+            }
 
             $expected = $seededAccounts[$strat];
 

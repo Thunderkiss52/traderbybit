@@ -30,13 +30,13 @@ final class ResearchHealthController extends Controller
         try {
             $period = $request->string('period', '24h')->toString();
 
-            return $this->ok($health->overview($period));
+            return $this->ok($health->overview($period, persist: false));
         } catch (Throwable $e) {
-            Log::error('ResearchHealthController overview failed: '.$e->getMessage(), ['exception' => $e]);
+            Log::error('Research API operation failed.', ['operation' => __METHOD__, 'exception_type' => $e::class]);
 
             return response()->json([
                 'success' => false,
-                'message' => 'Failed to retrieve health overview: '.$e->getMessage(),
+                'message' => 'Request failed. Please try again.',
             ], Response::HTTP_INTERNAL_SERVER_ERROR);
         }
     }
@@ -46,13 +46,13 @@ final class ResearchHealthController extends Controller
         try {
             $period = $request->string('period', '7d')->toString();
 
-            return $this->ok($health->overview($period));
+            return $this->ok($health->overview($period, persist: false));
         } catch (Throwable $e) {
-            Log::error('ResearchHealthController strategyFunnel failed: '.$e->getMessage(), ['exception' => $e]);
+            Log::error('Research API operation failed.', ['operation' => __METHOD__, 'exception_type' => $e::class]);
 
             return response()->json([
                 'success' => false,
-                'message' => 'Failed to retrieve strategy funnel: '.$e->getMessage(),
+                'message' => 'Request failed. Please try again.',
             ], Response::HTTP_INTERNAL_SERVER_ERROR);
         }
     }
@@ -67,11 +67,11 @@ final class ResearchHealthController extends Controller
 
             return $this->ok($runs);
         } catch (Throwable $e) {
-            Log::error('ResearchHealthController reconciliationRuns failed: '.$e->getMessage(), ['exception' => $e]);
+            Log::error('Research API operation failed.', ['operation' => __METHOD__, 'exception_type' => $e::class]);
 
             return response()->json([
                 'success' => false,
-                'message' => 'Failed to retrieve reconciliation runs: '.$e->getMessage(),
+                'message' => 'Request failed. Please try again.',
             ], Response::HTTP_INTERNAL_SERVER_ERROR);
         }
     }
@@ -88,11 +88,11 @@ final class ResearchHealthController extends Controller
 
             return $this->ok($result);
         } catch (Throwable $e) {
-            Log::error('ResearchHealthController reconcile failed: '.$e->getMessage(), ['exception' => $e]);
+            Log::error('Research API operation failed.', ['operation' => __METHOD__, 'exception_type' => $e::class]);
 
             return response()->json([
                 'success' => false,
-                'message' => 'Ledger reconciliation failed: '.$e->getMessage(),
+                'message' => 'Request failed. Please try again.',
             ], Response::HTTP_INTERNAL_SERVER_ERROR);
         }
     }
@@ -102,11 +102,11 @@ final class ResearchHealthController extends Controller
         try {
             return $this->ok($freshness->check());
         } catch (Throwable $e) {
-            Log::error('ResearchHealthController dataFreshness failed: '.$e->getMessage(), ['exception' => $e]);
+            Log::error('Research API operation failed.', ['operation' => __METHOD__, 'exception_type' => $e::class]);
 
             return response()->json([
                 'success' => false,
-                'message' => 'Data freshness check failed: '.$e->getMessage(),
+                'message' => 'Request failed. Please try again.',
             ], Response::HTTP_INTERNAL_SERVER_ERROR);
         }
     }
@@ -120,27 +120,33 @@ final class ResearchHealthController extends Controller
 
             return $this->ok($service->auditCadence($start, $end));
         } catch (Throwable $e) {
-            Log::error('ResearchHealthController slotIntegrity failed: '.$e->getMessage(), ['exception' => $e]);
+            Log::error('Research API operation failed.', ['operation' => __METHOD__, 'exception_type' => $e::class]);
 
             return response()->json([
                 'success' => false,
-                'message' => 'Slot integrity audit failed: '.$e->getMessage(),
+                'message' => 'Request failed. Please try again.',
             ], Response::HTTP_INTERNAL_SERVER_ERROR);
         }
     }
 
     public function version(): JsonResponse
     {
-        $commitSha = trim((string) @shell_exec('git rev-parse HEAD 2>/dev/null')) ?: config('app.version_sha', 'b3bbedd');
+        $file = base_path('build-metadata.json');
+        $metadata = is_file($file) ? json_decode((string) file_get_contents($file), true) : [];
+        $sha = $metadata['git_sha'] ?? null;
+        $timestamp = $metadata['build_timestamp'] ?? null;
+        $sha = is_string($sha) && preg_match('/^[a-f0-9]{40}$/D', $sha) ? $sha : null;
+        $timestamp = is_string($timestamp) && preg_match('/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z$/D', $timestamp) ? $timestamp : null;
 
         return response()->json([
-            'git_sha' => $commitSha,
-            'build_timestamp' => '2026-10-18T12:00:00Z',
+            'git_sha' => $sha,
+            'build_timestamp' => $timestamp,
+            'build_metadata_status' => $sha !== null && $timestamp !== null ? 'AVAILABLE' : 'UNKNOWN',
             'version' => config('strategy.version', '1.2.0'),
             'environment' => config('app.env', 'production'),
             'market_category' => 'linear',
             'symbols' => (array) config('market_data.symbols', ['BTCUSDT', 'ETHUSDT']),
-            'active_strategies_count' => 8,
+            'active_strategies_count' => count((array) config('paper.primary_strategies', ['baseline'])),
             'paper_only' => true,
         ]);
     }

@@ -22,6 +22,77 @@ final class Gate6PromotionPolicyTest extends TestCase
         $this->policy = $this->app->make(PromotionPolicyService::class);
     }
 
+    public function test_gate6_rejects_absent_paired_observations_even_with_optimistic_standard_error(): void
+    {
+        $candidate = $this->fullEvidence();
+        unset($candidate['r_differences']);
+        $candidate['standard_error'] = 0.0000001;
+
+        $verdict = $this->policy->evaluateModelPromotion($candidate, $this->champion(), ['is_test_fixture' => true]);
+
+        self::assertFalse($verdict['all_gates_passed']);
+        self::assertFalse($verdict['gates']['multiplicity_adjusted_lcb95']['pass']);
+        self::assertSame('missing_paired_r_differences', $verdict['gates']['multiplicity_adjusted_lcb95']['detail']['failure_reason']);
+
+        $candidate['r_differences'] = array_fill(0, 2, 0.30);
+        $verdict = $this->policy->evaluateModelPromotion($candidate, $this->champion(), ['is_test_fixture' => true]);
+        self::assertFalse($verdict['all_gates_passed']);
+        self::assertSame('insufficient_paired_r_differences', $verdict['gates']['multiplicity_adjusted_lcb95']['detail']['failure_reason']);
+    }
+
+    public function test_gate6_rejects_missing_or_non_finite_financial_risk_evidence(): void
+    {
+        foreach ([null, 'not-a-number', INF, NAN, true, -1] as $invalid) {
+            $candidate = $this->fullEvidence();
+            $candidate['max_drawdown_percent'] = $invalid;
+            $verdict = $this->policy->evaluateModelPromotion($candidate, $this->champion(), ['is_test_fixture' => true]);
+            self::assertFalse($verdict['all_gates_passed']);
+            self::assertSame('invalid_or_missing_gate6_evidence', $verdict['failure_reason']);
+        }
+    }
+
+    public function test_gate6_rejects_bad_paired_values_and_missing_champion(): void
+    {
+        $candidate = $this->fullEvidence();
+        $candidate['r_differences'][0] = INF;
+        $verdict = $this->policy->evaluateModelPromotion($candidate, $this->champion(), ['is_test_fixture' => true]);
+        self::assertFalse($verdict['all_gates_passed']);
+        self::assertSame('invalid_paired_observations', $verdict['gates']['multiplicity_adjusted_lcb95']['detail']['failure_reason']);
+
+        $verdict = $this->policy->evaluateModelPromotion($this->fullEvidence(), null, ['is_test_fixture' => true]);
+        self::assertFalse($verdict['all_gates_passed']);
+        self::assertSame('invalid_or_missing_gate6_evidence', $verdict['failure_reason']);
+    }
+
+    public function test_gate6_reports_actual_oos_sample_count(): void
+    {
+        $candidate = $this->fullEvidence();
+        $candidate['oos_samples'] = 135;
+        $verdict = $this->policy->evaluateModelPromotion($candidate, $this->champion(), ['is_test_fixture' => true]);
+        self::assertSame(135, $verdict['gates']['min_oos_samples']['actual']);
+    }
+
+    private function fullEvidence(): array
+    {
+        return [
+            'training_samples' => 400,
+            'oos_samples' => 140,
+            'shadow_samples' => 120,
+            'challenger_duration_days' => 20,
+            'challenger_samples' => 75,
+            'average_r' => 0.55,
+            'max_drawdown_percent' => 5.0,
+            'brier_score' => 0.18,
+            'ece' => 0.04,
+            'r_differences' => array_fill(0, 75, 0.30),
+        ];
+    }
+
+    private function champion(): array
+    {
+        return ['average_r' => 0.20, 'max_drawdown_percent' => 4.5];
+    }
+
     public function test_multiplicity_adjusted_lcb_rejects_insignificant_improvement_under_multiple_trials(): void
     {
         // 50 observations where mean delta = +0.04 and standard error = 0.0173

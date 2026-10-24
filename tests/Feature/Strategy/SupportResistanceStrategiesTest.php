@@ -37,12 +37,12 @@ final class SupportResistanceStrategiesTest extends TestCase
         $this->at = new DateTimeImmutable('2026-10-13T10:15:00Z');
     }
 
-    public function test_all_eight_primary_accounts_exist_and_are_isolated(): void
+    public function test_all_primary_accounts_exist_and_are_isolated(): void
     {
         $accountService = $this->app->make(PaperAccountService::class);
         $accounts = $accountService->allPrimaryAccounts();
 
-        self::assertCount(8, $accounts);
+        self::assertCount(13, $accounts);
 
         $expectedStrategies = [
             'baseline',
@@ -53,6 +53,11 @@ final class SupportResistanceStrategiesTest extends TestCase
             'momentum',
             'support_resistance_bounce',
             'support_resistance_breakout',
+            'funding_open_interest_squeeze',
+            'liquidity_sweep_reversal',
+            'volatility_compression_breakout',
+            'btc_eth_lead_lag',
+            'multi_timeframe_trend_following',
         ];
 
         $strategyIds = $accounts->pluck('primary_strategy_id')->all();

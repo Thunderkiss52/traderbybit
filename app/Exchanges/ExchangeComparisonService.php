@@ -1,0 +1,66 @@
+<?php
+
+declare(strict_types=1);
+
+namespace App\Exchanges;
+
+use Illuminate\Support\Facades\DB;
+use RuntimeException;
+
+/** Read-only, non-aggregated comparison of 13 x 2 isolated paper accounts. */
+final readonly class ExchangeComparisonService
+{
+    public function report(): array
+    {
+        $strategies = (array) config('paper.primary_strategies', []);
+        $exchanges = (array) config('exchanges.enabled', ['bybit', 'binance']);
+        $rows = DB::table('paper_accounts')->where('is_primary', true)
+            ->whereIn('exchange_id', $exchanges)->get();
+        $byPair = [];
+        foreach ($rows as $account) {
+            $strategy = $account->primary_strategy_id;
+            $exchange = $account->exchange_id;
+            if (! in_array($strategy, $strategies, true)) {
+                continue;
+            }
+            $key = $exchange.'|'.$strategy;
+            if (isset($byPair[$key])) {
+                throw new RuntimeException('Duplicate PRIMARY paper-account provenance.');
+            }
+            if ($account->strategy_id !== $strategy || $account->research_experiment_id !== null) {
+                throw new RuntimeException('Inconsistent PRIMARY paper-account provenance.');
+            }
+            $byPair[$key] = $account;
+        }
+        $result = [];
+        foreach ($strategies as $strategy) {
+            foreach ($exchanges as $exchange) {
+                $account = $byPair[$exchange.'|'.$strategy] ?? null;
+                $result[] = [
+                    'strategy_id' => $strategy,
+                    'exchange_id' => $exchange,
+                    'account_id' => $account?->id,
+                    'status' => $account?->status ?? 'ACCOUNT_NOT_PROVISIONED',
+                    'evaluation_status' => $account === null ? 'NOT_EVALUATED'
+                        : ($exchange === 'binance' && $account->status !== 'ACTIVE' ? 'EXECUTION_BLOCKED' : 'REQUIRES_EVIDENCE'),
+                    'starting_balance' => $account === null ? null : (string) $account->starting_balance,
+                    'current_equity' => $account === null ? null : (string) $account->current_equity,
+                    'realized_pnl' => $account === null ? null : (string) $account->realized_pnl,
+                    'unrealized_pnl' => $account === null ? null : (string) $account->unrealized_pnl,
+                    'drawdown_percent' => $account === null ? null : (string) $account->current_drawdown_percent,
+                ];
+            }
+        }
+
+        return [
+            'scope' => 'PER_EXCHANGE_PER_STRATEGY',
+            'portfolio_aggregation' => 'DISABLED_BY_DEFAULT',
+            'mode' => 'PAPER_ONLY',
+            'strategy_families' => count($strategies),
+            'expected_accounts' => count($strategies) * count($exchanges),
+            'provisioned_accounts' => count(array_filter($result, static fn ($row) => $row['account_id'] !== null)),
+            'exchanges' => $exchanges,
+            'accounts' => $result,
+        ];
+    }
+}

@@ -8,6 +8,16 @@ const reconciling = ref(false);
 const error = ref('');
 const overview = ref<any>(null);
 const freshness = ref<any>(null);
+
+// A missing or failed Redis check is not an empty queue. Preserve the unknown state.
+function queueCount(name: 'default' | 'audit' | 'research'): string {
+  const queues = freshness.value?.queues;
+  if (!queues || queues.status === 'UNAVAILABLE') return 'UNAVAILABLE';
+  const value = queues[name]?.pending_jobs;
+  return typeof value === 'number' && Number.isSafeInteger(value) && value >= 0
+    ? String(value)
+    : 'UNAVAILABLE';
+}
 const reconciliationRuns = ref<any[]>([]);
 
 async function refresh() {
@@ -82,9 +92,9 @@ onMounted(() => {
         <div class="panel q-pa-md">
           <div class="text-caption text-grey">Queue Topology & Lag</div>
           <div class="text-body2 q-mt-xs">
-            Default: <strong>{{ freshness?.queues?.default?.pending_jobs || 0 }}</strong> ·
-            Audit: <strong>{{ freshness?.queues?.audit?.pending_jobs || 0 }}</strong> ·
-            Research: <strong>{{ freshness?.queues?.research?.pending_jobs || 0 }}</strong>
+            Default: <strong>{{ queueCount('default') }}</strong> ·
+            Audit: <strong>{{ queueCount('audit') }}</strong> ·
+            Research: <strong>{{ queueCount('research') }}</strong>
           </div>
           <div class="text-caption q-mt-xs">Single-threaded CPU bound research isolation active.</div>
         </div>

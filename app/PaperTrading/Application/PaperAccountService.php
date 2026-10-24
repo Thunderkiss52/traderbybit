@@ -7,6 +7,7 @@ namespace App\PaperTrading\Application;
 use App\PaperTrading\Domain\AccountStatus;
 use App\PaperTrading\Infrastructure\Persistence\EquitySnapshotRecord;
 use App\PaperTrading\Infrastructure\Persistence\PaperAccountRecord;
+use App\PaperTrading\Infrastructure\Persistence\VirtualPositionRecord;
 use Brick\Math\BigDecimal;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
@@ -20,17 +21,12 @@ final readonly class PaperAccountService
     {
         $id = Uuid::uuid5(Uuid::NAMESPACE_URL, 'traderbybit:paper:default')->toString();
 
-        $account = PaperAccountRecord::query()->where('primary_strategy_id', 'baseline')->first()
+        $account = PaperAccountRecord::query()->where('primary_strategy_id', 'baseline')->where('exchange_id', 'bybit')->first()
             ?? PaperAccountRecord::query()->find($id);
 
         if ($account !== null) {
-            if ($account->strategy_version === null || $account->strategy_id === null || ! $account->is_primary || $account->primary_strategy_id === null) {
-                $account->update([
-                    'strategy_version' => $account->strategy_version ?? (string) config('strategy.version'),
-                    'strategy_id' => $account->strategy_id ?? 'baseline',
-                    'primary_strategy_id' => 'baseline',
-                    'is_primary' => true,
-                ]);
+            if (! $account->is_primary || $account->primary_strategy_id !== 'baseline' || $account->research_experiment_id !== null || $account->exchange_id !== 'bybit') {
+                throw new \DomainException('Default account provenance requires explicit reconciliation.');
             }
 
             $this->ensureInitialSnapshot($account);
@@ -47,7 +43,7 @@ final readonly class PaperAccountService
             'peak_equity' => (string) $this->config['default_account']['starting_balance'],
             'realized_pnl' => '0', 'unrealized_pnl' => '0', 'reserved_risk' => '0', 'maximum_drawdown_percent' => '0', 'current_drawdown_percent' => '0',
             'mode' => 'FORWARD_PAPER', 'strategy_id' => 'baseline', 'strategy_version' => (string) config('strategy.version'),
-            'primary_strategy_id' => 'baseline', 'is_primary' => true,
+            'primary_strategy_id' => 'baseline', 'is_primary' => true, 'exchange_id' => 'bybit',
         ]);
 
         $this->ensureInitialSnapshot($account);
@@ -62,16 +58,45 @@ final readonly class PaperAccountService
         }
 
         $hash = $this->hash($parameters);
+        // PRIMARY is an explicit cohort, never inferred from a matching strategy ID.
+        $primary = PaperAccountRecord::query()->where('primary_strategy_id', $strategyId)->where('exchange_id', 'bybit')->where('is_primary', true)->first();
+        if ($primary !== null && $primary->strategy_id === $strategyId && $primary->mode === 'STRATEGY_FORWARD_PAPER' && $primary->research_experiment_id === null && $primary->strategy_version === $strategyVersion && $primary->configuration_hash === $hash) {
+            $this->ensureInitialSnapshot($primary);
+
+            return $primary;
+        }
+        if ($primary !== null && $primary->configuration_hash === null && $primary->strategy_version === $strategyVersion) {
+            return DB::transaction(function () use ($primary, $strategyId, $hash, $parameters): PaperAccountRecord {
+                $primary = PaperAccountRecord::query()->lockForUpdate()->findOrFail($primary->id);
+                $canonicalId = Uuid::uuid5(Uuid::NAMESPACE_URL, "traderbybit:paper:primary:{$strategyId}")->toString();
+                if ($primary->id !== $canonicalId || $primary->mode !== 'STRATEGY_FORWARD_PAPER'
+                    || $primary->strategy_id !== $strategyId || $primary->research_experiment_id !== null || $primary->configuration_hash !== null
+                    || VirtualPositionRecord::query()->where('paper_account_id', $primary->id)->exists()
+                    || DB::table('paper_signal_states')->where('paper_account_id', $primary->id)->exists()
+                    || DB::table('trading_journal_events')->where('paper_account_id', $primary->id)->exists()
+                    || DB::table('risk_decisions')->where('paper_account_id', $primary->id)->exists()
+                    || ! BigDecimal::of($primary->current_equity)->isEqualTo($primary->starting_balance)
+                    || ! BigDecimal::of($primary->realized_pnl)->isZero()
+                    || ! BigDecimal::of($primary->unrealized_pnl)->isZero()
+                    || ! BigDecimal::of($primary->reserved_risk)->isZero()) {
+                    throw new \DomainException('Primary account provenance requires explicit reconciliation.');
+                }
+                $primary->update(['configuration_hash' => $hash, 'strategy_parameters' => $parameters]);
+                $this->ensureInitialSnapshot($primary);
+
+                return $primary;
+            });
+        }
         // Signal IDs are strategy-version scoped. A changed configuration must bump
         // the version, otherwise stored signals would silently use the wrong rules.
         if (PaperAccountRecord::query()->where('mode', 'STRATEGY_FORWARD_PAPER')
-            ->where('strategy_id', $strategyId)->where('strategy_version', $strategyVersion)
+            ->where('strategy_id', $strategyId)->where('exchange_id', 'bybit')->where('strategy_version', $strategyVersion)
             ->whereNotNull('configuration_hash')->where('configuration_hash', '!=', $hash)->exists()) {
             throw new \DomainException("Strategy {$strategyId} parameters changed without a version bump.");
         }
         // Reuse the legacy account only for its original version and configuration.
         $existing = PaperAccountRecord::query()->where('mode', 'STRATEGY_FORWARD_PAPER')
-            ->where('strategy_id', $strategyId)->where('strategy_version', $strategyVersion)
+            ->where('strategy_id', $strategyId)->where('exchange_id', 'bybit')->where('strategy_version', $strategyVersion)
             ->where('configuration_hash', $hash)->oldest('created_at')->first();
         $id = $existing?->id ?? Uuid::uuid5(Uuid::NAMESPACE_URL, "traderbybit:paper:strategy:{$strategyId}:{$strategyVersion}:{$hash}")->toString();
         $starting = (string) $this->config['default_account']['starting_balance'];
@@ -88,6 +113,7 @@ final readonly class PaperAccountService
             'maximum_drawdown_percent' => '0',
             'current_drawdown_percent' => '0',
             'mode' => 'STRATEGY_FORWARD_PAPER',
+            'exchange_id' => 'bybit',
             'strategy_id' => $strategyId,
             'strategy_version' => $strategyVersion,
             'configuration_hash' => $hash,
@@ -99,79 +125,79 @@ final readonly class PaperAccountService
         return $account;
     }
 
-    public function primaryAccount(string $strategyId): PaperAccountRecord
+    public function primaryAccount(string $strategyId, string $exchangeId = 'bybit'): PaperAccountRecord
     {
-        if ($strategyId === 'baseline') {
-            return $this->default();
-        }
+        return DB::transaction(function () use ($strategyId, $exchangeId): PaperAccountRecord {
+            if (! in_array($exchangeId, ['bybit', 'binance'], true)) {
+                throw new \DomainException('Unsupported paper exchange.');
+            }
+            if (! in_array($strategyId, (array) config('paper.primary_strategies'), true)) {
+                throw new \DomainException('Unregistered primary strategy.');
+            }
+            if ($strategyId === 'baseline' && $exchangeId === 'bybit') {
+                return $this->default();
+            }
 
-        $account = PaperAccountRecord::query()
-            ->where('primary_strategy_id', $strategyId)
-            ->first();
+            $account = PaperAccountRecord::query()
+                ->where('primary_strategy_id', $strategyId)
+                ->where('exchange_id', $exchangeId)
+                ->first();
 
-        if ($account !== null) {
+            if ($account !== null) {
+                if (! $account->is_primary || $account->strategy_id !== $strategyId || $account->research_experiment_id !== null) {
+                    throw new \DomainException('Incompatible primary account provenance.');
+                }
+
+                return $account;
+            }
+
+            if ($exchangeId === 'binance') {
+                // Binance accounts may only be provisioned by the reviewed, evidence-gated migration.
+                throw new \DomainException('Binance PRIMARY account is not provisioned.');
+            }
+            $id = Uuid::uuid5(Uuid::NAMESPACE_URL, "traderbybit:paper:primary:{$strategyId}")->toString();
+            $starting = (string) $this->config['default_account']['starting_balance'];
+
+            $account = PaperAccountRecord::query()->firstOrCreate(['id' => $id], [
+                'name' => 'Forward Paper '.$strategyId,
+                'status' => AccountStatus::Active->value,
+                'starting_balance' => $starting,
+                'current_equity' => $starting,
+                'peak_equity' => $starting,
+                'realized_pnl' => '0',
+                'unrealized_pnl' => '0',
+                'reserved_risk' => '0',
+                'maximum_drawdown_percent' => '0',
+                'current_drawdown_percent' => '0',
+                'mode' => 'STRATEGY_FORWARD_PAPER',
+                'exchange_id' => $exchangeId,
+                'strategy_id' => $strategyId,
+                'primary_strategy_id' => $strategyId,
+                'is_primary' => true,
+                'strategy_version' => (string) config("research.strategies.{$strategyId}.version", '1.0.0'),
+            ]);
+
+            if (! $account->is_primary || $account->primary_strategy_id !== $strategyId || $account->research_experiment_id !== null || $account->exchange_id !== $exchangeId) {
+                throw new \DomainException('Canonical primary identity is occupied by an incompatible account.');
+            }
+            $this->ensureInitialSnapshot($account);
+
             return $account;
-        }
-
-        $account = PaperAccountRecord::query()
-            ->where('strategy_id', $strategyId)
-            ->whereIn('mode', ['FORWARD_PAPER', 'STRATEGY_FORWARD_PAPER', 'PRIMARY'])
-            ->oldest('created_at')
-            ->first();
-
-        if ($account !== null) {
-            $account->update(['primary_strategy_id' => $strategyId, 'is_primary' => true]);
-
-            return $account;
-        }
-
-        $id = Uuid::uuid5(Uuid::NAMESPACE_URL, "traderbybit:paper:primary:{$strategyId}")->toString();
-        $starting = (string) $this->config['default_account']['starting_balance'];
-
-        $account = PaperAccountRecord::query()->create([
-            'id' => $id,
-            'name' => 'Forward Paper '.$strategyId,
-            'status' => AccountStatus::Active->value,
-            'starting_balance' => $starting,
-            'current_equity' => $starting,
-            'peak_equity' => $starting,
-            'realized_pnl' => '0',
-            'unrealized_pnl' => '0',
-            'reserved_risk' => '0',
-            'maximum_drawdown_percent' => '0',
-            'current_drawdown_percent' => '0',
-            'mode' => 'STRATEGY_FORWARD_PAPER',
-            'strategy_id' => $strategyId,
-            'primary_strategy_id' => $strategyId,
-            'is_primary' => true,
-            'strategy_version' => (string) config("research.strategies.{$strategyId}.version", '1.0.0'),
-        ]);
-
-        $this->ensureInitialSnapshot($account);
-
-        return $account;
+        });
     }
 
-    public function allPrimaryAccounts(): Collection
+    public function allPrimaryAccounts(string $exchangeId = 'bybit'): Collection
     {
-        $strategies = [
-            'baseline',
-            'trend_pullback',
-            'bollinger_mean_reversion',
-            'donchian_atr_breakout',
-            'regime_switching',
-            'momentum',
-            'support_resistance_bounce',
-            'support_resistance_breakout',
-        ];
-
-        return collect($strategies)->map(fn (string $s) => $this->primaryAccount($s));
+        return collect((array) config('paper.primary_strategies', ['baseline']))->map(fn (string $s) => $this->primaryAccount($s, $exchangeId));
     }
 
     public function resume(string $id): PaperAccountRecord
     {
         return DB::transaction(function () use ($id): PaperAccountRecord {
             $account = PaperAccountRecord::query()->lockForUpdate()->findOrFail($id);
+            if ($account->exchange_id !== 'bybit') {
+                throw new \DomainException('Binance paper execution remains blocked pending verified exchange isolation.');
+            }
             $drawdown = BigDecimal::of($account->current_drawdown_percent);
             $halt = BigDecimal::of((string) config('paper.drawdown.halt_percent'));
             $block = BigDecimal::of((string) config('paper.drawdown.block_new_entries_percent'));

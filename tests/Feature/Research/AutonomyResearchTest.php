@@ -37,7 +37,7 @@ final class AutonomyResearchTest extends TestCase
         $response->assertOk()
             ->assertJsonPath('status', 'SUCCESS')
             ->assertJsonPath('data.candidate_count', 5)
-            ->assertJsonPath('data.paper_promotion_enabled', true)
+            ->assertJsonPath('data.paper_promotion_enabled', false)
             ->assertJsonPath('data.challenger_execution_enabled', true);
 
         self::assertNotEmpty($response->json('data.registry_hash'));
@@ -98,6 +98,7 @@ final class AutonomyResearchTest extends TestCase
     public function test_the_promotion_is_not_eligible_without_a_shadow_history(): void
     {
         config(['research.autonomy.paper_promotion_enabled' => true]);
+        app(AutonomyPermissionService::class)->updateSettings(['auto_promote_paper' => true]);
 
         $verdict = $this->service()->evaluatePromotion([
             'evidence' => [
@@ -142,9 +143,10 @@ final class AutonomyResearchTest extends TestCase
     public function test_a_recorded_promotion_decision_is_never_applied(): void
     {
         config(['research.autonomy.paper_promotion_enabled' => true]);
+        app(AutonomyPermissionService::class)->updateSettings(['auto_promote_paper' => true]);
 
         $verdict = $this->service()->evaluatePromotion([
-            'experiment_id' => 'exp-1',
+            'experiment_id' => 'ee989a20-ce2b-5d33-b9bd-996422155e9f',
             'hypothesis_id' => 'liquidity_sweep_reversal',
             'persist' => true,
             'evidence' => [
@@ -249,6 +251,7 @@ final class AutonomyResearchTest extends TestCase
     public function test_the_kill_switch_blocks_the_promotion_and_is_recorded(): void
     {
         config(['research.autonomy.paper_promotion_enabled' => true]);
+        app(AutonomyPermissionService::class)->updateSettings(['auto_promote_paper' => true]);
 
         $service = $this->service();
         self::assertFalse($service->killSwitchActive());
@@ -300,13 +303,62 @@ final class AutonomyResearchTest extends TestCase
         self::assertFalse($service->killSwitchActive());
     }
 
-    public function test_a_paper_challenger_can_be_rolled_back_without_touching_the_ledger(): void
+    public function test_a_rollback_is_refused_when_operational_restoration_is_unsupported(): void
+    {
+        $decisionId = $this->persistedPromotionDecision();
+        $positionsBefore = DB::table('virtual_positions')->count();
+        $controlsBefore = DB::table('research_promotion_controls')->count();
+
+        $rollback = $this->service()->rollbackPromotion([
+            'promotion_decision_id' => $decisionId,
+            'reason' => 'ROLLBACK_MAX_DRAWDOWN',
+            'actor' => 'operator-1',
+            'monitoring' => ['max_drawdown_pct' => 7.5],
+        ]);
+
+        self::assertSame('ROLLBACK_REFUSED', $rollback['status']);
+        self::assertSame('OPERATIONAL_ROLLBACK_UNSUPPORTED', $rollback['reason']);
+        self::assertFalse($rollback['operational_change']);
+        self::assertFalse($rollback['paper_ledger_mutated']);
+        self::assertFalse($rollback['applied']);
+        self::assertContains('ROLLBACK_MAX_DRAWDOWN', $rollback['trigger_evaluation']['breached']);
+        self::assertSame($positionsBefore, DB::table('virtual_positions')->count());
+        self::assertSame($controlsBefore, DB::table('research_promotion_controls')->count());
+        self::assertFalse((bool) ResearchPromotionDecisionRecord::query()->findOrFail($decisionId)->rollback_applied);
+    }
+
+    public function test_repeated_rollback_requests_are_idempotent_and_never_claim_success(): void
+    {
+        $decisionId = $this->persistedPromotionDecision();
+        $controlsBefore = DB::table('research_promotion_controls')->count();
+        $positionsBefore = DB::table('virtual_positions')->count();
+
+        $writes = [];
+        DB::listen(static function ($event) use (&$writes): void {
+            if (preg_match('/^\s*(insert|update|delete|replace)\b/i', $event->sql)) {
+                $writes[] = $event->sql;
+            }
+        });
+
+        $first = $this->service()->rollbackPromotion(['promotion_decision_id' => $decisionId]);
+        $second = $this->service()->rollbackPromotion(['promotion_decision_id' => $decisionId]);
+
+        self::assertSame('ROLLBACK_REFUSED', $first['status']);
+        self::assertSame('ROLLBACK_REFUSED', $second['status']);
+        self::assertSame('OPERATIONAL_ROLLBACK_UNSUPPORTED', $second['reason']);
+        self::assertSame([], $writes);
+        self::assertSame($controlsBefore, DB::table('research_promotion_controls')->count());
+        self::assertSame($positionsBefore, DB::table('virtual_positions')->count());
+        self::assertFalse((bool) ResearchPromotionDecisionRecord::query()->findOrFail($decisionId)->rollback_applied);
+    }
+
+    private function persistedPromotionDecision(): string
     {
         config(['research.autonomy.paper_promotion_enabled' => true]);
+        app(AutonomyPermissionService::class)->updateSettings(['auto_promote_paper' => true]);
 
-        $service = $this->service();
-        $verdict = $service->evaluatePromotion([
-            'experiment_id' => 'exp-rollback',
+        $verdict = $this->service()->evaluatePromotion([
+            'experiment_id' => 'fa0ca78f-88b9-53f1-ba77-bae44e2c6689',
             'persist' => true,
             'evidence' => [
                 'valid_utc_days' => 30,
@@ -322,21 +374,7 @@ final class AutonomyResearchTest extends TestCase
             ],
         ]);
 
-        $decisionId = (string) $verdict['record_id'];
-        $positionsBefore = DB::table('virtual_positions')->count();
-
-        $rollback = $service->rollbackPromotion([
-            'promotion_decision_id' => $decisionId,
-            'reason' => 'ROLLBACK_MAX_DRAWDOWN',
-            'actor' => 'operator-1',
-            'monitoring' => ['max_drawdown_pct' => 7.5],
-        ]);
-
-        self::assertSame('ROLLBACK_RECORDED', $rollback['status']);
-        self::assertFalse($rollback['operational_change']);
-        self::assertFalse($rollback['paper_ledger_mutated']);
-        self::assertContains('ROLLBACK_MAX_DRAWDOWN', $rollback['trigger_evaluation']['breached']);
-        self::assertSame($positionsBefore, DB::table('virtual_positions')->count());
+        return (string) $verdict['record_id'];
     }
 
     public function test_a_rollback_of_an_unknown_decision_is_refused(): void
@@ -347,6 +385,32 @@ final class AutonomyResearchTest extends TestCase
 
         self::assertSame('ROLLBACK_REFUSED', $result['status']);
         self::assertSame('PROMOTION_DECISION_NOT_FOUND', $result['reason']);
+    }
+
+    public function test_a_malformed_promotion_decision_id_is_refused_without_a_uuid_query(): void
+    {
+        $result = $this->service()->rollbackPromotion([
+            'promotion_decision_id' => 'not-a-uuid',
+        ]);
+
+        self::assertSame('ROLLBACK_REFUSED', $result['status']);
+        self::assertSame('PROMOTION_DECISION_NOT_FOUND', $result['reason']);
+    }
+
+    public function test_the_rollback_endpoint_reports_unsupported_restoration_as_a_conflict(): void
+    {
+        $decisionId = $this->persistedPromotionDecision();
+
+        $this->withHeaders(['X-Research-Token' => $this->validToken])
+            ->postJson('/api/v1/research/autonomy/rollbacks', [
+                'promotion_decision_id' => $decisionId,
+                'monitoring' => ['max_drawdown_pct' => 7.5],
+            ])
+            ->assertStatus(409)
+            ->assertJsonPath('status', 'ROLLBACK_REFUSED')
+            ->assertJsonPath('data.reason', 'OPERATIONAL_ROLLBACK_UNSUPPORTED')
+            ->assertJsonPath('data.operational_change', false)
+            ->assertJsonPath('data.paper_ledger_mutated', false);
     }
 
     public function test_the_control_endpoints_are_readable_and_write_protected(): void

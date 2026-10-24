@@ -16,7 +16,7 @@ final class ProfitabilityResearchApiTest extends TestCase
     protected function setUp(): void
     {
         parent::setUp();
-        // Ensure the 8 primary accounts are initialized
+        // Ensure all configured primary accounts are initialized.
         $this->app->make(PaperAccountService::class)->allPrimaryAccounts();
     }
 
@@ -108,7 +108,7 @@ final class ProfitabilityResearchApiTest extends TestCase
             ]);
 
         $strategies = $response->json('strategies');
-        $this->assertCount(8, $strategies, 'Must return exactly 8 primary strategy accounts.');
+        $this->assertCount(13, $strategies, 'Must return exactly 13 primary strategy accounts.');
     }
 
     public function test_profitability_strategy_detail_returns_specific_strategy(): void
@@ -156,6 +156,20 @@ final class ProfitabilityResearchApiTest extends TestCase
                     'metrics',
                 ],
             ]);
+    }
+
+    public function test_profitability_reads_do_not_reprovision_missing_primary_accounts(): void
+    {
+        DB::table('equity_snapshots')->delete();
+        DB::table('paper_accounts')->delete();
+
+        $this->getJson('/api/v1/research/profitability/summary')->assertOk();
+        $this->getJson('/api/v1/research/profitability/strategies')
+            ->assertOk()
+            ->assertJsonCount(0, 'strategies');
+
+        $this->assertDatabaseCount('paper_accounts', 0);
+        $this->assertDatabaseCount('equity_snapshots', 0);
     }
 
     /**

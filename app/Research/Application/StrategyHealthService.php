@@ -24,7 +24,7 @@ final class StrategyHealthService
      *
      * @return array{strategies: list<array<string, mixed>>, system_status: string, generated_at: string}
      */
-    public function overview(string $period = '24h'): array
+    public function overview(string $period = '24h', bool $persist = true): array
     {
         $since = match ($period) {
             '7d' => now('UTC')->subDays(7),
@@ -38,7 +38,7 @@ final class StrategyHealthService
         $hasWarning = false;
 
         foreach ($this->strategies->metadata() as $meta) {
-            $health = $this->evaluateStrategy($meta, $since, $period);
+            $health = $this->evaluateStrategy($meta, $since, $period, persist: $persist);
             if ($health['status'] === 'CRITICAL') {
                 $hasCritical = true;
             } elseif ($health['status'] === 'WARNING') {
@@ -62,7 +62,7 @@ final class StrategyHealthService
      * @param  array<string, mixed>  $meta
      * @return array<string, mixed>
      */
-    public function evaluateStrategy(array $meta, \DateTimeInterface $since, string $period = '24h', ?string $symbol = null): array
+    public function evaluateStrategy(array $meta, \DateTimeInterface $since, string $period = '24h', ?string $symbol = null, bool $persist = true): array
     {
         $strategyId = (string) $meta['id'];
         $version = (string) ($meta['version'] ?? '1.0.0');
@@ -159,16 +159,18 @@ final class StrategyHealthService
         [$status, $diagnostics] = $this->classifyHealth($strategyId, $funnel);
 
         try {
-            StrategyHealthSnapshotRecord::query()->create([
-                'strategy_id' => $strategyId,
-                'strategy_version' => $version,
-                'symbol' => $symbol ?? 'ALL',
-                'period' => $period,
-                'status' => $status,
-                'funnel_metrics' => $funnel,
-                'diagnostics' => $diagnostics,
-                'snapshot_at' => now('UTC'),
-            ]);
+            if ($persist) {
+                StrategyHealthSnapshotRecord::query()->create([
+                    'strategy_id' => $strategyId,
+                    'strategy_version' => $version,
+                    'symbol' => $symbol ?? 'ALL',
+                    'period' => $period,
+                    'status' => $status,
+                    'funnel_metrics' => $funnel,
+                    'diagnostics' => $diagnostics,
+                    'snapshot_at' => now('UTC'),
+                ]);
+            }
         } catch (\Throwable) {
             // Fail-safe non-blocking persistence
         }

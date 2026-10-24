@@ -65,7 +65,7 @@ final class StrategyResearchController extends Controller
             $query->where('side', strtoupper($request->string('side')->toString()));
         }
         $signalIds = SignalRecord::query()->select('id')->where('strategy_id', $id);
-        $accountIds = PaperAccountRecord::query()->select('id')->where('strategy_id', $id);
+        $accountIds = PaperAccountRecord::query()->where('exchange_id', 'bybit')->select('id')->where('strategy_id', $id);
         $evaluations = (clone $query)->count();
         $confirmed = SignalRecord::query()->where('strategy_id', $id)->whereIn('side', ['BUY', 'SELL'])->count();
         $rejections = [];
@@ -99,7 +99,7 @@ final class StrategyResearchController extends Controller
         } catch (\InvalidArgumentException) {
             abort(404, 'Unknown strategy.');
         }
-        $accounts = PaperAccountRecord::query()->where('strategy_id', $id)->orderBy('created_at')->get();
+        $accounts = PaperAccountRecord::query()->where('exchange_id', 'bybit')->where('strategy_id', $id)->orderBy('created_at')->get();
 
         return new ResearchResource($accounts->map(fn (PaperAccountRecord $account): array => [
             'account' => $account->only(['id', 'mode', 'strategy_id', 'strategy_version', 'created_at']),
@@ -171,7 +171,7 @@ final class StrategyResearchController extends Controller
         try {
             $account = $manager->approve($id);
         } catch (\DomainException $error) {
-            abort(409, $error->getMessage());
+            abort(409, 'Forward-paper approval is not permitted for this experiment.');
         }
 
         return new ResearchResource(['account' => $account, 'mode' => 'RESEARCH_FORWARD_PAPER', 'real_trading' => false]);
@@ -183,7 +183,7 @@ final class StrategyResearchController extends Controller
         abort_unless(in_array($timezone, timezone_identifiers_list(), true), 422, 'Invalid timezone.');
         $symbol = strtoupper($request->string('symbol', 'ALL')->toString());
         abort_unless(in_array($symbol, ['ALL', 'BTCUSDT', 'ETHUSDT'], true), 422, 'Unsupported symbol.');
-        $accounts = PaperAccountRecord::query()->whereIn('mode', ['RESEARCH_FORWARD_PAPER', 'STRATEGY_FORWARD_PAPER'])->latest('created_at')->latest('id')->paginate(max(1, min(100, $request->integer('per_page', 10))));
+        $accounts = PaperAccountRecord::query()->where('exchange_id', 'bybit')->whereIn('mode', ['RESEARCH_FORWARD_PAPER', 'STRATEGY_FORWARD_PAPER'])->latest('created_at')->latest('id')->paginate(max(1, min(100, $request->integer('per_page', 10))));
         $rows = collect($accounts->items())->map(fn (PaperAccountRecord $account): array => ['account' => $account->only(['id', 'name', 'strategy_id', 'strategy_version', 'current_equity']), 'performance' => $daily->report($account->id, $timezone, $symbol === 'ALL' ? null : $symbol, 1, 10)['summary']])->all();
 
         return new ResearchResource(['data' => $rows, 'meta' => ['current_page' => $accounts->currentPage(), 'per_page' => $accounts->perPage(), 'total' => $accounts->total(), 'last_page' => $accounts->lastPage()]]);

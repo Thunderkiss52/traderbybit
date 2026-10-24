@@ -224,30 +224,21 @@ final class AutonomyResearchService
             'approval_content' => $verdict['approval_content'] ?? null,
             'rollback_triggers' => $verdict['approval_content']['rollback_triggers'] ?? null,
             'kill_switch_active' => $killSwitchActive,
-            'reversible' => true,
+            'reversible' => false,
             'rollback_applied' => false,
             'decided_at' => CarbonImmutable::now('UTC'),
         ]);
 
         $applied = false;
         $promotion = null;
-        if ($verdict['verdict'] === PaperPromotionPolicy::VERDICT_ELIGIBLE
-            && $flagEnabled
-            && ! $killSwitchActive
-            && is_string($request['candidate_id'] ?? null)
-            && $request['candidate_id'] !== '') {
-            try {
-                $promoted = app(PromotionPolicyService::class)->promoteCandidate((string) $request['candidate_id'], 'SYSTEM_AUTONOMOUS');
-                $applied = $promoted->status === 'PAPER_PROMOTED';
-                $promotion = [
-                    'candidate_id' => $promoted->id,
-                    'status' => $promoted->status,
-                    'paper_account_id' => $promoted->paper_account_id,
-                ];
-                $record->update(['applied' => $applied]);
-            } catch (\Throwable $error) {
-                $promotion = ['candidate_id' => (string) $request['candidate_id'], 'status' => 'PROMOTION_FAILED', 'error' => $error->getMessage()];
-            }
+        if ($verdict['verdict'] === PaperPromotionPolicy::VERDICT_ELIGIBLE && $flagEnabled && ! $killSwitchActive) {
+            // The eligibility verdict is research evidence only. A dedicated
+            // forward account cannot presently be restored atomically; do not
+            // apply autonomous promotions or claim reversible=true.
+            $promotion = [
+                'candidate_id' => is_string($request['candidate_id'] ?? null) ? $request['candidate_id'] : null,
+                'status' => 'PROMOTION_REFUSED_ROLLBACK_UNSUPPORTED',
+            ];
         }
 
         return $verdict + ['record_id' => (string) $record->id, 'applied' => $applied, 'promotion' => $promotion];

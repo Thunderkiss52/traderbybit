@@ -102,22 +102,14 @@ final class AutonomousLearningApiTest extends TestCase
             'validation_run_id' => $passingRun->id,
         ]);
         $evalRes->assertOk()
-            ->assertJsonPath('data.status', 'PAPER_ELIGIBLE')
-            ->assertJsonPath('data.validation_gates.all_gates_passed', true);
+            ->assertJsonPath('data.status', 'REJECTED')
+            ->assertJsonPath('data.validation_gates.all_gates_passed', false);
 
         // 3. Promote candidate
         $promoteRes = $this->postJson('/api/v1/research/learning/candidates/'.$candidateId.'/promote', [
             'actor' => 'USER_OPERATOR',
         ]);
-        $promoteRes->assertOk()
-            ->assertJsonPath('data.status', 'PAPER_PROMOTED');
-
-        // 4. Rollback candidate
-        $rollbackRes = $this->postJson('/api/v1/research/learning/candidates/'.$candidateId.'/rollback', [
-            'reason' => 'Observed performance divergence',
-        ]);
-        $rollbackRes->assertOk()
-            ->assertJsonPath('data.status', 'ROLLED_BACK');
+        $promoteRes->assertUnprocessable();
 
         // 5. Query candidate list
         $listRes = $this->getJson('/api/v1/research/learning/candidates');

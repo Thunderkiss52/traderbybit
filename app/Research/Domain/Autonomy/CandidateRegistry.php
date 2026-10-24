@@ -11,7 +11,7 @@ namespace App\Research\Domain\Autonomy;
  * (`research-go/internal/candidates/registry.go`) and adds the structured
  * registration fields the overnight contract requires. It is a *research*
  * registry: an entry is not a strategy, it is not an account and it never
- * changes the eight primary paper accounts.
+ * changes the primary paper accounts.
  */
 final class CandidateRegistry
 {
@@ -48,7 +48,7 @@ final class CandidateRegistry
                 primaryMetric: self::METRIC_NET_AFTER_COST,
                 nullHypothesis: 'The net-after-cost expectation of the squeeze events is not different from zero.',
                 expectedEffectSign: 'POSITIVE_FOR_SHORT_AFTER_POSITIVE_FUNDING',
-                affectedPopulation: 'Isolated research cohort, never the eight primary paper accounts.',
+                affectedPopulation: 'Isolated research cohort, never the primary paper accounts.',
                 timeKnownCutoffRule: self::TIME_KNOWN_RULE,
                 trainSplit: self::SPLIT_TRAIN,
                 oosSplit: self::SPLIT_OOS,
@@ -83,7 +83,7 @@ final class CandidateRegistry
                 primaryMetric: self::METRIC_NET_AFTER_COST,
                 nullHypothesis: 'The net-after-cost expectation of sweep recaptures is not different from zero.',
                 expectedEffectSign: 'POSITIVE',
-                affectedPopulation: 'Isolated research cohort, never the eight primary paper accounts.',
+                affectedPopulation: 'Isolated research cohort, never the primary paper accounts.',
                 timeKnownCutoffRule: self::TIME_KNOWN_RULE,
                 trainSplit: self::SPLIT_TRAIN,
                 oosSplit: self::SPLIT_OOS,
@@ -120,7 +120,7 @@ final class CandidateRegistry
                 primaryMetric: self::METRIC_NET_AFTER_COST,
                 nullHypothesis: 'The net-after-cost expectation of compression breakouts is not different from zero.',
                 expectedEffectSign: 'DIRECTIONAL',
-                affectedPopulation: 'Isolated research cohort, never the eight primary paper accounts.',
+                affectedPopulation: 'Isolated research cohort, never the primary paper accounts.',
                 timeKnownCutoffRule: self::TIME_KNOWN_RULE,
                 trainSplit: self::SPLIT_TRAIN,
                 oosSplit: self::SPLIT_OOS,
@@ -155,7 +155,7 @@ final class CandidateRegistry
                 primaryMetric: self::METRIC_NET_AFTER_COST,
                 nullHypothesis: 'The net-after-cost expectation of the multi-timeframe continuation is not different from zero.',
                 expectedEffectSign: 'DIRECTIONAL',
-                affectedPopulation: 'Isolated research cohort, never the eight primary paper accounts.',
+                affectedPopulation: 'Isolated research cohort, never the primary paper accounts.',
                 timeKnownCutoffRule: self::TIME_KNOWN_RULE,
                 trainSplit: self::SPLIT_TRAIN,
                 oosSplit: self::SPLIT_OOS,
@@ -191,7 +191,7 @@ final class CandidateRegistry
                 primaryMetric: self::METRIC_NET_AFTER_COST,
                 nullHypothesis: 'The net-after-cost expectation of the catch-up leg is not different from zero.',
                 expectedEffectSign: 'DIRECTIONAL',
-                affectedPopulation: 'Isolated research cohort, never the eight primary paper accounts.',
+                affectedPopulation: 'Isolated research cohort, never the primary paper accounts.',
                 timeKnownCutoffRule: self::TIME_KNOWN_RULE,
                 trainSplit: self::SPLIT_TRAIN,
                 oosSplit: self::SPLIT_OOS,

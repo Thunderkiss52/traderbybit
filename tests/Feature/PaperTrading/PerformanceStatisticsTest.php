@@ -34,11 +34,11 @@ final class PerformanceStatisticsTest extends TestCase
 
         $report = $this->app->make(PerformanceStatisticsService::class)->calculate($account->id)->metrics;
 
-        self::assertSame('50.00000000', $report['win_rate']);
-        self::assertSame('2.00000000', $report['profit_factor']);
-        self::assertSame('0.25000000', $report['average_r']);
-        self::assertSame('50', $report['net_pnl']);
-        self::assertSame('0.49504950', $report['maximum_drawdown_percent']);
+        self::assertDecimalSame('50.00000000', $report['win_rate']);
+        self::assertDecimalSame('2.00000000', $report['profit_factor']);
+        self::assertDecimalSame('0.25000000', $report['average_r']);
+        self::assertDecimalSame('50', $report['net_pnl']);
+        self::assertDecimalSame('0.49504950', $report['maximum_drawdown_percent']);
         self::assertSame(1, $report['maximum_consecutive_wins']);
         self::assertSame(1, $report['maximum_consecutive_losses']);
     }
@@ -52,7 +52,7 @@ final class PerformanceStatisticsTest extends TestCase
 
         $report = $this->app->make(PerformanceStatisticsService::class)->calculate($first->id, ['symbol' => 'BTCUSDT'])->metrics;
         self::assertSame(1, $report['closed_positions']);
-        self::assertSame('100', $report['net_pnl']);
+        self::assertDecimalSame('100', $report['net_pnl']);
         self::assertNull($report['profit_factor']);
         self::assertSame('no_negative_net_pnl', $report['profit_factor_unavailable_reason']);
     }
