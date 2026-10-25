@@ -17,14 +17,25 @@ use App\Strategy\Infrastructure\Persistence\MarketContextRecord;
 use App\Strategy\Infrastructure\Persistence\SignalRecord;
 use Brick\Math\BigDecimal;
 use DateTimeImmutable;
+use Illuminate\Contracts\Cache\Factory;
 use Illuminate\Foundation\Testing\RefreshDatabase;
-use Illuminate\Support\Facades\DB;
 use Ramsey\Uuid\Uuid;
 use Tests\TestCase;
 
 final class BinanceEmergencyDisableMaintenanceTest extends TestCase
 {
     use RefreshDatabase;
+
+    protected function setUp(): void
+    {
+        parent::setUp();
+
+        config([
+            'exchanges.binance.paper_execution_approved' => false,
+            'exchanges.binance.paper_taker_rate' => '0.0006',
+            'exchanges.binance.paper_slippage_rate' => '0.0002',
+        ]);
+    }
 
     public function test_emergency_disable_of_binance_paper_execution_maintains_open_positions_and_funding_while_blocking_new_entries(): void
     {
@@ -142,6 +153,111 @@ final class BinanceEmergencyDisableMaintenanceTest extends TestCase
         $account->refresh();
         self::assertTrue(BigDecimal::of((string) $account->realized_pnl)->isPositive());
         self::assertTrue(BigDecimal::of((string) $account->current_equity)->isGreaterThan('10000'));
+    }
+
+    public function test_failing_account_does_not_abort_servicing_of_subsequent_accounts_in_scheduled_cycle(): void
+    {
+        $initializer = $this->app->make(BinanceDeploymentInitializer::class);
+        $initializer->initialize('10000', 'OWNER-VECTOR-20261023');
+
+        $account1 = PaperAccountRecord::query()->where('exchange_id', 'binance')->where('primary_strategy_id', 'trend_pullback')->firstOrFail();
+        $account2 = PaperAccountRecord::query()->where('exchange_id', 'binance')->where('primary_strategy_id', 'donchian_atr_breakout')->firstOrFail();
+
+        $account1->update(['status' => 'ACTIVE']);
+        $account2->update(['status' => 'ACTIVE']);
+
+        $at = new DateTimeImmutable('2026-10-25 12:00:00 UTC');
+
+        // Account 1: Lock its processing key to simulate failure (lock conflict)
+        $cache = $this->app->make(Factory::class);
+        $lock = $cache->lock("paper:process:{$account1->id}", 60);
+        $lock->get();
+
+        // Account 2: Has an open position ready to exit on TP
+        $signal2 = $this->createSignal('binance', 'donchian_atr_breakout', 'BUY', '100', '95', '105', $at);
+        $positionId = (string) Uuid::uuid4();
+        $position2 = VirtualPositionRecord::query()->create([
+            'id' => $positionId,
+            'paper_account_id' => $account2->id,
+            'exchange_id' => 'binance',
+            'signal_id' => $signal2->id,
+            'symbol' => 'BTCUSDT',
+            'side' => 'BUY',
+            'quality_class' => 'A',
+            'status' => PositionStatus::Open->value,
+            'entry_price' => '100',
+            'stop_loss' => '95',
+            'take_profit_1' => '105',
+            'take_profit_2' => '110',
+            'initial_quantity' => '1',
+            'remaining_quantity' => '1',
+            'qty_step' => '0.001',
+            'risk_capital' => '50',
+            'gross_pnl' => '0',
+            'net_pnl' => '-0.06',
+            'fees' => '0.06',
+            'funding' => '0',
+            'unrealized_pnl' => '0',
+            'opened_at' => $at,
+            'maximum_holding_until' => $at->modify('+3 hours'),
+            'execution_model' => 'close_5m',
+            'strategy_version' => '1.3.0',
+            'risk_version' => '1.0.0',
+            'execution_version' => '1.0.0',
+            'schema_version' => '1.0.0',
+        ]);
+        VirtualExecutionRecord::query()->create([
+            'id' => (string) Uuid::uuid4(),
+            'position_id' => $positionId,
+            'exchange_id' => 'binance',
+            'type' => 'ENTRY',
+            'side' => 'BUY',
+            'price' => '100',
+            'quantity' => '1',
+            'gross_pnl' => '0',
+            'commission' => '0.06',
+            'slippage' => '0',
+            'market_event_at' => $at,
+            'registered_at' => $at,
+            'price_source' => 'close_5m',
+            'ambiguous_execution' => false,
+            'idempotency_key' => 'exec-entry-2-'.Uuid::uuid4()->toString(),
+            'execution_version' => '1.0.0',
+            'schema_version' => '1.0.0',
+        ]);
+        PaperSignalStateRecord::query()->create([
+            'id' => (string) Uuid::uuid4(),
+            'paper_account_id' => $account2->id,
+            'exchange_id' => 'binance',
+            'signal_id' => $signal2->id,
+            'status' => SignalLifecycle::Active->value,
+            'processed_at' => $at,
+        ]);
+
+        $this->seedCandle('binance', 'BTCUSDT', '5', $at, '103', '106', '102.5', '105.5');
+        $this->seedContext('binance', 'BTCUSDT', $at);
+
+        // Run the scheduled loop with per-account isolation
+        $allowNewEntries = false;
+        $failures = [];
+        $serviced = [];
+        foreach (PaperAccountRecord::query()->where('exchange_id', 'binance')->where('is_primary', true)->get() as $acc) {
+            try {
+                $serviced[] = $this->app->make(PaperProcessingService::class)->process($acc->id, at: $at->modify('+5 minutes'), allowNewEntries: $allowNewEntries);
+            } catch (\Throwable $e) {
+                $failures[] = $acc->id;
+            }
+        }
+
+        // Account 1 must have failed due to locked state
+        self::assertContains($account1->id, $failures);
+
+        // Account 2 must have succeeded despite account 1 failure!
+        $position2->refresh();
+        self::assertNotSame(PositionStatus::Open->value, $position2->status);
+        self::assertTrue(BigDecimal::of($position2->gross_pnl)->isPositive());
+
+        $lock->release();
     }
 
     private function createSignal(string $exchange, string $strategyId, string $side, string $entry, string $sl, string $tp, DateTimeImmutable $time): SignalRecord

@@ -207,8 +207,53 @@ final class ResearchController extends Controller
                     $latestCandle = CandleRecord::query()->where('exchange', $exchange)->where('interval', '5')->where('is_closed', true)->max('open_time');
 
                     $nowSeconds = now('UTC')->getTimestamp();
-                    $evalAgeSeconds = $latestEval ? $nowSeconds - (new \DateTimeImmutable((string) $latestEval))->getTimestamp() : null;
-                    $candleAgeSeconds = $latestCandle ? $nowSeconds - (new \DateTimeImmutable((string) $latestCandle))->getTimestamp() : null;
+                    $evalAgeSeconds = $latestEval ? $nowSeconds - (new DateTimeImmutable((string) $latestEval))->getTimestamp() : null;
+                    $candleAgeSeconds = $latestCandle ? $nowSeconds - (new DateTimeImmutable((string) $latestCandle))->getTimestamp() : null;
+
+                    $configuredSymbols = (array) config('market_data.symbols', ['BTCUSDT', 'ETHUSDT']);
+                    $activeStrategies = $accounts->where('status', 'ACTIVE')->pluck('primary_strategy_id')->filter()->values()->all();
+
+                    $candleMaxes = CandleRecord::query()
+                        ->where('exchange', $exchange)
+                        ->where('interval', '5')
+                        ->where('is_closed', true)
+                        ->whereIn('symbol', $configuredSymbols)
+                        ->groupBy('symbol')
+                        ->selectRaw('symbol, MAX(open_time) as latest_open')
+                        ->pluck('latest_open', 'symbol');
+
+                    $evalMaxes = StrategyObservationRecord::query()
+                        ->where('exchange', $exchange)
+                        ->whereIn('strategy_id', $activeStrategies)
+                        ->groupBy('strategy_id')
+                        ->selectRaw('strategy_id, MAX(decision_time) as latest_decision')
+                        ->pluck('latest_decision', 'strategy_id');
+
+                    $stalledSymbols = [];
+                    foreach ($configuredSymbols as $sym) {
+                        $symLatest = $candleMaxes->get($sym);
+                        if ($symLatest === null) {
+                            $stalledSymbols[] = $sym;
+                        } else {
+                            $age = $nowSeconds - (new DateTimeImmutable((string) $symLatest))->getTimestamp();
+                            if ($age > 2700) {
+                                $stalledSymbols[] = $sym;
+                            }
+                        }
+                    }
+
+                    $stalledStrategies = [];
+                    foreach ($activeStrategies as $stratId) {
+                        $stratLatest = $evalMaxes->get($stratId);
+                        if ($stratLatest === null) {
+                            $stalledStrategies[] = $stratId;
+                        } else {
+                            $age = $nowSeconds - (new DateTimeImmutable((string) $stratLatest))->getTimestamp();
+                            if ($age > 2700) {
+                                $stalledStrategies[] = $stratId;
+                            }
+                        }
+                    }
 
                     $status = 'HEALTHY';
                     if ($provisionedCount < 13) {
@@ -217,9 +262,9 @@ final class ResearchController extends Controller
                         $status = 'AWAITING_ACTIVATION';
                     } elseif ($latestEval === null) {
                         $status = 'AWAITING_FIRST_CYCLE';
-                    } elseif ($candleAgeSeconds !== null && $candleAgeSeconds > 2700) {
+                    } elseif (! empty($stalledSymbols)) {
                         $status = 'MARKET_DATA_STALLED';
-                    } elseif ($evalAgeSeconds !== null && $evalAgeSeconds > 2700) {
+                    } elseif (! empty($stalledStrategies)) {
                         $status = 'SCHEDULER_STALLED';
                     } elseif ($execFailures > 0) {
                         $status = 'DEGRADED';
@@ -235,6 +280,8 @@ final class ResearchController extends Controller
                         'provisioned_accounts' => $provisionedCount,
                         'active_accounts' => $activeCount,
                         'blocked_accounts' => $blockedCount,
+                        'stalled_symbols' => $stalledSymbols,
+                        'stalled_strategies' => $stalledStrategies,
                         'system_status' => $status,
                     ];
                 })(),

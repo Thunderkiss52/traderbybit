@@ -6,11 +6,14 @@ namespace Tests\Feature\MarketData;
 
 use App\MarketData\Infrastructure\Persistence\CandleRecord;
 use App\PaperTrading\Application\PaperAccountService;
+use App\PaperTrading\Infrastructure\Persistence\JournalEventRecord;
 use App\Strategy\Infrastructure\Persistence\MarketContextRecord;
+use App\Strategy\Infrastructure\Persistence\StrategyObservationRecord;
 use Carbon\CarbonImmutable;
 use DateTimeImmutable;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Cache;
+use Ramsey\Uuid\Uuid;
 use Tests\TestCase;
 
 final class MarketExchangeIsolationTest extends TestCase
@@ -136,17 +139,57 @@ final class MarketExchangeIsolationTest extends TestCase
     public function test_dashboard_system_status_reflects_actual_operational_health_dimensions(): void
     {
         // 1. Provision all 13 Bybit accounts
-        app(PaperAccountService::class)->allPrimaryAccounts('bybit');
+        $accounts = app(PaperAccountService::class)->allPrimaryAccounts('bybit');
 
         // Without evaluations: AWAITING_FIRST_CYCLE
         $res = $this->withHeader('X-Exchange', 'bybit')->getJson('/api/v1/dashboard')->assertOk()->json('data.paper_execution_health');
         self::assertSame('AWAITING_FIRST_CYCLE', $res['system_status']);
 
-        // 2. Add an evaluation that is stale (> 45 minutes ago)
-        \Illuminate\Support\Facades\Cache::flush();
         $now = now('UTC');
-        \App\Strategy\Infrastructure\Persistence\StrategyObservationRecord::query()->create([
-            'id' => (string) \Ramsey\Uuid\Uuid::uuid4(),
+        $primaryStrategies = (array) config('paper.primary_strategies', []);
+
+        // 2. Seed evaluations for all 13 strategies, but ONLY seed BTCUSDT candle (ETHUSDT candle missing)
+        foreach ($primaryStrategies as $stratId) {
+            StrategyObservationRecord::query()->create([
+                'id' => (string) Uuid::uuid4(),
+                'exchange' => 'bybit',
+                'category' => 'linear',
+                'symbol' => 'BTCUSDT',
+                'strategy_id' => $stratId,
+                'side' => 'BUY',
+                'quality_class' => 'A',
+                'score' => 90,
+                'decision_time' => $now->copy()->subMinutes(5),
+                'reasons' => ['test'],
+                'analysis' => [],
+                'strategy_version' => '1.0.0',
+                'configuration_hash' => hash('sha256', "test-{$stratId}"),
+            ]);
+        }
+        CandleRecord::query()->create([
+            'exchange' => 'bybit', 'category' => 'linear', 'symbol' => 'BTCUSDT', 'interval' => '5',
+            'open_time' => $now->copy()->subMinutes(5),
+            'open' => '65000', 'high' => '65100', 'low' => '64900', 'close' => '65050',
+            'volume' => '10', 'turnover' => '650000', 'is_closed' => true,
+        ]);
+
+        Cache::flush();
+        $resMissingSymbol = $this->withHeader('X-Exchange', 'bybit')->getJson('/api/v1/dashboard')->assertOk()->json('data.paper_execution_health');
+        self::assertSame('MARKET_DATA_STALLED', $resMissingSymbol['system_status']);
+        self::assertContains('ETHUSDT', $resMissingSymbol['stalled_symbols']);
+        self::assertNotContains('BTCUSDT', $resMissingSymbol['stalled_symbols']);
+
+        // 3. Seed fresh ETHUSDT candle too, but make 1 strategy (trend_pullback) stalled by deleting its fresh evaluation and creating an old one (>45m)
+        CandleRecord::query()->create([
+            'exchange' => 'bybit', 'category' => 'linear', 'symbol' => 'ETHUSDT', 'interval' => '5',
+            'open_time' => $now->copy()->subMinutes(5),
+            'open' => '3500', 'high' => '3510', 'low' => '3490', 'close' => '3505',
+            'volume' => '100', 'turnover' => '350000', 'is_closed' => true,
+        ]);
+        StrategyObservationRecord::query()
+            ->where('strategy_id', 'trend_pullback')->delete();
+        StrategyObservationRecord::query()->create([
+            'id' => (string) Uuid::uuid4(),
             'exchange' => 'bybit',
             'category' => 'linear',
             'symbol' => 'BTCUSDT',
@@ -158,15 +201,18 @@ final class MarketExchangeIsolationTest extends TestCase
             'reasons' => ['test'],
             'analysis' => [],
             'strategy_version' => '1.3.0',
-            'configuration_hash' => hash('sha256', 'test1'),
+            'configuration_hash' => hash('sha256', 'test-trend_pullback-stale'),
         ]);
-        $resStale = $this->withHeader('X-Exchange', 'bybit')->getJson('/api/v1/dashboard')->assertOk()->json('data.paper_execution_health');
-        self::assertSame('SCHEDULER_STALLED', $resStale['system_status']);
 
-        // 3. Add fresh evaluation (< 45 minutes ago)
-        \Illuminate\Support\Facades\Cache::flush();
-        \App\Strategy\Infrastructure\Persistence\StrategyObservationRecord::query()->create([
-            'id' => (string) \Ramsey\Uuid\Uuid::uuid4(),
+        Cache::flush();
+        $resStalledStrategy = $this->withHeader('X-Exchange', 'bybit')->getJson('/api/v1/dashboard')->assertOk()->json('data.paper_execution_health');
+        self::assertSame('SCHEDULER_STALLED', $resStalledStrategy['system_status']);
+        self::assertContains('trend_pullback', $resStalledStrategy['stalled_strategies']);
+        self::assertEmpty($resStalledStrategy['stalled_symbols']);
+
+        // 4. Update trend_pullback with a fresh evaluation (<45m): status must now be HEALTHY
+        StrategyObservationRecord::query()->create([
+            'id' => (string) Uuid::uuid4(),
             'exchange' => 'bybit',
             'category' => 'linear',
             'symbol' => 'BTCUSDT',
@@ -178,11 +224,32 @@ final class MarketExchangeIsolationTest extends TestCase
             'reasons' => ['test'],
             'analysis' => [],
             'strategy_version' => '1.3.0',
-            'configuration_hash' => hash('sha256', 'test2'),
+            'configuration_hash' => hash('sha256', 'test-trend_pullback-fresh'),
         ]);
+
+        Cache::flush();
         $resFresh = $this->withHeader('X-Exchange', 'bybit')->getJson('/api/v1/dashboard')->assertOk()->json('data.paper_execution_health');
         self::assertSame('HEALTHY', $resFresh['system_status']);
         self::assertSame(13, $resFresh['provisioned_accounts']);
         self::assertSame(13, $resFresh['active_accounts']);
+        self::assertEmpty($resFresh['stalled_symbols']);
+        self::assertEmpty($resFresh['stalled_strategies']);
+
+        // 5. Inject an EXECUTION_FAILED journal event within 24h: status must become DEGRADED
+        $account = $accounts->first();
+        JournalEventRecord::query()->create([
+            'id' => (string) Uuid::uuid4(),
+            'paper_account_id' => $account->id,
+            'exchange_id' => 'bybit',
+            'event_type' => 'EXECUTION_FAILED',
+            'occurred_at' => $now->copy()->subHours(2),
+            'payload' => ['reason' => 'margin_exhausted'],
+            'idempotency_key' => 'test-exec-failed-1',
+        ]);
+
+        Cache::flush();
+        $resDegraded = $this->withHeader('X-Exchange', 'bybit')->getJson('/api/v1/dashboard')->assertOk()->json('data.paper_execution_health');
+        self::assertSame('DEGRADED', $resDegraded['system_status']);
+        self::assertSame(1, $resDegraded['execution_failures_24h']);
     }
 }

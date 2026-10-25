@@ -38,9 +38,6 @@ final class BinancePaperSafety
 
     public static function assertCostEvidence(): void
     {
-        if (config('exchanges.binance.paper_execution_approved') !== true) {
-            throw new DomainException('Binance PAPER execution is not approved.');
-        }
         foreach (['paper_taker_rate', 'paper_slippage_rate'] as $key) {
             $value = config('exchanges.binance.'.$key);
             if (! is_string($value) || ! preg_match('/^(?:0|[0-9]+)(?:\.[0-9]+)?$/D', $value)

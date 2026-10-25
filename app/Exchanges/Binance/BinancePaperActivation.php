@@ -42,16 +42,16 @@ final class BinancePaperActivation
                 $timestamps = $candles->map(fn ($c): int => $c->open_time->getTimestamp())->all();
                 $readiness = BinanceCandleWindow::status($timestamps, (int) $interval * 60, $nowSeconds);
                 if ($readiness !== 'READY') {
-                    throw new DomainException('Binance activation rejected '.$symbol.':'.$interval.' '.$readiness.'.');
+                    throw new DomainException("Binance activation rejected {$symbol}:{$interval} ({$readiness}). Required: 220 contiguous closed candles. Run 'php artisan binance:ingest-research {$symbol}' to backfill.");
                 }
             }
             if (! MarketContextRecord::query()->where('exchange', 'binance')->where('category', 'linear')
                 ->where('symbol', $symbol)->whereBetween('observed_at', [$now->copy()->subMinutes(15), $now])->exists()) {
-                throw new DomainException('Recent, non-future Binance market context is unavailable.');
+                throw new DomainException("Recent, non-future Binance market context is unavailable for {$symbol}. Run 'php artisan binance:capture-context {$symbol}' to capture.");
             }
             if (! MarketFundingEventRecord::query()->where('exchange', 'binance')->where('category', 'linear')
                 ->where('symbol', $symbol)->whereBetween('funding_at', [$now->copy()->subHours(24), $now])->exists()) {
-                throw new DomainException('Recent, non-future Binance funding settlement is unavailable.');
+                throw new DomainException("Recent, non-future Binance funding settlement is unavailable for {$symbol}. Run 'php artisan binance:ingest-funding {$symbol}' to ingest.");
             }
         }
 
@@ -62,6 +62,8 @@ final class BinancePaperActivation
                 throw new DomainException('Binance PRIMARY account set incomplete.');
             }
             $activated = 0;
+            $alreadyActive = 0;
+            $toActivate = [];
             foreach ($strategies as $id) {
                 $account = $accounts->get($id);
                 if ($account === null) {
@@ -73,6 +75,11 @@ final class BinancePaperActivation
                     // Unsupported 2-leg execution / OI semantics cannot be activated.
                     continue;
                 }
+                if ($account->status === 'ACTIVE') {
+                    $alreadyActive++;
+
+                    continue;
+                }
                 if (BigDecimal::of($account->current_equity)->isLessThanOrEqualTo('0')
                     || $account->status !== 'BLOCKED'
                     || DB::table('paper_capital_events')->where('paper_account_id', $account->id)->doesntExist()) {
@@ -81,18 +88,20 @@ final class BinancePaperActivation
                 if (DB::table('virtual_positions')->where('paper_account_id', $account->id)->exists()) {
                     throw new DomainException('Previously traded account requires dedicated recovery.');
                 }
+                $toActivate[] = $account;
             }
-            foreach ($strategies as $id) {
-                if (in_array($id, (array) config('research.forward_paper.signal_only_strategies', []), true)
-                    || $id === 'funding_open_interest_squeeze') {
-                    continue;
-                }
-                $accounts->get($id)->update(['status' => 'ACTIVE']);
+            foreach ($toActivate as $account) {
+                $account->update(['status' => 'ACTIVE']);
                 $activated++;
             }
 
-            return ['exchange_id' => 'binance', 'paper_activated' => $activated,
-                'still_signal_only' => count($strategies) - $activated, 'real_order_paths' => 'DISABLED'];
+            return [
+                'exchange_id' => 'binance',
+                'paper_activated' => $activated,
+                'already_active' => $alreadyActive,
+                'still_signal_only' => count($strategies) - ($activated + $alreadyActive),
+                'real_order_paths' => 'DISABLED',
+            ];
         });
     }
 }

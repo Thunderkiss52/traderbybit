@@ -199,6 +199,7 @@ if ((bool) config('exchanges.binance.research_cycle_enabled', false)) {
     // existing positions and funding settlement continue to be serviced while new entries are rejected.
     Schedule::call(function (): void {
         $allowNewEntries = (bool) config('exchanges.binance.paper_execution_approved', false);
+        $failures = [];
         foreach (PaperAccountRecord::query()
             ->where('exchange_id', 'binance')->where('is_primary', true)
             ->whereIn('status', ['ACTIVE', 'BLOCKED', 'HALTED'])->get() as $account) {
@@ -206,7 +207,26 @@ if ((bool) config('exchanges.binance.research_cycle_enabled', false)) {
                 || $account->strategy_id === 'funding_open_interest_squeeze') {
                 continue;
             }
-            app(PaperProcessingService::class)->process($account->id, allowNewEntries: $allowNewEntries);
+            try {
+                app(PaperProcessingService::class)->process($account->id, allowNewEntries: $allowNewEntries);
+            } catch (Throwable $e) {
+                Log::channel('testing')->warning("Binance paper account {$account->id} ({$account->strategy_id}) processing error: ".$e->getMessage(), [
+                    'account_id' => $account->id,
+                    'strategy_id' => $account->strategy_id,
+                    'exception' => $e::class,
+                ]);
+                $failures[] = [
+                    'account_id' => $account->id,
+                    'strategy_id' => $account->strategy_id,
+                    'error' => $e->getMessage(),
+                ];
+            }
+        }
+        if (! empty($failures)) {
+            Log::warning('Binance paper scheduled cycle completed with account failures.', [
+                'failed_accounts_count' => count($failures),
+                'failures' => $failures,
+            ]);
         }
     })->cron('3,8,13,18,23,28,33,38,43,48,53,58 * * * *')
         ->name('binance:paper-scheduled')->withoutOverlapping();

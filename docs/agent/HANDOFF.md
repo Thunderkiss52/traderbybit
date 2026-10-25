@@ -1005,6 +1005,38 @@ Updated: 2026-10-24T19:00:00+03:00. Branch `main`, HEAD `33d1448`. Strict PAPER-
   - Frontend Production Build: **`vue-tsc --noEmit && vite build` PASS in 7.25s, 0 errors**.
 - Status: All P0, P1, and P2 audit issues fully resolved and verified. Worktree clean. Ready for review.
 
+## Checkpoint VECTOR-V24-AUDIT-RECOVERY-REMEDIATION-20261025T150500Z — Full Audit Remediation Verified (769/769)
+
+- Scope completed: Resolved all findings from the independent technical re-audit of VECTOR V2.4 (archive `VECTOR-source-20261025-1432.tar.gz`).
+- Issues Remediated and Verified:
+  1. **P0-01 (Activation Sequence Decoupling & Idempotency):**
+     - In `app/Exchanges/Binance/BinancePaperSafety.php`, uncoupled fee/slippage cost model verification from the runtime execution gate `paper_execution_approved === true` in `assertCostEvidence()`. Now `binance:activate-paper --approve` succeeds under `paper_execution_approved = false` as documented in runbook.
+     - In `app/Exchanges/Binance/BinancePaperActivation.php`, made activation idempotent (`already_active` tracking) and provided explicit backfill commands on candle gap/context rejections.
+     - Verified with `tests/Feature/Exchanges/BinanceActivationCommandTest.php` (3/3 PASS).
+  2. **P1-02 (Per-Account Scheduler Loop Isolation):**
+     - In `routes/console.php`, wrapped each account's processing execution in a `try / catch (\Throwable)` block with structured warning logging and aggregate failure tracking. One account failure (lock conflict, data gap) never halts servicing of remaining accounts.
+     - Verified with `tests/Feature/Exchanges/BinanceEmergencyDisableMaintenanceTest.php` (2/2 PASS).
+  3. **P1-03 (Per-Symbol and Per-Strategy Health Census):**
+     - In `app/Http/Controllers/Api/V1/ResearchController.php`, enhanced `paper_execution_health` to evaluate latest closed 5m candles individually across all configured symbols (`market_data.symbols`) and observation recency across all active strategies (<45m).
+     - Added `stalled_symbols` and `stalled_strategies` diagnostics arrays to payload; returns `MARKET_DATA_STALLED` if any symbol halts, and `SCHEDULER_STALLED` if any active strategy stream halts.
+     - Verified with multi-dimensional assertions in `tests/Feature/MarketData/MarketExchangeIsolationTest.php` (4/4 PASS, 123 assertions).
+  4. **P1-04 (Bybit Full Column Serialization Checksum):**
+     - In `app/Exchanges/Binance/BinanceDeploymentInitializer.php`, serialized all 15 columns of `paper_accounts` (including `configuration_hash`, `strategy_version`), all 12 columns of `virtual_positions` (`initial_quantity`, `remaining_quantity`, `gross_pnl`, `net_pnl`, etc.), executions, equity snapshots, capital events, journal events, and risk decisions.
+  5. **P2-05 (Actionable Backfill Documentation):**
+     - In `docs/verification/V24_MULTI_EXCHANGE_PRODUCTION_RECOVERY.md`, documented exact commands for backfilling 220 closed candles (`binance:ingest-research`), market context (`binance:capture-context`), and funding events (`binance:ingest-funding`) prior to running activation.
+  6. **P2-06 (Distribution Archive Hygiene):**
+     - Documented canonical `tar` archive packaging command in `docs/verification/V24_MULTI_EXCHANGE_PRODUCTION_RECOVERY.md` with explicit `--exclude` for `postgres-data`, `pg_wal`, audit CSVs, runtime logs, cache, and node_modules.
+- Verification Evidence:
+  - PHPUnit Suite: **769 tests, 5703 assertions, 0 failures, 1 skipped (100% PASS)**.
+  - Code Style: **`vendor/bin/pint --test` PASS (0 style issues)**.
+  - Frontend Tests: **55 tests PASS (100% PASS)**.
+  - Frontend Build: **`vue-tsc --noEmit && vite build` PASS in 7.54s, 0 errors**.
+- Safety Invariants Maintained:
+  - Strictly PAPER-ONLY. No live exchange orders or private trading credentials.
+  - Complete Bybit financial preservation across all 13 canonical Bybit accounts.
+  - ECONOM / econom-group resources strictly untouched.
+  - No `git push`, no manual production deployments.
+
 ## Checkpoint VECTOR-V24-RECOVERY-REGRESSION-FIX-20261025T105000Z — Full Suite Pass (761/761)
 
 - Scope completed: Resolved the regression in `SupportResistanceStrategiesTest::test_sr_signals_execute_in_isolated_strategy_paper_account` and verified full 761-test backend regression suite.
