@@ -6,7 +6,9 @@ namespace Tests\Feature\Exchanges;
 
 use App\Exchanges\Binance\BinanceDeploymentInitializer;
 use App\PaperTrading\Application\PaperAccountService;
+use App\PaperTrading\Infrastructure\Persistence\JournalEventRecord;
 use App\PaperTrading\Infrastructure\Persistence\PaperAccountRecord;
+use App\PaperTrading\Infrastructure\Persistence\RiskDecisionRecord;
 use App\PaperTrading\Infrastructure\Persistence\VirtualExecutionRecord;
 use App\PaperTrading\Infrastructure\Persistence\VirtualPositionRecord;
 use App\Strategy\Infrastructure\Persistence\SignalRecord;
@@ -107,6 +109,27 @@ final class BinanceDeploymentInitializationTest extends TestCase
             'idempotency_key' => 'test-exec-'.Uuid::uuid4()->toString(),
             'execution_version' => '1.0.0',
             'schema_version' => '1.0.0',
+        ]);
+        RiskDecisionRecord::query()->create([
+            'id' => (string) Uuid::uuid4(),
+            'paper_account_id' => $trendBybit->id,
+            'exchange_id' => 'bybit',
+            'signal_id' => $signal->id,
+            'allowed' => true,
+            'reasons' => ['test'],
+            'snapshot' => ['risk' => 'passed'],
+            'risk_version' => '1.0.0',
+            'decided_at' => now(),
+        ]);
+        JournalEventRecord::query()->create([
+            'id' => (string) Uuid::uuid4(),
+            'paper_account_id' => $trendBybit->id,
+            'exchange_id' => 'bybit',
+            'signal_id' => $signal->id,
+            'event_type' => 'RISK_ACCEPTED',
+            'occurred_at' => now(),
+            'payload' => ['test' => true],
+            'idempotency_key' => 'test-journal-'.Uuid::uuid4()->toString(),
         ]);
 
         // Capture exact Bybit state before initialization

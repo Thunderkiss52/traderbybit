@@ -111,8 +111,8 @@ final class BinanceDeploymentInitializer
                 (string) $p->gross_pnl, (string) $p->net_pnl, (string) $p->fees, (string) $p->funding,
             ])->all(),
             'executions' => $executions->map(fn ($e) => [
-                $e->id, $e->position_id, $e->side, (string) $e->price, (string) $e->quantity,
-                (string) ($e->commission ?? '0'), (string) ($e->realized_pnl ?? '0'),
+                $e->id, $e->position_id, $e->type, $e->side, (string) $e->price, (string) $e->quantity,
+                (string) $e->commission, (string) $e->gross_pnl,
             ])->all(),
             'snapshots' => $snapshots->map(fn ($s) => [
                 $s->id, $s->paper_account_id, (string) $s->equity, (string) $s->realized_pnl,
@@ -125,7 +125,7 @@ final class BinanceDeploymentInitializer
                 $j->id, $j->paper_account_id, $j->event_type, (string) $j->occurred_at,
             ])->all(),
             'risk_decisions' => $riskDecisions->map(fn ($r) => [
-                $r->id, $r->paper_account_id, $r->status,
+                $r->id, $r->paper_account_id, (bool) $r->allowed, (string) $r->decided_at,
             ])->all(),
         ], JSON_THROW_ON_ERROR));
     }
