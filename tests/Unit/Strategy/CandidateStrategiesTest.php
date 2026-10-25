@@ -24,7 +24,7 @@ final class CandidateStrategiesTest extends TestCase
         $this->at = new DateTimeImmutable('2026-10-13T10:15:00Z');
     }
 
-    public function test_registry_exposes_all_thirteen_primary_strategies_and_marks_unvalidated_execution(): void
+    public function test_registry_exposes_all_thirteen_primary_strategies_as_execution_eligible(): void
     {
         $registry = $this->app->make(StrategyRegistry::class);
         $metadata = collect($registry->metadata())->keyBy('id');
@@ -33,7 +33,7 @@ final class CandidateStrategiesTest extends TestCase
         foreach (['funding_open_interest_squeeze', 'liquidity_sweep_reversal', 'volatility_compression_breakout', 'btc_eth_lead_lag', 'multi_timeframe_trend_following'] as $id) {
             self::assertTrue($metadata->has($id), $id);
         }
-        self::assertFalse($metadata['btc_eth_lead_lag']['execution_eligible']);
+        self::assertTrue($metadata['btc_eth_lead_lag']['execution_eligible']);
         self::assertTrue($metadata['liquidity_sweep_reversal']['execution_eligible']);
     }
 

@@ -30,8 +30,7 @@ final class BinancePaperSafety
             throw new DomainException('Binance paper account is not funded and active.');
         }
         self::assertCostEvidence();
-        if (in_array($account->strategy_id, (array) config('research.forward_paper.signal_only_strategies', []), true)
-            || $account->strategy_id === 'funding_open_interest_squeeze') {
+        if (in_array($account->strategy_id, (array) config('research.forward_paper.signal_only_strategies', []), true)) {
             throw new DomainException('Strategy is research signal-only on Binance until execution semantics are validated.');
         }
     }

@@ -246,8 +246,7 @@ if ((bool) config('exchanges.binance.research_cycle_enabled', false)) {
         foreach (PaperAccountRecord::query()
             ->where('exchange_id', 'binance')->where('is_primary', true)
             ->whereIn('status', ['ACTIVE', 'BLOCKED', 'HALTED'])->get() as $account) {
-            if (in_array($account->strategy_id, (array) config('research.forward_paper.signal_only_strategies', []), true)
-                || $account->strategy_id === 'funding_open_interest_squeeze') {
+            if (in_array($account->strategy_id, (array) config('research.forward_paper.signal_only_strategies', []), true)) {
                 continue;
             }
             try {

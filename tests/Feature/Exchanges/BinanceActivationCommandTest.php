@@ -67,32 +67,32 @@ final class BinanceActivationCommandTest extends TestCase
         $activationService = $this->app->make(BinancePaperActivation::class);
         $result = $activationService->activate();
 
-        self::assertSame(11, $result['paper_activated']);
+        self::assertSame(13, $result['paper_activated']);
         self::assertSame(0, $result['already_active']);
-        self::assertSame(2, $result['still_signal_only']);
+        self::assertSame(0, $result['still_signal_only']);
         self::assertFalse($result['paper_execution_approved']);
         self::assertSame('EXECUTION_BLOCKED_PENDING_APPROVAL', $result['execution_readiness']);
 
         $this->artisan('binance:activate-paper', ['--approve' => true])
             ->assertSuccessful();
 
-        // Verify exactly 11 Binance primary accounts are now ACTIVE
-        self::assertSame(11, PaperAccountRecord::query()->where('exchange_id', 'binance')->where('status', 'ACTIVE')->count());
+        // Verify exactly 13 Binance primary accounts are now ACTIVE
+        self::assertSame(13, PaperAccountRecord::query()->where('exchange_id', 'binance')->where('status', 'ACTIVE')->count());
 
-        // Verify the 2 signal-only strategies remain BLOCKED
-        self::assertSame('BLOCKED', PaperAccountRecord::query()->where('exchange_id', 'binance')->where('primary_strategy_id', 'btc_eth_lead_lag')->value('status'));
-        self::assertSame('BLOCKED', PaperAccountRecord::query()->where('exchange_id', 'binance')->where('primary_strategy_id', 'funding_open_interest_squeeze')->value('status'));
+        // Verify all 13 strategies including previously signal-only strategies are ACTIVE
+        self::assertSame('ACTIVE', PaperAccountRecord::query()->where('exchange_id', 'binance')->where('primary_strategy_id', 'btc_eth_lead_lag')->value('status'));
+        self::assertSame('ACTIVE', PaperAccountRecord::query()->where('exchange_id', 'binance')->where('primary_strategy_id', 'funding_open_interest_squeeze')->value('status'));
 
         // 3. Re-run activation command (idempotency policy)
         $rerunResult = $activationService->activate();
         self::assertSame(0, $rerunResult['paper_activated']);
-        self::assertSame(11, $rerunResult['already_active']);
-        self::assertSame(2, $rerunResult['still_signal_only']);
+        self::assertSame(13, $rerunResult['already_active']);
+        self::assertSame(0, $rerunResult['still_signal_only']);
 
         $this->artisan('binance:activate-paper', ['--approve' => true])
             ->assertSuccessful();
 
-        self::assertSame(11, PaperAccountRecord::query()->where('exchange_id', 'binance')->where('status', 'ACTIVE')->count());
+        self::assertSame(13, PaperAccountRecord::query()->where('exchange_id', 'binance')->where('status', 'ACTIVE')->count());
 
         // Verify that even though accounts are ACTIVE, assertExecutable still fails fail-closed while paper_execution_approved is false
         $activeAccount = PaperAccountRecord::query()->where('exchange_id', 'binance')->where('status', 'ACTIVE')->first();
@@ -122,7 +122,7 @@ final class BinanceActivationCommandTest extends TestCase
         $activationService = $this->app->make(BinancePaperActivation::class);
         $result = $activationService->activate();
 
-        self::assertSame(11, $result['paper_activated']);
+        self::assertSame(13, $result['paper_activated']);
         self::assertTrue($result['paper_execution_approved']);
         self::assertSame('READY_FOR_PAPER_EXECUTION', $result['execution_readiness']);
 

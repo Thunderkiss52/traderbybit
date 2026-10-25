@@ -301,13 +301,13 @@ final readonly class BinancePaperReadiness
             }
         }
 
-        // 8. Strategy Execution Eligibility (11 eligible, 2 signal-only)
+        // 8. Strategy Execution Eligibility (all 13 eligible when signal_only_strategies is empty)
         $signalOnlyGlobal = (array) config('research.forward_paper.signal_only_strategies', []);
         $eligibleStrategies = [];
         $signalOnlyStrategies = [];
 
         foreach ($primaryStrategies as $strategyId) {
-            if (in_array($strategyId, $signalOnlyGlobal, true) || $strategyId === 'funding_open_interest_squeeze') {
+            if (in_array($strategyId, $signalOnlyGlobal, true)) {
                 $signalOnlyStrategies[] = $strategyId;
             } else {
                 $eligibleStrategies[] = $strategyId;

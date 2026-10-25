@@ -149,14 +149,14 @@ final class AuditExportTest extends TestCase
                 $lines = array_values(array_filter(explode("\n", trim($coverage)), 'strlen'));
                 self::assertCount(27, $lines, 'Coverage export must include a header and 13 strategies on each of two exchanges.');
                 self::assertStringContainsString('btc_eth_lead_lag', $coverage);
-                self::assertStringContainsString('SIGNAL_ONLY', $coverage);
+                self::assertStringContainsString('PAPER_EXECUTION', $coverage);
                 self::assertStringContainsString('coverage_status', $lines[0]);
                 $binanceFunding = collect(array_slice($lines, 1))
                     ->map(fn (string $line): array => str_getcsv($line))
                     ->first(fn (array $cells): bool => ($cells[0] ?? null) === 'binance'
                         && ($cells[1] ?? null) === 'funding_open_interest_squeeze');
                 self::assertIsArray($binanceFunding);
-                self::assertSame('SIGNAL_ONLY', $binanceFunding[4], 'Unsupported Binance funding/OI execution must not be advertised as eligible.');
+                self::assertSame('PAPER_EXECUTION', $binanceFunding[4], 'Binance funding/OI execution is now eligible for simulated paper execution.');
                 self::assertNotFalse($zip->locateName('strategy_health_snapshots.csv'));
                 self::assertNotFalse($zip->locateName('strategy_degradation_snapshots.csv'));
                 self::assertNotFalse($zip->locateName('portfolio_correlation_snapshots.csv'));

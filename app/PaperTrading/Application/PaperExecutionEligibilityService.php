@@ -46,9 +46,6 @@ final readonly class PaperExecutionEligibilityService
 
         // Exchange-specific safety gates
         if ($account->exchange_id === 'binance') {
-            if ($account->strategy_id === 'funding_open_interest_squeeze') {
-                return 'signal_only_strategy';
-            }
             try {
                 BinancePaperSafety::assertExecutable($account);
             } catch (DomainException) {

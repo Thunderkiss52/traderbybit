@@ -48,11 +48,9 @@ final class BinancePortabilityMatrix
                     : (in_array('CANDLE_HISTORY_INSUFFICIENT', $historyStatuses, true)
                         ? 'CANDLE_HISTORY_INSUFFICIENT' : reset($historyStatuses));
                 $executionBlockers = [];
-                if ($strategy === 'btc_eth_lead_lag') {
-                    $executionBlockers[] = 'TWO_LEG_EXECUTION_UNVALIDATED';
-                }
-                if ($strategy === 'funding_open_interest_squeeze' && $exchange === 'binance') {
-                    $executionBlockers[] = 'OPEN_INTEREST_SEMANTICS_UNVALIDATED';
+                $signalOnly = (array) config('research.forward_paper.signal_only_strategies', []);
+                if (in_array($strategy, $signalOnly, true)) {
+                    $executionBlockers[] = 'SIGNAL_ONLY_EXECUTION_UNVALIDATED';
                 }
                 $rows[] = ['strategy_id' => $strategy, 'exchange_id' => $exchange,
                     'status' => $reason, 'missing_candle_series' => $unready,

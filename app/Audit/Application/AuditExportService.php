@@ -408,8 +408,7 @@ final class AuditExportService
             }
             $decisions->where('configuration_hash', $hash);
             $decisions = $window($decisions, 'decision_time');
-            $signalOnly = in_array($account->strategy_id, (array) config('research.forward_paper.signal_only_strategies', []), true)
-                || ($account->exchange_id === 'binance' && $account->strategy_id === 'funding_open_interest_squeeze');
+            $signalOnly = in_array($account->strategy_id, (array) config('research.forward_paper.signal_only_strategies', []), true);
             $risks = DB::table('risk_decisions')->where('paper_account_id', $account->id);
             $positions = DB::table('virtual_positions')->where('paper_account_id', $account->id);
             fputcsv($handle, [
@@ -467,7 +466,7 @@ final class AuditExportService
                 fputcsv($handle, [
                     $exchangeId, $strategyId, $strategy['version'] ?? '', $strategy['configuration_hash'] ?? '',
                     $strategy === null ? 'UNKNOWN'
-                        : ($strategy['execution_eligible'] && ! ($exchangeId === 'binance' && $strategyId === 'funding_open_interest_squeeze')
+                        : ($strategy['execution_eligible']
                             ? 'PAPER_EXECUTION' : 'SIGNAL_ONLY'),
                     $accounts->count(), $matches->count(), $status,
                 ], ',', '"', '');

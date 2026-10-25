@@ -41,13 +41,13 @@ final class MultiExchangeComparisonTest extends TestCase
         $leadLag = collect($rows)->first(fn ($row) => $row['exchange_id'] === 'binance'
             && $row['strategy_id'] === 'btc_eth_lead_lag');
         self::assertSame('CANDLE_HISTORY_INSUFFICIENT', $leadLag['status']);
-        self::assertContains('TWO_LEG_EXECUTION_UNVALIDATED', $leadLag['execution_blockers']);
+        self::assertSame([], $leadLag['execution_blockers']);
         self::assertNotEmpty($leadLag['missing_candle_series']);
 
         $funding = collect($rows)->first(fn ($row) => $row['exchange_id'] === 'binance'
             && $row['strategy_id'] === 'funding_open_interest_squeeze');
         self::assertSame('CANDLE_HISTORY_INSUFFICIENT', $funding['status']);
-        self::assertContains('OPEN_INTEREST_SEMANTICS_UNVALIDATED', $funding['execution_blockers']);
+        self::assertSame([], $funding['execution_blockers']);
     }
 
     public function test_account_lookups_remain_bybit_scoped(): void

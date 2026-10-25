@@ -68,8 +68,7 @@ final readonly class BinanceResearchCycle
                 if ($account === null) {
                     throw new DomainException('Binance account missing.');
                 }
-                if (in_array($id, (array) config('research.forward_paper.signal_only_strategies', []), true)
-                    || $id === 'funding_open_interest_squeeze') {
+                if (in_array($id, (array) config('research.forward_paper.signal_only_strategies', []), true)) {
                     continue;
                 }
                 BinancePaperSafety::assertExecutable($account);
@@ -90,8 +89,7 @@ final readonly class BinanceResearchCycle
         $processed = 0;
         if ($execute) {
             foreach ($primary as $id) {
-                if (in_array($id, (array) config('research.forward_paper.signal_only_strategies', []), true)
-                    || $id === 'funding_open_interest_squeeze') {
+                if (in_array($id, (array) config('research.forward_paper.signal_only_strategies', []), true)) {
                     continue;
                 }
                 $account = $accounts->get($id);

@@ -19,7 +19,7 @@ return [
         'enabled_strategies' => ['trend_pullback', 'bollinger_mean_reversion', 'donchian_atr_breakout', 'regime_switching', 'momentum', 'support_resistance_bounce', 'support_resistance_breakout', 'funding_open_interest_squeeze', 'liquidity_sweep_reversal', 'volatility_compression_breakout', 'btc_eth_lead_lag', 'multi_timeframe_trend_following'],
         // These strategies publish research signals but are not yet eligible for
         // simulated fills until execution semantics are independently validated.
-        'signal_only_strategies' => ['btc_eth_lead_lag'],
+        'signal_only_strategies' => [],
     ],
     'automatic' => [
         'enabled' => (bool) env('RESEARCH_AUTO_BOOTSTRAP', true),

@@ -32,7 +32,7 @@ final class PrimaryStrategyReadinessTest extends TestCase
         self::assertCount(13, $ids);
         self::assertSame($ids, array_keys($metadata->all()));
         self::assertSame(array_values(array_diff($ids, ['baseline'])), array_values((array) config('research.forward_paper.enabled_strategies')));
-        self::assertSame(['btc_eth_lead_lag'], (array) config('research.forward_paper.signal_only_strategies'));
+        self::assertSame([], (array) config('research.forward_paper.signal_only_strategies'));
 
         foreach ($ids as $id) {
             $item = $metadata->get($id);
@@ -41,7 +41,7 @@ final class PrimaryStrategyReadinessTest extends TestCase
             if (in_array($id, ['funding_open_interest_squeeze', 'liquidity_sweep_reversal', 'volatility_compression_breakout', 'btc_eth_lead_lag', 'multi_timeframe_trend_following'], true)) {
                 self::assertSame('1.0.0', $item['version']);
             }
-            self::assertSame($id !== 'btc_eth_lead_lag', $item['execution_eligible'], "Unexpected execution eligibility for {$id}.");
+            self::assertTrue($item['execution_eligible'], "Unexpected execution eligibility for {$id}.");
             self::assertSame($id, $registry->get($id)->id());
             self::assertNotSame([], $item['parameters']);
         }

@@ -70,9 +70,8 @@ final class BinancePaperActivation
                     throw new DomainException('Binance PRIMARY account missing.');
                 }
                 BinancePaperSafety::assertProvenance($account);
-                if (in_array($id, (array) config('research.forward_paper.signal_only_strategies', []), true)
-                    || $id === 'funding_open_interest_squeeze') {
-                    // Unsupported 2-leg execution / OI semantics cannot be activated.
+                if (in_array($id, (array) config('research.forward_paper.signal_only_strategies', []), true)) {
+                    // Signal-only strategies cannot be activated for execution.
                     continue;
                 }
                 if ($account->status === 'ACTIVE') {

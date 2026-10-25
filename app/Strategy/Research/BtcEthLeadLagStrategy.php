@@ -18,7 +18,7 @@ final readonly class BtcEthLeadLagStrategy extends CandidateStrategy
 
     public function description(): string
     {
-        return 'BTC/ETH cross-symbol lead-lag research signal. Signal-only: paired execution is not validated for simulated fills.';
+        return 'BTC/ETH cross-symbol lead-lag research signal with simulated paper execution.';
     }
 
     public function evaluate(StrategyInput $input): SignalDecision
@@ -75,7 +75,7 @@ final readonly class BtcEthLeadLagStrategy extends CandidateStrategy
             [$reason, 'peer_move_exceeds_threshold', 'local_move_lags_peer'],
             score: $strong ? 85 : 80,
             risks: [
-                'paired_execution_not_validated_no_fills_are_simulated',
+                'cross_symbol_lead_lag_divergence_risk',
                 'peer_staleness_is_bounded_but_asynchrony_can_remain',
             ],
             extraSnapshot: [

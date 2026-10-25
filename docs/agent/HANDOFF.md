@@ -1161,3 +1161,50 @@ Updated: 2026-10-24T19:00:00+03:00. Branch `main`, HEAD `33d1448`. Strict PAPER-
   - ECONOM / econom-group resources untouched.
   - Local commit only; no push or deploy.
 
+## Checkpoint VECTOR-V24-ALL-13-PRIMARY-STRATEGIES-PAPER-TRADING-20261025T204000Z — All 13 Primary Strategies Enabled for Paper Trading
+
+- Scope completed: Enabled all 13 PRIMARY strategies for simulated paper trading on both Bybit and Binance, eliminating obsolete permanent `SIGNAL_ONLY` exclusions (`btc_eth_lead_lag` and `funding_open_interest_squeeze`).
+- Root cause:
+  - `config/research.php` had hardcoded `'signal_only_strategies' => ['btc_eth_lead_lag']`.
+  - Multiple services (`PaperExecutionEligibilityService`, `BinancePaperSafety`, `BinancePaperActivation`, `BinanceResearchCycle`, `routes/console.php`, `BinancePaperReadiness`, `AuditExportService`, and `BinancePortabilityMatrix`) hardcoded exclusions or blockers for `funding_open_interest_squeeze` and `btc_eth_lead_lag`.
+- Changes Implemented:
+  1. `config/research.php`:
+     - Set `'signal_only_strategies' => []`.
+  2. `app/PaperTrading/Application/PaperExecutionEligibilityService.php`:
+     - Removed hardcoded rejection of `funding_open_interest_squeeze`.
+  3. `app/Exchanges/Binance/BinancePaperSafety.php`:
+     - Removed hardcoded rejection of `funding_open_interest_squeeze` in `assertExecutable()`.
+  4. `app/Exchanges/Binance/BinancePaperActivation.php`:
+     - Removed exclusion of `funding_open_interest_squeeze` during activation loop; all 13 primary strategies are now activated (`still_signal_only => 0`).
+  5. `app/Exchanges/Binance/BinanceResearchCycle.php`:
+     - Removed exclusion of `funding_open_interest_squeeze` in assertion and paper processing loops.
+  6. `routes/console.php`:
+     - Servicing loop now processes all 13 Binance paper accounts without hardcoded strategy skips.
+  7. `app/Exchanges/Binance/BinancePaperReadiness.php`:
+     - Reports all 13 strategies eligible (`eligible_count: 13`, `signal_only_count: 0`), while dynamically honoring any configured signal-only strategies.
+  8. `app/Audit/Application/AuditExportService.php`:
+     - Removed hardcoded `funding_open_interest_squeeze` exclusions from `writeStrategyDecisions()` and `writePrimaryCoverage()`.
+  9. `app/Exchanges/Binance/BinancePortabilityMatrix.php`:
+     - Replaced hardcoded execution blockers with dynamic checks against `signal_only_strategies`.
+  10. `app/Strategy/Research/BtcEthLeadLagStrategy.php`:
+      - Updated strategy description and risks to reflect validated simulated paper execution.
+  11. Test updates & New Test Suite:
+      - `tests/Feature/PaperTrading/AllThirteenStrategiesExecutionTest.php`: Comprehensive feature test verifying all 13 strategies are execution-eligible, activate to ACTIVE (13/13), execute simulated paper fills on both Bybit and Binance with taker fees and slippage, verify risk rejections, isolate Bybit from Binance, and pass ledger reconciliation (`LEDGER_PASS_ONLY`).
+      - Updated `BinanceActivationCommandTest`, `BinancePaperReadinessTest`, `PrimaryStrategyReadinessTest`, `CandidateStrategiesTest`, `MultiExchangeComparisonTest`, and `AuditExportTest`.
+- Verification and Evidence:
+  - `tests/Feature/PaperTrading/AllThirteenStrategiesExecutionTest.php`: 6/6 PASS (134 assertions).
+  - `tests/Feature/Exchanges/`: 44/44 PASS (590 assertions).
+  - `tests/Feature/PaperTrading/`: 61/61 PASS (1,259 assertions).
+  - `tests/Unit/Strategy/` + `tests/Feature/Strategy/` + `tests/Feature/Audit/`: 70/70 PASS (720 assertions).
+  - Go Tests: 100% PASS with race detector.
+  - Frontend Tests: 55/55 PASS.
+  - Laravel Pint: PASS across all 651 files.
+- Invariants Maintained:
+  - Strictly PAPER-ONLY. No live order placement, trade endpoints, or exchange credentials.
+  - All 26 accounts (13 Bybit, 13 Binance) maintain complete balances, positions, executions, and historical records.
+  - All 26 accounts pass financial ledger reconciliation (`LEDGER_PASS_ONLY`).
+  - `VECTOR_BINANCE_PAPER_EXECUTION_APPROVED` remains the global virtual execution gate.
+  - Autonomous scheduler handles simulated paper trades without manual intervention.
+  - ECONOM / econom-group resources untouched.
+  - Local commit only; no unauthorized git push or production deployment.
+

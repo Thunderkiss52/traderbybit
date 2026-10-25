@@ -259,21 +259,26 @@ final class BinancePaperReadinessTest extends TestCase
         $this->artisan('binance:paper-readiness', ['--require-execution' => true])->assertExitCode(1);
     }
 
-    public function test_readiness_correctly_isolates_11_eligible_and_2_signal_only_strategies(): void
+    public function test_readiness_reports_all_13_strategies_eligible_for_paper_execution(): void
     {
         $service = $this->app->make(BinancePaperReadiness::class);
         $report = $service->inspect();
 
-        self::assertSame(11, $report['strategy_eligibility']['eligible_count']);
-        self::assertSame(2, $report['strategy_eligibility']['signal_only_count']);
+        self::assertSame(13, $report['strategy_eligibility']['eligible_count']);
+        self::assertSame(0, $report['strategy_eligibility']['signal_only_count']);
+        self::assertSame([], $report['strategy_eligibility']['signal_only_strategies']);
 
-        self::assertContains('btc_eth_lead_lag', $report['strategy_eligibility']['signal_only_strategies']);
-        self::assertContains('funding_open_interest_squeeze', $report['strategy_eligibility']['signal_only_strategies']);
-
-        self::assertNotContains('btc_eth_lead_lag', $report['strategy_eligibility']['eligible_strategies']);
-        self::assertNotContains('funding_open_interest_squeeze', $report['strategy_eligibility']['eligible_strategies']);
+        self::assertContains('btc_eth_lead_lag', $report['strategy_eligibility']['eligible_strategies']);
+        self::assertContains('funding_open_interest_squeeze', $report['strategy_eligibility']['eligible_strategies']);
         self::assertContains('baseline', $report['strategy_eligibility']['eligible_strategies']);
         self::assertContains('trend_pullback', $report['strategy_eligibility']['eligible_strategies']);
+
+        // Dynamically verifies configured signal-only strategies are isolated
+        config(['research.forward_paper.signal_only_strategies' => ['btc_eth_lead_lag']]);
+        $dynamicReport = $service->inspect();
+        self::assertSame(12, $dynamicReport['strategy_eligibility']['eligible_count']);
+        self::assertSame(1, $dynamicReport['strategy_eligibility']['signal_only_count']);
+        self::assertContains('btc_eth_lead_lag', $dynamicReport['strategy_eligibility']['signal_only_strategies']);
     }
 
     private function seedInitialTopology(): void
