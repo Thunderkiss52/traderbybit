@@ -944,3 +944,30 @@ Updated: 2026-10-24T19:00:00+03:00. Branch `main`, HEAD `33d1448`. Strict PAPER-
   - `StrategyScheduleTest`, `ScheduledResearchJobsTest`, `PrimaryStrategyReadinessTest`, `CentralExecutionEligibilityTest`: 14 tests, 341 assertions PASS.
   - Pint code formatting: 100% PASS on all modified files.
 - Next task: Task P0-X — PAPER lifecycle and cross-exchange integration.
+
+## Checkpoint VECTOR-V24-RECOVERY-FINAL-CLOSEOUT-20261025T102800Z — Recovery Assignment Complete
+
+- Scope completed: Tasks P0-X (Virtual lifecycle & cross-exchange integration), P1-I (Exchange-isolated queries & caches), P1-S (Truthful dashboard status), P1-E (Audit coverage & hash integrity), P1-D (Deployment integration & operator runbook), and V-FINAL (Acceptance evidence & recovery documentation).
+- Summary of fixes implemented:
+  1. **P0-A1 & P0-A2 (Committed `79f5559`):** Centralized execution eligibility policy in `PaperExecutionEligibilityService`, enforced under lock in `PositionLifecycleService::open`. Fixed prospective canonical configuration binding in `PaperAccountService::strategyForward` for primary accounts with history. Null hashes no longer count as MATCHED in audit exports.
+  2. **P0-B (Committed `85deabf`):** Idempotent `BinanceDeploymentInitializer` composing provisioner, capital allocator, and reconciliation check with cryptographic SHA-256 pre/post Bybit preservation check. Wired `binance:initialize-paper` into `docker/scripts/update.sh` and `docker/scripts/deploy.sh`.
+  3. **P0-C (Committed `725062d`):** Enabled Binance research cycle scheduling (`VECTOR_BINANCE_RESEARCH_CYCLE_ENABLED=true`); updated `BinanceResearchCycle` to persist canonical `strategy_observations` via `StrategyObservationService` with UUIDv5 slot idempotency and operational blockers (`NO_CLOSED_DECISION_CANDLE`, `STALE_OR_FUTURE_DECISION_CANDLE`).
+  4. **P0-X:** Verified synthetic Bybit and Binance account assessment, entry, two partial/terminal exits, per-exchange fees, funding settlement, retry idempotency, and 26-account M9 ledger inspection (`ExchangeRiskSizingTest` 2/47 PASS; `LedgerReconciliationPostgresIntegrationTest` 3/53 PASS).
+  5. **P1-I:** Resolved exchange provenance across `ResearchController.php` endpoints (`candles`, `indicators`, `analysis`, `context`, `positions`) and cache keys (`market:candles:v6`, `market:analysis:v7`, `market:indicators`, `market:latest_close:5m`). Added `resolveExchange()` extracting `X-Exchange` header or query parameter; scoped database queries by exchange.
+  6. **P1-S:** Replaced artificial `ACTIVE` and `10000` USDT values for unprovisioned accounts with `UNPROVISIONED` status and `null` equity/PnL. Added backend-derived `system_status` (`HEALTHY`, `DEGRADED`, `AWAITING_FIRST_CYCLE`, `TOPOLOGY_INCOMPLETE`) to `paper_execution_health`. Updated `DashboardPage.vue` with computed `systemStatus` badge and null-safe metric display.
+  7. **P1-E & P1-D:** Created `docs/verification/V24_MULTI_EXCHANGE_PRODUCTION_RECOVERY.md` with complete architecture report, verified test evidence, and operator post-deployment runbook.
+- Verification and Evidence:
+  - `tests/Feature/MarketData/MarketExchangeIsolationTest.php`: 3 tests, 104 assertions PASS on PostgreSQL (`bybit_test`).
+  - `tests/Feature/MarketData/MarketCacheSerializationTest.php`: 4 tests, 35 assertions PASS.
+  - `tests/Feature/Exchanges/BinanceResearchCycleTest.php`: 8 tests, 194 assertions PASS.
+  - `tests/Feature/Exchanges/ExchangeRiskSizingTest.php`: 2 tests, 47 assertions PASS.
+  - `tests/Feature/Exchanges/BinanceDeploymentInitializationTest.php`: 1 test, 69 assertions PASS.
+  - `tests/Feature/Exchanges/BinancePaperIsolationTest.php`: 7 tests, 105 assertions PASS.
+  - `tests/Feature/PaperTrading/CentralExecutionEligibilityTest.php`: 6 tests, 24 assertions PASS.
+  - `tests/Integration/LedgerReconciliationPostgresIntegrationTest.php`: 3 tests, 53 assertions PASS.
+  - `tests/Feature/Audit/` + `AuditExportTest.php`: 10 tests, 289 assertions PASS.
+  - Frontend test suite (`node --test tests/*.test.js`): 55 tests, 100% PASS.
+  - Frontend production build (`vue-tsc --noEmit && vite build`): PASS with 0 errors in 7.50s.
+  - Laravel Pint code style: 100% PASS on all modified files.
+- Remaining Operator Action:
+  - Production release is operator-controlled via GitHub Actions (`.github/workflows/deploy.yml`). Post-deployment read-only verification commands documented in `docs/verification/V24_MULTI_EXCHANGE_PRODUCTION_RECOVERY.md`.

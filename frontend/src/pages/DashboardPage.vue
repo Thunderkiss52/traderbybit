@@ -47,13 +47,24 @@ const { loading, connected } = usePolling(async () => {
 onBeforeUnmount(() => controller.abort());
 
 const evidence = (value: unknown) => value === null || value === undefined ? '—' : `${value}/100 evidence`;
+
+const systemStatus = computed(() => {
+  if (!connected.value) return { color: 'warning', label: 'RECONNECTING' };
+  const health = data.value?.paper_execution_health;
+  if (!health) return { color: 'positive', label: 'CONNECTED' };
+  if (health.system_status === 'HEALTHY') return { color: 'positive', label: 'OPERATIONAL' };
+  if (health.system_status === 'DEGRADED') return { color: 'warning', label: 'DEGRADED' };
+  if (health.system_status === 'AWAITING_FIRST_CYCLE') return { color: 'info', label: 'AWAITING FIRST CYCLE' };
+  if (health.system_status === 'TOPOLOGY_INCOMPLETE') return { color: 'negative', label: 'ACCOUNTS INCOMPLETE' };
+  return { color: 'positive', label: 'CONNECTED' };
+});
 </script>
 
 <template>
   <q-page padding>
     <div class="page-title">
       <div><span class="eyebrow">FORWARD PAPER TRADING</span><h1>Market & Virtual Portfolio</h1></div>
-      <q-badge :color="connected ? 'positive' : 'warning'">{{ connected ? 'SYNCED' : 'RECONNECTING' }}</q-badge>
+      <q-badge :color="systemStatus.color">{{ systemStatus.label }}</q-badge>
     </div>
     <q-banner v-if="error" class="bg-negative text-white">{{ error }}</q-banner>
     <q-inner-loading :showing="loading && !data.market.length" />
@@ -97,11 +108,11 @@ const evidence = (value: unknown) => value === null || value === undefined ? '�
             <b>{{ portfolio.strategy_id || 'baseline' }}</b>
             <div v-if="portfolio.strategy_version" class="muted">v{{ portfolio.strategy_version }} · {{ portfolio.mode || 'FORWARD_PAPER' }}</div>
           </td>
-          <td class="text-center"><q-badge :color="portfolio.status === 'ACTIVE' ? 'positive' : 'negative'">{{ portfolio.status || 'ACTIVE' }}</q-badge></td>
+          <td class="text-center"><q-badge :color="portfolio.status === 'ACTIVE' ? 'positive' : (portfolio.status === 'BLOCKED' ? 'warning' : 'negative')">{{ portfolio.status || 'UNPROVISIONED' }}</q-badge></td>
           <td class="text-center"><q-badge color="primary">{{ portfolio.evaluation_status || 'STRATEGY_EVALUATING' }}</q-badge></td>
           <td class="text-center"><q-badge color="grey-7">{{ portfolio.ml_status || 'ML_NOT_TRAINED' }}</q-badge></td>
-          <td class="text-right">{{ portfolio.current_equity }}</td>
-          <td class="text-right">{{ portfolio.realized_pnl }}</td><td class="text-right">{{ portfolio.unrealized_pnl }}</td>
+          <td class="text-right">{{ portfolio.current_equity ?? '—' }}</td>
+          <td class="text-right">{{ portfolio.realized_pnl ?? '—' }}</td><td class="text-right">{{ portfolio.unrealized_pnl ?? '—' }}</td>
         </tr></tbody>
       </q-markup-table>
       <EmptyState v-if="!(data.strategy_portfolios || []).length" />
