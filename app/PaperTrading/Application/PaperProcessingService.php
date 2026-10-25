@@ -15,6 +15,7 @@ use App\PaperTrading\Infrastructure\Persistence\PaperAccountRecord;
 use App\PaperTrading\Infrastructure\Persistence\PaperSignalStateRecord;
 use App\PaperTrading\Infrastructure\Persistence\RiskDecisionRecord;
 use App\PaperTrading\Infrastructure\Persistence\VirtualPositionRecord;
+use App\Strategy\Application\StrategyRegistry;
 use App\Strategy\Infrastructure\Persistence\MarketContextRecord;
 use App\Strategy\Infrastructure\Persistence\SignalRecord;
 use App\Strategy\Infrastructure\Persistence\StrategyObservationRecord;
@@ -24,6 +25,7 @@ use DateTimeImmutable;
 use Illuminate\Contracts\Cache\Factory as CacheFactory;
 use Illuminate\Support\Facades\DB;
 use Ramsey\Uuid\Uuid;
+use Throwable;
 
 final readonly class PaperProcessingService
 {
@@ -50,6 +52,22 @@ final readonly class PaperProcessingService
             }
         } elseif ($account->exchange_id !== 'bybit') {
             throw new \DomainException('Unknown paper account exchange.');
+        }
+        if ($account->is_primary
+            && $account->configuration_hash === null
+            && $account->strategy_id !== null
+            && $account->mode === 'STRATEGY_FORWARD_PAPER'
+            && $account->exchange_id === 'bybit'
+        ) {
+            try {
+                $registry = app(StrategyRegistry::class);
+                $strategy = $registry->get($account->strategy_id);
+                if ($strategy->version() === $account->strategy_version) {
+                    $account = $this->accounts->strategyForward($account->strategy_id, $strategy->version(), $strategy->parameters());
+                }
+            } catch (Throwable) {
+                // If strategy cannot be resolved or adopted, proceed to normal eligibility check
+            }
         }
         $eligibility = $this->eligibility ?? app(PaperExecutionEligibilityService::class);
         $historical = $at !== null;

@@ -971,3 +971,22 @@ Updated: 2026-10-24T19:00:00+03:00. Branch `main`, HEAD `33d1448`. Strict PAPER-
   - Laravel Pint code style: 100% PASS on all modified files.
 - Remaining Operator Action:
   - Production release is operator-controlled via GitHub Actions (`.github/workflows/deploy.yml`). Post-deployment read-only verification commands documented in `docs/verification/V24_MULTI_EXCHANGE_PRODUCTION_RECOVERY.md`.
+
+## Checkpoint VECTOR-V24-RECOVERY-REGRESSION-FIX-20261025T105000Z — Full Suite Pass (761/761)
+
+- Scope completed: Resolved the regression in `SupportResistanceStrategiesTest::test_sr_signals_execute_in_isolated_strategy_paper_account` and verified full 761-test backend regression suite.
+- Root cause:
+  - Bybit primary accounts created by lazy resolution / migration initialize with `configuration_hash = null` to support deferred prospective adoption.
+  - When `PaperProcessingService::process` invoked `isAccountEntryEligible()`, unadopted primary accounts were evaluated as `forward_configuration_retired`, blocking signal ingestion and virtual execution.
+- Fix implemented:
+  - In `app/PaperTrading/Application/PaperProcessingService.php`:
+    - Before evaluating eligibility, detect canonical Bybit primary accounts with `configuration_hash === null` and matching strategy version.
+    - Invoke `PaperAccountService::strategyForward()` to adopt the canonical configuration hash and strategy parameters.
+- Verification and Evidence:
+  - `tests/Feature/Strategy/SupportResistanceStrategiesTest.php`: 6/6 PASS (74 assertions).
+  - `tests/Feature/PaperTrading/ThirteenPrimaryAccountsTest.php`: 3/3 PASS.
+  - `tests/Feature/PaperTrading/CentralExecutionEligibilityTest.php`: 6/6 PASS.
+  - Full PHPUnit Regression Suite (`vendor/bin/phpunit --no-coverage` on isolated PostgreSQL `bybit_test`):
+    - **761 tests, 5,641 assertions, 0 failures, 1 skipped** (100% PASS, runtime 01:06).
+  - Laravel Pint (`vendor/bin/pint --test`): **PASS (643 files checked, 0 errors)**.
+- Status: Clean, all acceptance criteria satisfied, zero regressions.
