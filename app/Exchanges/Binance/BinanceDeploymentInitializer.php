@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Exchanges\Binance;
 
+use App\PaperTrading\Application\EquitySnapshotRepairService;
 use App\PaperTrading\Application\PaperAccountService;
 use App\Strategy\Application\StrategyRegistry;
 use Illuminate\Contracts\Cache\Factory as CacheFactory;
@@ -24,6 +25,7 @@ final class BinanceDeploymentInitializer
         private PaperAccountService $accounts,
         private StrategyRegistry $registry,
         private CacheFactory $cache,
+        private ?EquitySnapshotRepairService $snapshotRepair = null,
     ) {}
 
     public function initialize(string $amount = '10000', string $approvalReference = 'OWNER-VECTOR-20261023'): array
@@ -67,6 +69,10 @@ final class BinanceDeploymentInitializer
                 throw new RuntimeException('Bybit financial state integrity violation during Binance initialization.');
             }
 
+            // Step 3.5: Ensure existing Binance checkpoints are consistent before reconciliation
+            $repairService = $this->snapshotRepair ?? app(EquitySnapshotRepairService::class);
+            $repairResult = $repairService->repair(apply: true);
+
             // Step 4: Run full M9 26-account reconciliation
             $reconcileReport = $this->reconciliation->inspect();
             if ($reconcileReport['status'] !== 'LEDGER_PASS_ONLY') {
@@ -77,6 +83,7 @@ final class BinanceDeploymentInitializer
                 'status' => 'INITIALIZED_SUCCESSFULLY',
                 'provisioned' => $provisionResult,
                 'capital' => $capitalResult,
+                'snapshot_repair' => $repairResult,
                 'reconciliation' => $reconcileReport,
                 'bybit_history_preserved' => true,
                 'canonical_accounts_count' => 26,

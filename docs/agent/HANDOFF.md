@@ -1070,7 +1070,9 @@ Updated: 2026-10-24T19:00:00+03:00. Branch `main`, HEAD `33d1448`. Strict PAPER-
      - `app/PaperTrading/Application/PaperAccountService.php`: In `ensureInitialSnapshot()`, persists `'exchange_id' => $account->exchange_id`.
      - `app/Strategy/Application/ResearchPortfolioManager.php`: In `approve()`, persists `'exchange_id' => $account->exchange_id`.
      - `app/PaperTrading/Infrastructure/Persistence/EquitySnapshotRecord.php`: Model `creating` hook auto-populates `exchange_id` from owning account if omitted.
-  2. **Safe, Auditable, Idempotent Repair Service and Command:**
+  2. **Safe, Auditable, Idempotent Repair Service, Migration, and Command:**
+     - `database/migrations/2026_10_25_140000_repair_cross_exchange_equity_snapshots.php`: Automatic data migration executing the idempotent repair during deployment `php artisan migrate`, ensuring existing mislabeled checkpoint snapshots are repaired before M9 reconciliation checks execute.
+     - `app/Exchanges/Binance/BinanceDeploymentInitializer.php`: Added Step 3.5 calling `EquitySnapshotRepairService::repair(apply: true)` to ensure zero M9 failures during redeployments.
      - `app/PaperTrading/Application/EquitySnapshotRepairService.php`:
        - Strict selection: only canonical Binance primary accounts (`is_primary = true`, `exchange_id = 'binance'`), `stored_exchange = 'bybit'`, and `source_event_key` begins with `'checkpoint:'`.
        - Mutation restricted strictly to `equity_snapshots.exchange_id = 'binance'`. No balances, positions, executions, PnL, timestamps, or metadata modified.
