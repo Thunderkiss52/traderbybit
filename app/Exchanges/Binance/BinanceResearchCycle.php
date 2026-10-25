@@ -7,8 +7,10 @@ namespace App\Exchanges\Binance;
 use App\PaperTrading\Application\PaperProcessingService;
 use App\PaperTrading\Infrastructure\Persistence\PaperAccountRecord;
 use App\Strategy\Application\StrategyInputFactory;
+use App\Strategy\Application\StrategyObservationService;
 use App\Strategy\Application\StrategyRegistry;
 use App\Strategy\Contracts\SignalRepository;
+use DateTimeImmutable;
 use DomainException;
 
 /** Owner-operated PAPER/RESEARCH cycle; never places real exchange orders. */
@@ -19,22 +21,35 @@ final readonly class BinanceResearchCycle
         private StrategyInputFactory $inputs,
         private SignalRepository $signals,
         private PaperProcessingService $paper,
+        private StrategyObservationService $observations,
     ) {}
 
-    public function run(string $symbol, bool $execute = false): array
+    public function run(string $symbol, bool $execute = false, ?DateTimeImmutable $at = null): array
     {
         if (! in_array($symbol, (array) config('market_data.symbols', []), true)) {
             throw new DomainException('Unconfigured Binance market symbol.');
         }
-        $at = $this->inputs->latestDecisionTime('binance', 'linear', $symbol);
+
+        $now = now('UTC')->getTimestamp();
         if ($at === null) {
-            return ['exchange_id' => 'binance', 'symbol' => $symbol, 'status' => 'NO_CLOSED_DECISION_CANDLE', 'signals' => 0, 'processed' => 0];
+            $at = $this->inputs->latestDecisionTime('binance', 'linear', $symbol);
+            if ($at === null) {
+                return ['exchange_id' => 'binance', 'symbol' => $symbol, 'status' => 'NO_CLOSED_DECISION_CANDLE', 'signals' => 0, 'processed' => 0];
+            }
+            // An ingestion cycle may lag behind the wall clock. Never replay old
+            // decisions as new paper trades or manufacture a forward signal.
+            if ($at->getTimestamp() > $now || $now - $at->getTimestamp() > 300) {
+                return ['exchange_id' => 'binance', 'symbol' => $symbol, 'status' => 'STALE_OR_FUTURE_DECISION_CANDLE', 'signals' => 0, 'processed' => 0];
+            }
+        } else {
+            if ($at->getTimestamp() > $now) {
+                return ['exchange_id' => 'binance', 'symbol' => $symbol, 'status' => 'STALE_OR_FUTURE_DECISION_CANDLE', 'signals' => 0, 'processed' => 0];
+            }
+            if ($execute && ($now - $at->getTimestamp() > 300)) {
+                return ['exchange_id' => 'binance', 'symbol' => $symbol, 'status' => 'STALE_OR_FUTURE_DECISION_CANDLE', 'signals' => 0, 'processed' => 0];
+            }
         }
-        // An ingestion cycle may lag behind the wall clock. Never replay old
-        // decisions as new paper trades or manufacture a forward signal.
-        if ($at->getTimestamp() > time() || time() - $at->getTimestamp() > 300) {
-            return ['exchange_id' => 'binance', 'symbol' => $symbol, 'status' => 'STALE_OR_FUTURE_DECISION_CANDLE', 'signals' => 0, 'processed' => 0];
-        }
+
         $primary = (array) config('paper.primary_strategies', []);
         $accounts = null;
         if ($execute) {
@@ -60,18 +75,18 @@ final readonly class BinanceResearchCycle
                 BinancePaperSafety::assertExecutable($account);
             }
         }
+
+        $observed = $this->observations->observe($symbol, $at, 'binance', 'linear');
         $results = [];
-        foreach ($primary as $id) {
-            $strategy = $this->registry->get((string) $id);
-            $peer = $id === 'btc_eth_lead_lag' ? StrategyInputFactory::peerSymbol($symbol) : null;
-            $input = $this->inputs->make('binance', 'linear', $symbol, $at, $peer);
-            $decision = $strategy->evaluate($input);
-            if ($decision->exchange !== 'binance' || $decision->symbol !== $symbol) {
-                throw new DomainException('Strategy produced a cross-exchange signal.');
-            }
-            $this->signals->createIfAbsent($decision);
-            $results[] = ['strategy_id' => $id, 'side' => $decision->side->value, 'signal_id' => $decision->id];
+        foreach ($observed as $obs) {
+            $results[] = [
+                'strategy_id' => $obs->strategy_id,
+                'side' => (string) $obs->side,
+                'signal_id' => (string) $obs->id,
+                'observation_id' => (string) $obs->id,
+            ];
         }
+
         $processed = 0;
         if ($execute) {
             foreach ($primary as $id) {
@@ -79,14 +94,20 @@ final readonly class BinanceResearchCycle
                     || $id === 'funding_open_interest_squeeze') {
                     continue;
                 }
-                $processed += (int) $this->paper->process($accounts->get($id)->id, $symbol)['events_processed'];
+                $account = $accounts->get($id);
+                if ($account !== null) {
+                    $processed += (int) $this->paper->process($account->id, $symbol)['events_processed'];
+                }
             }
         }
 
         return [
-            'exchange_id' => 'binance', 'symbol' => $symbol, 'at_utc' => $at->format(DATE_ATOM),
+            'exchange_id' => 'binance',
+            'symbol' => $symbol,
+            'at_utc' => $at->format(DATE_ATOM),
             'status' => $execute ? 'PAPER_PROCESSED' : 'SIGNAL_RESEARCH_ONLY',
-            'signals' => count($results), 'processed_events' => $processed,
+            'signals' => count($results),
+            'processed_events' => $processed,
             'strategy_signals' => $results,
         ];
     }

@@ -83,8 +83,9 @@ Artisan::command('binance:ingest-funding {symbol=BTCUSDT}', function (BinanceFun
     $this->line(json_encode($ingestion->ingest(strtoupper((string) $this->argument('symbol'))), JSON_THROW_ON_ERROR));
 })->purpose('Ingest verified public Binance funding settlements with source mark price');
 
-Artisan::command('binance:research-cycle {symbol=BTCUSDT} {--paper : Process funded approved PAPER accounts only}', function (BinanceResearchCycle $cycle): void {
-    $this->line(json_encode($cycle->run(strtoupper((string) $this->argument('symbol')), (bool) $this->option('paper')), JSON_THROW_ON_ERROR));
+Artisan::command('binance:research-cycle {symbol=BTCUSDT} {--paper : Process funded approved PAPER accounts only} {--at= : ISO-8601 decision timestamp}', function (BinanceResearchCycle $cycle): void {
+    $at = $this->option('at') ? new DateTimeImmutable((string) $this->option('at')) : null;
+    $this->line(json_encode($cycle->run(strtoupper((string) $this->argument('symbol')), (bool) $this->option('paper'), $at), JSON_THROW_ON_ERROR));
 })->purpose('Evaluate all 13 Binance strategy families; PAPER is separately gated');
 
 Artisan::command('binance:paper-reconcile', function (ExchangePaperReconciliation $check): int {

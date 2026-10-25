@@ -916,3 +916,31 @@ Updated: 2026-10-24T19:00:00+03:00. Branch `main`, HEAD `33d1448`. Strict PAPER-
   - `BinancePaperIsolationTest` (7/105) and `CentralExecutionEligibilityTest` (6/24) 100% PASS.
   - Pint code formatting: 100% PASS on all modified files.
 - Next task: Task P0-C — Binance scheduling, provenance and observations (observation collection, schedule activation, real public data).
+
+## Checkpoint VECTOR-V24-RECOVERY-P0-C-20261025T101900Z — Task P0-C Complete
+
+- Scope completed: Task P0-C (Binance scheduling, provenance and observations).
+- Root cause identified and resolved:
+  1. `config/exchanges.php` defaulted `'research_cycle_enabled'` to `false`, causing the Binance research schedule to never run.
+  2. `BinanceResearchCycle::run()` saved signals but omitted persisting records in `strategy_observations`, causing the dashboard to show `AWAITING_FIRST_CYCLE`, `NOT_EVALUATED`, and 0 BUY/SELL/SKIP decisions for Binance.
+- Changes implemented:
+  - `config/exchanges.php`: Changed `'research_cycle_enabled' => (bool) env('VECTOR_BINANCE_RESEARCH_CYCLE_ENABLED', true)` so public market ingestion and research cycles are active by default while keeping PAPER execution disabled.
+  - `app/Exchanges/Binance/BinanceResearchCycle.php`:
+    - Injected `StrategyObservationService` to delegate multi-timeframe strategy evaluation and persistent recording of canonical `strategy_observations` with deterministic UUIDv5 slot idempotency, canonical configuration hash, version, diagnostics, and level interaction.
+    - Enforced strict operational blockers (`NO_CLOSED_DECISION_CANDLE` when missing, `STALE_OR_FUTURE_DECISION_CANDLE` when decision candle is > 300s old or in the future).
+    - Maintained strict separation between research signal observation and paper execution.
+  - `routes/console.php`: Updated `binance:research-cycle` command to accept optional `--at` decision timestamp for explicit point-in-time evaluation.
+  - `tests/Feature/Exchanges/BinanceResearchCycleTest.php`: New feature test suite verifying:
+    - Unconfigured symbol rejection (`DomainException`)
+    - Missing decision candle operational blocker (`NO_CLOSED_DECISION_CANDLE`)
+    - Stale (>300s) and future decision candle blockers (`STALE_OR_FUTURE_DECISION_CANDLE`)
+    - 13 Binance strategy stream evaluations and persisted observations with complete diagnostics and analysis
+    - Deterministic UUIDv5 slot idempotency on repeat execution (no duplicate observations or signals)
+    - Unapproved paper execution fail-closed behavior
+    - Scheduler registration for all 10 scheduled Binance tasks (`context`, `5m`, `htf`, `funding`, `signals` for BTCUSDT and ETHUSDT)
+- Verification and Evidence:
+  - `tests/Feature/Exchanges/BinanceResearchCycleTest.php`: 8 tests, 194 assertions PASS on isolated PostgreSQL (`bybit_test`).
+  - `tests/Feature/Exchanges/` and `tests/Unit/Exchanges/`: 55 tests, 584 assertions PASS.
+  - `StrategyScheduleTest`, `ScheduledResearchJobsTest`, `PrimaryStrategyReadinessTest`, `CentralExecutionEligibilityTest`: 14 tests, 341 assertions PASS.
+  - Pint code formatting: 100% PASS on all modified files.
+- Next task: Task P0-X — PAPER lifecycle and cross-exchange integration.

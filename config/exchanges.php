@@ -16,7 +16,7 @@ return [
         'paper_execution_approved' => (bool) env('VECTOR_BINANCE_PAPER_EXECUTION_APPROVED', false),
         'paper_taker_rate' => env('VECTOR_BINANCE_PAPER_TAKER_RATE'), // Approved, versioned exchange fee evidence required.
         'paper_slippage_rate' => env('VECTOR_BINANCE_PAPER_SLIPPAGE_RATE'), // Exchange-specific, not the Bybit assumption.
-        'research_cycle_enabled' => (bool) env('VECTOR_BINANCE_RESEARCH_CYCLE_ENABLED', false),
+        'research_cycle_enabled' => (bool) env('VECTOR_BINANCE_RESEARCH_CYCLE_ENABLED', true),
     ],
     // No live credentials or order-placement endpoint belongs in this configuration.
 ];
