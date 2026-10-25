@@ -55,7 +55,7 @@ final readonly class PaperProcessingService
         }
         $eligibility = $this->eligibility ?? app(PaperExecutionEligibilityService::class);
         $historical = $at !== null;
-        $at ??= $this->latestClosedTime($account->exchange_id, $symbol) ?? new DateTimeImmutable('now UTC');
+        $at ??= $this->latestClosedTime($account->exchange_id, $symbol) ?? now('UTC')->toDateTimeImmutable();
         $lock = $this->cache->lock("paper:process:{$account->id}", (int) $this->config['processing']['lock_seconds']);
         if (! $lock->get()) {
             throw new \RuntimeException('Paper account is already being processed.');
@@ -126,11 +126,78 @@ final readonly class PaperProcessingService
                 ->whereColumn('paper_signal_states.signal_id', 'signals.id')
                 ->where('paper_signal_states.paper_account_id', $account->id))
             ->oldest('decision_time')->oldest('id')->limit((int) $this->config['processing']['batch_size'])->get();
+        $currentTime = $forwardOnly ? now('UTC')->toDateTimeImmutable() : $at;
         foreach ($signals as $signal) {
-            if ($forwardOnly && $signal->created_at->getTimestamp() > $signal->decision_time->getTimestamp() + 300) {
-                // Late historical observations are research-only, never forward fills.
-                DB::transaction(function () use ($account, $signal): void {
+            if (PaperSignalStateRecord::query()->where('paper_account_id', $account->id)->where('signal_id', $signal->id)->exists()) {
+                continue;
+            }
+
+            if ($forwardOnly && $currentTime->getTimestamp() >= $signal->expires_at->getTimestamp()) {
+                DB::transaction(function () use ($account, $signal, $currentTime): void {
                     $decisionId = Uuid::uuid5(Uuid::NAMESPACE_URL, "traderbybit:risk:{$account->id}:{$signal->id}:{$this->config['risk_version']}")->toString();
+                    RiskDecisionRecord::query()->insertOrIgnore([[
+                        'id' => $decisionId,
+                        'paper_account_id' => $account->id,
+                        'exchange_id' => $account->exchange_id,
+                        'signal_id' => $signal->id,
+                        'allowed' => false,
+                        'reasons' => json_encode(['signal_expired_before_ingestion'], JSON_THROW_ON_ERROR),
+                        'snapshot' => json_encode([
+                            'reason' => 'signal_expired_before_ingestion',
+                            'decision_time' => $signal->decision_time->format(DATE_ATOM),
+                            'expires_at' => $signal->expires_at->format(DATE_ATOM),
+                            'ingested_at' => $currentTime->format(DATE_ATOM),
+                        ], JSON_THROW_ON_ERROR),
+                        'risk_version' => (string) $this->config['risk_version'],
+                        'decided_at' => $currentTime,
+                        'created_at' => now(),
+                        'updated_at' => now(),
+                    ]]);
+                    PaperSignalStateRecord::query()->firstOrCreate([
+                        'paper_account_id' => $account->id,
+                        'exchange_id' => $account->exchange_id,
+                        'signal_id' => $signal->id,
+                    ], [
+                        'id' => Uuid::uuid5(Uuid::NAMESPACE_URL, "traderbybit:signal-state:{$account->id}:{$signal->id}")->toString(),
+                        'status' => SignalLifecycle::Expired->value,
+                        'reason' => 'signal_expired_before_ingestion',
+                        'processed_at' => $currentTime,
+                    ]);
+                    $this->journal->append(
+                        $account->id,
+                        $signal->id,
+                        null,
+                        'SIGNAL_EXPIRED',
+                        $currentTime,
+                        [
+                            'reason' => 'signal_expired_before_ingestion',
+                            'decision_time' => $signal->decision_time->format(DATE_ATOM),
+                            'expires_at' => $signal->expires_at->format(DATE_ATOM),
+                        ],
+                        "expired:{$account->id}:{$signal->id}"
+                    );
+                    $this->updateObservationDiagnostics($account, $signal, [
+                        'risk_approved' => false,
+                        'risk_rejection_reasons' => ['signal_expired_before_ingestion'],
+                        'paper_execution' => 'ENTRY_EXPIRED',
+                    ]);
+                });
+
+                continue;
+            }
+
+            $maxIngestLag = (int) ($this->config['processing']['max_signal_ingest_lag_seconds'] ?? 300);
+            if ($forwardOnly && (
+                $signal->created_at->getTimestamp() > $signal->decision_time->getTimestamp() + $maxIngestLag
+                || $currentTime->getTimestamp() > $signal->decision_time->getTimestamp() + $maxIngestLag
+            )) {
+                // Late historical observations or delayed scheduled cycles are research-only, never forward fills.
+                DB::transaction(function () use ($account, $signal, $currentTime): void {
+                    $decisionId = Uuid::uuid5(Uuid::NAMESPACE_URL, "traderbybit:risk:{$account->id}:{$signal->id}:{$this->config['risk_version']}")->toString();
+                    $delay = max(
+                        $signal->created_at->getTimestamp() - $signal->decision_time->getTimestamp(),
+                        $currentTime->getTimestamp() - $signal->decision_time->getTimestamp()
+                    );
                     RiskDecisionRecord::query()->insertOrIgnore([[
                         'id' => $decisionId,
                         'paper_account_id' => $account->id, 'exchange_id' => $account->exchange_id,
@@ -139,12 +206,13 @@ final readonly class PaperProcessingService
                         'reasons' => json_encode(['late_signal_not_executable'], JSON_THROW_ON_ERROR),
                         'snapshot' => json_encode([
                             'reason' => 'late_signal_not_executable',
-                            'delay_seconds' => $signal->created_at->getTimestamp() - $signal->decision_time->getTimestamp(),
+                            'delay_seconds' => $delay,
                             'decision_time' => $signal->decision_time->format(DATE_ATOM),
                             'created_at' => $signal->created_at->format(DATE_ATOM),
+                            'ingested_at' => $currentTime->format(DATE_ATOM),
                         ], JSON_THROW_ON_ERROR),
                         'risk_version' => (string) $this->config['risk_version'],
-                        'decided_at' => $signal->decision_time,
+                        'decided_at' => $currentTime,
                         'created_at' => now(),
                         'updated_at' => now(),
                     ]]);
@@ -155,17 +223,17 @@ final readonly class PaperProcessingService
                         'id' => Uuid::uuid5(Uuid::NAMESPACE_URL, "traderbybit:signal-state:{$account->id}:{$signal->id}")->toString(),
                         'status' => SignalLifecycle::LateSignalNotExecutable->value,
                         'reason' => 'late_signal_not_executable',
-                        'processed_at' => $signal->decision_time,
+                        'processed_at' => $currentTime,
                     ]);
                     $this->journal->append(
                         $account->id,
                         $signal->id,
                         null,
                         'LATE_SIGNAL_NOT_EXECUTABLE',
-                        $signal->decision_time->toDateTimeImmutable(),
+                        $currentTime,
                         [
                             'reason' => 'late_signal_not_executable',
-                            'delay_seconds' => $signal->created_at->getTimestamp() - $signal->decision_time->getTimestamp(),
+                            'delay_seconds' => $delay,
                         ],
                         "late:{$account->id}:{$signal->id}"
                     );
@@ -178,31 +246,30 @@ final readonly class PaperProcessingService
 
                 continue;
             }
-            if (PaperSignalStateRecord::query()->where('paper_account_id', $account->id)->where('signal_id', $signal->id)->exists()) {
-                continue;
-            }
             if ($signal->side === 'SKIP') {
-                DB::transaction(function () use ($account, $signal): void {
+                DB::transaction(function () use ($account, $signal, $currentTime, $forwardOnly): void {
+                    $decidedAt = $forwardOnly ? $currentTime : $signal->decision_time->toDateTimeImmutable();
                     PaperSignalStateRecord::query()->firstOrCreate([
                         'paper_account_id' => $account->id, 'exchange_id' => $account->exchange_id, 'signal_id' => $signal->id,
                     ], [
                         'id' => Uuid::uuid5(Uuid::NAMESPACE_URL, "traderbybit:signal-state:{$account->id}:{$signal->id}")->toString(),
                         'status' => SignalLifecycle::Completed->value, 'reason' => $signal->reasons[0] ?? 'analytical_skip',
-                        'processed_at' => $signal->decision_time,
+                        'processed_at' => $decidedAt,
                     ]);
-                    $this->journal->append($account->id, $signal->id, null, 'ANALYTICAL_SKIP', $signal->decision_time->toDateTimeImmutable(), ['reasons' => $signal->reasons], "skip:{$account->id}:{$signal->id}");
+                    $this->journal->append($account->id, $signal->id, null, 'ANALYTICAL_SKIP', $decidedAt, ['reasons' => $signal->reasons], "skip:{$account->id}:{$signal->id}");
                 });
 
                 continue;
             }
-            DB::transaction(function () use ($account, $signal): void {
+            DB::transaction(function () use ($account, $signal, $currentTime, $forwardOnly): void {
                 $locked = PaperAccountRecord::query()->lockForUpdate()->findOrFail($account->id);
                 $assessment = $this->assessment($locked, $signal);
                 $decisionId = Uuid::uuid5(Uuid::NAMESPACE_URL, "traderbybit:risk:{$locked->id}:{$signal->id}:{$this->config['risk_version']}")->toString();
+                $decidedAt = $forwardOnly ? $currentTime : $signal->decision_time->toDateTimeImmutable();
                 RiskDecisionRecord::query()->insertOrIgnore([[
                     'id' => $decisionId, 'paper_account_id' => $locked->id, 'exchange_id' => $locked->exchange_id, 'signal_id' => $signal->id, 'allowed' => $assessment['allowed'],
                     'reasons' => json_encode($assessment['reasons'], JSON_THROW_ON_ERROR), 'snapshot' => json_encode($assessment['snapshot'], JSON_THROW_ON_ERROR),
-                    'risk_version' => (string) $this->config['risk_version'], 'decided_at' => $signal->decision_time, 'created_at' => now(), 'updated_at' => now(),
+                    'risk_version' => (string) $this->config['risk_version'], 'decided_at' => $decidedAt, 'created_at' => now(), 'updated_at' => now(),
                 ]]);
                 $status = $assessment['allowed'] ? SignalLifecycle::PendingEntry : SignalLifecycle::Rejected;
                 PaperSignalStateRecord::query()->create([
@@ -210,7 +277,7 @@ final readonly class PaperProcessingService
                     'paper_account_id' => $locked->id, 'exchange_id' => $locked->exchange_id, 'signal_id' => $signal->id, 'status' => $status->value,
                     'reason' => $assessment['reasons'][0] ?? null, 'processed_at' => $signal->decision_time,
                 ]);
-                $this->journal->append($locked->id, $signal->id, null, $assessment['allowed'] ? 'RISK_ACCEPTED' : 'RISK_REJECTED', $signal->decision_time->toDateTimeImmutable(), $assessment, "risk:{$decisionId}");
+                $this->journal->append($locked->id, $signal->id, null, $assessment['allowed'] ? 'RISK_ACCEPTED' : 'RISK_REJECTED', $decidedAt, $assessment, "risk:{$decisionId}");
                 $this->updateObservationDiagnostics($locked, $signal, [
                     'risk_approved' => $assessment['allowed'],
                     'risk_rejection_reasons' => $assessment['allowed'] ? [] : $assessment['reasons'],
@@ -318,6 +385,19 @@ final readonly class PaperProcessingService
             || $signal->strategy_id !== $account->strategy_id) {
             throw new \DomainException('Cross-exchange paper signal/account mismatch.');
         }
+
+        $currentTime = $historical ? $at : now('UTC')->toDateTimeImmutable();
+        if ($state->status === SignalLifecycle::PendingEntry->value) {
+            if (! $historical && $currentTime->getTimestamp() >= $signal->expires_at->getTimestamp()) {
+                SignalLifecycle::PendingEntry->transitionTo(SignalLifecycle::Expired);
+                $state->update(['status' => SignalLifecycle::Expired->value, 'reason' => 'entry_window_expired', 'processed_at' => $currentTime]);
+                $this->updateObservationDiagnostics($account, $signal, ['paper_execution' => 'ENTRY_EXPIRED']);
+                $this->journal->append($account->id, $signal->id, null, 'SIGNAL_EXPIRED', $currentTime, [], "expired:{$account->id}:{$signal->id}");
+
+                return 0;
+            }
+        }
+
         $watermark = $state->processed_at?->toDateTimeImmutable() ?? $signal->decision_time->toDateTimeImmutable();
         $bars = $this->bars($signal->exchange, $signal->category, $signal->symbol, $watermark, $at);
         $processed = 0;
@@ -336,18 +416,24 @@ final readonly class PaperProcessingService
             $expected = $bar->closeTime->modify('+5 minutes');
             $state->refresh();
             if ($state->status === SignalLifecycle::PendingEntry->value) {
-                if (! $historical && $bar->closeTime->getTimestamp() < time() - (int) ($this->config['processing']['max_forward_fill_lag_seconds'] ?? 600)) {
-                    // Never simulate a fill on a bar that had already passed before the processor ran.
-                    $state->update(['processed_at' => $bar->closeTime]);
-
-                    continue;
-                }
-                if ($bar->closeTime > $signal->expires_at->toDateTimeImmutable()) {
+                if ((! $historical && $currentTime->getTimestamp() >= $signal->expires_at->getTimestamp())
+                    || $bar->closeTime > $signal->expires_at->toDateTimeImmutable()) {
                     SignalLifecycle::PendingEntry->transitionTo(SignalLifecycle::Expired);
                     $state->update(['status' => SignalLifecycle::Expired->value, 'reason' => 'entry_window_expired', 'processed_at' => $bar->closeTime]);
                     $this->updateObservationDiagnostics($account, $signal, ['paper_execution' => 'ENTRY_EXPIRED']);
                     $this->journal->append($account->id, $signal->id, null, 'SIGNAL_EXPIRED', $bar->closeTime, [], "expired:{$account->id}:{$signal->id}");
                     break;
+                }
+                if (! $historical) {
+                    $maxLag = (int) ($this->config['processing']['max_forward_fill_lag_seconds'] ?? 300);
+                    if ($bar->closeTime->getTimestamp() <= $state->created_at->getTimestamp()
+                        || $bar->closeTime->getTimestamp() < $currentTime->getTimestamp() - $maxLag) {
+                        // Never simulate a forward fill on a bar that closed before the order was in PENDING_ENTRY
+                        // or older than max_forward_fill_lag_seconds.
+                        $state->update(['processed_at' => $bar->closeTime]);
+
+                        continue;
+                    }
                 }
                 $quote = $this->execution->entry($signal->side, $signal->entry_low, $signal->entry_high, $signal->stop_loss, $signal->take_profit_1, $signal->take_profit_2, $signal->decision_time->toDateTimeImmutable(), $signal->expires_at->toDateTimeImmutable(), $bar, $account->exchange_id);
                 $this->journal->append($account->id, $signal->id, null, 'ENTRY_EVALUATED', $bar->closeTime, [

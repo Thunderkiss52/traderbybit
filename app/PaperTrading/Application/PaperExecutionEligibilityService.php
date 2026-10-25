@@ -5,11 +5,13 @@ declare(strict_types=1);
 namespace App\PaperTrading\Application;
 
 use App\Exchanges\Binance\BinancePaperSafety;
+use App\PaperTrading\Domain\SignalLifecycle;
 use App\PaperTrading\Infrastructure\Persistence\PaperAccountRecord;
 use App\PaperTrading\Infrastructure\Persistence\PaperSignalStateRecord;
 use App\Research\Infrastructure\Persistence\LearningCandidateStrategyRecord;
 use App\Strategy\Application\StrategyRegistry;
 use App\Strategy\Infrastructure\Persistence\SignalRecord;
+use DateTimeImmutable;
 use DomainException;
 use Throwable;
 
@@ -108,7 +110,8 @@ final readonly class PaperExecutionEligibilityService
     public function assertOpenEligible(
         PaperAccountRecord $account,
         PaperSignalStateRecord $state,
-        SignalRecord $signal
+        SignalRecord $signal,
+        ?DateTimeImmutable $at = null
     ): void {
         $accountReason = $this->accountEntryRejectionReason($account);
         if ($accountReason !== null) {
@@ -117,6 +120,14 @@ final readonly class PaperExecutionEligibilityService
 
         if ($state->paper_account_id !== $account->id || $state->signal_id !== $signal->id) {
             throw new DomainException('Entry ineligible: signal_state_identity_mismatch');
+        }
+
+        if ($state->status !== SignalLifecycle::PendingEntry->value) {
+            throw new DomainException('Entry ineligible: signal_state_not_pending_entry');
+        }
+
+        if ($at !== null && $at > $signal->expires_at->toDateTimeImmutable()) {
+            throw new DomainException('Entry ineligible: signal_expired');
         }
 
         if ($signal->exchange !== $account->exchange_id) {

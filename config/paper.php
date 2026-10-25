@@ -54,5 +54,5 @@ return [
         'minimum_atr_percent' => '0.001', 'maximum_atr_percent' => '0.05', 'require_indicator_snapshot' => true,
         'maximum_absolute_funding_rate' => '0.001', 'maximum_absolute_open_interest_change' => '0.10',
     ],
-    'processing' => ['lock_seconds' => 180, 'candle_interval' => '5', 'batch_size' => 500, 'max_forward_fill_lag_seconds' => 600],
+    'processing' => ['lock_seconds' => 180, 'candle_interval' => '5', 'batch_size' => 500, 'max_forward_fill_lag_seconds' => 300, 'max_signal_ingest_lag_seconds' => 300],
 ];

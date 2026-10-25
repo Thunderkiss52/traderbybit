@@ -35,7 +35,7 @@ final readonly class PositionLifecycleService
     public function open(PaperAccountRecord $account, PaperSignalStateRecord $state, SignalRecord $signal, PositionSize $size, ExecutionQuote $quote, DateTimeImmutable $at): VirtualPositionRecord
     {
         $eligibility = $this->eligibility ?? app(PaperExecutionEligibilityService::class);
-        $eligibility->assertOpenEligible($account, $state, $signal);
+        $eligibility->assertOpenEligible($account, $state, $signal, $at);
 
         return DB::transaction(function () use ($account, $state, $signal, $size, $quote, $at, $eligibility): VirtualPositionRecord {
             $lockedAccount = PaperAccountRecord::query()->lockForUpdate()->findOrFail($account->id);
@@ -43,7 +43,7 @@ final readonly class PositionLifecycleService
             // Recheck authorization *inside* the account lock. A previously
             // loaded ACTIVE model is not evidence that the account is still
             // permitted to open an entry when concurrent risk/jobs change it.
-            $eligibility->assertOpenEligible($lockedAccount, $lockedState, $signal);
+            $eligibility->assertOpenEligible($lockedAccount, $lockedState, $signal, $at);
             $positionId = Uuid::uuid5(Uuid::NAMESPACE_URL, "traderbybit:position:{$account->id}:{$signal->id}")->toString();
             if ($existing = VirtualPositionRecord::query()->find($positionId)) {
                 return $existing;
