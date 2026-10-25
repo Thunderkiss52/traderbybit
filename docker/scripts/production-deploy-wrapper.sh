@@ -75,12 +75,17 @@ mv -Tf "${BASE_DIR}/current.next" "${BASE_DIR}/current"
 printf '%s\n' "${release_sha}" >"${STATE_DIR}/release-current"
 rm -f -- "${archive}" "${checksum}"
 
+preserved_prev_sha=""
+if [[ -f "${STATE_DIR}/release-previous" ]]; then
+    preserved_prev_sha="$(<"${STATE_DIR}/release-previous")"
+fi
+
 for candidate in "${RELEASES_DIR}"/*; do
     [[ -d "${candidate}" ]] || continue
     candidate_sha="$(basename "${candidate}")"
-    [[ "${candidate_sha}" == "${release_sha}" || "${candidate_sha}" == "${old_release_sha}" ]] && continue
+    [[ "${candidate_sha}" == "${release_sha}" || "${candidate_sha}" == "${old_release_sha}" || "${candidate_sha}" == "${preserved_prev_sha}" ]] && continue
     rm -rf --one-file-system -- "${candidate}"
 done
-if [[ -n "${old_release_sha}" ]]; then
+if [[ -n "${old_release_sha}" && "${old_release_sha}" != "${release_sha}" ]]; then
     printf '%s\n' "${old_release_sha}" >"${STATE_DIR}/release-previous"
 fi

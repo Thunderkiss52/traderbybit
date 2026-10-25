@@ -1128,3 +1128,36 @@ Updated: 2026-10-24T19:00:00+03:00. Branch `main`, HEAD `33d1448`. Strict PAPER-
   - ECONOM / econom-group resources strictly untouched.
   - Local commit only; no unauthorized git push or production deployment.
 
+## Checkpoint VECTOR-V24-DEPLOYMENT-CONFIG-REFRESH-20261025T195000Z — Same-SHA Deployment Configuration Refresh
+
+- Scope completed: Resolved the deployment configuration refresh defect where `update.sh` exited immediately on same-SHA deployments in pull mode (`NEW_TAG == CURRENT_TAG`), preventing container reconciliation after `.env.production` changes.
+- Root cause:
+  - In `docker/scripts/update.sh`, lines 29-37 exited 0 when `NEW_TAG == CURRENT_TAG` under pull mode with the message: `Release ${NEW_TAG} is already deployed; checking service health without rebuilding.`
+  - As a result, subsequent steps (`compose up -d --remove-orphans`) were skipped entirely, leaving running containers with stale environment variables.
+- Changes Implemented:
+  1. `docker/scripts/update.sh`:
+     - Replaced premature `exit 0` with `IS_SAME_TAG_RECONCILE=1`.
+     - Skips rebuilding immutable images while proceeding through the full deployment sequence (`backup.sh`, migrations, initialization, `compose up -d --remove-orphans`, health checks).
+     - Preserves existing distinct `PREVIOUS_TAG` and `release-previous` during state commit when `IS_SAME_TAG_RECONCILE=1`, preventing corruption between current and previous tags.
+     - Protects previous image tag during project image cleanup.
+  2. `docker/scripts/production-deploy-wrapper.sh`:
+     - Preserved `release-previous` when `old_release_sha == release_sha`.
+     - Protected preserved previous release directory during candidate directory cleanup.
+  3. `tests/Unit/DeploymentStateValidationAndRecoveryTest.php`:
+     - Added `test_same_sha_reconcile_state_preserves_distinct_previous_state` and `test_same_sha_wrapper_preserves_previous_release_directory`.
+  4. `scripts/test_same_sha_configuration_refresh.sh`:
+     - Standalone automated regression test verifying zero service recreation on unchanged configuration, and recreation of affected services with updated environment variables on changed configuration.
+- Verification and Evidence:
+  - `tests/Unit/DeploymentStateValidationAndRecoveryTest.php`: 12/12 PASS (46 assertions).
+  - `scripts/test_same_sha_configuration_refresh.sh`: 100% PASS.
+  - `tests/Feature/Exchanges/BinancePaperReadinessTest.php`: 11/11 PASS.
+  - `tests/Feature/Exchanges/BinanceActivationCommandTest.php`: 4/4 PASS.
+  - Go Tests: 100% PASS.
+  - Pint formatting: PASS across all files.
+- Invariants Maintained:
+  - Docker Compose handles service recreation selectively: unchanged services remain running.
+  - Rollback capability preserved (current and previous targets remain distinct).
+  - PostgreSQL, Redis, Docker volumes, 26 accounts, positions, and history preserved intact.
+  - ECONOM / econom-group resources untouched.
+  - Local commit only; no push or deploy.
+

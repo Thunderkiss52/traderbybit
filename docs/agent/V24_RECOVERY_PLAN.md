@@ -429,6 +429,7 @@ Dependencies: Task P0-SNAP
 8. `tests/Feature/Exchanges/BinanceActivationCommandTest.php`: Extended activation tests verifying execution approval flag semantics, safe BLOCKED execution state, and 11/2 strategy isolation.
 
 ### Verification
+- Commit: `5a358fe`
 - `BinancePaperReadinessTest`: 11/11 tests, 54 assertions PASS on isolated PostgreSQL (`bybit_test`).
 - `BinanceActivationCommandTest`: 4/4 tests, 24 assertions PASS.
 - Full `tests/Feature/Exchanges/`: 44/44 tests, 588 assertions PASS.
@@ -439,6 +440,44 @@ Dependencies: Task P0-SNAP
 
 ### Remaining issues
 - Operator must deploy via GitHub Actions and execute the documented activation sequence.
+
+## Task P0-RECONCILE — Same-SHA Deployment Configuration Refresh and Service Reconciliation
+
+Status: DONE
+Commit: PENDING
+Priority: P0 — Production deployment defect preventing environment refresh on redeployment
+Dependencies: Task P0-CONFIG
+
+### Objective / expected implementation
+1. Fix the defect in `docker/scripts/update.sh` where `NEW_TAG == CURRENT_TAG` in pull mode exited immediately (`exit 0`), preventing Docker containers from reconciling updated environment variables from `.env.production`.
+2. Ensure same-SHA deployments reconcile container configuration via `compose up -d --remove-orphans` without rebuilding immutable GHCR images.
+3. Update affected services when configuration changes while leaving unaffected services alone.
+4. Maintain deployment locks, health checks, rollback safeguards, and consistent deployment state (avoiding corruption between `.deploy-current` and `.deploy-previous`).
+5. Update `docker/scripts/production-deploy-wrapper.sh` to preserve `release-previous` on same-SHA deployments so rollback targets remain valid and distinct.
+6. Add regression tests verifying that environment-only changes are applied on repeated same-SHA deployments and that unchanged deployments do not unnecessarily recreate services.
+
+### Completed / files changed
+1. `docker/scripts/update.sh`:
+   - Eliminated the premature `exit 0` when `NEW_TAG == CURRENT_TAG` in pull mode.
+   - Set `IS_SAME_TAG_RECONCILE=1` to proceed through the safe update sequence without image rebuilds.
+   - In state commit, preserved existing `PREVIOUS_TAG` and `release-previous` when `IS_SAME_TAG_RECONCILE=1`, preventing duplicate tags that corrupt rollback validation.
+   - Cleaned up images safely without removing the preserved previous release image tag.
+2. `docker/scripts/production-deploy-wrapper.sh`:
+   - Preserved `release-previous` when `old_release_sha == release_sha`.
+   - Protected the preserved previous release directory from candidate release directory pruning.
+3. `tests/Unit/DeploymentStateValidationAndRecoveryTest.php`:
+   - Added `test_same_sha_reconcile_state_preserves_distinct_previous_state` verifying rollback safety and post-deploy validity.
+   - Added `test_same_sha_wrapper_preserves_previous_release_directory` verifying previous directory retention.
+4. `scripts/test_same_sha_configuration_refresh.sh`:
+   - Created standalone end-to-end regression test executing actual Docker Compose lifecycle.
+   - Proved unchanged deployment leaves all services intact without recreation.
+   - Proved environment-only change recreates affected service (`app`) with updated variables while leaving unaffected service (`db`) untouched.
+
+### Verification
+- `tests/Unit/DeploymentStateValidationAndRecoveryTest.php`: 12/12 PASS (46 assertions).
+- `scripts/test_same_sha_configuration_refresh.sh`: 100% PASS (verified zero recreation on identical config, recreation of affected service on changed config, effective environment verification).
+- Pint formatting: PASS on all files.
+- Go tests: 100% PASS.
 
 ## Checkpoint rule
 

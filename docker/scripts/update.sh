@@ -12,6 +12,13 @@ CURRENT_TAG="${IMAGE_TAG:-latest}"
 if [[ -f "${DEPLOY_STATE_DIR}/.deploy-current" ]]; then
     CURRENT_TAG="$(<"${DEPLOY_STATE_DIR}/.deploy-current")"
 fi
+PREVIOUS_TAG=""
+if [[ -f "${DEPLOY_STATE_DIR}/.deploy-previous" ]]; then
+    PREVIOUS_TAG="$(<"${DEPLOY_STATE_DIR}/.deploy-previous")"
+fi
+if [[ -z "${PREVIOUS_TAG}" && -f "${DEPLOY_STATE_DIR}/deploy-state.json" ]]; then
+    PREVIOUS_TAG="$(python3 -c "import json; data=json.load(open('${DEPLOY_STATE_DIR}/deploy-state.json')); print(data.get('previous_image_tag',''))" 2>/dev/null || true)"
+fi
 assert_free_disk_space
 
 if [[ -n "${NEW_IMAGE_TAG:-}" ]]; then
@@ -26,14 +33,16 @@ if [[ "${DEPLOY_MODE:-pull}" == "pull" && -z "${NEW_IMAGE_TAG:-}" ]]; then
     echo "NEW_IMAGE_TAG is required for an immutable pull deployment." >&2
     exit 1
 fi
+IS_SAME_TAG_RECONCILE=0
 if [[ "${NEW_TAG}" == "${CURRENT_TAG}" ]]; then
     if [[ "${DEPLOY_MODE:-pull}" == "pull" ]]; then
         # Immutable GHCR tags are SHA-based. A timestamp suffix does not exist in the registry.
-        echo "Release ${NEW_TAG} is already deployed; checking service health without rebuilding."
-        bash "${SCRIPT_DIR}/healthcheck.sh"
-        exit 0
+        # Reconcile container environment configuration and service state without rebuilding images.
+        echo "Release ${NEW_TAG} matches current tag; reconciling environment configuration and services without rebuilding immutable GHCR images."
+        IS_SAME_TAG_RECONCILE=1
+    else
+        NEW_TAG="${NEW_TAG}-$(date -u +%Y%m%d%H%M%S)"
     fi
-    NEW_TAG="${NEW_TAG}-$(date -u +%Y%m%d%H%M%S)"
 fi
 
 bash "${PROJECT_ROOT}/docker/postgres/backup.sh"
@@ -75,15 +84,31 @@ bash "${SCRIPT_DIR}/healthcheck.sh"
 
 # Commit canonical state and projection files atomically only after healthcheck passes
 new_rel="${NEW_TAG#sha-}"
-curr_rel="${CURRENT_TAG#sha-}"
-commit_deployment_state "${NEW_TAG}" "${CURRENT_TAG}" "${new_rel}" "${curr_rel}" "CONSISTENT"
+if [[ "${IS_SAME_TAG_RECONCILE}" == "1" ]]; then
+    prev_target_tag="${PREVIOUS_TAG}"
+    prev_target_rel=""
+    if [[ -f "${DEPLOY_STATE_DIR}/release-previous" ]]; then
+        prev_target_rel="$(<"${DEPLOY_STATE_DIR}/release-previous")"
+    elif [[ -n "${prev_target_tag}" ]]; then
+        prev_target_rel="${prev_target_tag#sha-}"
+    fi
+    commit_deployment_state "${NEW_TAG}" "${prev_target_tag}" "${new_rel}" "${prev_target_rel}" "CONSISTENT"
+    CURRENT_IMAGE_TAG="${NEW_TAG}" PREVIOUS_IMAGE_TAG="${prev_target_tag:-${CURRENT_TAG}}" bash "${SCRIPT_DIR}/cleanup-project-images.sh"
+else
+    curr_rel="${CURRENT_TAG#sha-}"
+    commit_deployment_state "${NEW_TAG}" "${CURRENT_TAG}" "${new_rel}" "${curr_rel}" "CONSISTENT"
+    CURRENT_IMAGE_TAG="${NEW_TAG}" PREVIOUS_IMAGE_TAG="${CURRENT_TAG}" bash "${SCRIPT_DIR}/cleanup-project-images.sh"
+fi
 bash "${SCRIPT_DIR}/validate-deployment-state.sh" post-deploy
 
 trap - ERR
 
-CURRENT_IMAGE_TAG="${NEW_TAG}" PREVIOUS_IMAGE_TAG="${CURRENT_TAG}" bash "${SCRIPT_DIR}/cleanup-project-images.sh"
 bash "${SCRIPT_DIR}/storage-report.sh"
 
-echo "Updated from image tag ${CURRENT_TAG} to ${NEW_TAG}."
+if [[ "${IS_SAME_TAG_RECONCILE}" == "1" ]]; then
+    echo "Reconciled deployment configuration for image tag ${NEW_TAG}."
+else
+    echo "Updated from image tag ${CURRENT_TAG} to ${NEW_TAG}."
+fi
 echo "Application rollback: IMAGE_TAG=${CURRENT_TAG} SKIP_BUILD=1 ENV_FILE=${ENV_FILE} ${SCRIPT_DIR}/deploy.sh"
 echo "Database migrations must be backward-compatible; database rollback is intentionally not automatic."

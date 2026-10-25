@@ -287,4 +287,109 @@ BASH;
             file_get_contents($this->tempDir.'/.deploy-current')
         );
     }
+
+    public function test_same_sha_reconcile_state_preserves_distinct_previous_state(): void
+    {
+        file_put_contents($this->tempDir.'/.deploy-current', "sha-94c853458e5a38f4bc46f32c4f95c56f52216e6c\n");
+        file_put_contents($this->tempDir.'/.deploy-previous', "sha-37d30ee343b6305bc764281c4baa7f755863e2f5\n");
+        file_put_contents($this->tempDir.'/release-current', "94c853458e5a38f4bc46f32c4f95c56f52216e6c\n");
+        file_put_contents($this->tempDir.'/release-previous', "37d30ee343b6305bc764281c4baa7f755863e2f5\n");
+
+        $script = <<<BASH
+set -Eeuo pipefail
+DEPLOY_STATE_DIR="{$this->tempDir}"
+ENV_FILE="{$this->dummyEnv}"
+source "{$this->scriptsDir}/common.sh"
+
+CURRENT_TAG="$(<"\${DEPLOY_STATE_DIR}/.deploy-current")"
+PREVIOUS_TAG="$(<"\${DEPLOY_STATE_DIR}/.deploy-previous")"
+NEW_TAG="\${CURRENT_TAG}"
+
+IS_SAME_TAG_RECONCILE=1
+new_rel="\${NEW_TAG#sha-}"
+if [[ "\${IS_SAME_TAG_RECONCILE}" == "1" ]]; then
+    prev_target_tag="\${PREVIOUS_TAG}"
+    prev_target_rel=""
+    if [[ -f "\${DEPLOY_STATE_DIR}/release-previous" ]]; then
+        prev_target_rel="$(<"\${DEPLOY_STATE_DIR}/release-previous")"
+    elif [[ -n "\${prev_target_tag}" ]]; then
+        prev_target_rel="\${prev_target_tag#sha-}"
+    fi
+    commit_deployment_state "\${NEW_TAG}" "\${prev_target_tag}" "\${new_rel}" "\${prev_target_rel}" "CONSISTENT"
+fi
+BASH;
+
+        $cmd = sprintf('bash -c %s 2>&1', escapeshellarg($script));
+        $output = [];
+        $exitCode = 0;
+        exec($cmd, $output, $exitCode);
+        $this->assertSame(0, $exitCode, implode("\n", $output));
+
+        // Assert: previous remains sha-37d3..., NOT overwritten by sha-94c8...
+        $this->assertSame(
+            "sha-37d30ee343b6305bc764281c4baa7f755863e2f5\n",
+            file_get_contents($this->tempDir.'/.deploy-previous')
+        );
+        $this->assertSame(
+            "37d30ee343b6305bc764281c4baa7f755863e2f5\n",
+            file_get_contents($this->tempDir.'/release-previous')
+        );
+
+        // Pre-rollback validation must PASS because distinct target exists
+        $result = $this->runScript('validate-deployment-state.sh', ['pre-rollback']);
+        $this->assertSame(0, $result['exitCode'], $result['output']);
+
+        // Post-deploy validation must PASS
+        $result = $this->runScript('validate-deployment-state.sh', ['post-deploy']);
+        $this->assertSame(0, $result['exitCode'], $result['output']);
+    }
+
+    public function test_same_sha_wrapper_preserves_previous_release_directory(): void
+    {
+        $releasesDir = $this->tempDir.'/releases';
+        mkdir($releasesDir.'/37d30ee343b6305bc764281c4baa7f755863e2f5', 0755, true);
+        mkdir($releasesDir.'/94c853458e5a38f4bc46f32c4f95c56f52216e6c', 0755, true);
+
+        file_put_contents($this->tempDir.'/release-current', "94c853458e5a38f4bc46f32c4f95c56f52216e6c\n");
+        file_put_contents($this->tempDir.'/release-previous', "37d30ee343b6305bc764281c4baa7f755863e2f5\n");
+
+        $script = <<<BASH
+set -Eeuo pipefail
+STATE_DIR="{$this->tempDir}"
+RELEASES_DIR="{$releasesDir}"
+release_sha="94c853458e5a38f4bc46f32c4f95c56f52216e6c"
+old_release_sha="94c853458e5a38f4bc46f32c4f95c56f52216e6c"
+
+preserved_prev_sha=""
+if [[ -f "\${STATE_DIR}/release-previous" ]]; then
+    preserved_prev_sha="$(<"\${STATE_DIR}/release-previous")"
+fi
+
+for candidate in "\${RELEASES_DIR}"/*; do
+    [[ -d "\${candidate}" ]] || continue
+    candidate_sha="$(basename "\${candidate}")"
+    [[ "\${candidate_sha}" == "\${release_sha}" || "\${candidate_sha}" == "\${old_release_sha}" || "\${candidate_sha}" == "\${preserved_prev_sha}" ]] && continue
+    rm -rf --one-file-system -- "\${candidate}"
+done
+if [[ -n "\${old_release_sha}" && "\${old_release_sha}" != "\${release_sha}" ]]; then
+    printf '%s\n' "\${old_release_sha}" >"\${STATE_DIR}/release-previous"
+fi
+BASH;
+
+        $cmd = sprintf('bash -c %s 2>&1', escapeshellarg($script));
+        $output = [];
+        $exitCode = 0;
+        exec($cmd, $output, $exitCode);
+        $this->assertSame(0, $exitCode, implode("\n", $output));
+
+        // Both candidate directories must still exist
+        $this->assertDirectoryExists($releasesDir.'/37d30ee343b6305bc764281c4baa7f755863e2f5');
+        $this->assertDirectoryExists($releasesDir.'/94c853458e5a38f4bc46f32c4f95c56f52216e6c');
+
+        // release-previous must NOT be corrupted to 94c8...
+        $this->assertSame(
+            "37d30ee343b6305bc764281c4baa7f755863e2f5\n",
+            file_get_contents($this->tempDir.'/release-previous')
+        );
+    }
 }
