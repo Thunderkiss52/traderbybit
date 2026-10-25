@@ -54,6 +54,7 @@ rollback_application() {
     echo "Deployment failed; attempting application rollback to ${CURRENT_TAG}. Database migrations are not rolled back." >&2
     export IMAGE_TAG="${CURRENT_TAG}"
     compose up -d --no-deps "${APPLICATION_SERVICES[@]}" || true
+    compose restart web || true
     bash "${SCRIPT_DIR}/healthcheck.sh" || true
     exit "${failure_code}"
 }
@@ -75,6 +76,7 @@ wait_healthy redis 120
 compose run --rm --no-deps app php artisan migrate --force --no-interaction
 compose run --rm --no-deps app php artisan binance:initialize-paper --force --no-interaction
 compose up -d --remove-orphans
+compose restart web
 
 for svc in "${APPLICATION_SERVICES[@]}"; do
     wait_service_ready "${svc}" 120

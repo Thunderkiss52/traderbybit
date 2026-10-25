@@ -45,6 +45,7 @@ wait_healthy redis 120
 compose run --rm --no-deps app php artisan migrate --force --no-interaction
 compose run --rm --no-deps app php artisan binance:initialize-paper --force --no-interaction
 compose up -d --remove-orphans
+compose restart web
 
 for svc in "${APPLICATION_SERVICES[@]}"; do
     wait_service_ready "${svc}" 120
