@@ -26,12 +26,21 @@ final class CapturePaperEquityJob implements ShouldQueue
         $key = 'checkpoint:'.$at->format('Y-m-d\\TH:i:00\\Z');
         DB::table('paper_accounts')->orderBy('id')->chunkById(100, static function ($accounts) use ($at, $key): void {
             foreach ($accounts as $account) {
+                if (empty($account->exchange_id)) {
+                    throw new \RuntimeException("Paper account {$account->id} is missing exchange_id.");
+                }
+
                 DB::table('equity_snapshots')->insertOrIgnore([
-                    'paper_account_id' => $account->id, 'recorded_at' => $at,
-                    'equity' => $account->current_equity, 'realized_pnl' => $account->realized_pnl,
+                    'paper_account_id' => $account->id,
+                    'exchange_id' => $account->exchange_id,
+                    'recorded_at' => $at,
+                    'equity' => $account->current_equity,
+                    'realized_pnl' => $account->realized_pnl,
                     'unrealized_pnl' => $account->unrealized_pnl,
                     'drawdown_percent' => $account->current_drawdown_percent,
-                    'source_event_key' => $key, 'created_at' => now(), 'updated_at' => now(),
+                    'source_event_key' => $key,
+                    'created_at' => now(),
+                    'updated_at' => now(),
                 ]);
             }
         });

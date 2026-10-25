@@ -45,10 +45,22 @@ final class ExchangePaperReconciliation
                 foreach (['paper_signal_states', 'risk_decisions', 'trading_journal_events', 'equity_snapshots'] as $table) {
                     // SQL `NULL != 'binance'` is UNKNOWN, not TRUE. Missing
                     // provenance must fail reconciliation, not disappear.
-                    if (DB::table($table)->where('paper_account_id', $account->id)
+                    $mismatches = DB::table($table)->where('paper_account_id', $account->id)
                         ->where(static fn ($q) => $q->whereNull('exchange_id')
-                            ->orWhere('exchange_id', '!=', $exchange))->exists()) {
-                        $issues[] = ['exchange_id' => $exchange, 'strategy_id' => $strategy, 'code' => 'CROSS_EXCHANGE_'.strtoupper($table)];
+                            ->orWhere('exchange_id', '!=', $exchange))->get();
+                    if ($mismatches->isNotEmpty()) {
+                        $issues[] = [
+                            'exchange_id' => $exchange,
+                            'strategy_id' => $strategy,
+                            'code' => 'CROSS_EXCHANGE_'.strtoupper($table),
+                            'mismatched_count' => $mismatches->count(),
+                            'diagnostics' => $mismatches->take(5)->map(fn ($row) => [
+                                'id' => $row->id ?? null,
+                                'stored_exchange_id' => $row->exchange_id ?? null,
+                                'source_event_key' => $row->source_event_key ?? null,
+                                'recorded_at' => (string) ($row->recorded_at ?? $row->occurred_at ?? $row->created_at ?? ''),
+                            ])->all(),
+                        ];
                     }
                 }
                 // Read *all* capital events for the account. Filtering by

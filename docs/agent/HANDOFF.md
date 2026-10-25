@@ -1056,3 +1056,50 @@ Updated: 2026-10-24T19:00:00+03:00. Branch `main`, HEAD `33d1448`. Strict PAPER-
     - **761 tests, 5,641 assertions, 0 failures, 1 skipped** (100% PASS, runtime 01:06).
   - Laravel Pint (`vendor/bin/pint --test`): **PASS (643 files checked, 0 errors)**.
 - Status: Clean, all acceptance criteria satisfied, zero regressions.
+
+## Checkpoint VECTOR-V24-P0-EQUITY-SNAPSHOT-REPAIR-20261025T164500Z — Cross-Exchange Equity Snapshots and M9 Reconciliation
+
+- Scope completed: Resolved the P0 `CROSS_EXCHANGE_EQUITY_SNAPSHOTS` defect affecting 13 Binance PRIMARY accounts where periodic checkpoints created by `CapturePaperEquityJob` defaulted `exchange_id` to `bybit`.
+- Root Cause:
+  - `CapturePaperEquityJob` inserted into `equity_snapshots` without providing `exchange_id`, defaulting to `'bybit'` from database column schema.
+  - `PaperAccountService::ensureInitialSnapshot()` and `ResearchPortfolioManager::approve()` likewise omitted explicit `exchange_id`.
+  - When scheduled equity capture ran at `2026-10-25 13:20:00 UTC`, 13 Binance account checkpoints were recorded with `exchange_id = 'bybit'`, causing M9 `binance:paper-reconcile` to report 13 `CROSS_EXCHANGE_EQUITY_SNAPSHOTS` failures.
+- Changes Implemented:
+  1. **All Equity Snapshot Writers Corrected:**
+     - `app/PaperTrading/Jobs/CapturePaperEquityJob.php`: Persists `'exchange_id' => $account->exchange_id` with non-empty assertion.
+     - `app/PaperTrading/Application/PaperAccountService.php`: In `ensureInitialSnapshot()`, persists `'exchange_id' => $account->exchange_id`.
+     - `app/Strategy/Application/ResearchPortfolioManager.php`: In `approve()`, persists `'exchange_id' => $account->exchange_id`.
+     - `app/PaperTrading/Infrastructure/Persistence/EquitySnapshotRecord.php`: Model `creating` hook auto-populates `exchange_id` from owning account if omitted.
+  2. **Safe, Auditable, Idempotent Repair Service and Command:**
+     - `app/PaperTrading/Application/EquitySnapshotRepairService.php`:
+       - Strict selection: only canonical Binance primary accounts (`is_primary = true`, `exchange_id = 'binance'`), `stored_exchange = 'bybit'`, and `source_event_key` begins with `'checkpoint:'`.
+       - Mutation restricted strictly to `equity_snapshots.exchange_id = 'binance'`. No balances, positions, executions, PnL, timestamps, or metadata modified.
+       - Mutual exclusion lock (`paper:equity-snapshot-repair`), transactional consistency, deterministic row manifest.
+     - `routes/console.php`: Registered `paper:repair-equity-snapshots` and alias `binance:repair-equity-snapshots` (defaults to `--dry-run`, requires `--apply`).
+  3. **M9 Reconciliation Strengthened:**
+     - `app/Exchanges/Binance/ExchangePaperReconciliation.php`: Enhanced `CROSS_EXCHANGE_EQUITY_SNAPSHOTS` diagnostics with mismatch count and row IDs.
+  4. **PostgreSQL Integration Suite:**
+     - `tests/Feature/PaperTrading/EquitySnapshotCrossExchangeIntegrityTest.php`: 9 comprehensive scenarios covering creation, defect reproduction, dry-run, mutation, idempotency, M9 reconciliation, Bybit preservation, scheduler recurrence, and concurrency.
+- Verification and Evidence:
+  - `tests/Feature/PaperTrading/EquitySnapshotCrossExchangeIntegrityTest.php`: **9 tests, 324 assertions, 100% PASS** on isolated PostgreSQL (`bybit_test`).
+  - Focused Suite: **29 tests, 665 assertions, 100% PASS**.
+  - Regression Suite: **122 tests, 1963 assertions, 0 failures, 1 skipped (100% PASS)**.
+  - Code Style: **`vendor/bin/pint --test` PASS (8 files, 0 style issues)**.
+  - Frontend Tests: **55 tests, 100% PASS**.
+  - Frontend Production Build: **`vue-tsc --noEmit && vite build` PASS in 7.63s, 0 errors**.
+  - Go Research Suite: **100% PASS with race detector**.
+- Operator Runbook for Production:
+  1. **Read-only diagnosis:**
+     `docker exec bybit-signals-app-1 php artisan binance:paper-reconcile`
+  2. **Repair dry-run (simulates candidate detection, mutates 0 rows):**
+     `docker exec bybit-signals-app-1 php artisan binance:repair-equity-snapshots --dry-run`
+  3. **Apply repair (explicitly updates the 13 mislabeled checkpoint rows):**
+     `docker exec bybit-signals-app-1 php artisan binance:repair-equity-snapshots --apply`
+  4. **Post-repair M9 verification (must report `LEDGER_PASS_ONLY` and `verified_pairs: 26`):**
+     `docker exec bybit-signals-app-1 php artisan binance:paper-reconcile`
+- Invariants Maintained:
+  - Strictly PAPER-ONLY. No live exchange orders or private trading credentials.
+  - Complete Bybit financial preservation across all 13 canonical Bybit accounts.
+  - ECONOM / econom-group resources strictly untouched.
+  - Local commit only; no unauthorized git push or production deployment.
+

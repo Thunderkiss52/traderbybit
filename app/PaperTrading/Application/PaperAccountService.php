@@ -231,8 +231,13 @@ final readonly class PaperAccountService
 
     private function ensureInitialSnapshot(PaperAccountRecord $account): void
     {
+        if (empty($account->exchange_id)) {
+            throw new \RuntimeException("Paper account {$account->id} is missing exchange_id.");
+        }
+
         EquitySnapshotRecord::query()->insertOrIgnore([[
             'paper_account_id' => $account->id,
+            'exchange_id' => $account->exchange_id,
             'recorded_at' => $account->created_at,
             'equity' => $account->starting_balance,
             'realized_pnl' => '0', 'unrealized_pnl' => '0', 'drawdown_percent' => '0',

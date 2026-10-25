@@ -16,6 +16,7 @@ use App\MarketData\Jobs\EnsureStrategyHistoryJob;
 use App\MarketData\Jobs\RecoverCandleGapsJob;
 use App\MarketData\Jobs\SyncFundingHistoryJob;
 use App\MarketData\Jobs\SyncOpenInterestHistoryJob;
+use App\PaperTrading\Application\EquitySnapshotRepairService;
 use App\PaperTrading\Application\PaperProcessingService;
 use App\PaperTrading\Infrastructure\Persistence\PaperAccountRecord;
 use App\PaperTrading\Jobs\CapturePaperEquityJob;
@@ -94,6 +95,34 @@ Artisan::command('binance:paper-reconcile', function (ExchangePaperReconciliatio
 
     return $report['status'] === 'LEDGER_PASS_ONLY' ? 0 : 1;
 })->purpose('Read-only M9 26-account and exact-decimal ledger reconciliation');
+
+Artisan::command('paper:repair-equity-snapshots {--apply : Apply database mutations; default is dry-run} {--dry-run : Simulate repair without writing}', function (EquitySnapshotRepairService $repair): int {
+    $apply = (bool) $this->option('apply') && ! (bool) $this->option('dry-run');
+    try {
+        $result = $repair->repair($apply);
+        $this->line(json_encode($result, JSON_PRETTY_PRINT | JSON_THROW_ON_ERROR));
+
+        return 0;
+    } catch (Throwable $e) {
+        $this->error('Equity snapshot repair failed: '.$e->getMessage());
+
+        return 1;
+    }
+})->purpose('Safely and idempotently repair cross-exchange equity snapshots for canonical Binance primary accounts');
+
+Artisan::command('binance:repair-equity-snapshots {--apply : Apply database mutations; default is dry-run} {--dry-run : Simulate repair without writing}', function (EquitySnapshotRepairService $repair): int {
+    $apply = (bool) $this->option('apply') && ! (bool) $this->option('dry-run');
+    try {
+        $result = $repair->repair($apply);
+        $this->line(json_encode($result, JSON_PRETTY_PRINT | JSON_THROW_ON_ERROR));
+
+        return 0;
+    } catch (Throwable $e) {
+        $this->error('Binance equity snapshot repair failed: '.$e->getMessage());
+
+        return 1;
+    }
+})->purpose('Alias for paper:repair-equity-snapshots; repairs cross-exchange equity snapshots');
 
 Artisan::command('binance:portability', function (BinancePortabilityMatrix $matrix): void {
     $this->line(json_encode($matrix->report(), JSON_PRETTY_PRINT | JSON_THROW_ON_ERROR));
