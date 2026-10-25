@@ -3,6 +3,7 @@
 use App\Audit\Application\AuditExportService;
 use App\Exchanges\Binance\BinanceCandleIngestion;
 use App\Exchanges\Binance\BinanceContextCapture;
+use App\Exchanges\Binance\BinanceDeploymentInitializer;
 use App\Exchanges\Binance\BinanceFundingIngestion;
 use App\Exchanges\Binance\BinancePaperActivation;
 use App\Exchanges\Binance\BinancePaperCapital;
@@ -38,6 +39,21 @@ Artisan::command('binance:provision-paper-accounts {--force : Approve provisioni
     }
     $this->line(json_encode($provisioner->provision(), JSON_THROW_ON_ERROR));
 })->purpose('Explicit, gated provisioning of 13 BLOCKED zero-balance Binance paper accounts');
+
+Artisan::command('binance:initialize-paper {--capital=10000} {--reference=OWNER-VECTOR-20261023} {--force}', function (BinanceDeploymentInitializer $initializer): int {
+    try {
+        $amount = (string) $this->option('capital');
+        $reference = (string) $this->option('reference');
+        $result = $initializer->initialize($amount, $reference);
+        $this->line(json_encode($result, JSON_PRETTY_PRINT | JSON_THROW_ON_ERROR));
+
+        return 0;
+    } catch (Throwable $e) {
+        $this->error('Binance initialization failed: '.$e->getMessage());
+
+        return 1;
+    }
+})->purpose('Idempotently provision, configure and fund 13 canonical Binance paper accounts (status remains BLOCKED)');
 
 // Opt-in only: no automatic Binance trading or production schedule is added.
 Artisan::command('binance:ingest-candles {symbol=BTCUSDT} {interval=5m} {--limit=100}', function (BinanceCandleIngestion $ingestion): void {

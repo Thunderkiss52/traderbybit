@@ -899,3 +899,20 @@ Updated: 2026-10-24T19:00:00+03:00. Branch `main`, HEAD `33d1448`. Strict PAPER-
   - Regression suite: 72 tests, 1304 assertions, 100% PASS (`tests/Feature/PaperTrading/`, `SignalOnlyStrategyExecutionTest.php`, `tests/Feature/Exchanges/`, `tests/Feature/Audit/`, `AuditExportTest.php`).
   - Pint code formatting: 100% PASS on all modified files.
 - Next task: Task P0-B — Binance initialization and 26-account preservation (idempotent provisioning and capital events in deployment entrypoint).
+
+## Checkpoint VECTOR-V24-RECOVERY-P0-B-20261025T100900Z — Task P0-B Complete
+
+- Scope completed: Task P0-B (Binance initialization and 26-account preservation).
+- Root cause identified and resolved:
+  `docker/scripts/update.sh` and `docker/scripts/deploy.sh` executed migrations without initializing or provisioning Binance accounts, resulting in `ACCOUNT_NOT_PROVISIONED` for all 13 Binance strategies in production.
+- Changes implemented:
+  - `app/Exchanges/Binance/BinanceDeploymentInitializer.php`: Deterministic initializer composing `BinancePaperProvisioner`, `BinancePaperCapital`, and `ExchangePaperReconciliation`.
+  - Added cryptographic pre/post SHA-256 state checksum to verify all 13 Bybit primary accounts, positions, executions, and equity snapshots remain 100% unaltered.
+  - Added Artisan command `binance:initialize-paper {--capital=10000} {--reference=OWNER-VECTOR-20261023} {--force}` in `routes/console.php`.
+  - Wired `php artisan binance:initialize-paper --force --no-interaction` into deployment scripts `docker/scripts/update.sh` and `docker/scripts/deploy.sh`.
+  - Created `tests/Feature/Exchanges/BinanceDeploymentInitializationTest.php` proving Test A: representative 13 Bybit accounts with active position/execution history, additive 13 Binance accounts, authoritative capital events, repeat idempotency (0 created, 13 already_provisioned, 13 idempotent_repeats), and M9 ledger reconciliation (`LEDGER_PASS_ONLY`).
+- Verification and Evidence:
+  - `BinanceDeploymentInitializationTest`: 1 test, 69 assertions, 100% PASS on PostgreSQL `bybit_test` under PHP 8.5.12.
+  - `BinancePaperIsolationTest` (7/105) and `CentralExecutionEligibilityTest` (6/24) 100% PASS.
+  - Pint code formatting: 100% PASS on all modified files.
+- Next task: Task P0-C — Binance scheduling, provenance and observations (observation collection, schedule activation, real public data).
