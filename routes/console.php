@@ -194,22 +194,22 @@ if ((bool) config('exchanges.binance.research_cycle_enabled', false)) {
         Schedule::call(fn () => app(BinanceResearchCycle::class)->run($symbol, false))
             ->cron('2,17,32,47 * * * *')->name("binance:signals:{$symbol}")->withoutOverlapping();
     }
-    // PAPER execution remains separately disabled unless the owner passes the cost,
-    // capital, provenance and database safety gates. No real orders are possible.
-    if ((bool) config('exchanges.binance.paper_execution_approved', false)) {
-        Schedule::call(function (): void {
-            foreach (PaperAccountRecord::query()
-                ->where('exchange_id', 'binance')->where('is_primary', true)
-                ->whereIn('status', ['ACTIVE', 'BLOCKED', 'HALTED'])->get() as $account) {
-                if (in_array($account->strategy_id, (array) config('research.forward_paper.signal_only_strategies', []), true)
-                    || $account->strategy_id === 'funding_open_interest_squeeze') {
-                    continue;
-                }
-                app(PaperProcessingService::class)->process($account->id);
+    // Maintain and service Binance paper accounts on every 5m cycle.
+    // When owner execution is approved, new entries are permitted. When unapproved,
+    // existing positions and funding settlement continue to be serviced while new entries are rejected.
+    Schedule::call(function (): void {
+        $allowNewEntries = (bool) config('exchanges.binance.paper_execution_approved', false);
+        foreach (PaperAccountRecord::query()
+            ->where('exchange_id', 'binance')->where('is_primary', true)
+            ->whereIn('status', ['ACTIVE', 'BLOCKED', 'HALTED'])->get() as $account) {
+            if (in_array($account->strategy_id, (array) config('research.forward_paper.signal_only_strategies', []), true)
+                || $account->strategy_id === 'funding_open_interest_squeeze') {
+                continue;
             }
-        })->cron('3,8,13,18,23,28,33,38,43,48,53,58 * * * *')
-            ->name('binance:paper-scheduled')->withoutOverlapping();
-    }
+            app(PaperProcessingService::class)->process($account->id, allowNewEntries: $allowNewEntries);
+        }
+    })->cron('3,8,13,18,23,28,33,38,43,48,53,58 * * * *')
+        ->name('binance:paper-scheduled')->withoutOverlapping();
 }
 
 // Legacy SKIP counterfactual analysis is quarantined (P-3 replay prohibited)

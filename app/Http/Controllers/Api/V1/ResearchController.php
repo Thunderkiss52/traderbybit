@@ -196,17 +196,48 @@ final class ResearchController extends Controller
                         ] : null,
                     ];
                 })->values()->all(),
-                'paper_execution_health' => [
-                    'execution_failures_24h' => $execFailures = JournalEventRecord::query()->where('exchange_id', $exchange)->where('event_type', 'EXECUTION_FAILED')->where('occurred_at', '>=', now('UTC')->subDay())->count(),
-                    'last_journal_event_at' => JournalEventRecord::query()->where('exchange_id', $exchange)->max('occurred_at'),
-                    'latest_strategy_evaluation_at' => $latestEval = StrategyObservationRecord::query()->where('exchange', $exchange)->max('decision_time'),
-                    'provisioned_accounts' => $provisionedCount = PaperAccountRecord::query()->where('exchange_id', $exchange)->where('is_primary', true)->count(),
-                    'system_status' => $provisionedCount < 13
-                        ? 'TOPOLOGY_INCOMPLETE'
-                        : ($latestEval === null
-                            ? 'AWAITING_FIRST_CYCLE'
-                            : ($execFailures > 0 ? 'DEGRADED' : 'HEALTHY')),
-                ],
+                'paper_execution_health' => (function () use ($exchange): array {
+                    $accounts = PaperAccountRecord::query()->where('exchange_id', $exchange)->where('is_primary', true)->get();
+                    $provisionedCount = $accounts->count();
+                    $activeCount = $accounts->where('status', 'ACTIVE')->count();
+                    $blockedCount = $accounts->where('status', 'BLOCKED')->count();
+                    $execFailures = JournalEventRecord::query()->where('exchange_id', $exchange)->where('event_type', 'EXECUTION_FAILED')->where('occurred_at', '>=', now('UTC')->subDay())->count();
+                    $lastJournalAt = JournalEventRecord::query()->where('exchange_id', $exchange)->max('occurred_at');
+                    $latestEval = StrategyObservationRecord::query()->where('exchange', $exchange)->max('decision_time');
+                    $latestCandle = CandleRecord::query()->where('exchange', $exchange)->where('interval', '5')->where('is_closed', true)->max('open_time');
+
+                    $nowSeconds = now('UTC')->getTimestamp();
+                    $evalAgeSeconds = $latestEval ? $nowSeconds - (new \DateTimeImmutable((string) $latestEval))->getTimestamp() : null;
+                    $candleAgeSeconds = $latestCandle ? $nowSeconds - (new \DateTimeImmutable((string) $latestCandle))->getTimestamp() : null;
+
+                    $status = 'HEALTHY';
+                    if ($provisionedCount < 13) {
+                        $status = 'TOPOLOGY_INCOMPLETE';
+                    } elseif ($blockedCount === $provisionedCount) {
+                        $status = 'AWAITING_ACTIVATION';
+                    } elseif ($latestEval === null) {
+                        $status = 'AWAITING_FIRST_CYCLE';
+                    } elseif ($candleAgeSeconds !== null && $candleAgeSeconds > 2700) {
+                        $status = 'MARKET_DATA_STALLED';
+                    } elseif ($evalAgeSeconds !== null && $evalAgeSeconds > 2700) {
+                        $status = 'SCHEDULER_STALLED';
+                    } elseif ($execFailures > 0) {
+                        $status = 'DEGRADED';
+                    }
+
+                    return [
+                        'execution_failures_24h' => $execFailures,
+                        'last_journal_event_at' => $lastJournalAt,
+                        'latest_strategy_evaluation_at' => $latestEval,
+                        'latest_candle_at' => $latestCandle,
+                        'evaluation_age_seconds' => $evalAgeSeconds,
+                        'candle_age_seconds' => $candleAgeSeconds,
+                        'provisioned_accounts' => $provisionedCount,
+                        'active_accounts' => $activeCount,
+                        'blocked_accounts' => $blockedCount,
+                        'system_status' => $status,
+                    ];
+                })(),
                 'positions' => $positions,
                 'performance' => $account ? Cache::remember('paper:dashboard:performance:'.$account->id, 60, fn () => $statistics->calculate($account->id)->metrics) : null,
                 'exchange_scope' => $exchange,

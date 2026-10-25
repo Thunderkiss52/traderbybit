@@ -6,6 +6,7 @@ namespace Tests\Feature\Exchanges;
 
 use App\Exchanges\Binance\BinanceDeploymentInitializer;
 use App\PaperTrading\Application\PaperAccountService;
+use App\PaperTrading\Infrastructure\Persistence\PaperAccountRecord;
 use App\PaperTrading\Infrastructure\Persistence\VirtualExecutionRecord;
 use App\PaperTrading\Infrastructure\Persistence\VirtualPositionRecord;
 use App\Strategy\Infrastructure\Persistence\SignalRecord;
@@ -149,5 +150,128 @@ final class BinanceDeploymentInitializationTest extends TestCase
 
         // 4. Test Artisan command
         $this->artisan('binance:initialize-paper', ['--force' => true])->assertSuccessful();
+    }
+
+    public function test_deployment_initialization_is_idempotent_after_binance_activation_and_trading_history(): void
+    {
+        // 1. Initial provisioning
+        $initializer = $this->app->make(BinanceDeploymentInitializer::class);
+        $result = $initializer->initialize('10000', 'OWNER-VECTOR-20261023');
+        self::assertSame('INITIALIZED_SUCCESSFULLY', $result['status']);
+        self::assertSame(13, $result['provisioned']['created']);
+
+        // 2. Simulate owner activation: Binance accounts become ACTIVE
+        DB::table('paper_accounts')->where('exchange_id', 'binance')
+            ->whereNotIn('strategy_id', ['btc_eth_lead_lag', 'funding_open_interest_squeeze'])
+            ->update(['status' => 'ACTIVE']);
+
+        // 3. Simulate active trading history on Binance trend_pullback account
+        $binanceTrend = PaperAccountRecord::query()->where('exchange_id', 'binance')->where('primary_strategy_id', 'trend_pullback')->firstOrFail();
+        $signal = SignalRecord::query()->create([
+            'id' => (string) Uuid::uuid4(),
+            'exchange' => 'binance',
+            'category' => 'linear',
+            'symbol' => 'BTCUSDT',
+            'timeframe' => '15',
+            'side' => 'BUY',
+            'quality_class' => 'A',
+            'score' => 90,
+            'decision_time' => now(),
+            'candle_close_time' => now(),
+            'entry_low' => '100',
+            'entry_high' => '101',
+            'stop_loss' => '95',
+            'take_profit_1' => '105',
+            'take_profit_2' => '110',
+            'risk_reward_1' => '1.5',
+            'risk_reward_2' => '2.5',
+            'model_risk_percent' => '0.50',
+            'expires_at' => now()->addMinutes(30),
+            'maximum_holding_minutes' => 240,
+            'reasons' => ['test'],
+            'risks' => [],
+            'indicator_snapshot' => ['15m' => ['atr_14' => '1', 'close' => '100']],
+            'contract' => ['research_mode' => true],
+            'strategy_version' => '1.3.0',
+            'schema_version' => '1.0.0',
+            'strategy_id' => 'trend_pullback',
+        ]);
+        $positionId = (string) Uuid::uuid4();
+        VirtualPositionRecord::query()->create([
+            'id' => $positionId,
+            'paper_account_id' => $binanceTrend->id,
+            'exchange_id' => 'binance',
+            'signal_id' => $signal->id,
+            'symbol' => 'BTCUSDT',
+            'side' => 'BUY',
+            'quality_class' => 'A',
+            'status' => 'OPEN',
+            'entry_price' => '100',
+            'stop_loss' => '95',
+            'take_profit_1' => '105',
+            'take_profit_2' => '110',
+            'initial_quantity' => '1',
+            'remaining_quantity' => '1',
+            'qty_step' => '0.001',
+            'risk_capital' => '50',
+            'gross_pnl' => '0',
+            'net_pnl' => '-0.06',
+            'fees' => '0.06',
+            'funding' => '0',
+            'unrealized_pnl' => '0',
+            'opened_at' => now(),
+            'maximum_holding_until' => now()->addHours(4),
+            'execution_model' => 'close_5m',
+            'strategy_version' => '1.3.0',
+            'risk_version' => '1.0.0',
+            'execution_version' => '1.0.0',
+            'schema_version' => '1.0.0',
+        ]);
+        VirtualExecutionRecord::query()->create([
+            'id' => (string) Uuid::uuid4(),
+            'position_id' => $positionId,
+            'exchange_id' => 'binance',
+            'type' => 'ENTRY',
+            'side' => 'BUY',
+            'price' => '100',
+            'quantity' => '1',
+            'gross_pnl' => '0',
+            'commission' => '0.06',
+            'slippage' => '0',
+            'market_event_at' => now(),
+            'registered_at' => now(),
+            'price_source' => 'close_5m',
+            'ambiguous_execution' => false,
+            'idempotency_key' => 'test-exec-binance-'.Uuid::uuid4()->toString(),
+            'execution_version' => '1.0.0',
+            'schema_version' => '1.0.0',
+        ]);
+        $binanceTrend->update([
+            'current_equity' => '9999.94',
+            'realized_pnl' => '-0.06',
+        ]);
+
+        $binanceBefore = DB::table('paper_accounts')->where('exchange_id', 'binance')->orderBy('id')->get();
+        $positionsBefore = DB::table('virtual_positions')->where('exchange_id', 'binance')->orderBy('id')->get();
+
+        // 4. Run initializer again as part of a redeploy
+        $repeatResult = $initializer->initialize('10000', 'OWNER-VECTOR-20261023');
+
+        // 5. Assert deployment succeeds idempotently without error or capital resetting
+        self::assertSame('INITIALIZED_SUCCESSFULLY', $repeatResult['status']);
+        self::assertSame(0, $repeatResult['provisioned']['created']);
+        self::assertSame(13, $repeatResult['provisioned']['already_provisioned']);
+        self::assertSame(0, $repeatResult['capital']['accounts_allocated']);
+        self::assertSame(13, $repeatResult['capital']['idempotent_repeats']);
+        self::assertSame('CAPITAL_ALREADY_ALLOCATED', $repeatResult['capital']['status']);
+        self::assertTrue($repeatResult['bybit_history_preserved']);
+        self::assertSame(26, $repeatResult['canonical_accounts_count']);
+        self::assertSame('LEDGER_PASS_ONLY', $repeatResult['reconciliation']['status']);
+
+        // Assert Binance accounts and positions are identical to pre-deploy state
+        $binanceAfter = DB::table('paper_accounts')->where('exchange_id', 'binance')->orderBy('id')->get();
+        $positionsAfter = DB::table('virtual_positions')->where('exchange_id', 'binance')->orderBy('id')->get();
+        self::assertEquals($binanceBefore, $binanceAfter);
+        self::assertEquals($positionsBefore, $positionsAfter);
     }
 }

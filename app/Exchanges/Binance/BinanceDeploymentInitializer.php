@@ -89,16 +89,44 @@ final class BinanceDeploymentInitializer
     private function checksumBybitState(): string
     {
         $accounts = DB::table('paper_accounts')->where('exchange_id', 'bybit')->orderBy('id')->get();
+        $accountIds = $accounts->pluck('id')->all();
         $positions = DB::table('virtual_positions')->where('exchange_id', 'bybit')->orderBy('id')->get();
         $positionIds = $positions->pluck('id')->all();
         $executions = DB::table('virtual_executions')->whereIn('position_id', $positionIds)->orderBy('id')->get();
         $snapshots = DB::table('equity_snapshots')->where('exchange_id', 'bybit')->orderBy('id')->get();
+        $capitalEvents = DB::table('paper_capital_events')->where('exchange_id', 'bybit')->orderBy('id')->get();
+        $journalEvents = DB::table('trading_journal_events')->where('exchange_id', 'bybit')->orderBy('id')->get();
+        $riskDecisions = DB::table('risk_decisions')->whereIn('paper_account_id', $accountIds)->orderBy('id')->get();
 
         return hash('sha256', json_encode([
-            'accounts' => $accounts->map(fn ($a) => [$a->id, (string) $a->starting_balance, (string) $a->current_equity, (string) $a->realized_pnl])->all(),
-            'positions' => $positions->map(fn ($p) => [$p->id, (string) $p->gross_pnl, (string) $p->net_pnl, (string) $p->status])->all(),
-            'executions' => $executions->map(fn ($e) => [$e->id, (string) $e->price, (string) $e->quantity])->all(),
-            'snapshots_count' => $snapshots->count(),
+            'accounts' => $accounts->map(fn ($a) => [
+                $a->id, (string) $a->starting_balance, (string) $a->current_equity, (string) $a->peak_equity,
+                (string) $a->realized_pnl, (string) $a->unrealized_pnl, (string) $a->reserved_risk,
+                (string) $a->maximum_drawdown_percent, (string) $a->current_drawdown_percent,
+                $a->mode, $a->strategy_id, $a->strategy_version, $a->configuration_hash, $a->status, (bool) $a->is_primary,
+            ])->all(),
+            'positions' => $positions->map(fn ($p) => [
+                $p->id, $p->symbol, $p->side, $p->status, (string) $p->initial_quantity, (string) $p->remaining_quantity,
+                (string) $p->entry_price, (string) ($p->exit_price ?? ''),
+                (string) $p->gross_pnl, (string) $p->net_pnl, (string) $p->fees, (string) $p->funding,
+            ])->all(),
+            'executions' => $executions->map(fn ($e) => [
+                $e->id, $e->position_id, $e->side, (string) $e->price, (string) $e->quantity,
+                (string) ($e->commission ?? '0'), (string) ($e->realized_pnl ?? '0'),
+            ])->all(),
+            'snapshots' => $snapshots->map(fn ($s) => [
+                $s->id, $s->paper_account_id, (string) $s->equity, (string) $s->realized_pnl,
+                (string) $s->unrealized_pnl, (string) $s->drawdown_percent, $s->source_event_key,
+            ])->all(),
+            'capital_events' => $capitalEvents->map(fn ($c) => [
+                $c->id, $c->paper_account_id, (string) $c->amount, $c->approval_reference,
+            ])->all(),
+            'journal_events' => $journalEvents->map(fn ($j) => [
+                $j->id, $j->paper_account_id, $j->event_type, (string) $j->occurred_at,
+            ])->all(),
+            'risk_decisions' => $riskDecisions->map(fn ($r) => [
+                $r->id, $r->paper_account_id, $r->status,
+            ])->all(),
         ], JSON_THROW_ON_ERROR));
     }
 }

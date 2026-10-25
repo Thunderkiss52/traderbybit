@@ -53,22 +53,6 @@ final readonly class PaperProcessingService
         } elseif ($account->exchange_id !== 'bybit') {
             throw new \DomainException('Unknown paper account exchange.');
         }
-        if ($account->is_primary
-            && $account->configuration_hash === null
-            && $account->strategy_id !== null
-            && $account->mode === 'STRATEGY_FORWARD_PAPER'
-            && $account->exchange_id === 'bybit'
-        ) {
-            try {
-                $registry = app(StrategyRegistry::class);
-                $strategy = $registry->get($account->strategy_id);
-                if ($strategy->version() === $account->strategy_version) {
-                    $account = $this->accounts->strategyForward($account->strategy_id, $strategy->version(), $strategy->parameters());
-                }
-            } catch (Throwable) {
-                // If strategy cannot be resolved or adopted, proceed to normal eligibility check
-            }
-        }
         $eligibility = $this->eligibility ?? app(PaperExecutionEligibilityService::class);
         $historical = $at !== null;
         $at ??= $this->latestClosedTime($account->exchange_id, $symbol) ?? new DateTimeImmutable('now UTC');
@@ -77,6 +61,22 @@ final readonly class PaperProcessingService
             throw new \RuntimeException('Paper account is already being processed.');
         }
         try {
+            if ($account->is_primary
+                && $account->configuration_hash === null
+                && $account->strategy_id !== null
+                && $account->mode === 'STRATEGY_FORWARD_PAPER'
+                && $account->exchange_id === 'bybit'
+            ) {
+                try {
+                    $registry = app(StrategyRegistry::class);
+                    $strategy = $registry->get($account->strategy_id);
+                    if ($strategy->version() === $account->strategy_version) {
+                        $account = $this->accounts->strategyForward($account->strategy_id, $strategy->version(), $strategy->parameters());
+                    }
+                } catch (Throwable) {
+                    // If strategy cannot be resolved or adopted, proceed to normal eligibility check
+                }
+            }
             $entryEligible = $allowNewEntries && $eligibility->isAccountEntryEligible($account);
             if ($entryEligible) {
                 $this->ingestSignals($account, $symbol, $at, ! $historical);

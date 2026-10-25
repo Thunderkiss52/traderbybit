@@ -972,6 +972,39 @@ Updated: 2026-10-24T19:00:00+03:00. Branch `main`, HEAD `33d1448`. Strict PAPER-
 - Remaining Operator Action:
   - Production release is operator-controlled via GitHub Actions (`.github/workflows/deploy.yml`). Post-deployment read-only verification commands documented in `docs/verification/V24_MULTI_EXCHANGE_PRODUCTION_RECOVERY.md`.
 
+## Checkpoint VECTOR-V24-AUDIT-RESOLUTION-20261025T112000Z — Audit Defect Remediation Complete
+
+- Scope completed: Resolved all findings (P0-01, P0-02, P0-03, P1-04, P1-05, P1-06, P2-07, P2-08) from the independent technical source audit.
+- Specific fixes implemented:
+  1. **P0-01 (Prospective binding under lock):**
+     - Relocated prospective canonical adoption inside the distributed cache lock in `PaperProcessingService::process`.
+     - Confirmed serialization with database row-level locking (`lockForUpdate`), version check, conflicting parameters rejection, and canonical provenance check in `tests/Feature/PaperTrading/CentralExecutionEligibilityTest.php`.
+  2. **P0-02 (Binance redeployment idempotency on ACTIVE accounts):**
+     - In `app/Exchanges/Binance/BinancePaperCapital.php`, decoupled existing capital verification from the `BLOCKED` status requirement.
+     - Repeat deployments/initializations inspect the recorded `paper_capital_events` approval reference and verify amount matching without resetting balances or requiring accounts to be `BLOCKED`.
+     - Verified with comprehensive test in `tests/Feature/Exchanges/BinanceDeploymentInitializationTest.php` exercising initialize -> activate -> open position with fees/funding -> re-initialize.
+  3. **P0-03 (Emergency disable maintains existing positions & funding):**
+     - In `app/PaperTrading/Application/PaperProcessingService.php`, separated new entry eligibility from existing position maintenance.
+     - Scheduled `binance:paper-scheduled` unconditionally in `routes/console.php` with `allowNewEntries: (bool) config('exchanges.binance.paper_execution_approved', false)`.
+     - Created `tests/Feature/Exchanges/BinanceEmergencyDisableMaintenanceTest.php` proving open positions exit via TP/SL, settle funding, and mark to market even when execution is unapproved.
+  4. **P1-05 (Truthful operational health metrics):**
+     - In `app/Http/Controllers/Api/V1/ResearchController.php`, enhanced `paper_execution_health` to evaluate market data freshness (<45m), strategy evaluation freshness (<45m), account activation states, topology completeness, and execution failures.
+     - Added `SCHEDULER_STALLED`, `MARKET_DATA_STALLED`, and `AWAITING_ACTIVATION` statuses with corresponding badge indicators in `frontend/src/pages/DashboardPage.vue`.
+     - Verified in `tests/Feature/MarketData/MarketExchangeIsolationTest.php`.
+  5. **P1-06 (Comprehensive Bybit state checksum):**
+     - In `app/Exchanges/Binance/BinanceDeploymentInitializer.php`, expanded `checksumBybitState()` to hash all 15 account attributes, positions (initial & remaining quantities, gross/net PnL, fees, funding), executions, equity snapshots, capital events, journal events, and risk decisions.
+  6. **P1-04 & P2-07 (Runbook corrections, activation sequence, port & auth):**
+     - In `docs/verification/V24_MULTI_EXCHANGE_PRODUCTION_RECOVERY.md`, separated read-only diagnostic inspection from mutating triggers (`binance:research-cycle`).
+     - Corrected port `${WEB_PORT:-18080}` and documented Basic Auth header requirements.
+     - Documented explicit operator activation sequence (`binance:activate-paper --approve`).
+     - Added archive distribution hygiene guidelines (excluding postgres-data, pg_wal, audit CSVs, and logs).
+- Verification & Test Results:
+  - Full PHPUnit Regression Suite: **765 tests, 5,680 assertions, 0 failures, 1 skipped** (100% PASS, runtime 01:06).
+  - Laravel Pint: **644 files checked, 0 style issues (PASS)**.
+  - Frontend Tests: **55 tests, 100% PASS**.
+  - Frontend Production Build: **`vue-tsc --noEmit && vite build` PASS in 7.25s, 0 errors**.
+- Status: All P0, P1, and P2 audit issues fully resolved and verified. Worktree clean. Ready for review.
+
 ## Checkpoint VECTOR-V24-RECOVERY-REGRESSION-FIX-20261025T105000Z — Full Suite Pass (761/761)
 
 - Scope completed: Resolved the regression in `SupportResistanceStrategiesTest::test_sr_signals_execute_in_isolated_strategy_paper_account` and verified full 761-test backend regression suite.

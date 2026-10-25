@@ -132,4 +132,57 @@ final class MarketExchangeIsolationTest extends TestCase
             self::assertNull($portfolio['id']);
         }
     }
+
+    public function test_dashboard_system_status_reflects_actual_operational_health_dimensions(): void
+    {
+        // 1. Provision all 13 Bybit accounts
+        app(PaperAccountService::class)->allPrimaryAccounts('bybit');
+
+        // Without evaluations: AWAITING_FIRST_CYCLE
+        $res = $this->withHeader('X-Exchange', 'bybit')->getJson('/api/v1/dashboard')->assertOk()->json('data.paper_execution_health');
+        self::assertSame('AWAITING_FIRST_CYCLE', $res['system_status']);
+
+        // 2. Add an evaluation that is stale (> 45 minutes ago)
+        \Illuminate\Support\Facades\Cache::flush();
+        $now = now('UTC');
+        \App\Strategy\Infrastructure\Persistence\StrategyObservationRecord::query()->create([
+            'id' => (string) \Ramsey\Uuid\Uuid::uuid4(),
+            'exchange' => 'bybit',
+            'category' => 'linear',
+            'symbol' => 'BTCUSDT',
+            'strategy_id' => 'trend_pullback',
+            'side' => 'BUY',
+            'quality_class' => 'A',
+            'score' => 90,
+            'decision_time' => $now->copy()->subMinutes(60),
+            'reasons' => ['test'],
+            'analysis' => [],
+            'strategy_version' => '1.3.0',
+            'configuration_hash' => hash('sha256', 'test1'),
+        ]);
+        $resStale = $this->withHeader('X-Exchange', 'bybit')->getJson('/api/v1/dashboard')->assertOk()->json('data.paper_execution_health');
+        self::assertSame('SCHEDULER_STALLED', $resStale['system_status']);
+
+        // 3. Add fresh evaluation (< 45 minutes ago)
+        \Illuminate\Support\Facades\Cache::flush();
+        \App\Strategy\Infrastructure\Persistence\StrategyObservationRecord::query()->create([
+            'id' => (string) \Ramsey\Uuid\Uuid::uuid4(),
+            'exchange' => 'bybit',
+            'category' => 'linear',
+            'symbol' => 'BTCUSDT',
+            'strategy_id' => 'trend_pullback',
+            'side' => 'BUY',
+            'quality_class' => 'A',
+            'score' => 90,
+            'decision_time' => $now->copy()->subMinutes(5),
+            'reasons' => ['test'],
+            'analysis' => [],
+            'strategy_version' => '1.3.0',
+            'configuration_hash' => hash('sha256', 'test2'),
+        ]);
+        $resFresh = $this->withHeader('X-Exchange', 'bybit')->getJson('/api/v1/dashboard')->assertOk()->json('data.paper_execution_health');
+        self::assertSame('HEALTHY', $resFresh['system_status']);
+        self::assertSame(13, $resFresh['provisioned_accounts']);
+        self::assertSame(13, $resFresh['active_accounts']);
+    }
 }

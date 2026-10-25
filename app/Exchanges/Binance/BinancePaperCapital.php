@@ -37,8 +37,8 @@ final class BinancePaperCapital
             $existing = 0;
             foreach ($strategies as $strategyId) {
                 $account = $accounts->get($strategyId);
-                if ($account === null || $account->status !== 'BLOCKED') {
-                    throw new DomainException('Binance paper allocation requires a blocked canonical account.');
+                if ($account === null) {
+                    throw new DomainException('Binance primary paper account is missing.');
                 }
                 BinancePaperSafety::assertProvenance($account);
                 $event = DB::table('paper_capital_events')->where('paper_account_id', $account->id)
@@ -50,6 +50,9 @@ final class BinancePaperCapital
                     $existing++;
 
                     continue;
+                }
+                if ($account->status !== 'BLOCKED') {
+                    throw new DomainException('Binance paper allocation requires a blocked canonical account.');
                 }
                 // Never top up a previously traded account or alter a Bybit account.
                 if (DB::table('virtual_positions')->where('paper_account_id', $account->id)->exists()
@@ -82,7 +85,7 @@ final class BinancePaperCapital
 
             return ['exchange_id' => 'binance', 'mode' => 'PAPER_ONLY', 'accounts_allocated' => $allocated,
                 'idempotent_repeats' => $existing, 'amount_per_account' => $amount,
-                'status' => 'CAPITAL_ALLOCATED_ACCOUNTS_REMAIN_BLOCKED'];
+                'status' => $allocated > 0 ? 'CAPITAL_ALLOCATED_ACCOUNTS_REMAIN_BLOCKED' : 'CAPITAL_ALREADY_ALLOCATED'];
         });
     }
 }

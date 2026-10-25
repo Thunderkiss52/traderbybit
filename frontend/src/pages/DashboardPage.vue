@@ -54,6 +54,9 @@ const systemStatus = computed(() => {
   if (!health) return { color: 'positive', label: 'CONNECTED' };
   if (health.system_status === 'HEALTHY') return { color: 'positive', label: 'OPERATIONAL' };
   if (health.system_status === 'DEGRADED') return { color: 'warning', label: 'DEGRADED' };
+  if (health.system_status === 'SCHEDULER_STALLED') return { color: 'negative', label: 'SCHEDULER STALLED' };
+  if (health.system_status === 'MARKET_DATA_STALLED') return { color: 'warning', label: 'MARKET DATA STALLED' };
+  if (health.system_status === 'AWAITING_ACTIVATION') return { color: 'info', label: 'AWAITING ACTIVATION' };
   if (health.system_status === 'AWAITING_FIRST_CYCLE') return { color: 'info', label: 'AWAITING FIRST CYCLE' };
   if (health.system_status === 'TOPOLOGY_INCOMPLETE') return { color: 'negative', label: 'ACCOUNTS INCOMPLETE' };
   return { color: 'positive', label: 'CONNECTED' };

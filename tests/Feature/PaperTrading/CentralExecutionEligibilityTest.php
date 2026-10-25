@@ -261,6 +261,54 @@ final class CentralExecutionEligibilityTest extends TestCase
         rmdir($workingDir);
     }
 
+    public function test_paper_processing_auto_adopts_canonical_bybit_primary_account_under_lock_and_preserves_provenance(): void
+    {
+        $accountService = $this->app->make(PaperAccountService::class);
+        $account = $accountService->primaryAccount('trend_pullback');
+        $account->update(['configuration_hash' => null, 'strategy_parameters' => null]);
+        $strategy = $this->app->make(StrategyRegistry::class)->get('trend_pullback');
+
+        // Unadopted: direct eligibility check returns retired
+        $eligibility = $this->app->make(PaperExecutionEligibilityService::class);
+        self::assertFalse($eligibility->isAccountEntryEligible($account));
+
+        // Processing auto-adopts canonical account
+        $processor = $this->app->make(PaperProcessingService::class);
+        $processor->process($account->id, 'BTCUSDT', new DateTimeImmutable('2026-10-14T10:20:00Z'), allowNewEntries: false);
+
+        $account->refresh();
+        self::assertNotNull($account->configuration_hash);
+        self::assertSame(StrategyRegistry::hash($strategy->parameters()), $account->configuration_hash);
+        self::assertSame($strategy->parameters(), $account->strategy_parameters);
+        self::assertTrue($eligibility->isAccountEntryEligible($account));
+
+        // Negative control: non-primary account cannot be auto-adopted
+        $nonPrimary = PaperAccountRecord::query()->create([
+            'id' => (string) Uuid::uuid4(),
+            'name' => 'Non-Primary Account',
+            'status' => 'ACTIVE',
+            'starting_balance' => '10000',
+            'current_equity' => '10000',
+            'peak_equity' => '10000',
+            'realized_pnl' => '0',
+            'unrealized_pnl' => '0',
+            'reserved_risk' => '0',
+            'maximum_drawdown_percent' => '0',
+            'current_drawdown_percent' => '0',
+            'mode' => 'STRATEGY_FORWARD_PAPER',
+            'exchange_id' => 'bybit',
+            'strategy_id' => 'trend_pullback',
+            'primary_strategy_id' => null,
+            'is_primary' => false,
+            'strategy_version' => $strategy->version(),
+            'configuration_hash' => null,
+        ]);
+        $processor->process($nonPrimary->id, 'BTCUSDT', new DateTimeImmutable('2026-10-14T10:20:00Z'), allowNewEntries: false);
+        $nonPrimary->refresh();
+        self::assertNull($nonPrimary->configuration_hash);
+        self::assertFalse($eligibility->isAccountEntryEligible($nonPrimary));
+    }
+
     private function createSignal(string $strategyId, string $side): SignalRecord
     {
         $at = new DateTimeImmutable('2026-10-14T10:15:00Z');
