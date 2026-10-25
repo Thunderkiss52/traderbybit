@@ -83,8 +83,12 @@ final readonly class PaperAccountService
         if ($primary !== null && $primary->configuration_hash === null && $primary->strategy_version === $strategyVersion) {
             return DB::transaction(function () use ($primary, $strategyId, $hash, $parameters): PaperAccountRecord {
                 $primary = PaperAccountRecord::query()->lockForUpdate()->findOrFail($primary->id);
-                $canonicalId = Uuid::uuid5(Uuid::NAMESPACE_URL, "traderbybit:paper:primary:{$strategyId}")->toString();
-                if ($primary->id !== $canonicalId || $primary->mode !== 'STRATEGY_FORWARD_PAPER'
+                $canonicalIds = array_filter([
+                    $strategyId === 'baseline' ? Uuid::uuid5(Uuid::NAMESPACE_URL, 'traderbybit:paper:default')->toString() : null,
+                    Uuid::uuid5(Uuid::NAMESPACE_URL, "traderbybit:paper:primary:{$strategyId}")->toString(),
+                    Uuid::uuid5(Uuid::NAMESPACE_URL, "traderbybit:paper:strategy:{$strategyId}")->toString(),
+                ]);
+                if (! in_array($primary->id, $canonicalIds, true) || $primary->mode !== 'STRATEGY_FORWARD_PAPER'
                     || $primary->strategy_id !== $strategyId || $primary->research_experiment_id !== null || $primary->configuration_hash !== null) {
                     throw new \DomainException('Primary account provenance requires explicit reconciliation.');
                 }

@@ -17,6 +17,7 @@ use Brick\Math\BigDecimal;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
+use Ramsey\Uuid\Uuid;
 use ReflectionMethod;
 use Tests\TestCase;
 
@@ -240,5 +241,36 @@ final class BinancePaperIsolationTest extends TestCase
         self::assertSame(13, $report['verified_pairs']);
         self::assertSame(26, $report['expected_pairs']);
         self::assertCount(14, $report['issues']);
+    }
+
+    public function test_provisioner_accepts_historical_strategy_namespaced_bybit_account_ids(): void
+    {
+        config()->set('exchanges.binance_paper_provisioning_approved', true);
+        // Seed Bybit primary accounts
+        app(PaperAccountService::class)->allPrimaryAccounts();
+
+        // Mutate one Bybit primary account ID to historical traderbybit:paper:strategy namespace
+        $strategy = 'momentum';
+        $historicalId = Uuid::uuid5(Uuid::NAMESPACE_URL, "traderbybit:paper:strategy:{$strategy}")->toString();
+        $current = DB::table('paper_accounts')->where('exchange_id', 'bybit')->where('primary_strategy_id', $strategy)->first();
+        DB::table('equity_snapshots')->where('paper_account_id', $current->id)->delete();
+        DB::table('paper_accounts')->where('id', $current->id)->update(['id' => $historicalId]);
+        DB::table('equity_snapshots')->insert([
+            'paper_account_id' => $historicalId,
+            'exchange_id' => 'bybit',
+            'recorded_at' => now('UTC'),
+            'equity' => '10000',
+            'realized_pnl' => '0',
+            'unrealized_pnl' => '0',
+            'drawdown_percent' => '0',
+            'source_event_key' => 'account:initial:bybit',
+            'created_at' => now('UTC'),
+            'updated_at' => now('UTC'),
+        ]);
+
+        // Provisioning must succeed and recognize historical provenance
+        $result = app(BinancePaperProvisioner::class)->provision();
+        self::assertSame(13, $result['created']);
+        self::assertSame('BLOCKED_UNTIL_VERIFIED', $result['paper_execution']);
     }
 }

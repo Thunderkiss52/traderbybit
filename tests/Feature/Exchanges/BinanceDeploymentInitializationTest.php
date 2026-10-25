@@ -297,4 +297,49 @@ final class BinanceDeploymentInitializationTest extends TestCase
         self::assertEquals($binanceBefore, $binanceAfter);
         self::assertEquals($positionsBefore, $positionsAfter);
     }
+
+    public function test_deployment_initializer_succeeds_with_historical_bybit_strategy_namespaced_account_ids(): void
+    {
+        $accountService = $this->app->make(PaperAccountService::class);
+        $bybitAccounts = $accountService->allPrimaryAccounts('bybit');
+
+        // Mutate original 7 non-baseline accounts to their exact historical traderbybit:paper:strategy IDs
+        $originalStrategies = [
+            'support_resistance_breakout',
+            'regime_switching',
+            'bollinger_mean_reversion',
+            'support_resistance_bounce',
+            'trend_pullback',
+            'momentum',
+            'donchian_atr_breakout',
+        ];
+        foreach ($originalStrategies as $strategy) {
+            $historicalId = Uuid::uuid5(Uuid::NAMESPACE_URL, "traderbybit:paper:strategy:{$strategy}")->toString();
+            $account = DB::table('paper_accounts')->where('exchange_id', 'bybit')->where('primary_strategy_id', $strategy)->first();
+            DB::table('equity_snapshots')->where('paper_account_id', $account->id)->delete();
+            DB::table('paper_accounts')->where('id', $account->id)->update(['id' => $historicalId]);
+            DB::table('equity_snapshots')->insert([
+                'paper_account_id' => $historicalId,
+                'exchange_id' => 'bybit',
+                'recorded_at' => now('UTC'),
+                'equity' => '10000',
+                'realized_pnl' => '0',
+                'unrealized_pnl' => '0',
+                'drawdown_percent' => '0',
+                'source_event_key' => 'account:initial:bybit',
+                'created_at' => now('UTC'),
+                'updated_at' => now('UTC'),
+            ]);
+        }
+
+        $initializer = $this->app->make(BinanceDeploymentInitializer::class);
+        $result = $initializer->initialize('10000', 'OWNER-VECTOR-20261023');
+
+        self::assertSame('INITIALIZED_SUCCESSFULLY', $result['status']);
+        self::assertSame(13, $result['provisioned']['created']);
+        self::assertSame(13, $result['capital']['accounts_allocated']);
+        self::assertSame('LEDGER_PASS_ONLY', $result['reconciliation']['status']);
+        self::assertTrue($result['bybit_history_preserved']);
+        self::assertSame(26, $result['canonical_accounts_count']);
+    }
 }

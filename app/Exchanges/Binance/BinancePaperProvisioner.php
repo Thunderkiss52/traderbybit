@@ -28,9 +28,12 @@ final class BinancePaperProvisioner
             foreach ((array) config('paper.primary_strategies', []) as $strategyId) {
                 $bybit = DB::table('paper_accounts')->where('exchange_id', 'bybit')
                     ->where('primary_strategy_id', $strategyId)->where('is_primary', true)->first();
-                $canonicalBybitId = Uuid::uuid5(Uuid::NAMESPACE_URL, $strategyId === 'baseline'
-                    ? 'traderbybit:paper:default' : 'traderbybit:paper:primary:'.$strategyId)->toString();
-                if ($bybit === null || $bybit->id !== $canonicalBybitId || $bybit->strategy_id !== $strategyId
+                $canonicalBybitIds = array_filter([
+                    $strategyId === 'baseline' ? Uuid::uuid5(Uuid::NAMESPACE_URL, 'traderbybit:paper:default')->toString() : null,
+                    Uuid::uuid5(Uuid::NAMESPACE_URL, 'traderbybit:paper:primary:'.$strategyId)->toString(),
+                    Uuid::uuid5(Uuid::NAMESPACE_URL, 'traderbybit:paper:strategy:'.$strategyId)->toString(),
+                ]);
+                if ($bybit === null || ! in_array($bybit->id, $canonicalBybitIds, true) || $bybit->strategy_id !== $strategyId
                     || $bybit->research_experiment_id !== null) {
                     // The legacy 2026-10-18 migration inferred PRIMARY from strategy_id.
                     // Noncanonical existing accounts require explicit provenance reconciliation.
