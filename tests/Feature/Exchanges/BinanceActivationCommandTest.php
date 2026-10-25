@@ -5,6 +5,8 @@ declare(strict_types=1);
 namespace Tests\Feature\Exchanges;
 
 use App\Exchanges\Binance\BinanceDeploymentInitializer;
+use App\Exchanges\Binance\BinancePaperActivation;
+use App\Exchanges\Binance\BinancePaperSafety;
 use App\MarketData\Infrastructure\Persistence\CandleRecord;
 use App\PaperTrading\Infrastructure\Persistence\MarketFundingEventRecord;
 use App\PaperTrading\Infrastructure\Persistence\PaperAccountRecord;
@@ -62,6 +64,15 @@ final class BinanceActivationCommandTest extends TestCase
         $this->seedReadinessData($now);
 
         // 2. Run activation command
+        $activationService = $this->app->make(BinancePaperActivation::class);
+        $result = $activationService->activate();
+
+        self::assertSame(11, $result['paper_activated']);
+        self::assertSame(0, $result['already_active']);
+        self::assertSame(2, $result['still_signal_only']);
+        self::assertFalse($result['paper_execution_approved']);
+        self::assertSame('EXECUTION_BLOCKED_PENDING_APPROVAL', $result['execution_readiness']);
+
         $this->artisan('binance:activate-paper', ['--approve' => true])
             ->assertSuccessful();
 
@@ -73,10 +84,52 @@ final class BinanceActivationCommandTest extends TestCase
         self::assertSame('BLOCKED', PaperAccountRecord::query()->where('exchange_id', 'binance')->where('primary_strategy_id', 'funding_open_interest_squeeze')->value('status'));
 
         // 3. Re-run activation command (idempotency policy)
+        $rerunResult = $activationService->activate();
+        self::assertSame(0, $rerunResult['paper_activated']);
+        self::assertSame(11, $rerunResult['already_active']);
+        self::assertSame(2, $rerunResult['still_signal_only']);
+
         $this->artisan('binance:activate-paper', ['--approve' => true])
             ->assertSuccessful();
 
         self::assertSame(11, PaperAccountRecord::query()->where('exchange_id', 'binance')->where('status', 'ACTIVE')->count());
+
+        // Verify that even though accounts are ACTIVE, assertExecutable still fails fail-closed while paper_execution_approved is false
+        $activeAccount = PaperAccountRecord::query()->where('exchange_id', 'binance')->where('status', 'ACTIVE')->first();
+        self::assertNotNull($activeAccount);
+        $this->expectException(DomainException::class);
+        $this->expectExceptionMessage('Binance paper execution is not approved.');
+        BinancePaperSafety::assertExecutable($activeAccount);
+    }
+
+    public function test_activation_reflects_approved_execution_readiness_when_flag_enabled(): void
+    {
+        $initializer = $this->app->make(BinanceDeploymentInitializer::class);
+        $initializer->initialize('10000', 'OWNER-VECTOR-20261023');
+
+        config([
+            'exchanges.binance.research_cycle_enabled' => true,
+            'exchanges.binance.paper_execution_approved' => true,
+            'exchanges.binance.paper_taker_rate' => '0.0005',
+            'exchanges.binance.paper_slippage_rate' => '0.0002',
+        ]);
+
+        $baseHour = (int) floor(time() / 3600) * 3600;
+        $now = (new DateTimeImmutable("@{$baseHour}"))->modify('+3 minutes');
+        $this->travelTo($now);
+        $this->seedReadinessData($now);
+
+        $activationService = $this->app->make(BinancePaperActivation::class);
+        $result = $activationService->activate();
+
+        self::assertSame(11, $result['paper_activated']);
+        self::assertTrue($result['paper_execution_approved']);
+        self::assertSame('READY_FOR_PAPER_EXECUTION', $result['execution_readiness']);
+
+        $activeAccount = PaperAccountRecord::query()->where('exchange_id', 'binance')->where('status', 'ACTIVE')->first();
+        self::assertNotNull($activeAccount);
+        // Does not throw when execution is approved
+        BinancePaperSafety::assertExecutable($activeAccount);
     }
 
     private function seedReadinessData(DateTimeImmutable|CarbonInterface $now): void

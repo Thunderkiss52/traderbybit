@@ -8,6 +8,7 @@ use App\Exchanges\Binance\BinanceFundingIngestion;
 use App\Exchanges\Binance\BinancePaperActivation;
 use App\Exchanges\Binance\BinancePaperCapital;
 use App\Exchanges\Binance\BinancePaperProvisioner;
+use App\Exchanges\Binance\BinancePaperReadiness;
 use App\Exchanges\Binance\BinancePortabilityMatrix;
 use App\Exchanges\Binance\BinanceResearchCycle;
 use App\Exchanges\Binance\ExchangePaperReconciliation;
@@ -140,13 +141,26 @@ Artisan::command('binance:allocate-paper-capital {amount} {reference} {--approve
     return 0;
 })->purpose('Explicit idempotent owner paper-capital allocation to 13 Binance accounts; stays BLOCKED');
 
+Artisan::command('binance:paper-readiness {--require-execution : Require VECTOR_BINANCE_PAPER_EXECUTION_APPROVED=true}', function (BinancePaperReadiness $readiness): int {
+    $requireExecution = (bool) $this->option('require-execution');
+    $report = $readiness->inspect($requireExecution);
+    $this->line(json_encode($report, JSON_PRETTY_PRINT | JSON_THROW_ON_ERROR));
+
+    return $report['overall_readiness'] !== 'BLOCKED' ? 0 : 1;
+})->purpose('Read-only comprehensive check of Binance cost evidence, candles, funding, census, and execution eligibility');
+
 Artisan::command('binance:activate-paper {--approve}', function (BinancePaperActivation $activation): int {
     if (! (bool) $this->option('approve')) {
         $this->error('Explicit owner --approve is required.');
 
         return 1;
     }
-    $this->line(json_encode($activation->activate(), JSON_PRETTY_PRINT | JSON_THROW_ON_ERROR));
+    $result = $activation->activate();
+    $this->line(json_encode($result, JSON_PRETTY_PRINT | JSON_THROW_ON_ERROR));
+
+    if (! ($result['paper_execution_approved'] ?? false)) {
+        $this->warn('NOTE: Account status updated to ACTIVE for eligible strategies, but simulated executions remain BLOCKED because VECTOR_BINANCE_PAPER_EXECUTION_APPROVED is false.');
+    }
 
     return 0;
 })->purpose('Explicitly activate eligible funded Binance PAPER accounts after readiness gates');

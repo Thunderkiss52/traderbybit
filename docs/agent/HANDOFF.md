@@ -1105,3 +1105,26 @@ Updated: 2026-10-24T19:00:00+03:00. Branch `main`, HEAD `33d1448`. Strict PAPER-
   - ECONOM / econom-group resources strictly untouched.
   - Local commit only; no unauthorized git push or production deployment.
 
+## Checkpoint VECTOR-V24-BINANCE-PAPER-ACTIVATION-READINESS-20261025T190000Z — Binance PAPER Activation Configuration, Cost Evidence, and Readiness
+
+- Scope completed:
+  1. Propagated missing container environment variables (`VECTOR_BINANCE_PAPER_TAKER_RATE`, `VECTOR_BINANCE_PAPER_SLIPPAGE_RATE`, `VECTOR_BINANCE_PAPER_EXECUTION_APPROVED`, `VECTOR_BINANCE_PAPER_PROVISIONING_APPROVED`, `VECTOR_BINANCE_RESEARCH_CYCLE_ENABLED`) in `compose.yaml` under `x-app-environment: &app-environment`.
+  2. Implemented documented, exchange-specific cost configuration for Binance USDⓈ-M perpetual linear contracts (VIP 0 regular user standard taker fee `0.0005` = 5 bps, conservative top-of-book slippage `0.0002` = 2 bps).
+  3. Created read-only `binance:paper-readiness` Artisan command and `BinancePaperReadiness` inspection service.
+  4. Updated `BinancePaperActivation` to return `paper_execution_approved` boolean and `execution_readiness`, preventing misleading reporting of execution readiness when execution approval is false.
+  5. Strictly preserved the 2 Binance `SIGNAL_ONLY` strategies (`btc_eth_lead_lag`, `funding_open_interest_squeeze`), ensuring only 11 eligible primary accounts can activate while all 26 accounts retain their complete balances, positions, executions, and financial history.
+- Verification and Evidence:
+  - `tests/Feature/Exchanges/BinancePaperReadinessTest.php`: 11 tests, 54 assertions PASS on isolated PostgreSQL (`bybit_test`).
+  - `tests/Feature/Exchanges/BinanceActivationCommandTest.php`: 4 tests, 24 assertions PASS.
+  - Full `tests/Feature/Exchanges/`: 44 tests, 588 assertions PASS.
+  - Full `tests/Unit/Exchanges/`: 31 tests, 109 assertions PASS.
+  - Code Style: `vendor/bin/pint --test` PASS across all 650 files.
+  - Frontend Tests: `npm test` 55/55 PASS.
+  - Go Tests: `go test ./...` 100% PASS with race detector.
+- Invariants Maintained:
+  - Strictly PAPER-ONLY. No live orders, private trading credentials, or trade API endpoints.
+  - 11 PRIMARY accounts become ACTIVE; 2 remain SIGNAL_ONLY.
+  - All 26 accounts and financial ledger history preserved without modification.
+  - ECONOM / econom-group resources strictly untouched.
+  - Local commit only; no unauthorized git push or production deployment.
+

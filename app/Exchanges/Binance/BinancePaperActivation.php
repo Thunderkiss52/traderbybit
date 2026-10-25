@@ -95,12 +95,16 @@ final class BinancePaperActivation
                 $activated++;
             }
 
+            $executionApproved = (bool) config('exchanges.binance.paper_execution_approved', false);
+
             return [
                 'exchange_id' => 'binance',
                 'paper_activated' => $activated,
                 'already_active' => $alreadyActive,
                 'still_signal_only' => count($strategies) - ($activated + $alreadyActive),
                 'real_order_paths' => 'DISABLED',
+                'paper_execution_approved' => $executionApproved,
+                'execution_readiness' => $executionApproved ? 'READY_FOR_PAPER_EXECUTION' : 'EXECUTION_BLOCKED_PENDING_APPROVAL',
             ];
         });
     }
