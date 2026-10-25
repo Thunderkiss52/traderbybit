@@ -37,6 +37,7 @@ final readonly class PaperProcessingService
         private TradingJournalService $journal,
         private CacheFactory $cache,
         private array $config,
+        private ?PaperExecutionEligibilityService $eligibility = null,
     ) {}
 
     public function process(?string $accountId = null, ?string $symbol = null, ?DateTimeImmutable $at = null, bool $allowNewEntries = true): array
@@ -50,6 +51,7 @@ final readonly class PaperProcessingService
         } elseif ($account->exchange_id !== 'bybit') {
             throw new \DomainException('Unknown paper account exchange.');
         }
+        $eligibility = $this->eligibility ?? app(PaperExecutionEligibilityService::class);
         $historical = $at !== null;
         $at ??= $this->latestClosedTime($account->exchange_id, $symbol) ?? new DateTimeImmutable('now UTC');
         $lock = $this->cache->lock("paper:process:{$account->id}", (int) $this->config['processing']['lock_seconds']);
@@ -57,7 +59,8 @@ final readonly class PaperProcessingService
             throw new \RuntimeException('Paper account is already being processed.');
         }
         try {
-            if ($allowNewEntries && $account->status === 'ACTIVE') {
+            $entryEligible = $allowNewEntries && $eligibility->isAccountEntryEligible($account);
+            if ($entryEligible) {
                 $this->ingestSignals($account, $symbol, $at, ! $historical);
             }
             $processed = 0;
@@ -67,13 +70,13 @@ final readonly class PaperProcessingService
                 ->get();
             foreach ($states as $state) {
                 if ($state->status === SignalLifecycle::PendingEntry->value
-                    && (! $allowNewEntries || $account->status !== 'ACTIVE')) {
-                    DB::transaction(function () use ($account, $state, $at): void {
+                    && ! $entryEligible) {
+                    DB::transaction(function () use ($account, $state, $at, $eligibility): void {
                         $locked = PaperSignalStateRecord::query()->lockForUpdate()->findOrFail($state->id);
                         if ($locked->status !== SignalLifecycle::PendingEntry->value) {
                             return;
                         }
-                        $reason = $account->status !== 'ACTIVE' ? 'account_not_active' : 'forward_configuration_retired';
+                        $reason = $eligibility->accountEntryRejectionReason($account) ?? 'forward_configuration_retired';
                         $locked->update(['status' => SignalLifecycle::Rejected->value, 'reason' => $reason, 'processed_at' => $at]);
                         $this->journal->append($account->id, $locked->signal_id, null, 'ENTRY_RISK_REJECTED', $at,
                             ['reason' => $reason], "pending-cancel:{$account->id}:{$locked->signal_id}");
@@ -334,7 +337,17 @@ final readonly class PaperProcessingService
                     'bar' => ['open' => $bar->open, 'high' => $bar->high, 'low' => $bar->low, 'close' => $bar->close],
                 ], "entry-evaluated:{$account->id}:{$signal->id}:{$bar->closeTime->format('U.u')}");
                 if ($quote !== null) {
-                    $entryAssessment = $this->assessment($account->refresh(), $signal);
+                    $freshAccount = $account->refresh();
+                    $eligibility = $this->eligibility ?? app(PaperExecutionEligibilityService::class);
+                    if (! $eligibility->isAccountEntryEligible($freshAccount)) {
+                        $rejectionReason = $eligibility->accountEntryRejectionReason($freshAccount) ?? 'entry_not_eligible';
+                        SignalLifecycle::from($state->status)->transitionTo(SignalLifecycle::Rejected);
+                        $state->update(['status' => SignalLifecycle::Rejected->value, 'reason' => $rejectionReason, 'processed_at' => $bar->closeTime]);
+                        $this->updateObservationDiagnostics($account, $signal, ['risk_approved' => false, 'risk_rejection_reasons' => [$rejectionReason], 'paper_execution' => 'ENTRY_RISK_REJECTED']);
+                        $this->journal->append($account->id, $signal->id, null, 'ENTRY_RISK_REJECTED', $bar->closeTime, ['reason' => $rejectionReason], "entry-risk:{$account->id}:{$signal->id}:{$bar->closeTime->format('U.u')}");
+                        break;
+                    }
+                    $entryAssessment = $this->assessment($freshAccount, $signal);
                     if (! $entryAssessment['allowed']) {
                         SignalLifecycle::from($state->status)->transitionTo(SignalLifecycle::Rejected);
                         $state->update(['status' => SignalLifecycle::Rejected->value, 'reason' => $entryAssessment['reasons'][0] ?? 'entry_risk_rejected', 'processed_at' => $bar->closeTime]);

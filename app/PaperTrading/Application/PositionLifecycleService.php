@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace App\PaperTrading\Application;
 
-use App\Exchanges\Binance\BinancePaperSafety;
 use App\PaperTrading\Domain\ExecutionQuote;
 use App\PaperTrading\Domain\ExecutionType;
 use App\PaperTrading\Domain\PositionSize;
@@ -30,32 +29,21 @@ final readonly class PositionLifecycleService
         private PaperExecutionEngine $execution,
         private TradingJournalService $journal,
         private array $config,
+        private ?PaperExecutionEligibilityService $eligibility = null,
     ) {}
 
     public function open(PaperAccountRecord $account, PaperSignalStateRecord $state, SignalRecord $signal, PositionSize $size, ExecutionQuote $quote, DateTimeImmutable $at): VirtualPositionRecord
     {
-        if ($account->exchange_id !== $signal->exchange || $signal->category !== 'linear') {
-            throw new \DomainException('Cross-exchange paper execution prohibited.');
-        }
-        if ($account->exchange_id === 'binance') {
-            BinancePaperSafety::assertExecutable($account);
-        } elseif ($account->exchange_id !== 'bybit') {
-            throw new \DomainException('Unknown paper exchange.');
-        }
+        $eligibility = $this->eligibility ?? app(PaperExecutionEligibilityService::class);
+        $eligibility->assertOpenEligible($account, $state, $signal);
 
-        return DB::transaction(function () use ($account, $state, $signal, $size, $quote, $at): VirtualPositionRecord {
+        return DB::transaction(function () use ($account, $state, $signal, $size, $quote, $at, $eligibility): VirtualPositionRecord {
             $lockedAccount = PaperAccountRecord::query()->lockForUpdate()->findOrFail($account->id);
             $lockedState = PaperSignalStateRecord::query()->lockForUpdate()->findOrFail($state->id);
             // Recheck authorization *inside* the account lock. A previously
             // loaded ACTIVE model is not evidence that the account is still
             // permitted to open an entry when concurrent risk/jobs change it.
-            if ($lockedAccount->exchange_id !== $signal->exchange || $lockedAccount->status !== 'ACTIVE'
-                || $lockedState->paper_account_id !== $lockedAccount->id || $lockedState->signal_id !== $signal->id) {
-                throw new \DomainException('Locked paper account or signal is no longer entry eligible.');
-            }
-            if ($lockedAccount->exchange_id === 'binance') {
-                BinancePaperSafety::assertExecutable($lockedAccount);
-            }
+            $eligibility->assertOpenEligible($lockedAccount, $lockedState, $signal);
             $positionId = Uuid::uuid5(Uuid::NAMESPACE_URL, "traderbybit:position:{$account->id}:{$signal->id}")->toString();
             if ($existing = VirtualPositionRecord::query()->find($positionId)) {
                 return $existing;

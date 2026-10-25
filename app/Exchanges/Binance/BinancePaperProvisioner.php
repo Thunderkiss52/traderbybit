@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Exchanges\Binance;
 
+use App\Strategy\Application\StrategyRegistry;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
 use Ramsey\Uuid\Uuid;
@@ -38,10 +39,20 @@ final class BinancePaperProvisioner
                 $id = Uuid::uuid5(Uuid::NAMESPACE_URL, 'traderbybit:paper:primary:binance:'.$strategyId)->toString();
                 $account = DB::table('paper_accounts')->where('exchange_id', 'binance')
                     ->where('primary_strategy_id', $strategyId)->first();
+                $strategy = app(StrategyRegistry::class)->get($strategyId);
+                $version = $strategy->version();
+                $parameters = $strategy->parameters();
+                $hash = StrategyRegistry::hash($parameters);
                 if ($account !== null) {
                     if ($account->id !== $id || ! $account->is_primary || $account->strategy_id !== $strategyId
                         || $account->research_experiment_id !== null) {
                         throw new RuntimeException('Existing Binance account requires manual provenance reconciliation.');
+                    }
+                    if ($account->configuration_hash === null && $account->strategy_version === $version) {
+                        DB::table('paper_accounts')->where('id', $id)->update([
+                            'configuration_hash' => $hash,
+                            'strategy_parameters' => json_encode($parameters, JSON_THROW_ON_ERROR),
+                        ]);
                     }
                     $existing++;
 
@@ -59,7 +70,9 @@ final class BinancePaperProvisioner
                     'reserved_risk' => '0', 'maximum_drawdown_percent' => '0', 'current_drawdown_percent' => '0',
                     'mode' => 'STRATEGY_FORWARD_PAPER', 'strategy_id' => $strategyId,
                     'primary_strategy_id' => $strategyId, 'is_primary' => true,
-                    'strategy_version' => (string) ($bybit->strategy_version ?? '1.0.0'),
+                    'strategy_version' => $version,
+                    'configuration_hash' => $hash,
+                    'strategy_parameters' => json_encode($parameters, JSON_THROW_ON_ERROR),
                     'exchange_id' => 'binance', 'created_at' => $now, 'updated_at' => $now,
                 ]);
                 DB::table('equity_snapshots')->insert([

@@ -87,7 +87,12 @@ final readonly class StrategyRegistry
             'configuration_hash' => $this->hash($s->parameters()), 'parameters' => $s->parameters()], $this->strategies);
     }
 
-    private function hash(array $parameters): string
+    public function configurationHash(string $id): string
+    {
+        return self::hash($this->get($id)->parameters());
+    }
+
+    public static function hash(array $parameters): string
     {
         $sort = function (&$v) use (&$sort): void {
             if (! is_array($v)) {

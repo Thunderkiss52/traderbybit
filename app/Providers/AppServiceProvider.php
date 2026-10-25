@@ -40,6 +40,7 @@ use App\MarketData\Infrastructure\Persistence\EloquentCandleStore;
 use App\MarketData\Infrastructure\WebSocket\PhrityWebSocketConnector;
 use App\PaperTrading\Application\CorrelationService;
 use App\PaperTrading\Application\PaperAccountService;
+use App\PaperTrading\Application\PaperExecutionEligibilityService;
 use App\PaperTrading\Application\PaperExecutionEngine;
 use App\PaperTrading\Application\PaperProcessingService;
 use App\PaperTrading\Application\PositionLifecycleService;
@@ -162,18 +163,27 @@ class AppServiceProvider extends ServiceProvider
             config: (array) config('strategy'),
             advisory: $app->make(ModelAdvisoryService::class),
         ));
-        $this->app->singleton(PaperAccountService::class, fn (): PaperAccountService => new PaperAccountService((array) config('paper')));
+        $this->app->singleton(PaperExecutionEligibilityService::class, fn ($app): PaperExecutionEligibilityService => new PaperExecutionEligibilityService(
+            registry: $app->make(StrategyRegistry::class),
+            config: (array) config('paper'),
+        ));
+        $this->app->singleton(PaperAccountService::class, fn ($app): PaperAccountService => new PaperAccountService(
+            (array) config('paper'),
+            $app->make(StrategyRegistry::class),
+        ));
         $this->app->singleton(PositionSizingService::class, fn (): PositionSizingService => new PositionSizingService((array) config('paper')));
         $this->app->singleton(CorrelationService::class, fn (): CorrelationService => new CorrelationService((array) config('paper')));
         $this->app->singleton(RiskEngine::class, fn (): RiskEngine => new RiskEngine((array) config('paper')));
         $this->app->singleton(PaperExecutionEngine::class, fn (): PaperExecutionEngine => new PaperExecutionEngine((array) config('paper')));
         $this->app->singleton(PositionLifecycleService::class, fn ($app): PositionLifecycleService => new PositionLifecycleService(
             execution: $app->make(PaperExecutionEngine::class), journal: $app->make(TradingJournalService::class), config: (array) config('paper'),
+            eligibility: $app->make(PaperExecutionEligibilityService::class),
         ));
         $this->app->singleton(PaperProcessingService::class, fn ($app): PaperProcessingService => new PaperProcessingService(
             accounts: $app->make(PaperAccountService::class), risk: $app->make(RiskEngine::class), correlation: $app->make(CorrelationService::class),
             sizing: $app->make(PositionSizingService::class), execution: $app->make(PaperExecutionEngine::class), lifecycle: $app->make(PositionLifecycleService::class),
             journal: $app->make(TradingJournalService::class), cache: $app->make(Factory::class), config: (array) config('paper'),
+            eligibility: $app->make(PaperExecutionEligibilityService::class),
         ));
         $this->app->singleton(HistoricalSignalEvaluator::class, StrategySignalEvaluator::class);
         $this->app->singleton(BacktestSimulationEngine::class, fn ($app): BacktestSimulationEngine => new BacktestSimulationEngine(

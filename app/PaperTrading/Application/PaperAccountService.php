@@ -7,7 +7,7 @@ namespace App\PaperTrading\Application;
 use App\PaperTrading\Domain\AccountStatus;
 use App\PaperTrading\Infrastructure\Persistence\EquitySnapshotRecord;
 use App\PaperTrading\Infrastructure\Persistence\PaperAccountRecord;
-use App\PaperTrading\Infrastructure\Persistence\VirtualPositionRecord;
+use App\Strategy\Application\StrategyRegistry;
 use Brick\Math\BigDecimal;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
@@ -15,11 +15,17 @@ use Ramsey\Uuid\Uuid;
 
 final readonly class PaperAccountService
 {
-    public function __construct(private array $config) {}
+    public function __construct(
+        private array $config,
+        private ?StrategyRegistry $registry = null,
+    ) {}
 
     public function default(): PaperAccountRecord
     {
         $id = Uuid::uuid5(Uuid::NAMESPACE_URL, 'traderbybit:paper:default')->toString();
+        $baselineConfig = (array) config('strategy');
+        $baselineVersion = (string) config('strategy.version');
+        $baselineHash = StrategyRegistry::hash($baselineConfig);
 
         $account = PaperAccountRecord::query()->where('primary_strategy_id', 'baseline')->where('exchange_id', 'bybit')->first()
             ?? PaperAccountRecord::query()->find($id);
@@ -27,6 +33,13 @@ final readonly class PaperAccountService
         if ($account !== null) {
             if (! $account->is_primary || $account->primary_strategy_id !== 'baseline' || $account->research_experiment_id !== null || $account->exchange_id !== 'bybit') {
                 throw new \DomainException('Default account provenance requires explicit reconciliation.');
+            }
+
+            if ($account->configuration_hash === null && $account->strategy_version === $baselineVersion) {
+                $account->update([
+                    'configuration_hash' => $baselineHash,
+                    'strategy_parameters' => $baselineConfig,
+                ]);
             }
 
             $this->ensureInitialSnapshot($account);
@@ -42,8 +55,10 @@ final readonly class PaperAccountService
             'current_equity' => (string) $this->config['default_account']['starting_balance'],
             'peak_equity' => (string) $this->config['default_account']['starting_balance'],
             'realized_pnl' => '0', 'unrealized_pnl' => '0', 'reserved_risk' => '0', 'maximum_drawdown_percent' => '0', 'current_drawdown_percent' => '0',
-            'mode' => 'FORWARD_PAPER', 'strategy_id' => 'baseline', 'strategy_version' => (string) config('strategy.version'),
+            'mode' => 'FORWARD_PAPER', 'strategy_id' => 'baseline', 'strategy_version' => $baselineVersion,
             'primary_strategy_id' => 'baseline', 'is_primary' => true, 'exchange_id' => 'bybit',
+            'configuration_hash' => $baselineHash,
+            'strategy_parameters' => $baselineConfig,
         ]);
 
         $this->ensureInitialSnapshot($account);
@@ -70,16 +85,11 @@ final readonly class PaperAccountService
                 $primary = PaperAccountRecord::query()->lockForUpdate()->findOrFail($primary->id);
                 $canonicalId = Uuid::uuid5(Uuid::NAMESPACE_URL, "traderbybit:paper:primary:{$strategyId}")->toString();
                 if ($primary->id !== $canonicalId || $primary->mode !== 'STRATEGY_FORWARD_PAPER'
-                    || $primary->strategy_id !== $strategyId || $primary->research_experiment_id !== null || $primary->configuration_hash !== null
-                    || VirtualPositionRecord::query()->where('paper_account_id', $primary->id)->exists()
-                    || DB::table('paper_signal_states')->where('paper_account_id', $primary->id)->exists()
-                    || DB::table('trading_journal_events')->where('paper_account_id', $primary->id)->exists()
-                    || DB::table('risk_decisions')->where('paper_account_id', $primary->id)->exists()
-                    || ! BigDecimal::of($primary->current_equity)->isEqualTo($primary->starting_balance)
-                    || ! BigDecimal::of($primary->realized_pnl)->isZero()
-                    || ! BigDecimal::of($primary->unrealized_pnl)->isZero()
-                    || ! BigDecimal::of($primary->reserved_risk)->isZero()) {
+                    || $primary->strategy_id !== $strategyId || $primary->research_experiment_id !== null || $primary->configuration_hash !== null) {
                     throw new \DomainException('Primary account provenance requires explicit reconciliation.');
+                }
+                if ($primary->strategy_parameters !== null && StrategyRegistry::hash($primary->strategy_parameters) !== $hash) {
+                    throw new \DomainException('Primary account configuration parameter conflict requires explicit reconciliation.');
                 }
                 $primary->update(['configuration_hash' => $hash, 'strategy_parameters' => $parameters]);
                 $this->ensureInitialSnapshot($primary);
@@ -143,6 +153,12 @@ final readonly class PaperAccountService
                 ->where('exchange_id', $exchangeId)
                 ->first();
 
+            $registry = $this->registry ?? app(StrategyRegistry::class);
+            $strategy = $registry->get($strategyId);
+            $version = $strategy->version();
+            $parameters = $strategy->parameters();
+            $hash = StrategyRegistry::hash($parameters);
+
             if ($account !== null) {
                 if (! $account->is_primary || $account->strategy_id !== $strategyId || $account->research_experiment_id !== null) {
                     throw new \DomainException('Incompatible primary account provenance.');
@@ -174,7 +190,7 @@ final readonly class PaperAccountService
                 'strategy_id' => $strategyId,
                 'primary_strategy_id' => $strategyId,
                 'is_primary' => true,
-                'strategy_version' => (string) config("research.strategies.{$strategyId}.version", '1.0.0'),
+                'strategy_version' => $version,
             ]);
 
             if (! $account->is_primary || $account->primary_strategy_id !== $strategyId || $account->research_experiment_id !== null || $account->exchange_id !== $exchangeId) {
@@ -222,20 +238,6 @@ final readonly class PaperAccountService
 
     private function hash(array $parameters): string
     {
-        $sort = function (mixed &$value) use (&$sort): void {
-            if (! is_array($value)) {
-                return;
-            }
-            foreach ($value as &$item) {
-                $sort($item);
-            }
-            unset($item);
-            if (! array_is_list($value)) {
-                ksort($value);
-            }
-        };
-        $sort($parameters);
-
-        return hash('sha256', json_encode($parameters, JSON_THROW_ON_ERROR));
+        return StrategyRegistry::hash($parameters);
     }
 }

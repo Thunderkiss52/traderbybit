@@ -455,8 +455,8 @@ final class AuditExportService
                     ->where('exchange_id', $exchangeId)
                     ->get(['strategy_version', 'configuration_hash']);
                 $matches = $strategy === null ? collect() : $accounts->filter(fn ($account): bool => $account->strategy_version === $strategy['version']
-                    && ($account->configuration_hash === null
-                        || $account->configuration_hash === $strategy['configuration_hash']));
+                    && $account->configuration_hash !== null
+                    && $account->configuration_hash === $strategy['configuration_hash']);
                 $status = match (true) {
                     $strategy === null => 'STRATEGY_NOT_REGISTERED',
                     $accounts->isEmpty() => 'MISSING_PRIMARY_ACCOUNT',

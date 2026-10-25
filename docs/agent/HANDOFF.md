@@ -864,3 +864,38 @@ Updated: 2026-10-24T19:00:00+03:00. Branch `main`, HEAD `33d1448`. Strict PAPER-
    - Integration Suite: 35 tests, 363 assertions — 100% PASS (with `RUN_BYBIT_INTEGRATION=1`)
    - Total Suite: **742 tests, 5,290 assertions — 0 errors, 0 failures, 0 notices**.
 
+
+## VECTOR V2.4 Recovery — ownership corrected and plan saved (20261025T093401Z)
+
+- Branch main; HEAD f243d7631b70aa638443751e28be8446c4c3ac95. Tracked source was clean. Recovery plan: docs/agent/V24_RECOVERY_PLAN.md (new; six revalidated defects and dependencies).
+- PID 28603 belongs to this exact CODEX_THREAD_ID/CODEX_SESSION_ID, despite using a CLI TTY while tools run under app-server PID 4806. Earlier competing-editor blocker withdrawn. PID 6764 exited. No process was terminated.
+- Current task P0-A1 IN_PROGRESS: enforce one entry eligibility policy in PaperProcessingService and again inside PositionLifecycleService::open account/state locks. Cover general job, CLI, research, Binance, direct open; preserve position exits and financial history.
+- No implementation tests yet. Prior read-only baseline: 9 stateless tests / 15 assertions passed, native PHP 8.4.24. PostgreSQL test endpoints previously unavailable; prove isolated DB before writes.
+- Run evidence/snapshots: reports/overnight/runs/vector-20261025T093401Z/.
+- Next exact action: inspect entry fixtures/config contracts; establish a new dedicated isolated local PostgreSQL harness without Docker/shared-resource access; reproduce bypass, implement policy, targeted integration/regression, checkpoint and scoped local commit.
+- PAPER ONLY. No real orders, push, deploy, production access, financial history resets or ECONOM changes.
+
+## Checkpoint VECTOR-V24-RECOVERY-P0-A1-A2-20261025T100400Z — Tasks P0-A1 and P0-A2 Complete
+
+- Scope completed: Tasks P0-A1 (Central execution eligibility) and P0-A2 (Configuration lifecycle and safe repair).
+- Root causes identified and resolved:
+  1. `ProcessPaperTradingJob`, CLI commands, and other research paths called `PaperProcessingService::process` with default `$allowNewEntries = true` without checking whether a strategy was `signal_only` or whether its configuration hash/version was valid.
+  2. `PaperProcessingService` and `PositionLifecycleService::open` lacked centralized entry eligibility enforcement under lock.
+  3. `PaperAccountService::strategyForward` refused to prospectively bind missing canonical configuration hashes if any historical rows existed in `paper_signal_states`, `trading_journal_events`, or `risk_decisions`, leaving canonical primary accounts with `configuration_hash = null` after signal evaluation. This triggered `forward_configuration_retired` rejections for all subsequent signals.
+  4. `AuditExportService::writePrimaryCoverage` treated null `configuration_hash` as MATCHED.
+  5. `trend_pullback` BLOCKED state was identified as legitimate drawdown protection (drawdown >= 5% sets status to BLOCKED).
+- Changes implemented:
+  - `app/PaperTrading/Application/PaperExecutionEligibilityService.php`: Authoritative execution eligibility service enforcing ACTIVE status, SIGNAL_ONLY rules (`btc_eth_lead_lag`, Binance funding/OI), Binance gates, research candidate promotion, primary strategy registration, version matching, and configuration hash matching.
+  - `app/PaperTrading/Application/PositionLifecycleService.php`: Enforces `assertOpenEligible` before transaction and inside locked transaction (`$lockedAccount`, `$lockedState`).
+  - `app/PaperTrading/Application/PaperProcessingService.php`: Integrates `PaperExecutionEligibilityService` for signal ingestion, pending-cancel sweeps with exact rejection reasons, and entry sizing checks.
+  - `app/Strategy/Application/StrategyRegistry.php`: Exposed public static `hash(array $parameters): string` and `configurationHash(string $id): string`.
+  - `app/PaperTrading/Application/PaperAccountService.php`: Fixed prospective configuration binding for canonical primary accounts with history; bound default baseline account hash and parameters.
+  - `app/Exchanges/Binance/BinancePaperProvisioner.php`: Populates `strategy_version`, `configuration_hash`, and `strategy_parameters` from StrategyRegistry.
+  - `app/Audit/Application/AuditExportService.php`: Fixed primary coverage export to require non-null matching configuration hash.
+  - `tests/Feature/PaperTrading/CentralExecutionEligibilityTest.php`: New test suite covering all 6 eligibility and configuration lifecycle scenarios.
+- Verification and Evidence:
+  - Isolated PostgreSQL container `traderbybit-php85-postgres` on tmpfs DB `bybit_test` on `traderbybit-php85-testnet` under PHP 8.5.12 (`reports/php85-upgrade/run.py`).
+  - `CentralExecutionEligibilityTest`: 6 tests, 24 assertions, 100% PASS.
+  - Regression suite: 72 tests, 1304 assertions, 100% PASS (`tests/Feature/PaperTrading/`, `SignalOnlyStrategyExecutionTest.php`, `tests/Feature/Exchanges/`, `tests/Feature/Audit/`, `AuditExportTest.php`).
+  - Pint code formatting: 100% PASS on all modified files.
+- Next task: Task P0-B — Binance initialization and 26-account preservation (idempotent provisioning and capital events in deployment entrypoint).
