@@ -11,7 +11,9 @@ use App\PaperTrading\Infrastructure\Persistence\VirtualExecutionRecord;
 use App\PaperTrading\Infrastructure\Persistence\VirtualPositionRecord;
 use Brick\Math\BigDecimal;
 use Brick\Math\RoundingMode;
+use Carbon\CarbonImmutable;
 use DateTimeImmutable;
+use DateTimeInterface;
 use DateTimeZone;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Facades\DB;
@@ -24,25 +26,29 @@ final class DailyPerformanceService
     {
         $account = PaperAccountRecord::query()->findOrFail($accountId);
         $zone = new DateTimeZone($timezone);
-        $now = new DateTimeImmutable('now', $zone);
+        $now = CarbonImmutable::now($zone);
         $page = max(1, $page);
         $perPage = max(1, min(100, $perPage));
         [$selected, $total] = $this->snapshotDates($accountId, $zone, $page, $perPage);
 
-        $days = array_map(fn (string $date): array => $this->day($account, $date, $zone, $symbol, $now), $selected);
+        $definitions = $this->definitions($now, $selected);
+        $periods = $this->periods($account, $definitions, $symbol);
+
+        $summary = [];
+        foreach (['today', 'yesterday', 'last_7_days', 'last_30_days', 'all_time'] as $key) {
+            $summary[$key] = $periods[$key];
+        }
+        $days = [];
+        foreach ($selected as $date) {
+            $days[] = ['date' => $date] + $periods['day:'.$date];
+        }
 
         return [
             'account_id' => $account->id,
             'mode' => 'FORWARD_PAPER',
             'timezone' => $zone->getName(),
             'symbol' => $symbol ?? 'ALL',
-            'summary' => [
-                'today' => $this->period($account, $now->setTime(0, 0), $now, $symbol),
-                'yesterday' => $this->period($account, $now->setTime(0, 0)->modify('-1 day'), $now->setTime(0, 0)->modify('-1 microsecond'), $symbol),
-                'last_7_days' => $this->period($account, $now->setTime(0, 0)->modify('-6 days'), $now, $symbol),
-                'last_30_days' => $this->period($account, $now->setTime(0, 0)->modify('-29 days'), $now, $symbol),
-                'all_time' => $this->period($account, null, $now, $symbol),
-            ],
+            'summary' => $summary,
             'days' => [
                 'data' => $days,
                 'meta' => [
@@ -84,27 +90,76 @@ final class DailyPerformanceService
         return [$dates, $total];
     }
 
-    private function day(PaperAccountRecord $account, string $date, DateTimeZone $zone, ?string $symbol, DateTimeImmutable $now): array
+    /**
+     * @param  list<string>  $dates
+     * @return list<array{key: string, start: ?DateTimeImmutable, end: DateTimeImmutable}>
+     */
+    private function definitions(DateTimeImmutable $now, array $dates): array
     {
-        $start = new DateTimeImmutable($date.' 00:00:00', $zone);
-        $end = $start->modify('+1 day')->modify('-1 microsecond');
-        $period = $this->period($account, $start, $end > $now ? $now : $end, $symbol);
+        $today = $now->setTime(0, 0);
+        $definitions = [
+            ['key' => 'today', 'start' => $today, 'end' => $now],
+            ['key' => 'yesterday', 'start' => $today->modify('-1 day'), 'end' => $today->modify('-1 microsecond')],
+            ['key' => 'last_7_days', 'start' => $today->modify('-6 days'), 'end' => $now],
+            ['key' => 'last_30_days', 'start' => $today->modify('-29 days'), 'end' => $now],
+            ['key' => 'all_time', 'start' => null, 'end' => $now],
+        ];
 
-        return ['date' => $date] + $period;
+        foreach ($dates as $date) {
+            $start = new DateTimeImmutable($date.' 00:00:00', $now->getTimezone());
+            $end = $start->modify('+1 day')->modify('-1 microsecond');
+            $definitions[] = ['key' => 'day:'.$date, 'start' => $start, 'end' => $end > $now ? $now : $end];
+        }
+
+        return array_map(static fn (array $definition): array => [
+            'key' => $definition['key'],
+            'start' => $definition['start']?->setTimezone(new DateTimeZone('UTC')),
+            'end' => $definition['end']->setTimezone(new DateTimeZone('UTC')),
+        ], $definitions);
     }
 
-    private function period(PaperAccountRecord $account, ?DateTimeImmutable $localStart, DateTimeImmutable $localEnd, ?string $symbol): array
+    /**
+     * @param  list<array{key: string, start: ?DateTimeImmutable, end: DateTimeImmutable}>  $definitions
+     * @return array<string, array<string, mixed>>
+     */
+    private function periods(PaperAccountRecord $account, array $definitions, ?string $symbol): array
     {
-        $startUtc = $localStart?->setTimezone(new DateTimeZone('UTC'));
-        $endUtc = $localEnd->setTimezone(new DateTimeZone('UTC'));
-        $isAll = $symbol === null;
-        $closing = $isAll ? $this->lastSnapshot($account->id, $endUtc) : null;
-        $opening = $isAll && $startUtc !== null ? $this->lastSnapshot($account->id, $startUtc->modify('-1 microsecond')) : null;
+        if (DB::connection()->getDriverName() !== 'pgsql') {
+            $result = [];
+            foreach ($definitions as $definition) {
+                $result[$definition['key']] = $this->period($account, $definition['start'], $definition['end'], $symbol);
+            }
 
-        $baseEquity = $startUtc === null || $opening === null ? BigDecimal::of($account->starting_balance) : BigDecimal::of($opening->equity);
-        $baseRealized = $opening === null ? BigDecimal::zero() : BigDecimal::of($opening->realized_pnl);
-        $baseUnrealized = $opening === null ? BigDecimal::zero() : BigDecimal::of($opening->unrealized_pnl);
-        $closeEquity = $closing === null ? null : BigDecimal::of($closing->equity);
+            return $result;
+        }
+
+        $metrics = $this->postgresMetrics($account->id, $definitions, $symbol);
+        $snapshots = $this->postgresSnapshots($account->id, $definitions);
+
+        $result = [];
+        foreach ($definitions as $index => $definition) {
+            $wholeAccount = $symbol === null;
+            $opening = $wholeAccount && $definition['start'] !== null ? ($snapshots[$index.':open'] ?? null) : null;
+            $closing = $wholeAccount ? ($snapshots[$index.':close'] ?? null) : null;
+            $result[$definition['key']] = $this->formatPeriod(
+                $account,
+                $definition['start'],
+                $definition['end'],
+                $symbol,
+                $opening,
+                $closing,
+                $metrics[$index],
+            );
+        }
+
+        return $result;
+    }
+
+    private function period(PaperAccountRecord $account, ?DateTimeImmutable $startUtc, DateTimeImmutable $endUtc, ?string $symbol): array
+    {
+        $isAll = $symbol === null;
+        $closing = $isAll ? $this->snapshotData($this->lastSnapshot($account->id, $endUtc)) : null;
+        $opening = $isAll && $startUtc !== null ? $this->snapshotData($this->lastSnapshot($account->id, $startUtc->modify('-1 microsecond'))) : null;
 
         $positions = VirtualPositionRecord::query()->where('paper_account_id', $account->id);
         if ($symbol !== null) {
@@ -131,11 +186,141 @@ final class DailyPerformanceService
             ->where('position_funding_events.funding_at', '<=', $endUtc);
         $funding = BigDecimal::of((string) ($fundingQuery->sum('position_funding_events.amount') ?: '0'));
 
+        return $this->formatPeriod($account, $startUtc, $endUtc, $symbol, $opening, $closing, [
+            'opened_count' => $opened,
+            'closed_count' => $closed,
+            'win_count' => $wins,
+            'average_r' => $averageR,
+            'commissions' => (string) $commissions,
+            'gross_realized' => (string) $grossRealized,
+            'funding' => (string) $funding,
+        ]);
+    }
+
+    /**
+     * @param  list<array{key: string, start: ?DateTimeImmutable, end: DateTimeImmutable}>  $definitions
+     * @return array<int, array<string, mixed>>
+     */
+    private function postgresMetrics(string $accountId, array $definitions, ?string $symbol): array
+    {
+        $values = [];
+        $bindings = [];
+        foreach ($definitions as $index => $definition) {
+            $values[] = '(?::int, ?::timestamptz, ?::timestamptz)';
+            $bindings[] = $index;
+            $bindings[] = $definition['start']?->format('Y-m-d H:i:s.uP');
+            $bindings[] = $definition['end']->format('Y-m-d H:i:s.uP');
+        }
+        array_push($bindings, $accountId, $symbol);
+
+        $mutual = '(s.symbol IS NULL OR vp.symbol = s.symbol)';
+        $opened = '(p.start_at IS NULL OR vp.opened_at >= p.start_at) AND vp.opened_at <= p.end_at';
+        $closed = 'vp.closed_at IS NOT NULL AND (p.start_at IS NULL OR vp.closed_at >= p.start_at) AND vp.closed_at <= p.end_at';
+        $execution = "vp.paper_account_id = s.account_id AND {$mutual} AND (p.start_at IS NULL OR ve.market_event_at >= p.start_at) AND ve.market_event_at <= p.end_at";
+        $funding = "vp.paper_account_id = s.account_id AND {$mutual} AND (p.start_at IS NULL OR pfe.funding_at >= p.start_at) AND pfe.funding_at <= p.end_at";
+
+        $sql = 'WITH periods(idx, start_at, end_at) AS (VALUES '.implode(', ', $values).'), '
+            .'scope AS (SELECT ?::uuid AS account_id, ?::text AS symbol) '
+            .'SELECT p.idx, '
+            ."(SELECT count(*) FROM virtual_positions vp WHERE vp.paper_account_id = s.account_id AND {$mutual} AND {$opened}) AS opened_count, "
+            ."(SELECT count(*) FROM virtual_positions vp WHERE vp.paper_account_id = s.account_id AND {$mutual} AND {$closed}) AS closed_count, "
+            ."(SELECT count(*) FROM virtual_positions vp WHERE vp.paper_account_id = s.account_id AND {$mutual} AND {$closed} AND vp.net_pnl > 0) AS win_count, "
+            ."(SELECT avg(vp.r_multiple) FROM virtual_positions vp WHERE vp.paper_account_id = s.account_id AND {$mutual} AND {$closed} AND vp.r_multiple IS NOT NULL) AS average_r, "
+            .'(SELECT COALESCE(sum(ve.commission), 0) FROM virtual_executions ve JOIN virtual_positions vp ON vp.id = ve.position_id WHERE '.$execution.') AS commissions, '
+            .'(SELECT COALESCE(sum(ve.gross_pnl), 0) FROM virtual_executions ve JOIN virtual_positions vp ON vp.id = ve.position_id WHERE '.$execution.') AS gross_realized, '
+            ."(SELECT COALESCE(sum(pfe.amount), 0) FROM position_funding_events pfe JOIN virtual_positions vp ON vp.id = pfe.position_id WHERE {$funding}) AS funding "
+            .'FROM periods p CROSS JOIN scope s ORDER BY p.idx';
+
+        $rows = DB::select($sql, $bindings);
+        $result = [];
+        foreach ($rows as $row) {
+            $result[(int) $row->idx] = [
+                'opened_count' => (int) $row->opened_count,
+                'closed_count' => (int) $row->closed_count,
+                'win_count' => (int) $row->win_count,
+                'average_r' => $row->average_r === null ? null : (string) $row->average_r,
+                'commissions' => (string) $row->commissions,
+                'gross_realized' => (string) $row->gross_realized,
+                'funding' => (string) $row->funding,
+            ];
+        }
+
+        return $result;
+    }
+
+    /**
+     * @param  list<array{key: string, start: ?DateTimeImmutable, end: DateTimeImmutable}>  $definitions
+     * @return array<string, array{equity: string, realized_pnl: string, unrealized_pnl: string, recorded_at: DateTimeImmutable}>
+     */
+    private function postgresSnapshots(string $accountId, array $definitions): array
+    {
+        $values = [];
+        $bindings = [];
+        foreach ($definitions as $index => $definition) {
+            $values[] = '(?::text, ?::timestamptz)';
+            $bindings[] = $index.':close';
+            $bindings[] = $definition['end']->format('Y-m-d H:i:s.uP');
+            if ($definition['start'] !== null) {
+                $values[] = '(?::text, ?::timestamptz)';
+                $bindings[] = $index.':open';
+                $bindings[] = $definition['start']->modify('-1 microsecond')->format('Y-m-d H:i:s.uP');
+            }
+        }
+        array_push($bindings, $accountId);
+
+        $sql = 'WITH boundaries(idx, at) AS (VALUES '.implode(', ', $values).') '
+            .'SELECT b.idx, s.id, s.recorded_at, s.equity, s.realized_pnl, s.unrealized_pnl '
+            .'FROM boundaries b LEFT JOIN LATERAL ('
+            .'SELECT es.id, es.recorded_at, es.equity, es.realized_pnl, es.unrealized_pnl '
+            .'FROM equity_snapshots es WHERE es.paper_account_id = ?::uuid AND es.recorded_at <= b.at '
+            .'ORDER BY es.recorded_at DESC, es.id DESC LIMIT 1'
+            .') s ON true';
+        $rows = DB::select($sql, $bindings);
+
+        $result = [];
+        foreach ($rows as $row) {
+            if ($row->id === null) {
+                continue;
+            }
+            $result[(string) $row->idx] = $this->snapshotData($row);
+        }
+
+        return $result;
+    }
+
+    /**
+     * @param  array{equity: string, realized_pnl: string, unrealized_pnl: string, recorded_at: DateTimeImmutable}|null  $opening
+     * @param  array{equity: string, realized_pnl: string, unrealized_pnl: string, recorded_at: DateTimeImmutable}|null  $closing
+     * @param  array<string, mixed>  $metrics
+     */
+    private function formatPeriod(
+        PaperAccountRecord $account,
+        ?DateTimeImmutable $startUtc,
+        DateTimeImmutable $endUtc,
+        ?string $symbol,
+        ?array $opening,
+        ?array $closing,
+        array $metrics,
+    ): array {
+        $isAll = $symbol === null;
+        $baseEquity = $startUtc === null || $opening === null ? BigDecimal::of($account->starting_balance) : BigDecimal::of($opening['equity']);
+        $baseRealized = $opening === null ? BigDecimal::zero() : BigDecimal::of($opening['realized_pnl']);
+        $baseUnrealized = $opening === null ? BigDecimal::zero() : BigDecimal::of($opening['unrealized_pnl']);
+        $closeEquity = $closing === null ? null : BigDecimal::of($closing['equity']);
+
+        $opened = (int) $metrics['opened_count'];
+        $closed = (int) $metrics['closed_count'];
+        $wins = (int) $metrics['win_count'];
+        $averageR = $metrics['average_r'];
+        $commissions = BigDecimal::of((string) $metrics['commissions']);
+        $grossRealized = BigDecimal::of((string) $metrics['gross_realized']);
+        $funding = BigDecimal::of((string) $metrics['funding']);
+
         $realizedChange = $isAll && $closing !== null
-            ? BigDecimal::of($closing->realized_pnl)->minus($baseRealized)
+            ? BigDecimal::of($closing['realized_pnl'])->minus($baseRealized)
             : $grossRealized->minus($commissions)->plus($funding);
         $unrealizedChange = $isAll && $closing !== null
-            ? BigDecimal::of($closing->unrealized_pnl)->minus($baseUnrealized)
+            ? BigDecimal::of($closing['unrealized_pnl'])->minus($baseUnrealized)
             : null;
         $net = $closeEquity?->minus($baseEquity);
         $return = $net === null || $baseEquity->isZero() ? null : $net->dividedBy($baseEquity, 12, RoundingMode::HalfEven)->multipliedBy(100);
@@ -143,7 +328,7 @@ final class DailyPerformanceService
             ? null
             : $closeEquity->minus($account->starting_balance)->dividedBy($account->starting_balance, 12, RoundingMode::HalfEven)->multipliedBy(100);
 
-        $fresh = $closing !== null && max(0, $endUtc->getTimestamp() - $closing->recorded_at->getTimestamp()) <= self::CLOSE_FRESHNESS_SECONDS;
+        $fresh = $closing !== null && max(0, $endUtc->getTimestamp() - $closing['recorded_at']->getTimestamp()) <= self::CLOSE_FRESHNESS_SECONDS;
         $complete = $isAll && $closing !== null && $fresh;
 
         return [
@@ -166,7 +351,7 @@ final class DailyPerformanceService
                 ! $isAll ? 'symbol_mark_to_market_history_unavailable' : null,
                 $isAll && $closing !== null && ! $complete ? 'closing_equity_snapshot_not_near_period_end' : null,
             ])),
-            'closing_snapshot_at' => $closing?->recorded_at?->toISOString(),
+            'closing_snapshot_at' => $closing === null ? null : $closing['recorded_at']->setTimezone(new DateTimeZone('UTC'))->format('Y-m-d\TH:i:s.u\Z'),
         ];
     }
 
@@ -174,5 +359,26 @@ final class DailyPerformanceService
     {
         return EquitySnapshotRecord::query()->where('paper_account_id', $accountId)->where('recorded_at', '<=', $at)
             ->latest('recorded_at')->latest('id')->first(['id', 'recorded_at', 'equity', 'realized_pnl', 'unrealized_pnl']);
+    }
+
+    /**
+     * @return array{equity: string, realized_pnl: string, unrealized_pnl: string, recorded_at: DateTimeImmutable}|null
+     */
+    private function snapshotData(?object $snapshot): ?array
+    {
+        if ($snapshot === null) {
+            return null;
+        }
+        $recordedAt = $snapshot->recorded_at;
+        if (! $recordedAt instanceof DateTimeInterface) {
+            $recordedAt = new DateTimeImmutable((string) $recordedAt);
+        }
+
+        return [
+            'equity' => (string) $snapshot->equity,
+            'realized_pnl' => (string) $snapshot->realized_pnl,
+            'unrealized_pnl' => (string) $snapshot->unrealized_pnl,
+            'recorded_at' => new DateTimeImmutable($recordedAt->format('Y-m-d H:i:s.uP')),
+        ];
     }
 }
