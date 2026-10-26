@@ -1276,3 +1276,49 @@ Updated: 2026-10-24T19:00:00+03:00. Branch `main`, HEAD `33d1448`. Strict PAPER-
   - Pure Stage B batch-insertion contract for Binance preserved (2 queries, zero pollution).
   - ECONOM / econom-group resources untouched.
   - Local commit only; no unauthorized git push or production deployment.
+
+
+## Checkpoint VECTOR-V26-STAGE-D-20261026 — Forward-Paper Causality & Temporal Integrity
+
+- Stage D completed & committed (`dc5851d`): Enforced forward-paper causality and eliminated Binance retrospective execution defect.
+- Key fixes:
+  - Ensured Binance paper execution strictly operates on forward candles, matching Bybit's verified causal ordering.
+  - Position entries occur strictly on subsequent market bars after signal candle close.
+  - Added `TradingPipelineForwardCausalityTest` covering causal fill constraints across both exchanges.
+- Invariants Maintained:
+  - Strictly PAPER-ONLY. All 26 accounts pass financial reconciliation (`LEDGER_PASS_ONLY`).
+
+## Checkpoint VECTOR-V26-STAGE-E-20261026 — Batch Daily Performance Aggregation
+
+- Stage E completed & committed (`8237257`): Eliminated N+1 query pattern in `DailyPerformanceService::report()`.
+- Implementation:
+  - Replaced 137 sequential SQL queries with 5 PostgreSQL set-based CTE queries using LATERAL joins.
+  - Query latency reduced to P50 = 10.8 ms, P95 = 15.379 ms, Max = 17.547 ms across 1,000 equity snapshots.
+  - Added deterministic test fixture and regression suite in `tests/Feature/PaperTrading/DailyPerformanceTest.php`.
+
+## Checkpoint VECTOR-V26-STAGE-F-20261026 — Stage F Final Profiling & Provisional Go Migration NO-GO
+
+- Stage F completed: Comprehensive performance profiling, multi-language verification, and Go migration evaluation.
+- Profiling Evidence (`reports/vector-v26-stage-f/benchmark-pipeline.json` across 20 runs + 3 warmups; target < 15.0 s):
+  - **Bybit**:
+    - Signal Eligibility Latency: P50 = **1,448.766 ms**, P95 = **1,495.668 ms**, P99 = **1,632.665 ms** (PASSED).
+    - Paper Processing Latency: P50 = **1,527.287 ms**, P95 = **1,583.542 ms**, P99 = **1,735.973 ms** (PASSED).
+  - **Binance**:
+    - Signal Eligibility Latency: P50 = **1,448.788 ms**, P95 = **1,501.773 ms**, P99 = **1,513.500 ms** (PASSED).
+    - Paper Processing Latency: P50 = **1,497.441 ms**, P95 = **1,566.453 ms**, P99 = **1,595.729 ms** (PASSED).
+  - Note: Virtual fills occur on subsequent closed 5m bars (`virtual_fill_measured: false`), not during signal evaluation.
+- Go Migration Decision:
+  - Gate 1 (< 15.0 s SLA) is **NOT SATISFIED** (processing is ~1.58 s P95, well under threshold).
+  - **Verdict: PROVISIONAL NO-GO**. Trading engine migration to Go is unnecessary and unwarranted. Final confirmation pending production deployment telemetry.
+- Multi-Language Verification Suite:
+  - Full PHPUnit: **853 tests, 6,722 assertions, 0 failures, 1 opt-in live Bybit skip, exit 0 (158s)**.
+  - Pint: **673 files clean, 0 style violations**.
+  - PHP syntax check: **0 errors across all PHP files**.
+  - Frontend Node tests: **55 passed, exit 0**.
+  - Frontend build: **Vue 3 / Vite production build passed (8.01s)**.
+  - Go host race test: **clean, exit 0**.
+  - Go container test & vet: **clean, exit 0**.
+- Strict Safety Boundaries Maintained:
+  - Strictly PAPER-only. All 26 accounts pass financial reconciliation (`LEDGER_PASS_ONLY`).
+  - ECONOM / econom-group resources untouched.
+  - Local commit only; strictly NO git push, NO deployment, NO GitHub Actions triggers.
