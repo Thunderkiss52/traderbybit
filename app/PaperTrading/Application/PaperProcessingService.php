@@ -85,6 +85,8 @@ final readonly class PaperProcessingService
             $states = PaperSignalStateRecord::query()->where('paper_account_id', $account->id)
                 ->whereIn('status', [SignalLifecycle::PendingEntry->value, SignalLifecycle::Active->value])
                 ->when($symbol, fn ($q) => $q->whereIn('signal_id', SignalRecord::query()->select('id')->where('symbol', $symbol)))
+                ->orderBy('processed_at')
+                ->orderBy('id')
                 ->get();
             foreach ($states as $state) {
                 if ($state->status === SignalLifecycle::PendingEntry->value

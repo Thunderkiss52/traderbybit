@@ -1208,3 +1208,34 @@ Updated: 2026-10-24T19:00:00+03:00. Branch `main`, HEAD `33d1448`. Strict PAPER-
   - ECONOM / econom-group resources untouched.
   - Local commit only; no unauthorized git push or production deployment.
 
+
+## Checkpoint VECTOR-V26-STAGE-B-20261026 — Batch Binance candle ingestion & Stage B Acceptance
+
+- Stage B completed & verified: `BinanceCandleIngestion` uses bounded set reads and batch inserts in one transaction. Identical stored candles cause no writes; exact OHLCV/closed-state conflicts fail closed. A concurrent insertion short count reloads and validates every attempted identity.
+- Blocker 1 resolved (500-candle benchmark P95 < 50 ms):
+  - Addressed userland PHP/Carbon formatting overhead on large parameter bindings and disabled autovacuum during sequential benchmark runs.
+  - Final benchmark results (50 measured runs, 5 warmups):
+    - 500 new candles: 2 queries, P50 = **41.055 ms**, P95 = **49.878 ms** (Target < 50 ms: PASSED).
+    - 500 duplicate: 1 query, P50 = 18.402 ms, P95 = 25.128 ms.
+    - 500 mixed: 2 queries, P50 = 29.639 ms, P95 = 36.167 ms.
+    - 100 new: 2 queries, P50 = 12.247 ms, P95 = 20.043 ms.
+    - 100 duplicate: 1 query, P50 = 6.159 ms, P95 = 8.265 ms.
+    - 100 mixed: 2 queries, P50 = 8.823 ms, P95 = 11.340 ms.
+- Blocker 2 resolved (Intermittent cooldown test failure):
+  - Diagnosed out-of-order heap scan retrieval in `PaperProcessingService::runServicing` causing non-chronological signal processing and cooldown overwrite.
+  - Added deterministic `orderBy('processed_at')->orderBy('id')` in `PaperProcessingService`.
+  - Added monotonic cooldown guard in `PositionLifecycleService::applyCooldown` preventing active cooldown shortening.
+  - Added regression test `test_losing_streak_cooldown_is_monotonic_and_resilient_to_out_of_order_signal_states` in `PaperLifecycleTest`.
+- Verification gates:
+  - Backend full suite: **826 tests, 6,565 assertions, 0 failures, 1 opt-in live Bybit skip, exit 0**.
+  - Pint: **655 files passed, 0 issues**.
+  - PHP syntax check: **652 files passed, 0 syntax errors**.
+  - Frontend Node tests: **55 passed, exit 0**.
+  - Frontend typecheck & build: **passed, exit 0**.
+  - Go container tests & vet (Go 1.27.3): **passed, exit 0**.
+  - Go host race tests (Go 1.24.6): **passed, exit 0**.
+- Invariants maintained:
+  - Strictly PAPER-ONLY. No live order placement, trade endpoints, or exchange credentials.
+  - All 26 accounts (13 Bybit, 13 Binance) maintain complete balances, positions, executions, and historical records.
+  - ECONOM / econom-group resources untouched.
+  - Ready for local commit; strictly no push or deployment.

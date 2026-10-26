@@ -230,9 +230,12 @@ final readonly class PositionLifecycleService
     private function applyCooldown(PaperAccountRecord $account, DateTimeImmutable $at): void
     {
         $count = (int) $this->config['losing_streak']['count'];
-        $last = VirtualPositionRecord::query()->where('paper_account_id', $account->id)->whereNotNull('closed_at')->latest('closed_at')->limit($count)->get(['net_pnl']);
+        $last = VirtualPositionRecord::query()->where('paper_account_id', $account->id)->whereNotNull('closed_at')->latest('closed_at')->latest('id')->limit($count)->get(['net_pnl']);
         if ($last->count() === $count && $last->every(fn (VirtualPositionRecord $position): bool => BigDecimal::of($position->net_pnl)->isNegative())) {
-            $account->update(['cooldown_until' => $at->modify('+'.(int) $this->config['losing_streak']['cooldown_minutes'].' minutes')]);
+            $cooldownUntil = $at->modify('+'.(int) $this->config['losing_streak']['cooldown_minutes'].' minutes');
+            if ($account->cooldown_until === null || $cooldownUntil > $account->cooldown_until) {
+                $account->update(['cooldown_until' => $cooldownUntil]);
+            }
         }
     }
 

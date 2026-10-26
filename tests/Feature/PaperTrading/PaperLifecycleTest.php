@@ -6,6 +6,7 @@ namespace Tests\Feature\PaperTrading;
 
 use App\PaperTrading\Application\PaperAccountService;
 use App\PaperTrading\Application\PaperProcessingService;
+use App\PaperTrading\Application\PositionLifecycleService;
 use App\PaperTrading\Domain\PositionStatus;
 use App\PaperTrading\Infrastructure\Persistence\JournalEventRecord;
 use App\PaperTrading\Infrastructure\Persistence\MarketFundingEventRecord;
@@ -313,6 +314,30 @@ final class PaperLifecycleTest extends TestCase
         $account = $this->app->make(PaperAccountService::class)->default()->refresh();
         self::assertSame('2026-10-14T11:55:00+00:00', $account->cooldown_until?->format(DATE_ATOM));
         self::assertSame(3, VirtualPositionRecord::query()->where('status', 'CLOSED_SL')->count());
+    }
+
+    public function test_losing_streak_cooldown_is_monotonic_and_resilient_to_out_of_order_signal_states(): void
+    {
+        foreach ([['10:15', '10:15', '10:20'], ['10:30', '10:30', '10:35'], ['10:45', '10:45', '10:50']] as [$signalTime, $entryTime, $stopTime]) {
+            $this->signal('BUY', 'BTCUSDT', $signalTime);
+            $this->context('BTCUSDT', $signalTime);
+            $this->candle($entryTime, '100.5', '102', '100', '101');
+            $this->candle($stopTime, '101', '102', '94', '96');
+        }
+
+        $this->process('10:55');
+        $account = $this->app->make(PaperAccountService::class)->default()->refresh();
+        self::assertSame('2026-10-14T11:55:00+00:00', $account->cooldown_until?->format(DATE_ATOM));
+
+        // An out-of-order execution or older event cannot shorten an active cooldown.
+        $ref = new \ReflectionClass(PositionLifecycleService::class);
+        $method = $ref->getMethod('applyCooldown');
+        $method->invoke(
+            $this->app->make(PositionLifecycleService::class),
+            $account,
+            new DateTimeImmutable('2026-10-14T10:40:00Z')
+        );
+        self::assertSame('2026-10-14T11:55:00+00:00', $account->refresh()->cooldown_until?->format(DATE_ATOM));
     }
 
     public function test_recorded_execution_and_risk_decision_are_immutable_across_configuration_changes(): void
