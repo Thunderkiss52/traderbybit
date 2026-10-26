@@ -42,7 +42,7 @@ final readonly class PaperProcessingService
         private ?PaperExecutionEligibilityService $eligibility = null,
     ) {}
 
-    public function process(?string $accountId = null, ?string $symbol = null, ?DateTimeImmutable $at = null, bool $allowNewEntries = true): array
+    public function process(?string $accountId = null, ?string $symbol = null, ?DateTimeImmutable $at = null, bool $allowNewEntries = true, ?bool $historical = null): array
     {
         $account = $accountId === null ? $this->accounts->default() : PaperAccountRecord::query()->findOrFail($accountId);
         if ($account->exchange_id === 'binance') {
@@ -54,7 +54,7 @@ final readonly class PaperProcessingService
             throw new \DomainException('Unknown paper account exchange.');
         }
         $eligibility = $this->eligibility ?? app(PaperExecutionEligibilityService::class);
-        $historical = $at !== null;
+        $historical ??= $at !== null;
         $at ??= $this->latestClosedTime($account->exchange_id, $symbol) ?? now('UTC')->toDateTimeImmutable();
         $lock = $this->cache->lock("paper:process:{$account->id}", (int) $this->config['processing']['lock_seconds']);
         if (! $lock->get()) {
@@ -476,13 +476,6 @@ final readonly class PaperProcessingService
                     }
                     $position = $this->lifecycle->open($account->refresh(), $state, $signal, $size, $quote, $bar->closeTime);
                     $this->updateObservationDiagnostics($account, $signal, ['paper_execution' => 'OPENED', 'position_id' => $position->id]);
-                    $exit = $this->execution->exit($position->side, $position->status, $position->stop_loss, $position->take_profit_1, $position->take_profit_2, $position->maximum_holding_until->toDateTimeImmutable(), $bar, $account->exchange_id);
-                    if ($quote->ambiguous && $exit !== null) {
-                        $position = $this->lifecycle->executeExit($position, $exit, $bar->closeTime);
-                        if (PositionStatus::from($position->status)->isClosed()) {
-                            $this->updateObservationDiagnostics($account, $signal, ['paper_execution' => 'CLOSED', 'position_id' => $position->id]);
-                        }
-                    }
                 } else {
                     $state->update(['processed_at' => $bar->closeTime]);
                 }

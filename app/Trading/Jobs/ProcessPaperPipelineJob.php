@@ -82,7 +82,7 @@ final class ProcessPaperPipelineJob implements ShouldQueue
             }
 
             try {
-                $result = $paperService->process($account->id, $this->symbol, $at, $allowNewEntries);
+                $result = $paperService->process($account->id, $this->symbol, $at, $allowNewEntries, historical: false);
                 $totalProcessed += (int) ($result['events_processed'] ?? 0);
             } catch (Throwable $e) {
                 Log::warning("ProcessPaperPipelineJob account processing error: {$account->id} ({$account->strategy_id}): ".$e->getMessage(), [

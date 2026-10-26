@@ -40,6 +40,12 @@ final class TradingPipelineConcurrencyAndSafetyTest extends TestCase
         ]);
     }
 
+    protected function tearDown(): void
+    {
+        CarbonImmutable::setTestNow(null);
+        parent::tearDown();
+    }
+
     public function test_concurrent_workers_processing_same_event_are_fenced_and_idempotent(): void
     {
         $service = app(TradingPipelineEventService::class);
@@ -68,8 +74,9 @@ final class TradingPipelineConcurrencyAndSafetyTest extends TestCase
         $strategy = app(StrategyRegistry::class)->get('baseline');
         $account = $accountService->strategyForward('baseline', $strategy->version(), $strategy->parameters());
 
-        $processTime = new DateTimeImmutable('now');
-        $decisionTime = $processTime->modify('-5 minutes');
+        $decisionTime = new DateTimeImmutable('2026-10-26T10:15:00Z');
+        $processTime = $decisionTime->modify('+5 minutes');
+        CarbonImmutable::setTestNow($decisionTime->modify('+1 second'));
         $account->update(['created_at' => $decisionTime->modify('-10 minutes')]);
         $this->seedMarketContext('bybit', 'BTCUSDT', $decisionTime);
 
@@ -131,7 +138,10 @@ final class TradingPipelineConcurrencyAndSafetyTest extends TestCase
 
         $pipelineService = app(TradingPipelineEventService::class);
         $paperService = app(PaperProcessingService::class);
-        $processTime = $decisionTime->modify('+5 minutes');
+
+        // Activate the pending order at the decision close, before the execution bar closes.
+        $paperService->process($account->id, 'BTCUSDT', $decisionTime, allowNewEntries: true, historical: false);
+        CarbonImmutable::setTestNow($processTime->modify('+2 seconds'));
 
         // Run paper job 1
         $job1 = new ProcessPaperPipelineJob('bybit', 'BTCUSDT', $processTime->format(DATE_ATOM));

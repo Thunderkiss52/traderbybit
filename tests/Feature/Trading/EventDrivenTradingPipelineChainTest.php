@@ -121,11 +121,15 @@ final class EventDrivenTradingPipelineChainTest extends TestCase
         self::assertSame(TradingPipelineEventRecord::STATUS_COMPLETED, $candleEvent->fresh()->status);
 
         // 4. Verify signals and observations were created for all 13 registered strategies
-        $observationsCount = StrategyObservationRecord::query()
+        $bybitObservations = StrategyObservationRecord::query()
             ->where('exchange', 'bybit')
-            ->where('symbol', 'BTCUSDT')
-            ->count();
-        self::assertGreaterThanOrEqual(13, $observationsCount, 'All 13 strategies must be observed.');
+            ->where('symbol', 'BTCUSDT');
+        $observedStrategies = (clone $bybitObservations)->distinct()->orderBy('strategy_id')->pluck('strategy_id')->all();
+        $expectedStrategies = collect(app(StrategyRegistry::class)->all())->map(fn ($strategy): string => $strategy->id())->sort()->values()->all();
+        self::assertCount(13, $observedStrategies);
+        self::assertSame($expectedStrategies, $observedStrategies);
+        self::assertSame(13, (clone $bybitObservations)->count());
+        self::assertSame(0, StrategyObservationRecord::query()->where('exchange', 'binance')->count());
 
         // 5. Verify SIGNALS_EVALUATED event created and dispatched ProcessPaperPipelineJob
         Queue::assertPushedOn('trading-bybit', ProcessPaperPipelineJob::class);
@@ -230,11 +234,15 @@ final class EventDrivenTradingPipelineChainTest extends TestCase
         self::assertSame(TradingPipelineEventRecord::STATUS_COMPLETED, $candleEvent->fresh()->status);
 
         // 4. Verify signals and observations were created for Binance
-        $observationsCount = StrategyObservationRecord::query()
+        $binanceObservations = StrategyObservationRecord::query()
             ->where('exchange', 'binance')
-            ->where('symbol', 'BTCUSDT')
-            ->count();
-        self::assertGreaterThanOrEqual(13, $observationsCount, 'All 13 strategies must be observed on Binance.');
+            ->where('symbol', 'BTCUSDT');
+        $observedStrategies = (clone $binanceObservations)->distinct()->orderBy('strategy_id')->pluck('strategy_id')->all();
+        $expectedStrategies = collect(app(StrategyRegistry::class)->all())->map(fn ($strategy): string => $strategy->id())->sort()->values()->all();
+        self::assertCount(13, $observedStrategies);
+        self::assertSame($expectedStrategies, $observedStrategies);
+        self::assertSame(13, (clone $binanceObservations)->count());
+        self::assertSame(0, StrategyObservationRecord::query()->where('exchange', 'bybit')->count());
 
         // 5. Verify SIGNALS_EVALUATED event created and dispatched ProcessPaperPipelineJob on trading-binance
         Queue::assertPushedOn('trading-binance', ProcessPaperPipelineJob::class);

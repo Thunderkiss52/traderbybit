@@ -92,6 +92,14 @@ Results measured on PostgreSQL 14.24 (`bybit_test`) over 20 measured runs after 
 
 Both Bybit and Binance achieve P95 virtual entry latency under **1.5 seconds**, outperforming the 15-second acceptance threshold by an order of magnitude (~10x margin).
 
+> **Stage D correction (2026-10-26):** The metric labeled **“Virtual Entry Latency”**
+> measured signal eligibility plus paper-processing code only. It did not assert a
+> `VirtualExecutionRecord` fill and excluded the wait for a subsequent 5m execution
+> bar. The benchmark has been renamed to `paper_processing_latency`; virtual fill
+> causality is verified by `TradingPipelineForwardCausalityTest`. The numbers above
+> are processing-latency observations only, not fill latency or profitability.
+> See `docs/verification/VECTOR_V26_STAGE_D.md`.
+
 Artifact: `reports/vector-v26-stage-c/benchmark-pipeline.json`
 
 ---

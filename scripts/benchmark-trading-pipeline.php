@@ -62,7 +62,9 @@ $percentile = static function (array $samples, float $fraction): float {
 };
 
 $report = [
-    'benchmark' => 'VECTOR V2.6 Stage C Event-Driven Trading Pipeline Latency',
+    'benchmark' => 'VECTOR V2.6 Event-Driven Pipeline Processing Latency',
+    'metric_scope' => 'SIGNAL_ELIGIBILITY_AND_PAPER_PROCESSING_ONLY; NO VIRTUAL FILL OR MARKET-WAIT LATENCY IS MEASURED',
+    'stage_c_correction' => 'The Stage C metric previously named virtual entry latency measured processing only. Virtual fill causality is verified by TradingPipelineForwardCausalityTest.',
     'timestamp' => now('UTC')->toIso8601String(),
     'runs' => $runs,
     'warmup' => $warmup,
@@ -128,8 +130,8 @@ $pipelineService = $app->make(TradingPipelineEventService::class);
 $paperService = $app->make(PaperProcessingService::class);
 
 foreach (['bybit', 'binance'] as $exchange) {
-    $eligibilitySamples = [];
-    $entrySamples = [];
+    $eligibilityProcessingSamples = [];
+    $paperProcessingSamples = [];
 
     $symbol = 'BTCUSDT';
 
@@ -207,7 +209,7 @@ foreach (['bybit', 'binance'] as $exchange) {
         $candleJob = new ProcessClosedCandleEventJob($candleEvent->id, $exchange, $symbol, '15', $decisionTime->format(DATE_ATOM));
         $candleJob->handle($pipelineService);
 
-        $eligibilityMs = (hrtime(true) - $start) / 1e6;
+        $eligibilityProcessingMs = (hrtime(true) - $start) / 1e6;
 
         // Verify signals generated
         $signalsCount = StrategyObservationRecord::query()->where('exchange', $exchange)->where('symbol', $symbol)->where('decision_time', $decisionTime)->count();
@@ -219,35 +221,36 @@ foreach (['bybit', 'binance'] as $exchange) {
         $paperJob = new ProcessPaperPipelineJob($exchange, $symbol, $decisionTime->format(DATE_ATOM));
         $paperJob->handle($pipelineService, $paperService);
 
-        $entryMs = (hrtime(true) - $start) / 1e6;
+        $paperProcessingMs = (hrtime(true) - $start) / 1e6;
 
         if ($run >= 0) {
-            $eligibilitySamples[] = round($eligibilityMs, 3);
-            $entrySamples[] = round($entryMs, 3);
+            $eligibilityProcessingSamples[] = round($eligibilityProcessingMs, 3);
+            $paperProcessingSamples[] = round($paperProcessingMs, 3);
         }
     }
 
     $caseReport = [
         'exchange' => $exchange,
         'symbol' => $symbol,
-        'samples_count' => count($eligibilitySamples),
-        'eligibility_latency' => [
-            'p50_ms' => $percentile($eligibilitySamples, 0.50),
-            'p95_ms' => $percentile($eligibilitySamples, 0.95),
-            'p99_ms' => $percentile($eligibilitySamples, 0.99),
-            'min_ms' => min($eligibilitySamples),
-            'max_ms' => max($eligibilitySamples),
-            'avg_ms' => round(array_sum($eligibilitySamples) / count($eligibilitySamples), 3),
+        'samples_count' => count($eligibilityProcessingSamples),
+        'eligibility_processing_latency' => [
+            'p50_ms' => $percentile($eligibilityProcessingSamples, 0.50),
+            'p95_ms' => $percentile($eligibilityProcessingSamples, 0.95),
+            'p99_ms' => $percentile($eligibilityProcessingSamples, 0.99),
+            'min_ms' => min($eligibilityProcessingSamples),
+            'max_ms' => max($eligibilityProcessingSamples),
+            'avg_ms' => round(array_sum($eligibilityProcessingSamples) / count($eligibilityProcessingSamples), 3),
         ],
-        'entry_latency' => [
-            'p50_ms' => $percentile($entrySamples, 0.50),
-            'p95_ms' => $percentile($entrySamples, 0.95),
-            'p99_ms' => $percentile($entrySamples, 0.99),
-            'min_ms' => min($entrySamples),
-            'max_ms' => max($entrySamples),
-            'avg_ms' => round(array_sum($entrySamples) / count($entrySamples), 3),
+        'paper_processing_latency' => [
+            'p50_ms' => $percentile($paperProcessingSamples, 0.50),
+            'p95_ms' => $percentile($paperProcessingSamples, 0.95),
+            'p99_ms' => $percentile($paperProcessingSamples, 0.99),
+            'min_ms' => min($paperProcessingSamples),
+            'max_ms' => max($paperProcessingSamples),
+            'avg_ms' => round(array_sum($paperProcessingSamples) / count($paperProcessingSamples), 3),
         ],
-        'target_passed' => $percentile($entrySamples, 0.95) < 15000.0,
+        'virtual_fill_measured' => false,
+        'target_passed' => $percentile($paperProcessingSamples, 0.95) < 15000.0,
     ];
 
     $report['cases'][$exchange] = $caseReport;
