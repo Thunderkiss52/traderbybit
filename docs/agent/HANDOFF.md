@@ -1239,3 +1239,40 @@ Updated: 2026-10-24T19:00:00+03:00. Branch `main`, HEAD `33d1448`. Strict PAPER-
   - All 26 accounts (13 Bybit, 13 Binance) maintain complete balances, positions, executions, and historical records.
   - ECONOM / econom-group resources untouched.
   - Ready for local commit; strictly no push or deployment.
+
+
+## Checkpoint VECTOR-V26-STAGE-C-20261026 — Isolated Queues & Event-Driven Trading Pipeline
+
+- Stage C completed & verified: Replaced independent cron polling with causally correct, event-driven forward PAPER-trading pipeline for Bybit and Binance.
+- Queue isolation:
+  - `trading-bybit` (`queue-bybit`): dedicated worker for Bybit time-critical signals and paper execution (`cpus: 0.75`, `mem_limit: 384m`).
+  - `trading-binance` (`queue-binance`): dedicated worker for Binance time-critical signals and paper execution (`cpus: 0.75`, `mem_limit: 384m`).
+  - `market-ingest` (`queue`): serves Binance REST ingestion and default background jobs (`cpus: 0.5`, `mem_limit: 384m`).
+  - Preserved research and audit isolated workers.
+- Event tracking and transactional outbox:
+  - Table `trading_pipeline_events` tracks stages: `CANDLE_CLOSED`, `SIGNALS_EVALUATED`, `PAPER_PROCESSED`.
+  - Deterministic event keys: `{exchange}:{symbol}:{timeframe}:{candleCloseAtIso}:{stage}`.
+  - Recovery worker (`trading:pipeline-recovery`) scans for stuck/unserviced events every minute.
+  - Rollback switch: `TRADING_PIPELINE_MODE` (`EVENT_DRIVEN` vs `SCHEDULED`).
+- Latency Benchmark (`scripts/benchmark-trading-pipeline.php` over 20 measured runs + 3 warmups; acceptance target < 15.0 s):
+  - **Bybit**:
+    - Signal Eligibility Latency: P50 = **1,302.217 ms**, P95 = **1,374.956 ms**, P99 = **1,423.777 ms** (PASSED).
+    - Virtual Entry Latency: P50 = **1,358.319 ms**, P95 = **1,451.917 ms**, P99 = **1,505.766 ms** (PASSED).
+  - **Binance**:
+    - Signal Eligibility Latency: P50 = **1,380.286 ms**, P95 = **1,441.490 ms**, P99 = **1,481.136 ms** (PASSED).
+    - Virtual Entry Latency: P50 = **1,426.455 ms**, P95 = **1,485.368 ms**, P99 = **1,528.573 ms** (PASSED).
+- Verification Gates:
+  - Full PHPUnit Backend Suite: **846 tests, 6,668 assertions, 0 failures, 1 opt-in live Bybit skip, exit 0**.
+  - Pint: **669 files passed, 0 style issues**.
+  - PHP syntax check: **0 errors across all PHP files**.
+  - Frontend Node tests: **55 passed, exit 0**.
+  - Frontend typecheck & build: **passed, exit 0 (8.33s)**.
+  - Go container tests & vet: **passed, exit 0**.
+  - Go host race tests: **passed, exit 0**.
+- Invariants Maintained:
+  - Strictly PAPER-ONLY. No live order placement, trade endpoints, or exchange credentials.
+  - All 26 accounts (13 Bybit, 13 Binance) maintain complete balances, positions, executions, and historical records.
+  - All 26 accounts pass financial ledger reconciliation (`LEDGER_PASS_ONLY`).
+  - Pure Stage B batch-insertion contract for Binance preserved (2 queries, zero pollution).
+  - ECONOM / econom-group resources untouched.
+  - Local commit only; no unauthorized git push or production deployment.

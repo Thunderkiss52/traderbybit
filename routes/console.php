@@ -30,6 +30,7 @@ use App\Strategy\Jobs\EnsureResearchCoverageJob;
 use App\Strategy\Jobs\GenerateSignalJob;
 use App\Strategy\Jobs\ObserveStrategiesJob;
 use App\Strategy\Jobs\ProcessResearchPaperJob;
+use App\Trading\Application\TradingPipelineRecoveryService;
 use Illuminate\Foundation\Inspiring;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\Schedule;
@@ -165,6 +166,10 @@ Artisan::command('binance:activate-paper {--approve}', function (BinancePaperAct
     return 0;
 })->purpose('Explicitly activate eligible funded Binance PAPER accounts after readiness gates');
 
+Artisan::command('trading:pipeline-recovery', function (TradingPipelineRecoveryService $recovery): void {
+    $this->line(json_encode($recovery->recover(), JSON_PRETTY_PRINT | JSON_THROW_ON_ERROR));
+})->purpose('Scan and recover any pending or uncompleted trading pipeline events across isolated queues');
+
 Artisan::command('inspire', function () {
     $this->comment(Inspiring::quote());
 })->purpose('Display an inspiring quote');
@@ -234,13 +239,26 @@ if ((bool) config('exchanges.binance.research_cycle_enabled', false)) {
         })->cron('1,16,31,46 * * * *')->name("binance:htf:{$symbol}")->withoutOverlapping();
         Schedule::call(fn () => app(BinanceFundingIngestion::class)->ingest($symbol))
             ->cron('10 * * * *')->name("binance:funding:{$symbol}")->withoutOverlapping();
-        Schedule::call(fn () => app(BinanceResearchCycle::class)->run($symbol, false))
-            ->cron('2,17,32,47 * * * *')->name("binance:signals:{$symbol}")->withoutOverlapping();
+        Schedule::call(function () use ($symbol): void {
+            if (config('trading.pipeline_mode') === 'EVENT_DRIVEN') {
+                $recovery = app(TradingPipelineRecoveryService::class);
+                if ($recovery->isDecisionAlreadyServiced('binance', $symbol, null)) {
+                    return;
+                }
+            }
+            app(BinanceResearchCycle::class)->run($symbol, false);
+        })->cron('2,17,32,47 * * * *')->name("binance:signals:{$symbol}")->withoutOverlapping();
     }
     // Maintain and service Binance paper accounts on every 5m cycle.
     // When owner execution is approved, new entries are permitted. When unapproved,
     // existing positions and funding settlement continue to be serviced while new entries are rejected.
     Schedule::call(function (): void {
+        if (config('trading.pipeline_mode') === 'EVENT_DRIVEN') {
+            $recovery = app(TradingPipelineRecoveryService::class);
+            if ($recovery->isPaperAlreadyServiced('binance', null, null)) {
+                return;
+            }
+        }
         $allowNewEntries = (bool) config('exchanges.binance.paper_execution_approved', false);
         $failures = [];
         foreach (PaperAccountRecord::query()
@@ -285,6 +303,12 @@ Schedule::job(new ReconcileLedgerJob)
 Schedule::call(fn () => app(ResearchJobService::class)->reconcileStaleLeases())
     ->everyMinute()
     ->name('research:reconcile-stale-leases')
+    ->withoutOverlapping();
+
+// Recover uncompleted pipeline events and expire stale ones across isolated queues.
+Schedule::call(fn () => app(TradingPipelineRecoveryService::class)->recover())
+    ->everyMinute()
+    ->name('trading:pipeline-recovery')
     ->withoutOverlapping();
 
 // Execute continuous quantitative learning, model retraining, and challenger evaluation.

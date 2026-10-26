@@ -7,6 +7,7 @@ namespace App\MarketData\Application;
 use App\MarketData\Contracts\CandleStore;
 use App\MarketData\Infrastructure\Bybit\BybitWebSocketMessageParser;
 use App\QuoteIntegrity\Application\QimWsObserver;
+use App\Trading\Application\TradingPipelineEventService;
 use Illuminate\Support\Facades\Cache;
 use Psr\Log\LoggerInterface;
 use Throwable;
@@ -18,6 +19,7 @@ final readonly class ClosedCandleIngestor
         private CandleStore $store,
         private ?QimWsObserver $qimObserver = null,
         private ?LoggerInterface $log = null,
+        private ?TradingPipelineEventService $pipelineService = null,
     ) {}
 
     public function ingest(string $message): bool
@@ -58,6 +60,15 @@ final readonly class ClosedCandleIngestor
 
         try {
             $this->store->upsert([$candle]);
+            if ($this->pipelineService !== null || (config('trading.pipeline_mode') === 'EVENT_DRIVEN' && in_array($candle->symbol, (array) config('trading.symbols', ['BTCUSDT', 'ETHUSDT']), true))) {
+                try {
+                    $pipelineService = $this->pipelineService ?? app(TradingPipelineEventService::class);
+                    $candleCloseAt = $candle->openTime->modify('+'.intdiv($candle->interval->milliseconds(), 1000).' seconds');
+                    $pipelineService->recordCandleClosed('bybit', $candle->symbol, $candle->interval->value, $candleCloseAt);
+                } catch (Throwable) {
+                    // Non-fatal event dispatch failure
+                }
+            }
         } finally {
             $lock->release();
         }

@@ -6,11 +6,13 @@ namespace App\PaperTrading\Jobs;
 
 use App\PaperTrading\Application\PaperProcessingService;
 use App\PaperTrading\Infrastructure\Persistence\PaperAccountRecord;
+use App\Trading\Application\TradingPipelineRecoveryService;
 use DateTimeImmutable;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
 use Illuminate\Queue\Middleware\WithoutOverlapping;
+use Illuminate\Support\Facades\Log;
 use Throwable;
 
 final class ProcessPaperTradingJob implements ShouldQueue
@@ -33,6 +35,15 @@ final class ProcessPaperTradingJob implements ShouldQueue
     public function handle(PaperProcessingService $service): void
     {
         $at = $this->at === null ? null : new DateTimeImmutable($this->at);
+
+        if (config('trading.pipeline_mode') === 'EVENT_DRIVEN' && $this->accountId === null) {
+            $recovery = app(TradingPipelineRecoveryService::class);
+            if ($recovery->isPaperAlreadyServiced('bybit', $this->symbol, $at)) {
+                Log::info('ProcessPaperTradingJob: bybit paper already serviced by event-driven pipeline; scheduled run skipped.');
+
+                return;
+            }
+        }
 
         if ($this->accountId !== null) {
             $service->process($this->accountId, $this->symbol, $at);

@@ -154,14 +154,36 @@ services:
 
   queue:
     <<: *php-service
-    command: ["php", "artisan", "queue:work", "redis", "--queue=default", "--sleep=2", "--tries=3", "--timeout=900", "--max-time=3600", "--memory=${QUEUE_WORKER_MEMORY_MB:-384}", "--no-interaction"]
+    command: ["php", "artisan", "queue:work", "redis", "--queue=market-ingest,default", "--sleep=2", "--tries=3", "--timeout=300", "--max-time=3600", "--memory=${QUEUE_WORKER_MEMORY_MB:-384}", "--no-interaction"]
     healthcheck:
       test: ["CMD-SHELL", "tr '\\0' ' ' </proc/1/cmdline | grep -q 'queue:work'"]
       interval: 30s
       timeout: 5s
       retries: 3
-    mem_limit: ${QUEUE_MEMORY_LIMIT:-512m}
-    cpus: ${QUEUE_CPU_LIMIT:-1.0}
+    mem_limit: ${QUEUE_MEMORY_LIMIT:-384m}
+    cpus: ${QUEUE_CPU_LIMIT:-0.5}
+
+  queue-bybit:
+    <<: *php-service
+    command: ["php", "artisan", "queue:work", "redis", "--queue=trading-bybit", "--sleep=1", "--tries=3", "--timeout=120", "--max-time=3600", "--memory=${QUEUE_BYBIT_MEMORY_MB:-256}", "--no-interaction"]
+    healthcheck:
+      test: ["CMD-SHELL", "tr '\\0' ' ' </proc/1/cmdline | grep -q 'queue:work.*trading-bybit'"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+    mem_limit: ${QUEUE_BYBIT_MEMORY_LIMIT:-384m}
+    cpus: ${QUEUE_BYBIT_CPU_LIMIT:-0.75}
+
+  queue-binance:
+    <<: *php-service
+    command: ["php", "artisan", "queue:work", "redis", "--queue=trading-binance", "--sleep=1", "--tries=3", "--timeout=120", "--max-time=3600", "--memory=${QUEUE_BINANCE_MEMORY_MB:-256}", "--no-interaction"]
+    healthcheck:
+      test: ["CMD-SHELL", "tr '\\0' ' ' </proc/1/cmdline | grep -q 'queue:work.*trading-binance'"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+    mem_limit: ${QUEUE_BINANCE_MEMORY_LIMIT:-384m}
+    cpus: ${QUEUE_BINANCE_CPU_LIMIT:-0.75}
 
   scheduler:
     <<: *php-service

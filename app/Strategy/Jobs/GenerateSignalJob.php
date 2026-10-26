@@ -8,6 +8,7 @@ use App\Research\Application\LearningFeatureStoreService;
 use App\Strategy\Application\MarketScannerService;
 use App\Strategy\Application\SignalGenerator;
 use App\Strategy\Application\StrategyObservationService;
+use App\Trading\Application\TradingPipelineRecoveryService;
 use DateTimeImmutable;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
@@ -15,6 +16,7 @@ use Illuminate\Foundation\Bus\Dispatchable;
 use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\Middleware\WithoutOverlapping;
 use Illuminate\Queue\SerializesModels;
+use Illuminate\Support\Facades\Log;
 
 final class GenerateSignalJob implements ShouldQueue
 {
@@ -41,6 +43,15 @@ final class GenerateSignalJob implements ShouldQueue
     ): void {
         $scanner ??= app(MarketScannerService::class);
         $at = $this->at === null ? null : new DateTimeImmutable($this->at);
+
+        if (config('trading.pipeline_mode') === 'EVENT_DRIVEN') {
+            $recovery = app(TradingPipelineRecoveryService::class);
+            if ($recovery->isDecisionAlreadyServiced('bybit', $this->symbol, $at)) {
+                Log::info("GenerateSignalJob: bybit:{$this->symbol} already processed by event-driven pipeline; scheduled run skipped.");
+
+                return;
+            }
+        }
 
         $scanner->scanSymbol($this->symbol, $at);
     }
