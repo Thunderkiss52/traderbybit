@@ -242,3 +242,13 @@ verified F01–F27 and I01–I09 remediation acceptance; see the roadmap's sourc
 The [external execution boundary](docs/specifications/VECTOR_FUTURE_EXTERNAL_EXECUTION_BOUNDARY.md)
 is documentation only and authorizes no live integration. Existing PAPER-only safety standards and
 the mandatory requirement to read root `SKILL.md` remain unchanged.
+
+
+## Project completion tracking
+
+Generate independent implementation, verification and accepted-product scores with
+`python3 scripts/vector_progress.py`. See the [scorecard](docs/progress/VECTOR_PROJECT_COMPLETION_SCORECARD.md),
+[traceability](docs/progress/VECTOR_REQUIREMENTS_TRACEABILITY.md),
+[scoring policy](docs/progress/VECTOR_COMPLETION_SCORING_POLICY.md) and
+[history](docs/progress/VECTOR_PROGRESS_HISTORY.md). Initial scores are provisional;
+missing verification is not evidence of failed tests. Reporting is offline and does not start Laravel.

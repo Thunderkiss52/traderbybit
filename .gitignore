@@ -46,7 +46,9 @@ storage/latency_benchmark.json
 *:Zone.Identifier
 
 /reports/
-/docs/
+!/docs/
+/docs/*
+!/docs/progress/
 /VECTOR_PROFIT_1_Revision_2_1_Full_Spec.md
 /IMPLEMENTATION_REPORT.md
 /CHANGED_FILES.txt
@@ -54,3 +56,7 @@ storage/latency_benchmark.json
 /AGENT.md
 last_development_for_full_service/
 VECTOR_UNIFIED_13_PRIMARY_26_PAPER_MULTI_EXCHANGE_SPEC_V2_4_EN.md
+
+# Python bytecode and cache
+__pycache__/
+*.py[cod]

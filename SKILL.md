@@ -263,3 +263,19 @@ verified F01–F27 and I01–I09 remediation acceptance; see the roadmap's sourc
 The [external execution boundary](docs/specifications/VECTOR_FUTURE_EXTERNAL_EXECUTION_BOUNDARY.md)
 is documentation only and authorizes no live integration. Existing PAPER-only safety standards and
 the mandatory requirement to read root `SKILL.md` remain unchanged.
+
+
+## Evidence-driven completion tracking
+
+Use [the completion policy](docs/progress/VECTOR_COMPLETION_SCORING_POLICY.md) and
+[requirement registry](docs/progress/vector-requirements.json) for every development stage.
+Before work, record current scores and requirement IDs. After work: run applicable tests;
+record actual passes, failures and skips; attach source and verification evidence to IDs;
+update independent implementation, verification and product acceptance fields and justified states;
+run `python3 scripts/vector_progress.py --generate`, the focused tracker tests, and
+`python3 scripts/vector_progress.py --strict --base-ref <starting-HEAD>`.
+Report before/after scores and blockers, record an immutable history snapshot, and include updated
+progress metadata in the local implementation commit. A commit is never product acceptance.
+Do not change weights, criteria, dependencies or scope without a new approved scope baseline;
+never silently waive production obligations. The tracker is offline and grants no trading,
+production, Binance activation, push or deployment authority.

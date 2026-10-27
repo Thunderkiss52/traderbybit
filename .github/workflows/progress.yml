@@ -1,0 +1,30 @@
+name: VECTOR progress consistency
+
+on:
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  scorecard:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Test offline scorecard
+        run: python3 -m unittest discover -s scripts/tests -p test_vector_progress.py -v
+      - name: Check registry and generated reports
+        env:
+          PROGRESS_BASE_SHA: ${{ github.event.pull_request.base.sha }}
+        run: |
+          if [ -n "$PROGRESS_BASE_SHA" ]; then
+            python3 scripts/vector_progress.py --strict --base-ref "$PROGRESS_BASE_SHA"
+          else
+            python3 scripts/vector_progress.py --strict
+          fi
