@@ -8,12 +8,14 @@
 - **Preceding F01–F25 Agent Commits:**
   - `3165173 fix(vector): financial integrity and profitability contracts`
   - `08a0d7c fix(vector): audit lineage and paper entry observability`
-- **Starting HEAD for I01–I09 Remediation:** `08a0d7c`
-- **Local Remediation Commits Created:**
+- **Starting HEAD for Remediation:** `08a0d7c`
+- **Local Commits Created:**
   1. `2632d7e fix(vector): paper pipeline acknowledgments and partial recovery`
-  2. `bd20e6c fix(vector): paper pipeline event lifecycle terminalization and retry isolation (I01, I04, I06, I09)`
-  3. `c259ec7 fix(vector): position partial exits and funding completeness (I02, I03, I07)`
-  4. `76fe309 fix(vector): exchange gap recovery and valuation provenance (I05, I08)`
+  2. `bd20e6c fix(vector): paper pipeline event lifecycle terminalization and retry isolation (I01, I04, I06, I09)` [Stage A]
+  3. `c259ec7 fix(vector): position partial exits and funding completeness (I02, I03, I07)` [Stage B]
+  4. `76fe309 fix(vector): exchange gap recovery and valuation provenance (I05, I08)` [Stage C]
+  5. `5e6ea04 docs(vector): finalize I01-I09 production-evidence remediation report`
+  6. `2acaa61 docs(agent): standardize VECTOR engineering practices` [Stage 0]
 - **Working Tree State:** Clean, all tests passing.
 - **Strict Safety Confirmation:**
   - PAPER-ONLY mode strictly enforced; zero live exchange endpoints or real orders.
@@ -21,6 +23,30 @@
   - 5% entry-block and 10% drawdown halt thresholds preserved.
   - ECONOM / econom-group completely untouched.
   - No `git push`, no manual deploy, no GitHub Actions triggered.
+
+---
+
+## 1.1 Stage 0 — Repository Engineering Standards
+
+### 1. AGENTS.md Updates
+- Established `AGENTS.md` as the primary repository instruction entry point.
+- Added explicit mandatory rule: Every coding agent working in VECTOR MUST read and follow the root-level `SKILL.md` before modifying application code, tests, database migrations, API contracts, background jobs, infrastructure files, or research logic.
+- Resolved outdated architectural references: replaced obsolete 8-account statements with the canonical architecture of 26 independent PAPER accounts (13 PRIMARY strategies on Bybit, 13 PRIMARY strategies on Binance).
+- Reaffirmed strict PAPER-only execution, zero real exchange orders, and operator-triggered deployment via GitHub Actions.
+
+### 2. Root-Level SKILL.md Standards Specification
+Created the comprehensive, root-level [`SKILL.md`](file:///home/thunder/work/traderbybit/SKILL.md) covering:
+- **Section A: Senior Engineering Principles** (root cause analysis, domain invariants, small changesets, explicit maintainability, zero logic duplication, failure observability).
+- **Section B: PHP 8.x and Laravel Engineering** (strict types, DI, thin controllers, transactional boundaries, queue idempotency, N+1 prevention, Pint formatting).
+- **Section C: PostgreSQL and Financial Accounting** (`NUMERIC(24, 12)` precision, arbitrary-precision `BigDecimal`, account/exchange scoping, double-entry reconciliation, immutable history).
+- **Section D: PAPER Trading and Risk Safety** (independent Bybit/Binance accounts, closed-candle invariant, 5% entry block, 10% halt, lot-size rounding protections, continuous servicing of open positions).
+- **Section E: Vue 3, Quasar and TypeScript Frontend** (typed API contracts, explicit loading/empty/error/stale states, no fabricated zeros, timezone handling, risk disclaimers).
+- **Section F: Go Research Engineering** (bounded worker pools, determinism, context cancellation, strict separation from live paper ledger).
+- **Section G: Quantitative Research & Look-Ahead Prevention** (zero look-ahead, chronological train/val/test splits, purging/embargo windows, honest insufficient-data states).
+- **Section H: Event-Driven Pipeline Reliability** (explicit lifecycle ownership, downstream acknowledgment, per-account failure isolation, targeted retries).
+- **Section I: Testing & Quality Assurance Protocols** (targeted regression suites, financial invariants, isolated test databases, non-destructive test runs).
+- **Section J: Git, DevOps, and Operational Safety** (atomic local commits, no autonomous git push, no manual VPS deployment, zero ECONOM intrusion).
+- **Section K: Definition of Done (DoD)** (traceable verification evidence, safety confirmation, documentation updates).
 
 ---
 
