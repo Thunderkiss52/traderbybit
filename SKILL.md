@@ -250,3 +250,16 @@ A task, defect fix, or feature is considered **DONE** only when:
 5. All code adheres to formatting, linting, and typecheck requirements.
 6. A reviewed, dedicated local Git commit is created.
 7. Documentation and acceptance reports truthfully record tested outcomes, limitations, and remaining operator steps.
+
+
+## Future platform specifications — planned, post-remediation only
+
+The [future platform vision](docs/architecture/VECTOR_FUTURE_PLATFORM_VISION.md),
+[current-to-target architecture](docs/architecture/VECTOR_STRATEGY_PLATFORM_ARCHITECTURE.md)
+and [phased implementation roadmap](docs/roadmap/VECTOR_POST_REMEDIATION_IMPLEMENTATION_ROADMAP.md)
+index the Strategy SDK, deterministic evolution, analytics/audit and exchange adapter specifications.
+These describe planned extensions, not implemented capabilities. New development starts only after
+verified F01–F27 and I01–I09 remediation acceptance; see the roadmap's source-qualified status matrix.
+The [external execution boundary](docs/specifications/VECTOR_FUTURE_EXTERNAL_EXECUTION_BOUNDARY.md)
+is documentation only and authorizes no live integration. Existing PAPER-only safety standards and
+the mandatory requirement to read root `SKILL.md` remain unchanged.
