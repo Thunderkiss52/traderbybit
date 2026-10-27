@@ -37,12 +37,15 @@ WHERE pa.is_primary = TRUE
 ORDER BY pa.exchange_id, pa.primary_strategy_id;
 
 -- ------------------------------------------------------------------------------
--- 2. 24-HOUR STRATEGY DECISION FUNNEL (BUY / SELL / SKIP)
+-- 2. 24-HOUR STRATEGY DECISION FUNNEL (Actual Persisted vs. Theoretical Capacity)
 -- ------------------------------------------------------------------------------
+-- Theoretical capacity: 96 15-minute bars per symbol per day * 2 symbols = 192
 SELECT 
     s.exchange,
     s.strategy_id,
-    COUNT(*) AS total_evaluations_24h,
+    COUNT(*) AS actual_persisted_evaluations_24h,
+    192 AS theoretical_capacity_24h,
+    ROUND((COUNT(*)::numeric / 192 * 100), 1) AS pipeline_coverage_pct,
     COUNT(*) FILTER (WHERE s.side = 'BUY') AS buy_decisions_24h,
     COUNT(*) FILTER (WHERE s.side = 'SELL') AS sell_decisions_24h,
     COUNT(*) FILTER (WHERE s.side = 'SKIP') AS skip_decisions_24h,
@@ -53,12 +56,15 @@ GROUP BY s.exchange, s.strategy_id
 ORDER BY s.exchange, s.strategy_id;
 
 -- ------------------------------------------------------------------------------
--- 3. 7-DAY STRATEGY DECISION FUNNEL (BUY / SELL / SKIP)
+-- 3. 7-DAY STRATEGY DECISION FUNNEL (Actual Persisted vs. Theoretical Capacity)
 -- ------------------------------------------------------------------------------
+-- Theoretical capacity: 672 15-minute bars per symbol per week * 2 symbols = 1344
 SELECT 
     s.exchange,
     s.strategy_id,
-    COUNT(*) AS total_evaluations_7d,
+    COUNT(*) AS actual_persisted_evaluations_7d,
+    1344 AS theoretical_capacity_7d,
+    ROUND((COUNT(*)::numeric / 1344 * 100), 1) AS pipeline_coverage_pct,
     COUNT(*) FILTER (WHERE s.side = 'BUY') AS buy_decisions_7d,
     COUNT(*) FILTER (WHERE s.side = 'SELL') AS sell_decisions_7d,
     COUNT(*) FILTER (WHERE s.side = 'SKIP') AS skip_decisions_7d,
@@ -203,5 +209,23 @@ FROM trading_pipeline_events tpe
 WHERE tpe.candle_close_at >= NOW() - INTERVAL '24 hours'
 GROUP BY tpe.exchange, tpe.stage, tpe.status
 ORDER BY tpe.exchange, tpe.stage, tpe.status;
+
+-- ------------------------------------------------------------------------------
+-- 12. HISTORICAL BINANCE EXECUTIONS BREAKDOWN (Confirming 60 Positions & Accounts)
+-- ------------------------------------------------------------------------------
+SELECT 
+    pa.primary_strategy_id AS strategy_id,
+    pa.status AS account_status,
+    COUNT(DISTINCT vp.id) AS binance_positions_count,
+    COUNT(DISTINCT ve.id) AS binance_entry_executions,
+    COALESCE(ROUND(SUM(vp.net_pnl::numeric), 2), 0.00) AS total_net_pnl,
+    MIN(vp.opened_at) AS earliest_position_opened_at,
+    MAX(vp.opened_at) AS latest_position_opened_at
+FROM paper_accounts pa
+LEFT JOIN virtual_positions vp ON vp.paper_account_id = pa.id
+LEFT JOIN virtual_executions ve ON ve.position_id = vp.id AND ve.type = 'ENTRY'
+WHERE pa.exchange_id = 'binance' AND pa.is_primary = TRUE
+GROUP BY pa.primary_strategy_id, pa.status
+ORDER BY pa.primary_strategy_id;
 
 ROLLBACK;
