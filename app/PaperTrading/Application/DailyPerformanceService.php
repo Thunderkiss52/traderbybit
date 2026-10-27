@@ -286,9 +286,9 @@ final class DailyPerformanceService
         array_push($bindings, $accountId);
 
         $sql = 'WITH boundaries(idx, at) AS (VALUES '.implode(', ', $values).') '
-            .'SELECT b.idx, s.id, s.recorded_at, s.equity, s.realized_pnl, s.unrealized_pnl '
+            .'SELECT b.idx, s.id, s.recorded_at, s.equity, s.realized_pnl, s.unrealized_pnl, s.valued_through, s.valuation_fresh '
             .'FROM boundaries b LEFT JOIN LATERAL ('
-            .'SELECT es.id, es.recorded_at, es.equity, es.realized_pnl, es.unrealized_pnl '
+            .'SELECT es.id, es.recorded_at, es.equity, es.realized_pnl, es.unrealized_pnl, es.valued_through, es.valuation_fresh '
             .'FROM equity_snapshots es WHERE es.paper_account_id = ?::uuid AND es.recorded_at <= b.at '
             .'ORDER BY es.recorded_at DESC, es.id DESC LIMIT 1'
             .') s ON true';
@@ -348,7 +348,18 @@ final class DailyPerformanceService
             : $closeEquity->minus($account->starting_balance)->dividedBy($account->starting_balance, 12, RoundingMode::HalfEven)->multipliedBy(100);
 
         $fresh = $closing !== null && max(0, $endUtc->getTimestamp() - $closing['recorded_at']->getTimestamp()) <= self::CLOSE_FRESHNESS_SECONDS;
+        $valuationFresh = (bool) ($closing['valuation_fresh'] ?? true);
+        if (! $valuationFresh) {
+            $fresh = false;
+        }
         $complete = $isAll && $hasOpening && $closing !== null && $fresh;
+
+        $valuationStatus = match (true) {
+            $closing === null => 'MISSING',
+            ! $valuationFresh => 'STALE',
+            BigDecimal::of($closing['unrealized_pnl'])->isZero() => 'FLAT_VERIFIED',
+            default => 'FRESH',
+        };
 
         return [
             'net_pnl' => $net === null ? null : (string) $net,
@@ -370,7 +381,10 @@ final class DailyPerformanceService
                 $isAll && ! $hasOpening ? 'opening_snapshot_unavailable' : null,
                 ! $isAll ? 'symbol_mark_to_market_history_unavailable' : null,
                 $isAll && $closing !== null && ! $fresh ? 'closing_equity_snapshot_not_near_period_end' : null,
+                $isAll && $closing !== null && ! $valuationFresh ? 'open_positions_market_valuation_stale' : null,
             ])),
+            'valuation_status' => $valuationStatus,
+            'valuation_fresh' => $valuationFresh,
             'opening_boundary' => ! $isAll ? 'UNAVAILABLE' : ($opening !== null ? 'SNAPSHOT' : ($inceptionBoundary ? 'ACCOUNT_INCEPTION' : 'UNAVAILABLE')),
             'opening_snapshot_at' => $opening === null ? null : $opening['recorded_at']->format(DATE_ATOM),
             'closing_snapshot_at' => $closing === null ? null : $closing['recorded_at']->setTimezone(new DateTimeZone('UTC'))->format('Y-m-d\TH:i:s.u\Z'),
@@ -380,11 +394,11 @@ final class DailyPerformanceService
     private function lastSnapshot(string $accountId, DateTimeImmutable $at): ?EquitySnapshotRecord
     {
         return EquitySnapshotRecord::query()->where('paper_account_id', $accountId)->where('recorded_at', '<=', $at)
-            ->latest('recorded_at')->latest('id')->first(['id', 'recorded_at', 'equity', 'realized_pnl', 'unrealized_pnl']);
+            ->latest('recorded_at')->latest('id')->first(['id', 'recorded_at', 'equity', 'realized_pnl', 'unrealized_pnl', 'valued_through', 'valuation_fresh']);
     }
 
     /**
-     * @return array{equity: string, realized_pnl: string, unrealized_pnl: string, recorded_at: DateTimeImmutable}|null
+     * @return array{equity: string, realized_pnl: string, unrealized_pnl: string, recorded_at: DateTimeImmutable, valued_through: ?DateTimeImmutable, valuation_fresh: bool}|null
      */
     private function snapshotData(?object $snapshot): ?array
     {
@@ -401,6 +415,10 @@ final class DailyPerformanceService
             'realized_pnl' => (string) $snapshot->realized_pnl,
             'unrealized_pnl' => (string) $snapshot->unrealized_pnl,
             'recorded_at' => new DateTimeImmutable($recordedAt->format('Y-m-d H:i:s.uP')),
+            'valued_through' => isset($snapshot->valued_through) && $snapshot->valued_through !== null
+                ? new DateTimeImmutable((string) $snapshot->valued_through)
+                : null,
+            'valuation_fresh' => isset($snapshot->valuation_fresh) ? (bool) $snapshot->valuation_fresh : true,
         ];
     }
 }

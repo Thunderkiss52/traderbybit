@@ -410,7 +410,7 @@ final readonly class PaperProcessingService
                     $position->update(['awaiting_market_data' => true]);
                 }
                 if (! $historical) {
-                    RecoverCandleGapsJob::dispatch();
+                    RecoverCandleGapsJob::dispatch($signal->exchange, $signal->symbol);
                 }
                 break;
             }

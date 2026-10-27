@@ -241,7 +241,10 @@ final readonly class PaperAccountService
             'recorded_at' => $account->created_at,
             'equity' => $account->starting_balance,
             'realized_pnl' => '0', 'unrealized_pnl' => '0', 'drawdown_percent' => '0',
-            'source_event_key' => 'account:initial', 'created_at' => now(), 'updated_at' => now(),
+            'source_event_key' => 'account:initial',
+            'valued_through' => $account->created_at,
+            'valuation_fresh' => true,
+            'created_at' => now(), 'updated_at' => now(),
         ]]);
     }
 
