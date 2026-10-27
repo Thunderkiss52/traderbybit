@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { onBeforeUnmount, onMounted, ref, shallowRef, computed } from 'vue';
+import { onBeforeUnmount, onMounted, ref, shallowRef, computed, watch } from 'vue';
 import { storeToRefs } from 'pinia';
 import { get } from '../services/api';
 import { usePolling } from '../composables/usePolling';
@@ -28,23 +28,59 @@ async function loadExchangeComparison() {
   }
 }
 onMounted(loadExchangeComparison);
-const controller = new AbortController();
-const { autoRefresh } = storeToRefs(useSettings());
-const { loading, connected } = usePolling(async () => {
+
+const selectedAccount = ref<string>(settings.account || 'all');
+const accountOptions = computed(() => {
+  const exLabel = selectedExchange.value.toUpperCase();
+  const list = data.value?.accounts || selectedAccounts.value || [];
+  return [
+    { label: `All Accounts (Aggregate Portfolio · ${exLabel})`, value: 'all' },
+    ...list.map((a: any) => ({
+      label: `${a.name || a.strategy_id} (${a.strategy_id || a.primary_strategy_id}) [${a.status || 'ACTIVE'}]`,
+      value: a.id,
+    })),
+  ];
+});
+
+let reqVersion = 0;
+let dashboardController: AbortController | undefined;
+
+async function loadDashboard() {
+  dashboardController?.abort();
+  dashboardController = new AbortController();
+  const current = ++reqVersion;
   try {
-    const res = await get<any>('/dashboard', undefined, controller.signal);
-    if (res) {
+    const params = selectedAccount.value && selectedAccount.value !== 'all'
+      ? { account: selectedAccount.value }
+      : { account: 'all' };
+    const res = await get<any>('/dashboard', params, dashboardController.signal);
+    if (current === reqVersion && res) {
       data.value = res;
+      error.value = '';
     }
-    error.value = '';
   } catch (exception: any) {
-    if (exception.name !== 'CanceledError') {
+    if (current === reqVersion && exception.name !== 'CanceledError') {
       error.value = exception.message;
     }
-    throw exception;
   }
-}, 5000, autoRefresh);
-onBeforeUnmount(() => controller.abort());
+}
+
+watch(selectedAccount, (val: string) => {
+  settings.account = val === 'all' ? '' : val;
+  loadDashboard();
+});
+
+watch(() => settings.account, (val: string) => {
+  if (val && val !== selectedAccount.value) {
+    selectedAccount.value = val;
+  } else if (!val && selectedAccount.value !== 'all') {
+    selectedAccount.value = 'all';
+  }
+});
+
+const { autoRefresh } = storeToRefs(useSettings());
+const { loading, connected } = usePolling(loadDashboard, 5000, autoRefresh);
+onBeforeUnmount(() => dashboardController?.abort());
 
 const evidence = (value: unknown) => value === null || value === undefined ? '—' : `${value}/100 evidence`;
 
@@ -69,6 +105,23 @@ const systemStatus = computed(() => {
       <div><span class="eyebrow">FORWARD PAPER TRADING</span><h1>Market & Virtual Portfolio</h1></div>
       <q-badge :color="systemStatus.color">{{ systemStatus.label }}</q-badge>
     </div>
+    <div class="row items-center justify-between q-mb-md q-col-gutter-sm">
+      <div class="col-12 col-sm-auto">
+        <q-select
+          v-model="selectedAccount"
+          :options="accountOptions"
+          dense
+          outlined
+          emit-value
+          map-options
+          label="Paper Account / Portfolio"
+          style="min-width: 340px"
+        />
+      </div>
+      <div class="col-12 col-sm-auto text-caption text-grey">
+        26 Independent PAPER Accounts (13 Bybit + 13 Binance)
+      </div>
+    </div>
     <q-banner v-if="error" class="bg-negative text-white">{{ error }}</q-banner>
     <q-inner-loading :showing="loading && !data.market.length" />
     <section>
@@ -83,7 +136,15 @@ const systemStatus = computed(() => {
       </div>
     </section>
     <section>
-      <h2>Paper Portfolio · Simulated USDT</h2>
+      <div class="row items-center justify-between q-mb-xs">
+        <h2>Paper Portfolio · Simulated USDT</h2>
+        <q-badge v-if="data.portfolio?.is_aggregate" color="primary" class="q-pa-xs text-subtitle2">
+          AGGREGATE ({{ data.portfolio?.accounts_count || 13 }} Accounts · {{ selectedExchange.toUpperCase() }})
+        </q-badge>
+        <q-badge v-else :color="data.portfolio?.status === 'ACTIVE' ? 'positive' : (data.portfolio?.status === 'BLOCKED' ? 'warning' : 'negative')" class="q-pa-xs text-subtitle2">
+          ACCOUNT: {{ data.account?.name || data.portfolio?.account_name || 'Selected' }} ({{ selectedExchange.toUpperCase() }}) · {{ data.portfolio?.status }}
+        </q-badge>
+      </div>
       <q-banner class="bg-grey-9 text-white q-mb-md">Estimated paper results, not actual exchange profits. Backtest performance is reported separately.</q-banner>
       <div v-if="data.portfolio" class="metrics">
         <MetricCard label="Starting Balance (USDT)" :value="data.portfolio.starting_balance" />

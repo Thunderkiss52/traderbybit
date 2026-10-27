@@ -1,11 +1,13 @@
 <script setup lang="ts">
-import { computed, onBeforeUnmount, ref, watch } from 'vue';
+import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { get } from '../services/api';
+import { useSettings } from '../stores/settings';
 import EmptyState from '../components/EmptyState.vue';
 
 const route = useRoute();
 const router = useRouter();
+const settings = useSettings();
 const rows = ref<Record<string, unknown>[]>([]);
 const page = ref(1);
 const pages = ref(1);
@@ -13,6 +15,8 @@ const total = ref(0);
 const loading = ref(false);
 const search = ref('');
 const error = ref('');
+const accounts = ref<any[]>([]);
+const selectedAccount = ref<string>(settings.account || '');
 const endpoint = computed(() => route.meta.endpoint as string);
 const pageSize = ref(10); // pageSize = 10
 const pageSizeOptions = [10, 25, 50, 100];
@@ -83,15 +87,31 @@ const columns = computed<QTableColumn[]>(() => {
 const isSignals = computed(() => endpoint.value === '/signals');
 const isPositions = computed(() => endpoint.value === '/positions');
 
+const accountOptions = computed(() => [
+  { label: 'All Accounts', value: '' },
+  ...accounts.value.map((a: any) => ({
+    label: `${a.name} (${a.strategy_id})`,
+    value: a.id,
+  })),
+]);
+
 async function load() {
   controller?.abort();
   const current = ++requestNumber;
   controller = new AbortController();
   loading.value = true;
   try {
+    const params: Record<string, unknown> = {
+      page: page.value,
+      search: search.value,
+      per_page: pageSize.value,
+    };
+    if (selectedAccount.value) {
+      params.account = selectedAccount.value;
+    }
     const response: any = await get(
       endpoint.value,
-      { page: page.value, search: search.value, per_page: pageSize.value },
+      params,
       controller.signal
     );
     if (current !== requestNumber) return;
@@ -124,14 +144,32 @@ const exportCsv = () => {
   URL.revokeObjectURL(url);
 };
 
-watch([endpoint, page, pageSize], () => {
+watch([endpoint, page, pageSize, selectedAccount], () => {
   load();
 }, { immediate: true });
+
+watch(selectedAccount, (val) => {
+  settings.account = val;
+});
+
+watch(() => settings.account, (val) => {
+  if (val !== selectedAccount.value) {
+    selectedAccount.value = val;
+  }
+});
 
 watch(search, () => {
   clearTimeout(debounce);
   page.value = 1;
   debounce = setTimeout(load, 300);
+});
+
+onMounted(async () => {
+  try {
+    accounts.value = await get<any[]>('/journal/accounts');
+  } catch {
+    // fallback gracefully
+  }
 });
 
 onBeforeUnmount(() => { controller?.abort(); clearTimeout(debounce); });
@@ -145,6 +183,17 @@ onBeforeUnmount(() => { controller?.abort(); clearTimeout(debounce); });
         <h1>{{ route.meta.title }}</h1>
       </div>
       <div class="actions row items-center q-gutter-sm">
+        <q-select
+          v-if="isSignals || isPositions"
+          v-model="selectedAccount"
+          :options="accountOptions"
+          dense
+          outlined
+          emit-value
+          map-options
+          label="Account filter"
+          style="min-width: 220px"
+        />
         <q-input v-model="search" dense outlined placeholder="Search symbol..." clearable style="min-width: 200px" />
         <q-select v-model="pageSize" :options="pageSizeOptions" dense outlined label="Per page" style="min-width: 100px" />
         <q-btn outline icon="download" label="CSV (page)" :disable="!rows.length" @click="exportCsv" />

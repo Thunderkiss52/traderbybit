@@ -13,6 +13,10 @@ export const useSettings = defineStore('settings', () => {
   const preferredInterval = ref(saved.preferredInterval || '15');
   const exchange = ref<'bybit' | 'binance'>(saved.exchange === 'binance' ? 'binance' : 'bybit');
 
+  watch(exchange, () => {
+    account.value = '';
+  });
+
   watch(
     [locale, dark, timezone, numberLocale, autoRefresh, account, preferredSymbol, preferredInterval, exchange],
     () => localStorage.setItem('ui-settings', JSON.stringify({

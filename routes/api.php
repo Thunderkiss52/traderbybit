@@ -75,6 +75,7 @@ Route::prefix('v1')->middleware('throttle:api')->group(function () {
     Route::get('positions/{id}', [C::class, 'position']);
     Route::get('journal', [C::class, 'journal']);
     Route::get('journal/accounts', [C::class, 'journalAccounts']);
+    Route::get('paper/accounts', [C::class, 'paperAccounts']);
     Route::get('statistics', [C::class, 'statistics']);
     Route::get('paper/daily-performance', [C::class, 'dailyPerformance']);
     Route::get('research/daily-performance', [R::class, 'dailyPerformance']);

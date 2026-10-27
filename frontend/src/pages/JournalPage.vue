@@ -1,15 +1,17 @@
 <script setup lang="ts">
 import { computed, onBeforeUnmount, onMounted, ref, shallowRef, watch } from 'vue';
 import { get } from '../services/api';
+import { useSettings } from '../stores/settings';
 import EquityChart from '../components/charts/EquityChart.vue';
 import PerformanceCharts from '../components/charts/PerformanceCharts.vue';
 
 import type { QTableColumn } from 'quasar';
 
+const settings = useSettings();
 const journal = shallowRef<any>({ data: [], next_page_url: null });
 const statistics = shallowRef<any>({ metrics: null, equity: [], breakdowns: {} });
 const accounts = ref<any[]>([]);
-const account = ref('');
+const account = ref(settings.account || '');
 const days = ref(7);
 const eventType = ref('');
 const page = ref(1);
@@ -61,6 +63,14 @@ async function loadCharts() {
   } finally { chartsLoading.value = false; }
 }
 watch(page, loadJournal);
+watch(account, (val) => {
+  settings.account = val;
+});
+watch(() => settings.account, (val) => {
+  if (val !== account.value) {
+    account.value = val;
+  }
+});
 watch([days, account, eventType], resetPage);
 onMounted(async () => {
   loadJournal();

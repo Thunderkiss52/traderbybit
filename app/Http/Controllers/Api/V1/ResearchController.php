@@ -37,6 +37,7 @@ use App\Strategy\Infrastructure\Persistence\MarketContextRecord;
 use App\Strategy\Infrastructure\Persistence\SignalRecord;
 use App\Strategy\Infrastructure\Persistence\StrategyObservationRecord;
 use Brick\Math\BigDecimal;
+use Brick\Math\RoundingMode;
 use Carbon\CarbonImmutable;
 use Carbon\CarbonInterface;
 use DateTimeImmutable;
@@ -76,10 +77,82 @@ final class ResearchController extends Controller
     public function dashboard(Request $request, PerformanceStatisticsService $statistics, StrategyRegistry $strategies): ResearchResource
     {
         $exchange = $this->resolveExchange($request);
+        $requestedAccount = $request->string('account')->toString();
 
-        $cacheKey = "paper:dashboard:full_payload:{$exchange}:v7";
-        $payload = Cache::remember($cacheKey, 10, function () use ($statistics, $strategies, $exchange): array {
-            $account = PaperAccountRecord::query()->where('exchange_id', $exchange)->oldest()->first();
+        $cacheAccountKey = $requestedAccount !== '' ? $requestedAccount : 'default';
+        $cacheKey = "paper:dashboard:full_payload:{$exchange}:{$cacheAccountKey}:v10";
+        $payload = Cache::remember($cacheKey, 10, function () use ($statistics, $strategies, $exchange, $requestedAccount): array {
+            $primaryAccounts = PaperAccountRecord::query()->where('exchange_id', $exchange)->where('is_primary', true)->orderBy('name')->get();
+            if ($primaryAccounts->isEmpty()) {
+                $primaryAccounts = PaperAccountRecord::query()->where('exchange_id', $exchange)->orderBy('name')->get();
+            }
+
+            // Aggregate metrics across all primary accounts on this exchange (13 Bybit or 13 Binance)
+            $totalStarting = BigDecimal::zero();
+            $totalRealized = BigDecimal::zero();
+            $totalUnrealized = BigDecimal::zero();
+            $totalReservedRisk = BigDecimal::zero();
+            $totalCurrentEquity = BigDecimal::zero();
+
+            foreach ($primaryAccounts as $acc) {
+                $totalStarting = $totalStarting->plus(BigDecimal::of((string) ($acc->starting_balance ?? '0')));
+                $totalRealized = $totalRealized->plus(BigDecimal::of((string) ($acc->realized_pnl ?? '0')));
+                $totalUnrealized = $totalUnrealized->plus(BigDecimal::of((string) ($acc->unrealized_pnl ?? '0')));
+                $totalReservedRisk = $totalReservedRisk->plus(BigDecimal::of((string) ($acc->reserved_risk ?? '0')));
+                $totalCurrentEquity = $totalCurrentEquity->plus(BigDecimal::of((string) ($acc->current_equity ?? '0')));
+            }
+
+            $totalNet = $totalRealized->plus($totalUnrealized);
+            $totalBalance = $totalStarting->plus($totalRealized);
+            $totalReturn = $totalStarting->isZero()
+                ? null
+                : (string) $totalNet->multipliedBy(100)->dividedBy($totalStarting, 8, RoundingMode::HalfEven);
+            $availableCapital = (string) $totalCurrentEquity->minus($totalReservedRisk);
+
+            $aggregatePortfolio = [
+                'scope' => 'aggregate',
+                'is_aggregate' => true,
+                'exchange_id' => $exchange,
+                'accounts_count' => $primaryAccounts->count(),
+                'starting_balance' => (string) $totalStarting,
+                'current_balance' => (string) $totalBalance,
+                'current_equity' => (string) $totalCurrentEquity,
+                'total_net_pnl' => (string) $totalNet,
+                'realized_pnl' => (string) $totalRealized,
+                'unrealized_pnl' => (string) $totalUnrealized,
+                'available_virtual_capital' => $availableCapital,
+                'reserved_risk' => (string) $totalReservedRisk,
+                'total_return_percent' => $totalReturn,
+                'open_positions' => VirtualPositionRecord::query()->where('exchange_id', $exchange)->whereNull('closed_at')->count(),
+                'pending_entry_signals' => PaperSignalStateRecord::query()->where('exchange_id', $exchange)->where('status', 'PENDING_ENTRY')->count(),
+            ];
+
+            $isAggregateView = ($requestedAccount === 'all');
+            $selectedAccount = null;
+
+            if (! $isAggregateView) {
+                if ($requestedAccount !== '') {
+                    $selectedAccount = PaperAccountRecord::query()->where('exchange_id', $exchange)->where('id', $requestedAccount)->first();
+                }
+                if ($selectedAccount === null && $requestedAccount === '') {
+                    $selectedAccount = PaperAccountRecord::query()->where('exchange_id', $exchange)->oldest()->first();
+                }
+            }
+
+            $accountPortfolio = $selectedAccount ? array_merge($statistics->accountSummary($selectedAccount), [
+                'scope' => 'account',
+                'is_aggregate' => false,
+                'account_id' => $selectedAccount->id,
+                'account_name' => $selectedAccount->name,
+                'strategy_id' => $selectedAccount->primary_strategy_id ?? $selectedAccount->strategy_id,
+                'exchange_id' => $selectedAccount->exchange_id,
+                'status' => $selectedAccount->status,
+                'open_positions' => VirtualPositionRecord::query()->where('paper_account_id', $selectedAccount->id)->whereNull('closed_at')->count(),
+                'pending_entry_signals' => PaperSignalStateRecord::query()->where('paper_account_id', $selectedAccount->id)->where('status', 'PENDING_ENTRY')->count(),
+            ]) : null;
+
+            $activePortfolio = $isAggregateView ? $aggregatePortfolio : ($accountPortfolio ?? $aggregatePortfolio);
+
             $contexts = collect(config('ui.symbols'))->map(
                 static fn (string $symbol) => MarketContextRecord::query()->where('exchange', $exchange)->where('symbol', $symbol)->latest('observed_at')->first()
             )->filter()->values();
@@ -114,15 +187,30 @@ final class ResearchController extends Controller
                 ])->values()->all();
 
             $signals = SignalRecord::query()->where('exchange', $exchange)->whereIn('side', ['BUY', 'SELL'])->latest('decision_time')->latest('id')->limit(8)->get(['id', 'symbol', 'side', 'quality_class', 'score', 'entry_low', 'entry_high', 'stop_loss', 'take_profit_1', 'take_profit_2', 'expires_at', 'reasons', 'decision_time'])->map(fn ($s) => $s->toArray())->all();
-            $positions = VirtualPositionRecord::query()->where('exchange_id', $exchange)->whereNull('closed_at')->latest('opened_at')->limit(10)->get(['id', 'symbol', 'side', 'status', 'entry_price', 'net_pnl', 'unrealized_pnl'])->map(fn ($p) => $p->toArray())->all();
+
+            $positionsQuery = VirtualPositionRecord::query()->where('exchange_id', $exchange)->whereNull('closed_at');
+            if ($selectedAccount !== null) {
+                $positionsQuery->where('paper_account_id', $selectedAccount->id);
+            }
+            $positions = $positionsQuery->latest('opened_at')->limit(10)->get(['id', 'symbol', 'side', 'status', 'entry_price', 'net_pnl', 'unrealized_pnl'])->map(fn ($p) => $p->toArray())->all();
 
             return [
                 'market' => $contexts->map(fn ($c) => $c->toArray())->values()->all(),
-                'account' => $account?->toArray(),
-                'portfolio' => $account ? array_merge($statistics->accountSummary($account), [
-                    'open_positions' => VirtualPositionRecord::query()->where('paper_account_id', $account->id)->whereNull('closed_at')->count(),
-                    'pending_entry_signals' => PaperSignalStateRecord::query()->where('paper_account_id', $account->id)->where('status', 'PENDING_ENTRY')->count(),
-                ]) : null,
+                'account' => $selectedAccount?->toArray(),
+                'portfolio' => $activePortfolio,
+                'aggregate_portfolio' => $aggregatePortfolio,
+                'account_portfolio' => $accountPortfolio,
+                'accounts' => $primaryAccounts->map(fn (PaperAccountRecord $a): array => [
+                    'id' => (string) $a->id,
+                    'name' => (string) $a->name,
+                    'strategy_id' => (string) ($a->primary_strategy_id ?? $a->strategy_id ?? ''),
+                    'exchange_id' => (string) $a->exchange_id,
+                    'status' => (string) $a->status,
+                    'starting_balance' => (string) $a->starting_balance,
+                    'current_equity' => (string) $a->current_equity,
+                ])->values()->all(),
+                'selected_account_id' => $selectedAccount?->id,
+                'is_aggregate' => $isAggregateView,
                 'signals' => $signals,
                 'recent_decisions' => $recentDecisions,
                 'skip_reasons_24h' => $skipReasons,
@@ -286,7 +374,7 @@ final class ResearchController extends Controller
                     ];
                 })(),
                 'positions' => $positions,
-                'performance' => $account ? Cache::remember('paper:dashboard:performance:'.$account->id, 60, fn () => $statistics->calculate($account->id)->metrics) : null,
+                'performance' => $selectedAccount ? Cache::remember('paper:dashboard:performance:'.$selectedAccount->id, 60, fn () => $statistics->calculate($selectedAccount->id)->metrics) : null,
                 'exchange_scope' => $exchange,
                 'research_settings' => [
                     'starting_balance' => config('backtest.starting_balance'),
@@ -695,9 +783,30 @@ final class ResearchController extends Controller
         ]);
     }
 
-    public function journalAccounts(): ResearchResource
+    public function journalAccounts(Request $r): ResearchResource
     {
-        return $this->ok(PaperAccountRecord::query()->orderBy('name')->limit(50)->get(['id', 'name', 'mode', 'strategy_id', 'status']));
+        $exchange = $this->resolveExchange($r);
+
+        return $this->ok(PaperAccountRecord::query()
+            ->where('exchange_id', $exchange)
+            ->orderBy('name')
+            ->limit(100)
+            ->get(['id', 'name', 'mode', 'strategy_id', 'primary_strategy_id', 'exchange_id', 'status']));
+    }
+
+    public function paperAccounts(Request $r): ResearchResource
+    {
+        $exchange = $r->header('X-Exchange') ?: $r->string('exchange')->toString();
+        $query = PaperAccountRecord::query();
+        if ($exchange !== '' && in_array($exchange, ['bybit', 'binance'], true)) {
+            $query->where('exchange_id', $exchange);
+        }
+
+        return $this->ok($query->orderBy('exchange_id')->orderBy('name')->get([
+            'id', 'name', 'mode', 'strategy_id', 'primary_strategy_id', 'exchange_id',
+            'status', 'starting_balance', 'current_equity', 'realized_pnl', 'unrealized_pnl',
+            'reserved_risk', 'maximum_drawdown_percent', 'current_drawdown_percent', 'is_primary',
+        ]));
     }
 
     public function journal(Request $r): ResearchResource
@@ -726,13 +835,21 @@ final class ResearchController extends Controller
 
     public function statistics(Request $r, PerformanceStatisticsService $s): ResearchResource
     {
-        $exchange = $r->header('X-Exchange') ?: $r->string('exchange', 'bybit')->toString();
-        if (! in_array($exchange, ['bybit', 'binance'], true)) {
-            $exchange = 'bybit';
+        $exchange = $this->resolveExchange($r);
+        $accounts = PaperAccountRecord::query()->where('exchange_id', $exchange)->orderBy('name')->get();
+        $requested = $r->string('account')->toString();
+        $account = null;
+        if ($requested !== '') {
+            $account = $accounts->firstWhere('id', $requested);
         }
-        $a = $r->string('account')->toString() ?: PaperAccountRecord::query()->where('exchange_id', $exchange)->value('id');
+        if ($account === null) {
+            $account = $accounts->first();
+        }
+        $a = $account?->id;
         if (! $a) {
             return $this->ok([
+                'account' => null,
+                'accounts' => [],
                 'metrics' => null,
                 'equity' => [],
                 'equity_pagination' => ['current_page' => 1, 'last_page' => 1, 'total' => 0, 'per_page' => 100],
@@ -828,6 +945,25 @@ final class ResearchController extends Controller
             ];
         });
 
+        $payload['account'] = [
+            'id' => $account->id,
+            'name' => $account->name,
+            'exchange_id' => $account->exchange_id,
+            'strategy_id' => $account->primary_strategy_id ?? $account->strategy_id,
+            'status' => $account->status,
+            'starting_balance' => (string) $account->starting_balance,
+            'current_equity' => (string) $account->current_equity,
+            'realized_pnl' => (string) $account->realized_pnl,
+            'unrealized_pnl' => (string) $account->unrealized_pnl,
+        ];
+        $payload['accounts'] = $accounts->map(fn ($acc) => [
+            'id' => (string) $acc->id,
+            'name' => (string) $acc->name,
+            'exchange_id' => (string) $acc->exchange_id,
+            'strategy_id' => (string) ($acc->primary_strategy_id ?? $acc->strategy_id ?? ''),
+            'status' => (string) $acc->status,
+        ])->values()->all();
+
         return $this->ok($payload);
     }
 
@@ -908,16 +1044,34 @@ final class ResearchController extends Controller
 
     public function risk(Request $r): ResearchResource
     {
-        $exchange = $r->header('X-Exchange') ?: $r->string('exchange', 'bybit')->toString();
-        if (! in_array($exchange, ['bybit', 'binance'], true)) {
-            $exchange = 'bybit';
+        $exchange = $this->resolveExchange($r);
+        $accounts = PaperAccountRecord::query()->where('exchange_id', $exchange)->orderBy('name')->get();
+        $requested = $r->string('account')->toString();
+        $account = null;
+        if ($requested !== '') {
+            $account = $accounts->firstWhere('id', $requested);
         }
-        $a = $r->string('account')->toString() ?: PaperAccountRecord::query()->where('exchange_id', $exchange)->value('id');
+        if ($account === null) {
+            $account = $accounts->first();
+        }
+
+        $a = $account?->id;
         $decisions = $a ? RiskDecisionRecord::query()->where('paper_account_id', $a)
+            ->where('exchange_id', $exchange)
             ->latest('decided_at')->latest('id')->paginate($this->perPage($r), ['id', 'signal_id', 'allowed', 'reasons', 'decided_at']) : null;
 
         return $this->ok([
-            'account' => $a ? PaperAccountRecord::query()->find($a) : null,
+            'account' => $account,
+            'accounts' => $accounts->map(fn ($acc) => [
+                'id' => (string) $acc->id,
+                'name' => (string) $acc->name,
+                'exchange_id' => (string) $acc->exchange_id,
+                'strategy_id' => (string) ($acc->primary_strategy_id ?? $acc->strategy_id ?? ''),
+                'status' => (string) $acc->status,
+                'current_equity' => (string) $acc->current_equity,
+                'reserved_risk' => (string) $acc->reserved_risk,
+                'current_drawdown_percent' => (string) $acc->current_drawdown_percent,
+            ])->values()->all(),
             'decisions' => $decisions ?? ['data' => [], 'current_page' => 1, 'last_page' => 1],
             'limits' => config('paper.portfolio'),
         ]);

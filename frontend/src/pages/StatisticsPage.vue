@@ -26,7 +26,15 @@ const periodPages = computed(() => Math.max(1, ...['daily', 'weekly', 'monthly']
 })));
 
 const error = ref('');
-const controller = new AbortController();
+const settings = useSettings();
+const selectedAccount = ref<string>(settings.account || '');
+const accountOptions = computed(() => (data.value?.accounts || []).map((a: any) => ({
+  label: `${a.name} (${a.strategy_id}) [${a.status}]`,
+  value: a.id,
+})));
+
+let statsController: AbortController | undefined;
+let statsVersion = 0;
 const { autoRefresh } = storeToRefs(useSettings());
 
 const hasIncompleteClasses = (obj: any): boolean => {
@@ -35,32 +43,82 @@ const hasIncompleteClasses = (obj: any): boolean => {
   return Object.values(obj).some(val => hasIncompleteClasses(val));
 };
 
-const { loading, refresh } = usePolling(async () => {
+const fetchStatistics = async () => {
+  statsController?.abort();
+  statsController = new AbortController();
+  const current = ++statsVersion;
   try {
-    const res = await get('/statistics', { equity_page: equityPage.value, r_page: rPage.value, period_page: periodPage.value }, controller.signal);
-    if (res && typeof res === 'object') {
+    const params: Record<string, unknown> = {
+      equity_page: equityPage.value,
+      r_page: rPage.value,
+      period_page: periodPage.value,
+    };
+    if (selectedAccount.value) {
+      params.account = selectedAccount.value;
+    }
+    const res: any = await get('/statistics', params, statsController.signal);
+    if (current === statsVersion && res && typeof res === 'object') {
       if (hasIncompleteClasses(res)) {
         error.value = 'Received statistics payload with corrupted serialized objects. Refreshing cache...';
       } else {
         error.value = '';
       }
       data.value = res;
-    } else {
-      error.value = 'Invalid statistics payload received.';
+      if (res.account?.id && !selectedAccount.value) {
+        selectedAccount.value = res.account.id;
+      }
     }
   } catch (exception: any) {
-    error.value = exception.message;
-    throw exception;
+    if (current === statsVersion && exception.name !== 'CanceledError') {
+      error.value = exception.message;
+      throw exception;
+    }
   }
-}, 60000, autoRefresh);
+};
+
+const { loading, refresh } = usePolling(fetchStatistics, 60000, autoRefresh);
 
 watch([equityPage, rPage, periodPage], refresh);
-onBeforeUnmount(() => controller.abort());
+watch(selectedAccount, (val) => {
+  settings.account = val;
+  equityPage.value = 1;
+  rPage.value = 1;
+  periodPage.value = 1;
+  refresh();
+});
+watch(() => settings.account, (val) => {
+  if (val !== selectedAccount.value) {
+    selectedAccount.value = val;
+  }
+});
+onBeforeUnmount(() => statsController?.abort());
 </script>
 
 <template>
   <q-page padding>
-    <div class="page-title"><div><span class="eyebrow">FORWARD PAPER PERFORMANCE</span><h1>Virtual Trading Statistics</h1></div></div>
+    <div class="page-title">
+      <div><span class="eyebrow">FORWARD PAPER PERFORMANCE</span><h1>Virtual Trading Statistics</h1></div>
+      <q-badge v-if="data.account?.status" :color="data.account.status === 'ACTIVE' ? 'positive' : (data.account.status === 'BLOCKED' ? 'warning' : 'negative')">
+        {{ data.account.status }}
+      </q-badge>
+    </div>
+    <div class="row items-center justify-between q-mb-md q-col-gutter-sm">
+      <div class="col-12 col-sm-auto">
+        <q-select
+          v-model="selectedAccount"
+          :options="accountOptions"
+          dense
+          outlined
+          emit-value
+          map-options
+          label="Paper Account"
+          style="min-width: 320px"
+        />
+      </div>
+      <div class="col-12 col-sm-auto text-caption text-grey">
+        Account: {{ data.account?.name || 'Selected' }} · {{ (data.account?.exchange_id || settings.exchange).toUpperCase() }}
+      </div>
+    </div>
     <q-banner class="bg-grey-9 text-white q-mb-md">Simulation only; historical backtest performance is shown separately.</q-banner>
     <q-banner v-if="error" class="bg-negative text-white q-mb-md" role="alert">{{ error }}</q-banner>
     <q-inner-loading :showing="loading && !data.metrics" />
