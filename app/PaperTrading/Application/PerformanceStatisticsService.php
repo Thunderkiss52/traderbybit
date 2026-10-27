@@ -35,20 +35,24 @@ final class PerformanceStatisticsService
         $holdingSeconds = 0;
         $grossProfit = $grossLoss = $net = $fees = $funding = $grossPnl = $rTotal = BigDecimal::zero();
         $rCount = 0;
+        $openFees = $openFunding = BigDecimal::zero();
         foreach ((clone $query)->orderBy('closed_at')->orderBy('id')->cursor([
             'id', 'closed_at', 'opened_at', 'net_pnl', 'gross_pnl', 'fees', 'funding', 'r_multiple',
             'funding_complete', 'ambiguous_execution', 'awaiting_market_data',
         ]) as $position) {
             $opened++;
-            $fees = $fees->plus($position->fees);
-            $funding = $funding->plus($position->funding);
             $incompleteFunding += $position->funding_complete ? 0 : 1;
             $ambiguous += $position->ambiguous_execution ? 1 : 0;
             $awaitingMarketData += $position->awaiting_market_data ? 1 : 0;
             if ($position->closed_at === null || (($filters['to'] ?? null) instanceof DateTimeImmutable && $position->closed_at > $filters['to'])) {
+                $openFees = $openFees->plus($position->fees);
+                $openFunding = $openFunding->plus($position->funding);
+
                 continue;
             }
 
+            $fees = $fees->plus($position->fees);
+            $funding = $funding->plus($position->funding);
             $closedCount++;
             $value = BigDecimal::of($position->net_pnl);
             $net = $net->plus($value);
@@ -133,6 +137,10 @@ final class PerformanceStatisticsService
             'fees' => (string) $fees, 'total_commissions' => (string) $fees,
             'funding' => (string) $funding, 'total_funding_payments' => (string) $funding,
             'total_slippage_cost' => (string) $slippage,
+            'slippage_population' => 'ALL_SELECTED_POSITIONS_DIAGNOSTIC_ONLY',
+            'trade_statistics_population' => 'CLOSED_POSITIONS',
+            'open_position_fees' => (string) $openFees,
+            'open_position_funding' => (string) $openFunding,
             'maximum_drawdown_percent' => $maximumDrawdown,
             'average_holding_seconds' => $closedCount === 0 ? null : (int) round($holdingSeconds / $closedCount),
             'maximum_consecutive_wins' => $consecutiveWins, 'maximum_consecutive_losses' => $consecutiveLosses,

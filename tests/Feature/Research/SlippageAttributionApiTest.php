@@ -7,6 +7,8 @@ namespace Tests\Feature\Research;
 use App\PaperTrading\Application\PaperAccountService;
 use App\PaperTrading\Infrastructure\Persistence\PaperAccountRecord;
 use App\PaperTrading\Infrastructure\Persistence\VirtualPositionRecord;
+use App\Research\Domain\SlippageAttributionFillRecord;
+use App\Research\Domain\SlippageAttributionRecord;
 use App\Strategy\Infrastructure\Persistence\SignalRecord;
 use Carbon\CarbonImmutable;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -95,6 +97,22 @@ final class SlippageAttributionApiTest extends TestCase
             'schema_version' => '1.0.0',
         ]);
 
+        $generations = [Uuid::uuid4()->toString(), Uuid::uuid4()->toString()];
+        foreach ($generations as $index => $generation) {
+            SlippageAttributionRecord::query()->create([
+                'generation_id' => $generation, 'position_id' => $positionId, 'paper_account_id' => $account->id,
+                'strategy_id' => 'baseline', 'symbol' => 'BTCUSDT', 'position_side' => 'BUY',
+                'algorithm_version' => 'test', 'created_at' => now()->addSeconds($index),
+            ]);
+            SlippageAttributionFillRecord::query()->create([
+                'generation_id' => $generation, 'position_id' => $positionId, 'paper_account_id' => $account->id,
+                'execution_id' => Uuid::uuid4()->toString(), 'strategy_id' => 'baseline', 'symbol' => 'BTCUSDT',
+                'execution_side' => 'BUY', 'fill_role' => 'ENTRY', 'quantity' => '1', 'contract_multiplier' => '1',
+                'reference_price' => '99999', 'fill_price' => '100000', 'reference_notional' => '99999',
+                'slippage_drag_usdt' => '1', 'price_source' => 'fixture', 'market_event_at' => $openedAt,
+            ]);
+        }
+
         $writeQueries = 0;
         DB::listen(function ($query) use (&$writeQueries) {
             $sql = strtolower(trim($query->sql));
@@ -108,8 +126,13 @@ final class SlippageAttributionApiTest extends TestCase
         $this->assertSame(0, $writeQueries, 'GET position attribution must execute 0 DB write queries');
         $response->assertOk()
             ->assertJsonPath('status', 'SUCCESS')
-            ->assertJsonPath('position_id', $positionId)
-            ->assertJsonPath('position.symbol', 'BTCUSDT');
+            ->assertJsonPath('data.position_id', $positionId)
+            ->assertJsonPath('data.position.symbol', 'BTCUSDT')
+            ->assertJsonCount(1, 'data.fills')
+            ->assertJsonPath('data.fills.0.generation_id', $generations[1]);
+        $this->getJson("/api/v1/research/profitability/slippage-attribution/positions/{$positionId}?generation_id={$generations[0]}")
+            ->assertOk()->assertJsonCount(1, 'data.fills')->assertJsonPath('data.fills.0.generation_id', $generations[0]);
+        self::assertSame(0, $writeQueries);
     }
 
     public function test_post_generations_requires_auth_and_rejects_idempotency_conflicts(): void
@@ -136,8 +159,8 @@ final class SlippageAttributionApiTest extends TestCase
         ]);
         $resSuccess->assertStatus(201)
             ->assertJsonPath('status', 'SUCCESS')
-            ->assertJsonPath('generation.package_code', 'P-1')
-            ->assertJsonPath('generation.accounting_scope', 'FULL_LIFECYCLE');
+            ->assertJsonPath('data.generation.package_code', 'P-1')
+            ->assertJsonPath('data.generation.accounting_scope', 'FULL_LIFECYCLE');
 
         // 4. Same key + conflicting scope -> 409 Conflict
         $conflictingPayload = [

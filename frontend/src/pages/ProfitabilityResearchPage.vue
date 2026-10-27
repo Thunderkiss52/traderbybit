@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed, onMounted, ref } from 'vue';
 import { get } from '../services/api';
+import { requirePayload } from '../profitabilityContract';
 import { counterfactualView, formatMetric } from '../researchSemantics';
 
 const activeTab = ref('finance');
@@ -10,6 +11,9 @@ const summaryData = ref<any>(null);
 const registryData = ref<any>(null);
 const slippageData = ref<any>(null);
 const showRegistryDialog = ref(false);
+let loadVersion = 0;
+let traceVersion = 0;
+const availability = computed(() => loading.value ? 'LOADING' : error.value ? 'ERROR' : summaryData.value?.accounting_scopes?.point_in_time?.availability ?? 'UNAVAILABLE');
 
 const counterfactual = computed(() => counterfactualView(slippageData.value?.counterfactual));
 const slippageTotalDrag = computed(() => (
@@ -28,7 +32,9 @@ const traceAttribution = ref<any>(null);
 const traceFills = ref<any[]>([]);
 
 async function loadData() {
+  const version = ++loadVersion;
   loading.value = true;
+  summaryData.value = registryData.value = slippageData.value = null;
   error.value = '';
   try {
     const [summaryRes, registryRes, slippageRes] = await Promise.all([
@@ -36,18 +42,24 @@ async function loadData() {
       get('/research/profitability/metric-registry'),
       get('/research/profitability/slippage-attribution'),
     ]);
-    summaryData.value = summaryRes;
-    registryData.value = (registryRes as any)?.catalog || null;
-    slippageData.value = (slippageRes as any)?.data || null;
+    if (version !== loadVersion) return;
+    const summary = requirePayload(summaryRes, ['accounting_scopes', 'as_of']);
+    const registry = requirePayload(registryRes, ['catalog']);
+    const slippage = requirePayload(slippageRes, ['status']);
+    summaryData.value = summary;
+    registryData.value = registry.catalog;
+    slippageData.value = slippage;
   } catch (err: any) {
+    if (version !== loadVersion) return;
     error.value = err?.message || 'Ошибка загрузки аналитических данных доходности.';
   } finally {
-    loading.value = false;
+    if (version === loadVersion) loading.value = false;
   }
 }
 
 async function openPositionTrace(positionId: string) {
   if (!positionId) return;
+  const version = ++traceVersion;
   tracePositionId.value = positionId;
   showTraceDialog.value = true;
   traceLoading.value = true;
@@ -57,14 +69,16 @@ async function openPositionTrace(positionId: string) {
   traceFills.value = [];
 
   try {
-    const res: any = await get(`/research/profitability/slippage-attribution/positions/${positionId}`);
+    const res = requirePayload(await get(`/research/profitability/slippage-attribution/positions/${positionId}`, { generation_id: slippageData.value?.generation_id }), ['position', 'fills']);
+    if (version !== traceVersion) return;
     tracePosition.value = res?.position || null;
     traceAttribution.value = res?.slippage_attribution || null;
     traceFills.value = res?.fills || [];
   } catch (err: any) {
+    if (version !== traceVersion) return;
     traceError.value = err?.message || `Ошибка загрузки трассировки позиции ${positionId}`;
   } finally {
-    traceLoading.value = false;
+    if (version === traceVersion) traceLoading.value = false;
   }
 }
 
@@ -119,13 +133,15 @@ onMounted(() => {
       {{ error }}
     </q-banner>
 
+    <q-banner v-if="availability !== 'AVAILABLE'" dense class="q-mb-md">{{ availability }}</q-banner>
+
     <!-- Top KPI Cards -->
     <div class="row q-col-gutter-md q-mb-md">
       <div class="col-12 col-md-3">
         <q-card flat bordered class="q-pa-sm">
           <div class="text-caption text-grey-7">Стартовый капитал (13 счетов)</div>
           <div class="text-h6 text-bold">
-            {{ summaryData?.accounting_scopes?.point_in_time?.total_starting_balance || '130000.00' }} USDT
+            {{ summaryData?.accounting_scopes?.point_in_time?.total_starting_balance !== null && summaryData?.accounting_scopes?.point_in_time?.total_starting_balance !== undefined ? summaryData?.accounting_scopes?.point_in_time?.total_starting_balance + ' USDT' : '—' }}
           </div>
           <div class="text-caption text-grey-6">Изолированный баланс 13 стратегий</div>
         </q-card>
@@ -135,7 +151,7 @@ onMounted(() => {
         <q-card flat bordered class="q-pa-sm">
           <div class="text-caption text-grey-7">Текущее эквити портфеля</div>
           <div class="text-h6 text-bold text-primary">
-            {{ summaryData?.accounting_scopes?.point_in_time?.total_current_equity || '—' }} USDT
+            {{ summaryData?.accounting_scopes?.point_in_time?.total_current_equity !== null && summaryData?.accounting_scopes?.point_in_time?.total_current_equity !== undefined ? summaryData?.accounting_scopes?.point_in_time?.total_current_equity + ' USDT' : '—' }}
           </div>
           <div class="text-caption text-grey-6">Срез POINT_IN_TIME на {{ summaryData?.as_of ? new Date(summaryData.as_of).toLocaleTimeString() : '—' }}</div>
         </q-card>
@@ -144,8 +160,8 @@ onMounted(() => {
       <div class="col-12 col-md-3">
         <q-card flat bordered class="q-pa-sm">
           <div class="text-caption text-grey-7">Реализованный Net PnL (Lifecycle)</div>
-          <div class="text-h6 text-bold" :class="Number(summaryData?.accounting_scopes?.full_lifecycle_economics?.net_pnl) >= 0 ? 'text-positive' : 'text-negative'">
-            {{ summaryData?.accounting_scopes?.full_lifecycle_economics?.net_pnl || '0.00' }} USDT
+          <div class="text-h6 text-bold" :class="summaryData?.accounting_scopes?.full_lifecycle_economics?.net_pnl !== null && summaryData?.accounting_scopes?.full_lifecycle_economics?.net_pnl !== undefined && Number(summaryData?.accounting_scopes?.full_lifecycle_economics?.net_pnl) >= 0 ? 'text-positive' : (summaryData?.accounting_scopes?.full_lifecycle_economics?.net_pnl !== null && summaryData?.accounting_scopes?.full_lifecycle_economics?.net_pnl !== undefined && Number(summaryData?.accounting_scopes?.full_lifecycle_economics?.net_pnl) < 0 ? 'text-negative' : '')">
+            {{ summaryData?.accounting_scopes?.full_lifecycle_economics?.net_pnl !== null && summaryData?.accounting_scopes?.full_lifecycle_economics?.net_pnl !== undefined ? summaryData?.accounting_scopes?.full_lifecycle_economics?.net_pnl + ' USDT' : '—' }}
           </div>
           <div class="text-caption text-grey-6">Контур FULL_LIFECYCLE (Gross - Fees + Funding)</div>
         </q-card>
@@ -191,33 +207,33 @@ onMounted(() => {
                 <q-item>
                   <q-item-section>Валовая прибыль (Gross PnL):</q-item-section>
                   <q-item-section side class="text-bold">
-                    {{ summaryData?.accounting_scopes?.full_lifecycle_economics?.gross_pnl || '0.00' }} USDT
+                    {{ summaryData?.accounting_scopes?.full_lifecycle_economics?.gross_pnl ?? '—' }} USDT
                   </q-item-section>
                 </q-item>
                 <q-item>
                   <q-item-section>Комиссии (Taker 0.055%):</q-item-section>
                   <q-item-section side class="text-negative text-bold">
-                    -{{ summaryData?.accounting_scopes?.full_lifecycle_economics?.fees || '0.00' }} USDT
+                    -{{ summaryData?.accounting_scopes?.full_lifecycle_economics?.fees ?? '—' }} USDT
                   </q-item-section>
                 </q-item>
                 <q-item>
                   <q-item-section>Знаковый фандинг (Funding):</q-item-section>
                   <q-item-section side class="text-bold" :class="Number(summaryData?.accounting_scopes?.full_lifecycle_economics?.signed_funding) >= 0 ? 'text-positive' : 'text-negative'">
-                    {{ summaryData?.accounting_scopes?.full_lifecycle_economics?.signed_funding || '0.00' }} USDT
+                    {{ summaryData?.accounting_scopes?.full_lifecycle_economics?.signed_funding ?? '—' }} USDT
                   </q-item-section>
                 </q-item>
                 <q-separator />
                 <q-item class="bg-grey-10 text-white rounded-borders">
                   <q-item-section class="text-bold">Итоговый Net Realized PnL:</q-item-section>
                   <q-item-section side class="text-bold" :class="Number(summaryData?.accounting_scopes?.full_lifecycle_economics?.net_pnl) >= 0 ? 'text-positive' : 'text-negative'">
-                    {{ summaryData?.accounting_scopes?.full_lifecycle_economics?.net_pnl || '0.00' }} USDT
+                    {{ summaryData?.accounting_scopes?.full_lifecycle_economics?.net_pnl ?? '—' }} USDT
                   </q-item-section>
                 </q-item>
               </q-list>
               <div class="text-caption text-grey-5 q-mt-sm">
                 Тождество Net = Gross - Fees + Funding соблюдено:
                 <q-badge :color="summaryData?.accounting_scopes?.full_lifecycle_economics?.accounting_identity_holds ? 'positive' : 'negative'">
-                  {{ summaryData?.accounting_scopes?.full_lifecycle_economics?.accounting_identity_holds ? 'СХОДИТСЯ' : 'РАСХОЖДЕНИЕ' }}
+                  {{ summaryData?.accounting_scopes?.full_lifecycle_economics?.accounting_identity_holds == null ? 'UNAVAILABLE' : summaryData.accounting_scopes.full_lifecycle_economics.accounting_identity_holds ? 'СХОДИТСЯ' : 'РАСХОЖДЕНИЕ' }}
                 </q-badge>
               </div>
             </q-card>
@@ -237,7 +253,7 @@ onMounted(() => {
               <div class="row q-col-gutter-sm">
                 <div class="col-6">
                   <div class="text-caption text-grey-7">Исполнений учтено:</div>
-                  <div class="text-h6">{{ summaryData?.accounting_scopes?.execution_slippage_diagnostic?.execution_count || 0 }}</div>
+                  <div class="text-h6">{{ summaryData?.accounting_scopes?.execution_slippage_diagnostic?.execution_count ?? '—' }}</div>
                 </div>
                 <div class="col-6">
                   <div class="text-caption text-grey-7">Единица измерения в БД:</div>

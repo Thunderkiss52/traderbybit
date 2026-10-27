@@ -7,6 +7,7 @@ namespace Tests\Integration;
 use App\PaperTrading\Application\PaperAccountService;
 use App\PaperTrading\Domain\ExecutionType;
 use App\PaperTrading\Domain\PositionStatus;
+use App\PaperTrading\Infrastructure\Persistence\EquitySnapshotRecord;
 use App\PaperTrading\Infrastructure\Persistence\MarketFundingEventRecord;
 use App\PaperTrading\Infrastructure\Persistence\PaperAccountRecord;
 use App\PaperTrading\Infrastructure\Persistence\PositionFundingEventRecord;
@@ -86,7 +87,12 @@ final class LedgerReconciliationPostgresIntegrationTest extends TestCase
 
         self::assertCount($accounts->count(), $results);
         foreach ($results as $res) {
-            self::assertSame('PASSED', $res['status'], "Account {$res['paper_account_id']} failed reconciliation.");
+            // Legacy migration-created fixtures may lack initial snapshots; do not certify them complete.
+            $hasInitial = DB::table('equity_snapshots')->where('paper_account_id', $res['paper_account_id'])->where('source_event_key', 'account:initial')->exists();
+            self::assertSame($hasInitial ? 'PASSED' : 'INCOMPLETE', $res['status']);
+            if (! $hasInitial) {
+                self::assertContains('initial_equity_snapshot_unavailable', $res['incomplete_reasons']);
+            }
             self::assertSame(0, $res['discrepancy_count']);
             self::assertNotEmpty($res['id']);
         }
@@ -112,6 +118,10 @@ final class LedgerReconciliationPostgresIntegrationTest extends TestCase
             'status' => 'ACTIVE',
         ]);
         $this->cleanUpAccountIds[] = $account->id;
+        EquitySnapshotRecord::query()->create([
+            'paper_account_id' => $account->id, 'recorded_at' => $now->subHours(4), 'equity' => '10000',
+            'realized_pnl' => '0', 'unrealized_pnl' => '0', 'drawdown_percent' => '0', 'source_event_key' => 'account:initial',
+        ]);
 
         // 2. Create signal
         $signal = SignalRecord::query()->create([

@@ -56,16 +56,16 @@ final class P5ConcentrationApiTest extends TestCase
 
         $created->assertCreated()
             ->assertJsonPath('status', 'SUCCESS')
-            ->assertJsonPath('generation.package_code', 'P-5')
-            ->assertJsonPath('generation.status', 'INSUFFICIENT_DATA');
+            ->assertJsonPath('data.generation.package_code', 'P-5')
+            ->assertJsonPath('data.generation.status', 'INSUFFICIENT_DATA');
 
         $repeat = $this->withHeaders(['X-Research-Token' => $this->validToken])
             ->postJson('/api/v1/research/profitability/generations/p5', $payload);
 
         $repeat->assertCreated();
         self::assertSame(
-            $created->json('generation.id'),
-            $repeat->json('generation.id'),
+            $created->json('data.generation.id'),
+            $repeat->json('data.generation.id'),
             'The same idempotency key and payload must return the same generation.'
         );
 
@@ -79,7 +79,7 @@ final class P5ConcentrationApiTest extends TestCase
         $read = $this->getJson('/api/v1/research/profitability/concentration-dependence');
         $read->assertOk()
             ->assertJsonPath('status', 'INSUFFICIENT_DATA')
-            ->assertJsonPath('data.generation_id', $created->json('generation.id'))
+            ->assertJsonPath('data.generation_id', $created->json('data.generation.id'))
             ->assertJsonPath('data.metadata.netting_applied', false);
     }
 }

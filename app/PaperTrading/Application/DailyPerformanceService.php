@@ -69,6 +69,23 @@ final class DailyPerformanceService
         ];
     }
 
+    /** Daily CSV and UI share calendar boundaries and completeness semantics. */
+    public function calendarDays(string $accountId, string $timezone, CarbonImmutable $from, CarbonImmutable $to): array
+    {
+        $account = PaperAccountRecord::query()->findOrFail($accountId);
+        $dates = [];
+        for ($day = $from->setTimezone($timezone)->startOfDay(); $day < $to; $day = $day->addDay()) {
+            if (count($dates) >= 366) {
+                throw new \InvalidArgumentException('Daily export exceeds 366 calendar days.');
+            }
+            $dates[] = $day->format('Y-m-d');
+        }
+        $definitions = array_values(array_filter($this->definitions($to->subMicrosecond()->setTimezone($timezone), $dates), fn (array $row): bool => str_starts_with($row['key'], 'day:')));
+        $periods = $this->periods($account, $definitions, null);
+
+        return array_map(fn (string $date): array => ['date' => $date, 'timezone' => $timezone] + $periods['day:'.$date], $dates);
+    }
+
     /** @return array{list<string>, int} Newest local dates and exact day count. */
     private function snapshotDates(string $accountId, DateTimeZone $zone, int $page, int $perPage): array
     {
@@ -303,6 +320,8 @@ final class DailyPerformanceService
         array $metrics,
     ): array {
         $isAll = $symbol === null;
+        $inceptionBoundary = $startUtc === null || ($account->created_at !== null && $account->created_at >= $startUtc && $account->created_at <= $endUtc);
+        $hasOpening = $opening !== null || $inceptionBoundary;
         $baseEquity = $startUtc === null || $opening === null ? BigDecimal::of($account->starting_balance) : BigDecimal::of($opening['equity']);
         $baseRealized = $opening === null ? BigDecimal::zero() : BigDecimal::of($opening['realized_pnl']);
         $baseUnrealized = $opening === null ? BigDecimal::zero() : BigDecimal::of($opening['unrealized_pnl']);
@@ -316,25 +335,25 @@ final class DailyPerformanceService
         $grossRealized = BigDecimal::of((string) $metrics['gross_realized']);
         $funding = BigDecimal::of((string) $metrics['funding']);
 
-        $realizedChange = $isAll && $closing !== null
-            ? BigDecimal::of($closing['realized_pnl'])->minus($baseRealized)
+        $realizedChange = $isAll
+            ? ($closing !== null && $hasOpening ? BigDecimal::of($closing['realized_pnl'])->minus($baseRealized) : null)
             : $grossRealized->minus($commissions)->plus($funding);
-        $unrealizedChange = $isAll && $closing !== null
+        $unrealizedChange = $isAll && $closing !== null && $hasOpening
             ? BigDecimal::of($closing['unrealized_pnl'])->minus($baseUnrealized)
             : null;
-        $net = $closeEquity?->minus($baseEquity);
+        $net = $hasOpening ? $closeEquity?->minus($baseEquity) : null;
         $return = $net === null || $baseEquity->isZero() ? null : $net->dividedBy($baseEquity, 12, RoundingMode::HalfEven)->multipliedBy(100);
         $cumulative = $closeEquity === null || BigDecimal::of($account->starting_balance)->isZero()
             ? null
             : $closeEquity->minus($account->starting_balance)->dividedBy($account->starting_balance, 12, RoundingMode::HalfEven)->multipliedBy(100);
 
         $fresh = $closing !== null && max(0, $endUtc->getTimestamp() - $closing['recorded_at']->getTimestamp()) <= self::CLOSE_FRESHNESS_SECONDS;
-        $complete = $isAll && $closing !== null && $fresh;
+        $complete = $isAll && $hasOpening && $closing !== null && $fresh;
 
         return [
             'net_pnl' => $net === null ? null : (string) $net,
             'return_percent' => $return === null ? null : (string) $return,
-            'realized_pnl' => (string) $realizedChange,
+            'realized_pnl' => $realizedChange === null ? null : (string) $realizedChange,
             'unrealized_pnl_change' => $unrealizedChange === null ? null : (string) $unrealizedChange,
             'commissions' => (string) $commissions,
             'funding' => (string) $funding,
@@ -348,9 +367,12 @@ final class DailyPerformanceService
             'complete' => $complete,
             'incomplete_reasons' => array_values(array_filter([
                 $isAll && $closing === null ? 'equity_snapshot_unavailable' : null,
+                $isAll && ! $hasOpening ? 'opening_snapshot_unavailable' : null,
                 ! $isAll ? 'symbol_mark_to_market_history_unavailable' : null,
-                $isAll && $closing !== null && ! $complete ? 'closing_equity_snapshot_not_near_period_end' : null,
+                $isAll && $closing !== null && ! $fresh ? 'closing_equity_snapshot_not_near_period_end' : null,
             ])),
+            'opening_boundary' => ! $isAll ? 'UNAVAILABLE' : ($opening !== null ? 'SNAPSHOT' : ($inceptionBoundary ? 'ACCOUNT_INCEPTION' : 'UNAVAILABLE')),
+            'opening_snapshot_at' => $opening === null ? null : $opening['recorded_at']->format(DATE_ATOM),
             'closing_snapshot_at' => $closing === null ? null : $closing['recorded_at']->setTimezone(new DateTimeZone('UTC'))->format('Y-m-d\TH:i:s.u\Z'),
         ];
     }

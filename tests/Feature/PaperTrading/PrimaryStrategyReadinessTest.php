@@ -103,17 +103,17 @@ final class PrimaryStrategyReadinessTest extends TestCase
         }
 
         $profitability = $this->getJson('/api/v1/research/profitability/strategies')->assertOk();
-        $strategies = collect($profitability->json('strategies'));
+        $strategies = collect($profitability->json('data.strategies'));
         self::assertCount(13, $strategies);
         self::assertCount(13, $strategies->pluck('account_id')->unique());
         self::assertEqualsCanonicalizing($ids, $strategies->pluck('strategy_id')->all());
         foreach ($ids as $id) {
-            $this->getJson('/api/v1/research/profitability/strategies/'.$id)->assertOk()->assertJsonPath('strategy_id', $id);
+            $this->getJson('/api/v1/research/profitability/strategies/'.$id)->assertOk()->assertJsonPath('data.strategy_id', $id);
         }
 
         $this->seedPosition($target->id, 'liquidity_sweep_reversal');
 
-        $after = collect($this->getJson('/api/v1/research/profitability/strategies')->assertOk()->json('strategies'));
+        $after = collect($this->getJson('/api/v1/research/profitability/strategies')->assertOk()->json('data.strategies'));
         foreach ($after as $row) {
             self::assertSame($row['strategy_id'] === 'liquidity_sweep_reversal' ? 1 : 0, $row['full_lifecycle']['position_count'], "Position leaked into {$row['strategy_id']}.");
         }

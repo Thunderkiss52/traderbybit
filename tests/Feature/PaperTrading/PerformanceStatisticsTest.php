@@ -57,6 +57,30 @@ final class PerformanceStatisticsTest extends TestCase
         self::assertSame('no_negative_net_pnl', $report['profit_factor_unavailable_reason']);
     }
 
+    public function test_closed_trade_fees_exclude_open_position_economics(): void
+    {
+        $account = app(PaperAccountService::class)->default();
+        $this->position($account->id, 'BTCUSDT', 'BUY', '90', '0.9', '10', '0', '10:00');
+        $this->position($account->id, 'ETHUSDT', 'SELL', '-7', '0', '7', '-2', '11:00');
+        VirtualPositionRecord::query()->where('symbol', 'ETHUSDT')->update(['closed_at' => null, 'status' => 'OPEN']);
+        $metrics = app(PerformanceStatisticsService::class)->calculate($account->id)->metrics;
+        self::assertDecimalSame('10', $metrics['fees']);
+        self::assertDecimalSame('0', $metrics['funding']);
+        self::assertDecimalSame('7', $metrics['open_position_fees']);
+        self::assertDecimalSame('-2', $metrics['open_position_funding']);
+        self::assertDecimalSame('90', $metrics['net_pnl']);
+        self::assertSame(1, $metrics['closed_positions']);
+    }
+
+    public function test_legitimate_historical_maximum_survives_partial_snapshot_history(): void
+    {
+        $account = app(PaperAccountService::class)->default();
+        $account->update(['maximum_drawdown_percent' => '30', 'current_drawdown_percent' => '1', 'current_equity' => '9900']);
+        $summary = app(PerformanceStatisticsService::class)->accountSummary($account);
+        self::assertDecimalSame('30', $summary['maximum_drawdown_percent']);
+        self::assertDecimalSame('30', $account->fresh()->maximum_drawdown_percent);
+    }
+
     private function position(string $accountId, string $symbol, string $side, string $net, string $r, string $fees, string $funding, string $time): void
     {
         $signalId = Uuid::uuid5(Uuid::NAMESPACE_URL, "stats:signal:{$accountId}:{$symbol}:{$time}")->toString();

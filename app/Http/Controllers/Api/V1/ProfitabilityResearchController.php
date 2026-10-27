@@ -44,6 +44,19 @@ final class ProfitabilityResearchController extends Controller
         private readonly AutonomyResearchService $autonomy,
     ) {}
 
+    /** Keep authoritative totals decimal; research ratios remain diagnostic estimates. */
+    private function lifecycleEconomics(Collection $positions, CarbonImmutable $asOf): array
+    {
+        $result = $this->quantPortfolioMetrics->computeLifecyclePopulationEconomics($positions, $asOf);
+        foreach (['gross_pnl' => 'gross_pnl', 'fees' => 'fees', 'signed_funding' => 'funding', 'net_pnl' => 'net_pnl'] as $key => $column) {
+            $result[$key] = (string) $positions->reduce(
+                fn (BigDecimal $sum, VirtualPositionRecord $position): BigDecimal => $sum->plus($position->{$column}), BigDecimal::zero()
+            );
+        }
+
+        return $result;
+    }
+
     /** @return list<string> */
     private function primaryStrategies(): array
     {
@@ -105,11 +118,11 @@ final class ProfitabilityResearchController extends Controller
                 'reconciliation' => $latestReconciliation !== null ? [
                     'status' => $latestReconciliation->status,
                     'reconciled_at' => $latestReconciliation->created_at?->toIso8601String(),
-                    'discrepancy_count' => count($latestReconciliation->discrepancies ?? []),
+                    'discrepancy_count' => $latestReconciliation->discrepancy_count,
                 ] : [
                     'status' => 'NO_RECORDED_RUN',
                     'reconciled_at' => null,
-                    'discrepancy_count' => 0,
+                    'discrepancy_count' => null,
                 ],
             ];
         }
@@ -119,7 +132,7 @@ final class ProfitabilityResearchController extends Controller
             ->whereIn('paper_account_id', $primaryAccountIds)
             ->get();
 
-        $lifecycleEconomics = $this->quantPortfolioMetrics->computeLifecyclePopulationEconomics($allPositions, $asOf);
+        $lifecycleEconomics = $this->lifecycleEconomics($allPositions, $asOf);
 
         // 3. Execution-level slippage price delta diagnostic
         $executions = VirtualExecutionRecord::query()
@@ -135,67 +148,70 @@ final class ProfitabilityResearchController extends Controller
             $totalSlippageDollarDrag = $totalSlippageDollarDrag->plus($qty->multipliedBy($slip));
         }
 
-        return response()->json([
+        $payload = [
             'status' => 'SUCCESS',
-            'as_of' => $asOf->toIso8601String(),
-            'accounting_scopes' => [
-                'point_in_time' => [
-                    'scope' => 'POINT_IN_TIME',
-                    'as_of' => $asOf->toIso8601String(),
-                    'total_starting_balance' => (string) $totalStartingBalance,
-                    'total_current_equity' => (string) $totalCurrentEquity,
-                    'total_peak_equity' => (string) $totalPeakEquity,
-                    'total_realized_pnl' => (string) $totalRealizedPnl,
-                    'active_accounts_count' => count($accounts),
-                    'accounts' => $accountSummaries,
+            'data' => [
+                'as_of' => $asOf->toIso8601String(),
+                'accounting_scopes' => [
+                    'point_in_time' => [
+                        'scope' => 'POINT_IN_TIME',
+                        'as_of' => $asOf->toIso8601String(),
+                        'availability' => $accounts->isEmpty() ? 'EMPTY' : 'AVAILABLE',
+                        'total_starting_balance' => $accounts->isEmpty() ? null : (string) $totalStartingBalance,
+                        'total_current_equity' => $accounts->isEmpty() ? null : (string) $totalCurrentEquity,
+                        'total_peak_equity' => $accounts->isEmpty() ? null : (string) $totalPeakEquity,
+                        'total_realized_pnl' => $accounts->isEmpty() ? null : (string) $totalRealizedPnl,
+                        'active_accounts_count' => count($accounts),
+                        'accounts' => $accountSummaries,
+                    ],
+                    'full_lifecycle_economics' => [
+                        'scope' => 'FULL_LIFECYCLE',
+                        'as_of' => $asOf->toIso8601String(),
+                        'total_positions' => $lifecycleEconomics['total_positions'],
+                        'gross_pnl' => $accounts->isEmpty() ? null : (string) $lifecycleEconomics['gross_pnl'],
+                        'fees' => $accounts->isEmpty() ? null : (string) $lifecycleEconomics['fees'],
+                        'signed_funding' => $accounts->isEmpty() ? null : (string) $lifecycleEconomics['signed_funding'],
+                        'net_pnl' => $accounts->isEmpty() ? null : (string) $lifecycleEconomics['net_pnl'],
+                        'accounting_identity_holds' => $accounts->isEmpty() ? null : BigDecimal::of($lifecycleEconomics['gross_pnl'])->minus($lifecycleEconomics['fees'])->plus($lifecycleEconomics['signed_funding'])->isEqualTo(BigDecimal::of($lifecycleEconomics['net_pnl'])),
+                        'profit_factor' => $lifecycleEconomics['profit_factor'],
+                        'win_rate' => $lifecycleEconomics['win_rate'],
+                        'counts' => $lifecycleEconomics['counts'],
+                        'r_metrics' => $lifecycleEconomics['r_metrics'],
+                        'provenance' => 'RECOMPUTED_FROM_SOURCE',
+                    ],
+                    'execution_slippage_diagnostic' => [
+                        'scope' => 'EVENT_EXECUTION',
+                        'execution_count' => $executionCount,
+                        'stored_slippage_unit' => 'USDT_PER_CONTRACT_PRICE_DELTA',
+                        'total_attributable_dollar_drag' => (string) $totalSlippageDollarDrag,
+                        'double_deduction_prohibited' => true,
+                        'diagnostic_warning' => 'Fill prices already reflect slippage. This dollar drag must NOT be subtracted from Net PnL a second time.',
+                    ],
                 ],
-                'full_lifecycle_economics' => [
-                    'scope' => 'FULL_LIFECYCLE',
-                    'as_of' => $asOf->toIso8601String(),
-                    'total_positions' => $lifecycleEconomics['total_positions'],
-                    'gross_pnl' => (string) $lifecycleEconomics['gross_pnl'],
-                    'fees' => (string) $lifecycleEconomics['fees'],
-                    'signed_funding' => (string) $lifecycleEconomics['signed_funding'],
-                    'net_pnl' => (string) $lifecycleEconomics['net_pnl'],
-                    'accounting_identity_holds' => abs(
-                        ((float) $lifecycleEconomics['gross_pnl'] - (float) $lifecycleEconomics['fees'] + (float) $lifecycleEconomics['signed_funding']) - (float) $lifecycleEconomics['net_pnl']
-                    ) < 1e-8,
-                    'profit_factor' => $lifecycleEconomics['profit_factor'],
-                    'win_rate' => $lifecycleEconomics['win_rate'],
-                    'counts' => $lifecycleEconomics['counts'],
-                    'r_metrics' => $lifecycleEconomics['r_metrics'],
-                    'provenance' => 'RECOMPUTED_FROM_SOURCE',
+                'gated_modules' => [
+                    'P-1' => ['name' => 'Slippage Attribution', 'status' => 'IMPLEMENTED_VERIFIED', 'authorized' => true],
+                    'P-2' => ['name' => 'Risk-Adjusted Metrics & Capital Efficiency', 'status' => 'IMPLEMENTED', 'authorized' => true],
+                    'P-3' => ['name' => 'Rejected-Signal SHADOW Replay', 'status' => 'BLOCKED_PROHIBITED', 'authorized' => false],
+                    'P-4' => ['name' => 'Cost Structure & MFE/MAE', 'status' => 'NOT_IMPLEMENTED', 'authorized' => false],
+                    'P-5' => ['name' => 'Dependence & Concentration', 'status' => 'NOT_IMPLEMENTED', 'authorized' => false],
+                    'P-6' => ['name' => 'Decision Evidence Layer', 'status' => 'NOT_IMPLEMENTED', 'authorized' => false],
                 ],
-                'execution_slippage_diagnostic' => [
-                    'scope' => 'EVENT_EXECUTION',
-                    'execution_count' => $executionCount,
-                    'stored_slippage_unit' => 'USDT_PER_CONTRACT_PRICE_DELTA',
-                    'total_attributable_dollar_drag' => (string) $totalSlippageDollarDrag,
-                    'double_deduction_prohibited' => true,
-                    'diagnostic_warning' => 'Fill prices already reflect slippage. This dollar drag must NOT be subtracted from Net PnL a second time.',
+                'archives_status' => [
+                    'primary_archive' => [
+                        'filename' => 'vector-audit-1d-e534ac49-60de-5263-9685-4bea563094c2.zip',
+                        'expected_sha256' => '54da31d20c396901c723f8f3255ba0bbda1e39d9918664d4b48a3a84d5d1c0b4',
+                        'status' => 'PENDING_OPERATOR_CONFIRMATION',
+                    ],
+                    'secondary_archive' => [
+                        'filename' => 'vector-audit-1d-53d90c98-a643-5bd0-8b5b-d3f90bdf7757.zip',
+                        'expected_sha256' => 'ee703740899b0b378b1d8adb70f2c6cfb21484a630be41a49783db9917db2d5a',
+                        'status' => 'PRESERVED_UNAPPROVED_DATASET',
+                    ],
                 ],
             ],
-            'gated_modules' => [
-                'P-1' => ['name' => 'Slippage Attribution', 'status' => 'IMPLEMENTED_VERIFIED', 'authorized' => true],
-                'P-2' => ['name' => 'Risk-Adjusted Metrics & Capital Efficiency', 'status' => 'IMPLEMENTED', 'authorized' => true],
-                'P-3' => ['name' => 'Rejected-Signal SHADOW Replay', 'status' => 'BLOCKED_PROHIBITED', 'authorized' => false],
-                'P-4' => ['name' => 'Cost Structure & MFE/MAE', 'status' => 'NOT_IMPLEMENTED', 'authorized' => false],
-                'P-5' => ['name' => 'Dependence & Concentration', 'status' => 'NOT_IMPLEMENTED', 'authorized' => false],
-                'P-6' => ['name' => 'Decision Evidence Layer', 'status' => 'NOT_IMPLEMENTED', 'authorized' => false],
-            ],
-            'archives_status' => [
-                'primary_archive' => [
-                    'filename' => 'vector-audit-1d-e534ac49-60de-5263-9685-4bea563094c2.zip',
-                    'expected_sha256' => '54da31d20c396901c723f8f3255ba0bbda1e39d9918664d4b48a3a84d5d1c0b4',
-                    'status' => 'PENDING_OPERATOR_CONFIRMATION',
-                ],
-                'secondary_archive' => [
-                    'filename' => 'vector-audit-1d-53d90c98-a643-5bd0-8b5b-d3f90bdf7757.zip',
-                    'expected_sha256' => 'ee703740899b0b378b1d8adb70f2c6cfb21484a630be41a49783db9917db2d5a',
-                    'status' => 'PRESERVED_UNAPPROVED_DATASET',
-                ],
-            ],
-        ]);
+        ];
+
+        return response()->json($payload);
     }
 
     /**
@@ -215,7 +231,7 @@ final class ProfitabilityResearchController extends Controller
                 ->where('paper_account_id', $account->id)
                 ->get();
 
-            $economics = $this->quantPortfolioMetrics->computeLifecyclePopulationEconomics($positions, $asOf);
+            $economics = $this->lifecycleEconomics($positions, $asOf);
 
             $result[] = [
                 'strategy_id' => $strategyId,
@@ -244,8 +260,10 @@ final class ProfitabilityResearchController extends Controller
 
         return response()->json([
             'status' => 'SUCCESS',
-            'as_of' => $asOf->toIso8601String(),
-            'strategies' => $result,
+            'data' => [
+                'as_of' => $asOf->toIso8601String(),
+                'strategies' => $result,
+            ],
         ]);
     }
 
@@ -278,7 +296,7 @@ final class ProfitabilityResearchController extends Controller
             ->orderByDesc('opened_at')
             ->get();
 
-        $lifecycleEconomics = $this->quantPortfolioMetrics->computeLifecyclePopulationEconomics($positions, $asOf);
+        $lifecycleEconomics = $this->lifecycleEconomics($positions, $asOf);
 
         // Fetch recent executions
         $executions = VirtualExecutionRecord::query()
@@ -295,45 +313,49 @@ final class ProfitabilityResearchController extends Controller
 
         return response()->json([
             'status' => 'SUCCESS',
-            'as_of' => $asOf->toIso8601String(),
-            'strategy_id' => $strategyId,
-            'account' => [
-                'id' => $account->id,
-                'name' => $account->name,
-                'mode' => $account->mode,
-                'is_primary' => (bool) $account->is_primary,
-                'exchange_id' => (string) $account->exchange_id,
-                'starting_balance' => (string) $account->starting_balance,
-                'current_equity' => (string) $account->current_equity,
-                'peak_equity' => (string) $account->peak_equity,
-                'realized_pnl' => (string) $account->realized_pnl,
-                'current_drawdown_percent' => (string) ($account->current_drawdown_percent ?? '0.00'),
-                'maximum_drawdown_percent' => (string) ($account->maximum_drawdown_percent ?? '0.00'),
-            ],
-            'lifecycle_economics' => [
-                'scope' => 'FULL_LIFECYCLE',
+            'data' => [
                 'as_of' => $asOf->toIso8601String(),
-                'total_positions' => $lifecycleEconomics['total_positions'],
-                'gross_pnl' => (string) $lifecycleEconomics['gross_pnl'],
-                'fees' => (string) $lifecycleEconomics['fees'],
-                'signed_funding' => (string) $lifecycleEconomics['signed_funding'],
-                'net_pnl' => (string) $lifecycleEconomics['net_pnl'],
-                'profit_factor' => $lifecycleEconomics['profit_factor'],
-                'win_rate' => $lifecycleEconomics['win_rate'],
-                'counts' => $lifecycleEconomics['counts'],
-                'breakdown_by_symbol' => $lifecycleEconomics['breakdown_by_symbol'],
-                'breakdown_by_exit_reason' => $lifecycleEconomics['breakdown_by_exit_reason'],
+                'strategy_id' => $strategyId,
+                'account' => [
+                    'id' => $account->id,
+                    'name' => $account->name,
+                    'mode' => $account->mode,
+                    'is_primary' => (bool) $account->is_primary,
+                    'exchange_id' => (string) $account->exchange_id,
+                    'starting_balance' => (string) $account->starting_balance,
+                    'current_equity' => (string) $account->current_equity,
+                    'peak_equity' => (string) $account->peak_equity,
+                    'realized_pnl' => (string) $account->realized_pnl,
+                    'current_drawdown_percent' => (string) ($account->current_drawdown_percent ?? '0.00'),
+                    'maximum_drawdown_percent' => (string) ($account->maximum_drawdown_percent ?? '0.00'),
+                ],
+                'lifecycle_economics' => [
+                    'scope' => 'FULL_LIFECYCLE',
+                    'as_of' => $asOf->toIso8601String(),
+                    'total_positions' => $lifecycleEconomics['total_positions'],
+                    'gross_pnl' => (string) $lifecycleEconomics['gross_pnl'],
+                    'fees' => (string) $lifecycleEconomics['fees'],
+                    'signed_funding' => (string) $lifecycleEconomics['signed_funding'],
+                    'net_pnl' => (string) $lifecycleEconomics['net_pnl'],
+                    'profit_factor' => $lifecycleEconomics['profit_factor'],
+                    'win_rate' => $lifecycleEconomics['win_rate'],
+                    'counts' => $lifecycleEconomics['counts'],
+                    'breakdown_by_symbol' => $lifecycleEconomics['breakdown_by_symbol'],
+                    'breakdown_by_exit_reason' => $lifecycleEconomics['breakdown_by_exit_reason'],
+                ],
+                'reconciliation' => $latestReconciliation !== null ? [
+                    'status' => $latestReconciliation->status,
+                    'reconciled_at' => $latestReconciliation->created_at?->toIso8601String(),
+                    'discrepancy_count' => $latestReconciliation->discrepancy_count,
+                    'discrepancies' => $latestReconciliation->findings['discrepancies'] ?? null,
+                ] : [
+                    'status' => 'NO_RECORDED_RUN',
+                    'reconciled_at' => null,
+                    'discrepancy_count' => null,
+                    'discrepancies' => null,
+                ],
+                'recent_executions' => $executions,
             ],
-            'reconciliation' => $latestReconciliation !== null ? [
-                'status' => $latestReconciliation->status,
-                'reconciled_at' => $latestReconciliation->created_at?->toIso8601String(),
-                'discrepancies' => $latestReconciliation->discrepancies ?? [],
-            ] : [
-                'status' => 'NO_RECORDED_RUN',
-                'reconciled_at' => null,
-                'discrepancies' => [],
-            ],
-            'recent_executions' => $executions,
         ]);
     }
 
@@ -345,7 +367,9 @@ final class ProfitabilityResearchController extends Controller
     {
         return response()->json([
             'status' => 'SUCCESS',
-            'catalog' => $this->metricRegistry->getCatalog(),
+            'data' => [
+                'catalog' => $this->metricRegistry->getCatalog(),
+            ],
         ]);
     }
 
@@ -380,31 +404,38 @@ final class ProfitabilityResearchController extends Controller
             ], 404);
         }
 
+        $request->validate(['generation_id' => 'nullable|uuid']);
+        $generationId = $request->query('generation_id');
         $positionAttribution = SlippageAttributionRecord::query()
             ->where('position_id', $positionId)
-            ->latest('created_at')
+            ->when($generationId, fn ($query) => $query->where('generation_id', $generationId))
+            ->latest('created_at')->latest('id')
             ->first();
 
         $fills = SlippageAttributionFillRecord::query()
             ->where('position_id', $positionId)
+            ->where('generation_id', $positionAttribution?->generation_id)
+            ->when($positionAttribution === null, fn ($query) => $query->whereRaw('1 = 0'))
             ->orderBy('market_event_at')
             ->get();
 
         return response()->json([
             'status' => 'SUCCESS',
-            'position_id' => $positionId,
-            'position' => [
-                'symbol' => $position->symbol,
-                'side' => $position->side,
-                'status' => $position->status,
-                'entry_price' => (string) $position->entry_price,
-                'gross_pnl' => (string) $position->gross_pnl,
-                'net_pnl' => (string) $position->net_pnl,
-                'fees' => (string) $position->fees,
-                'funding' => (string) $position->funding,
+            'data' => [
+                'position_id' => $positionId,
+                'position' => [
+                    'symbol' => $position->symbol,
+                    'side' => $position->side,
+                    'status' => $position->status,
+                    'entry_price' => (string) $position->entry_price,
+                    'gross_pnl' => (string) $position->gross_pnl,
+                    'net_pnl' => (string) $position->net_pnl,
+                    'fees' => (string) $position->fees,
+                    'funding' => (string) $position->funding,
+                ],
+                'slippage_attribution' => $positionAttribution,
+                'fills' => $fills,
             ],
-            'slippage_attribution' => $positionAttribution,
-            'fills' => $fills,
         ]);
     }
 
@@ -429,16 +460,18 @@ final class ProfitabilityResearchController extends Controller
 
             return response()->json([
                 'status' => 'SUCCESS',
-                'generation' => [
-                    'id' => $generation->id,
-                    'package_code' => $generation->package_code,
-                    'accounting_scope' => $generation->accounting_scope,
-                    'status' => $generation->status,
-                    'idempotency_key' => $generation->idempotency_key,
-                    'output_hash' => $generation->output_hash,
-                    'row_counts' => $generation->row_counts,
-                    'metadata' => $generation->metadata,
-                    'created_at' => $generation->created_at?->toIso8601String(),
+                'data' => [
+                    'generation' => [
+                        'id' => $generation->id,
+                        'package_code' => $generation->package_code,
+                        'accounting_scope' => $generation->accounting_scope,
+                        'status' => $generation->status,
+                        'idempotency_key' => $generation->idempotency_key,
+                        'output_hash' => $generation->output_hash,
+                        'row_counts' => $generation->row_counts,
+                        'metadata' => $generation->metadata,
+                        'created_at' => $generation->created_at?->toIso8601String(),
+                    ],
                 ],
             ], 201);
         } catch (IdempotencyConflictException $e) {
@@ -514,16 +547,18 @@ final class ProfitabilityResearchController extends Controller
 
             return response()->json([
                 'status' => 'SUCCESS',
-                'generation' => [
-                    'id' => $generation->id,
-                    'package_code' => $generation->package_code,
-                    'accounting_scope' => $generation->accounting_scope,
-                    'status' => $generation->status,
-                    'idempotency_key' => $generation->idempotency_key,
-                    'output_hash' => $generation->output_hash,
-                    'row_counts' => $generation->row_counts,
-                    'metadata' => $generation->metadata,
-                    'created_at' => $generation->created_at?->toIso8601String(),
+                'data' => [
+                    'generation' => [
+                        'id' => $generation->id,
+                        'package_code' => $generation->package_code,
+                        'accounting_scope' => $generation->accounting_scope,
+                        'status' => $generation->status,
+                        'idempotency_key' => $generation->idempotency_key,
+                        'output_hash' => $generation->output_hash,
+                        'row_counts' => $generation->row_counts,
+                        'metadata' => $generation->metadata,
+                        'created_at' => $generation->created_at?->toIso8601String(),
+                    ],
                 ],
             ], 201);
         } catch (IdempotencyConflictException $e) {
@@ -707,10 +742,12 @@ final class ProfitabilityResearchController extends Controller
 
             return response()->json([
                 'status' => 'SUCCESS',
-                'generation_id' => $result['generation_id'],
-                'decision' => $result['decision'],
-                'outcome' => $result['outcome'] ?? null,
-                'idempotent_replay' => $result['idempotent_replay'],
+                'data' => [
+                    'generation_id' => $result['generation_id'],
+                    'decision' => $result['decision'],
+                    'outcome' => $result['outcome'] ?? null,
+                    'idempotent_replay' => $result['idempotent_replay'],
+                ],
             ], 201);
         } catch (IdempotencyConflictException $e) {
             return response()->json([
@@ -744,16 +781,18 @@ final class ProfitabilityResearchController extends Controller
 
             return response()->json([
                 'status' => 'SUCCESS',
-                'generation' => [
-                    'id' => $generation->id,
-                    'package_code' => $generation->package_code,
-                    'accounting_scope' => $generation->accounting_scope,
-                    'status' => $generation->status,
-                    'idempotency_key' => $generation->idempotency_key,
-                    'output_hash' => $generation->output_hash,
-                    'row_counts' => $generation->row_counts,
-                    'metadata' => $generation->metadata,
-                    'created_at' => $generation->created_at?->toIso8601String(),
+                'data' => [
+                    'generation' => [
+                        'id' => $generation->id,
+                        'package_code' => $generation->package_code,
+                        'accounting_scope' => $generation->accounting_scope,
+                        'status' => $generation->status,
+                        'idempotency_key' => $generation->idempotency_key,
+                        'output_hash' => $generation->output_hash,
+                        'row_counts' => $generation->row_counts,
+                        'metadata' => $generation->metadata,
+                        'created_at' => $generation->created_at?->toIso8601String(),
+                    ],
                 ],
             ], 201);
         } catch (IdempotencyConflictException $e) {
@@ -787,16 +826,18 @@ final class ProfitabilityResearchController extends Controller
 
             return response()->json([
                 'status' => 'SUCCESS',
-                'generation' => [
-                    'id' => $generation->id,
-                    'package_code' => $generation->package_code,
-                    'accounting_scope' => $generation->accounting_scope,
-                    'status' => $generation->status,
-                    'idempotency_key' => $generation->idempotency_key,
-                    'output_hash' => $generation->output_hash,
-                    'row_counts' => $generation->row_counts,
-                    'metadata' => $generation->metadata,
-                    'created_at' => $generation->created_at?->toIso8601String(),
+                'data' => [
+                    'generation' => [
+                        'id' => $generation->id,
+                        'package_code' => $generation->package_code,
+                        'accounting_scope' => $generation->accounting_scope,
+                        'status' => $generation->status,
+                        'idempotency_key' => $generation->idempotency_key,
+                        'output_hash' => $generation->output_hash,
+                        'row_counts' => $generation->row_counts,
+                        'metadata' => $generation->metadata,
+                        'created_at' => $generation->created_at?->toIso8601String(),
+                    ],
                 ],
             ], 201);
         } catch (IdempotencyConflictException $e) {

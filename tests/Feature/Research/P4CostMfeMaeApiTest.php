@@ -57,16 +57,16 @@ final class P4CostMfeMaeApiTest extends TestCase
 
         $created->assertCreated()
             ->assertJsonPath('status', 'SUCCESS')
-            ->assertJsonPath('generation.package_code', 'P-4')
-            ->assertJsonPath('generation.status', 'SUCCEEDED');
+            ->assertJsonPath('data.generation.package_code', 'P-4')
+            ->assertJsonPath('data.generation.status', 'SUCCEEDED');
 
         $repeat = $this->withHeaders(['X-Research-Token' => $this->validToken])
             ->postJson('/api/v1/research/profitability/generations/p4', $payload);
 
         $repeat->assertCreated();
         self::assertSame(
-            $created->json('generation.id'),
-            $repeat->json('generation.id'),
+            $created->json('data.generation.id'),
+            $repeat->json('data.generation.id'),
             'The same idempotency key and payload must return the same generation.'
         );
 
@@ -80,7 +80,7 @@ final class P4CostMfeMaeApiTest extends TestCase
         $read = $this->getJson('/api/v1/research/profitability/cost-mfe-mae');
         $read->assertOk()
             ->assertJsonPath('status', 'SUCCESS')
-            ->assertJsonPath('data.generation_id', $created->json('generation.id'))
+            ->assertJsonPath('data.generation_id', $created->json('data.generation.id'))
             ->assertJsonPath('data.versioned_config.algorithm_version', '1.1.0');
 
         $writes = [];

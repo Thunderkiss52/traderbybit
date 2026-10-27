@@ -13,6 +13,7 @@ use App\PaperTrading\Infrastructure\Persistence\VirtualPositionRecord;
 use App\Research\Infrastructure\Persistence\ReconciliationRunRecord;
 use Brick\Math\BigDecimal;
 use Carbon\CarbonImmutable;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 
 final class LedgerReconciliationService
@@ -28,7 +29,12 @@ final class LedgerReconciliationService
      */
     public function reconcileAccount(string $accountId): array
     {
-        $account = PaperAccountRecord::query()->findOrFail($accountId);
+        return DB::transaction(fn (): array => $this->reconcileLockedAccount($accountId));
+    }
+
+    private function reconcileLockedAccount(string $accountId): array
+    {
+        $account = PaperAccountRecord::query()->lockForUpdate()->findOrFail($accountId);
         $startingBalance = BigDecimal::of($account->starting_balance);
 
         // Sum executions for realized PnL and fees
@@ -92,19 +98,23 @@ final class LedgerReconciliationService
             ];
         }
 
-        // Check for orphan executions
-        $positionIds = VirtualPositionRecord::query()->where('paper_account_id', $accountId)->pluck('id');
-        $orphanExecutions = VirtualExecutionRecord::query()
-            ->whereIn('position_id', $positionIds->all())
-            ->whereNotIn('position_id', VirtualPositionRecord::query()->select('id'))
-            ->count();
-
-        if ($orphanExecutions > 0) {
-            $discrepancies[] = [
-                'code' => 'ORPHAN_EXECUTIONS',
-                'severity' => 'CRITICAL',
-                'details' => "Found {$orphanExecutions} executions without a valid position.",
-            ];
+        // An orphan has no attributable account: do not infer ownership from its exchange.
+        $globalIntegrity = $this->globalExecutionIntegrity();
+        $incompleteReasons = [];
+        if ($globalIntegrity['orphan_execution_count'] > 0) {
+            $incompleteReasons[] = 'global_orphan_executions_unattributable';
+        }
+        if (! EquitySnapshotRecord::query()->where('paper_account_id', $accountId)->where('source_event_key', 'account:initial')->exists()) {
+            $incompleteReasons[] = 'initial_equity_snapshot_unavailable';
+        }
+        $missingEntries = VirtualPositionRecord::query()->where('paper_account_id', $accountId)
+            ->whereNotExists(fn ($q) => $q->selectRaw('1')->from('virtual_executions')
+                ->whereColumn('virtual_executions.position_id', 'virtual_positions.id')->where('type', 'ENTRY'))->count();
+        if ($missingEntries > 0) {
+            $incompleteReasons[] = 'position_entry_executions_unavailable';
+        }
+        if (VirtualPositionRecord::query()->where('paper_account_id', $accountId)->where('funding_complete', false)->exists()) {
+            $incompleteReasons[] = 'funding_history_incomplete';
         }
 
         // Accounting identity:
@@ -140,7 +150,17 @@ final class LedgerReconciliationService
         $recalculatedDrawdown = BigDecimal::of($stats->metrics['maximum_drawdown_percent'] ?? '0');
         $storedDrawdown = BigDecimal::of($account->maximum_drawdown_percent ?? '0');
 
-        $status = empty($discrepancies) ? 'PASSED' : 'DISCREPANCY_DETECTED';
+        // Observed snapshots provide a lower bound. A larger stored historical maximum
+        // may be legitimate and is never reduced or treated as corruption merely by comparison.
+        if ($recalculatedDrawdown->minus($storedDrawdown)->isGreaterThan('0.00000001')) {
+            $discrepancies[] = ['code' => 'HISTORICAL_DRAWDOWN_UNDERSTATED', 'severity' => 'WARNING',
+                'observed_lower_bound' => (string) $recalculatedDrawdown, 'stored_maximum' => (string) $storedDrawdown];
+        }
+        $currentDrawdown = BigDecimal::of($account->current_drawdown_percent);
+        if ($currentDrawdown->isGreaterThan($storedDrawdown)) {
+            $discrepancies[] = ['code' => 'CURRENT_DRAWDOWN_EXCEEDS_HISTORICAL_MAXIMUM', 'severity' => 'WARNING'];
+        }
+        $status = $discrepancies !== [] ? 'DISCREPANCY_DETECTED' : ($incompleteReasons !== [] ? 'INCOMPLETE' : 'PASSED');
 
         // Persist run record
         $record = ReconciliationRunRecord::query()->create([
@@ -160,6 +180,10 @@ final class LedgerReconciliationService
             'stored_drawdown_percent' => (string) $storedDrawdown,
             'discrepancy_count' => count($discrepancies),
             'findings' => [
+                'incomplete_reasons' => $incompleteReasons,
+                'global_execution_integrity' => $globalIntegrity,
+                'drawdown_comparison' => 'OBSERVED_LOWER_BOUND_NOT_FULL_HISTORY',
+                'current_drawdown_percent' => (string) $currentDrawdown,
                 'discrepancies' => $discrepancies,
                 'open_positions_count' => $openPositions->count(),
                 'total_executions_count' => $executions->count(),
@@ -167,7 +191,7 @@ final class LedgerReconciliationService
                 'account_name' => $account->name,
                 'strategy_id' => $account->strategy_id,
             ],
-            'methodology_version' => 'v1.0.0',
+            'methodology_version' => 'v1.1.0',
             'completed_at' => now('UTC'),
         ]);
 
@@ -184,8 +208,19 @@ final class LedgerReconciliationService
             'stored_drawdown_percent' => (string) $storedDrawdown,
             'discrepancy_count' => count($discrepancies),
             'discrepancies' => $discrepancies,
+            'incomplete_reasons' => $incompleteReasons,
+            'global_execution_integrity' => $globalIntegrity,
             'completed_at' => $record->completed_at->toIso8601String(),
         ];
+    }
+
+    /** Global relational integrity, without inventing an account for a missing parent. */
+    public function globalExecutionIntegrity(): array
+    {
+        $count = VirtualExecutionRecord::query()->whereNotExists(fn ($query) => $query->selectRaw('1')
+            ->from('virtual_positions')->whereColumn('virtual_positions.id', 'virtual_executions.position_id'))->count();
+
+        return ['scope' => 'GLOBAL_UNATTRIBUTED', 'status' => $count === 0 ? 'PASSED' : 'DISCREPANCY_DETECTED', 'orphan_execution_count' => $count];
     }
 
     /**

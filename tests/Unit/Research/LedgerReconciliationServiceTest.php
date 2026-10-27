@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Tests\Unit\Research;
 
 use App\PaperTrading\Application\PaperAccountService;
+use App\PaperTrading\Infrastructure\Persistence\EquitySnapshotRecord;
 use App\PaperTrading\Infrastructure\Persistence\MarketFundingEventRecord;
 use App\PaperTrading\Infrastructure\Persistence\PositionFundingEventRecord;
 use App\PaperTrading\Infrastructure\Persistence\VirtualExecutionRecord;
@@ -13,6 +14,7 @@ use App\Research\Application\LedgerReconciliationService;
 use App\Strategy\Infrastructure\Persistence\SignalRecord;
 use Brick\Math\BigDecimal;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 use Tests\TestCase;
 
@@ -33,6 +35,47 @@ final class LedgerReconciliationServiceTest extends TestCase
         self::assertTrue(BigDecimal::of($result['starting_balance'])->isEqualTo('10000'));
         self::assertTrue(BigDecimal::of($result['recalculated_balance'])->isEqualTo('10000'));
         self::assertTrue(BigDecimal::of($result['recalculated_equity'])->isEqualTo('10000'));
+    }
+
+    public function test_missing_history_is_incomplete_and_higher_historical_drawdown_is_not_corruption(): void
+    {
+        $account = app(PaperAccountService::class)->default();
+        $account->update(['maximum_drawdown_percent' => '25']);
+        $service = app(LedgerReconciliationService::class);
+        self::assertSame('PASSED', $service->reconcileAccount($account->id)['status']);
+        EquitySnapshotRecord::query()->where('paper_account_id', $account->id)->delete();
+        $result = $service->reconcileAccount($account->id);
+        self::assertSame('INCOMPLETE', $result['status']);
+        self::assertContains('initial_equity_snapshot_unavailable', $result['incomplete_reasons']);
+        self::assertDecimalSame('25', $account->fresh()->maximum_drawdown_percent);
+    }
+
+    public function test_observed_drawdown_above_stored_maximum_is_reported_without_rewriting_account(): void
+    {
+        $account = app(PaperAccountService::class)->default();
+        $account->update(['current_equity' => '9000', 'realized_pnl' => '-1000']);
+        $result = app(LedgerReconciliationService::class)->reconcileAccount($account->id);
+        self::assertContains('HISTORICAL_DRAWDOWN_UNDERSTATED', array_column($result['discrepancies'], 'code'));
+        self::assertDecimalSame('0', $account->fresh()->maximum_drawdown_percent);
+    }
+
+    public function test_orphan_execution_is_reported_globally_without_inventing_account_ownership(): void
+    {
+        $account = app(PaperAccountService::class)->default();
+        // Negative mutation control in this isolated, rolled-back PostgreSQL transaction.
+        DB::statement('SET LOCAL session_replication_role = replica');
+        VirtualExecutionRecord::query()->create([
+            'id' => (string) Str::uuid(), 'position_id' => (string) Str::uuid(), 'type' => 'ENTRY', 'side' => 'SELL',
+            'quantity' => '1', 'price' => '100', 'commission' => '1', 'gross_pnl' => '0', 'slippage' => '0',
+            'market_event_at' => now(), 'registered_at' => now(), 'price_source' => 'fixture',
+            'idempotency_key' => 'orphan-fixture', 'execution_version' => '1', 'schema_version' => '1',
+        ]);
+        DB::statement('SET LOCAL session_replication_role = origin');
+        $result = app(LedgerReconciliationService::class)->reconcileAccount($account->id);
+        self::assertSame('GLOBAL_UNATTRIBUTED', $result['global_execution_integrity']['scope']);
+        self::assertSame(1, $result['global_execution_integrity']['orphan_execution_count']);
+        self::assertSame('INCOMPLETE', $result['status']);
+        self::assertSame([], $result['discrepancies']);
     }
 
     public function test_reconciliation_detects_injected_discrepancies(): void

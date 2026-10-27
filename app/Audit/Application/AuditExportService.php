@@ -6,8 +6,10 @@ namespace App\Audit\Application;
 
 use App\Audit\Infrastructure\Persistence\AuditExportRecord;
 use App\Audit\Jobs\GenerateAuditExportJob;
+use App\PaperTrading\Application\DailyPerformanceService;
 use App\Strategy\Application\StrategyRegistry;
 use Brick\Math\BigDecimal;
+use Carbon\CarbonImmutable;
 use DateTimeInterface;
 use Illuminate\Database\Query\Builder;
 use Illuminate\Support\Facades\Cache;
@@ -480,32 +482,20 @@ final class AuditExportService
     private function writeDailySnapshots(AuditExportRecord $export, string $file, array &$counts, array &$entries): void
     {
         $handle = fopen($file, 'wb');
-        fputcsv($handle, ['paper_account_id', 'date_utc', 'first_snapshot_at', 'first_equity', 'last_snapshot_at', 'last_equity', 'snapshot_count'], ',', '"', '');
+        $columns = ['paper_account_id', 'date', 'timezone', 'net_pnl', 'realized_pnl', 'unrealized_pnl_change', 'commissions', 'funding', 'closing_equity', 'opening_boundary', 'opening_snapshot_at', 'closing_snapshot_at', 'complete', 'incomplete_reasons'];
+        fputcsv($handle, $columns, ',', '"', '');
         $count = 0;
-        $current = null;
-        $first = $last = null;
-        $snapshots = 0;
-        $emit = static function () use (&$current, &$first, &$last, &$snapshots, &$count, $handle): void {
-            if ($current === null) {
-                return;
+        foreach (DB::table('paper_accounts')->orderBy('id')->cursor(['id']) as $account) {
+            $days = app(DailyPerformanceService::class)->calendarDays(
+                $account->id, 'UTC', CarbonImmutable::parse($export->from_at), CarbonImmutable::parse($export->to_at)
+            );
+            foreach ($days as $day) {
+                $day['paper_account_id'] = $account->id;
+                $values = array_map(static fn (string $column): mixed => is_array($day[$column] ?? null) ? json_encode($day[$column], JSON_THROW_ON_ERROR) : ($day[$column] ?? null), $columns);
+                fputcsv($handle, $values, ',', '"', '');
+                $count++;
             }
-            fputcsv($handle, [$current[0], $current[1], $first->recorded_at, $first->equity, $last->recorded_at, $last->equity, $snapshots], ',', '"', '');
-            $count++;
-        };
-        foreach (DB::table('equity_snapshots')->where('recorded_at', '>=', $export->from_at)->where('recorded_at', '<', $export->to_at)
-            ->orderBy('paper_account_id')->orderBy('recorded_at')->orderBy('id')->cursor() as $snapshot) {
-            $date = substr((string) $snapshot->recorded_at, 0, 10);
-            $key = [$snapshot->paper_account_id, $date];
-            if ($current !== $key) {
-                $emit();
-                $current = $key;
-                $first = $snapshot;
-                $snapshots = 0;
-            }
-            $last = $snapshot;
-            $snapshots++;
         }
-        $emit();
         fclose($handle);
         $this->track($file, $count, $counts, $entries);
     }

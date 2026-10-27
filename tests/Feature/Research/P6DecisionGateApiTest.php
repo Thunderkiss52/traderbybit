@@ -58,16 +58,16 @@ final class P6DecisionGateApiTest extends TestCase
         $created->assertCreated()
             ->assertJsonPath('status', 'SUCCESS')
             // No accepted measurement generation exists, so the gate must fail closed.
-            ->assertJsonPath('decision.decision_state', 'INSUFFICIENT_EVIDENCE')
-            ->assertJsonPath('decision.reason', 'MISSING_INPUT_PACKAGE');
+            ->assertJsonPath('data.decision.decision_state', 'INSUFFICIENT_EVIDENCE')
+            ->assertJsonPath('data.decision.reason', 'MISSING_INPUT_PACKAGE');
 
         $repeat = $this->withHeaders(['X-Research-Token' => $this->validToken])
             ->postJson('/api/v1/research/profitability/generations/p6', $payload);
 
         $repeat->assertCreated();
         self::assertSame(
-            $created->json('generation_id'),
-            $repeat->json('generation_id'),
+            $created->json('data.generation_id'),
+            $repeat->json('data.generation_id'),
             'The same idempotency key and payload must return the same generation.'
         );
         self::assertSame(1, DB::table('research_decision_records')->count());

@@ -129,3 +129,14 @@ test('P-1 counterfactual semantics do not trust the legacy reconciled status', (
   assert.equal(legacy.hypotheticalFormatted, '—');
   assert.equal(legacy.showUnavailable, true);
 });
+
+
+test('profitability payload validation rejects missing HTTP 200 data and preserves measured zero', async () => {
+  const source = readFileSync(resolve(process.cwd(), 'src/profitabilityContract.ts'), 'utf8');
+  const js = ts.transpileModule(source, { compilerOptions: { module: ts.ModuleKind.ESNext } }).outputText;
+  const { requirePayload } = await import(`data:text/javascript;base64,${Buffer.from(js).toString('base64')}`);
+  for (const invalid of [undefined, null, [], {}, { catalog: null }]) {
+    assert.throws(() => requirePayload(invalid, ['catalog']), /UNAVAILABLE/);
+  }
+  assert.equal(requirePayload({ net_pnl: '0.00' }, ['net_pnl']).net_pnl, '0.00');
+});

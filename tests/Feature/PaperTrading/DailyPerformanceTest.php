@@ -8,6 +8,7 @@ use App\PaperTrading\Application\DailyPerformanceService;
 use App\PaperTrading\Application\PaperAccountService;
 use App\PaperTrading\Infrastructure\Persistence\EquitySnapshotRecord;
 use Brick\Math\BigDecimal;
+use Carbon\CarbonImmutable;
 use DateTimeImmutable;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
@@ -139,6 +140,38 @@ final class DailyPerformanceTest extends TestCase
         self::assertSame(1, $btcToday['closed_positions']);
         self::assertSame('1.20000000000000000000', $btcToday['average_r']);
         self::assertContains('symbol_mark_to_market_history_unavailable', $btcToday['incomplete_reasons']);
+    }
+
+    public function test_missing_opening_is_not_cumulative_daily_profit_and_csv_semantics_match(): void
+    {
+        $this->travelTo(new DateTimeImmutable('2026-10-20T23:59:45Z'));
+        $account = app(PaperAccountService::class)->default();
+        $account->update(['created_at' => new DateTimeImmutable('2026-10-01T00:00:00Z')]);
+        EquitySnapshotRecord::query()->where('paper_account_id', $account->id)->delete();
+        $this->snapshot($account->id, '2026-10-20T23:59:30Z', '12345', '2345', '0', 'closing-only');
+        $service = app(DailyPerformanceService::class);
+        $report = $service->report($account->id, 'UTC', null, 1, 10);
+        $day = $report['days']['data'][0];
+        self::assertNull($day['net_pnl']);
+        self::assertNull($day['realized_pnl']);
+        self::assertFalse($day['complete']);
+        self::assertContains('opening_snapshot_unavailable', $day['incomplete_reasons']);
+        self::assertNotContains('closing_equity_snapshot_not_near_period_end', $day['incomplete_reasons']);
+        $csv = $service->calendarDays($account->id, 'UTC', CarbonImmutable::parse('2026-10-20T00:00:00Z'), CarbonImmutable::parse('2026-10-21T00:00:00Z'));
+        self::assertNull($csv[0]['net_pnl']);
+        self::assertFalse($csv[0]['complete']);
+        self::assertDecimalSame('2345', $report['summary']['all_time']['net_pnl']);
+    }
+
+    public function test_account_inception_is_a_justified_opening_boundary(): void
+    {
+        $this->travelTo(new DateTimeImmutable('2026-10-20T12:00:00Z'));
+        $account = app(PaperAccountService::class)->default();
+        $this->snapshot($account->id, '2026-10-20T12:00:00Z', '10005', '5', '0', 'inception-close');
+        $day = app(DailyPerformanceService::class)->report($account->id, 'UTC', null, 1, 10)['summary']['today'];
+        self::assertTrue($day['complete']);
+        self::assertSame('ACCOUNT_INCEPTION', $day['opening_boundary']);
+        self::assertDecimalSame('5', $day['net_pnl']);
     }
 
     private function position(string $accountId, string $exchange, string $symbol, string $openedAt, ?string $closedAt, string $netPnl, ?string $rMultiple): string

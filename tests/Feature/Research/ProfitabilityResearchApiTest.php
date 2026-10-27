@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Tests\Feature\Research;
 
 use App\PaperTrading\Application\PaperAccountService;
+use App\Research\Application\LedgerReconciliationService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
 use Tests\TestCase;
@@ -25,8 +26,7 @@ final class ProfitabilityResearchApiTest extends TestCase
         $response = $this->getJson('/api/v1/research/profitability/summary');
 
         $response->assertOk()
-            ->assertJsonStructure([
-                'status',
+            ->assertJsonStructure(['status', 'data' => [
                 'as_of',
                 'accounting_scopes' => [
                     'point_in_time' => [
@@ -69,9 +69,9 @@ final class ProfitabilityResearchApiTest extends TestCase
                     'P-6',
                 ],
                 'archives_status',
-            ]);
+            ]]);
 
-        $data = $response->json();
+        $data = $response->json('data');
 
         // Scope verification
         $this->assertSame('POINT_IN_TIME', $data['accounting_scopes']['point_in_time']['scope']);
@@ -93,8 +93,7 @@ final class ProfitabilityResearchApiTest extends TestCase
         $response = $this->getJson('/api/v1/research/profitability/strategies');
 
         $response->assertOk()
-            ->assertJsonStructure([
-                'status',
+            ->assertJsonStructure(['status', 'data' => [
                 'as_of',
                 'strategies' => [
                     '*' => [
@@ -105,9 +104,9 @@ final class ProfitabilityResearchApiTest extends TestCase
                         'full_lifecycle',
                     ],
                 ],
-            ]);
+            ]]);
 
-        $strategies = $response->json('strategies');
+        $strategies = $response->json('data.strategies');
         $this->assertCount(13, $strategies, 'Must return exactly 13 primary strategy accounts.');
     }
 
@@ -116,8 +115,7 @@ final class ProfitabilityResearchApiTest extends TestCase
         $response = $this->getJson('/api/v1/research/profitability/strategies/baseline');
 
         $response->assertOk()
-            ->assertJsonStructure([
-                'status',
+            ->assertJsonStructure(['status', 'data' => [
                 'as_of',
                 'strategy_id',
                 'account' => [
@@ -129,9 +127,9 @@ final class ProfitabilityResearchApiTest extends TestCase
                 'lifecycle_economics',
                 'reconciliation',
                 'recent_executions',
-            ]);
+            ]]);
 
-        $this->assertSame('baseline', $response->json('strategy_id'));
+        $this->assertSame('baseline', $response->json('data.strategy_id'));
     }
 
     public function test_profitability_strategy_detail_returns_404_on_unknown_strategy(): void
@@ -147,15 +145,14 @@ final class ProfitabilityResearchApiTest extends TestCase
         $response = $this->getJson('/api/v1/research/profitability/metric-registry');
 
         $response->assertOk()
-            ->assertJsonStructure([
-                'status',
+            ->assertJsonStructure(['status', 'data' => [
                 'catalog' => [
                     'version',
                     'accounting_scope_rules',
                     'prohibitions',
                     'metrics',
                 ],
-            ]);
+            ]]);
     }
 
     public function test_profitability_reads_do_not_reprovision_missing_primary_accounts(): void
@@ -166,10 +163,25 @@ final class ProfitabilityResearchApiTest extends TestCase
         $this->getJson('/api/v1/research/profitability/summary')->assertOk();
         $this->getJson('/api/v1/research/profitability/strategies')
             ->assertOk()
-            ->assertJsonCount(0, 'strategies');
+            ->assertJsonCount(0, 'data.strategies');
 
         $this->assertDatabaseCount('paper_accounts', 0);
         $this->assertDatabaseCount('equity_snapshots', 0);
+    }
+
+    public function test_persisted_discrepancies_and_missing_reconciliation_are_not_reported_as_clean(): void
+    {
+        $account = app(PaperAccountService::class)->default();
+        $account->update(['realized_pnl' => '-20', 'current_equity' => '9980']);
+        $result = app(LedgerReconciliationService::class)->reconcileAccount($account->id);
+        self::assertGreaterThan(0, $result['discrepancy_count']);
+        $rows = $this->getJson('/api/v1/research/profitability/summary')->assertOk()->json('data.accounting_scopes.point_in_time.accounts');
+        $row = collect($rows)->firstWhere('account_id', $account->id);
+        self::assertSame($result['discrepancy_count'], $row['reconciliation']['discrepancy_count']);
+        $missing = collect($rows)->firstWhere('reconciliation.status', 'NO_RECORDED_RUN');
+        self::assertNull($missing['reconciliation']['discrepancy_count']);
+        $detail = $this->getJson('/api/v1/research/profitability/strategies/baseline')->assertOk();
+        self::assertSame($result['discrepancies'], $detail->json('data.reconciliation.discrepancies'));
     }
 
     /**
