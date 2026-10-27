@@ -21,6 +21,7 @@ use Brick\Math\BigDecimal;
 use Brick\Math\RoundingMode;
 use DateTimeImmutable;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 use Ramsey\Uuid\Uuid;
 
 final readonly class PositionLifecycleService
@@ -90,9 +91,37 @@ final readonly class PositionLifecycleService
                 return $locked;
             }
             $status = PositionStatus::from($locked->status);
-            $quantity = $quote->type === ExecutionType::TakeProfit1
-                ? (string) BigDecimal::of($locked->initial_quantity)->multipliedBy((string) $this->config['tp1_fraction'])->dividedBy($locked->qty_step, 0, RoundingMode::Floor)->multipliedBy($locked->qty_step)
-                : $locked->remaining_quantity;
+            $remainingBefore = BigDecimal::of($locked->remaining_quantity);
+
+            if ($quote->type === ExecutionType::TakeProfit1) {
+                $rawTp1Qty = BigDecimal::of($locked->initial_quantity)
+                    ->multipliedBy((string) $this->config['tp1_fraction'])
+                    ->dividedBy($locked->qty_step, 0, RoundingMode::Floor)
+                    ->multipliedBy($locked->qty_step);
+
+                if ($rawTp1Qty->isLessThanOrEqualTo(0)) {
+                    Log::warning("executeExit: TP1 quantity rounded to zero for position {$locked->id} (initial: {$locked->initial_quantity}, step: {$locked->qty_step}). Skipping partial exit.");
+
+                    return $locked;
+                }
+
+                if ($rawTp1Qty->isGreaterThanOrEqualTo($remainingBefore)) {
+                    Log::warning("executeExit: TP1 quantity {$rawTp1Qty} >= remaining {$remainingBefore} for position {$locked->id}. Skipping partial exit.");
+
+                    return $locked;
+                }
+
+                $quantity = (string) $rawTp1Qty;
+            } else {
+                $quantity = $locked->remaining_quantity;
+            }
+
+            if (BigDecimal::of($quantity)->isLessThanOrEqualTo(0)) {
+                Log::warning("executeExit: Exit quantity is <= 0 for position {$locked->id}. Aborting exit.");
+
+                return $locked;
+            }
+
             $gross = $this->execution->grossPnl($locked->side, $locked->entry_price, $quote->price, $quantity);
             // Verify exchange provenance before charging exchange-specific costs.
             $positionAccount = PaperAccountRecord::query()->whereKey($locked->paper_account_id)->firstOrFail();
@@ -100,7 +129,6 @@ final readonly class PositionLifecycleService
                 throw new \DomainException('Position/account exchange provenance mismatch.');
             }
             $fee = $this->execution->commission($quantity, $quote->price, $positionAccount->exchange_id);
-            $remainingBefore = BigDecimal::of($locked->remaining_quantity);
             $remaining = $remainingBefore->minus($quantity);
             $next = match ($quote->type) {
                 ExecutionType::TakeProfit1 => PositionStatus::PartiallyClosed,
@@ -146,6 +174,7 @@ final readonly class PositionLifecycleService
                 SignalLifecycle::Active->transitionTo(SignalLifecycle::Completed);
                 PaperSignalStateRecord::query()->where('paper_account_id', $account->id)->where('signal_id', $locked->signal_id)->update(['status' => SignalLifecycle::Completed->value, 'processed_at' => $at]);
                 $this->applyCooldown($account->refresh(), $at);
+                $this->evaluateFundingCompleteness($locked->fresh());
             }
             $this->snapshot($account->refresh(), $at, "execution:{$key}");
             $this->journal->append($account->id, $locked->signal_id, $locked->id, $closed ? 'POSITION_CLOSED' : 'POSITION_PARTIALLY_CLOSED', $at, [
@@ -163,30 +192,249 @@ final readonly class PositionLifecycleService
         if ($signal->exchange !== $position->exchange_id || $signal->category !== 'linear') {
             throw new \DomainException('Funding source/position exchange mismatch.');
         }
+
+        $cutoff = $position->closed_at !== null
+            ? min($through, $position->closed_at->toDateTimeImmutable())
+            : $through;
+
         $events = MarketFundingEventRecord::query()->where('exchange', $signal->exchange)
-            ->where('category', $signal->category)->where('symbol', $position->symbol)->where('funding_at', '>', $position->opened_at)->where('funding_at', '<=', $through)->oldest('funding_at')->get();
+            ->where('category', $signal->category)->where('symbol', $position->symbol)->where('funding_at', '>', $position->opened_at)->where('funding_at', '<=', $cutoff)->oldest('funding_at')->get();
+
         foreach ($events as $event) {
             DB::transaction(function () use ($position, $event): void {
                 $locked = VirtualPositionRecord::query()->lockForUpdate()->findOrFail($position->id);
                 if (PositionFundingEventRecord::query()->where('position_id', $locked->id)->where('market_funding_event_id', $event->id)->exists()) {
                     return;
                 }
-                $amount = $this->execution->funding($locked->side, $locked->remaining_quantity, $event->mark_price, $event->rate);
+
+                $quantityHeld = $this->quantityHeldAt($locked, $event->funding_at->toDateTimeImmutable());
+                if (BigDecimal::of($quantityHeld)->isLessThanOrEqualTo(0)) {
+                    return;
+                }
+
+                $amount = $this->execution->funding($locked->side, $quantityHeld, $event->mark_price, $event->rate);
                 PositionFundingEventRecord::query()->create([
                     'id' => Uuid::uuid5(Uuid::NAMESPACE_URL, "traderbybit:funding:{$locked->id}:{$event->id}")->toString(),
-                    'position_id' => $locked->id, 'exchange_id' => $locked->exchange_id, 'market_funding_event_id' => $event->id, 'quantity' => $locked->remaining_quantity,
-                    'mark_price' => $event->mark_price, 'rate' => $event->rate, 'amount' => $amount, 'funding_at' => $event->funding_at,
+                    'position_id' => $locked->id,
+                    'exchange_id' => $locked->exchange_id,
+                    'market_funding_event_id' => $event->id,
+                    'quantity' => $quantityHeld,
+                    'mark_price' => $event->mark_price,
+                    'rate' => $event->rate,
+                    'amount' => $amount,
+                    'funding_at' => $event->funding_at,
                 ]);
+
                 $funding = BigDecimal::of($locked->funding)->plus($amount);
-                $locked->update(['funding' => (string) $funding, 'net_pnl' => (string) BigDecimal::of($locked->gross_pnl)->plus($funding)->minus($locked->fees)]);
+                $net = BigDecimal::of($locked->gross_pnl)->plus($funding)->minus($locked->fees);
+                $isClosed = PositionStatus::from($locked->status)->isClosed();
+                $rMultiple = $isClosed && $locked->risk_capital !== null && ! BigDecimal::of($locked->risk_capital)->isZero()
+                    ? (string) $net->dividedBy($locked->risk_capital, 10, RoundingMode::HalfEven)
+                    : $locked->r_multiple;
+
+                $locked->update([
+                    'funding' => (string) $funding,
+                    'net_pnl' => (string) $net,
+                    'r_multiple' => $rMultiple,
+                ]);
+
                 $account = PaperAccountRecord::query()->lockForUpdate()->findOrFail($locked->paper_account_id);
                 $realized = BigDecimal::of($account->realized_pnl)->plus($amount);
                 $portfolioUnrealized = $this->portfolioUnrealized($account->id);
                 $this->refreshAccountMetrics($account, $realized, $portfolioUnrealized);
                 $this->snapshot($account->refresh(), $event->funding_at->toDateTimeImmutable(), "funding:{$locked->id}:{$event->id}");
-                $this->journal->append($account->id, $locked->signal_id, $locked->id, 'FUNDING_APPLIED', $event->funding_at->toDateTimeImmutable(), ['amount' => $amount, 'rate' => $event->rate, 'mark_price' => $event->mark_price], "funding:{$locked->id}:{$event->id}");
+                $this->journal->append($account->id, $locked->signal_id, $locked->id, 'FUNDING_APPLIED', $event->funding_at->toDateTimeImmutable(), [
+                    'amount' => $amount,
+                    'rate' => $event->rate,
+                    'mark_price' => $event->mark_price,
+                    'quantity' => $quantityHeld,
+                ], "funding:{$locked->id}:{$event->id}");
             });
         }
+
+        $this->evaluateFundingCompleteness($position->fresh());
+    }
+
+    /**
+     * Reconstruct the exact position quantity held at historical timestamp $at.
+     */
+    public function quantityHeldAt(VirtualPositionRecord $position, DateTimeImmutable $at): string
+    {
+        $initial = BigDecimal::of($position->initial_quantity);
+        $executions = VirtualExecutionRecord::query()
+            ->where('position_id', $position->id)
+            ->where('market_event_at', '<=', $at)
+            ->orderBy('market_event_at')
+            ->orderBy('id')
+            ->get();
+
+        $remaining = $initial;
+        foreach ($executions as $execution) {
+            $execQty = BigDecimal::of($execution->quantity);
+            if ($execution->type === ExecutionType::TakeProfit1->value) {
+                $remaining = $remaining->minus($execQty);
+            } elseif ($execution->type !== ExecutionType::Entry->value) {
+                // Any other exit (StopLoss, TakeProfit2, Timeout, RiskClosure) closes the position
+                $remaining = BigDecimal::zero();
+            }
+        }
+
+        return (string) BigDecimal::max($remaining, BigDecimal::zero());
+    }
+
+    /**
+     * Evaluate evidence-based funding completeness for a position.
+     */
+    public function evaluateFundingCompleteness(VirtualPositionRecord $position): bool
+    {
+        $status = PositionStatus::from($position->status);
+        if (! $status->isClosed() || $position->closed_at === null) {
+            if ($position->funding_complete) {
+                $position->update(['funding_complete' => false]);
+            }
+
+            return false;
+        }
+
+        $latestFunding = MarketFundingEventRecord::query()
+            ->where('exchange', $position->exchange_id)
+            ->where('category', 'linear')
+            ->where('symbol', $position->symbol)
+            ->latest('funding_at')
+            ->first();
+
+        if ($latestFunding === null) {
+            if ($position->funding_complete) {
+                $position->update(['funding_complete' => false]);
+            }
+
+            return false;
+        }
+
+        // Expected funding boundaries are every 8 hours: 00:00, 08:00, 16:00 UTC
+        $expectedBoundaries = $this->expectedFundingBoundaries(
+            $position->opened_at->toDateTimeImmutable(),
+            $position->closed_at->toDateTimeImmutable()
+        );
+
+        if (empty($expectedBoundaries)) {
+            // Provably zero funding events occurred during the position lifetime.
+            // Require that the funding feed watermark is at least within 8 hours of opened_at to prove ingestion health.
+            $watermarkHealthy = $latestFunding->funding_at->toDateTimeImmutable() >= $position->opened_at->toDateTimeImmutable()->modify('-8 hours');
+            $isComplete = $watermarkHealthy;
+            if ($position->funding_complete !== $isComplete) {
+                $position->update(['funding_complete' => $isComplete]);
+            }
+
+            return $isComplete;
+        }
+
+        // For each expected boundary, check whether market funding event exists and position funding event was linked
+        foreach ($expectedBoundaries as $boundary) {
+            $mfe = MarketFundingEventRecord::query()
+                ->where('exchange', $position->exchange_id)
+                ->where('category', 'linear')
+                ->where('symbol', $position->symbol)
+                ->where('funding_at', $boundary)
+                ->first();
+
+            if ($mfe === null) {
+                // Delayed or missing market funding event
+                if ($position->funding_complete) {
+                    $position->update(['funding_complete' => false]);
+                }
+
+                return false;
+            }
+
+            $qtyHeld = $this->quantityHeldAt($position, $boundary);
+            if (BigDecimal::of($qtyHeld)->isGreaterThan(0)) {
+                $pfeExists = PositionFundingEventRecord::query()
+                    ->where('position_id', $position->id)
+                    ->where('market_funding_event_id', $mfe->id)
+                    ->exists();
+
+                if (! $pfeExists) {
+                    if ($position->funding_complete) {
+                        $position->update(['funding_complete' => false]);
+                    }
+
+                    return false;
+                }
+            }
+        }
+
+        if (! $position->funding_complete) {
+            $position->update(['funding_complete' => true]);
+        }
+
+        return true;
+    }
+
+    /**
+     * Generate expected 8-hour funding boundaries (00:00, 08:00, 16:00 UTC) strictly between $from and $to.
+     *
+     * @return list<DateTimeImmutable>
+     */
+    public function expectedFundingBoundaries(DateTimeImmutable $from, DateTimeImmutable $to): array
+    {
+        $boundaries = [];
+        $current = $from->setTime((int) $from->format('H'), 0, 0);
+        $hour = (int) $current->format('H');
+        $nextFundingHour = match (true) {
+            $hour < 0 => 0,
+            $hour < 8 => 8,
+            $hour < 16 => 16,
+            default => 24,
+        };
+
+        if ($nextFundingHour === 24) {
+            $candidate = $current->modify('+1 day')->setTime(0, 0, 0);
+        } else {
+            $candidate = $current->setTime($nextFundingHour, 0, 0);
+        }
+
+        while ($candidate <= $to) {
+            if ($candidate > $from) {
+                $boundaries[] = $candidate;
+            }
+            $candidate = $candidate->modify('+8 hours');
+        }
+
+        return $boundaries;
+    }
+
+    /**
+     * Idempotently reconcile pending or late-arriving funding events across positions.
+     */
+    public function reconcilePendingFunding(string $exchange, string $symbol, ?DateTimeImmutable $since = null): int
+    {
+        $since ??= now('UTC')->subDays(30)->toDateTimeImmutable();
+        $positions = VirtualPositionRecord::query()
+            ->where('exchange_id', strtolower($exchange))
+            ->where('symbol', strtoupper($symbol))
+            ->where(function ($query) {
+                $query->whereIn('status', [
+                    PositionStatus::Open->value,
+                    PositionStatus::PartiallyClosed->value,
+                ])->orWhere('funding_complete', false);
+            })
+            ->where('opened_at', '>=', $since)
+            ->orderBy('opened_at')
+            ->get();
+
+        $applied = 0;
+        $now = now('UTC')->toDateTimeImmutable();
+        foreach ($positions as $position) {
+            $through = $position->closed_at !== null ? $position->closed_at->toDateTimeImmutable() : $now;
+            $beforeFunding = $position->funding;
+            $this->applyFunding($position, $through);
+            if ($position->fresh()->funding !== $beforeFunding) {
+                $applied++;
+            }
+        }
+
+        return $applied;
     }
 
     public function markToMarket(VirtualPositionRecord $position, string $price, DateTimeImmutable $at): void

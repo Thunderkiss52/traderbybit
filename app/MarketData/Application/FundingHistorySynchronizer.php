@@ -6,10 +6,12 @@ namespace App\MarketData\Application;
 
 use App\MarketData\Contracts\BybitMarketDataClient;
 use App\MarketData\Infrastructure\Persistence\CandleRecord;
+use App\PaperTrading\Application\PositionLifecycleService;
 use App\PaperTrading\Infrastructure\Persistence\MarketFundingEventRecord;
 use Brick\Math\BigDecimal;
 use DateTimeImmutable;
 use DateTimeZone;
+use Illuminate\Support\Facades\Log;
 
 final readonly class FundingHistorySynchronizer
 {
@@ -55,6 +57,14 @@ final readonly class FundingHistorySynchronizer
                 'funding_at' => $fundingAt, 'rate' => $row['fundingRate'], 'mark_price' => $mark->close,
                 'created_at' => now(), 'updated_at' => now(),
             ]]);
+        }
+
+        if ($inserted > 0) {
+            try {
+                app(PositionLifecycleService::class)->reconcilePendingFunding('bybit', $symbol, $from);
+            } catch (\Throwable $e) {
+                Log::warning("reconcilePendingFunding failed for bybit:{$symbol}: ".$e->getMessage());
+            }
         }
 
         return ['received' => count($rows), 'inserted' => $inserted, 'missing_mark_price' => $missingMarkPrice,

@@ -4,10 +4,12 @@ declare(strict_types=1);
 
 namespace App\Exchanges\Binance;
 
+use App\PaperTrading\Application\PositionLifecycleService;
 use App\PaperTrading\Infrastructure\Persistence\MarketFundingEventRecord;
 use Carbon\CarbonImmutable;
 use DomainException;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 
 /** Idempotent ingestion of actual Binance funding settlement records. */
 final readonly class BinanceFundingIngestion
@@ -60,6 +62,14 @@ final readonly class BinanceFundingIngestion
 
             return [$inserted, $missing];
         });
+
+        if ($inserted > 0) {
+            try {
+                app(PositionLifecycleService::class)->reconcilePendingFunding('binance', $symbol);
+            } catch (\Throwable $e) {
+                Log::warning("reconcilePendingFunding failed for binance:{$symbol}: ".$e->getMessage());
+            }
+        }
 
         return ['exchange_id' => 'binance', 'symbol' => $symbol, 'fetched' => count($received),
             'inserted' => $inserted, 'missing_mark_price' => $missing];

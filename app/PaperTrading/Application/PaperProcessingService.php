@@ -482,6 +482,9 @@ final readonly class PaperProcessingService
             } else {
                 $position = VirtualPositionRecord::query()->where('paper_account_id', $account->id)->where('signal_id', $signal->id)->firstOrFail();
                 if (PositionStatus::from($position->status)->isClosed()) {
+                    if (! $position->funding_complete) {
+                        $this->lifecycle->evaluateFundingCompleteness($position);
+                    }
                     $this->updateObservationDiagnostics($account, $signal, ['paper_execution' => 'CLOSED', 'position_id' => $position->id]);
                     break;
                 }
