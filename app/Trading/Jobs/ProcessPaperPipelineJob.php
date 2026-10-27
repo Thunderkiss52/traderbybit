@@ -63,27 +63,46 @@ final class ProcessPaperPipelineJob implements ShouldQueue
             ->where('exchange_id', $this->exchange)
             ->where('is_primary', true)
             ->whereIn('status', ['ACTIVE', 'BLOCKED', 'HALTED'])
+            ->orderBy('id')
             ->get();
 
         $signalOnly = (array) config('research.forward_paper.signal_only_strategies', []);
         $totalProcessed = 0;
         $failures = [];
+        $processedAccounts = 0;
+        $eligibleAccounts = 0;
 
         foreach ($accounts as $account) {
             if (in_array($account->strategy_id, $signalOnly, true)) {
                 continue;
             }
+            $eligibleAccounts++;
 
             if ($this->exchange === 'binance') {
-                BinancePaperSafety::assertProvenance($account);
-                if ($account->status === 'ACTIVE' && $allowNewEntries) {
-                    BinancePaperSafety::assertExecutable($account);
+                try {
+                    BinancePaperSafety::assertProvenance($account);
+                    if ($account->status === 'ACTIVE' && $allowNewEntries) {
+                        BinancePaperSafety::assertExecutable($account);
+                    }
+                } catch (Throwable $e) {
+                    Log::warning("ProcessPaperPipelineJob account provenance/executable check failed: {$account->id} ({$account->strategy_id}): ".$e->getMessage(), [
+                        'account_id' => $account->id,
+                        'strategy_id' => $account->strategy_id,
+                        'exception' => $e::class,
+                    ]);
+                    $failures[] = [
+                        'account_id' => $account->id,
+                        'error' => $e->getMessage(),
+                    ];
+
+                    continue;
                 }
             }
 
             try {
                 $result = $paperService->process($account->id, $this->symbol, $at, $allowNewEntries, historical: false);
                 $totalProcessed += (int) ($result['events_processed'] ?? 0);
+                $processedAccounts++;
             } catch (Throwable $e) {
                 Log::warning("ProcessPaperPipelineJob account processing error: {$account->id} ({$account->strategy_id}): ".$e->getMessage(), [
                     'account_id' => $account->id,
@@ -101,12 +120,16 @@ final class ProcessPaperPipelineJob implements ShouldQueue
             Log::warning('ProcessPaperPipelineJob completed with individual account errors.', [
                 'failed_count' => count($failures),
                 'total_accounts' => $accounts->count(),
+                'eligible_accounts' => $eligibleAccounts,
+                'processed_accounts' => $processedAccounts,
                 'failures' => $failures,
             ]);
         }
 
         $pipelineService->recordPaperProcessed($this->exchange, $this->symbol, $at, $totalProcessed, [
             'failures_count' => count($failures),
+            'eligible_accounts' => $eligibleAccounts,
+            'processed_accounts' => $processedAccounts,
         ]);
     }
 }

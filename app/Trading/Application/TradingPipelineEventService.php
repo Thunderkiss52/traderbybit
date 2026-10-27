@@ -174,6 +174,30 @@ final class TradingPipelineEventService
             ...($payload ?? []),
         ];
 
+        $failuresCount = (int) ($payload['failures_count'] ?? 0);
+        $eligibleAccounts = (int) ($payload['eligible_accounts'] ?? 0);
+        $processedAccounts = (int) ($payload['processed_accounts'] ?? 0);
+
+        $status = TradingPipelineEventRecord::STATUS_COMPLETED;
+        if ($failuresCount > 0 && $eligibleAccounts > 0 && $processedAccounts === 0) {
+            $status = TradingPipelineEventRecord::STATUS_FAILED;
+        } elseif ($failuresCount > 0 || ($eligibleAccounts > 0 && $processedAccounts < $eligibleAccounts)) {
+            $status = TradingPipelineEventRecord::STATUS_PARTIAL;
+        }
+
+        $existing = TradingPipelineEventRecord::query()->where('event_key', $eventKey)->first();
+        if ($existing !== null) {
+            $existing->update([
+                'status' => $status,
+                'payload' => $data,
+                'attempts' => $existing->attempts + 1,
+                'completed_at' => $now,
+                'updated_at' => $now,
+            ]);
+
+            return $existing->fresh();
+        }
+
         DB::table('trading_pipeline_events')->insertOrIgnore([
             'event_key' => $eventKey,
             'exchange' => $exchange,
@@ -181,7 +205,7 @@ final class TradingPipelineEventService
             'timeframe' => '5',
             'stage' => TradingPipelineEventRecord::STAGE_PAPER_PROCESSED,
             'candle_close_at' => $candleCloseAt,
-            'status' => TradingPipelineEventRecord::STATUS_COMPLETED,
+            'status' => $status,
             'payload' => json_encode($data, JSON_THROW_ON_ERROR),
             'attempts' => 1,
             'completed_at' => $now,

@@ -38,6 +38,8 @@ final class TradingPipelineEventRecord extends Model
 
     public const STATUS_COMPLETED = 'COMPLETED';
 
+    public const STATUS_PARTIAL = 'PARTIAL';
+
     public const STATUS_STALE = 'STALE';
 
     public const STATUS_FAILED = 'FAILED';

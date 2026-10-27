@@ -149,8 +149,8 @@ final class ProcessClosedCandleEventJob implements ShouldQueue
         }
 
         $eventRecord->update([
-            'status' => TradingPipelineEventRecord::STATUS_COMPLETED,
-            'completed_at' => CarbonImmutable::now('UTC'),
+            'status' => TradingPipelineEventRecord::STATUS_DISPATCHED,
+            'completed_at' => null,
         ]);
     }
 
