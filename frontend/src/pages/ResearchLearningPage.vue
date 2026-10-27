@@ -20,6 +20,7 @@ const auditTotal = ref(0);
 
 const selectedStrategy = ref('trend_pullback');
 const generating = ref(false);
+const validatingId = ref<string | null>(null);
 
 async function loadOverview() {
   loading.value = true;
@@ -90,6 +91,18 @@ async function triggerGenerateCandidate() {
     error.value = err.message || 'Candidate generation failed';
   } finally {
     generating.value = false;
+  }
+}
+
+async function validateCandidate(id: string) {
+  validatingId.value = id;
+  try {
+    await api.post(`/research/learning/candidates/${id}/validate`);
+    await loadCandidates();
+  } catch (err: any) {
+    error.value = err.response?.data?.message || err.message || 'Validation scheduling failed';
+  } finally {
+    validatingId.value = null;
   }
 }
 
@@ -336,8 +349,9 @@ onMounted(() => {
           :columns="[
             { name: 'name', label: 'Candidate Version', field: 'name', align: 'left' },
             { name: 'parent', label: 'Parent Strategy', field: 'parent_strategy_id', align: 'left' },
-            { name: 'status', label: 'Promotion Status', field: 'status', align: 'center' },
-            { name: 'gates', label: 'Validation Gates', field: (r: any) => r.validation_gates?.all_gates_passed, align: 'center' },
+            { name: 'status', label: 'Status', field: 'status', align: 'center' },
+            { name: 'lifecycle', label: 'Validation Lifecycle', field: (r: any) => r.validation_gates?.status || (r.search_metadata?.evaluation_status ? `EVAL_${r.search_metadata.evaluation_status}` : 'UNVALIDATED'), align: 'center' },
+            { name: 'metrics_reasons', label: 'Validation Evidence & Rejection Reasons', field: 'metrics', align: 'left' },
             { name: 'diff', label: 'Parameter Diff', field: 'parameter_diff', align: 'left' },
             { name: 'actions', label: 'Actions', field: 'id', align: 'right' },
           ]"
@@ -364,21 +378,39 @@ onMounted(() => {
             </q-td>
           </template>
 
-          <template #body-cell-gates="props">
+          <template #body-cell-lifecycle="props">
             <q-td :props="props">
-              <q-icon
-                v-if="props.value === true"
-                name="check_circle"
-                color="positive"
-                size="20px"
+              <q-badge
+                :color="
+                  props.value === 'PAPER_ELIGIBLE' || props.value === 'PASSED'
+                    ? 'positive'
+                    : props.value === 'VALIDATION_IN_PROGRESS' || props.value === 'EVAL_QUEUED' || props.value === 'EVAL_RUNNING'
+                    ? 'info'
+                    : props.value === 'MISSING_EVIDENCE'
+                    ? 'warning'
+                    : props.value === 'FAILED' || props.value === 'REJECTED'
+                    ? 'negative'
+                    : 'grey-7'
+                "
+                :label="props.value"
               />
-              <q-icon
-                v-else-if="props.value === false"
-                name="cancel"
-                color="negative"
-                size="20px"
-              />
-              <span v-else class="text-grey">—</span>
+            </q-td>
+          </template>
+
+          <template #body-cell-metrics_reasons="props">
+            <q-td :props="props">
+              <div v-if="props.row.validation_gates?.failure_reason" class="text-negative text-caption text-weight-medium">
+                <q-icon name="warning" size="14px" class="q-mr-xs" />
+                {{ props.row.validation_gates.failure_reason }}
+              </div>
+              <div v-if="props.row.metrics" class="text-caption text-grey-4 q-mt-xs">
+                <span v-if="props.row.metrics.oos_samples !== undefined">OOS: {{ props.row.metrics.oos_samples }} · </span>
+                <span v-if="props.row.metrics.expectancy_r !== undefined">Exp(R): {{ props.row.metrics.expectancy_r }} · </span>
+                <span v-if="props.row.metrics.max_drawdown_percent !== undefined">MaxDD: {{ props.row.metrics.max_drawdown_percent }}%</span>
+              </div>
+              <div v-else-if="!props.row.validation_gates?.failure_reason" class="text-caption text-grey">
+                {{ props.row.validation_gates?.detail || 'No validation run attached' }}
+              </div>
             </q-td>
           </template>
 
@@ -397,9 +429,18 @@ onMounted(() => {
               <q-btn
                 v-if="props.row.status === 'RESEARCH_ONLY'"
                 size="sm"
-                flat
+                unelevated
                 color="primary"
-                label="Evaluate Gates"
+                :loading="validatingId === props.row.id || props.row.search_metadata?.evaluation_status === 'QUEUED' || props.row.search_metadata?.evaluation_status === 'RUNNING'"
+                label="Validate"
+                @click="validateCandidate(props.row.id)"
+              />
+              <q-btn
+                v-if="props.row.status === 'RESEARCH_ONLY' && (props.row.search_metadata?.backtest_run_id || props.row.search_metadata?.validation_run_id)"
+                size="sm"
+                flat
+                color="secondary"
+                label="Re-evaluate"
                 @click="evaluateCandidate(props.row.id)"
               />
               <q-btn

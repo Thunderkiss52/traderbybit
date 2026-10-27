@@ -14,6 +14,8 @@ use App\Research\Infrastructure\Persistence\AutonomyApprovalEventRecord;
 use App\Research\Infrastructure\Persistence\LearningCandidateStrategyRecord;
 use App\Research\Infrastructure\Persistence\LearningFeatureSnapshotRecord;
 use App\Research\Infrastructure\Persistence\LearningModelArtifactRecord;
+use App\Research\Jobs\EvaluateStrategyCandidateJob;
+use Carbon\CarbonImmutable;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
@@ -143,6 +145,83 @@ final class AutonomousLearningController extends Controller
             $seed = $request->has('seed') ? $request->integer('seed') : null;
 
             return $this->ok($evolution->generateCandidate($parentStrategyId, $seed));
+        } catch (Throwable $e) {
+            Log::error('Research API operation failed.', ['operation' => __METHOD__, 'exception_type' => $e::class]);
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Request failed. Please try again.',
+            ], Response::HTTP_INTERNAL_SERVER_ERROR);
+        }
+    }
+
+    public function validateCandidate(string $id, Request $request, AutonomyPermissionService $autonomy): ResearchResource|JsonResponse
+    {
+        try {
+            $candidate = LearningCandidateStrategyRecord::query()->findOrFail($id);
+
+            if ($candidate->status !== 'RESEARCH_ONLY') {
+                return response()->json([
+                    'success' => false,
+                    'message' => "Candidate cannot be scheduled for validation in current status: {$candidate->status}.",
+                ], Response::HTTP_UNPROCESSABLE_ENTITY);
+            }
+
+            $settings = $autonomy->getSettings(persist: false);
+            if ((bool) ($settings['kill_switch_active'] ?? false)) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Autonomy kill-switch is active. Validation scheduling is paused.',
+                ], Response::HTTP_UNPROCESSABLE_ENTITY);
+            }
+
+            $metadata = (array) ($candidate->search_metadata ?? []);
+            $evalStatus = $metadata['evaluation_status'] ?? null;
+
+            // Idempotency: if validation job is already queued or running, return current state
+            if (in_array($evalStatus, ['QUEUED', 'RUNNING'], true)) {
+                return $this->ok($candidate);
+            }
+
+            $maxAttempts = max(1, (int) config('research.evolution.max_evaluation_attempts', 3));
+            $attempts = (int) ($metadata['evaluation_attempts'] ?? 0);
+            if ($attempts >= $maxAttempts) {
+                return response()->json([
+                    'success' => false,
+                    'message' => "Candidate exceeded maximum validation attempts ({$maxAttempts}).",
+                ], Response::HTTP_UNPROCESSABLE_ENTITY);
+            }
+
+            $metadata['evaluation_status'] = 'QUEUED';
+            $metadata['validation_status'] = 'QUEUED';
+            $metadata['evaluation_scheduled_at'] = CarbonImmutable::now('UTC')->toIso8601String();
+
+            $candidate->update([
+                'search_metadata' => $metadata,
+                'validation_gates' => [
+                    'all_gates_passed' => false,
+                    'status' => 'VALIDATION_IN_PROGRESS',
+                    'failure_reason' => 'validation_in_progress',
+                    'detail' => 'Validation job scheduled and queued on research queue.',
+                    'scheduled_at' => CarbonImmutable::now('UTC')->toIso8601String(),
+                ],
+            ]);
+
+            $actor = $request->string('actor', 'USER_OPERATOR')->toString();
+            $autonomy->recordEvent(
+                actor: $actor,
+                action: 'CANDIDATE_VALIDATION_SCHEDULED',
+                targetType: 'CANDIDATE_STRATEGY',
+                targetId: $candidate->id,
+                previousState: $candidate->status,
+                newState: $candidate->status,
+                reason: 'Validation backtest job scheduled for strategy candidate.',
+                evidence: ['candidate_id' => $candidate->id, 'attempt' => $attempts + 1]
+            );
+
+            EvaluateStrategyCandidateJob::dispatch($candidate->id);
+
+            return $this->ok($candidate->fresh());
         } catch (Throwable $e) {
             Log::error('Research API operation failed.', ['operation' => __METHOD__, 'exception_type' => $e::class]);
 

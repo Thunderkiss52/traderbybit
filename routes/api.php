@@ -43,6 +43,7 @@ Route::prefix('v1')->middleware('throttle:api')->group(function () {
     Route::post('research/learning/kill-switch', [AutonomousLearningController::class, 'killSwitch']);
     Route::get('research/learning/candidates', [AutonomousLearningController::class, 'candidates']);
     Route::post('research/learning/candidates/generate', [AutonomousLearningController::class, 'generateCandidate']);
+    Route::post('research/learning/candidates/{id}/validate', [AutonomousLearningController::class, 'validateCandidate']);
     Route::post('research/learning/candidates/{id}/evaluate', [AutonomousLearningController::class, 'evaluateCandidate']);
     Route::post('research/learning/candidates/{id}/promote', [AutonomousLearningController::class, 'promoteCandidate']);
     Route::post('research/learning/candidates/{id}/rollback', [AutonomousLearningController::class, 'rollbackCandidate']);
