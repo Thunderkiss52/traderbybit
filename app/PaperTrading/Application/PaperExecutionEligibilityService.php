@@ -11,7 +11,6 @@ use App\PaperTrading\Infrastructure\Persistence\PaperSignalStateRecord;
 use App\Research\Infrastructure\Persistence\LearningCandidateStrategyRecord;
 use App\Strategy\Application\StrategyRegistry;
 use App\Strategy\Infrastructure\Persistence\SignalRecord;
-use Brick\Math\BigDecimal;
 use DateTimeImmutable;
 use DomainException;
 use Throwable;
