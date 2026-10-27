@@ -68,5 +68,10 @@ final class StrategyHealthServiceTest extends TestCase
         self::assertNotNull($baseline);
         self::assertSame(0, $baseline['funnel']['evaluations']);
         self::assertSame('INSUFFICIENT_DATA', $baseline['status']);
+        self::assertSame('INSUFFICIENT_DATA', $overview['system_status'], 'F13: System status must report INSUFFICIENT_DATA when all strategies lack observations');
+
+        $sevenDay = $service->overview('7d');
+        $baseline7d = collect($sevenDay['strategies'])->firstWhere('strategy_id', 'baseline');
+        self::assertSame(672, $baseline7d['funnel']['expected_slots'], 'F13: Expected slots must scale with period duration');
     }
 }

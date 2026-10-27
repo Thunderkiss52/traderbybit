@@ -46,7 +46,8 @@ final class PortfolioCorrelationService
             $assetKey = "{$sym}:{$side}";
             $byAssetDirection[$assetKey] = ($byAssetDirection[$assetKey] ?? 0) + 1;
 
-            if ($pos->status === 'CLOSED') {
+            $isClosed = $pos->status === 'CLOSED' || str_starts_with((string) $pos->status, 'CLOSED_');
+            if ($isClosed) {
                 $strategyPnls[$strat][] = (float) $pos->net_pnl;
             }
         }
@@ -84,7 +85,7 @@ final class PortfolioCorrelationService
 
         // 3. Concurrent open position overlap
         $openPositions = VirtualPositionRecord::query()
-            ->where('status', 'OPEN')
+            ->whereIn('status', ['OPEN', 'PARTIALLY_CLOSED'])
             ->get();
 
         $concurrentOverlap = [];

@@ -96,7 +96,8 @@ final class StageTwoApiTest extends TestCase
         $response = $this->getJson('/api/v1/research/replay/'.$obs->id.'?mode=AS_OF_DECISION');
         $response->assertOk()
             ->assertJsonPath('data.mode', 'AS_OF_DECISION')
-            ->assertJsonPath('data.is_reproducible', true)
+            ->assertJsonPath('data.is_reproducible', false)
+            ->assertJsonPath('data.status', 'NOT_RECOMPUTED_STORED_ONLY')
             ->assertJsonPath('data.recomputed_decision.side', 'BUY');
     }
 

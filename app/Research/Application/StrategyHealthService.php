@@ -36,6 +36,8 @@ final class StrategyHealthService
         $results = [];
         $hasCritical = false;
         $hasWarning = false;
+        $hasInsufficient = false;
+        $hasHealthy = false;
 
         foreach ($this->strategies->metadata() as $meta) {
             $health = $this->evaluateStrategy($meta, $since, $period, persist: $persist);
@@ -43,11 +45,21 @@ final class StrategyHealthService
                 $hasCritical = true;
             } elseif ($health['status'] === 'WARNING') {
                 $hasWarning = true;
+            } elseif ($health['status'] === 'INSUFFICIENT_DATA') {
+                $hasInsufficient = true;
+            } elseif ($health['status'] === 'HEALTHY') {
+                $hasHealthy = true;
             }
             $results[] = $health;
         }
 
-        $systemStatus = $hasCritical ? 'CRITICAL' : ($hasWarning ? 'WARNING' : 'HEALTHY');
+        $systemStatus = match (true) {
+            $hasCritical => 'CRITICAL',
+            $hasWarning => 'WARNING',
+            $hasHealthy => 'HEALTHY',
+            $hasInsufficient => 'INSUFFICIENT_DATA',
+            default => 'INSUFFICIENT_DATA',
+        };
 
         return [
             'strategies' => $results,
@@ -135,8 +147,17 @@ final class StrategyHealthService
         }
         arsort($skipReasons);
 
+        $days = match ($period) {
+            '7d' => 7,
+            '14d' => 14,
+            '30d' => 30,
+            default => 1,
+        };
+        $slotsPerDay = 96; // 96 15m intervals per 24h
+        $expectedSlots = max($evaluations, $slotsPerDay * $days);
+
         $funnel = [
-            'expected_slots' => max($evaluations, 96), // 96 15m intervals per 24h
+            'expected_slots' => $expectedSlots,
             'evaluations' => $evaluations,
             'raw_candidates' => $rawCandidates,
             'buy' => $buy,

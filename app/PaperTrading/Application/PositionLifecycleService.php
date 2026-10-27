@@ -356,8 +356,35 @@ final readonly class PositionLifecycleService
             ->orderBy('funding_at')
             ->get();
 
+        $expectedBoundaries = $this->expectedFundingBoundaries(
+            $position->opened_at->toDateTimeImmutable(),
+            $position->closed_at->toDateTimeImmutable()
+        );
+
+        if (! empty($expectedBoundaries)) {
+            // Verify there are no data gaps: every expected boundary must have a matching market funding event
+            foreach ($expectedBoundaries as $expectedBoundary) {
+                $hasMatchingEvent = $applicableEvents->contains(function (MarketFundingEventRecord $event) use ($expectedBoundary): bool {
+                    $eventTs = $event->funding_at->toDateTimeImmutable()->getTimestamp();
+                    $expectedTs = $expectedBoundary->getTimestamp();
+
+                    return abs($eventTs - $expectedTs) <= 1800; // within 30 minutes of scheduled boundary
+                });
+
+                if (! $hasMatchingEvent) {
+                    // Gap detected: an expected funding boundary has no market funding event ingested!
+                    // A latest market event alone does NOT establish completeness if historical gaps exist.
+                    if ($position->funding_complete) {
+                        $position->update(['funding_complete' => false]);
+                    }
+
+                    return false;
+                }
+            }
+        }
+
         if ($applicableEvents->isEmpty()) {
-            // Proven: Market feed has advanced past closed_at, and zero funding events fell within position lifetime.
+            // Proven: Market feed has advanced past closed_at, zero expected boundaries, and zero funding events fell within position lifetime.
             if (! $position->funding_complete) {
                 $position->update(['funding_complete' => true]);
             }

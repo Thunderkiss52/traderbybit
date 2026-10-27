@@ -142,6 +142,25 @@ final class PaperReconcileFundingCommand extends Command
         array $symbols,
         ?string $positionId
     ): int {
+        if ($positionId !== null) {
+            $pos = VirtualPositionRecord::query()->where('id', $positionId)->first();
+            if ($pos === null) {
+                $this->error("Position not found: {$positionId}");
+
+                return self::FAILURE;
+            }
+
+            $beforeFundingCount = PositionFundingEventRecord::query()->where('position_id', $pos->id)->count();
+            $through = $pos->closed_at?->toDateTimeImmutable() ?? now('UTC')->toDateTimeImmutable();
+            $lifecycle->applyFunding($pos, $through);
+            $afterFundingCount = PositionFundingEventRecord::query()->where('position_id', $pos->id)->count();
+            $applied = $afterFundingCount - $beforeFundingCount;
+
+            $this->info("Reconciliation complete for position {$positionId}. Applied {$applied} funding events.");
+
+            return self::SUCCESS;
+        }
+
         $this->info("Executing live funding reconciliation for exchange [{$exchange}]...");
 
         $totalApplied = 0;

@@ -365,16 +365,19 @@ final class CentralExecutionEligibilityTest extends TestCase
         $state = PaperSignalStateRecord::query()->where('paper_account_id', $account->id)->where('signal_id', $signal->id)->first();
         self::assertNotNull($state, 'F27: Blocked account signals must be ingested for audit visibility');
         self::assertSame('REJECTED', $state->status);
-        self::assertSame('account_not_active', $state->reason);
+        self::assertSame('entry_drawdown_limit_exceeded', $state->reason);
 
-        // F27 Invariant: Rejection event must be recorded in journal
+        // F27 Invariant: Pre-risk entry block must be recorded in journal without touching normal RiskEngine
         $journal = JournalEventRecord::query()
             ->where('paper_account_id', $account->id)
             ->where('signal_id', $signal->id)
-            ->where('event_type', 'RISK_REJECTED')
+            ->where('event_type', 'PRE_RISK_ENTRY_BLOCKED')
             ->first();
-        self::assertNotNull($journal, 'F27: Journal RISK_REJECTED event must be appended');
-        self::assertContains('account_not_active', $journal->payload['reasons'] ?? []);
+        self::assertNotNull($journal, 'F27: Journal PRE_RISK_ENTRY_BLOCKED event must be appended');
+        self::assertSame('entry_drawdown_limit_exceeded', $journal->payload['reason'] ?? null);
+
+        // F27 Invariant: Pre-risk denials must NEVER create RiskDecisionRecord rows
+        self::assertSame(0, RiskDecisionRecord::query()->where('signal_id', $signal->id)->count(), 'Pre-risk eligibility denials must not enter RiskEngine or create RiskDecisionRecord');
 
         // F27 Invariant: Zero positions created
         self::assertSame(0, VirtualPositionRecord::query()->where('paper_account_id', $account->id)->count());

@@ -218,13 +218,13 @@ Every individual finding from `VECTOR_V26_UI_AND_AUDIT_DATA_INTEGRITY_AUDIT.md` 
 | **F06** | Reconciliation Ignores Drawdown Mismatch [HIGH] | `app/Research/Application/LedgerReconciliationService.php` | `3165173` | `tests/Feature/Research/LedgerReconciliationServiceTest.php` | `FIXED_VERIFIED` |
 | **F07** | Audit ZIP Export Silent Column Dropping [HIGH] | `app/Audit/Application/AuditExportService.php` | `08a0d7c` | `tests/Feature/Audit/AuditExportTest.php` | `FIXED_VERIFIED` |
 | **F08** | Strategy Funnel Cohort & Status Discrepancy [MEDIUM] | `app/Audit/Application/AuditExportService.php` | `08a0d7c` | `tests/Feature/Audit/AuditExportTest.php` | `FIXED_VERIFIED` |
-| **F09** | Frontend Single-Account Display Default [HIGH] | `frontend/src/pages/TablePage.vue` | Prior baseline | `frontend/tests/unit.test.js` | `FIXED_VERIFIED` |
-| **F10** | Signal Annotation Query Reversal [HIGH] | `app/Trading/Application/TradingPipelineEventService.php` | `08a0d7c` | `tests/Feature/Trading/TradingPipelineStageATest.php` | `FIXED_VERIFIED` |
+| **F09** | Frontend Single-Account Display Default Blinds Multi-Account System [HIGH] | `app/Http/Controllers/Api/V1/ResearchController.php:82,718,900`, `frontend/src/pages/DashboardPage.vue`, `RiskPage.vue`, `StatisticsPage.vue` | Prior baseline | `tests/Feature/Api/CompleteApiEndpointAuditTest.php` | `PARTIALLY_ADDRESSED` (Backend `/statistics` and `/risk` support `?account=<id>`; `/dashboard` uses oldest account; UI multi-account selector dropdown pending) |
+| **F10** | Signal Annotation Query Reversal and Account Scope Defect [HIGH] | `app/Http/Controllers/Api/V1/ResearchController.php:587-613` | Current commit | `tests/Feature/Api/CompleteApiEndpointAuditTest.php` | `FIXED_VERIFIED` (Fixed `groupBy('signal_id')->map->first()` newest record win and added account/exchange scoping) |
 | **F11** | Statistics Page Lifecycle Population Mixing [MEDIUM] | `app/PaperTrading/Application/PerformanceStatisticsService.php` | `3165173` | `tests/Feature/PaperTrading/PerformanceStatisticsTest.php` | `FIXED_VERIFIED` |
 | **F12** | Daily Performance Marks Missing Opening as Complete [HIGH] | `app/PaperTrading/Application/DailyPerformanceService.php` | `3165173` | `tests/Feature/PaperTrading/DailyPerformanceTest.php` | `FIXED_VERIFIED` |
-| **F13** | Research Health Funnel False Healthy Parent Status [MEDIUM] | `app/Research/Application/ResearchHealthService.php` | Prior baseline | `tests/Feature/Research/ResearchHealthApiTest.php` | `FIXED_VERIFIED` |
+| **F13** | Research Health Funnel False Healthy Parent Status and Hardcoded Lookback [MEDIUM] | `app/Research/Application/StrategyHealthService.php:42-50,139` | Current commit | `tests/Unit/Research/StrategyHealthServiceTest.php` (`test_identifies_insufficient_data_status`) | `FIXED_VERIFIED` (Parent status reports `INSUFFICIENT_DATA` when children lack observations; `expected_slots` scales with requested period) |
 | **F14** | Research Report Freshness Shape Mismatches [MEDIUM] | `app/Http/Controllers/Api/V1/AutonomousLearningController.php` | Prior baseline | `tests/Feature/Research/AutonomousLearningApiTest.php` | `FIXED_VERIFIED` |
-| **F15** | Portfolio Correlation Invalid Status Check [HIGH] | `app/PaperTrading/Application/PositionLifecycleService.php` | Prior baseline | `tests/Feature/PaperTrading/PrimaryStrategyReadinessTest.php` | `FIXED_VERIFIED` |
+| **F15** | Portfolio Correlation Invalid Status Check and Trade-Order Pairing [HIGH] | `app/Research/Application/PortfolioCorrelationService.php:49-52,86-88` | Current commit | `tests/Unit/Research/PortfolioCorrelationServiceTest.php` (`test_f15_real_lifecycle_closed_and_partially_closed_positions_are_included`) | `FIXED_VERIFIED` (Supports real closed statuses `CLOSED_TP/SL/TIMEOUT` and includes `PARTIALLY_CLOSED` in concurrent overlap) |
 | **F16** | Strategy Degradation Cross-Exchange Pollution [HIGH] | `app/Research/Application/StrategyDegradationService.php` | Prior baseline | `tests/Feature/Research/P5DependenceConcentrationTest.php` | `FIXED_VERIFIED` |
 | **F17** | Learning Feature Store Missing Exchange Filter [MEDIUM] | `app/Research/Application/LearningFeatureStoreService.php` | Prior baseline | `tests/Feature/Research/AutonomousLearningPipelineTest.php` | `FIXED_VERIFIED` |
 | **F18** | Model Training Purging Fallback Leakage [MEDIUM] | `app/Research/Application/ModelTrainingService.php` | Prior baseline | `tests/Feature/Research/AutonomousLearningPipelineTest.php` | `FIXED_VERIFIED` |
@@ -234,9 +234,9 @@ Every individual finding from `VECTOR_V26_UI_AND_AUDIT_DATA_INTEGRITY_AUDIT.md` 
 | **F22** | Quote Integrity Silent Error Swallowing [MEDIUM] | `frontend/src/services/quoteIntegrityApi.ts` | Prior baseline | `frontend/tests/quote_integrity.test.js` | `FIXED_VERIFIED` |
 | **F23** | UI Pagination Truncations [LOW] | `frontend/src/pages/JournalPage.vue` | Prior baseline | `frontend/tests/unit.test.js` | `FIXED_VERIFIED` |
 | **F24** | Slippage Position Trace Scope [MEDIUM] | `app/Http/Controllers/Api/V1/ProfitabilityResearchController.php` | `3165173` | `tests/Feature/Research/SlippageAttributionApiTest.php` | `FIXED_VERIFIED` |
-| **F25** | Candidate Lab Immediate Evaluation Rejection [HIGH] | `app/Research/Application/PromotionPolicyService.php` | Prior baseline | `tests/Feature/Research/Gate6PromotionPolicyTest.php` | `FIXED_VERIFIED` |
+| **F25** | Candidate Lab Immediate Evaluation Rejection Due to Missing Backtest Linkage [HIGH] | `app/Research/Application/PromotionPolicyService.php:485-503`, `frontend/src/pages/ResearchLearningPage.vue:96-100` | Prior baseline | `tests/Feature/Research/Gate6PromotionPolicyTest.php` | `PARTIALLY_ADDRESSED` (Backend accepts `validation_run_id` and checks `search_metadata['backtest_run_id']`; if unlinked, Gate 6 rejects with `missing_validation_evidence` per policy; UI dialog for linking run ID is pending) |
 | **F26** | Autonomy Approval Audit Trail Loses Rejected Promotions [HIGH] | `app/Research/Application/PromotionPolicyService.php` | `f1a0719` | `tests/Feature/Research/Gate6PromotionPolicyTest.php` (`test_f26_promotion_rejection_records_audit_trail_event`) | `FIXED_VERIFIED` |
-| **F27** | Account-Level Entry Block Observability Void [HIGH] | `app/PaperTrading/Application/PaperProcessingService.php` | `f1a0719` | `tests/Feature/PaperTrading/CentralExecutionEligibilityTest.php` (`test_f27_blocked_drawdown_account_ingests_and_rejects_signals_with_audit_lineage`) | `FIXED_VERIFIED` |
+| **F27** | Account-Level Entry Block Observability Void [HIGH] | `app/PaperTrading/Application/PaperProcessingService.php` | Current commit | `tests/Feature/PaperTrading/CentralExecutionEligibilityTest.php` (`test_f27_blocked_drawdown_account_ingests_and_rejects_signals_with_audit_lineage`) | `FIXED_VERIFIED` |
 
 ### Key Architectural Fixes for F26 and F27:
 1. **F26 (Governance Audit Trail Retention):**
@@ -244,9 +244,9 @@ Every individual finding from `VECTOR_V26_UI_AND_AUDIT_DATA_INTEGRITY_AUDIT.md` 
    - An outer `try ... catch (ValidationException $e)` captures the rejection and persists a permanent `CANDIDATE_PROMOTION_REJECTED` audit event in `autonomy_approval_events` outside the rolled-back transaction.
    - Tested in `Gate6PromotionPolicyTest::test_f26_promotion_rejection_records_audit_trail_event`.
 2. **F27 (Pre-Risk Observability for Drawdown-Blocked Accounts):**
-   - In `PaperProcessingService::processAccount()`, signals for active paper strategies are ingested into `paper_signal_states` even when entry is blocked by drawdown or cooldown.
-   - When `$entryEligible` is false, pending signals are immediately transitioned to `status = REJECTED` with reason `account_not_active`, and a `RISK_REJECTED` event is appended to `trading_journal_events`.
-   - Signals remain observable on the dashboard and audit exports without creating fake `risk_decisions` or entering simulated positions.
+   - In `PaperProcessingService::ingestSignals()`, signals for active paper strategies are ingested into `paper_signal_states` even when entry is blocked by drawdown (>= 5%) or status.
+   - Pre-risk eligibility denials strictly bypass the normal RiskEngine execution path: zero `RiskDecisionRecord` rows are created and `$this->assessment()` is not invoked.
+   - A `PaperSignalStateRecord` is inserted with `status = REJECTED` and reason `entry_drawdown_limit_exceeded` (or `account_not_active`), a `PRE_RISK_ENTRY_BLOCKED` event is appended to `trading_journal_events`, and observation diagnostics record `paper_execution = PRE_RISK_BLOCKED`.
    - Tested in `CentralExecutionEligibilityTest::test_f27_blocked_drawdown_account_ingests_and_rejects_signals_with_audit_lineage`.
 
 ---
@@ -309,40 +309,52 @@ COMMIT;
 
 ---
 
-## 8. Historical Funding Correction Proposal (Operator Review Only)
+## 8. Historical Funding Evidence and Reconciliation Tooling
 
-### Background
-Production evidence P09/P10 identified five Bybit closed positions that closed shortly after a funding boundary (e.g. at 00:10 UTC), while Bybit market funding events for 00:00:00 UTC arrived shortly afterwards (e.g. at 00:11:08 UTC).
+### Original Production Diagnostic Evidence (October 27, 2026)
+In the October 27 production diagnostic (`docs/verification/VECTOR_V26_INDEPENDENT_REAUDIT_POST_F01_F25_20261027.md`, P09/P10), the following factual observations were established from read-only PostgreSQL queries:
 
-| Position ID | Symbol | Opened At (UTC) | Closed At (UTC) | Close Status | Held Qty at Funding | Applicable MFE ID | Funding Rate | Mark Price | Estimated Net Cashflow |
-|---|---|---|---|---|---|---|---|---|---|
-| `251f00db-6249-5c79-a936-1ff77f04efbf` | BTCUSDT | 2026-10-26 23:30 | 2026-10-27 00:10 | CLOSED_SL | 0.0050 | 7925 | +0.000100 | 67,850.00 | -0.0339 USDT |
-| `9c73a113-3c5c-5992-b540-dce311d3ff71` | BTCUSDT | 2026-10-26 23:45 | 2026-10-27 00:10 | CLOSED_SL | 0.0050 | 7925 | +0.000100 | 67,850.00 | -0.0339 USDT |
-| `bb3268b0-52b8-5e87-802d-d312aa2bf692` | BTCUSDT | 2026-10-24 15:45 | 2026-10-24 16:15 | CLOSED_SL | 0.0040 | 511 | +0.000080 | 67,200.00 | -0.0215 USDT |
-| `013fcf20-2f04-5e41-a645-78775c5421b2` | ETHUSDT | 2026-10-24 15:45 | 2026-10-24 16:10 | CLOSED_SL | 0.0800 | 479 | +0.000050 | 2,520.00 | -0.0101 USDT |
-| `71a04055-03c8-58b6-af65-2f8fa4cba869` | BTCUSDT | 2026-10-23 23:45 | 2026-10-24 00:05 | CLOSED_SL | 0.0050 | 351 | +0.000100 | 66,900.00 | -0.0335 USDT |
+- **P08:** All 437 existing virtual positions (60 Binance, 377 Bybit) had `funding_complete = false`, establishing a code-level completeness defect.
+- **P09:** Five Bybit `CLOSED` positions lacked links to applicable `market_funding_events`, and all five funding records were ingested **after** position closure.
+- **P10:** Concrete reproducer: market funding at `2026-10-27 00:00:00 UTC` arrived at `00:11:08 UTC`, while BTCUSDT positions had closed at `00:10:00 UTC` (`CLOSED_SL`).
+- **Sample Position References (Operator Follow-up Only):**
+  - `251f00db-6249-5c79-a936-1ff77f04efbf` (BTCUSDT, market funding event ID 7925, closes 00:10 UTC)
+  - `9c73a113-3c5c-5992-b540-dce311d3ff71` (BTCUSDT, market funding event ID 7925)
+  - `bb3268b0-52b8-5e87-802d-d312aa2bf692` (BTCUSDT, market funding event ID 511)
+  - `013fcf20-2f04-5e41-a645-78775c5421b2` (ETHUSDT, market funding event ID 479)
+  - `71a04055-03c8-58b6-af65-2f8fa4cba869` (BTCUSDT, market funding event ID 351)
 
-- **Total Historical Impact:** ~ -0.1329 USDT across 5 positions.
-- **Operator Recommendation & Safe Maintenance Tooling:**
-  - Automated retroactive mutation of historical balances was **intentionally NOT executed**, adhering to Section 8 of `AGENTS.md`.
-  - With the newly deployed code (`reconcilePendingFunding`), future late-arriving funding records settle automatically and idempotently.
-  - Dedicated CLI command [`PaperReconcileFundingCommand`](file:///home/thunder/work/traderbybit/app/PaperTrading/Console/PaperReconcileFundingCommand.php) is implemented with built-in safety gates:
-    1. **Strictly Read-Only Preview:**
-       ```bash
-       php artisan paper:reconcile-funding --exchange=bybit --symbol=BTCUSDT --symbol=ETHUSDT --dry-run
-       ```
-       Renders an ASCII table of matching candidate positions, applicable MFE records, held quantities, and estimated cashflow adjustments without touching database records.
-    2. **Gated Execution (Requires `--force`):**
-       ```bash
-       php artisan paper:reconcile-funding --exchange=bybit --symbol=BTCUSDT --symbol=ETHUSDT --force
-       ```
-       Executes idempotent settlements, creates `PositionFundingEventRecord` entries, updates position net PnL, adjusts account equity, and appends `FUNDING_APPLIED` to the journal.
-       Running without `--dry-run` and without `--force` halts with a safety warning.
-    3. **Targeted Single Position Execution:**
-       ```bash
-       php artisan paper:reconcile-funding --position-id=<uuid> --dry-run
-       php artisan paper:reconcile-funding --position-id=<uuid> --force
-       ```
+> [!CRITICAL]
+> **Retraction of Synthetic Estimates:**
+> Previous draft documentation included synthetic test-model numbers (e.g. opened_at `23:30`, held quantity `0.0050`, funding rate `+0.000100`, mark price `67,850.00`, and an estimated cumulative impact of `-0.132884 USDT`).
+> **These figures were local simulation estimates, NOT verified production data.**
+> In accordance with `AGENTS.md` and the October 27 diagnostic findings, synthetic assumptions must never be cited as production evidence or used to perform authoritative financial adjustments.
+> Authoritative production values (exact quantities held at the funding instant, applicable rates, mark prices, and cashflow amounts) must be extracted exclusively via an operator-directed read-only dry run on production.
+
+### Safe Operator Tooling: `paper:reconcile-funding`
+A dedicated Artisan command [`PaperReconcileFundingCommand`](file:///home/thunder/work/traderbybit/app/PaperTrading/Console/PaperReconcileFundingCommand.php) is implemented and verified for safe inspection and idempotent maintenance:
+
+1. **Strictly Read-Only Preview (Zero Mutations):**
+   ```bash
+   php artisan paper:reconcile-funding --exchange=bybit --symbol=BTCUSDT --symbol=ETHUSDT --dry-run
+   ```
+   Renders an ASCII table of actual production candidate positions, applicable `market_funding_events`, reconstructed held quantities at funding timestamps, rates, mark prices, and estimated cashflows. **Guaranteed zero database writes or state changes.**
+
+2. **Gated Production Reconciliation (Requires Operator `--force`):**
+   ```bash
+   php artisan paper:reconcile-funding --exchange=bybit --symbol=BTCUSDT --symbol=ETHUSDT --force
+   ```
+   - Executes atomic settlements inside PostgreSQL transactions (`DB::transaction`).
+   - Uses row-level locks on `virtual_positions` and `paper_accounts`.
+   - Prevents duplicates using deterministic UUIDv5 primary keys (`traderbybit:funding:<position_id>:<mfe_id>`) and unique constraints.
+   - Adjusts position net PnL, account realized PnL, equity, and appends `FUNDING_APPLIED` to the journal.
+   - Running without `--dry-run` and without `--force` halts safely with an error.
+
+3. **Targeted Single Position Execution:**
+   ```bash
+   php artisan paper:reconcile-funding --position-id=251f00db-6249-5c79-a936-1ff77f04efbf --dry-run
+   php artisan paper:reconcile-funding --position-id=251f00db-6249-5c79-a936-1ff77f04efbf --force
+   ```
 
 ---
 

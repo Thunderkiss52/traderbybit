@@ -102,7 +102,7 @@ final readonly class PaperProcessingService
                         }
                         $reason = $eligibility->accountEntryRejectionReason($account) ?? 'forward_configuration_retired';
                         $locked->update(['status' => SignalLifecycle::Rejected->value, 'reason' => $reason, 'processed_at' => $at]);
-                        $this->journal->append($account->id, $locked->signal_id, null, 'ENTRY_RISK_REJECTED', $at,
+                        $this->journal->append($account->id, $locked->signal_id, null, 'PRE_RISK_ENTRY_BLOCKED', $at,
                             ['reason' => $reason], "pending-cancel:{$account->id}:{$locked->signal_id}");
                     });
 
@@ -267,6 +267,45 @@ final readonly class PaperProcessingService
 
                 continue;
             }
+
+            $eligibility = $this->eligibility ?? app(PaperExecutionEligibilityService::class);
+            if (! $eligibility->isAccountEntryEligible($account)) {
+                $rejectionReason = $eligibility->accountEntryRejectionReason($account) ?? 'entry_not_eligible';
+                DB::transaction(function () use ($account, $signal, $currentTime, $forwardOnly, $rejectionReason): void {
+                    $decidedAt = $forwardOnly ? $currentTime : $signal->decision_time->toDateTimeImmutable();
+                    PaperSignalStateRecord::query()->firstOrCreate([
+                        'paper_account_id' => $account->id,
+                        'exchange_id' => $account->exchange_id,
+                        'signal_id' => $signal->id,
+                    ], [
+                        'id' => Uuid::uuid5(Uuid::NAMESPACE_URL, "traderbybit:signal-state:{$account->id}:{$signal->id}")->toString(),
+                        'status' => SignalLifecycle::Rejected->value,
+                        'reason' => $rejectionReason,
+                        'processed_at' => $decidedAt,
+                    ]);
+                    $this->journal->append(
+                        $account->id,
+                        $signal->id,
+                        null,
+                        'PRE_RISK_ENTRY_BLOCKED',
+                        $decidedAt,
+                        [
+                            'reason' => $rejectionReason,
+                            'account_status' => $account->status,
+                            'drawdown_percent' => $account->current_drawdown_percent,
+                        ],
+                        "pre-risk-blocked:{$account->id}:{$signal->id}"
+                    );
+                    $this->updateObservationDiagnostics($account, $signal, [
+                        'risk_approved' => false,
+                        'risk_rejection_reasons' => [$rejectionReason],
+                        'paper_execution' => 'PRE_RISK_BLOCKED',
+                    ]);
+                });
+
+                continue;
+            }
+
             DB::transaction(function () use ($account, $signal, $currentTime, $forwardOnly): void {
                 $locked = PaperAccountRecord::query()->lockForUpdate()->findOrFail($account->id);
                 $assessment = $this->assessment($locked, $signal);
@@ -453,8 +492,8 @@ final readonly class PaperProcessingService
                         $rejectionReason = $eligibility->accountEntryRejectionReason($freshAccount) ?? 'entry_not_eligible';
                         SignalLifecycle::from($state->status)->transitionTo(SignalLifecycle::Rejected);
                         $state->update(['status' => SignalLifecycle::Rejected->value, 'reason' => $rejectionReason, 'processed_at' => $bar->closeTime]);
-                        $this->updateObservationDiagnostics($account, $signal, ['risk_approved' => false, 'risk_rejection_reasons' => [$rejectionReason], 'paper_execution' => 'ENTRY_RISK_REJECTED']);
-                        $this->journal->append($account->id, $signal->id, null, 'ENTRY_RISK_REJECTED', $bar->closeTime, ['reason' => $rejectionReason], "entry-risk:{$account->id}:{$signal->id}:{$bar->closeTime->format('U.u')}");
+                        $this->updateObservationDiagnostics($account, $signal, ['risk_approved' => false, 'risk_rejection_reasons' => [$rejectionReason], 'paper_execution' => 'PRE_RISK_BLOCKED']);
+                        $this->journal->append($account->id, $signal->id, null, 'PRE_RISK_ENTRY_BLOCKED', $bar->closeTime, ['reason' => $rejectionReason], "entry-pre-risk:{$account->id}:{$signal->id}:{$bar->closeTime->format('U.u')}");
                         break;
                     }
                     $entryAssessment = $this->assessment($freshAccount, $signal);

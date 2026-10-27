@@ -584,23 +584,38 @@ final class ResearchController extends Controller
         $signalIds = collect($paginator->items())->pluck('id')->filter()->values();
 
         if ($signalIds->isNotEmpty()) {
+            $accountFilter = $r->filled('account') ? $r->string('account')->toString() : null;
+            $exchangeFilter = $this->resolveExchange($r);
+
             $riskDecisions = RiskDecisionRecord::query()
                 ->whereIn('signal_id', $signalIds)
+                ->when($accountFilter, fn ($query) => $query->where('paper_account_id', $accountFilter))
+                ->when(! $accountFilter && $exchangeFilter, fn ($query) => $query->where('exchange_id', $exchangeFilter))
                 ->latest('decided_at')
+                ->latest('id')
                 ->get(['id', 'signal_id', 'allowed'])
-                ->keyBy('signal_id');
+                ->groupBy('signal_id')
+                ->map(fn ($group) => $group->first());
 
             $paperStates = PaperSignalStateRecord::query()
                 ->whereIn('signal_id', $signalIds)
+                ->when($accountFilter, fn ($query) => $query->where('paper_account_id', $accountFilter))
+                ->when(! $accountFilter && $exchangeFilter, fn ($query) => $query->where('exchange_id', $exchangeFilter))
                 ->latest('updated_at')
+                ->latest('id')
                 ->get(['id', 'signal_id', 'status'])
-                ->keyBy('signal_id');
+                ->groupBy('signal_id')
+                ->map(fn ($group) => $group->first());
 
             $positions = VirtualPositionRecord::query()
                 ->whereIn('signal_id', $signalIds)
+                ->when($accountFilter, fn ($query) => $query->where('paper_account_id', $accountFilter))
+                ->when(! $accountFilter && $exchangeFilter, fn ($query) => $query->where('exchange_id', $exchangeFilter))
                 ->latest('opened_at')
+                ->latest('id')
                 ->get(['id', 'signal_id'])
-                ->keyBy('signal_id');
+                ->groupBy('signal_id')
+                ->map(fn ($group) => $group->first());
 
             $paginator->through(function (SignalRecord $sig) use ($riskDecisions, $paperStates, $positions): array {
                 $arr = $sig->toArray();

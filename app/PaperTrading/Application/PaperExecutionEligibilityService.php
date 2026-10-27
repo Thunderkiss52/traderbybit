@@ -11,6 +11,7 @@ use App\PaperTrading\Infrastructure\Persistence\PaperSignalStateRecord;
 use App\Research\Infrastructure\Persistence\LearningCandidateStrategyRecord;
 use App\Strategy\Application\StrategyRegistry;
 use App\Strategy\Infrastructure\Persistence\SignalRecord;
+use Brick\Math\BigDecimal;
 use DateTimeImmutable;
 use DomainException;
 use Throwable;
@@ -37,7 +38,15 @@ final readonly class PaperExecutionEligibilityService
     public function accountEntryRejectionReason(PaperAccountRecord $account): ?string
     {
         if ($account->status !== 'ACTIVE') {
+            if ($account->current_drawdown_percent !== null && BigDecimal::of((string) $account->current_drawdown_percent)->isGreaterThanOrEqualTo('5.0')) {
+                return 'entry_drawdown_limit_exceeded';
+            }
+
             return 'account_not_active';
+        }
+
+        if ($account->current_drawdown_percent !== null && BigDecimal::of((string) $account->current_drawdown_percent)->isGreaterThanOrEqualTo('5.0')) {
+            return 'entry_drawdown_limit_exceeded';
         }
 
         // SIGNAL_ONLY check (e.g. btc_eth_lead_lag)

@@ -52,9 +52,9 @@ final class DecisionReplayServiceTest extends TestCase
 
         $result = $service->replay($obs->id, 'AS_OF_DECISION');
 
-        self::assertSame('COMPLETED', $result['status']);
-        self::assertTrue($result['is_reproducible']);
-        self::assertEmpty($result['diff']);
+        self::assertSame('NOT_RECOMPUTED_STORED_ONLY', $result['status']);
+        self::assertFalse($result['is_reproducible']);
+        self::assertArrayHasKey('warning', $result['diff']);
         self::assertSame('BUY', $result['recomputed_decision']['side']);
         self::assertNotEmpty($result['as_of_candles']);
     }

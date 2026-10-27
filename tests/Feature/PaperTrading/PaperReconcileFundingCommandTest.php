@@ -112,5 +112,10 @@ final class PaperReconcileFundingCommandTest extends TestCase
         $closedFresh = $closed->fresh();
         self::assertSame('-0.060000000000', (string) $closedFresh->funding);
         self::assertTrue($closedFresh->funding_complete);
+
+        // 4. Running targeted --position-id with --force is strictly idempotent and safe
+        $this->artisan('paper:reconcile-funding', ['--position-id' => $closed->id, '--force' => true])
+            ->assertExitCode(0)
+            ->expectsOutputToContain("Reconciliation complete for position {$closed->id}. Applied 0 funding events.");
     }
 }
