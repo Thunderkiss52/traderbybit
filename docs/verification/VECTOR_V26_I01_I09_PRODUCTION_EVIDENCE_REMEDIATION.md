@@ -366,3 +366,40 @@ A dedicated Artisan command [`PaperReconcileFundingCommand`](file:///home/thunde
 - 4 logically scoped local commits have been created.
 - 0 regressions introduced; all 221 backend tests, 56 frontend tests, and Go worker tests pass.
 - No real orders, no remote database mutations, and no git pushes were performed.
+
+---
+
+## 10. VECTOR V2.6 Functional Gaps Completion (F09, F25, Funding Safety)
+
+### 10.1 Commits Record
+- `49af57d feat(vector): complete F09 exchange-qualified account selection and multi-account observability`
+- `52e8d8b feat(vector): complete F25 Candidate Lab validation lifecycle and evidence tracking`
+- `ad09f65 fix(vector): enforce funding schedule safety and uncertified state on missing settlement data`
+- `d4a7f75 fix(vector): align candidate fail-closed evaluation status with gate validation`
+
+### 10.2 Final Acceptance Matrix
+
+| Item | Requirement | Verification Evidence | Status |
+|---|---|---|---|
+| **F09.1** | Support all 26 independent PAPER accounts | `GET /api/v1/paper/accounts` returns all 26 accounts or filtered by `X-Exchange`. Covered in `MultiAccountSelectionTest.php`. | **VERIFIED** |
+| **F09.2** | Provide exchange-qualified account selection | `DashboardPage.vue`, `StatisticsPage.vue`, `RiskPage.vue`, `JournalPage.vue`, `TablePage.vue` updated with dropdowns displaying account name, strategy, and status. | **VERIFIED** |
+| **F09.3** | Distinguish account vs. aggregate metrics | `ResearchController::dashboard()` returns `scope: 'aggregate'` vs `scope: 'account'` with `is_aggregate: true/false`. UI displays `AGGREGATE (13 Accounts)` vs `ACCOUNT: [Name] · [Status]`. | **VERIFIED** |
+| **F09.4** | Prevent stale async responses | Implemented `reqVersion` incrementation and `AbortController.abort()` on subsequent fetches in Dashboard, Statistics, and Risk. | **VERIFIED** |
+| **F09.5** | No fabricated totals or balances | Computed aggregate portfolio values using `BigDecimal` sum across primary accounts in `ResearchController`. | **VERIFIED** |
+| **F09.6** | Multi-account regression tests | `MultiAccountSelectionTest.php` (5 tests, 49 assertions: PASSED); `account_selection.test.js` (6 tests: PASSED). | **VERIFIED** |
+| **F25.1** | Candidate creation & evidence tracking | Candidates maintain immutable strategy config and search metadata. `EvaluateStrategyCandidateJob` links backtest run IDs upon execution. | **VERIFIED** |
+| **F25.2** | Bounded & idempotent scheduling | `POST /candidates/{id}/validate` enforces max attempts (`config('research.evolution.max_evaluation_attempts', 3)`). Idempotent when already `QUEUED` or `RUNNING`. | **VERIFIED** |
+| **F25.3** | Clear lifecycle statuses | Distinguishes `VALIDATION_IN_PROGRESS`, `MISSING_EVIDENCE`, `PAPER_ELIGIBLE`, and `REJECTED`. | **VERIFIED** |
+| **F25.4** | Visible results & rejection reasons | Candidate Lab UI displays `Validation Lifecycle` badge and exact failure reasons (e.g. `insufficient_sample_size`, `negative_expectancy`). | **VERIFIED** |
+| **F25.5** | Governance & kill-switch safety | Autonomy kill-switch halts scheduling; records `CANDIDATE_VALIDATION_SCHEDULED` approval audit events. | **VERIFIED** |
+| **F25.6** | Candidate Lab regression tests | `CandidateLabValidationLifecycleTest.php` (4 tests, 37 assertions: PASSED); `candidate_lab_lifecycle.test.js` (PASSED). | **VERIFIED** |
+| **Stage 3.1** | Real exchange/symbol funding schedules | `PositionLifecycleService::resolveFundingScheduleInterval()` supports 8h, 4h, 2h, and 1h intervals via continuous empirical events and certified config. | **VERIFIED** |
+| **Stage 3.2** | Elimination of arbitrary ±30m tolerance | Event matching tolerance tightened from `abs($eventTs - $expectedTs) <= 1800` to exact scheduled boundary within `<= 60` seconds clock drift. | **VERIFIED** |
+| **Stage 3.3** | Fall closed on insufficient data | Returns `null` (`INSUFFICIENT_DATA`) and uncertified status (`funding_complete = false`) when schedule or history is insufficient. | **VERIFIED** |
+| **Stage 3.4** | Zero historical funding adjustments | No historical records or ledgers modified. Verified by `FundingScheduleSafetyTest.php` and `PositionLifecycleStageBTest.php`. | **VERIFIED** |
+| **Stage 4.1** | Complete PHP regression test suite | `artisan test`: 893 tests, 855 passed, 38 skipped, 0 failed (6,596 assertions). | **VERIFIED** |
+| **Stage 4.2** | Frontend test suite | `node --test tests/*.test.js`: 63 tests, 63 passed, 0 failed. | **VERIFIED** |
+| **Stage 4.3** | Frontend build & typecheck | `vue-tsc --noEmit && vite build`: passed in 7.35s with 0 errors. | **VERIFIED** |
+| **Stage 4.4** | Go research worker tests | `go test -v ./...`: 100% tests passed. | **VERIFIED** |
+| **Stage 4.5** | Laravel Pint code formatting | `./vendor/bin/pint --test`: passed with 0 violations. | **VERIFIED** |
+
