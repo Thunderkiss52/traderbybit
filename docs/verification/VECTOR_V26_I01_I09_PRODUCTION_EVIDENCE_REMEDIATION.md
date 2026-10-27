@@ -16,6 +16,8 @@
   4. `76fe309 fix(vector): exchange gap recovery and valuation provenance (I05, I08)` [Stage C]
   5. `5e6ea04 docs(vector): finalize I01-I09 production-evidence remediation report`
   6. `2acaa61 docs(agent): standardize VECTOR engineering practices` [Stage 0]
+  7. `7f55222 docs(vector): update remediation report with Stage 0 engineering standards`
+  8. `f1a0719 fix(vector): resolve pre-deployment acceptance concerns (F26, F27, I03, I08, reconcile CLI)`
 - **Working Tree State:** Clean, all tests passing.
 - **Strict Safety Confirmation:**
   - PAPER-ONLY mode strictly enforced; zero live exchange endpoints or real orders.
@@ -202,15 +204,50 @@ cd research-go && go test ./...
 
 ---
 
-## 5. Interaction and Regression with F01–F27
+## 5. Comprehensive F01–F27 Remediation & Verification Matrix
 
-1. **F01–F25 Corrections Intact:**
-   - Previous financial integrity, profitability contracts envelope, decision replay persistence flag, and empty state handlings (`3165173`, `08a0d7c`) are completely preserved.
-   - Closed-position metrics, slippage rates, and execution models remain untouched.
-2. **Current Status of F26 (Autonomous Promotion Governance):**
-   - Autonomous promotion remains strictly gated by governance rules; no promotions can occur without verified operator authorization. No promotion kill-switches were weakened.
-3. **Current Status of F27 (Pre-Risk Signal Observability):**
-   - Partially addressed in commit `08a0d7c` with `updateObservationDiagnostics` recording risk rejections. Pre-risk signal generation observability continues to log SKIP/REJECT reasons without creating fake `risk_decisions`.
+Every individual finding from `VECTOR_V26_UI_AND_AUDIT_DATA_INTEGRITY_AUDIT.md` has been reviewed against committed code and regression test coverage:
+
+| Finding | Title & Severity | Affected Source Paths | Commits | Regression Test / Verification | Status |
+|---|---|---|---|---|---|
+| **F01** | False Decision Replay Verification & State Mutation [HIGH] | `app/Research/Application/DecisionReplayService.php` | `3165173`, `08a0d7c` | `tests/Feature/Research/ProfitabilityResearchApiTest.php` | `FIXED_VERIFIED` |
+| **F02** | Profitability Response Envelope Chain Breakdown [CRITICAL] | `app/Http/Controllers/Api/V1/ProfitabilityResearchController.php` | `3165173` | `frontend/tests/profitability_research.test.js` | `FIXED_VERIFIED` |
+| **F03** | Fabricated Financial Fallback Values in UI [CRITICAL] | `frontend/src/pages/ProfitabilityResearchPage.vue` | `3165173` | `frontend/tests/profitability_research.test.js` | `FIXED_VERIFIED` |
+| **F04** | Reconciliation Findings Misread in Controller [HIGH] | `app/Http/Controllers/Api/V1/ProfitabilityResearchController.php` | `3165173` | `tests/Feature/Research/ProfitabilityResearchApiTest.php` | `FIXED_VERIFIED` |
+| **F05** | Outdated Roadmap Module Statuses [MEDIUM] | `app/Http/Controllers/Api/V1/ProfitabilityResearchController.php` | `3165173` | `tests/Feature/Research/ProfitabilityResearchApiTest.php` | `FIXED_VERIFIED` |
+| **F06** | Reconciliation Ignores Drawdown Mismatch [HIGH] | `app/Research/Application/LedgerReconciliationService.php` | `3165173` | `tests/Feature/Research/LedgerReconciliationServiceTest.php` | `FIXED_VERIFIED` |
+| **F07** | Audit ZIP Export Silent Column Dropping [HIGH] | `app/Audit/Application/AuditExportService.php` | `08a0d7c` | `tests/Feature/Audit/AuditExportTest.php` | `FIXED_VERIFIED` |
+| **F08** | Strategy Funnel Cohort & Status Discrepancy [MEDIUM] | `app/Audit/Application/AuditExportService.php` | `08a0d7c` | `tests/Feature/Audit/AuditExportTest.php` | `FIXED_VERIFIED` |
+| **F09** | Frontend Single-Account Display Default [HIGH] | `frontend/src/pages/TablePage.vue` | Prior baseline | `frontend/tests/unit.test.js` | `FIXED_VERIFIED` |
+| **F10** | Signal Annotation Query Reversal [HIGH] | `app/Trading/Application/TradingPipelineEventService.php` | `08a0d7c` | `tests/Feature/Trading/TradingPipelineStageATest.php` | `FIXED_VERIFIED` |
+| **F11** | Statistics Page Lifecycle Population Mixing [MEDIUM] | `app/PaperTrading/Application/PerformanceStatisticsService.php` | `3165173` | `tests/Feature/PaperTrading/PerformanceStatisticsTest.php` | `FIXED_VERIFIED` |
+| **F12** | Daily Performance Marks Missing Opening as Complete [HIGH] | `app/PaperTrading/Application/DailyPerformanceService.php` | `3165173` | `tests/Feature/PaperTrading/DailyPerformanceTest.php` | `FIXED_VERIFIED` |
+| **F13** | Research Health Funnel False Healthy Parent Status [MEDIUM] | `app/Research/Application/ResearchHealthService.php` | Prior baseline | `tests/Feature/Research/ResearchHealthApiTest.php` | `FIXED_VERIFIED` |
+| **F14** | Research Report Freshness Shape Mismatches [MEDIUM] | `app/Http/Controllers/Api/V1/AutonomousLearningController.php` | Prior baseline | `tests/Feature/Research/AutonomousLearningApiTest.php` | `FIXED_VERIFIED` |
+| **F15** | Portfolio Correlation Invalid Status Check [HIGH] | `app/PaperTrading/Application/PositionLifecycleService.php` | Prior baseline | `tests/Feature/PaperTrading/PrimaryStrategyReadinessTest.php` | `FIXED_VERIFIED` |
+| **F16** | Strategy Degradation Cross-Exchange Pollution [HIGH] | `app/Research/Application/StrategyDegradationService.php` | Prior baseline | `tests/Feature/Research/P5DependenceConcentrationTest.php` | `FIXED_VERIFIED` |
+| **F17** | Learning Feature Store Missing Exchange Filter [MEDIUM] | `app/Research/Application/LearningFeatureStoreService.php` | Prior baseline | `tests/Feature/Research/AutonomousLearningPipelineTest.php` | `FIXED_VERIFIED` |
+| **F18** | Model Training Purging Fallback Leakage [MEDIUM] | `app/Research/Application/ModelTrainingService.php` | Prior baseline | `tests/Feature/Research/AutonomousLearningPipelineTest.php` | `FIXED_VERIFIED` |
+| **F19** | Autonomy Settings Raw Flags vs Permissions [LOW] | `app/Research/Application/AutonomyPermissionService.php` | Prior baseline | `tests/Feature/Research/AutonomyResearchTest.php` | `FIXED_VERIFIED` |
+| **F20** | Dual Kill-Switch Divergence & Blindness [HIGH] | `app/Research/Application/AutonomyPermissionService.php` | Prior baseline | `tests/Feature/Research/AutonomyResearchTest.php` | `FIXED_VERIFIED` |
+| **F21** | Compute Workers Static Capability Map [MEDIUM] | `app/Research/Application/ResearchJobService.php` | Prior baseline | `tests/Feature/Research/ResearchJobApiTest.php` | `FIXED_VERIFIED` |
+| **F22** | Quote Integrity Silent Error Swallowing [MEDIUM] | `frontend/src/services/quoteIntegrityApi.ts` | Prior baseline | `frontend/tests/quote_integrity.test.js` | `FIXED_VERIFIED` |
+| **F23** | UI Pagination Truncations [LOW] | `frontend/src/pages/JournalPage.vue` | Prior baseline | `frontend/tests/unit.test.js` | `FIXED_VERIFIED` |
+| **F24** | Slippage Position Trace Scope [MEDIUM] | `app/Http/Controllers/Api/V1/ProfitabilityResearchController.php` | `3165173` | `tests/Feature/Research/SlippageAttributionApiTest.php` | `FIXED_VERIFIED` |
+| **F25** | Candidate Lab Immediate Evaluation Rejection [HIGH] | `app/Research/Application/PromotionPolicyService.php` | Prior baseline | `tests/Feature/Research/Gate6PromotionPolicyTest.php` | `FIXED_VERIFIED` |
+| **F26** | Autonomy Approval Audit Trail Loses Rejected Promotions [HIGH] | `app/Research/Application/PromotionPolicyService.php` | `f1a0719` | `tests/Feature/Research/Gate6PromotionPolicyTest.php` (`test_f26_promotion_rejection_records_audit_trail_event`) | `FIXED_VERIFIED` |
+| **F27** | Account-Level Entry Block Observability Void [HIGH] | `app/PaperTrading/Application/PaperProcessingService.php` | `f1a0719` | `tests/Feature/PaperTrading/CentralExecutionEligibilityTest.php` (`test_f27_blocked_drawdown_account_ingests_and_rejects_signals_with_audit_lineage`) | `FIXED_VERIFIED` |
+
+### Key Architectural Fixes for F26 and F27:
+1. **F26 (Governance Audit Trail Retention):**
+   - In `PromotionPolicyService::promoteCandidate()`, failure validation throws `ValidationException` (maintaining fail-closed security and database rollback of any state mutation).
+   - An outer `try ... catch (ValidationException $e)` captures the rejection and persists a permanent `CANDIDATE_PROMOTION_REJECTED` audit event in `autonomy_approval_events` outside the rolled-back transaction.
+   - Tested in `Gate6PromotionPolicyTest::test_f26_promotion_rejection_records_audit_trail_event`.
+2. **F27 (Pre-Risk Observability for Drawdown-Blocked Accounts):**
+   - In `PaperProcessingService::processAccount()`, signals for active paper strategies are ingested into `paper_signal_states` even when entry is blocked by drawdown or cooldown.
+   - When `$entryEligible` is false, pending signals are immediately transitioned to `status = REJECTED` with reason `account_not_active`, and a `RISK_REJECTED` event is appended to `trading_journal_events`.
+   - Signals remain observable on the dashboard and audit exports without creating fake `risk_decisions` or entering simulated positions.
+   - Tested in `CentralExecutionEligibilityTest::test_f27_blocked_drawdown_account_ingests_and_rejects_signals_with_audit_lineage`.
 
 ---
 
@@ -286,10 +323,26 @@ Production evidence P09/P10 identified five Bybit closed positions that closed s
 | `71a04055-03c8-58b6-af65-2f8fa4cba869` | BTCUSDT | 2026-10-23 23:45 | 2026-10-24 00:05 | CLOSED_SL | 0.0050 | 351 | +0.000100 | 66,900.00 | -0.0335 USDT |
 
 - **Total Historical Impact:** ~ -0.1329 USDT across 5 positions.
-- **Operator Recommendation:**
+- **Operator Recommendation & Safe Maintenance Tooling:**
   - Automated retroactive mutation of historical balances was **intentionally NOT executed**, adhering to Section 8 of `AGENTS.md`.
-  - With the newly deployed code (`reconcilePendingFunding`), future late-arriving funding records will settle automatically and idempotently.
-  - For the 5 historical rows, the operator can optionally run the one-time maintenance command `php artisan paper:reconcile-funding --symbol=BTCUSDT --symbol=ETHUSDT` after manual approval.
+  - With the newly deployed code (`reconcilePendingFunding`), future late-arriving funding records settle automatically and idempotently.
+  - Dedicated CLI command [`PaperReconcileFundingCommand`](file:///home/thunder/work/traderbybit/app/PaperTrading/Console/PaperReconcileFundingCommand.php) is implemented with built-in safety gates:
+    1. **Strictly Read-Only Preview:**
+       ```bash
+       php artisan paper:reconcile-funding --exchange=bybit --symbol=BTCUSDT --symbol=ETHUSDT --dry-run
+       ```
+       Renders an ASCII table of matching candidate positions, applicable MFE records, held quantities, and estimated cashflow adjustments without touching database records.
+    2. **Gated Execution (Requires `--force`):**
+       ```bash
+       php artisan paper:reconcile-funding --exchange=bybit --symbol=BTCUSDT --symbol=ETHUSDT --force
+       ```
+       Executes idempotent settlements, creates `PositionFundingEventRecord` entries, updates position net PnL, adjusts account equity, and appends `FUNDING_APPLIED` to the journal.
+       Running without `--dry-run` and without `--force` halts with a safety warning.
+    3. **Targeted Single Position Execution:**
+       ```bash
+       php artisan paper:reconcile-funding --position-id=<uuid> --dry-run
+       php artisan paper:reconcile-funding --position-id=<uuid> --force
+       ```
 
 ---
 
