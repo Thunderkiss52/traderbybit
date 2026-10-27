@@ -348,17 +348,18 @@ final class DailyPerformanceService
             : $closeEquity->minus($account->starting_balance)->dividedBy($account->starting_balance, 12, RoundingMode::HalfEven)->multipliedBy(100);
 
         $fresh = $closing !== null && max(0, $endUtc->getTimestamp() - $closing['recorded_at']->getTimestamp()) <= self::CLOSE_FRESHNESS_SECONDS;
-        $valuationFresh = (bool) ($closing['valuation_fresh'] ?? true);
-        if (! $valuationFresh) {
+        $valuationFresh = $closing['valuation_fresh'] ?? null;
+        if ($valuationFresh === false) {
             $fresh = false;
         }
         $complete = $isAll && $hasOpening && $closing !== null && $fresh;
 
         $valuationStatus = match (true) {
             $closing === null => 'MISSING',
-            ! $valuationFresh => 'STALE',
+            $valuationFresh === false => 'STALE',
             BigDecimal::of($closing['unrealized_pnl'])->isZero() => 'FLAT_VERIFIED',
-            default => 'FRESH',
+            $valuationFresh === true => 'FRESH',
+            default => 'LEGACY_UNKNOWN',
         };
 
         return [
@@ -381,7 +382,7 @@ final class DailyPerformanceService
                 $isAll && ! $hasOpening ? 'opening_snapshot_unavailable' : null,
                 ! $isAll ? 'symbol_mark_to_market_history_unavailable' : null,
                 $isAll && $closing !== null && ! $fresh ? 'closing_equity_snapshot_not_near_period_end' : null,
-                $isAll && $closing !== null && ! $valuationFresh ? 'open_positions_market_valuation_stale' : null,
+                $isAll && $closing !== null && $valuationFresh === false ? 'open_positions_market_valuation_stale' : null,
             ])),
             'valuation_status' => $valuationStatus,
             'valuation_fresh' => $valuationFresh,
@@ -398,7 +399,7 @@ final class DailyPerformanceService
     }
 
     /**
-     * @return array{equity: string, realized_pnl: string, unrealized_pnl: string, recorded_at: DateTimeImmutable, valued_through: ?DateTimeImmutable, valuation_fresh: bool}|null
+     * @return array{equity: string, realized_pnl: string, unrealized_pnl: string, recorded_at: DateTimeImmutable, valued_through: ?DateTimeImmutable, valuation_fresh: ?bool}|null
      */
     private function snapshotData(?object $snapshot): ?array
     {
@@ -418,7 +419,7 @@ final class DailyPerformanceService
             'valued_through' => isset($snapshot->valued_through) && $snapshot->valued_through !== null
                 ? new DateTimeImmutable((string) $snapshot->valued_through)
                 : null,
-            'valuation_fresh' => isset($snapshot->valuation_fresh) ? (bool) $snapshot->valuation_fresh : true,
+            'valuation_fresh' => isset($snapshot->valuation_fresh) && $snapshot->valuation_fresh !== null ? (bool) $snapshot->valuation_fresh : null,
         ];
     }
 }

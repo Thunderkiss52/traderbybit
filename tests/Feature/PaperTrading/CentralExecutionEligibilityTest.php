@@ -15,6 +15,7 @@ use App\PaperTrading\Domain\ExecutionQuote;
 use App\PaperTrading\Domain\ExecutionType;
 use App\PaperTrading\Domain\InstrumentConstraints;
 use App\PaperTrading\Domain\SignalLifecycle;
+use App\PaperTrading\Infrastructure\Persistence\JournalEventRecord;
 use App\PaperTrading\Infrastructure\Persistence\PaperAccountRecord;
 use App\PaperTrading\Infrastructure\Persistence\PaperSignalStateRecord;
 use App\PaperTrading\Infrastructure\Persistence\RiskDecisionRecord;
@@ -343,6 +344,40 @@ final class CentralExecutionEligibilityTest extends TestCase
             'schema_version' => '1.0.0',
             'strategy_id' => $strategyId,
         ]);
+    }
+
+    public function test_f27_blocked_drawdown_account_ingests_and_rejects_signals_with_audit_lineage(): void
+    {
+        $account = $this->app->make(PaperAccountService::class)->primaryAccount('trend_pullback');
+        $account->update([
+            'status' => 'BLOCKED',
+            'current_drawdown_percent' => '5.50',
+            'created_at' => new DateTimeImmutable('2026-10-14T09:00:00Z'),
+        ]);
+
+        $signal = $this->createSignal('trend_pullback', 'SELL');
+        $signal->update(['expires_at' => new DateTimeImmutable('2026-10-14T12:00:00Z')]);
+
+        $processing = $this->app->make(PaperProcessingService::class);
+        $result = $processing->process($account->id, at: new DateTimeImmutable('2026-10-14T10:20:00Z'), historical: true);
+
+        // F27 Invariant: Signal MUST be ingested into paper_signal_states (not swallowed)
+        $state = PaperSignalStateRecord::query()->where('paper_account_id', $account->id)->where('signal_id', $signal->id)->first();
+        self::assertNotNull($state, 'F27: Blocked account signals must be ingested for audit visibility');
+        self::assertSame('REJECTED', $state->status);
+        self::assertSame('account_not_active', $state->reason);
+
+        // F27 Invariant: Rejection event must be recorded in journal
+        $journal = JournalEventRecord::query()
+            ->where('paper_account_id', $account->id)
+            ->where('signal_id', $signal->id)
+            ->where('event_type', 'RISK_REJECTED')
+            ->first();
+        self::assertNotNull($journal, 'F27: Journal RISK_REJECTED event must be appended');
+        self::assertContains('account_not_active', $journal->payload['reasons'] ?? []);
+
+        // F27 Invariant: Zero positions created
+        self::assertSame(0, VirtualPositionRecord::query()->where('paper_account_id', $account->id)->count());
     }
 
     private function createContext(): void

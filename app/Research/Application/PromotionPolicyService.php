@@ -703,63 +703,84 @@ final class PromotionPolicyService
      */
     public function promoteCandidate(string $candidateId, string $actor = 'USER_OPERATOR'): LearningCandidateStrategyRecord
     {
-        return DB::transaction(function () use ($candidateId, $actor): LearningCandidateStrategyRecord {
-            // Serialize authorization with permission changes and competing promotions.
-            $settings = $this->autonomy->getSettings()->newQuery()->lockForUpdate()->findOrFail('default');
-            $candidate = LearningCandidateStrategyRecord::query()->lockForUpdate()->findOrFail($candidateId);
-            if ($settings->kill_switch_active || app(AutonomyResearchService::class)->killSwitchActive()) {
-                throw ValidationException::withMessages(['gates' => 'Paper promotion is blocked by the kill switch.']);
-            }
-            if ($actor === 'SYSTEM_AUTONOMOUS' && (! config('research.autonomy.paper_promotion_enabled', false)
-                || ! $this->autonomy->isAllowed('auto_promote_paper'))) {
-                throw ValidationException::withMessages(['gates' => 'Automatic paper promotion is disabled.']);
-            }
-            if ($actor === 'SYSTEM_AUTONOMOUS') {
-                // No operational reversal of a promoted account/version exists.
-                // Permissions cannot make an irreversible autonomous change safe.
-                throw ValidationException::withMessages(['gates' => 'Automatic paper promotion requires a verified operational rollback implementation.']);
-            }
-            if ($candidate->status === 'PAPER_PROMOTED' && $candidate->paper_account_id !== null) {
-                return $candidate;
-            }
-            $previousGates = (array) $candidate->validation_gates;
-            $candidate = $this->evaluateCandidate($candidateId, $previousGates['validation_run_id'] ?? null);
-            if (! ($candidate->validation_gates['all_gates_passed'] ?? false)) {
-                throw ValidationException::withMessages(['gates' => 'Cannot promote candidate: current authoritative evidence does not pass all applicable gates.']);
-            }
+        try {
+            return DB::transaction(function () use ($candidateId, $actor): LearningCandidateStrategyRecord {
+                // Serialize authorization with permission changes and competing promotions.
+                $settings = $this->autonomy->getSettings()->newQuery()->lockForUpdate()->findOrFail('default');
+                $candidate = LearningCandidateStrategyRecord::query()->lockForUpdate()->findOrFail($candidateId);
+                if ($settings->kill_switch_active || app(AutonomyResearchService::class)->killSwitchActive()) {
+                    throw ValidationException::withMessages(['gates' => 'Paper promotion is blocked by the kill switch.']);
+                }
+                if ($actor === 'SYSTEM_AUTONOMOUS' && (! config('research.autonomy.paper_promotion_enabled', false)
+                    || ! $this->autonomy->isAllowed('auto_promote_paper'))) {
+                    throw ValidationException::withMessages(['gates' => 'Automatic paper promotion is disabled.']);
+                }
+                if ($actor === 'SYSTEM_AUTONOMOUS') {
+                    // No operational reversal of a promoted account/version exists.
+                    // Permissions cannot make an irreversible autonomous change safe.
+                    throw ValidationException::withMessages(['gates' => 'Automatic paper promotion requires a verified operational rollback implementation.']);
+                }
+                if ($candidate->status === 'PAPER_PROMOTED' && $candidate->paper_account_id !== null) {
+                    return $candidate;
+                }
+                $previousGates = (array) $candidate->validation_gates;
+                $candidate = $this->evaluateCandidate($candidateId, $previousGates['validation_run_id'] ?? null);
+                if (! ($candidate->validation_gates['all_gates_passed'] ?? false)) {
+                    throw ValidationException::withMessages(['gates' => 'Cannot promote candidate: current authoritative evidence does not pass all applicable gates.']);
+                }
 
-            // Provision an isolated forward paper trading account for this candidate version
-            $account = $this->paperAccounts->strategyForward(
-                $candidate->parent_strategy_id,
-                $candidate->candidate_version,
-                (array) $candidate->parameters
-            );
+                // Provision an isolated forward paper trading account for this candidate version
+                $account = $this->paperAccounts->strategyForward(
+                    $candidate->parent_strategy_id,
+                    $candidate->candidate_version,
+                    (array) $candidate->parameters
+                );
 
-            $prev = $candidate->status;
-            $candidate->update([
-                'status' => 'PAPER_PROMOTED',
-                'paper_account_id' => $account->id,
-                'promoted_at' => CarbonImmutable::now(),
-            ]);
+                $prev = $candidate->status;
+                $candidate->update([
+                    'status' => 'PAPER_PROMOTED',
+                    'paper_account_id' => $account->id,
+                    'promoted_at' => CarbonImmutable::now(),
+                ]);
 
+                $this->autonomy->recordEvent(
+                    actor: $actor,
+                    action: 'CANDIDATE_PROMOTION',
+                    targetType: 'CANDIDATE_STRATEGY',
+                    targetId: $candidate->id,
+                    previousState: $prev,
+                    newState: 'PAPER_PROMOTED',
+                    reason: "Promoted to forward paper trading on dedicated account {$account->id}.",
+                    evidence: [
+                        'parameters' => $candidate->parameters,
+                        'validation_gates' => $candidate->validation_gates,
+                        'policy_version' => $this->getPolicyVersion(),
+                        'policy_hash' => $this->getPolicyHash(),
+                    ]
+                );
+
+                return $candidate->fresh();
+            });
+        } catch (ValidationException $e) {
+            $candidate = LearningCandidateStrategyRecord::query()->find($candidateId);
+            $reason = collect($e->errors())->flatten()->first() ?? 'Promotion validation rejected.';
             $this->autonomy->recordEvent(
                 actor: $actor,
-                action: 'CANDIDATE_PROMOTION',
+                action: 'CANDIDATE_PROMOTION_REJECTED',
                 targetType: 'CANDIDATE_STRATEGY',
-                targetId: $candidate->id,
-                previousState: $prev,
-                newState: 'PAPER_PROMOTED',
-                reason: "Promoted to forward paper trading on dedicated account {$account->id}.",
+                targetId: $candidateId,
+                previousState: $candidate?->status,
+                newState: $candidate?->status ?? 'REJECTED',
+                reason: $reason,
                 evidence: [
-                    'parameters' => $candidate->parameters,
-                    'validation_gates' => $candidate->validation_gates,
+                    'validation_errors' => $e->errors(),
                     'policy_version' => $this->getPolicyVersion(),
                     'policy_hash' => $this->getPolicyHash(),
                 ]
             );
 
-            return $candidate->fresh();
-        });
+            throw $e;
+        }
     }
 
     /**

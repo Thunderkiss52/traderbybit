@@ -6,7 +6,11 @@ namespace Tests\Feature\Research;
 
 use App\PaperTrading\Application\PaperAccountService;
 use App\Research\Application\PromotionPolicyService;
+use App\Research\Infrastructure\Persistence\AutonomyApprovalEventRecord;
+use App\Research\Infrastructure\Persistence\LearningCandidateStrategyRecord;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Validation\ValidationException;
+use Ramsey\Uuid\Uuid;
 use Tests\TestCase;
 
 final class Gate6PromotionPolicyTest extends TestCase
@@ -400,5 +404,40 @@ final class Gate6PromotionPolicyTest extends TestCase
         $lcbGate = $result['gates']['multiplicity_adjusted_lcb95'];
         self::assertGreaterThanOrEqual(5, $lcbGate['trial_count']);
         self::assertGreaterThanOrEqual(2.57, $lcbGate['critical_z']);
+    }
+
+    public function test_f26_promotion_rejection_records_audit_trail_event(): void
+    {
+        $candidate = LearningCandidateStrategyRecord::query()->create([
+            'id' => (string) Uuid::uuid4(),
+            'name' => 'Test Candidate',
+            'parent_strategy_id' => 'trend_pullback',
+            'base_version' => '1.0.0',
+            'candidate_version' => '1.1.0',
+            'configuration_hash' => hash('sha256', 'test'),
+            'hypothesis' => 'Test hypothesis',
+            'status' => 'GENERATED',
+            'parameters' => ['test' => true],
+            'parameter_diff' => ['test' => true],
+            'search_metadata' => ['seed' => 1],
+            'validation_gates' => ['all_gates_passed' => false],
+        ]);
+
+        try {
+            $this->policy->promoteCandidate($candidate->id, 'TEST_OPERATOR');
+            self::fail('Expected ValidationException was not thrown.');
+        } catch (ValidationException $e) {
+            // Expected
+        }
+
+        // F26 Invariant: Rejection event must be recorded in autonomy_approval_events
+        $event = AutonomyApprovalEventRecord::query()
+            ->where('target_id', $candidate->id)
+            ->where('action', 'CANDIDATE_PROMOTION_REJECTED')
+            ->first();
+
+        self::assertNotNull($event, 'F26: CANDIDATE_PROMOTION_REJECTED audit event must be persisted');
+        self::assertSame('TEST_OPERATOR', $event->actor);
+        self::assertStringContainsString('Cannot promote candidate', $event->reason);
     }
 }

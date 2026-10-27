@@ -19,7 +19,7 @@ return new class extends Migration
                 $table->timestampTz('valued_through', precision: 3)->nullable();
             }
             if (! Schema::hasColumn('equity_snapshots', 'valuation_fresh')) {
-                $table->boolean('valuation_fresh')->default(true);
+                $table->boolean('valuation_fresh')->nullable()->default(null);
             }
         });
     }

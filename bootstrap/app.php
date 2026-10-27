@@ -13,6 +13,7 @@ use App\MarketData\Console\StreamCandlesCommand;
 use App\MarketData\Console\SyncCandlesCommand;
 use App\PaperTrading\Console\PaperAccountCommand;
 use App\PaperTrading\Console\PaperPositionsCommand;
+use App\PaperTrading\Console\PaperReconcileFundingCommand;
 use App\PaperTrading\Console\PaperStatsCommand;
 use App\PaperTrading\Console\ProcessPaperTradingCommand;
 use App\QuoteIntegrity\Console\QimMeasurementReportCommand;
@@ -53,6 +54,7 @@ return Application::configure(basePath: dirname(__DIR__))
         GenerateSignalsCommand::class,
         ProcessPaperTradingCommand::class,
         PaperPositionsCommand::class,
+        PaperReconcileFundingCommand::class,
         PaperStatsCommand::class,
         PaperAccountCommand::class,
         RunBacktestCommand::class,

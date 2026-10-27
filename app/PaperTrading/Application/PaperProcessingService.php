@@ -78,7 +78,11 @@ final readonly class PaperProcessingService
                 }
             }
             $entryEligible = $allowNewEntries && $eligibility->isAccountEntryEligible($account);
-            if ($entryEligible) {
+            $isSignalOnly = in_array($account->strategy_id, (array) config('research.forward_paper.signal_only_strategies', []), true);
+            // Ingest signals for paper strategies even when entry is blocked, ensuring blocked-account signals
+            // are explicitly tracked and rejected with an observable audit reason (F27).
+            // Signal-only strategies configured to have zero paper execution are strictly excluded.
+            if (! $isSignalOnly) {
                 $this->ingestSignals($account, $symbol, $at, ! $historical);
             }
             $processed = 0;

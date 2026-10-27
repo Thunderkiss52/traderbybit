@@ -311,43 +311,64 @@ final readonly class PositionLifecycleService
             return false;
         }
 
-        // Expected funding boundaries are every 8 hours: 00:00, 08:00, 16:00 UTC
-        $expectedBoundaries = $this->expectedFundingBoundaries(
-            $position->opened_at->toDateTimeImmutable(),
-            $position->closed_at->toDateTimeImmutable()
-        );
+        // Determine symbol- and exchange-specific funding interval from actual historical records
+        $prevFunding = MarketFundingEventRecord::query()
+            ->where('exchange', $position->exchange_id)
+            ->where('category', 'linear')
+            ->where('symbol', $position->symbol)
+            ->where('funding_at', '<', $latestFunding->funding_at)
+            ->latest('funding_at')
+            ->first();
 
-        if (empty($expectedBoundaries)) {
-            // Provably zero funding events occurred during the position lifetime.
-            // Require that the funding feed watermark is at least within 8 hours of opened_at to prove ingestion health.
-            $watermarkHealthy = $latestFunding->funding_at->toDateTimeImmutable() >= $position->opened_at->toDateTimeImmutable()->modify('-8 hours');
-            $isComplete = $watermarkHealthy;
-            if ($position->funding_complete !== $isComplete) {
-                $position->update(['funding_complete' => $isComplete]);
+        $intervalSeconds = $prevFunding !== null
+            ? max(3600, $latestFunding->funding_at->getTimestamp() - $prevFunding->funding_at->getTimestamp())
+            : 28800; // 8 hours default
+
+        $latestTs = $latestFunding->funding_at->toDateTimeImmutable()->getTimestamp();
+        $openedTs = $position->opened_at->toDateTimeImmutable()->getTimestamp();
+        $closedTs = $position->closed_at->toDateTimeImmutable()->getTimestamp();
+
+        // Verified if:
+        // 1. The market feed has advanced to or past position closure time ($latestTs >= $closedTs).
+        // 2. OR the position closed shortly after the latest funding event (within the minimum possible funding interval of 1 hour / 3600s),
+        //    guaranteeing no intermediate funding boundary could exist between $latestTs and $closedTs.
+        // 3. OR the position opened and closed strictly inside the known interval following the latest funding event ($openedTs >= $latestTs && $closedTs < $latestTs + $intervalSeconds).
+        $feedPastClosure = $latestTs >= $closedTs;
+        $closedWithinMinIntervalAfterLatest = ($closedTs >= $latestTs) && (($closedTs - $latestTs) < min($intervalSeconds, 3600));
+        $provableNoFundingWindow = ($openedTs >= $latestTs) && ($closedTs < ($latestTs + $intervalSeconds));
+
+        if (! $feedPastClosure && ! $closedWithinMinIntervalAfterLatest && ! $provableNoFundingWindow) {
+            if ($position->funding_complete) {
+                $position->update(['funding_complete' => false]);
             }
 
-            return $isComplete;
+            return false;
         }
 
-        // For each expected boundary, check whether market funding event exists and position funding event was linked
-        foreach ($expectedBoundaries as $boundary) {
-            $mfe = MarketFundingEventRecord::query()
-                ->where('exchange', $position->exchange_id)
-                ->where('category', 'linear')
-                ->where('symbol', $position->symbol)
-                ->where('funding_at', $boundary)
-                ->first();
+        // Query all actual market funding events for this exchange and symbol
+        // strictly between opened_at and closed_at (exclusive of opened_at, inclusive of closed_at)
+        $applicableEvents = MarketFundingEventRecord::query()
+            ->where('exchange', $position->exchange_id)
+            ->where('category', 'linear')
+            ->where('symbol', $position->symbol)
+            ->where('funding_at', '>', $position->opened_at)
+            ->where('funding_at', '<=', $position->closed_at)
+            ->orderBy('funding_at')
+            ->get();
 
-            if ($mfe === null) {
-                // Delayed or missing market funding event
-                if ($position->funding_complete) {
-                    $position->update(['funding_complete' => false]);
-                }
-
-                return false;
+        if ($applicableEvents->isEmpty()) {
+            // Proven: Market feed has advanced past closed_at, and zero funding events fell within position lifetime.
+            if (! $position->funding_complete) {
+                $position->update(['funding_complete' => true]);
             }
 
-            $qtyHeld = $this->quantityHeldAt($position, $boundary);
+            return true;
+        }
+
+        // For each applicable market funding event, verify whether the position had active exposure
+        // and whether a corresponding position funding event was settled.
+        foreach ($applicableEvents as $mfe) {
+            $qtyHeld = $this->quantityHeldAt($position, $mfe->funding_at->toDateTimeImmutable());
             if (BigDecimal::of($qtyHeld)->isGreaterThan(0)) {
                 $pfeExists = PositionFundingEventRecord::query()
                     ->where('position_id', $position->id)
