@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Research\Application;
 
 use App\MarketData\Infrastructure\Persistence\CandleRecord;
+use App\Research\Infrastructure\Persistence\CounterfactualEvaluationRecord;
 use App\Research\Infrastructure\Persistence\DecisionReplayRunRecord;
 use App\Strategy\Infrastructure\Persistence\SignalRecord;
 use App\Strategy\Infrastructure\Persistence\StrategyObservationRecord;
@@ -17,11 +18,37 @@ final class DecisionReplayService
      *
      * @return array<string, mixed>
      */
-    public function replay(string $evaluationId, string $mode = 'AS_OF_DECISION'): array
+    public function replay(string $evaluationId, string $mode = 'AS_OF_DECISION', bool $persist = false): array
     {
         // Lookup from StrategyObservationRecord or SignalRecord
         $obs = StrategyObservationRecord::query()->find($evaluationId);
         $signal = $obs ? null : SignalRecord::query()->find($evaluationId);
+
+        if (! $obs && ! $signal) {
+            $counterfactual = CounterfactualEvaluationRecord::query()->find($evaluationId);
+            if ($counterfactual) {
+                if ($counterfactual->signal_id) {
+                    $signal = SignalRecord::query()->find($counterfactual->signal_id);
+                    $obs = $signal ? null : StrategyObservationRecord::query()->find($counterfactual->signal_id);
+                }
+                if (! $signal && ! $obs) {
+                    $signal = SignalRecord::query()
+                        ->where('symbol', $counterfactual->symbol)
+                        ->where('strategy_id', $counterfactual->strategy_id)
+                        ->where('strategy_version', $counterfactual->strategy_version)
+                        ->where('decision_time', $counterfactual->decision_time)
+                        ->first();
+                    if (! $signal) {
+                        $obs = StrategyObservationRecord::query()
+                            ->where('symbol', $counterfactual->symbol)
+                            ->where('strategy_id', $counterfactual->strategy_id)
+                            ->where('strategy_version', $counterfactual->strategy_version)
+                            ->where('decision_time', $counterfactual->decision_time)
+                            ->first();
+                    }
+                }
+            }
+        }
 
         if (! $obs && ! $signal) {
             return [
@@ -58,16 +85,22 @@ final class DecisionReplayService
             'strategy_version' => $version,
         ];
 
-        // Recompute decision based on as-of candle conditions
-        $recomputedDecision = $storedDecision; // Verified identical from persisted features
+        // Recompute decision based on as-of candle conditions - truthful read-only replay
+        $recomputedDecision = $storedDecision;
         $diff = [];
-        $isReproducible = $asOfCandles->isNotEmpty();
+        $isReproducible = $asOfCandles->isNotEmpty() && $storedDecision !== [];
 
         if (! $isReproducible) {
             $status = 'NOT_REPRODUCIBLE';
-            $diff['error'] = 'Missing historical candles at decision time.';
+            if ($asOfCandles->isEmpty()) {
+                $diff['error'] = 'Missing historical candles at decision time.';
+            }
         } else {
-            $status = 'COMPLETED';
+            // Do not claim independent recomputation without running the strategy engine.
+            // Report stored decision as the verified source of truth unless engine recomputes.
+            $status = 'NOT_RECOMPUTED_STORED_ONLY';
+            $isReproducible = false;
+            $diff['warning'] = 'Stored decision only; independent strategy recomputation not executed from persisted features.';
         }
 
         $forwardCandles = [];
@@ -83,21 +116,23 @@ final class DecisionReplayService
                 ->get(['open_time', 'open', 'high', 'low', 'close', 'volume']);
         }
 
-        // Persist replay run
-        $record = DecisionReplayRunRecord::query()->create([
-            'id' => (string) Str::uuid(),
-            'evaluation_id' => $evaluationId,
-            'mode' => $mode,
-            'status' => $status,
-            'as_of_time' => $decisionTime,
-            'recomputed_decision' => $recomputedDecision,
-            'stored_decision' => $storedDecision,
-            'diff' => $diff,
-            'is_reproducible' => $isReproducible,
-        ]);
+        $record = null;
+        if ($persist) {
+            $record = DecisionReplayRunRecord::query()->create([
+                'id' => (string) Str::uuid(),
+                'evaluation_id' => $evaluationId,
+                'mode' => $mode,
+                'status' => $status,
+                'as_of_time' => $decisionTime,
+                'recomputed_decision' => $recomputedDecision,
+                'stored_decision' => $storedDecision,
+                'diff' => $diff,
+                'is_reproducible' => $isReproducible,
+            ]);
+        }
 
         return [
-            'replay_id' => $record->id,
+            'replay_id' => $record?->id,
             'evaluation_id' => $evaluationId,
             'mode' => $mode,
             'status' => $status,

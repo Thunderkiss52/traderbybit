@@ -76,7 +76,7 @@ final class ResearchIntelligenceController extends Controller
         try {
             $mode = $request->string('mode', 'AS_OF_DECISION')->toString();
 
-            return $this->ok($service->replay($evaluationId, $mode));
+            return $this->ok($service->replay($evaluationId, $mode, $request->boolean('persist')));
         } catch (Throwable $e) {
             Log::error('Research API operation failed.', ['operation' => __METHOD__, 'exception_type' => $e::class]);
 
