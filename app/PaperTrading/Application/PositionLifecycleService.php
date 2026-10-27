@@ -311,38 +311,62 @@ final readonly class PositionLifecycleService
             return false;
         }
 
-        // Determine symbol- and exchange-specific funding interval from actual historical records
-        $prevFunding = MarketFundingEventRecord::query()
-            ->where('exchange', $position->exchange_id)
-            ->where('category', 'linear')
-            ->where('symbol', $position->symbol)
-            ->where('funding_at', '<', $latestFunding->funding_at)
-            ->latest('funding_at')
-            ->first();
-
-        $intervalSeconds = $prevFunding !== null
-            ? max(3600, $latestFunding->funding_at->getTimestamp() - $prevFunding->funding_at->getTimestamp())
-            : 28800; // 8 hours default
-
-        $latestTs = $latestFunding->funding_at->toDateTimeImmutable()->getTimestamp();
         $openedTs = $position->opened_at->toDateTimeImmutable()->getTimestamp();
         $closedTs = $position->closed_at->toDateTimeImmutable()->getTimestamp();
+        $latestTs = $latestFunding->funding_at->toDateTimeImmutable()->getTimestamp();
 
-        // Verified if:
-        // 1. The market feed has advanced to or past position closure time ($latestTs >= $closedTs).
-        // 2. OR the position closed shortly after the latest funding event (within the minimum possible funding interval of 1 hour / 3600s),
-        //    guaranteeing no intermediate funding boundary could exist between $latestTs and $closedTs.
-        // 3. OR the position opened and closed strictly inside the known interval following the latest funding event ($openedTs >= $latestTs && $closedTs < $latestTs + $intervalSeconds).
-        $feedPastClosure = $latestTs >= $closedTs;
-        $closedWithinMinIntervalAfterLatest = ($closedTs >= $latestTs) && (($closedTs - $latestTs) < min($intervalSeconds, 3600));
-        $provableNoFundingWindow = ($openedTs >= $latestTs) && ($closedTs < ($latestTs + $intervalSeconds));
+        // 1. Resolve certified expected boundaries
+        $expectedBoundaries = $this->expectedFundingBoundaries(
+            $position->opened_at->toDateTimeImmutable(),
+            $position->closed_at->toDateTimeImmutable(),
+            $position->exchange_id,
+            $position->symbol,
+        );
 
-        if (! $feedPastClosure && ! $closedWithinMinIntervalAfterLatest && ! $provableNoFundingWindow) {
+        if ($expectedBoundaries === null) {
+            // Source of settlement schedule or required history is insufficient (INSUFFICIENT_DATA)
             if ($position->funding_complete) {
                 $position->update(['funding_complete' => false]);
             }
 
             return false;
+        }
+
+        $intervalSeconds = $this->resolveFundingScheduleInterval(
+            $position->exchange_id,
+            $position->symbol,
+            $position->opened_at->toDateTimeImmutable(),
+            $position->closed_at->toDateTimeImmutable()
+        );
+
+        // Feed advancement / completeness check:
+        // Do not infer historical coverage merely from a fixed interval or recent event.
+        if (! empty($expectedBoundaries)) {
+            $lastExpected = end($expectedBoundaries);
+            if ($latestFunding->funding_at->toDateTimeImmutable() < $lastExpected) {
+                if ($position->funding_complete) {
+                    $position->update(['funding_complete' => false]);
+                }
+
+                return false;
+            }
+        } else {
+            // Zero expected boundaries strictly between opened_at and closed_at.
+            // Certified only if:
+            // 1) Feed has advanced past closed_at ($latestTs >= $closedTs).
+            // 2) OR position lifetime falls strictly within certified interval after latest event.
+            $feedPastClosure = $latestTs >= $closedTs;
+            $provableNoFundingWindow = $intervalSeconds !== null
+                && ($openedTs >= $latestTs)
+                && ($closedTs < ($latestTs + $intervalSeconds));
+
+            if (! $feedPastClosure && ! $provableNoFundingWindow) {
+                if ($position->funding_complete) {
+                    $position->update(['funding_complete' => false]);
+                }
+
+                return false;
+            }
         }
 
         // Query all actual market funding events for this exchange and symbol
@@ -356,24 +380,19 @@ final readonly class PositionLifecycleService
             ->orderBy('funding_at')
             ->get();
 
-        $expectedBoundaries = $this->expectedFundingBoundaries(
-            $position->opened_at->toDateTimeImmutable(),
-            $position->closed_at->toDateTimeImmutable()
-        );
-
         if (! empty($expectedBoundaries)) {
-            // Verify there are no data gaps: every expected boundary must have a matching market funding event
+            // Verify there are no data gaps: every expected boundary must have an exact matching market funding event
+            // Matching tolerance is tight (within 60s for clock drift tolerance), never an arbitrary ±30 minutes
             foreach ($expectedBoundaries as $expectedBoundary) {
                 $hasMatchingEvent = $applicableEvents->contains(function (MarketFundingEventRecord $event) use ($expectedBoundary): bool {
                     $eventTs = $event->funding_at->toDateTimeImmutable()->getTimestamp();
                     $expectedTs = $expectedBoundary->getTimestamp();
 
-                    return abs($eventTs - $expectedTs) <= 1800; // within 30 minutes of scheduled boundary
+                    return abs($eventTs - $expectedTs) <= 60;
                 });
 
                 if (! $hasMatchingEvent) {
                     // Gap detected: an expected funding boundary has no market funding event ingested!
-                    // A latest market event alone does NOT establish completeness if historical gaps exist.
                     if ($position->funding_complete) {
                         $position->update(['funding_complete' => false]);
                     }
@@ -384,7 +403,7 @@ final readonly class PositionLifecycleService
         }
 
         if ($applicableEvents->isEmpty()) {
-            // Proven: Market feed has advanced past closed_at, zero expected boundaries, and zero funding events fell within position lifetime.
+            // Proven: Market feed verified, zero expected boundaries, and zero funding events fell within position lifetime.
             if (! $position->funding_complete) {
                 $position->update(['funding_complete' => true]);
             }
@@ -420,33 +439,113 @@ final readonly class PositionLifecycleService
     }
 
     /**
-     * Generate expected 8-hour funding boundaries (00:00, 08:00, 16:00 UTC) strictly between $from and $to.
-     *
-     * @return list<DateTimeImmutable>
+     * Resolve certified funding interval in seconds for an exchange and symbol,
+     * taking into account configured schedules and empirical continuous historical records.
+     * Returns null if schedule is uncertified / insufficient data.
      */
-    public function expectedFundingBoundaries(DateTimeImmutable $from, DateTimeImmutable $to): array
-    {
+    public function resolveFundingScheduleInterval(
+        string $exchange,
+        string $symbol,
+        DateTimeImmutable $from,
+        DateTimeImmutable $to,
+    ): ?int {
+        // 1. Check empirical continuous events in database around the window
+        $events = MarketFundingEventRecord::query()
+            ->where('exchange', $exchange)
+            ->where('category', 'linear')
+            ->where('symbol', $symbol)
+            ->where('funding_at', '>=', $from->modify('-48 hours'))
+            ->where('funding_at', '<=', $to->modify('+48 hours'))
+            ->orderBy('funding_at')
+            ->get();
+
+        if ($events->count() >= 2) {
+            $intervals = [];
+            for ($i = 1; $i < $events->count(); $i++) {
+                $diff = $events[$i]->funding_at->getTimestamp() - $events[$i - 1]->funding_at->getTimestamp();
+                if ($diff > 0) {
+                    $intervals[] = $diff;
+                }
+            }
+
+            if (! empty($intervals)) {
+                $first = $intervals[0];
+                $allSame = true;
+                foreach ($intervals as $inv) {
+                    if ($inv !== $first) {
+                        $allSame = false;
+                        break;
+                    }
+                }
+                if ($allSame && in_array($first, [3600, 7200, 14400, 28800], true)) {
+                    return $first;
+                }
+            }
+        }
+
+        // 2. Check certified configuration schedule
+        $configured = config("market_data.funding_schedules.{$exchange}.{$symbol}");
+        if (is_array($configured) && isset($configured['interval_hours'])) {
+            $hours = (int) $configured['interval_hours'];
+            if (in_array($hours, [1, 2, 4, 8], true)) {
+                return $hours * 3600;
+            }
+        }
+
+        // 3. Uncertified / insufficient data
+        return null;
+    }
+
+    /**
+     * Generate expected funding boundaries strictly between $from and $to.
+     * Respects exchange-specific, symbol-specific, and time-dependent funding schedules.
+     * Returns null if the source of the settlement schedule or required history is insufficient (INSUFFICIENT_DATA).
+     *
+     * @return list<DateTimeImmutable>|null
+     */
+    public function expectedFundingBoundaries(
+        DateTimeImmutable $from,
+        DateTimeImmutable $to,
+        ?string $exchange = null,
+        ?string $symbol = null,
+    ): ?array {
+        if ($from > $to) {
+            return [];
+        }
+
+        if ($exchange === null || $symbol === null) {
+            return null; // INSUFFICIENT_DATA
+        }
+
+        $intervalSeconds = $this->resolveFundingScheduleInterval($exchange, $symbol, $from, $to);
+        if ($intervalSeconds === null || $intervalSeconds <= 0) {
+            return null; // INSUFFICIENT_DATA
+        }
+
+        $intervalHours = (int) ($intervalSeconds / 3600);
+        if ($intervalHours < 1 || ($intervalSeconds % 3600) !== 0 || (24 % $intervalHours) !== 0) {
+            return null; // Non-standard or uncertified interval
+        }
+
         $boundaries = [];
         $current = $from->setTime((int) $from->format('H'), 0, 0);
         $hour = (int) $current->format('H');
-        $nextFundingHour = match (true) {
-            $hour < 0 => 0,
-            $hour < 8 => 8,
-            $hour < 16 => 16,
-            default => 24,
-        };
+        $remainder = $hour % $intervalHours;
+        $nextFundingHour = $hour + ($remainder === 0 ? 0 : ($intervalHours - $remainder));
 
-        if ($nextFundingHour === 24) {
+        if ($nextFundingHour >= 24) {
             $candidate = $current->modify('+1 day')->setTime(0, 0, 0);
         } else {
             $candidate = $current->setTime($nextFundingHour, 0, 0);
         }
 
+        while ($candidate <= $from) {
+            $candidate = $candidate->modify("+{$intervalHours} hours");
+        }
+
         while ($candidate <= $to) {
-            if ($candidate > $from) {
-                $boundaries[] = $candidate;
-            }
-            $candidate = $candidate->modify('+8 hours');
+            $boundaries[] = $candidate;
+            $candidate = $candidate->modify("+{$intervalHours} hours");
         }
 
         return $boundaries;

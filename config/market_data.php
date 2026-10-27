@@ -32,6 +32,16 @@ return [
     'funding' => [
         'initial_lookback_days' => (int) env('MARKET_FUNDING_LOOKBACK_DAYS', 30),
     ],
+    'funding_schedules' => [
+        'bybit' => [
+            'BTCUSDT' => ['interval_hours' => 8, 'offset_hours' => 0],
+            'ETHUSDT' => ['interval_hours' => 8, 'offset_hours' => 0],
+        ],
+        'binance' => [
+            'BTCUSDT' => ['interval_hours' => 8, 'offset_hours' => 0],
+            'ETHUSDT' => ['interval_hours' => 8, 'offset_hours' => 0],
+        ],
+    ],
     'open_interest' => [
         'interval' => env('MARKET_OPEN_INTEREST_INTERVAL', '15min'),
         'maximum_pages' => (int) env('MARKET_OPEN_INTEREST_MAXIMUM_PAGES', 3),
