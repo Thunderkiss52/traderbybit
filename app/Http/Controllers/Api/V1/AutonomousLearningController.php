@@ -160,7 +160,10 @@ final class AutonomousLearningController extends Controller
         try {
             $candidate = LearningCandidateStrategyRecord::query()->findOrFail($id);
 
-            if ($candidate->status !== 'RESEARCH_ONLY') {
+            $isEligible = $candidate->status === 'RESEARCH_ONLY'
+                || ($candidate->status === 'REJECTED' && ($candidate->validation_gates['failure_reason'] ?? null) === 'missing_validation_evidence');
+
+            if (! $isEligible) {
                 return response()->json([
                     'success' => false,
                     'message' => "Candidate cannot be scheduled for validation in current status: {$candidate->status}.",
@@ -197,6 +200,7 @@ final class AutonomousLearningController extends Controller
             $metadata['evaluation_scheduled_at'] = CarbonImmutable::now('UTC')->toIso8601String();
 
             $candidate->update([
+                'status' => 'RESEARCH_ONLY',
                 'search_metadata' => $metadata,
                 'validation_gates' => [
                     'all_gates_passed' => false,

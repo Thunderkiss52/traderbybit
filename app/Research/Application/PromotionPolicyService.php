@@ -506,6 +506,7 @@ final class PromotionPolicyService
             }
 
             $candidate->update([
+                'status' => 'REJECTED',
                 'validation_gates' => [
                     'all_gates_passed' => false,
                     'status' => 'MISSING_EVIDENCE',
@@ -526,21 +527,6 @@ final class PromotionPolicyService
         // 1. Check BacktestRunRecord
         $backtestRun = BacktestRunRecord::query()->find($runId);
         if ($backtestRun !== null) {
-            if (in_array($backtestRun->status, ['QUEUED', 'RUNNING'], true)) {
-                $candidate->update([
-                    'validation_gates' => [
-                        'all_gates_passed' => false,
-                        'status' => 'VALIDATION_IN_PROGRESS',
-                        'failure_reason' => 'validation_in_progress',
-                        'detail' => "Linked backtest run {$runId} status is {$backtestRun->status}.",
-                        'policy_version' => $this->getPolicyVersion(),
-                        'policy_hash' => $this->getPolicyHash(),
-                    ],
-                ]);
-
-                return $candidate->fresh();
-            }
-
             if ($backtestRun->status !== 'COMPLETED' || ! is_array($backtestRun->metrics)) {
                 $candidate->update([
                     'status' => 'REJECTED',
@@ -563,21 +549,6 @@ final class PromotionPolicyService
             // 2. Check ResearchJobRecord
             $researchJob = ResearchJobRecord::query()->where('job_id', $runId)->first();
             if ($researchJob !== null) {
-                if (in_array($researchJob->status, ['QUEUED', 'RUNNING'], true)) {
-                    $candidate->update([
-                        'validation_gates' => [
-                            'all_gates_passed' => false,
-                            'status' => 'VALIDATION_IN_PROGRESS',
-                            'failure_reason' => 'validation_in_progress',
-                            'detail' => "Linked research job {$runId} status is {$researchJob->status}.",
-                            'policy_version' => $this->getPolicyVersion(),
-                            'policy_hash' => $this->getPolicyHash(),
-                        ],
-                    ]);
-
-                    return $candidate->fresh();
-                }
-
                 if ($researchJob->status !== 'SUCCEEDED' || ! is_array($researchJob->result_payload)) {
                     $candidate->update([
                         'status' => 'REJECTED',

@@ -16,7 +16,7 @@ final class CandidateLabValidationLifecycleTest extends TestCase
 {
     use RefreshDatabase;
 
-    public function test_candidate_without_run_id_marks_missing_evidence_without_rejecting_status(): void
+    public function test_candidate_without_run_id_marks_missing_evidence_and_allows_validation_scheduling(): void
     {
         $genRes = $this->postJson('/api/v1/research/learning/candidates/generate', [
             'parent_strategy_id' => 'trend_pullback',
@@ -27,14 +27,21 @@ final class CandidateLabValidationLifecycleTest extends TestCase
 
         $evalRes = $this->postJson("/api/v1/research/learning/candidates/{$candidateId}/evaluate");
         $evalRes->assertOk()
-            ->assertJsonPath('data.status', 'RESEARCH_ONLY')
+            ->assertJsonPath('data.status', 'REJECTED')
             ->assertJsonPath('data.validation_gates.status', 'MISSING_EVIDENCE')
             ->assertJsonPath('data.validation_gates.failure_reason', 'missing_validation_evidence')
             ->assertJsonPath('data.validation_gates.all_gates_passed', false);
 
         $candidate = LearningCandidateStrategyRecord::query()->findOrFail($candidateId);
-        $this->assertSame('RESEARCH_ONLY', $candidate->status);
+        $this->assertSame('REJECTED', $candidate->status);
         $this->assertSame('MISSING_EVIDENCE', $candidate->validation_gates['status'] ?? null);
+
+        // Candidate can subsequently be scheduled for validation
+        Queue::fake();
+        $validateRes = $this->postJson("/api/v1/research/learning/candidates/{$candidateId}/validate");
+        $validateRes->assertOk()
+            ->assertJsonPath('data.status', 'RESEARCH_ONLY')
+            ->assertJsonPath('data.validation_gates.status', 'VALIDATION_IN_PROGRESS');
     }
 
     public function test_candidate_validation_scheduling_is_bounded_and_idempotent(): void
