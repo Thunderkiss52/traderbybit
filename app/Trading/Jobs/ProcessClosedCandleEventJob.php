@@ -146,12 +146,17 @@ final class ProcessClosedCandleEventJob implements ShouldQueue
             $queue = (string) config("trading.queues.{$this->exchange}", $this->exchange === 'binance' ? 'trading-binance' : 'trading-bybit');
             ProcessPaperPipelineJob::dispatch($this->exchange, $this->symbol, $this->candleCloseAtIso)
                 ->onQueue($queue);
-        }
 
-        $eventRecord->update([
-            'status' => TradingPipelineEventRecord::STATUS_DISPATCHED,
-            'completed_at' => null,
-        ]);
+            $eventRecord->update([
+                'status' => TradingPipelineEventRecord::STATUS_DISPATCHED,
+                'completed_at' => null,
+            ]);
+        } else {
+            $eventRecord->update([
+                'status' => TradingPipelineEventRecord::STATUS_COMPLETED,
+                'completed_at' => CarbonImmutable::now('UTC'),
+            ]);
+        }
     }
 
     private function ensureMarketContext(DateTimeImmutable $closeAt): void

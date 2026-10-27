@@ -32,6 +32,7 @@ final class ProcessPaperPipelineJob implements ShouldQueue
         public readonly string $exchange,
         public readonly string $symbol,
         public readonly string $atIso,
+        public readonly ?array $onlyAccountIds = null,
     ) {}
 
     public function middleware(): array
@@ -59,12 +60,17 @@ final class ProcessPaperPipelineJob implements ShouldQueue
             default => false,
         };
 
-        $accounts = PaperAccountRecord::query()
+        $accountsQuery = PaperAccountRecord::query()
             ->where('exchange_id', $this->exchange)
             ->where('is_primary', true)
             ->whereIn('status', ['ACTIVE', 'BLOCKED', 'HALTED'])
-            ->orderBy('id')
-            ->get();
+            ->orderBy('id');
+
+        if (! empty($this->onlyAccountIds)) {
+            $accountsQuery->whereIn('id', $this->onlyAccountIds);
+        }
+
+        $accounts = $accountsQuery->get();
 
         $signalOnly = (array) config('research.forward_paper.signal_only_strategies', []);
         $totalProcessed = 0;

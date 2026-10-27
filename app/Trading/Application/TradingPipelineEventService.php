@@ -195,27 +195,58 @@ final class TradingPipelineEventService
                 'updated_at' => $now,
             ]);
 
-            return $existing->fresh();
+            $record = $existing->fresh();
+        } else {
+            DB::table('trading_pipeline_events')->insertOrIgnore([
+                'event_key' => $eventKey,
+                'exchange' => $exchange,
+                'symbol' => $symbol,
+                'timeframe' => '5',
+                'stage' => TradingPipelineEventRecord::STAGE_PAPER_PROCESSED,
+                'candle_close_at' => $candleCloseAt,
+                'status' => $status,
+                'payload' => json_encode($data, JSON_THROW_ON_ERROR),
+                'attempts' => 1,
+                'completed_at' => $now,
+                'created_at' => $now,
+                'updated_at' => $now,
+            ]);
+
+            /** @var TradingPipelineEventRecord $record */
+            $record = TradingPipelineEventRecord::query()->where('event_key', $eventKey)->firstOrFail();
         }
 
-        DB::table('trading_pipeline_events')->insertOrIgnore([
-            'event_key' => $eventKey,
-            'exchange' => $exchange,
-            'symbol' => $symbol,
-            'timeframe' => '5',
-            'stage' => TradingPipelineEventRecord::STAGE_PAPER_PROCESSED,
-            'candle_close_at' => $candleCloseAt,
-            'status' => $status,
-            'payload' => json_encode($data, JSON_THROW_ON_ERROR),
-            'attempts' => 1,
-            'completed_at' => $now,
-            'created_at' => $now,
-            'updated_at' => $now,
-        ]);
-
-        /** @var TradingPipelineEventRecord $record */
-        $record = TradingPipelineEventRecord::query()->where('event_key', $eventKey)->firstOrFail();
+        // Terminalize upstream SIGNALS_EVALUATED and CANDLE_CLOSED events for this cycle
+        $this->acknowledgeUpstreamEvents($exchange, $symbol, $candleCloseAt, $status, $now);
 
         return $record;
+    }
+
+    /**
+     * Acknowledge and terminalize upstream pipeline events waiting on downstream paper execution.
+     */
+    public function acknowledgeUpstreamEvents(
+        string $exchange,
+        string $symbol,
+        DateTimeImmutable $candleCloseAt,
+        string $status,
+        ?CarbonImmutable $now = null
+    ): int {
+        $now ??= CarbonImmutable::now('UTC');
+
+        return TradingPipelineEventRecord::query()
+            ->where('exchange', strtolower($exchange))
+            ->where('symbol', strtoupper($symbol))
+            ->where('candle_close_at', $candleCloseAt)
+            ->whereIn('stage', [
+                TradingPipelineEventRecord::STAGE_SIGNALS_EVALUATED,
+                TradingPipelineEventRecord::STAGE_CANDLE_CLOSED,
+            ])
+            ->where('status', TradingPipelineEventRecord::STATUS_DISPATCHED)
+            ->update([
+                'status' => $status,
+                'completed_at' => $now,
+                'updated_at' => $now,
+            ]);
     }
 }

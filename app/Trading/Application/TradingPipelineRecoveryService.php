@@ -91,6 +91,32 @@ final class TradingPipelineRecoveryService
         foreach ($events as $event) {
             $scanned++;
             $closeAt = $event->candle_close_at->toDateTimeImmutable();
+            $closeIso = $closeAt->format(DATE_ATOM);
+
+            // If downstream PAPER_PROCESSED has already completed, terminalize this upstream event immediately.
+            if (in_array($event->stage, [
+                TradingPipelineEventRecord::STAGE_SIGNALS_EVALUATED,
+                TradingPipelineEventRecord::STAGE_CANDLE_CLOSED,
+            ], true)) {
+                $paperKey = "{$event->exchange}:{$event->symbol}:{$closeIso}:".TradingPipelineEventRecord::STAGE_PAPER_PROCESSED;
+                $paperRecord = TradingPipelineEventRecord::query()->where('event_key', $paperKey)->first();
+
+                if ($paperRecord !== null && in_array($paperRecord->status, [
+                    TradingPipelineEventRecord::STATUS_COMPLETED,
+                    TradingPipelineEventRecord::STATUS_PARTIAL,
+                    TradingPipelineEventRecord::STATUS_FAILED,
+                ], true)) {
+                    $event->update([
+                        'status' => $paperRecord->status,
+                        'completed_at' => $paperRecord->completed_at ?? CarbonImmutable::now('UTC'),
+                        'updated_at' => CarbonImmutable::now('UTC'),
+                    ]);
+                    $recovered++;
+                    Log::info("Recovery: Terminalized upstream event {$event->event_key} to {$paperRecord->status} matching existing downstream PAPER_PROCESSED.");
+
+                    continue;
+                }
+            }
 
             if (! $this->eventService->isFresh($closeAt, $now)) {
                 $event->update([
