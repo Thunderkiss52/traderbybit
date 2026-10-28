@@ -11,6 +11,7 @@ use App\Strategy\Infrastructure\Persistence\ResearchExperimentRecord;
 use App\Strategy\Infrastructure\Persistence\StrategyObservationRecord;
 use Carbon\CarbonImmutable;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 use Tests\TestCase;
 
@@ -93,12 +94,31 @@ final class StageTwoApiTest extends TestCase
             'reasons' => ['trend_aligned'],
         ]);
 
+        $writes = 0;
+        DB::listen(static function ($query) use (&$writes): void {
+            $sql = strtoupper(ltrim($query->sql));
+            if (str_starts_with($sql, 'INSERT') || str_starts_with($sql, 'UPDATE') || str_starts_with($sql, 'DELETE')) {
+                $writes++;
+            }
+        });
+
+        $countBefore = StrategyObservationRecord::query()->count();
+
         $response = $this->getJson('/api/v1/research/replay/'.$obs->id.'?mode=AS_OF_DECISION');
         $response->assertOk()
             ->assertJsonPath('data.mode', 'AS_OF_DECISION')
             ->assertJsonPath('data.is_reproducible', false)
             ->assertJsonPath('data.status', 'NOT_RECOMPUTED_STORED_ONLY')
             ->assertJsonPath('data.recomputed_decision.side', 'BUY');
+
+        $response2 = $this->getJson('/api/v1/research/replay/'.$obs->id.'?mode=AS_OF_DECISION');
+        $response2->assertOk()
+            ->assertJsonPath('data.mode', 'AS_OF_DECISION')
+            ->assertJsonPath('data.is_reproducible', false)
+            ->assertJsonPath('data.status', 'NOT_RECOMPUTED_STORED_ONLY');
+
+        self::assertSame(0, $writes, 'GET replay must perform zero INSERT/UPDATE/DELETE mutations.');
+        self::assertSame($countBefore, StrategyObservationRecord::query()->count());
     }
 
     public function test_calibration_endpoint(): void

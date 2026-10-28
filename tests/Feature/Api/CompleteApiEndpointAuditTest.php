@@ -5,8 +5,13 @@ declare(strict_types=1);
 namespace Tests\Feature\Api;
 
 use App\PaperTrading\Application\PaperAccountService;
+use App\PaperTrading\Infrastructure\Persistence\PaperAccountRecord;
+use App\PaperTrading\Infrastructure\Persistence\RiskDecisionRecord;
+use App\Strategy\Infrastructure\Persistence\SignalRecord;
+use Carbon\CarbonImmutable;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Route;
+use Illuminate\Support\Str;
 use Tests\TestCase;
 
 final class CompleteApiEndpointAuditTest extends TestCase
@@ -106,5 +111,129 @@ final class CompleteApiEndpointAuditTest extends TestCase
 
         $response = $this->postJson('/api/v1/backtests', $payload);
         self::assertNotContains($response->status(), [401, 503]);
+    }
+
+    public function test_signals_endpoint_annotates_latest_matching_scoped_risk_decision(): void
+    {
+        $accountService = $this->app->make(PaperAccountService::class);
+        $targetAccount = $accountService->default();
+        $targetAccount->update(['exchange_id' => 'bybit', 'status' => 'ACTIVE']);
+
+        $foreignAccount = PaperAccountRecord::query()->create([
+            'id' => (string) Str::uuid(),
+            'name' => 'Foreign Binance Account',
+            'exchange_id' => 'binance',
+            'is_primary' => true,
+            'status' => 'ACTIVE',
+            'starting_balance' => '10000',
+            'current_equity' => '10000',
+            'peak_equity' => '10000',
+            'strategy_id' => 'trend_pullback',
+        ]);
+
+        $now = CarbonImmutable::now('UTC');
+
+        $sig = SignalRecord::query()->create([
+            'id' => (string) Str::uuid(),
+            'exchange' => 'bybit',
+            'category' => 'linear',
+            'symbol' => 'BTCUSDT',
+            'timeframe' => '15',
+            'side' => 'BUY',
+            'quality_class' => 'A',
+            'score' => 85,
+            'entry_low' => '65000',
+            'entry_high' => '65500',
+            'stop_loss' => '64000',
+            'take_profit_1' => '67000',
+            'take_profit_2' => '69000',
+            'reasons' => ['trend_aligned'],
+            'risks' => [],
+            'indicator_snapshot' => ['ema' => 65100],
+            'contract' => ['version' => '1.0'],
+            'strategy_id' => 'trend_pullback',
+            'strategy_version' => '1.0.0',
+            'schema_version' => '1.0.0',
+            'maximum_holding_minutes' => 120,
+            'decision_time' => $now->subMinutes(15),
+            'candle_close_time' => $now->subMinutes(15),
+            'expires_at' => $now->addHours(2),
+        ]);
+
+        $sigUnmatched = SignalRecord::query()->create([
+            'id' => (string) Str::uuid(),
+            'exchange' => 'bybit',
+            'category' => 'linear',
+            'symbol' => 'ETHUSDT',
+            'timeframe' => '15',
+            'side' => 'SELL',
+            'quality_class' => 'B',
+            'score' => 70,
+            'entry_low' => '3400',
+            'entry_high' => '3450',
+            'stop_loss' => '3500',
+            'take_profit_1' => '3300',
+            'take_profit_2' => '3200',
+            'reasons' => ['resistance_bounce'],
+            'risks' => [],
+            'indicator_snapshot' => ['ema' => 3420],
+            'contract' => ['version' => '1.0'],
+            'strategy_id' => 'trend_pullback',
+            'strategy_version' => '1.0.0',
+            'schema_version' => '1.0.0',
+            'maximum_holding_minutes' => 120,
+            'decision_time' => $now->subMinutes(10),
+            'candle_close_time' => $now->subMinutes(10),
+            'expires_at' => $now->addHours(2),
+        ]);
+
+        // 1. Older matching decision: decided 10m ago, allowed = false
+        RiskDecisionRecord::query()->create([
+            'id' => (string) Str::uuid(),
+            'paper_account_id' => $targetAccount->id,
+            'signal_id' => $sig->id,
+            'allowed' => false,
+            'reasons' => ['cooldown_active'],
+            'snapshot' => ['equity' => '10000'],
+            'risk_version' => 'v1_old',
+            'decided_at' => $now->subMinutes(10),
+        ]);
+
+        // 2. Newer matching decision: decided 5m ago, allowed = true
+        RiskDecisionRecord::query()->create([
+            'id' => (string) Str::uuid(),
+            'paper_account_id' => $targetAccount->id,
+            'signal_id' => $sig->id,
+            'allowed' => true,
+            'reasons' => ['risk_passed'],
+            'snapshot' => ['equity' => '10000'],
+            'risk_version' => 'v1_new',
+            'decided_at' => $now->subMinutes(5),
+        ]);
+
+        // 3. Even newer foreign-account decision: decided 1m ago, allowed = false
+        RiskDecisionRecord::query()->create([
+            'id' => (string) Str::uuid(),
+            'paper_account_id' => $foreignAccount->id,
+            'signal_id' => $sig->id,
+            'allowed' => false,
+            'reasons' => ['drawdown_exceeded'],
+            'snapshot' => ['equity' => '9000'],
+            'risk_version' => 'v1_foreign',
+            'decided_at' => $now->subMinute(),
+        ]);
+
+        // Query with account scope: should pick newer matching decision (true), not foreign (false) or older (false)
+        $response = $this->getJson('/api/v1/signals?exchange=bybit&account='.$targetAccount->id);
+        $response->assertOk();
+
+        $data = collect($response->json('data.data') ?? $response->json('data'));
+        $sigData = $data->firstWhere('id', $sig->id);
+        self::assertNotNull($sigData);
+        self::assertTrue($sigData['risk_approved'], 'Must annotate latest matching decision within requested account scope.');
+
+        $unmatchedData = $data->firstWhere('id', $sigUnmatched->id);
+        self::assertNotNull($unmatchedData);
+        self::assertNull($unmatchedData['risk_approved'], 'Missing risk decision match must remain null (unavailable state).');
     }
 }
