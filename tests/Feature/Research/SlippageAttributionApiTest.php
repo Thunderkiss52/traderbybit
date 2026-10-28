@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Tests\Feature\Research;
 
+use App\Exchanges\Binance\BinanceDeploymentInitializer;
 use App\PaperTrading\Application\PaperAccountService;
 use App\PaperTrading\Infrastructure\Persistence\PaperAccountRecord;
 use App\PaperTrading\Infrastructure\Persistence\VirtualPositionRecord;
@@ -173,6 +174,133 @@ final class SlippageAttributionApiTest extends TestCase
         ]);
         $resConflict->assertStatus(409)
             ->assertJsonPath('error.code', 'IDEMPOTENCY_CONFLICT');
+    }
+
+    public function test_f24_slippage_position_trace_scopes_accounts_and_exchanges_without_foreign_fills(): void
+    {
+        // Initialize Binance accounts
+        $this->app->make(BinanceDeploymentInitializer::class)->initialize();
+
+        // 1. Seed two distinct accounts (Bybit and Binance)
+        $bybitAccount = PaperAccountRecord::query()->where('exchange_id', 'bybit')->firstOrFail();
+        $binanceAccount = PaperAccountRecord::query()->where('exchange_id', 'binance')->firstOrFail();
+
+        // 2. Seed a position for Bybit account
+        $bybitPosId = Uuid::uuid4()->toString();
+        $openedAt = CarbonImmutable::parse('2026-10-15 10:00:00', 'UTC');
+        $this->createSignal($bybitPosId);
+
+        VirtualPositionRecord::query()->create([
+            'id' => $bybitPosId,
+            'paper_account_id' => $bybitAccount->id,
+            'signal_id' => $bybitPosId,
+            'symbol' => 'BTCUSDT',
+            'side' => 'BUY',
+            'quality_class' => 'A',
+            'status' => 'CLOSED_TP',
+            'entry_price' => '60000.00',
+            'stop_loss' => '59000.00',
+            'take_profit_1' => '61000.00',
+            'take_profit_2' => '62000.00',
+            'initial_quantity' => '1.0',
+            'remaining_quantity' => '0.0',
+            'qty_step' => '0.001',
+            'risk_capital' => '100.00',
+            'unrealized_pnl' => '0.00',
+            'gross_pnl' => '1000.00',
+            'net_pnl' => '980.00',
+            'fees' => '20.00',
+            'funding' => '0.00',
+            'opened_at' => $openedAt,
+            'maximum_holding_until' => $openedAt->addHours(4),
+            'closed_at' => $openedAt->addHours(1),
+            'execution_model' => 'FORWARD_PAPER',
+            'strategy_version' => '1.0.0',
+            'risk_version' => '1.0.0',
+            'execution_version' => '1.0.0',
+            'schema_version' => '1.0.0',
+        ]);
+
+        // Seed two generations for this position
+        $genA = Uuid::uuid4()->toString();
+        $genB = Uuid::uuid4()->toString();
+
+        foreach ([$genA, $genB] as $idx => $gen) {
+            SlippageAttributionRecord::query()->create([
+                'generation_id' => $gen,
+                'position_id' => $bybitPosId,
+                'paper_account_id' => $bybitAccount->id,
+                'strategy_id' => 'baseline',
+                'symbol' => 'BTCUSDT',
+                'position_side' => 'BUY',
+                'algorithm_version' => '1.0.0',
+                'created_at' => now()->addSeconds($idx),
+            ]);
+            SlippageAttributionFillRecord::query()->create([
+                'generation_id' => $gen,
+                'position_id' => $bybitPosId,
+                'paper_account_id' => $bybitAccount->id,
+                'execution_id' => Uuid::uuid4()->toString(),
+                'strategy_id' => 'baseline',
+                'symbol' => 'BTCUSDT',
+                'execution_side' => 'BUY',
+                'fill_role' => 'ENTRY',
+                'quantity' => '1',
+                'contract_multiplier' => '1',
+                'reference_price' => '59990',
+                'fill_price' => '60000',
+                'reference_notional' => '59990',
+                'slippage_drag_usdt' => '10',
+                'price_source' => 'fixture',
+                'market_event_at' => $openedAt->addSeconds($idx),
+            ]);
+        }
+
+        // Also seed an unrelated fill for Binance account with same generation ID to test cross-account contamination guard
+        SlippageAttributionFillRecord::query()->create([
+            'generation_id' => $genA,
+            'position_id' => Uuid::uuid4()->toString(),
+            'paper_account_id' => $binanceAccount->id,
+            'execution_id' => Uuid::uuid4()->toString(),
+            'strategy_id' => 'baseline',
+            'symbol' => 'BTCUSDT',
+            'execution_side' => 'BUY',
+            'fill_role' => 'ENTRY',
+            'quantity' => '5',
+            'contract_multiplier' => '1',
+            'reference_price' => '50000',
+            'fill_price' => '50100',
+            'reference_notional' => '250000',
+            'slippage_drag_usdt' => '500',
+            'price_source' => 'fixture',
+            'market_event_at' => $openedAt,
+        ]);
+
+        // 3. Request trace with correct account & exchange and explicit generation
+        $resExact = $this->getJson("/api/v1/research/profitability/slippage-attribution/positions/{$bybitPosId}?account_id={$bybitAccount->id}&exchange=bybit&generation_id={$genA}");
+        $resExact->assertOk()
+            ->assertJsonPath('status', 'SUCCESS')
+            ->assertJsonPath('data.position_id', $bybitPosId)
+            ->assertJsonPath('data.position.symbol', 'BTCUSDT')
+            ->assertJsonCount(1, 'data.fills')
+            ->assertJsonPath('data.fills.0.generation_id', $genA)
+            ->assertJsonPath('data.fills.0.paper_account_id', $bybitAccount->id);
+
+        // 4. Request trace with FOREIGN account filter -> zero fills, zero foreign data leakage
+        $resForeignAccount = $this->getJson("/api/v1/research/profitability/slippage-attribution/positions/{$bybitPosId}?account_id={$binanceAccount->id}");
+        $resForeignAccount->assertOk()
+            ->assertJsonPath('status', 'SUCCESS')
+            ->assertJsonPath('data.position_id', $bybitPosId)
+            ->assertJsonCount(0, 'data.fills')
+            ->assertJsonPath('data.position', null);
+
+        // 5. Request trace with FOREIGN exchange filter -> zero fills, zero foreign data leakage
+        $resForeignExchange = $this->getJson("/api/v1/research/profitability/slippage-attribution/positions/{$bybitPosId}?exchange=binance");
+        $resForeignExchange->assertOk()
+            ->assertJsonPath('status', 'SUCCESS')
+            ->assertJsonPath('data.position_id', $bybitPosId)
+            ->assertJsonCount(0, 'data.fills')
+            ->assertJsonPath('data.position', null);
     }
 
     private function createSignal(string $signalId): void

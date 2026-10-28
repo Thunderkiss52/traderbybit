@@ -103,10 +103,17 @@ final readonly class BinanceCandleIngestion
             return 0;
         }
 
-        $exchanges = [];
-        $categories = [];
-        $symbols = [];
-        $intervals = [];
+        $count = count($chunk);
+        $first = reset($chunk);
+
+        // Scope columns and timestamps are uniform across a single chunk
+        $pgExchange = '{'.implode(',', array_fill(0, $count, '"'.addcslashes((string) $first['exchange'], '"\\').'"')).'}';
+        $pgCategory = '{'.implode(',', array_fill(0, $count, '"'.addcslashes((string) $first['category'], '"\\').'"')).'}';
+        $pgSymbol = '{'.implode(',', array_fill(0, $count, '"'.addcslashes((string) $first['symbol'], '"\\').'"')).'}';
+        $pgInterval = '{'.implode(',', array_fill(0, $count, '"'.addcslashes((string) $first['interval'], '"\\').'"')).'}';
+        $pgCreatedAt = '{'.implode(',', array_fill(0, $count, '"'.(string) $first['created_at'].'"')).'}';
+        $pgUpdatedAt = '{'.implode(',', array_fill(0, $count, '"'.(string) $first['updated_at'].'"')).'}';
+
         $openTimes = [];
         $opens = [];
         $highs = [];
@@ -115,15 +122,9 @@ final readonly class BinanceCandleIngestion
         $volumes = [];
         $turnovers = [];
         $isClosed = [];
-        $createdAts = [];
-        $updatedAts = [];
 
         foreach ($chunk as $row) {
-            $exchanges[] = $row['exchange'];
-            $categories[] = $row['category'];
-            $symbols[] = $row['symbol'];
-            $intervals[] = $row['interval'];
-            $openTimes[] = $row['open_time'];
+            $openTimes[] = '"'.(string) $row['open_time'].'"';
             $opens[] = (string) $row['open'];
             $highs[] = (string) $row['high'];
             $lows[] = (string) $row['low'];
@@ -131,27 +132,23 @@ final readonly class BinanceCandleIngestion
             $volumes[] = (string) $row['volume'];
             $turnovers[] = (string) $row['turnover'];
             $isClosed[] = $row['is_closed'] ? 't' : 'f';
-            $createdAts[] = $row['created_at'];
-            $updatedAts[] = $row['updated_at'];
         }
 
-        $toPgArray = static fn (array $arr): string => '{'.implode(',', array_map(static fn ($v): string => '"'.addcslashes((string) $v, '"\\').'"', $arr)).'}';
-
         return DB::affectingStatement('insert into "market_candles" (exchange, category, symbol, interval, open_time, open, high, low, close, volume, turnover, is_closed, created_at, updated_at) select * from unnest(?::varchar[], ?::varchar[], ?::varchar[], ?::varchar[], ?::timestamp[], ?::numeric[], ?::numeric[], ?::numeric[], ?::numeric[], ?::numeric[], ?::numeric[], ?::boolean[], ?::timestamptz[], ?::timestamptz[]) on conflict (exchange, category, symbol, interval, open_time) do nothing', [
-            $toPgArray($exchanges),
-            $toPgArray($categories),
-            $toPgArray($symbols),
-            $toPgArray($intervals),
-            $toPgArray($openTimes),
-            $toPgArray($opens),
-            $toPgArray($highs),
-            $toPgArray($lows),
-            $toPgArray($closes),
-            $toPgArray($volumes),
-            $toPgArray($turnovers),
-            $toPgArray($isClosed),
-            $toPgArray($createdAts),
-            $toPgArray($updatedAts),
+            $pgExchange,
+            $pgCategory,
+            $pgSymbol,
+            $pgInterval,
+            '{'.implode(',', $openTimes).'}',
+            '{'.implode(',', $opens).'}',
+            '{'.implode(',', $highs).'}',
+            '{'.implode(',', $lows).'}',
+            '{'.implode(',', $closes).'}',
+            '{'.implode(',', $volumes).'}',
+            '{'.implode(',', $turnovers).'}',
+            '{'.implode(',', $isClosed).'}',
+            $pgCreatedAt,
+            $pgUpdatedAt,
         ]);
     }
 

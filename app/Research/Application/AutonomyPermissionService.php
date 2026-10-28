@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Research\Application;
 
+use App\Research\Domain\ResearchPromotionControlRecord;
 use App\Research\Infrastructure\Persistence\AutonomyApprovalEventRecord;
 use App\Research\Infrastructure\Persistence\AutonomySettingRecord;
 use Carbon\CarbonImmutable;
@@ -56,6 +57,18 @@ final class AutonomyPermissionService
 
         $settings = $this->getSettings($persist);
         if ($settings->kill_switch_active) {
+            return false;
+        }
+
+        $latestControl = ResearchPromotionControlRecord::query()
+            ->whereIn('action', [
+                'KILL_SWITCH_ACTIVATED',
+                'KILL_SWITCH_RELEASED',
+            ])
+            ->orderByDesc('sequence')
+            ->first();
+
+        if ($latestControl !== null && (string) $latestControl->action === 'KILL_SWITCH_ACTIVATED') {
             return false;
         }
 

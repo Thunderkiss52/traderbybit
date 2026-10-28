@@ -19,10 +19,12 @@ final class LearningFeatureStoreService
         string $timeframe,
         CarbonImmutable $decisionTime,
         ?string $strategyId = null,
-        ?string $regime = null
+        ?string $regime = null,
+        string $exchange = 'bybit'
     ): ?LearningFeatureSnapshotRecord {
         // Enforce strict causality: closed candle at or before decision time T
         $candle = CandleRecord::query()
+            ->where('exchange', $exchange)
             ->where('symbol', $symbol)
             ->where('interval', $timeframe)
             ->where('is_closed', true)
@@ -34,12 +36,13 @@ final class LearningFeatureStoreService
             return null;
         }
 
-        // De-duplication check: avoid duplicate snapshot at the same decision timestamp
+        // De-duplication check: avoid duplicate snapshot at the same decision timestamp for the exchange
         $existing = LearningFeatureSnapshotRecord::query()
             ->where('symbol', $symbol)
             ->where('timeframe', $timeframe)
             ->where('decision_time', $decisionTime)
-            ->first();
+            ->get()
+            ->first(fn ($record) => ($record->data_quality['exchange'] ?? 'bybit') === $exchange);
 
         if ($existing) {
             return $existing;
@@ -50,6 +53,7 @@ final class LearningFeatureStoreService
 
         // Fetch recent historical window strictly <= decisionTime
         $history = CandleRecord::query()
+            ->where('exchange', $exchange)
             ->where('symbol', $symbol)
             ->where('interval', $timeframe)
             ->where('is_closed', true)
@@ -121,6 +125,7 @@ final class LearningFeatureStoreService
             'features' => $features,
             'label_status' => 'PENDING',
             'data_quality' => [
+                'exchange' => $exchange,
                 'candles_evaluated' => $history->count(),
                 'missing_bars' => 0,
                 'no_look_ahead_verified' => true,
@@ -131,7 +136,7 @@ final class LearningFeatureStoreService
     /**
      * Mature pending outcome labels using post-facto closed candles.
      */
-    public function maturePendingLabels(int $limit = 50): int
+    public function maturePendingLabels(int $limit = 50, ?string $exchange = null): int
     {
         $pending = LearningFeatureSnapshotRecord::query()
             ->where('label_status', 'PENDING')
@@ -142,6 +147,11 @@ final class LearningFeatureStoreService
         $maturedCount = 0;
 
         foreach ($pending as $snapshot) {
+            $snapshotExchange = $snapshot->data_quality['exchange'] ?? 'bybit';
+            if ($exchange !== null && $snapshotExchange !== $exchange) {
+                continue;
+            }
+
             $t0 = CarbonImmutable::parse($snapshot->decision_time);
             $entryPrice = (float) ($snapshot->features['close'] ?? 0.0);
             if ($entryPrice <= 0) {
@@ -155,6 +165,7 @@ final class LearningFeatureStoreService
             $sl = $entryPrice * 0.99;
 
             $subsequentCandles = CandleRecord::query()
+                ->where('exchange', $snapshotExchange)
                 ->where('symbol', $snapshot->symbol)
                 ->where('interval', $snapshot->timeframe)
                 ->where('is_closed', true)

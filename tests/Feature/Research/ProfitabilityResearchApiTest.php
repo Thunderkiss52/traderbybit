@@ -205,4 +205,77 @@ final class ProfitabilityResearchApiTest extends TestCase
 
         $this->assertEmpty($writeQueries, 'GET endpoints must perform ZERO database write queries. Found writes: '.implode('; ', $writeQueries));
     }
+
+    public function test_f02_profitability_response_envelope_chain_for_success_and_errors(): void
+    {
+        // 1. Success envelopes contain status='SUCCESS' and data object
+        $summaryRes = $this->getJson('/api/v1/research/profitability/summary');
+        $summaryRes->assertOk()
+            ->assertJsonPath('status', 'SUCCESS')
+            ->assertJsonStructure(['status', 'data']);
+
+        $strategiesRes = $this->getJson('/api/v1/research/profitability/strategies');
+        $strategiesRes->assertOk()
+            ->assertJsonPath('status', 'SUCCESS')
+            ->assertJsonStructure(['status', 'data' => ['strategies']]);
+
+        $detailRes = $this->getJson('/api/v1/research/profitability/strategies/baseline');
+        $detailRes->assertOk()
+            ->assertJsonPath('status', 'SUCCESS')
+            ->assertJsonStructure(['status', 'data' => ['strategy_id', 'account']]);
+
+        // 2. Negative 404 envelope contains error with code and message
+        $notFoundRes = $this->getJson('/api/v1/research/profitability/strategies/non_existent_strategy_xyz');
+        $notFoundRes->assertStatus(404)
+            ->assertJsonStructure(['error' => ['code', 'message']])
+            ->assertJsonPath('error.code', 'STRATEGY_NOT_FOUND');
+
+        // Negative position slippage 404
+        $posNotFoundRes = $this->getJson('/api/v1/research/profitability/slippage-attribution/positions/00000000-0000-0000-0000-000000000000');
+        $posNotFoundRes->assertStatus(404)
+            ->assertJsonStructure(['error' => ['code', 'message']])
+            ->assertJsonPath('error.code', 'POSITION_NOT_FOUND');
+    }
+
+    public function test_f03_null_vs_real_zero_distinction_preserved_without_fabrication(): void
+    {
+        $account = app(PaperAccountService::class)->default();
+
+        // When no trading or reconciliation runs exist, reconciliation discrepancy_count is null, NOT fabricated 0
+        $summary = $this->getJson('/api/v1/research/profitability/summary')->assertOk()->json('data');
+        $accountRow = collect($summary['accounting_scopes']['point_in_time']['accounts'])->firstWhere('account_id', $account->id);
+
+        if ($accountRow['reconciliation']['status'] === 'NO_RECORDED_RUN') {
+            self::assertNull($accountRow['reconciliation']['discrepancy_count'], 'Unreconciled account must return null discrepancy_count, never fabricated 0');
+        }
+
+        // When starting balance and current equity are exact numbers, they are preserved as strings
+        self::assertNotNull($accountRow['starting_balance']);
+        self::assertNotNull($accountRow['current_equity']);
+
+        // Check strategy detail reconciliation
+        $detail = $this->getJson('/api/v1/research/profitability/strategies/baseline')->assertOk()->json('data');
+        if (($detail['reconciliation']['status'] ?? '') === 'NO_RECORDED_RUN') {
+            self::assertNull($detail['reconciliation']['discrepancy_count']);
+        }
+    }
+
+    public function test_f05_gated_module_statuses_consistent_with_evidence_and_prohibitions(): void
+    {
+        $summary = $this->getJson('/api/v1/research/profitability/summary')->assertOk()->json('data.gated_modules');
+
+        // P-1 is implemented and verified by authentic test suite and evidence
+        self::assertSame('IMPLEMENTED_VERIFIED', $summary['P-1']['status']);
+
+        // P-2 is implemented
+        self::assertSame('IMPLEMENTED', $summary['P-2']['status']);
+
+        // P-3 is strictly BLOCKED_PROHIBITED by AGENTS.md invariant (live real-money trading forbidden)
+        self::assertSame('BLOCKED_PROHIBITED', $summary['P-3']['status']);
+
+        // P-4, P-5, P-6 are NOT_IMPLEMENTED
+        self::assertSame('NOT_IMPLEMENTED', $summary['P-4']['status']);
+        self::assertSame('NOT_IMPLEMENTED', $summary['P-5']['status']);
+        self::assertSame('NOT_IMPLEMENTED', $summary['P-6']['status']);
+    }
 }

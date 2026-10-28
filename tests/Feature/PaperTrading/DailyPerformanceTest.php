@@ -174,6 +174,73 @@ final class DailyPerformanceTest extends TestCase
         self::assertDecimalSame('5', $day['net_pnl']);
     }
 
+    public function test_f23_pagination_across_pages_guarantees_stable_order_and_zero_loss(): void
+    {
+        $account = app(PaperAccountService::class)->default();
+        EquitySnapshotRecord::query()->where('paper_account_id', $account->id)->delete();
+
+        // Seed 25 distinct daily snapshots
+        $baseDate = new DateTimeImmutable('2026-01-01T23:59:30Z');
+        for ($i = 0; $i < 25; $i++) {
+            $dt = $baseDate->modify("+{$i} days");
+            $this->snapshot(
+                $account->id,
+                $dt->format(DATE_ATOM),
+                (string) (10000 + ($i * 100)),
+                (string) ($i * 50),
+                '0',
+                "f23-page-{$i}"
+            );
+        }
+
+        $allDates = [];
+
+        // Request Page 1 (per_page = 10)
+        $res1 = $this->getJson('/api/v1/paper/daily-performance?account='.$account->id.'&timezone=UTC&per_page=10&page=1');
+        $res1->assertOk()
+            ->assertJsonPath('data.days.meta.current_page', 1)
+            ->assertJsonPath('data.days.meta.per_page', 10)
+            ->assertJsonPath('data.days.meta.last_page', 3)
+            ->assertJsonPath('data.days.meta.total', 25)
+            ->assertJsonCount(10, 'data.days.data');
+
+        $page1Dates = collect($res1->json('data.days.data'))->pluck('date')->all();
+        $allDates = array_merge($allDates, $page1Dates);
+
+        // Request Page 2 (per_page = 10)
+        $res2 = $this->getJson('/api/v1/paper/daily-performance?account='.$account->id.'&timezone=UTC&per_page=10&page=2');
+        $res2->assertOk()
+            ->assertJsonPath('data.days.meta.current_page', 2)
+            ->assertJsonPath('data.days.meta.per_page', 10)
+            ->assertJsonPath('data.days.meta.last_page', 3)
+            ->assertJsonPath('data.days.meta.total', 25)
+            ->assertJsonCount(10, 'data.days.data');
+
+        $page2Dates = collect($res2->json('data.days.data'))->pluck('date')->all();
+        $allDates = array_merge($allDates, $page2Dates);
+
+        // Request Page 3 (per_page = 10)
+        $res3 = $this->getJson('/api/v1/paper/daily-performance?account='.$account->id.'&timezone=UTC&per_page=10&page=3');
+        $res3->assertOk()
+            ->assertJsonPath('data.days.meta.current_page', 3)
+            ->assertJsonPath('data.days.meta.per_page', 10)
+            ->assertJsonPath('data.days.meta.last_page', 3)
+            ->assertJsonPath('data.days.meta.total', 25)
+            ->assertJsonCount(5, 'data.days.data');
+
+        $page3Dates = collect($res3->json('data.days.data'))->pluck('date')->all();
+        $allDates = array_merge($allDates, $page3Dates);
+
+        // Assert all 25 rows retrieved without omission or truncation
+        self::assertCount(25, $allDates);
+        self::assertCount(25, array_unique($allDates), 'All 25 paginated dates across pages must be unique (no duplicates)');
+
+        // Assert strictly monotonic descending stable order across page boundaries
+        $sortedDates = $allDates;
+        rsort($sortedDates);
+        self::assertSame($sortedDates, $allDates, 'Pagination must maintain stable chronological descending order across pages');
+    }
+
     private function position(string $accountId, string $exchange, string $symbol, string $openedAt, ?string $closedAt, string $netPnl, ?string $rMultiple): string
     {
         $id = (string) Str::uuid();

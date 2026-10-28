@@ -35,7 +35,7 @@ final class PortfolioCorrelationService
         // 1. Group positions by strategy and symbol
         $byStrategy = [];
         $byAssetDirection = [];
-        $strategyPnls = [];
+        $strategyDailyPnls = [];
 
         foreach ($positions as $pos) {
             $strat = (string) ($pos->account_strategy_id ?? 'unknown');
@@ -48,11 +48,12 @@ final class PortfolioCorrelationService
 
             $isClosed = $pos->status === 'CLOSED' || str_starts_with((string) $pos->status, 'CLOSED_');
             if ($isClosed) {
-                $strategyPnls[$strat][] = (float) $pos->net_pnl;
+                $timeBucket = CarbonImmutable::parse($pos->opened_at)->format('Y-m-d');
+                $strategyDailyPnls[$strat][$timeBucket] = ($strategyDailyPnls[$strat][$timeBucket] ?? 0.0) + (float) $pos->net_pnl;
             }
         }
 
-        // 2. Compute pairwise Pearson correlation between strategies
+        // 2. Compute pairwise Pearson correlation between strategies aligned by common time bucket
         $strategies = array_keys($byStrategy);
         $pairMatrix = [];
         $alerts = [];
@@ -66,12 +67,17 @@ final class PortfolioCorrelationService
                     continue;
                 }
 
-                $series1 = $strategyPnls[$s1] ?? [];
-                $series2 = $strategyPnls[$s2] ?? [];
+                $series1 = $strategyDailyPnls[$s1] ?? [];
+                $series2 = $strategyDailyPnls[$s2] ?? [];
 
-                $minLen = min(count($series1), count($series2));
-                if ($minLen >= 3) {
-                    $corr = $this->pearsonCorrelation(array_slice($series1, 0, $minLen), array_slice($series2, 0, $minLen));
+                $commonBuckets = array_values(array_intersect(array_keys($series1), array_keys($series2)));
+                sort($commonBuckets);
+
+                if (count($commonBuckets) >= 3) {
+                    $aligned1 = array_map(static fn (string $bucket): float => (float) $series1[$bucket], $commonBuckets);
+                    $aligned2 = array_map(static fn (string $bucket): float => (float) $series2[$bucket], $commonBuckets);
+
+                    $corr = $this->pearsonCorrelation($aligned1, $aligned2);
                     $pairMatrix[$s1][$s2] = round($corr, 4);
 
                     if ($corr > 0.80 && ! in_array("High correlation between {$s1} and {$s2} ({$corr})", $alerts, true)) {

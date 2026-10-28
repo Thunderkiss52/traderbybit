@@ -28,4 +28,15 @@ final class AutonomyApprovalEventRecord extends Model
             'created_at' => 'immutable_datetime',
         ];
     }
+
+    protected static function booted(): void
+    {
+        self::updating(function () {
+            throw new \RuntimeException('Autonomy approval events are strictly append-only and immutable.');
+        });
+
+        self::deleting(function () {
+            throw new \RuntimeException('Autonomy approval events are strictly append-only and immutable.');
+        });
+    }
 }

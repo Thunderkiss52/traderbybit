@@ -449,6 +449,89 @@ final class AutonomyResearchTest extends TestCase
         $release->assertStatus(409)->assertJsonPath('status', 'RELEASE_REFUSED');
     }
 
+    public function test_f19_autonomy_settings_reports_raw_flags_beside_effective_permissions_and_reasons(): void
+    {
+        $autonomy = app(AutonomyPermissionService::class);
+        $autonomy->updateSettings([
+            'auto_promote_paper' => true,
+            'discover_hypotheses' => true,
+        ]);
+
+        // When kill switch is active, raw capabilities remain true, but effective capabilities become false with reason
+        $autonomy->toggleKillSwitch(true, 'USER_OPERATOR', 'Emergency freeze');
+
+        $res = $this->getJson('/api/v1/research/learning/autonomy-settings');
+        $res->assertOk();
+
+        // Raw configured value is preserved
+        $res->assertJsonPath('data.capabilities.auto_promote_paper', true);
+        $res->assertJsonPath('data.kill_switch_active', true);
+
+        // Effective permission is false with KILL_SWITCH_ACTIVE reason
+        $res->assertJsonPath('data.effective_capabilities.auto_promote_paper.configured', true);
+        $res->assertJsonPath('data.effective_capabilities.auto_promote_paper.effective', false);
+        $res->assertJsonPath('data.effective_capabilities.auto_promote_paper.reason', 'KILL_SWITCH_ACTIVE');
+
+        // Absolute system invariants can never be effective under any circumstance
+        $res->assertJsonPath('data.effective_capabilities.live_exchange_trading.effective', false);
+        $res->assertJsonPath('data.effective_capabilities.live_exchange_trading.reason', 'ABSOLUTE_SYSTEM_INVARIANT');
+        $res->assertJsonPath('data.effective_capabilities.change_hard_risk_limits.effective', false);
+        $res->assertJsonPath('data.effective_capabilities.change_hard_risk_limits.reason', 'ABSOLUTE_SYSTEM_INVARIANT');
+    }
+
+    public function test_f20_dual_kill_switch_matrix_blocks_effectively_and_reports_both_authorities_without_writes(): void
+    {
+        $service = $this->service();
+        $autonomy = app(AutonomyPermissionService::class);
+
+        $combinations = [
+            ['research' => false, 'learning' => false, 'expected' => false],
+            ['research' => true,  'learning' => false, 'expected' => true],
+            ['research' => false, 'learning' => true,  'expected' => true],
+            ['research' => true,  'learning' => true,  'expected' => true],
+        ];
+
+        foreach ($combinations as $combo) {
+            // Set learning kill switch
+            $autonomy->toggleKillSwitch($combo['learning'], 'OPERATOR', 'Matrix test');
+
+            // Set research promotion control kill switch
+            if ($combo['research']) {
+                $service->activateKillSwitch('Matrix test', 'OPERATOR');
+            } else {
+                DB::table('research_promotion_controls')
+                    ->where('action', 'KILL_SWITCH_ACTIVATED')
+                    ->delete();
+            }
+
+            $controlsBefore = DB::table('research_promotion_controls')->count();
+            $settingsBefore = DB::table('autonomy_settings')->count();
+
+            // GET research promotion controls
+            $res1 = $this->getJson('/api/v1/research/autonomy/promotion-controls');
+            $res1->assertOk()
+                ->assertJsonPath('data.kill_switch_active', $combo['expected'])
+                ->assertJsonPath('data.effective_kill_switch_active', $combo['expected'])
+                ->assertJsonPath('data.authorities.research_promotion_control', $combo['research'])
+                ->assertJsonPath('data.authorities.learning_autonomy_settings', $combo['learning']);
+
+            // GET learning autonomy settings
+            $res2 = $this->getJson('/api/v1/research/learning/autonomy-settings');
+            $res2->assertOk()
+                ->assertJsonPath('data.kill_switch_active', $combo['expected'])
+                ->assertJsonPath('data.authorities.research_promotion_control', $combo['research'])
+                ->assertJsonPath('data.authorities.learning_autonomy_settings', $combo['learning']);
+
+            // Verify GET endpoints are strictly read-only (zero writes)
+            self::assertSame($controlsBefore, DB::table('research_promotion_controls')->count());
+            self::assertSame($settingsBefore, DB::table('autonomy_settings')->count());
+
+            // Verify both services block autonomous promotions effectively
+            self::assertSame($combo['expected'], $service->killSwitchActive());
+            self::assertSame(! $combo['expected'], $autonomy->isAllowed('discover_hypotheses'));
+        }
+    }
+
     private function service(): AutonomyResearchService
     {
         return $this->app->make(AutonomyResearchService::class);

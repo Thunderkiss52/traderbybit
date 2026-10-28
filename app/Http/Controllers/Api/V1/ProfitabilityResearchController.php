@@ -27,6 +27,7 @@ use Carbon\CarbonImmutable;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 
 final class ProfitabilityResearchController extends Controller
@@ -406,14 +407,46 @@ final class ProfitabilityResearchController extends Controller
 
         $request->validate(['generation_id' => 'nullable|uuid']);
         $generationId = $request->query('generation_id');
+        $accountId = $request->query('account_id') ?? $request->query('paper_account_id');
+        $exchange = $request->query('exchange') ?? $request->query('exchange_id');
+
+        if ($accountId !== null && $position->paper_account_id !== $accountId) {
+            return response()->json([
+                'status' => 'SUCCESS',
+                'data' => [
+                    'position_id' => $positionId,
+                    'position' => null,
+                    'slippage_attribution' => null,
+                    'fills' => [],
+                ],
+            ]);
+        }
+
+        if ($exchange !== null) {
+            $accountExchange = DB::table('paper_accounts')->where('id', $position->paper_account_id)->value('exchange_id');
+            if ($accountExchange !== $exchange) {
+                return response()->json([
+                    'status' => 'SUCCESS',
+                    'data' => [
+                        'position_id' => $positionId,
+                        'position' => null,
+                        'slippage_attribution' => null,
+                        'fills' => [],
+                    ],
+                ]);
+            }
+        }
+
         $positionAttribution = SlippageAttributionRecord::query()
             ->where('position_id', $positionId)
+            ->when($accountId, fn ($query) => $query->where('paper_account_id', $accountId))
             ->when($generationId, fn ($query) => $query->where('generation_id', $generationId))
             ->latest('created_at')->latest('id')
             ->first();
 
         $fills = SlippageAttributionFillRecord::query()
             ->where('position_id', $positionId)
+            ->when($accountId, fn ($query) => $query->where('paper_account_id', $accountId))
             ->where('generation_id', $positionAttribution?->generation_id)
             ->when($positionAttribution === null, fn ($query) => $query->whereRaw('1 = 0'))
             ->orderBy('market_event_at')

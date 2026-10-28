@@ -16,7 +16,7 @@ final class StrategyDegradationService
     /**
      * Evaluate strategy degradation over a given lookback horizon.
      */
-    public function evaluate(string $strategyId, string $horizon = '14d', ?string $symbol = null, bool $persist = true): StrategyDegradationSnapshotRecord
+    public function evaluate(string $strategyId, string $horizon = '14d', ?string $symbol = null, bool $persist = true, ?string $exchange = null): StrategyDegradationSnapshotRecord
     {
         $method = $persist ? 'create' : 'make';
         $days = match ($horizon) {
@@ -33,6 +33,7 @@ final class StrategyDegradationService
             ->where('virtual_positions.status', 'LIKE', 'CLOSED%')
             ->where('virtual_positions.closed_at', '>=', $cutoff)
             ->when($symbol, fn ($q) => $q->where('virtual_positions.symbol', $symbol))
+            ->when($exchange, fn ($q) => $q->where('paper_accounts.exchange_id', $exchange))
             ->select('virtual_positions.*')
             ->orderBy('virtual_positions.closed_at');
 
@@ -56,6 +57,7 @@ final class StrategyDegradationService
                 'status' => 'INSUFFICIENT_DATA',
                 'degradation_type' => 'NONE',
                 'diagnostics' => [
+                    'exchange' => $exchange,
                     'message' => "Insufficient closed sample size ({$sampleSize}/3 minimum).",
                 ],
                 'as_of_time' => CarbonImmutable::now(),
@@ -175,6 +177,7 @@ final class StrategyDegradationService
             'status' => $status,
             'degradation_type' => $degradationType,
             'diagnostics' => [
+                'exchange' => $exchange,
                 'ranging_observations' => $rangingCount,
                 'trending_observations' => $trendingCount,
                 'regime_mismatch' => $regimeMismatch,

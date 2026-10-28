@@ -69,6 +69,7 @@ final readonly class MarketScannerService
             decisionTime: CarbonImmutable::instance($decisionTime),
             strategyId: 'baseline',
             regime: is_string($regime) ? $regime : null,
+            exchange: $exchange,
         );
 
         return [

@@ -64,21 +64,55 @@ class LearningPredictorService
         // Purging: exclude training samples whose label maturity horizon overlaps with validation start
         $rawTrain = array_slice($allData, 0, $splitIndex);
         $trainSlice = [];
+        $purgedCount = 0;
         foreach ($rawTrain as $item) {
             $outcomeTime = $item['outcome_at'] ?? $item['decision_time']->addMinutes(60);
             if ($outcomeTime <= $valStartTime) {
                 $trainSlice[] = $item;
+            } else {
+                $purgedCount++;
             }
         }
 
+        $fallbackActivated = false;
         if (count($trainSlice) < 5) {
-            // When event horizon is long relative to step size, ensure clean non-overlapping boundary
-            $trainSlice = array_slice($rawTrain, 0, max(5, count($rawTrain) - 2));
+            $fallbackActivated = true;
+            // Purging fallback: rather than leaking future labels into training, select the initial 5 training samples
+            // and dynamically shift the validation set to start strictly AFTER the latest outcome of the training slice.
+            $fallbackTrain = array_slice($allData, 0, 5);
+            $latestTrainOutcome = null;
+            foreach ($fallbackTrain as $tItem) {
+                $ot = $tItem['outcome_at'] ?? $tItem['decision_time']->addMinutes(60);
+                if ($latestTrainOutcome === null || $ot > $latestTrainOutcome) {
+                    $latestTrainOutcome = $ot;
+                }
+            }
+
+            $fallbackVal = [];
+            for ($k = 5; $k < $totalCount; $k++) {
+                if ($allData[$k]['decision_time'] >= $latestTrainOutcome) {
+                    $fallbackVal[] = $allData[$k];
+                }
+            }
+
+            if (count($fallbackVal) >= 3) {
+                $trainSlice = $fallbackTrain;
+                $valSlice = $fallbackVal;
+                $valStartTime = $valSlice[0]['decision_time'];
+            }
         }
 
         // Untouched validation data must be distinct and non-empty; NEVER reuse training slice
         if (count($valSlice) < 3 || count($trainSlice) < 5) {
             return null;
+        }
+
+        // Strict guard: verify zero future label leakage
+        foreach ($trainSlice as $tItem) {
+            $ot = $tItem['outcome_at'] ?? $tItem['decision_time']->addMinutes(60);
+            if ($ot > $valStartTime) {
+                return null;
+            }
         }
 
         $featureKeys = ['hl_spread_pct', 'recent_volatility', 'rsi_14', 'volume_ratio'];
@@ -235,6 +269,11 @@ class LearningPredictorService
                 'features_used' => $featureKeys,
                 'evaluation_notes' => $promotionReason,
                 'algorithm' => 'BATCH_GRADIENT_DESCENT_L2',
+                'purging_diagnostics' => [
+                    'purged_count' => $purgedCount,
+                    'fallback_activated' => $fallbackActivated,
+                    'future_label_leakage_detected' => false,
+                ],
             ],
             'weights' => $weights,
             'metrics' => [

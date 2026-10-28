@@ -50,3 +50,12 @@ test('quote integrity api service exports all required endpoints and types', () 
   assert.match(api, /fetchQimAlerts/);
   assert.match(api, /uploadQimEvidence/);
 });
+
+test('f22 quote integrity handles error propagation, visible banner, and stale state', () => {
+  const page = read('pages/QuoteIntegrityPage.vue');
+  assert.match(page, /errorMessage/);
+  assert.match(page, /isStale/);
+  assert.match(page, /Quote Integrity Monitor Notice/);
+  assert.match(page, /Preserving last-known good state\. Data shown below may be stale\./);
+  assert.match(page, /FEATURE_DISABLED/);
+});

@@ -70,15 +70,36 @@ final class ResearchReportService
             'proposed_changes' => $r->proposed_changes,
         ], $activeRecs);
 
+        // Harmonize system freshness metrics without shape mismatch
+        $maxLagSeconds = 0;
+        if (isset($freshnessData['candle_freshness']) && is_array($freshnessData['candle_freshness'])) {
+            foreach ($freshnessData['candle_freshness'] as $cf) {
+                if (isset($cf['lag_seconds']) && $cf['lag_seconds'] > $maxLagSeconds) {
+                    $maxLagSeconds = (int) $cf['lag_seconds'];
+                }
+            }
+        }
+
+        $totalQueueDepth = 0;
+        if (isset($freshnessData['queues']) && is_array($freshnessData['queues'])) {
+            foreach ($freshnessData['queues'] as $qInfo) {
+                if (is_array($qInfo)) {
+                    $totalQueueDepth += (int) ($qInfo['pending_jobs'] ?? 0);
+                }
+            }
+        }
+
         $payload = [
             'report_type' => strtoupper($period).'_QUANT_RESEARCH_AUDIT',
             'generated_at' => $now->toIso8601String(),
             'period' => $period,
             'system_freshness' => [
                 'status' => $freshnessData['status'],
-                'candle_lag_minutes' => $freshnessData['candle_freshness']['linear']['BTCUSDT']['lag_minutes'] ?? 0,
-                'redis_queue_depth' => $freshnessData['queues']['redis_queue_depth'] ?? 0,
+                'candle_lag_seconds' => $maxLagSeconds,
+                'candle_lag_minutes' => (int) round($maxLagSeconds / 60),
+                'redis_queue_depth' => $totalQueueDepth,
                 'active_alerts' => $freshnessData['alerts'],
+                'candle_freshness' => $freshnessData['candle_freshness'] ?? [],
             ],
             'strategy_funnel_health' => $healthOverview,
             'strategy_degradation_watchlist' => $degradationReports,

@@ -10,6 +10,7 @@ use App\Research\Application\AutonomyPermissionService;
 use App\Research\Application\LearningPredictorService;
 use App\Research\Application\PromotionPolicyService;
 use App\Research\Application\StrategyEvolutionService;
+use App\Research\Domain\ResearchPromotionControlRecord;
 use App\Research\Infrastructure\Persistence\AutonomyApprovalEventRecord;
 use App\Research\Infrastructure\Persistence\LearningCandidateStrategyRecord;
 use App\Research\Infrastructure\Persistence\LearningFeatureSnapshotRecord;
@@ -69,7 +70,53 @@ final class AutonomousLearningController extends Controller
     public function autonomySettings(AutonomyPermissionService $autonomy): ResearchResource|JsonResponse
     {
         try {
-            return $this->ok($autonomy->getSettings(persist: false));
+            $settings = $autonomy->getSettings(persist: false);
+            $learningActive = (bool) $settings->kill_switch_active;
+
+            $researchActive = false;
+            $latestControl = ResearchPromotionControlRecord::query()
+                ->whereIn('action', [
+                    'KILL_SWITCH_ACTIVATED',
+                    'KILL_SWITCH_RELEASED',
+                ])
+                ->orderByDesc('sequence')
+                ->first();
+            if ($latestControl !== null && (string) $latestControl->action === 'KILL_SWITCH_ACTIVATED') {
+                $researchActive = true;
+            }
+
+            $effectiveKillSwitch = $learningActive || $researchActive;
+
+            $rawCaps = (array) $settings->capabilities;
+            $effectiveCaps = [];
+            foreach ($rawCaps as $cap => $rawVal) {
+                $allowed = $autonomy->isAllowed($cap, persist: false);
+                $reason = null;
+                if (! $allowed) {
+                    if (in_array($cap, ['change_hard_risk_limits', 'live_exchange_trading'], true)) {
+                        $reason = 'ABSOLUTE_SYSTEM_INVARIANT';
+                    } elseif ($effectiveKillSwitch) {
+                        $reason = 'KILL_SWITCH_ACTIVE';
+                    } elseif (! $rawVal) {
+                        $reason = 'EXPLICITLY_DISABLED_BY_OPERATOR';
+                    }
+                }
+                $effectiveCaps[$cap] = [
+                    'configured' => (bool) $rawVal,
+                    'effective' => $allowed,
+                    'reason' => $reason,
+                ];
+            }
+
+            $data = $settings->toArray();
+            $data['kill_switch_active'] = $effectiveKillSwitch;
+            $data['effective_capabilities'] = $effectiveCaps;
+            $data['authorities'] = [
+                'learning_autonomy_settings' => $learningActive,
+                'research_promotion_control' => $researchActive,
+            ];
+
+            return $this->ok($data);
         } catch (Throwable $e) {
             Log::error('Research API operation failed.', ['operation' => __METHOD__, 'exception_type' => $e::class]);
 

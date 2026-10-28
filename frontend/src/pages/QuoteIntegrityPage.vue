@@ -31,13 +31,17 @@ const selectedIncident = ref<QimIncident | null>(null);
 
 const loading = ref(false);
 const disabled = ref(false);
+const errorMessage = ref<string | null>(null);
+const isStale = ref(false);
 
 async function loadData(filters?: { symbol?: string; classification?: string }) {
   loading.value = true;
+  errorMessage.value = null;
   try {
     const s = await fetchQimStatus();
     status.value = s;
     disabled.value = !s.feature_enabled;
+    isStale.value = false;
 
     if (s.feature_enabled) {
       const [sum, comp, inc, alt] = await Promise.all([
@@ -52,8 +56,15 @@ async function loadData(filters?: { symbol?: string; classification?: string }) 
       alerts.value = alt.data ?? [];
     }
   } catch (err: any) {
-    if (err.message && err.message.includes('FEATURE_DISABLED')) {
+    const code = err?.response?.data?.error?.code || '';
+    if (code === 'FEATURE_DISABLED' || (err.message && err.message.includes('FEATURE_DISABLED')) || err?.response?.status === 503) {
       disabled.value = true;
+      errorMessage.value = 'Quote Integrity Monitor is disabled or service is unavailable (503).';
+    } else {
+      errorMessage.value = err?.response?.data?.message || err?.message || 'Network or server error while querying Quote Integrity API.';
+    }
+    if (status.value !== null) {
+      isStale.value = true;
     }
   } finally {
     loading.value = false;
@@ -104,6 +115,18 @@ onMounted(() => {
         />
       </div>
     </div>
+
+    <!-- Visible Error & Stale Data Banner -->
+    <q-banner v-if="errorMessage" class="bg-negative text-white q-mb-md" rounded>
+      <template #avatar>
+        <q-icon name="error_outline" color="white" />
+      </template>
+      <div class="text-weight-bold">Quote Integrity Monitor Notice</div>
+      <div>{{ errorMessage }}</div>
+      <div v-if="isStale" class="text-caption text-warning q-mt-xs">
+        Preserving last-known good state. Data shown below may be stale.
+      </div>
+    </q-banner>
 
     <!-- Status & Mandatory Banners -->
     <QimStatusBanner :status="status" :disabled="disabled" />

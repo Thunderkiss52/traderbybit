@@ -337,46 +337,147 @@ final readonly class ResearchJobService
     }
 
     /**
+     * Register or update a worker node's capability and heartbeat.
+     *
+     * @param  list<string>  $algorithms
+     * @return array<string, mixed>
+     */
+    public function registerWorker(
+        string $workerId,
+        string $engine,
+        string $version,
+        array $algorithms = [],
+        ?CarbonImmutable $heartbeatAt = null
+    ): array {
+        $now = CarbonImmutable::now('UTC');
+        $heartbeat = $heartbeatAt ?? $now;
+        $worker = [
+            'worker_id' => $workerId,
+            'engine' => strtolower($engine),
+            'version' => $version,
+            'algorithms' => $algorithms,
+            'heartbeat_at' => $heartbeat->toIso8601String(),
+        ];
+
+        $ids = (array) cache()->get('research:worker_ids', []);
+        if (! in_array($workerId, $ids, true)) {
+            $ids[] = $workerId;
+            cache()->put('research:worker_ids', $ids, 3600);
+        }
+        cache()->put("research:worker:{$workerId}", $worker, 3600);
+
+        return $worker;
+    }
+
+    /**
      * @return array<string, mixed>
      */
     public function getCapabilityRouting(): array
     {
         try {
+            $now = CarbonImmutable::now('UTC');
             $counts = ResearchJobRecord::query()
                 ->selectRaw('status, count(*) as count')
                 ->groupBy('status')
                 ->pluck('count', 'status')
                 ->toArray();
 
-            return [
-                'capabilities' => [
-                    'php' => [
-                        'engine' => 'PHP/Laravel',
-                        'status' => 'active',
-                        'role' => 'orchestration_and_fallback',
-                        'algorithms' => ['backtest', 'counterfactual', 'replay', 'calibration', 'learning'],
-                        'concurrency_cap' => 2,
-                        'deterministic' => true,
-                    ],
-                    'go' => [
-                        'engine' => 'Go Research Engine',
-                        'status' => 'ready',
-                        'role' => 'high_throughput_worker',
-                        'algorithms' => ['backtest', 'walk_forward', 'pattern_mine', 'replay', 'monte_carlo'],
-                        'concurrency_cap' => 1,
-                        'deterministic' => true,
-                        'memory_cap_mb' => 512,
-                        'cpu_cap' => 1.0,
-                    ],
-                    'python' => [
-                        'engine' => 'Python ML Engine',
-                        'status' => 'conditional_offline',
-                        'role' => 'model_training_only',
-                        'algorithms' => ['model_train'],
-                        'concurrency_cap' => 1,
-                        'deterministic' => true,
-                    ],
+            $workerIds = (array) cache()->get('research:worker_ids', []);
+            $registeredWorkers = [];
+            $engineWorkers = [];
+
+            foreach ($workerIds as $wid) {
+                $w = cache()->get("research:worker:{$wid}");
+                if (! is_array($w)) {
+                    continue;
+                }
+                $hb = CarbonImmutable::parse($w['heartbeat_at']);
+                $isHeartbeatExpired = $hb->isBefore($now->subSeconds(120));
+                $isUnsupportedVersion = version_compare((string) $w['version'], '1.0.0', '<');
+
+                if ($isHeartbeatExpired) {
+                    $status = 'offline';
+                    $available = false;
+                    $reason = 'HEARTBEAT_EXPIRED';
+                } elseif ($isUnsupportedVersion) {
+                    $status = 'unsupported_version';
+                    $available = false;
+                    $reason = 'UNSUPPORTED_VERSION';
+                } else {
+                    $status = 'ready';
+                    $available = true;
+                    $reason = null;
+                }
+
+                $evaluated = array_merge($w, [
+                    'status' => $status,
+                    'available' => $available,
+                    'unavailable_reason' => $reason,
+                ]);
+
+                $registeredWorkers[$wid] = $evaluated;
+                $engineWorkers[$w['engine']][] = $evaluated;
+            }
+
+            $capabilities = [
+                'php' => [
+                    'engine' => 'PHP/Laravel',
+                    'status' => 'active',
+                    'available' => true,
+                    'role' => 'orchestration_and_fallback',
+                    'algorithms' => ['backtest', 'counterfactual', 'replay', 'calibration', 'learning'],
+                    'concurrency_cap' => 2,
+                    'deterministic' => true,
                 ],
+                'go' => [
+                    'engine' => 'Go Research Engine',
+                    'status' => 'ready',
+                    'available' => true,
+                    'role' => 'high_throughput_worker',
+                    'algorithms' => ['backtest', 'walk_forward', 'pattern_mine', 'replay', 'monte_carlo'],
+                    'concurrency_cap' => 1,
+                    'deterministic' => true,
+                    'memory_cap_mb' => 512,
+                    'cpu_cap' => 1.0,
+                ],
+                'python' => [
+                    'engine' => 'Python ML Engine',
+                    'status' => 'conditional_offline',
+                    'available' => false,
+                    'role' => 'model_training_only',
+                    'algorithms' => ['model_train'],
+                    'concurrency_cap' => 1,
+                    'deterministic' => true,
+                ],
+            ];
+
+            foreach (['go', 'php', 'python'] as $eng) {
+                if (! empty($engineWorkers[$eng])) {
+                    $workers = $engineWorkers[$eng];
+                    $hasReady = collect($workers)->contains(fn ($w) => $w['available'] === true);
+                    $capabilities[$eng]['workers'] = $workers;
+                    if ($hasReady) {
+                        $capabilities[$eng]['status'] = 'ready';
+                        $capabilities[$eng]['available'] = true;
+                        $capabilities[$eng]['unavailable_reason'] = null;
+                    } else {
+                        $unsupported = collect($workers)->firstWhere('status', 'unsupported_version');
+                        if ($unsupported !== null) {
+                            $capabilities[$eng]['status'] = 'unsupported_version';
+                            $capabilities[$eng]['available'] = false;
+                            $capabilities[$eng]['unavailable_reason'] = 'UNSUPPORTED_VERSION';
+                        } else {
+                            $capabilities[$eng]['status'] = 'offline';
+                            $capabilities[$eng]['available'] = false;
+                            $capabilities[$eng]['unavailable_reason'] = 'HEARTBEAT_EXPIRED';
+                        }
+                    }
+                }
+            }
+
+            return [
+                'capabilities' => $capabilities,
+                'workers' => $registeredWorkers,
                 'jobs' => [
                     'queued' => (int) ($counts['QUEUED'] ?? 0),
                     'claimed' => (int) ($counts['CLAIMED'] ?? 0),

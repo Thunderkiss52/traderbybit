@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Tests\Unit\Research;
 
 use App\PaperTrading\Application\PaperAccountService;
+use App\PaperTrading\Infrastructure\Persistence\PaperAccountRecord;
 use App\PaperTrading\Infrastructure\Persistence\VirtualPositionRecord;
 use App\Research\Application\StrategyDegradationService;
 use App\Strategy\Infrastructure\Persistence\SignalRecord;
@@ -205,5 +206,176 @@ final class StrategyDegradationServiceTest extends TestCase
         self::assertSame(3, $snap->sample_size);
         self::assertNotSame('INSUFFICIENT_DATA', $snap->status);
         self::assertNotNull($snap->win_rate);
+    }
+
+    public function test_f16_strategy_degradation_isolates_exchanges_without_cross_pollution(): void
+    {
+        $service = new StrategyDegradationService;
+        $now = CarbonImmutable::now();
+
+        // 1. Bybit account for strategy_iso: 3 winning positions (100% win rate)
+        $bybitAccount = PaperAccountRecord::query()->create([
+            'id' => (string) Str::uuid(),
+            'name' => 'Bybit Degradation Account',
+            'exchange_id' => 'bybit',
+            'is_primary' => true,
+            'status' => 'ACTIVE',
+            'strategy_id' => 'strategy_iso',
+            'starting_balance' => '10000',
+            'current_equity' => '10000',
+            'peak_equity' => '10000',
+        ]);
+
+        // 2. Binance account for same strategy_iso: 3 losing positions (0% win rate)
+        $binanceAccount = PaperAccountRecord::query()->create([
+            'id' => (string) Str::uuid(),
+            'name' => 'Binance Degradation Account',
+            'exchange_id' => 'binance',
+            'is_primary' => true,
+            'status' => 'ACTIVE',
+            'strategy_id' => 'strategy_iso',
+            'starting_balance' => '10000',
+            'current_equity' => '10000',
+            'peak_equity' => '10000',
+        ]);
+
+        for ($i = 0; $i < 3; $i++) {
+            $sigBybit = (string) Str::uuid();
+            SignalRecord::query()->create([
+                'id' => $sigBybit,
+                'strategy_id' => 'strategy_iso',
+                'strategy_version' => '1.0.0',
+                'exchange' => 'bybit',
+                'category' => 'linear',
+                'symbol' => 'BTCUSDT',
+                'timeframe' => '15',
+                'side' => 'BUY',
+                'quality_class' => 'A',
+                'score' => 90,
+                'decision_time' => $now->subDays(5 - $i),
+                'candle_close_time' => $now->subDays(5 - $i),
+                'entry_low' => '59900',
+                'entry_high' => '60000',
+                'stop_loss' => '59000',
+                'take_profit_1' => '62000',
+                'take_profit_2' => '63000',
+                'risk_reward_1' => '2.0',
+                'risk_reward_2' => '3.0',
+                'model_risk_percent' => '1.0',
+                'expires_at' => $now->subDays(5 - $i)->addMinutes(30),
+                'maximum_holding_minutes' => 240,
+                'reasons' => ['pullback'],
+                'risks' => [],
+                'indicator_snapshot' => [],
+                'contract' => [],
+                'schema_version' => '1.0.0',
+            ]);
+
+            VirtualPositionRecord::query()->create([
+                'id' => (string) Str::uuid(),
+                'paper_account_id' => $bybitAccount->id,
+                'signal_id' => $sigBybit,
+                'strategy_version' => '1.0.0',
+                'risk_version' => '1.0.0',
+                'quality_class' => 'A',
+                'execution_model' => 'paper',
+                'execution_version' => '1.0.0',
+                'schema_version' => '1.0.0',
+                'symbol' => 'BTCUSDT',
+                'side' => 'BUY',
+                'status' => 'CLOSED_TP',
+                'entry_price' => '60000.0',
+                'stop_loss' => '59000.0',
+                'take_profit_1' => '62000.0',
+                'take_profit_2' => '63000.0',
+                'initial_quantity' => '1.0',
+                'remaining_quantity' => '0.0',
+                'qty_step' => '0.01',
+                'risk_capital' => '100.0',
+                'gross_pnl' => '100.0',
+                'net_pnl' => '98.0',
+                'unrealized_pnl' => '0.0',
+                'fees' => '2.0',
+                'funding' => '0.0',
+                'r_multiple' => 2.0,
+                'opened_at' => $now->subDays(5 - $i),
+                'closed_at' => $now->subDays(4 - $i),
+                'maximum_holding_until' => $now->addDay(),
+            ]);
+
+            $sigBinance = (string) Str::uuid();
+            SignalRecord::query()->create([
+                'id' => $sigBinance,
+                'strategy_id' => 'strategy_iso',
+                'strategy_version' => '1.0.0',
+                'exchange' => 'binance',
+                'category' => 'linear',
+                'symbol' => 'ETHUSDT',
+                'timeframe' => '15',
+                'side' => 'SELL',
+                'quality_class' => 'A',
+                'score' => 90,
+                'decision_time' => $now->subDays(5 - $i),
+                'candle_close_time' => $now->subDays(5 - $i),
+                'entry_low' => '2990',
+                'entry_high' => '3000',
+                'stop_loss' => '3100',
+                'take_profit_1' => '2800',
+                'take_profit_2' => '2700',
+                'risk_reward_1' => '2.0',
+                'risk_reward_2' => '3.0',
+                'model_risk_percent' => '1.0',
+                'expires_at' => $now->subDays(5 - $i)->addMinutes(30),
+                'maximum_holding_minutes' => 240,
+                'reasons' => ['resistance'],
+                'risks' => [],
+                'indicator_snapshot' => [],
+                'contract' => [],
+                'schema_version' => '1.0.0',
+            ]);
+            VirtualPositionRecord::query()->create([
+                'id' => (string) Str::uuid(),
+                'paper_account_id' => $binanceAccount->id,
+                'signal_id' => $sigBinance,
+                'strategy_version' => '1.0.0',
+                'risk_version' => '1.0.0',
+                'quality_class' => 'A',
+                'execution_model' => 'paper',
+                'execution_version' => '1.0.0',
+                'schema_version' => '1.0.0',
+                'symbol' => 'ETHUSDT',
+                'side' => 'SELL',
+                'status' => 'CLOSED_SL',
+                'entry_price' => '3000.0',
+                'stop_loss' => '3100.0',
+                'take_profit_1' => '2800.0',
+                'take_profit_2' => '2700.0',
+                'initial_quantity' => '1.0',
+                'remaining_quantity' => '0.0',
+                'qty_step' => '0.01',
+                'risk_capital' => '100.0',
+                'gross_pnl' => '-100.0',
+                'net_pnl' => '-102.0',
+                'unrealized_pnl' => '0.0',
+                'fees' => '2.0',
+                'funding' => '0.0',
+                'r_multiple' => -1.0,
+                'opened_at' => $now->subDays(5 - $i),
+                'closed_at' => $now->subDays(4 - $i),
+                'maximum_holding_until' => $now->addDay(),
+            ]);
+        }
+
+        // Evaluate scoped to Bybit: must show 3 sample size, 1.0 win rate, 0 losses
+        $bybitSnap = $service->evaluate('strategy_iso', '14d', exchange: 'bybit');
+        self::assertSame(3, $bybitSnap->sample_size);
+        self::assertSame(1.0, (float) $bybitSnap->win_rate);
+        self::assertSame('STABLE', $bybitSnap->status);
+
+        // Evaluate scoped to Binance: must show 3 sample size, 0.0 win rate, 3 losses
+        $binanceSnap = $service->evaluate('strategy_iso', '14d', exchange: 'binance');
+        self::assertSame(3, $binanceSnap->sample_size);
+        self::assertSame(0.0, (float) $binanceSnap->win_rate);
+        self::assertNotSame('STABLE', $binanceSnap->status);
     }
 }

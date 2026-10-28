@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Tests\Feature\Api;
 
+use App\Exchanges\Binance\BinanceDeploymentInitializer;
 use App\PaperTrading\Application\PaperAccountService;
 use App\PaperTrading\Infrastructure\Persistence\PaperAccountRecord;
 use App\PaperTrading\Infrastructure\Persistence\RiskDecisionRecord;
@@ -147,5 +148,51 @@ final class MultiAccountSelectionTest extends TestCase
         foreach ($accounts as $acc) {
             self::assertSame('bybit', $acc['exchange_id']);
         }
+    }
+
+    public function test_f09_twenty_six_account_census_all_selectable_with_distinct_balances_and_foreign_rejection(): void
+    {
+        $service = app(PaperAccountService::class);
+        $initializer = app(BinanceDeploymentInitializer::class);
+        $initializer->initialize();
+
+        $bybitAccounts = $service->allPrimaryAccounts('bybit');
+        $binanceAccounts = $service->allPrimaryAccounts('binance');
+
+        self::assertCount(13, $bybitAccounts, 'Exactly 13 Bybit PRIMARY accounts required');
+        self::assertCount(13, $binanceAccounts, 'Exactly 13 Binance PRIMARY accounts required');
+
+        // Assign distinct starting balances to verify aggregation sum
+        $bybitSum = 0;
+        foreach ($bybitAccounts as $idx => $acc) {
+            $bal = 10000 + ($idx * 100);
+            $bybitSum += $bal;
+            $acc->update([
+                'starting_balance' => (string) $bal,
+                'current_equity' => (string) $bal,
+                'peak_equity' => (string) $bal,
+            ]);
+        }
+
+        // 1. Verify aggregate dashboard sum matches exactly
+        $aggResponse = $this->getJson('/api/v1/dashboard?account=all', ['X-Exchange' => 'bybit']);
+        $aggResponse->assertOk();
+        $aggData = $aggResponse->json('data');
+        self::assertSame(13, $aggData['portfolio']['accounts_count']);
+        self::assertEqualsWithDelta($bybitSum, (float) $aggData['portfolio']['current_equity'], 0.01);
+
+        // 2. Verify all individual accounts are selectable and distinct
+        foreach ($bybitAccounts as $acc) {
+            $indivRes = $this->getJson('/api/v1/dashboard?account='.$acc->id, ['X-Exchange' => 'bybit']);
+            $indivRes->assertOk();
+            self::assertSame($acc->id, $indivRes->json('data.account.id'));
+            self::assertEqualsWithDelta((float) $acc->current_equity, (float) $indivRes->json('data.account.current_equity'), 0.01);
+        }
+
+        // 3. Foreign exchange account requested on Bybit returns null account without provisioning
+        $foreignAccount = $binanceAccounts->first();
+        $foreignRes = $this->getJson('/api/v1/dashboard?account='.$foreignAccount->id, ['X-Exchange' => 'bybit']);
+        $foreignRes->assertOk();
+        self::assertNull($foreignRes->json('data.account'), 'Foreign exchange account must return null on Bybit');
     }
 }

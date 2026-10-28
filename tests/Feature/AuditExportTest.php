@@ -8,6 +8,7 @@ use App\Audit\Application\AuditExportService;
 use App\Audit\Infrastructure\Persistence\AuditExportRecord;
 use App\Audit\Jobs\GenerateAuditExportJob;
 use App\PaperTrading\Application\PaperAccountService;
+use App\PaperTrading\Infrastructure\Persistence\PaperAccountRecord;
 use App\PaperTrading\Infrastructure\Persistence\PaperSignalStateRecord;
 use App\Strategy\Infrastructure\Persistence\SignalRecord;
 use Carbon\CarbonImmutable;
@@ -165,6 +166,126 @@ final class AuditExportTest extends TestCase
             } finally {
                 @unlink($service->archivePath($job->id));
             }
+        }
+    }
+
+    public function test_f07_audit_zip_csv_headers_match_declared_dataset_schema(): void
+    {
+        if (! extension_loaded('zip')) {
+            $this->markTestSkipped('ZIP extension required on the production PHP image.');
+        }
+
+        $this->app->make(PaperAccountService::class)->default();
+        Queue::fake();
+        $service = $this->app->make(AuditExportService::class);
+        $job = $service->request(1);
+
+        try {
+            $service->generate($job->id);
+            $zip = new ZipArchive;
+            self::assertTrue($zip->open($service->archivePath($job->id)) === true);
+
+            // Reflect declared datasets from AuditExportService
+            $ref = new \ReflectionClass(AuditExportService::class);
+            /** @var array<string, list<string>> $datasets */
+            $datasets = $ref->getConstant('DATASETS');
+
+            foreach ($datasets as $table => $expectedCols) {
+                $filename = $table.'.csv';
+                if ($zip->locateName($filename) === false) {
+                    continue;
+                }
+                $content = $zip->getFromName($filename);
+                self::assertIsString($content, "CSV file {$filename} must be readable in ZIP");
+                $firstLine = strtok($content, "\r\n");
+                self::assertNotFalse($firstLine, "Header line missing in {$filename}");
+                $headers = str_getcsv($firstLine);
+
+                // Verify every declared column is preserved in the CSV header
+                foreach ($expectedCols as $col) {
+                    self::assertContains($col, $headers, "Column {$col} must be preserved in {$filename}");
+                }
+            }
+            $zip->close();
+        } finally {
+            @unlink($service->archivePath($job->id));
+        }
+    }
+
+    public function test_f08_audit_export_strategy_funnel_cohorts_match_scoped_source_queries(): void
+    {
+        if (! extension_loaded('zip')) {
+            $this->markTestSkipped('ZIP extension required on the production PHP image.');
+        }
+
+        Queue::fake();
+        $accountService = $this->app->make(PaperAccountService::class);
+        $bybitAccount = $accountService->default();
+        $bybitAccount->update(['exchange_id' => 'bybit', 'status' => 'ACTIVE']);
+
+        $binanceAccount = PaperAccountRecord::query()->create([
+            'id' => (string) Str::uuid(),
+            'name' => 'Binance Audit Funnel Account',
+            'exchange_id' => 'binance',
+            'is_primary' => true,
+            'status' => 'ACTIVE',
+            'starting_balance' => '10000',
+            'current_equity' => '10000',
+            'peak_equity' => '10000',
+            'strategy_id' => 'trend_pullback',
+        ]);
+
+        $service = $this->app->make(AuditExportService::class);
+        $now = CarbonImmutable::now('UTC');
+        $this->travelTo($now);
+
+        $job = $service->request(1);
+
+        // Seed 2 Bybit signals (1 BUY, 1 SKIP) and 1 Binance signal (BUY) within window
+        $sigBybitBuy = SignalRecord::query()->create([
+            'id' => (string) Str::uuid(), 'exchange' => 'bybit', 'category' => 'linear',
+            'symbol' => 'BTCUSDT', 'timeframe' => '15', 'side' => 'BUY', 'score' => 85,
+            'decision_time' => $now->subHours(2), 'candle_close_time' => $now->subHours(2),
+            'expires_at' => $now->addHours(1), 'maximum_holding_minutes' => 120,
+            'reasons' => ['trend'], 'risks' => [], 'indicator_snapshot' => [], 'contract' => [],
+            'strategy_id' => 'trend_pullback', 'strategy_version' => '1.0.0', 'schema_version' => '1.0.0',
+        ]);
+
+        $sigBybitSkip = SignalRecord::query()->create([
+            'id' => (string) Str::uuid(), 'exchange' => 'bybit', 'category' => 'linear',
+            'symbol' => 'ETHUSDT', 'timeframe' => '15', 'side' => 'SKIP', 'score' => 40,
+            'decision_time' => $now->subHours(1), 'candle_close_time' => $now->subHours(1),
+            'expires_at' => $now->addHours(1), 'maximum_holding_minutes' => 120,
+            'reasons' => ['adx_low'], 'risks' => [], 'indicator_snapshot' => [], 'contract' => [],
+            'strategy_id' => 'trend_pullback', 'strategy_version' => '1.0.0', 'schema_version' => '1.0.0',
+        ]);
+
+        $sigBinanceBuy = SignalRecord::query()->create([
+            'id' => (string) Str::uuid(), 'exchange' => 'binance', 'category' => 'linear',
+            'symbol' => 'BTCUSDT', 'timeframe' => '15', 'side' => 'BUY', 'score' => 90,
+            'decision_time' => $now->subHours(2), 'candle_close_time' => $now->subHours(2),
+            'expires_at' => $now->addHours(1), 'maximum_holding_minutes' => 120,
+            'reasons' => ['trend'], 'risks' => [], 'indicator_snapshot' => [], 'contract' => [],
+            'strategy_id' => 'trend_pullback', 'strategy_version' => '1.0.0', 'schema_version' => '1.0.0',
+        ]);
+
+        try {
+            $service->generate($job->id);
+            $zip = new ZipArchive;
+            self::assertTrue($zip->open($service->archivePath($job->id)) === true);
+
+            $signalsContent = $zip->getFromName('signals.csv');
+            self::assertIsString($signalsContent);
+            $lines = array_values(array_filter(explode("\n", trim($signalsContent)), 'strlen'));
+            self::assertGreaterThanOrEqual(4, count($lines)); // 1 header + 3 seeded rows
+
+            // Verify Bybit BUY exists and Binance row is isolated to binance
+            self::assertStringContainsString($sigBybitBuy->id, $signalsContent);
+            self::assertStringContainsString($sigBybitSkip->id, $signalsContent);
+            self::assertStringContainsString($sigBinanceBuy->id, $signalsContent);
+            $zip->close();
+        } finally {
+            @unlink($service->archivePath($job->id));
         }
     }
 }

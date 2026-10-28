@@ -356,4 +356,87 @@ final class PortfolioCorrelationServiceTest extends TestCase
         self::assertSame(1.0, (float) $snap->pair_matrix['strat_x']['strat_y']);
         self::assertSame(1, $snap->concurrent_overlap['BTCUSDT_BUY']);
     }
+
+    public function test_f15_portfolio_correlation_aligns_time_observations_without_pairing_by_row_order(): void
+    {
+        $service = new PortfolioCorrelationService;
+        $now = CarbonImmutable::now();
+
+        $accountA = PaperAccountRecord::query()->create([
+            'id' => (string) Str::uuid(),
+            'name' => 'Account Permuted A',
+            'exchange_id' => 'bybit',
+            'is_primary' => true,
+            'status' => 'ACTIVE',
+            'strategy_id' => 'strat_perm_a',
+            'starting_balance' => '10000',
+            'current_equity' => '10000',
+            'peak_equity' => '10000',
+        ]);
+
+        $accountB = PaperAccountRecord::query()->create([
+            'id' => (string) Str::uuid(),
+            'name' => 'Account Permuted B',
+            'exchange_id' => 'bybit',
+            'is_primary' => true,
+            'status' => 'ACTIVE',
+            'strategy_id' => 'strat_perm_b',
+            'starting_balance' => '10000',
+            'current_equity' => '10000',
+            'peak_equity' => '10000',
+        ]);
+
+        // Insert trades in deliberately permuted/interleaved chronological order
+        $trades = [
+            ['acc' => $accountA, 'strat' => 'strat_perm_a', 'day' => 1, 'pnl' => 100.0],
+            ['acc' => $accountB, 'strat' => 'strat_perm_b', 'day' => 3, 'pnl' => 300.0],
+            ['acc' => $accountA, 'strat' => 'strat_perm_a', 'day' => 2, 'pnl' => 200.0],
+            ['acc' => $accountB, 'strat' => 'strat_perm_b', 'day' => 1, 'pnl' => 100.0],
+            ['acc' => $accountA, 'strat' => 'strat_perm_a', 'day' => 3, 'pnl' => 300.0],
+            ['acc' => $accountB, 'strat' => 'strat_perm_b', 'day' => 2, 'pnl' => 200.0],
+        ];
+
+        foreach ($trades as $t) {
+            $sig = (string) Str::uuid();
+            $opened = $now->subDays(5 - $t['day']);
+            $this->seedSignal($sig, $t['strat'], 'BTCUSDT', 'BUY', $opened);
+
+            VirtualPositionRecord::query()->create([
+                'id' => (string) Str::uuid(),
+                'paper_account_id' => $t['acc']->id,
+                'signal_id' => $sig,
+                'strategy_version' => '1.0.0',
+                'risk_version' => '1.0.0',
+                'quality_class' => 'A',
+                'execution_model' => 'paper',
+                'execution_version' => '1.0.0',
+                'schema_version' => '1.0.0',
+                'symbol' => 'BTCUSDT',
+                'side' => 'BUY',
+                'status' => 'CLOSED_TP',
+                'entry_price' => '60000.0',
+                'stop_loss' => '59000.0',
+                'take_profit_1' => '62000.0',
+                'take_profit_2' => '63000.0',
+                'initial_quantity' => '1.0',
+                'remaining_quantity' => '0.0',
+                'qty_step' => '0.01',
+                'risk_capital' => '100.0',
+                'gross_pnl' => (string) $t['pnl'],
+                'net_pnl' => (string) ($t['pnl'] * 0.98),
+                'unrealized_pnl' => '0.0',
+                'fees' => '2.0',
+                'funding' => '0.0',
+                'opened_at' => $opened,
+                'closed_at' => $opened->addHours(2),
+                'maximum_holding_until' => $now->addDay(),
+            ]);
+        }
+
+        $snap = $service->evaluate('14d');
+        self::assertNotNull($snap);
+        self::assertArrayHasKey('strat_perm_a', $snap->pair_matrix);
+        // Pearson correlation of identical series [98, 196, 294] is exactly 1.0 regardless of insertion permutation
+        self::assertSame(1.0, (float) $snap->pair_matrix['strat_perm_a']['strat_perm_b']);
+    }
 }

@@ -187,4 +187,43 @@ final class ResearchJobServiceTest extends TestCase
         $this->assertArrayHasKey('jobs', $routing);
         $this->assertSame('ready', $routing['capabilities']['go']['status']);
     }
+
+    public function test_f21_worker_capability_map_reports_compatible_workers_and_unavailable_reasons(): void
+    {
+        $now = CarbonImmutable::now('UTC');
+
+        // 1. Register supported Go worker (v1.0.0, fresh heartbeat)
+        $this->service->registerWorker('go-worker-prod-1', 'go', '1.0.0', ['backtest', 'walk_forward'], $now);
+
+        // 2. Register unsupported-version Go worker (v0.8.0 < 1.0.0 min)
+        $this->service->registerWorker('go-worker-legacy', 'go', '0.8.0', ['backtest'], $now);
+
+        // 3. Register expired-heartbeat worker (heartbeat 300 seconds ago)
+        $this->service->registerWorker('python-worker-stale', 'python', '1.0.0', ['model_train'], $now->subSeconds(300));
+
+        $routing = $this->service->getCapabilityRouting();
+
+        $this->assertArrayHasKey('workers', $routing);
+        $workers = $routing['workers'];
+
+        // Assert supported worker is ready and available
+        $this->assertSame('ready', $workers['go-worker-prod-1']['status']);
+        $this->assertTrue($workers['go-worker-prod-1']['available']);
+        $this->assertNull($workers['go-worker-prod-1']['unavailable_reason']);
+
+        // Assert unsupported-version worker is rejected with reason
+        $this->assertSame('unsupported_version', $workers['go-worker-legacy']['status']);
+        $this->assertFalse($workers['go-worker-legacy']['available']);
+        $this->assertSame('UNSUPPORTED_VERSION', $workers['go-worker-legacy']['unavailable_reason']);
+
+        // Assert expired-heartbeat worker is offline with reason
+        $this->assertSame('offline', $workers['python-worker-stale']['status']);
+        $this->assertFalse($workers['python-worker-stale']['available']);
+        $this->assertSame('HEARTBEAT_EXPIRED', $workers['python-worker-stale']['unavailable_reason']);
+
+        // Engine capabilities report dynamic availability
+        $this->assertTrue($routing['capabilities']['go']['available']);
+        $this->assertFalse($routing['capabilities']['python']['available']);
+        $this->assertSame('HEARTBEAT_EXPIRED', $routing['capabilities']['python']['unavailable_reason']);
+    }
 }

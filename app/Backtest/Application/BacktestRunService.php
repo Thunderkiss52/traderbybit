@@ -22,7 +22,7 @@ use Illuminate\Support\Facades\DB;
 use Ramsey\Uuid\Uuid;
 use Throwable;
 
-final class BacktestRunService
+class BacktestRunService
 {
     public function __construct(
         private DatasetInspector $datasets,

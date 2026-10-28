@@ -7,6 +7,7 @@ namespace Tests\Feature\Research;
 use App\MarketData\Infrastructure\Persistence\CandleRecord;
 use App\Research\Application\AutonomyPermissionService;
 use App\Research\Application\LearningFeatureStoreService;
+use App\Research\Application\LearningPredictorService;
 use App\Research\Application\ModelAdvisoryService;
 use App\Research\Infrastructure\Persistence\AutonomyApprovalEventRecord;
 use App\Research\Infrastructure\Persistence\LearningCandidateStrategyRecord;
@@ -183,5 +184,62 @@ final class AutonomousLearningPipelineTest extends TestCase
         $families = LearningCandidateStrategyRecord::query()->orderBy('created_at')->pluck('parent_strategy_id')->all();
         $this->assertSame(['baseline', 'trend_pullback', 'bollinger_mean_reversion', 'donchian_atr_breakout'], $families);
         Queue::assertPushed(EvaluateStrategyCandidateJob::class, 4);
+    }
+
+    public function test_f18_training_purging_fallback_activates_without_future_label_leakage(): void
+    {
+        $symbol = 'BTCUSDT';
+        $t0 = CarbonImmutable::parse('2026-10-18 00:00:00');
+
+        // Create 18 matured snapshots.
+        // Standard 70% split gives splitIndex = floor(18 * 0.70) = 12 (valStartTime = t0 + 12*15m).
+        // By setting outcome_at for items 1..11 to t0 + 15*15m (> valStartTime),
+        // only item 0 (1 sample < 5 threshold) survives standard purging in rawTrain.
+        // This forces purging fallback to activate.
+        // Fallback selects initial 5 samples (0..4) and shifts validation window
+        // to decision_time >= latest outcome of 0..4 (t0 + 15*15m), leaving items 15, 16, 17 (3 samples >= 3).
+        for ($j = 0; $j < 18; $j++) {
+            $decTime = $t0->addMinutes($j * 15);
+            $outcomeTime = ($j >= 1 && $j <= 11) ? $t0->addMinutes(15 * 15) : $decTime->addMinutes(15);
+
+            LearningFeatureSnapshotRecord::query()->create([
+                'id' => (string) Uuid::uuid5(Uuid::NAMESPACE_URL, "snap-purging-{$j}"),
+                'symbol' => $symbol,
+                'timeframe' => '15',
+                'decision_time' => $decTime,
+                'available_at' => $decTime->addMinutes(15),
+                'feature_schema_version' => '1.0.0',
+                'strategy_id' => 'baseline',
+                'regime' => 'BULLISH_TREND',
+                'features' => [
+                    'close' => 60000.0 + ($j * 10),
+                    'hl_spread_pct' => 1.5,
+                    'body_spread_pct' => 0.7,
+                    'recent_volatility' => 0.5,
+                    'rsi_14' => 50.0 + ($j * 0.5),
+                    'volume_ratio' => 1.0,
+                ],
+                'label_status' => 'MATURED',
+                'label_outcome' => $j % 2 === 0 ? 'TP' : 'SL',
+                'label_r_multiple' => $j % 2 === 0 ? 1.87 : -1.13,
+                'outcome_at' => $outcomeTime,
+                'data_quality' => [
+                    'candles_evaluated' => 20,
+                    'missing_bars' => 0,
+                    'no_look_ahead_verified' => true,
+                ],
+            ]);
+        }
+
+        $predictor = app(LearningPredictorService::class);
+        $artifact = $predictor->trainModel('TP_BEFORE_SL', $symbol);
+
+        $this->assertNotNull($artifact, 'Model should train successfully using purging fallback');
+        $params = $artifact->parameters;
+        $this->assertArrayHasKey('purging_diagnostics', $params);
+        $this->assertTrue($params['purging_diagnostics']['fallback_activated'], 'Fallback should have activated');
+        $this->assertFalse($params['purging_diagnostics']['future_label_leakage_detected'], 'Zero future label leakage');
+        $this->assertGreaterThanOrEqual(5, $params['train_sample_size']);
+        $this->assertGreaterThanOrEqual(3, $params['validation_sample_size']);
     }
 }

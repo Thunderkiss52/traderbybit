@@ -439,5 +439,38 @@ final class Gate6PromotionPolicyTest extends TestCase
         self::assertNotNull($event, 'F26: CANDIDATE_PROMOTION_REJECTED audit event must be persisted');
         self::assertSame('TEST_OPERATOR', $event->actor);
         self::assertStringContainsString('Cannot promote candidate', $event->reason);
+
+        // F26 Append-Only Invariant: UPDATE must be denied
+        try {
+            $event->update(['reason' => 'Tampered reason']);
+            self::fail('Expected RuntimeException on update was not thrown.');
+        } catch (\RuntimeException $e) {
+            self::assertStringContainsString('append-only and immutable', $e->getMessage());
+        }
+
+        // F26 Append-Only Invariant: DELETE must be denied
+        try {
+            $event->delete();
+            self::fail('Expected RuntimeException on delete was not thrown.');
+        } catch (\RuntimeException $e) {
+            self::assertStringContainsString('append-only and immutable', $e->getMessage());
+        }
+
+        // F26 Concurrent/Retry Behavior: repeated rejected attempt appends discrete audit event without overwriting
+        try {
+            $this->policy->promoteCandidate($candidate->id, 'TEST_OPERATOR_RETRY');
+        } catch (ValidationException $e) {
+            // Expected
+        }
+
+        $allEvents = AutonomyApprovalEventRecord::query()
+            ->where('target_id', $candidate->id)
+            ->where('action', 'CANDIDATE_PROMOTION_REJECTED')
+            ->orderBy('created_at')
+            ->get();
+
+        self::assertCount(2, $allEvents, 'Repeated rejection must append discrete immutable events');
+        self::assertNotSame($allEvents[0]->id, $allEvents[1]->id);
+        self::assertSame('TEST_OPERATOR_RETRY', $allEvents[1]->actor);
     }
 }

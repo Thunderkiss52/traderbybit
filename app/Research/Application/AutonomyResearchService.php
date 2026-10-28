@@ -201,9 +201,10 @@ final class AutonomyResearchService
         if (config()->has('research.autonomy.paper_promotion_enabled') && config('research.autonomy.paper_promotion_enabled') === false) {
             $flagEnabled = false;
         } else {
-            $flagEnabled = $this->permissions->isAllowed('auto_promote_paper');
+            $caps = (array) $this->permissions->getSettings(persist: false)->capabilities;
+            $flagEnabled = (bool) ($caps['auto_promote_paper'] ?? false);
         }
-        $killSwitchActive = $this->killSwitchActive() || $this->permissions->getSettings()->kill_switch_active;
+        $killSwitchActive = $this->killSwitchActive();
 
         $verdict = $this->promotion->evaluate($evidence, $gates, $flagEnabled, $killSwitchActive);
 
@@ -395,6 +396,7 @@ final class AutonomyResearchService
      */
     public function killSwitchActive(): bool
     {
+        $researchActive = false;
         $latest = ResearchPromotionControlRecord::query()
             ->whereIn('action', [
                 PromotionControlPolicy::ACTION_KILL_SWITCH_ACTIVATED,
@@ -403,11 +405,13 @@ final class AutonomyResearchService
             ->orderByDesc('sequence')
             ->first();
 
-        if ($latest === null) {
-            return false;
+        if ($latest !== null) {
+            $researchActive = (string) $latest->action === PromotionControlPolicy::ACTION_KILL_SWITCH_ACTIVATED;
         }
 
-        return (string) $latest->action === PromotionControlPolicy::ACTION_KILL_SWITCH_ACTIVATED;
+        $learningActive = (bool) $this->permissions->getSettings(persist: false)->kill_switch_active;
+
+        return $researchActive || $learningActive;
     }
 
     /**
@@ -417,9 +421,30 @@ final class AutonomyResearchService
      */
     public function promotionControls(): array
     {
+        $researchActive = false;
+        $latest = ResearchPromotionControlRecord::query()
+            ->whereIn('action', [
+                PromotionControlPolicy::ACTION_KILL_SWITCH_ACTIVATED,
+                PromotionControlPolicy::ACTION_KILL_SWITCH_RELEASED,
+            ])
+            ->orderByDesc('sequence')
+            ->first();
+
+        if ($latest !== null) {
+            $researchActive = (string) $latest->action === PromotionControlPolicy::ACTION_KILL_SWITCH_ACTIVATED;
+        }
+
+        $learningActive = (bool) $this->permissions->getSettings(persist: false)->kill_switch_active;
+        $effectiveActive = $researchActive || $learningActive;
+
         return [
             'status' => 'OK',
-            'kill_switch_active' => $this->killSwitchActive(),
+            'kill_switch_active' => $effectiveActive,
+            'effective_kill_switch_active' => $effectiveActive,
+            'authorities' => [
+                'research_promotion_control' => $researchActive,
+                'learning_autonomy_settings' => $learningActive,
+            ],
             'controls' => ResearchPromotionControlRecord::query()->orderBy('created_at')->get()
                 ->map(static fn (ResearchPromotionControlRecord $record): array => [
                     'action' => (string) $record->action,
