@@ -6,6 +6,7 @@ namespace App\Exchanges\Binance;
 
 use DomainException;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 use InvalidArgumentException;
 
 /** Explicit, bounded Binance ingestion. Never generates trading signals or paper fills. */
@@ -55,7 +56,7 @@ final readonly class BinanceCandleIngestion
                 $missing = [];
                 foreach ($chunk as $key => $candle) {
                     if (isset($existing[$key])) {
-                        BinanceSourceIdentity::assertSameCandle($existing[$key], $candle);
+                        $this->assertSameCandle($existing[$key], $candle);
                     } else {
                         $missing[$key] = $candle;
                     }
@@ -75,7 +76,7 @@ final readonly class BinanceCandleIngestion
                         if (! isset($reloaded[$key])) {
                             throw new DomainException('Binance candle insertion was ignored without matching identity.');
                         }
-                        BinanceSourceIdentity::assertSameCandle($reloaded[$key], $candle);
+                        $this->assertSameCandle($reloaded[$key], $candle);
                     }
                 }
                 $inserted += $insertedNow;
@@ -160,5 +161,22 @@ final readonly class BinanceCandleIngestion
             ->get(['open_time', 'open', 'high', 'low', 'close', 'volume', 'turnover', 'is_closed'])
             ->keyBy(static fn (object $row): int => strtotime($row->open_time))
             ->all();
+    }
+
+    private function assertSameCandle(object $stored, array $incoming): void
+    {
+        try {
+            BinanceSourceIdentity::assertSameCandle($stored, $incoming);
+        } catch (DomainException $exception) {
+            Log::error('Binance immutable candle validation failed', [
+                'exchange' => $incoming['exchange'], 'category' => $incoming['category'],
+                'symbol' => $incoming['symbol'], 'interval' => $incoming['interval'],
+                'open_time_utc' => $incoming['open_time'], 'source' => 'binance_public_rest',
+                'path' => 'BinanceCandleIngestion::ingest', 'error' => $exception->getMessage(),
+                'stored' => array_intersect_key((array) $stored, array_flip(['open', 'high', 'low', 'close', 'volume', 'turnover'])),
+                'incoming' => array_intersect_key($incoming, array_flip(['open', 'high', 'low', 'close', 'volume', 'turnover'])),
+            ]);
+            throw $exception;
+        }
     }
 }

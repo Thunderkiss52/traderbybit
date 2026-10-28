@@ -9,6 +9,7 @@ use DomainException;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Log;
 use PHPUnit\Framework\Attributes\DataProvider;
 use Tests\TestCase;
 
@@ -58,12 +59,20 @@ final class BinanceBatchCandleIngestionTest extends TestCase
         $before = DB::table('market_candles')->get()->toJson();
         $this->responseRows = [$this->row(0), $this->row(1), $this->row(2)];
         $this->responseRows[1][$column] = $value;
+        Log::spy();
         try {
             app(BinanceCandleIngestion::class)->ingest('BTCUSDT', '5m', 3);
             self::fail('Conflicting batch accepted.');
         } catch (DomainException $exception) {
             self::assertSame('Conflicting immutable Binance '.$name.' observation.', $exception->getMessage());
         }
+        Log::shouldHaveReceived('error')->once()->with('Binance immutable candle validation failed', \Mockery::on(
+            fn (array $context): bool => $context['exchange'] === 'binance'
+                && $context['symbol'] === 'BTCUSDT' && $context['interval'] === '5'
+                && $context['source'] === 'binance_public_rest'
+                && isset($context['open_time_utc'], $context['stored'][$name], $context['incoming'][$name])
+                && $context['incoming'][$name] === $value
+        ));
         self::assertSame($before, DB::table('market_candles')->get()->toJson());
         $this->responseRows[1] = $this->row(1);
         self::assertSame(2, $this->ingestWithQueryBudget(2));
