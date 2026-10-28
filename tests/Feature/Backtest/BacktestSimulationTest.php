@@ -27,6 +27,24 @@ final class BacktestSimulationTest extends TestCase
 {
     use RefreshDatabase;
 
+    public function test_binance_simulation_never_uses_bybit_candles(): void
+    {
+        $this->seedBars();
+        $evaluator = new class implements HistoricalSignalEvaluator
+        {
+            public function evaluate(string $symbol, DateTimeImmutable $at, array $strategyConfig): SignalDecision
+            {
+                throw new \RuntimeException('Unexpected evaluation from another exchange');
+            }
+        };
+        $paper = config('paper');
+        $engine = new BacktestSimulationEngine($evaluator, new RiskEngine($paper), new CorrelationService($paper), $paper);
+        $segment = new Segment('test', new DateTimeImmutable('2026-01-01T09:55:00Z'), new DateTimeImmutable('2026-01-01T10:20:00Z'));
+        $result = $engine->simulate(['BTCUSDT'], $segment, config('strategy'), $paper, '10000', 'binance');
+        self::assertSame([], $result->decisions);
+        self::assertSame([], $result->equity);
+    }
+
     public function test_buy_tp1_tp2_is_deterministic_and_isolated_from_paper_tables(): void
     {
         $this->seedBars();

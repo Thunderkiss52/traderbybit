@@ -30,11 +30,15 @@ final readonly class BacktestSimulationEngine
         private array $paperConfig,
     ) {}
 
-    public function simulate(array $symbols, Segment $segment, array $strategyConfig, array $executionConfig, string $startingBalance): SimulationResult
+    public function simulate(array $symbols, Segment $segment, array $strategyConfig, array $executionConfig, string $startingBalance, string $exchange = 'bybit'): SimulationResult
     {
+        if (! in_array($exchange, ['bybit', 'binance'], true)) {
+            throw new \InvalidArgumentException('Unsupported backtest exchange.');
+        }
+        $strategyConfig['_exchange'] = $exchange;
         $execution = new PaperExecutionEngine($executionConfig);
         $sizing = new PositionSizingService($executionConfig);
-        $rows = CandleRecord::query()->where('exchange', 'bybit')->where('category', 'linear')->whereIn('symbol', $symbols)
+        $rows = CandleRecord::query()->where('exchange', $exchange)->where('category', 'linear')->whereIn('symbol', $symbols)
             ->where('interval', '5')->where('is_closed', true)->where('open_time', '>=', $segment->from)->where('open_time', '<', $segment->to)
             ->orderBy('open_time')->orderBy('symbol')->get();
         $byClose = [];
@@ -58,7 +62,7 @@ final readonly class BacktestSimulationEngine
         foreach ($byClose as $timestamp => $bars) {
             $at = (new DateTimeImmutable('@'.$timestamp))->setTimezone(new \DateTimeZone('UTC'));
             foreach ($bars as $symbol => $row) {
-                $bar = $this->bar($row, $at);
+                $bar = $this->bar($row, $at, $exchange);
                 $lastBars[$symbol] = $bar;
                 foreach ($positions as $key => &$position) {
                     if ($position['symbol'] !== $symbol || ! in_array($position['status'], ['PENDING', 'OPEN', 'PARTIALLY_CLOSED'], true)) {
@@ -86,7 +90,7 @@ final readonly class BacktestSimulationEngine
 
                         continue;
                     }
-                    $this->applyFunding($position, $at, $execution, $equity);
+                    $this->applyFunding($position, $at, $execution, $equity, $exchange);
                     $quote = $execution->exit($position['side'], $position['status'], $position['stop'], $position['tp1'], $position['tp2'], $position['holding_until'], $bar);
                     if ($quote === null) {
                         continue;
@@ -124,10 +128,15 @@ final readonly class BacktestSimulationEngine
                 foreach ($symbols as $symbol) {
                     $decision = $this->signals->evaluate($symbol, $at, $strategyConfig);
                     $decisions[] = ['symbol' => $symbol, 'at' => $at->format(DATE_ATOM), 'side' => $decision->side->value, 'reasons' => $decision->reasons];
+                    if (in_array($strategyConfig['_research_strategy_id'] ?? null, (array) config('research.forward_paper.signal_only_strategies', []), true)) {
+                        $warnings[] = 'signal_only_strategy_execution_disabled';
+
+                        continue;
+                    }
                     if ($decision->side === SignalSide::Skip || $decision->pricePlan === null || $decision->qualityClass === null || $decision->modelRiskPercent === null) {
                         continue;
                     }
-                    $context = MarketContextRecord::query()->where(['exchange' => 'bybit', 'category' => 'linear', 'symbol' => $symbol])->where('observed_at', '<=', $at)->latest('observed_at')->first();
+                    $context = MarketContextRecord::query()->where(['exchange' => $exchange, 'category' => 'linear', 'symbol' => $symbol])->where('observed_at', '<=', $at)->latest('observed_at')->first();
                     if ($context === null || in_array(null, [$context->qty_step, $context->min_order_qty, $context->max_order_qty, $context->min_notional_value], true)) {
                         $warnings[] = "missing_execution_metadata:{$symbol}:{$at->format(DATE_ATOM)}";
 
@@ -142,7 +151,7 @@ final readonly class BacktestSimulationEngine
                     }
                     $open = array_values(array_filter($positions, fn (array $p): bool => in_array($p['status'], ['OPEN', 'PARTIALLY_CLOSED'], true)));
                     $sameDirection = array_values(array_filter($open, fn (array $p): bool => $p['side'] === $decision->side->value && $p['symbol'] !== $symbol));
-                    $correlation = $sameDirection === [] ? null : $this->correlation->between($sameDirection[0]['symbol'], $symbol, $at);
+                    $correlation = $sameDirection === [] ? null : $this->correlation->between($sameDirection[0]['symbol'], $symbol, $at, $exchange);
                     $totalRisk = BigDecimal::zero();
                     $notional = BigDecimal::zero();
                     foreach ($open as $item) {
@@ -222,15 +231,15 @@ final readonly class BacktestSimulationEngine
         return new SimulationResult($trades, $snapshots, $decisions, array_values(array_unique($warnings)));
     }
 
-    private function bar($row, DateTimeImmutable $closeAt): MarketBar
+    private function bar($row, DateTimeImmutable $closeAt, string $exchange): MarketBar
     {
-        $context = MarketContextRecord::query()->where(['exchange' => 'bybit', 'category' => 'linear', 'symbol' => $row->symbol])->where('observed_at', '<=', $closeAt)->latest('observed_at')->first();
+        $context = MarketContextRecord::query()->where(['exchange' => $exchange, 'category' => 'linear', 'symbol' => $row->symbol])->where('observed_at', '<=', $closeAt)->latest('observed_at')->first();
         $fresh = $context !== null && $closeAt->getTimestamp() - $context->observed_at->getTimestamp() <= (int) $this->paperConfig['market_safety']['maximum_context_age_seconds'];
 
         return new MarketBar($row->open_time->toDateTimeImmutable(), $closeAt, $row->open, $row->high, $row->low, $row->close, true, $fresh ? $context->bid : null, $fresh ? $context->ask : null);
     }
 
-    private function applyFunding(array &$position, DateTimeImmutable $at, PaperExecutionEngine $execution, BigDecimal &$equity): void
+    private function applyFunding(array &$position, DateTimeImmutable $at, PaperExecutionEngine $execution, BigDecimal &$equity, string $exchange = 'bybit'): void
     {
         // A position only accrues funding after it was actually filled. Never build a
         // comparison query with a null operand: Laravel rejects `where(col, '>', null)`
@@ -238,7 +247,7 @@ final readonly class BacktestSimulationEngine
         if (! isset($position['opened_at']) || ! $position['opened_at'] instanceof DateTimeImmutable) {
             return;
         }
-        $events = MarketFundingEventRecord::query()->where(['exchange' => 'bybit', 'category' => 'linear', 'symbol' => $position['symbol']])
+        $events = MarketFundingEventRecord::query()->where(['exchange' => $exchange, 'category' => 'linear', 'symbol' => $position['symbol']])
             ->where('funding_at', '>', $position['opened_at'])->where('funding_at', '<=', $at)->orderBy('funding_at')->get();
         foreach ($events as $event) {
             if (isset($position['funding_ids'][$event->id])) {
