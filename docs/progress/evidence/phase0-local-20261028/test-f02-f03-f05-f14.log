@@ -1,0 +1,32 @@
+PHPUnit 12.5.39 by Sebastian Bergmann and contributors.
+
+Runtime:       PHP 8.5.12
+Configuration: /var/www/html/phpunit.xml
+
+........[41;37mF[0m[31;1mE[0m.....                                                   15 / 15 (100%)
+
+Time: 00:03.137, Memory: 22.00 MB
+
+There was 1 error:
+
+1) Tests\Feature\Research\ProfitabilityResearchApiTest::test_f03_null_vs_real_zero_distinction_preserved_without_fabrication
+ErrorException: Undefined array key "reconciliation"
+
+/var/www/html/vendor/laravel/framework/src/Illuminate/Foundation/Bootstrap/HandleExceptions.php:265
+/var/www/html/tests/Feature/Research/ProfitabilityResearchApiTest.php:259
+
+--
+
+There was 1 failure:
+
+1) Tests\Feature\Research\ProfitabilityResearchApiTest::test_f02_profitability_response_envelope_chain_for_success_and_errors
+Failed asserting that an array has the key 'accounts'.
+
+/var/www/html/vendor/laravel/framework/src/Illuminate/Testing/AssertableJsonString.php:318
+/var/www/html/vendor/laravel/framework/src/Illuminate/Testing/AssertableJsonString.php:293
+/var/www/html/vendor/laravel/framework/src/Illuminate/Testing/AssertableJsonString.php:316
+/var/www/html/vendor/laravel/framework/src/Illuminate/Testing/TestResponse.php:1046
+/var/www/html/tests/Feature/Research/ProfitabilityResearchApiTest.php:225
+
+[37;41mERRORS![0m
+[37;41mTests: 15[0m[37;41m, Assertions: 239[0m[37;41m, Errors: 1[0m[37;41m, Failures: 1[0m[37;41m.[0m

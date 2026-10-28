@@ -1,0 +1,31 @@
+{
+  "requirement_id": "VEC-P0-102",
+  "obligation_id": "VEC-P0-102-V3",
+  "result": "PASS",
+  "command": {
+    "label": "browser-phase0-verification",
+    "command": [
+      "/home/thunder/.headroom/bin/rtk",
+      "proxy",
+      "python3",
+      "scripts/verify-browser-phase0.py"
+    ],
+    "cwd": "/home/thunder/work/traderbybit",
+    "started_at": "2026-10-28T15:28:52.666406+00:00",
+    "finished_at": "2026-10-28T15:29:03.375932+00:00",
+    "exit_code": 0,
+    "git_sha": "ca2aaea01f5cfaf53d51bf2deb21007e86b8777f",
+    "artifact": "docs/progress/evidence/phase0-local-20261028/browser-phase0-verification.log",
+    "sha256": "849c331ff457bf3a45f36b1165ad6603cb0b194ed3aee54b30e66bf4f77f358e"
+  },
+  "git_sha": "e393304d14b07890870e560c07516eccfc033254",
+  "dependency_hash": "d0bbe3405a0e722231bd221cfaadf953559a147fa0175953dbc3486adff2b463",
+  "synthetic": false,
+  "environment": "browser",
+  "screenshot": "docs/progress/evidence/phase0-local-20261028/browser/VEC-P0-102-V3.png",
+  "screenshot_sha256": "d72cb25b3fa5322777c272015e041da5bbf60812d1feb716abac63199ff6ef6e",
+  "browser_summary": "docs/progress/evidence/phase0-local-20261028/browser/browser_verification_summary.json",
+  "browser_summary_sha256": "1cba56e891e01cd0b8feb2355d651e5635151a1c3ce81f631e580aef9a34bf6c",
+  "rationale": "Profitability overview rendered envelope, metric cards and disclaimers in Chromium",
+  "limitations": "Headless Chromium verification of SPA build against isolated mock API; production verification pending."
+}

@@ -1,0 +1,41 @@
+PHPUnit 12.5.39 by Sebastian Bergmann and contributors.
+
+Runtime:       PHP 8.5.12
+Configuration: /var/www/html/phpunit.xml
+
+{"message":"[AutonomousLearning] Starting autonomous research & quantitative learning cycle.","context":{},"level":200,"level_name":"INFO","channel":"testing","datetime":"2026-10-28T14:59:34.349994+00:00","extra":{}}
+{"message":"[AutonomousLearning] Matured 0 pending feature snapshots.","context":{},"level":200,"level_name":"INFO","channel":"testing","datetime":"2026-10-28T14:59:34.359444+00:00","extra":{}}
+{"message":"[AutonomousLearning] Initiating model training for BTCUSDT (trigger: TRAIN_INITIAL).","context":{},"level":200,"level_name":"INFO","channel":"testing","datetime":"2026-10-28T14:59:34.361992+00:00","extra":{}}
+{"message":"[AutonomousLearning] Trained model Logistic_TP_BEFORE_SL_BTCUSDT v20261028.145934 status: ACTIVE.","context":{},"level":200,"level_name":"INFO","channel":"testing","datetime":"2026-10-28T14:59:34.375472+00:00","extra":{}}
+{"message":"[AutonomousLearning] Initiating model training for ETHUSDT (trigger: TRAIN_INITIAL).","context":{},"level":200,"level_name":"INFO","channel":"testing","datetime":"2026-10-28T14:59:34.376524+00:00","extra":{}}
+{"message":"[AutonomousLearning] Queued candidate evaluation.","context":{"candidate_id":"765e5645-dc5d-4a6e-aa35-06ca522f3680","family":"baseline","retry":false},"level":200,"level_name":"INFO","channel":"testing","datetime":"2026-10-28T14:59:34.398658+00:00","extra":{}}
+{"message":"[AutonomousLearning] Queued candidate evaluation.","context":{"candidate_id":"bf229414-9e95-416f-b561-3f7d2e60791b","family":"trend_pullback","retry":false},"level":200,"level_name":"INFO","channel":"testing","datetime":"2026-10-28T14:59:34.400739+00:00","extra":{}}
+{"message":"[AutonomousLearning] Completed autonomous research & learning cycle successfully.","context":{},"level":200,"level_name":"INFO","channel":"testing","datetime":"2026-10-28T14:59:34.426688+00:00","extra":{}}
+.{"message":"[AutonomousLearning] Starting autonomous research & quantitative learning cycle.","context":{},"level":200,"level_name":"INFO","channel":"testing","datetime":"2026-10-28T14:59:34.486518+00:00","extra":{}}
+{"message":"[AutonomousLearning] Matured 0 pending feature snapshots.","context":{},"level":200,"level_name":"INFO","channel":"testing","datetime":"2026-10-28T14:59:34.494015+00:00","extra":{}}
+{"message":"[AutonomousLearning] Initiating model training for BTCUSDT (trigger: TRAIN_INITIAL).","context":{},"level":200,"level_name":"INFO","channel":"testing","datetime":"2026-10-28T14:59:34.496815+00:00","extra":{}}
+{"message":"[AutonomousLearning] Initiating model training for ETHUSDT (trigger: TRAIN_INITIAL).","context":{},"level":200,"level_name":"INFO","channel":"testing","datetime":"2026-10-28T14:59:34.498359+00:00","extra":{}}
+{"message":"[AutonomousLearning] Queued candidate evaluation.","context":{"candidate_id":"5aa5ab5e-b2d4-4226-bc7c-732c2e0bc135","family":"baseline","retry":false},"level":200,"level_name":"INFO","channel":"testing","datetime":"2026-10-28T14:59:34.511838+00:00","extra":{}}
+{"message":"[AutonomousLearning] Queued candidate evaluation.","context":{"candidate_id":"2cf8c9ab-a434-4a2b-be53-67d254e44d4f","family":"trend_pullback","retry":false},"level":200,"level_name":"INFO","channel":"testing","datetime":"2026-10-28T14:59:34.513564+00:00","extra":{}}
+{"message":"[AutonomousLearning] Completed autonomous research & learning cycle successfully.","context":{},"level":200,"level_name":"INFO","channel":"testing","datetime":"2026-10-28T14:59:34.538914+00:00","extra":{}}
+{"message":"[AutonomousLearning] Starting autonomous research & quantitative learning cycle.","context":{},"level":200,"level_name":"INFO","channel":"testing","datetime":"2026-10-28T14:59:34.539062+00:00","extra":{}}
+{"message":"[AutonomousLearning] Matured 0 pending feature snapshots.","context":{},"level":200,"level_name":"INFO","channel":"testing","datetime":"2026-10-28T14:59:34.540379+00:00","extra":{}}
+{"message":"[AutonomousLearning] Initiating model training for BTCUSDT (trigger: TRAIN_INITIAL).","context":{},"level":200,"level_name":"INFO","channel":"testing","datetime":"2026-10-28T14:59:34.541059+00:00","extra":{}}
+{"message":"[AutonomousLearning] Initiating model training for ETHUSDT (trigger: TRAIN_INITIAL).","context":{},"level":200,"level_name":"INFO","channel":"testing","datetime":"2026-10-28T14:59:34.542152+00:00","extra":{}}
+{"message":"[AutonomousLearning] Queued candidate evaluation.","context":{"candidate_id":"df0c1f39-1da0-4437-9189-4d3c29310e32","family":"bollinger_mean_reversion","retry":false},"level":200,"level_name":"INFO","channel":"testing","datetime":"2026-10-28T14:59:34.555478+00:00","extra":{}}
+{"message":"[AutonomousLearning] Queued candidate evaluation.","context":{"candidate_id":"03e71e33-adb7-413e-b585-5cecea7144dd","family":"donchian_atr_breakout","retry":false},"level":200,"level_name":"INFO","channel":"testing","datetime":"2026-10-28T14:59:34.557207+00:00","extra":{}}
+{"message":"[AutonomousLearning] Completed autonomous research & learning cycle successfully.","context":{},"level":200,"level_name":"INFO","channel":"testing","datetime":"2026-10-28T14:59:34.582839+00:00","extra":{}}
+.[41;37mF[0m                                                                 3 / 3 (100%)
+
+Time: 00:01.981, Memory: 18.00 MB
+
+There was 1 failure:
+
+1) Tests\Feature\Research\AutonomousLearningPipelineTest::test_f18_training_purging_fallback_activates_without_future_label_leakage
+Fallback should have activated
+Failed asserting that false is true.
+
+/var/www/html/tests/Feature/Research/AutonomousLearningPipelineTest.php:239
+
+[37;41mFAILURES![0m
+[37;41mTests: 3[0m[37;41m, Assertions: 21[0m[37;41m, Failures: 1[0m[37;41m.[0m

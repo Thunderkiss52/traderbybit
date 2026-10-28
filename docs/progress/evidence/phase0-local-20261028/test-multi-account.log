@@ -1,0 +1,27 @@
+PHPUnit 12.5.39 by Sebastian Bergmann and contributors.
+
+Runtime:       PHP 8.5.12
+Configuration: /var/www/html/phpunit.xml
+
+.....[31;1mE[0m                                                              6 / 6 (100%)
+
+Time: 00:02.675, Memory: 20.00 MB
+
+There was 1 error:
+
+1) Tests\Feature\Api\MultiAccountSelectionTest::test_f09_twenty_six_account_census_all_selectable_with_distinct_balances_and_foreign_rejection
+DomainException: Binance PRIMARY account is not provisioned.
+
+/var/www/html/app/PaperTrading/Application/PaperAccountService.php:176
+/var/www/html/vendor/laravel/framework/src/Illuminate/Database/Concerns/ManagesTransactions.php:35
+/var/www/html/vendor/laravel/framework/src/Illuminate/Database/DatabaseManager.php:502
+/var/www/html/vendor/laravel/framework/src/Illuminate/Support/Facades/Facade.php:364
+/var/www/html/app/PaperTrading/Application/PaperAccountService.php:144
+/var/www/html/app/PaperTrading/Application/PaperAccountService.php:211
+/var/www/html/vendor/laravel/framework/src/Illuminate/Collections/Arr.php:868
+/var/www/html/vendor/laravel/framework/src/Illuminate/Collections/Collection.php:834
+/var/www/html/app/PaperTrading/Application/PaperAccountService.php:211
+/var/www/html/tests/Feature/Api/MultiAccountSelectionTest.php:156
+
+[37;41mERRORS![0m
+[37;41mTests: 6[0m[37;41m, Assertions: 49[0m[37;41m, Errors: 1[0m[37;41m.[0m

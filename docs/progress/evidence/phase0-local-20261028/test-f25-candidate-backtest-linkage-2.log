@@ -1,0 +1,11 @@
+PHPUnit 12.5.39 by Sebastian Bergmann and contributors.
+
+Runtime:       PHP 8.5.12
+Configuration: /var/www/html/phpunit.xml
+
+....{"message":"[ResearchEvolution] Candidate evaluated.","context":{"candidate_id":"87460bd1-dd54-4053-a6f8-60e147dc7023","family":"trend_pullback","status":"REJECTED","backtest_run_id":"8d4b6f9b-6f41-4476-9e72-3f1e0f6b4ad1"},"level":200,"level_name":"INFO","channel":"testing","datetime":"2026-10-28T15:12:54.367375+00:00","extra":{}}
+.                                                               5 / 5 (100%)
+
+Time: 00:02, Memory: 20.00 MB
+
+[30;42mOK (5 tests, 42 assertions)[0m

@@ -1,20 +1,20 @@
 {
   "status": "PROVISIONAL",
-  "source_head": "02ea3e7ceab97eaf3926b71cde78aa453092e47f",
+  "source_head": "e393304d14b07890870e560c07516eccfc033254",
   "assessment_head": "d9a0aeb5d14233fc95e9e5cc55d8748814362f59",
   "assessment_date": "2026-10-28",
   "scope_baseline": "VECTOR-SCOPE-20261027-v1",
   "scope_hash": "6d207a2bd441156d909b72e93166ea2fb932c152c32627fd6d06083668d71117",
-  "registry_hash": "3e5658946d73a8935551af89a86fed57f9ae72d0e139ea18a8ad21d754e3492a",
+  "registry_hash": "b0556ed27d36781dd13aab07fe3b775f9e7dfa84e034d7a5697cab464733ace5",
   "overall": {
     "implementation": 42.2882,
-    "verification": 5.5556,
+    "verification": 9.2857,
     "product": 0.0
   },
   "freshness": {
-    "CURRENT": 23,
+    "CURRENT": 51,
     "FAILED": 1,
-    "UNAVAILABLE": 205
+    "UNAVAILABLE": 177
   },
   "phases": [
     {
@@ -24,7 +24,7 @@
       "verified": 0,
       "accepted_capabilities": 0,
       "implementation": 78.5714,
-      "verification": 18.5185,
+      "verification": 30.9524,
       "product": 0.0,
       "remaining": [
         "VEC-P0-001",
@@ -516,17 +516,15 @@
       "weight": 1,
       "capability": "CAP-P0",
       "implementation": 0.0,
-      "verification": 0.0,
+      "verification": 50.0,
       "product": 0.0,
       "state": "BLOCKED",
       "blockers": [
-        "Local V1 incomplete: API success/error shapes pass; frontend tests are source-contract tests, not executed Vue-to-service integration. Production V2 and explicit product acceptance pending. Browser V3 pending."
+        "Local V1 passed; production V2, applicable browser V3 and explicit product acceptance remain pending."
       ],
       "dependencies": [],
       "missing_evidence": [
-        "VEC-P0-102-V1:UNAVAILABLE",
-        "VEC-P0-102-V2:UNAVAILABLE",
-        "VEC-P0-102-V3:UNAVAILABLE"
+        "VEC-P0-102-V2:UNAVAILABLE"
       ]
     },
     {
@@ -538,17 +536,15 @@
       "weight": 1,
       "capability": "CAP-P0",
       "implementation": 0.0,
-      "verification": 0.0,
+      "verification": 50.0,
       "product": 0.0,
       "state": "BLOCKED",
       "blockers": [
-        "Local V1 incomplete: Absent-account API control passes; no rendered profitability null-vs-real-zero financial test. Production V2 and explicit product acceptance pending. Browser V3 pending."
+        "Local V1 passed; production V2, applicable browser V3 and explicit product acceptance remain pending."
       ],
       "dependencies": [],
       "missing_evidence": [
-        "VEC-P0-103-V1:UNAVAILABLE",
-        "VEC-P0-103-V2:UNAVAILABLE",
-        "VEC-P0-103-V3:UNAVAILABLE"
+        "VEC-P0-103-V2:UNAVAILABLE"
       ]
     },
     {
@@ -580,15 +576,14 @@
       "weight": 1,
       "capability": "CAP-P0",
       "implementation": 0.0,
-      "verification": 0.0,
+      "verification": 33.3333,
       "product": 0.0,
       "state": "BLOCKED",
       "blockers": [
-        "Local V1 incomplete: Tests assert fixed module statuses, not their consistency with available evidence or negative changes in module readiness. Production V2 and explicit product acceptance pending."
+        "Local V1 passed; production V2, applicable browser V3 and explicit product acceptance remain pending."
       ],
       "dependencies": [],
       "missing_evidence": [
-        "VEC-P0-105-V1:UNAVAILABLE",
         "VEC-P0-105-V2:UNAVAILABLE"
       ]
     },
@@ -621,15 +616,14 @@
       "weight": 1,
       "capability": "CAP-P0",
       "implementation": 0.0,
-      "verification": 0.0,
+      "verification": 33.3333,
       "product": 0.0,
       "state": "BLOCKED",
       "blockers": [
-        "Local V1 incomplete: ZIP tests check members and some headings; they do not compare every required column or inject a missing source column. Production V2 and explicit product acceptance pending."
+        "Local V1 passed; production V2, applicable browser V3 and explicit product acceptance remain pending."
       ],
       "dependencies": [],
       "missing_evidence": [
-        "VEC-P0-107-V1:UNAVAILABLE",
         "VEC-P0-107-V2:UNAVAILABLE"
       ]
     },
@@ -642,15 +636,14 @@
       "weight": 1,
       "capability": "CAP-P0",
       "implementation": 0.0,
-      "verification": 0.0,
+      "verification": 33.3333,
       "product": 0.0,
       "state": "BLOCKED",
       "blockers": [
-        "Local V1 incomplete: Half-open window and risk funnel tests pass separately; no comparison of exported strategy funnel populations to scoped source queries. Production V2 and explicit product acceptance pending."
+        "Local V1 passed; production V2, applicable browser V3 and explicit product acceptance remain pending."
       ],
       "dependencies": [],
       "missing_evidence": [
-        "VEC-P0-108-V1:UNAVAILABLE",
         "VEC-P0-108-V2:UNAVAILABLE"
       ]
     },
@@ -663,17 +656,15 @@
       "weight": 1,
       "capability": "CAP-P0",
       "implementation": 0.0,
-      "verification": 0.0,
+      "verification": 50.0,
       "product": 0.0,
       "state": "BLOCKED",
       "blockers": [
-        "Local V1 incomplete: Selector tests seed Bybit only. Separate 26-account census does not prove all 26 selectable or distinct aggregate/account economics. Production V2 and explicit product acceptance pending. Browser V3 pending."
+        "Local V1 passed; production V2, applicable browser V3 and explicit product acceptance remain pending."
       ],
       "dependencies": [],
       "missing_evidence": [
-        "VEC-P0-109-V1:UNAVAILABLE",
-        "VEC-P0-109-V2:UNAVAILABLE",
-        "VEC-P0-109-V3:UNAVAILABLE"
+        "VEC-P0-109-V2:UNAVAILABLE"
       ]
     },
     {
@@ -765,17 +756,15 @@
       "weight": 1,
       "capability": "CAP-P0",
       "implementation": 0.0,
-      "verification": 0.0,
+      "verification": 50.0,
       "product": 0.0,
       "state": "BLOCKED",
       "blockers": [
-        "Local V1 incomplete: Freshness service and API shapes tested separately; report-to-page stale/unknown shape regression is not asserted. Production V2 and explicit product acceptance pending. Browser V3 pending."
+        "Local V1 passed; production V2, applicable browser V3 and explicit product acceptance remain pending."
       ],
       "dependencies": [],
       "missing_evidence": [
-        "VEC-P0-114-V1:UNAVAILABLE",
-        "VEC-P0-114-V2:UNAVAILABLE",
-        "VEC-P0-114-V3:UNAVAILABLE"
+        "VEC-P0-114-V2:UNAVAILABLE"
       ]
     },
     {
@@ -787,15 +776,14 @@
       "weight": 1,
       "capability": "CAP-P0",
       "implementation": 0.0,
-      "verification": 0.0,
+      "verification": 33.3333,
       "product": 0.0,
       "state": "BLOCKED",
       "blockers": [
-        "Local V1 incomplete: Lifecycle inclusion and aligned fixture correlation pass; no deliberately permuted trade-order/time alignment negative. Production V2 and explicit product acceptance pending."
+        "Local V1 passed; production V2, applicable browser V3 and explicit product acceptance remain pending."
       ],
       "dependencies": [],
       "missing_evidence": [
-        "VEC-P0-115-V1:UNAVAILABLE",
         "VEC-P0-115-V2:UNAVAILABLE"
       ]
     },
@@ -808,15 +796,14 @@
       "weight": 1,
       "capability": "CAP-P0",
       "implementation": 0.0,
-      "verification": 0.0,
+      "verification": 33.3333,
       "product": 0.0,
       "state": "BLOCKED",
       "blockers": [
-        "Local V1 incomplete: Degradation fixtures use Bybit only; P5 exchange comparisons do not directly test degradation isolation. Production V2 and explicit product acceptance pending."
+        "Local V1 passed; production V2, applicable browser V3 and explicit product acceptance remain pending."
       ],
       "dependencies": [],
       "missing_evidence": [
-        "VEC-P0-116-V1:UNAVAILABLE",
         "VEC-P0-116-V2:UNAVAILABLE"
       ]
     },
@@ -829,15 +816,14 @@
       "weight": 1,
       "capability": "CAP-P0",
       "implementation": 0.0,
-      "verification": 0.0,
+      "verification": 33.3333,
       "product": 0.0,
       "state": "BLOCKED",
       "blockers": [
-        "Local V1 incomplete: Point-in-time snapshot/label pass with Bybit only; missing cross-exchange contamination negative. Production V2 and explicit product acceptance pending."
+        "Local V1 passed; production V2, applicable browser V3 and explicit product acceptance remain pending."
       ],
       "dependencies": [],
       "missing_evidence": [
-        "VEC-P0-117-V1:UNAVAILABLE",
         "VEC-P0-117-V2:UNAVAILABLE"
       ]
     },
@@ -850,15 +836,14 @@
       "weight": 1,
       "capability": "CAP-P0",
       "implementation": 0.0,
-      "verification": 0.0,
+      "verification": 33.3333,
       "product": 0.0,
       "state": "BLOCKED",
       "blockers": [
-        "Local V1 incomplete: Training pipeline succeeds but does not drive insufficient purged samples through the fallback path. Production V2 and explicit product acceptance pending."
+        "Local V1 passed; production V2, applicable browser V3 and explicit product acceptance remain pending."
       ],
       "dependencies": [],
       "missing_evidence": [
-        "VEC-P0-118-V1:UNAVAILABLE",
         "VEC-P0-118-V2:UNAVAILABLE"
       ]
     },
@@ -871,17 +856,15 @@
       "weight": 1,
       "capability": "CAP-P0",
       "implementation": 0.0,
-      "verification": 0.0,
+      "verification": 50.0,
       "product": 0.0,
       "state": "BLOCKED",
       "blockers": [
-        "Local V1 incomplete: Service restrictions pass; settings API asserts raw capabilities but not the effective permission map under conflicting flags. Production V2 and explicit product acceptance pending. Browser V3 pending."
+        "Local V1 passed; production V2, applicable browser V3 and explicit product acceptance remain pending."
       ],
       "dependencies": [],
       "missing_evidence": [
-        "VEC-P0-119-V1:UNAVAILABLE",
-        "VEC-P0-119-V2:UNAVAILABLE",
-        "VEC-P0-119-V3:UNAVAILABLE"
+        "VEC-P0-119-V2:UNAVAILABLE"
       ]
     },
     {
@@ -893,17 +876,15 @@
       "weight": 1,
       "capability": "CAP-P0",
       "implementation": 0.0,
-      "verification": 0.0,
+      "verification": 50.0,
       "product": 0.0,
       "state": "BLOCKED",
       "blockers": [
-        "Local V1 incomplete: Each kill-switch has tests; no matrix toggles each authority independently and asserts both effective views agree. Production V2 and explicit product acceptance pending. Browser V3 pending."
+        "Local V1 passed; production V2, applicable browser V3 and explicit product acceptance remain pending."
       ],
       "dependencies": [],
       "missing_evidence": [
-        "VEC-P0-120-V1:UNAVAILABLE",
-        "VEC-P0-120-V2:UNAVAILABLE",
-        "VEC-P0-120-V3:UNAVAILABLE"
+        "VEC-P0-120-V2:UNAVAILABLE"
       ]
     },
     {
@@ -915,15 +896,14 @@
       "weight": 1,
       "capability": "CAP-P0",
       "implementation": 0.0,
-      "verification": 0.0,
+      "verification": 33.3333,
       "product": 0.0,
       "state": "BLOCKED",
       "blockers": [
-        "Local V1 incomplete: Static routing and real worker success pass; missing unsupported-version/offline-worker capability negative. Production V2 and explicit product acceptance pending."
+        "Local V1 passed; production V2, applicable browser V3 and explicit product acceptance remain pending."
       ],
       "dependencies": [],
       "missing_evidence": [
-        "VEC-P0-121-V1:UNAVAILABLE",
         "VEC-P0-121-V2:UNAVAILABLE"
       ]
     },
@@ -936,17 +916,15 @@
       "weight": 1,
       "capability": "CAP-P0",
       "implementation": 0.0,
-      "verification": 0.0,
+      "verification": 50.0,
       "product": 0.0,
       "state": "BLOCKED",
       "blockers": [
-        "Local V1 incomplete: quote_integrity.test.js checks source contracts, not an executed HTTP failure reaching the page. Production V2 and explicit product acceptance pending. Browser V3 pending."
+        "Local V1 passed; production V2, applicable browser V3 and explicit product acceptance remain pending."
       ],
       "dependencies": [],
       "missing_evidence": [
-        "VEC-P0-122-V1:UNAVAILABLE",
-        "VEC-P0-122-V2:UNAVAILABLE",
-        "VEC-P0-122-V3:UNAVAILABLE"
+        "VEC-P0-122-V2:UNAVAILABLE"
       ]
     },
     {
@@ -958,17 +936,15 @@
       "weight": 1,
       "capability": "CAP-P0",
       "implementation": 0.0,
-      "verification": 0.0,
+      "verification": 50.0,
       "product": 0.0,
       "state": "BLOCKED",
       "blockers": [
-        "Local V1 incomplete: Some backend pagination and frontend source checks pass; no rendered navigation beyond first page on each affected page. Production V2 and explicit product acceptance pending. Browser V3 pending."
+        "Local V1 passed; production V2, applicable browser V3 and explicit product acceptance remain pending."
       ],
       "dependencies": [],
       "missing_evidence": [
-        "VEC-P0-123-V1:UNAVAILABLE",
-        "VEC-P0-123-V2:UNAVAILABLE",
-        "VEC-P0-123-V3:UNAVAILABLE"
+        "VEC-P0-123-V2:UNAVAILABLE"
       ]
     },
     {
@@ -980,15 +956,14 @@
       "weight": 1,
       "capability": "CAP-P0",
       "implementation": 0.0,
-      "verification": 0.0,
+      "verification": 33.3333,
       "product": 0.0,
       "state": "BLOCKED",
       "blockers": [
-        "Local V1 incomplete: Latest/explicit generation, no-writes and missing-position controls pass; qualified account/exchange mismatch is not covered. Production V2 and explicit product acceptance pending."
+        "Local V1 passed; production V2, applicable browser V3 and explicit product acceptance remain pending."
       ],
       "dependencies": [],
       "missing_evidence": [
-        "VEC-P0-124-V1:UNAVAILABLE",
         "VEC-P0-124-V2:UNAVAILABLE"
       ]
     },
@@ -1001,17 +976,15 @@
       "weight": 1,
       "capability": "CAP-P0",
       "implementation": 0.0,
-      "verification": 0.0,
+      "verification": 50.0,
       "product": 0.0,
       "state": "BLOCKED",
       "blockers": [
-        "Local V1 incomplete: Bounded queued attempts, kill-switch and rejection pass; completed run is manually supplied. No test executes EvaluateStrategyCandidateJob and proves durable linkage to the correct run. Production V2 and explicit product acceptance pending. Browser V3 pending."
+        "Local V1 passed; production V2, applicable browser V3 and explicit product acceptance remain pending."
       ],
       "dependencies": [],
       "missing_evidence": [
-        "VEC-P0-125-V1:UNAVAILABLE",
-        "VEC-P0-125-V2:UNAVAILABLE",
-        "VEC-P0-125-V3:UNAVAILABLE"
+        "VEC-P0-125-V2:UNAVAILABLE"
       ]
     },
     {
@@ -1023,15 +996,14 @@
       "weight": 1,
       "capability": "CAP-P0",
       "implementation": 0.0,
-      "verification": 0.0,
+      "verification": 33.3333,
       "product": 0.0,
       "state": "BLOCKED",
       "blockers": [
-        "Local V1 incomplete: Rejection event persists after exception, but test does not assert append-only enforcement or concurrent retry behavior. Production V2 and explicit product acceptance pending."
+        "Local V1 passed; production V2, applicable browser V3 and explicit product acceptance remain pending."
       ],
       "dependencies": [],
       "missing_evidence": [
-        "VEC-P0-126-V1:UNAVAILABLE",
         "VEC-P0-126-V2:UNAVAILABLE"
       ]
     },

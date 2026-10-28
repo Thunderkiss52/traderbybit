@@ -1,0 +1,20 @@
+PHPUnit 12.5.39 by Sebastian Bergmann and contributors.
+
+Runtime:       PHP 8.5.12
+Configuration: /var/www/html/phpunit.xml
+
+...[31;1mE[0m                                                                4 / 4 (100%)
+
+Time: 00:02.320, Memory: 20.00 MB
+
+There was 1 error:
+
+1) Tests\Feature\Research\SlippageAttributionApiTest::test_f24_slippage_position_trace_scopes_accounts_and_exchanges_without_foreign_fills
+BadMethodCallException: Method Illuminate\Http\JsonResponse::assertNull does not exist.
+
+/var/www/html/vendor/laravel/framework/src/Illuminate/Macroable/Traits/Macroable.php:117
+/var/www/html/vendor/laravel/framework/src/Illuminate/Testing/TestResponse.php:2091
+/var/www/html/tests/Feature/Research/SlippageAttributionApiTest.php:293
+
+[37;41mERRORS![0m
+[37;41mTests: 4[0m[37;41m, Assertions: 37[0m[37;41m, Errors: 1[0m[37;41m.[0m

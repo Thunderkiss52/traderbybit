@@ -1,0 +1,19 @@
+PHPUnit 12.5.39 by Sebastian Bergmann and contributors.
+
+Runtime:       PHP 8.5.12
+Configuration: /var/www/html/phpunit.xml
+
+.....[31;1mE[0m                                                              6 / 6 (100%)
+
+Time: 00:02.731, Memory: 20.00 MB
+
+There was 1 error:
+
+1) Tests\Feature\Api\MultiAccountSelectionTest::test_f09_twenty_six_account_census_all_selectable_with_distinct_balances_and_foreign_rejection
+ErrorException: Undefined array key "total_equity"
+
+/var/www/html/vendor/laravel/framework/src/Illuminate/Foundation/Bootstrap/HandleExceptions.php:265
+/var/www/html/tests/Feature/Api/MultiAccountSelectionTest.php:182
+
+[37;41mERRORS![0m
+[37;41mTests: 6[0m[37;41m, Assertions: 53[0m[37;41m, Errors: 1[0m[37;41m.[0m

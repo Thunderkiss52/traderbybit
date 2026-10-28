@@ -1,0 +1,18 @@
+PHPUnit 12.5.39 by Sebastian Bergmann and contributors.
+
+Runtime:       PHP 8.5.12
+Configuration: /var/www/html/phpunit.xml
+
+...[31;1mE[0m                                                                4 / 4 (100%)
+
+Time: 00:01.897, Memory: 18.00 MB
+
+There was 1 error:
+
+1) Tests\Unit\Research\StrategyDegradationServiceTest::test_f16_strategy_degradation_isolates_exchanges_without_cross_pollution
+Error: Call to undefined method Tests\Unit\Research\StrategyDegradationServiceTest::seedSignal()
+
+/var/www/html/tests/Unit/Research/StrategyDegradationServiceTest.php:244
+
+[37;41mERRORS![0m
+[37;41mTests: 4[0m[37;41m, Assertions: 10[0m[37;41m, Errors: 1[0m[37;41m.[0m

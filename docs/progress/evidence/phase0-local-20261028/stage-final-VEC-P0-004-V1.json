@@ -1,0 +1,303 @@
+{
+  "requirement_id": "VEC-P0-004",
+  "obligation_id": "VEC-P0-004-V1",
+  "result": "PASS",
+  "command": {
+    "label": "full-suite-check",
+    "command": [
+      "/home/thunder/.headroom/bin/rtk",
+      "proxy",
+      "docker",
+      "run",
+      "--rm",
+      "--label",
+      "io.traderbybit.task=phase0-local-20261028",
+      "--network",
+      "container:vector-phase0-local-20261028-pg",
+      "--user",
+      "1000:1000",
+      "--entrypoint",
+      "",
+      "-v",
+      "/tmp/vector-phase0-local-20261028:/var/www/html",
+      "-w",
+      "/var/www/html",
+      "-e",
+      "APP_ENV=testing",
+      "-e",
+      "APP_DEBUG=false",
+      "-e",
+      "APP_KEY=base64:MDEyMzQ1Njc4OWFiY2RlZjAxMjM0NTY3ODlhYmNkZWY=",
+      "-e",
+      "APP_URL=http://127.0.0.1:8000",
+      "-e",
+      "DB_CONNECTION=pgsql",
+      "-e",
+      "DB_HOST=127.0.0.1",
+      "-e",
+      "DB_PORT=5432",
+      "-e",
+      "DB_DATABASE=bybit_test",
+      "-e",
+      "DB_USERNAME=postgres",
+      "-e",
+      "DB_PASSWORD=testpass",
+      "-e",
+      "DB_URL=",
+      "-e",
+      "TEST_DB_HOST=127.0.0.1",
+      "-e",
+      "TEST_DB_PORT=5432",
+      "-e",
+      "TEST_DB_DATABASE=bybit_test",
+      "-e",
+      "TEST_DB_USERNAME=postgres",
+      "-e",
+      "TEST_DB_PASSWORD=testpass",
+      "-e",
+      "CACHE_STORE=array",
+      "-e",
+      "SESSION_DRIVER=array",
+      "-e",
+      "QUEUE_CONNECTION=sync",
+      "-e",
+      "REDIS_HOST=127.0.0.1",
+      "-e",
+      "REDIS_PORT=6379",
+      "-e",
+      "REDIS_PASSWORD=null",
+      "-e",
+      "LOG_CHANNEL=stderr",
+      "-e",
+      "GOCACHE=/tmp/go-cache",
+      "-e",
+      "GOPATH=/tmp/go",
+      "-e",
+      "RUN_BYBIT_INTEGRATION=0",
+      "-e",
+      "TZ=UTC",
+      "traderbybit-php85-test:local",
+      "php",
+      "vendor/bin/phpunit",
+      "--log-junit",
+      "stage-v1-full.xml"
+    ],
+    "cwd": "/home/thunder/work/traderbybit",
+    "started_at": "2026-10-28T15:21:53.005752+00:00",
+    "finished_at": "2026-10-28T15:23:42.939058+00:00",
+    "exit_code": 0,
+    "git_sha": "ca2aaea01f5cfaf53d51bf2deb21007e86b8777f",
+    "artifact": "docs/progress/evidence/phase0-local-20261028/full-suite-check.log",
+    "sha256": "ab975bd00fb02fd36475ce06d1dd5fb4063c4a95b6ee72acfd4acef10ce01f17"
+  },
+  "git_sha": "e393304d14b07890870e560c07516eccfc033254",
+  "dependency_hash": "d0bbe3405a0e722231bd221cfaadf953559a147fa0175953dbc3486adff2b463",
+  "synthetic": true,
+  "environment": "isolated_postgresql",
+  "why_this_proves_condition": "Direct positive and negative risk boundaries cover equity, class A/B/C, total risk, notional, position count, correlation, cooldown and 5%/10% protection; isolated account safety and servicing regressions pass. Operational concurrency acceptance remains pending.",
+  "tests": [
+    {
+      "test": "Tests\\Unit\\PaperTrading\\RiskAndSizingTest::test_position_size_includes_fees_slippage_and_rounds_down_to_qty_step",
+      "assertions": 4,
+      "source": "tests/Unit/PaperTrading/RiskAndSizingTest.php"
+    },
+    {
+      "test": "Tests\\Unit\\PaperTrading\\RiskAndSizingTest::test_position_size_rejects_minimum_notional_and_exposure_limit",
+      "assertions": 2,
+      "source": "tests/Unit/PaperTrading/RiskAndSizingTest.php"
+    },
+    {
+      "test": "Tests\\Unit\\PaperTrading\\RiskAndSizingTest::test_risk_engine_rejects_portfolio_guards with data set \"zero equity\"",
+      "assertions": 1,
+      "source": "tests/Unit/PaperTrading/RiskAndSizingTest.php"
+    },
+    {
+      "test": "Tests\\Unit\\PaperTrading\\RiskAndSizingTest::test_risk_engine_rejects_portfolio_guards with data set \"negative equity\"",
+      "assertions": 1,
+      "source": "tests/Unit/PaperTrading/RiskAndSizingTest.php"
+    },
+    {
+      "test": "Tests\\Unit\\PaperTrading\\RiskAndSizingTest::test_risk_engine_rejects_portfolio_guards with data set \"exhausted capital\"",
+      "assertions": 1,
+      "source": "tests/Unit/PaperTrading/RiskAndSizingTest.php"
+    },
+    {
+      "test": "Tests\\Unit\\PaperTrading\\RiskAndSizingTest::test_risk_engine_rejects_portfolio_guards with data set \"class A excess\"",
+      "assertions": 1,
+      "source": "tests/Unit/PaperTrading/RiskAndSizingTest.php"
+    },
+    {
+      "test": "Tests\\Unit\\PaperTrading\\RiskAndSizingTest::test_risk_engine_rejects_portfolio_guards with data set \"class B excess\"",
+      "assertions": 1,
+      "source": "tests/Unit/PaperTrading/RiskAndSizingTest.php"
+    },
+    {
+      "test": "Tests\\Unit\\PaperTrading\\RiskAndSizingTest::test_risk_engine_rejects_portfolio_guards with data set \"class C excess\"",
+      "assertions": 1,
+      "source": "tests/Unit/PaperTrading/RiskAndSizingTest.php"
+    },
+    {
+      "test": "Tests\\Unit\\PaperTrading\\RiskAndSizingTest::test_risk_engine_rejects_portfolio_guards with data set \"notional excess\"",
+      "assertions": 1,
+      "source": "tests/Unit/PaperTrading/RiskAndSizingTest.php"
+    },
+    {
+      "test": "Tests\\Unit\\PaperTrading\\RiskAndSizingTest::test_risk_engine_rejects_portfolio_guards with data set \"zero risk\"",
+      "assertions": 1,
+      "source": "tests/Unit/PaperTrading/RiskAndSizingTest.php"
+    },
+    {
+      "test": "Tests\\Unit\\PaperTrading\\RiskAndSizingTest::test_risk_engine_rejects_portfolio_guards with data set \"negative risk\"",
+      "assertions": 1,
+      "source": "tests/Unit/PaperTrading/RiskAndSizingTest.php"
+    },
+    {
+      "test": "Tests\\Unit\\PaperTrading\\RiskAndSizingTest::test_risk_engine_rejects_portfolio_guards with data set \"maximum positions\"",
+      "assertions": 1,
+      "source": "tests/Unit/PaperTrading/RiskAndSizingTest.php"
+    },
+    {
+      "test": "Tests\\Unit\\PaperTrading\\RiskAndSizingTest::test_risk_engine_rejects_portfolio_guards with data set \"portfolio risk\"",
+      "assertions": 1,
+      "source": "tests/Unit/PaperTrading/RiskAndSizingTest.php"
+    },
+    {
+      "test": "Tests\\Unit\\PaperTrading\\RiskAndSizingTest::test_risk_engine_rejects_portfolio_guards with data set \"correlation\"",
+      "assertions": 1,
+      "source": "tests/Unit/PaperTrading/RiskAndSizingTest.php"
+    },
+    {
+      "test": "Tests\\Unit\\PaperTrading\\RiskAndSizingTest::test_risk_engine_rejects_portfolio_guards with data set \"missing correlation\"",
+      "assertions": 1,
+      "source": "tests/Unit/PaperTrading/RiskAndSizingTest.php"
+    },
+    {
+      "test": "Tests\\Unit\\PaperTrading\\RiskAndSizingTest::test_risk_engine_rejects_portfolio_guards with data set \"drawdown block\"",
+      "assertions": 1,
+      "source": "tests/Unit/PaperTrading/RiskAndSizingTest.php"
+    },
+    {
+      "test": "Tests\\Unit\\PaperTrading\\RiskAndSizingTest::test_risk_engine_rejects_portfolio_guards with data set \"drawdown halt\"",
+      "assertions": 1,
+      "source": "tests/Unit/PaperTrading/RiskAndSizingTest.php"
+    },
+    {
+      "test": "Tests\\Unit\\PaperTrading\\RiskAndSizingTest::test_risk_engine_rejects_portfolio_guards with data set \"cooldown\"",
+      "assertions": 1,
+      "source": "tests/Unit/PaperTrading/RiskAndSizingTest.php"
+    },
+    {
+      "test": "Tests\\Unit\\PaperTrading\\RiskAndSizingTest::test_risk_engine_rejects_portfolio_guards with data set \"market safety\"",
+      "assertions": 1,
+      "source": "tests/Unit/PaperTrading/RiskAndSizingTest.php"
+    },
+    {
+      "test": "Tests\\Unit\\PaperTrading\\RiskAndSizingTest::test_exact_risk_boundaries_remain_allowed with data set \"A limit\"",
+      "assertions": 2,
+      "source": "tests/Unit/PaperTrading/RiskAndSizingTest.php"
+    },
+    {
+      "test": "Tests\\Unit\\PaperTrading\\RiskAndSizingTest::test_exact_risk_boundaries_remain_allowed with data set \"B limit\"",
+      "assertions": 2,
+      "source": "tests/Unit/PaperTrading/RiskAndSizingTest.php"
+    },
+    {
+      "test": "Tests\\Unit\\PaperTrading\\RiskAndSizingTest::test_exact_risk_boundaries_remain_allowed with data set \"C limit\"",
+      "assertions": 2,
+      "source": "tests/Unit/PaperTrading/RiskAndSizingTest.php"
+    },
+    {
+      "test": "Tests\\Unit\\PaperTrading\\RiskAndSizingTest::test_exact_risk_boundaries_remain_allowed with data set \"portfolio risk limit\"",
+      "assertions": 2,
+      "source": "tests/Unit/PaperTrading/RiskAndSizingTest.php"
+    },
+    {
+      "test": "Tests\\Unit\\PaperTrading\\RiskAndSizingTest::test_exact_risk_boundaries_remain_allowed with data set \"portfolio notional limit\"",
+      "assertions": 2,
+      "source": "tests/Unit/PaperTrading/RiskAndSizingTest.php"
+    },
+    {
+      "test": "Tests\\Unit\\PaperTrading\\RiskAndSizingTest::test_exact_risk_boundaries_remain_allowed with data set \"position below limit\"",
+      "assertions": 2,
+      "source": "tests/Unit/PaperTrading/RiskAndSizingTest.php"
+    },
+    {
+      "test": "Tests\\Unit\\PaperTrading\\RiskAndSizingTest::test_exact_risk_boundaries_remain_allowed with data set \"drawdown below block\"",
+      "assertions": 2,
+      "source": "tests/Unit/PaperTrading/RiskAndSizingTest.php"
+    },
+    {
+      "test": "Tests\\Unit\\PaperTrading\\RiskAndSizingTest::test_exact_risk_boundaries_remain_allowed with data set \"cooldown expires now\"",
+      "assertions": 2,
+      "source": "tests/Unit/PaperTrading/RiskAndSizingTest.php"
+    },
+    {
+      "test": "Tests\\Unit\\PaperTrading\\RiskAndSizingTest::test_pearson_correlation_is_deterministic",
+      "assertions": 3,
+      "source": "tests/Unit/PaperTrading/RiskAndSizingTest.php"
+    },
+    {
+      "test": "Tests\\Feature\\PaperTrading\\AccountSafetyRegressionTest::test_resume_keeps_hard_drawdown_limits_and_cannot_override_cooldown",
+      "assertions": 3,
+      "source": "tests/Feature/PaperTrading/AccountSafetyRegressionTest.php"
+    },
+    {
+      "test": "Tests\\Feature\\PaperTrading\\AccountSafetyRegressionTest::test_forward_accounts_are_version_and_configuration_isolated_without_resetting_history",
+      "assertions": 5,
+      "source": "tests/Feature/PaperTrading/AccountSafetyRegressionTest.php"
+    },
+    {
+      "test": "Tests\\Feature\\PaperTrading\\AccountSafetyRegressionTest::test_drawdown_metrics_include_starting_equity",
+      "assertions": 4,
+      "source": "tests/Feature/PaperTrading/AccountSafetyRegressionTest.php"
+    },
+    {
+      "test": "Tests\\Feature\\PaperTrading\\CentralExecutionEligibilityTest::test_signal_only_strategy_is_rejected_and_never_fills_even_when_job_runs",
+      "assertions": 4,
+      "source": "tests/Feature/PaperTrading/CentralExecutionEligibilityTest.php"
+    },
+    {
+      "test": "Tests\\Feature\\PaperTrading\\CentralExecutionEligibilityTest::test_missing_or_mismatched_configuration_hash_rejects_entry",
+      "assertions": 6,
+      "source": "tests/Feature/PaperTrading/CentralExecutionEligibilityTest.php"
+    },
+    {
+      "test": "Tests\\Feature\\PaperTrading\\CentralExecutionEligibilityTest::test_unpromoted_research_candidate_rejects_entry",
+      "assertions": 3,
+      "source": "tests/Feature/PaperTrading/CentralExecutionEligibilityTest.php"
+    },
+    {
+      "test": "Tests\\Feature\\PaperTrading\\CentralExecutionEligibilityTest::test_inactive_account_rejects_new_entries_while_processing",
+      "assertions": 4,
+      "source": "tests/Feature/PaperTrading/CentralExecutionEligibilityTest.php"
+    },
+    {
+      "test": "Tests\\Feature\\PaperTrading\\CentralExecutionEligibilityTest::test_safe_prospective_hash_binding_for_canonical_primary_account_with_history",
+      "assertions": 5,
+      "source": "tests/Feature/PaperTrading/CentralExecutionEligibilityTest.php"
+    },
+    {
+      "test": "Tests\\Feature\\PaperTrading\\CentralExecutionEligibilityTest::test_audit_export_primary_coverage_requires_non_null_configuration_hash",
+      "assertions": 2,
+      "source": "tests/Feature/PaperTrading/CentralExecutionEligibilityTest.php"
+    },
+    {
+      "test": "Tests\\Feature\\PaperTrading\\CentralExecutionEligibilityTest::test_paper_processing_auto_adopts_canonical_bybit_primary_account_under_lock_and_preserves_provenance",
+      "assertions": 7,
+      "source": "tests/Feature/PaperTrading/CentralExecutionEligibilityTest.php"
+    },
+    {
+      "test": "Tests\\Feature\\PaperTrading\\CentralExecutionEligibilityTest::test_f27_blocked_drawdown_account_ingests_and_rejects_signals_with_audit_lineage",
+      "assertions": 7,
+      "source": "tests/Feature/PaperTrading/CentralExecutionEligibilityTest.php"
+    }
+  ],
+  "test_source_hashes": {
+    "tests/Unit/PaperTrading/RiskAndSizingTest.php": "8fb408782fb1d5a2ae59cf32e95330c5a1d7110b59b74920fd5c8aad5cf2ca6a",
+    "tests/Feature/PaperTrading/AccountSafetyRegressionTest.php": "07c3a219b24583a2314259a4e86b53ef9d5abb83c2db6ca1623619dde1615632",
+    "tests/Feature/PaperTrading/CentralExecutionEligibilityTest.php": "f3d8ce5631c3ca2c3501f9cb0db50e7fd53e4f29c3c3cf2a0a3f68efd4ef11b8"
+  },
+  "junit": "docs/progress/evidence/phase0-local-20261028/stage-final-full.xml",
+  "junit_sha256": "1aac8471c68dd99ecd690a00f439d62cb3bfb218edbc383f9e1510655660fec9",
+  "limitations": "Synthetic local fixtures; production and explicit product acceptance remain pending."
+}

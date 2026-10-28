@@ -1,0 +1,19 @@
+PHPUnit 12.5.39 by Sebastian Bergmann and contributors.
+
+Runtime:       PHP 8.5.12
+Configuration: /var/www/html/phpunit.xml
+
+...[31;1mE[0m                                                                4 / 4 (100%)
+
+Time: 00:02.088, Memory: 20.00 MB
+
+There was 1 error:
+
+1) Tests\Feature\Research\SlippageAttributionApiTest::test_f24_slippage_position_trace_scopes_accounts_and_exchanges_without_foreign_fills
+Illuminate\Database\Eloquent\ModelNotFoundException: No query results for model [App\PaperTrading\Infrastructure\Persistence\PaperAccountRecord].
+
+/var/www/html/vendor/laravel/framework/src/Illuminate/Database/Eloquent/Builder.php:821
+/var/www/html/tests/Feature/Research/SlippageAttributionApiTest.php:182
+
+[37;41mERRORS![0m
+[37;41mTests: 4[0m[37;41m, Assertions: 27[0m[37;41m, Errors: 1[0m[37;41m.[0m

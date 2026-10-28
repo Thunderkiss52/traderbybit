@@ -1,0 +1,161 @@
+PHPUnit 12.5.39 by Sebastian Bergmann and contributors.
+
+Runtime:       PHP 8.5.12
+Configuration: /var/www/html/phpunit.xml
+
+{"message":"Class \"App\\Research\\Infrastructure\\Persistence\\ResearchPromotionControlRecord\" not found","context":{"exception":{"class":"Error","message":"Class \"App\\Research\\Infrastructure\\Persistence\\ResearchPromotionControlRecord\" not found","code":0,"file":"/var/www/html/app/Research/Application/AutonomyPermissionService.php:63"}},"level":400,"level_name":"ERROR","channel":"testing","datetime":"2026-10-28T15:03:15.561747+00:00","extra":{}}
+[41;37mF[0m...[31;1mE[0m.[31;1mE[0m....[31;1mE[0m..[31;1mE[0m[31;1mE[0m..[31;1mE[0m..{"message":"Research API operation failed.","context":{"operation":"App\\Http\\Controllers\\Api\\V1\\AutonomousLearningController::autonomySettings","exception_type":"Error"},"level":400,"level_name":"ERROR","channel":"testing","datetime":"2026-10-28T15:03:17.295213+00:00","extra":{}}
+[41;37mF[0m{"message":"Research API operation failed.","context":{"operation":"App\\Http\\Controllers\\Api\\V1\\AutonomousLearningController::autonomySettings","exception_type":"Error"},"level":400,"level_name":"ERROR","channel":"testing","datetime":"2026-10-28T15:03:17.397127+00:00","extra":{}}
+[41;37mF[0m                                           23 / 23 (100%)
+
+Time: 00:03.611, Memory: 22.00 MB
+
+There were 6 errors:
+
+1) Tests\Feature\Research\AutonomyResearchTest::test_the_promotion_is_not_eligible_without_a_shadow_history
+Error: Class "App\Research\Infrastructure\Persistence\ResearchPromotionControlRecord" not found
+
+/var/www/html/app/Research/Application/AutonomyPermissionService.php:63
+/var/www/html/app/Research/Application/AutonomyResearchService.php:204
+/var/www/html/tests/Feature/Research/AutonomyResearchTest.php:103
+
+2) Tests\Feature\Research\AutonomyResearchTest::test_a_recorded_promotion_decision_is_never_applied
+Error: Class "App\Research\Infrastructure\Persistence\ResearchPromotionControlRecord" not found
+
+/var/www/html/app/Research/Application/AutonomyPermissionService.php:63
+/var/www/html/app/Research/Application/AutonomyResearchService.php:204
+/var/www/html/tests/Feature/Research/AutonomyResearchTest.php:148
+
+3) Tests\Feature\Research\AutonomyResearchTest::test_the_kill_switch_blocks_the_promotion_and_is_recorded
+Error: Class "App\Research\Infrastructure\Persistence\ResearchPromotionControlRecord" not found
+
+/var/www/html/app/Research/Application/AutonomyPermissionService.php:63
+/var/www/html/app/Research/Application/AutonomyResearchService.php:204
+/var/www/html/tests/Feature/Research/AutonomyResearchTest.php:263
+
+4) Tests\Feature\Research\AutonomyResearchTest::test_a_rollback_is_refused_when_operational_restoration_is_unsupported
+Error: Class "App\Research\Infrastructure\Persistence\ResearchPromotionControlRecord" not found
+
+/var/www/html/app/Research/Application/AutonomyPermissionService.php:63
+/var/www/html/app/Research/Application/AutonomyResearchService.php:204
+/var/www/html/tests/Feature/Research/AutonomyResearchTest.php:360
+/var/www/html/tests/Feature/Research/AutonomyResearchTest.php:308
+
+5) Tests\Feature\Research\AutonomyResearchTest::test_repeated_rollback_requests_are_idempotent_and_never_claim_success
+Error: Class "App\Research\Infrastructure\Persistence\ResearchPromotionControlRecord" not found
+
+/var/www/html/app/Research/Application/AutonomyPermissionService.php:63
+/var/www/html/app/Research/Application/AutonomyResearchService.php:204
+/var/www/html/tests/Feature/Research/AutonomyResearchTest.php:360
+/var/www/html/tests/Feature/Research/AutonomyResearchTest.php:332
+
+6) Tests\Feature\Research\AutonomyResearchTest::test_the_rollback_endpoint_reports_unsupported_restoration_as_a_conflict
+Error: Class "App\Research\Infrastructure\Persistence\ResearchPromotionControlRecord" not found
+
+/var/www/html/app/Research/Application/AutonomyPermissionService.php:63
+/var/www/html/app/Research/Application/AutonomyResearchService.php:204
+/var/www/html/tests/Feature/Research/AutonomyResearchTest.php:360
+/var/www/html/tests/Feature/Research/AutonomyResearchTest.php:402
+
+--
+
+There were 3 failures:
+
+1) Tests\Feature\Research\AutonomyResearchTest::test_the_registry_endpoint_exposes_the_candidates_and_keeps_the_flag_off
+Expected response status code [200] but received 500.
+Failed asserting that 500 is identical to 200.
+
+The following exception occurred during the last request:
+
+Error: Class "App\Research\Infrastructure\Persistence\ResearchPromotionControlRecord" not found in /var/www/html/app/Research/Application/AutonomyPermissionService.php:63
+Stack trace:
+#0 /var/www/html/app/Research/Application/AutonomyResearchService.php(59): App\Research\Application\AutonomyPermissionService->isAllowed('auto_promote_pa...', false)
+#1 /var/www/html/app/Http/Controllers/Api/V1/ProfitabilityResearchController.php(581): App\Research\Application\AutonomyResearchService->registry()
+#2 /var/www/html/vendor/laravel/framework/src/Illuminate/Routing/ControllerDispatcher.php(46): App\Http\Controllers\Api\V1\ProfitabilityResearchController->autonomyRegistry()
+#3 /var/www/html/vendor/laravel/framework/src/Illuminate/Routing/Route.php(276): Illuminate\Routing\ControllerDispatcher->dispatch(Object(Illuminate\Routing\Route), Object(App\Http\Controllers\Api\V1\ProfitabilityResearchController), 'autonomyRegistr...')
+#4 /var/www/html/vendor/laravel/framework/src/Illuminate/Routing/Route.php(216): Illuminate\Routing\Route->runController()
+#5 /var/www/html/vendor/laravel/framework/src/Illuminate/Routing/Router.php(834): Illuminate\Routing\Route->run()
+#6 /var/www/html/vendor/laravel/framework/src/Illuminate/Pipeline/Pipeline.php(180): Illuminate\Routing\Router->{closure:Illuminate\Routing\Router::runRouteWithinStack():833}(Object(Illuminate\Http\Request))
+#7 /var/www/html/app/Http/Middleware/ValidateBrowserOrigin.php(28): Illuminate\Pipeline\Pipeline->{closure:Illuminate\Pipeline\Pipeline::prepareDestination():178}(Object(Illuminate\Http\Request))
+#8 /var/www/html/vendor/laravel/framework/src/Illuminate/Pipeline/Pipeline.php(219): App\Http\Middleware\ValidateBrowserOrigin->handle(Object(Illuminate\Http\Request), Object(Closure))
+#9 /var/www/html/app/Http/Middleware/ApiRequestDiagnostics.php(24): Illuminate\Pipeline\Pipeline->{closure:{closure:Illuminate\Pipeline\Pipeline::carry():194}:195}(Object(Illuminate\Http\Request))
+#10 /var/www/html/vendor/laravel/framework/src/Illuminate/Pipeline/Pipeline.php(219): App\Http\Middleware\ApiRequestDiagnostics->handle(Object(Illuminate\Http\Request), Object(Closure))
+#11 /var/www/html/vendor/laravel/framework/src/Illuminate/Routing/Middleware/SubstituteBindings.php(52): Illuminate\Pipeline\Pipeline->{closure:{closure:Illuminate\Pipeline\Pipeline::carry():194}:195}(Object(Illuminate\Http\Request))
+#12 /var/www/html/vendor/laravel/framework/src/Illuminate/Pipeline/Pipeline.php(219): Illuminate\Routing\Middleware\SubstituteBindings->handle(Object(Illuminate\Http\Request), Object(Closure))
+#13 /var/www/html/vendor/laravel/framework/src/Illuminate/Routing/Middleware/ThrottleRequests.php(168): Illuminate\Pipeline\Pipeline->{closure:{closure:Illuminate\Pipeline\Pipeline::carry():194}:195}(Object(Illuminate\Http\Request))
+#14 /var/www/html/vendor/laravel/framework/src/Illuminate/Routing/Middleware/ThrottleRequests.php(129): Illuminate\Routing\Middleware\ThrottleRequests->handleRequest(Object(Illuminate\Http\Request), Object(Closure), Array)
+#15 /var/www/html/vendor/laravel/framework/src/Illuminate/Routing/Middleware/ThrottleRequests.php(90): Illuminate\Routing\Middleware\ThrottleRequests->handleRequestUsingNamedLimiter(Object(Illuminate\Http\Request), Object(Closure), 'api', Object(Closure))
+#16 /var/www/html/vendor/laravel/framework/src/Illuminate/Pipeline/Pipeline.php(219): Illuminate\Routing\Middleware\ThrottleRequests->handle(Object(Illuminate\Http\Request), Object(Closure), 'api')
+#17 /var/www/html/vendor/laravel/framework/src/Illuminate/Pipeline/Pipeline.php(137): Illuminate\Pipeline\Pipeline->{closure:{closure:Illuminate\Pipeline\Pipeline::carry():194}:195}(Object(Illuminate\Http\Request))
+#18 /var/www/html/vendor/laravel/framework/src/Illuminate/Routing/Router.php(833): Illuminate\Pipeline\Pipeline->then(Object(Closure))
+#19 /var/www/html/vendor/laravel/framework/src/Illuminate/Routing/Router.php(812): Illuminate\Routing\Router->runRouteWithinStack(Object(Illuminate\Routing\Route), Object(Illuminate\Http\Request))
+#20 /var/www/html/vendor/laravel/framework/src/Illuminate/Routing/Router.php(776): Illuminate\Routing\Router->runRoute(Object(Illuminate\Http\Request), Object(Illuminate\Routing\Route))
+#21 /var/www/html/vendor/laravel/framework/src/Illuminate/Routing/Router.php(765): Illuminate\Routing\Router->dispatchToRoute(Object(Illuminate\Http\Request))
+#22 /var/www/html/vendor/laravel/framework/src/Illuminate/Foundation/Http/Kernel.php(200): Illuminate\Routing\Router->dispatch(Object(Illuminate\Http\Request))
+#23 /var/www/html/vendor/laravel/framework/src/Illuminate/Pipeline/Pipeline.php(180): Illuminate\Foundation\Http\Kernel->{closure:Illuminate\Foundation\Http\Kernel::dispatchToRouter():197}(Object(Illuminate\Http\Request))
+#24 /var/www/html/vendor/laravel/framework/src/Illuminate/Foundation/Http/Middleware/TransformsRequest.php(21): Illuminate\Pipeline\Pipeline->{closure:Illuminate\Pipeline\Pipeline::prepareDestination():178}(Object(Illuminate\Http\Request))
+#25 /var/www/html/vendor/laravel/framework/src/Illuminate/Foundation/Http/Middleware/ConvertEmptyStringsToNull.php(31): Illuminate\Foundation\Http\Middleware\TransformsRequest->handle(Object(Illuminate\Http\Request), Object(Closure))
+#26 /var/www/html/vendor/laravel/framework/src/Illuminate/Pipeline/Pipeline.php(219): Illuminate\Foundation\Http\Middleware\ConvertEmptyStringsToNull->handle(Object(Illuminate\Http\Request), Object(Closure))
+#27 /var/www/html/vendor/laravel/framework/src/Illuminate/Foundation/Http/Middleware/TransformsRequest.php(21): Illuminate\Pipeline\Pipeline->{closure:{closure:Illuminate\Pipeline\Pipeline::carry():194}:195}(Object(Illuminate\Http\Request))
+#28 /var/www/html/vendor/laravel/framework/src/Illuminate/Foundation/Http/Middleware/TrimStrings.php(51): Illuminate\Foundation\Http\Middleware\TransformsRequest->handle(Object(Illuminate\Http\Request), Object(Closure))
+#29 /var/www/html/vendor/laravel/framework/src/Illuminate/Pipeline/Pipeline.php(219): Illuminate\Foundation\Http\Middleware\TrimStrings->handle(Object(Illuminate\Http\Request), Object(Closure))
+#30 /var/www/html/vendor/laravel/framework/src/Illuminate/Http/Middleware/ValidatePostSize.php(27): Illuminate\Pipeline\Pipeline->{closure:{closure:Illuminate\Pipeline\Pipeline::carry():194}:195}(Object(Illuminate\Http\Request))
+#31 /var/www/html/vendor/laravel/framework/src/Illuminate/Pipeline/Pipeline.php(219): Illuminate\Http\Middleware\ValidatePostSize->handle(Object(Illuminate\Http\Request), Object(Closure))
+#32 /var/www/html/vendor/laravel/framework/src/Illuminate/Foundation/Http/Middleware/PreventRequestsDuringMaintenance.php(110): Illuminate\Pipeline\Pipeline->{closure:{closure:Illuminate\Pipeline\Pipeline::carry():194}:195}(Object(Illuminate\Http\Request))
+#33 /var/www/html/vendor/laravel/framework/src/Illuminate/Pipeline/Pipeline.php(219): Illuminate\Foundation\Http\Middleware\PreventRequestsDuringMaintenance->handle(Object(Illuminate\Http\Request), Object(Closure))
+#34 /var/www/html/vendor/laravel/framework/src/Illuminate/Http/Middleware/HandleCors.php(74): Illuminate\Pipeline\Pipeline->{closure:{closure:Illuminate\Pipeline\Pipeline::carry():194}:195}(Object(Illuminate\Http\Request))
+#35 /var/www/html/vendor/laravel/framework/src/Illuminate/Pipeline/Pipeline.php(219): Illuminate\Http\Middleware\HandleCors->handle(Object(Illuminate\Http\Request), Object(Closure))
+#36 /var/www/html/vendor/laravel/framework/src/Illuminate/Http/Middleware/TrustProxies.php(58): Illuminate\Pipeline\Pipeline->{closure:{closure:Illuminate\Pipeline\Pipeline::carry():194}:195}(Object(Illuminate\Http\Request))
+#37 /var/www/html/vendor/laravel/framework/src/Illuminate/Pipeline/Pipeline.php(219): Illuminate\Http\Middleware\TrustProxies->handle(Object(Illuminate\Http\Request), Object(Closure))
+#38 /var/www/html/vendor/laravel/framework/src/Illuminate/Foundation/Http/Middleware/InvokeDeferredCallbacks.php(22): Illuminate\Pipeline\Pipeline->{closure:{closure:Illuminate\Pipeline\Pipeline::carry():194}:195}(Object(Illuminate\Http\Request))
+#39 /var/www/html/vendor/laravel/framework/src/Illuminate/Pipeline/Pipeline.php(219): Illuminate\Foundation\Http\Middleware\InvokeDeferredCallbacks->handle(Object(Illuminate\Http\Request), Object(Closure))
+#40 /var/www/html/vendor/laravel/framework/src/Illuminate/Http/Middleware/ValidatePathEncoding.php(28): Illuminate\Pipeline\Pipeline->{closure:{closure:Illuminate\Pipeline\Pipeline::carry():194}:195}(Object(Illuminate\Http\Request))
+#41 /var/www/html/vendor/laravel/framework/src/Illuminate/Pipeline/Pipeline.php(219): Illuminate\Http\Middleware\ValidatePathEncoding->handle(Object(Illuminate\Http\Request), Object(Closure))
+#42 /var/www/html/vendor/laravel/framework/src/Illuminate/Pipeline/Pipeline.php(137): Illuminate\Pipeline\Pipeline->{closure:{closure:Illuminate\Pipeline\Pipeline::carry():194}:195}(Object(Illuminate\Http\Request))
+#43 /var/www/html/vendor/laravel/framework/src/Illuminate/Foundation/Http/Kernel.php(175): Illuminate\Pipeline\Pipeline->then(Object(Closure))
+#44 /var/www/html/vendor/laravel/framework/src/Illuminate/Foundation/Http/Kernel.php(144): Illuminate\Foundation\Http\Kernel->sendRequestThroughRouter(Object(Illuminate\Http\Request))
+#45 /var/www/html/vendor/laravel/framework/src/Illuminate/Foundation/Testing/Concerns/MakesHttpRequests.php(638): Illuminate\Foundation\Http\Kernel->handle(Object(Illuminate\Http\Request))
+#46 /var/www/html/vendor/laravel/framework/src/Illuminate/Foundation/Testing/Concerns/MakesHttpRequests.php(604): Illuminate\Foundation\Testing\TestCase->call('GET', '/api/v1/researc...', Array, Array, Array, Array, '[]')
+#47 /var/www/html/vendor/laravel/framework/src/Illuminate/Foundation/Testing/Concerns/MakesHttpRequests.php(381): Illuminate\Foundation\Testing\TestCase->json('GET', '/api/v1/researc...', Array, Array, 0)
+#48 /var/www/html/tests/Feature/Research/AutonomyResearchTest.php(35): Illuminate\Foundation\Testing\TestCase->getJson('/api/v1/researc...')
+#49 /var/www/html/vendor/phpunit/phpunit/src/Framework/TestCase.php(1320): Tests\Feature\Research\AutonomyResearchTest->test_the_registry_endpoint_exposes_the_candidates_and_keeps_the_flag_off()
+#50 /var/www/html/vendor/phpunit/phpunit/src/Framework/TestCase.php(1357): PHPUnit\Framework\TestCase->invokeTestMethod('test_the_regist...', Array)
+#51 /var/www/html/vendor/phpunit/phpunit/src/Framework/TestCase.php(521): PHPUnit\Framework\TestCase->runTest()
+#52 /var/www/html/vendor/phpunit/phpunit/src/Framework/TestRunner/TestRunner.php(98): PHPUnit\Framework\TestCase->runBare()
+#53 /var/www/html/vendor/phpunit/phpunit/src/Framework/TestCase.php(361): PHPUnit\Framework\TestRunner->run(Object(Tests\Feature\Research\AutonomyResearchTest))
+#54 /var/www/html/vendor/phpunit/phpunit/src/Framework/TestSuite.php(382): PHPUnit\Framework\TestCase->run()
+#55 /var/www/html/vendor/phpunit/phpunit/src/TextUI/TestRunner.php(64): PHPUnit\Framework\TestSuite->run()
+#56 /var/www/html/vendor/phpunit/phpunit/src/TextUI/Application.php(228): PHPUnit\TextUI\TestRunner->run(Object(PHPUnit\TextUI\Configuration\Configuration), Object(PHPUnit\Runner\ResultCache\DefaultResultCache), Object(PHPUnit\Framework\TestSuite))
+#57 /var/www/html/vendor/phpunit/phpunit/phpunit(104): PHPUnit\TextUI\Application->run(Array)
+#58 /var/www/html/vendor/bin/phpunit(122): include('/var/www/html/v...')
+#59 {main}
+
+----------------------------------------------------------------------------------
+
+Class "App\Research\Infrastructure\Persistence\ResearchPromotionControlRecord" not found
+
+/var/www/html/vendor/laravel/framework/src/Illuminate/Testing/TestResponseAssert.php:46
+/var/www/html/vendor/laravel/framework/src/Illuminate/Testing/TestResponse.php:183
+/var/www/html/vendor/laravel/framework/src/Illuminate/Testing/Concerns/AssertsStatusCodes.php:16
+/var/www/html/tests/Feature/Research/AutonomyResearchTest.php:37
+
+2) Tests\Feature\Research\AutonomyResearchTest::test_f19_autonomy_settings_reports_raw_flags_beside_effective_permissions_and_reasons
+Expected response status code [200] but received 500.
+Failed asserting that 500 is identical to 200.
+
+/var/www/html/vendor/laravel/framework/src/Illuminate/Testing/TestResponseAssert.php:46
+/var/www/html/vendor/laravel/framework/src/Illuminate/Testing/TestResponse.php:183
+/var/www/html/vendor/laravel/framework/src/Illuminate/Testing/Concerns/AssertsStatusCodes.php:16
+/var/www/html/tests/Feature/Research/AutonomyResearchTest.php:464
+
+3) Tests\Feature\Research\AutonomyResearchTest::test_f20_dual_kill_switch_matrix_blocks_effectively_and_reports_both_authorities_without_writes
+Expected response status code [200] but received 500.
+Failed asserting that 500 is identical to 200.
+
+/var/www/html/vendor/laravel/framework/src/Illuminate/Testing/TestResponseAssert.php:46
+/var/www/html/vendor/laravel/framework/src/Illuminate/Testing/TestResponse.php:183
+/var/www/html/vendor/laravel/framework/src/Illuminate/Testing/Concerns/AssertsStatusCodes.php:16
+/var/www/html/tests/Feature/Research/AutonomyResearchTest.php:520
+
+[37;41mERRORS![0m
+[37;41mTests: 23[0m[37;41m, Assertions: 55[0m[37;41m, Errors: 6[0m[37;41m, Failures: 3[0m[37;41m.[0m

@@ -1,0 +1,24 @@
+PHPUnit 12.5.39 by Sebastian Bergmann and contributors.
+
+Runtime:       PHP 8.5.12
+Configuration: /var/www/html/phpunit.xml
+
+.{"message":"Research job submission validation failed.","context":{"exception_type":"InvalidArgumentException"},"level":300,"level_name":"WARNING","channel":"testing","datetime":"2026-10-28T15:06:55.256275+00:00","extra":{}}
+........[41;37mF[0m.....                                                   15 / 15 (100%)
+
+Time: 00:02.338, Memory: 22.00 MB
+
+There was 1 failure:
+
+1) Tests\Unit\Research\ResearchJobServiceTest::test_f21_worker_capability_map_reports_compatible_workers_and_unavailable_reasons
+Failed asserting that two strings are identical.
+--- Expected
++++ Actual
+@@ @@
+-'offline'
++'ready'
+
+/var/www/html/tests/Unit/Research/ResearchJobServiceTest.php:220
+
+[37;41mFAILURES![0m
+[37;41mTests: 15[0m[37;41m, Assertions: 83[0m[37;41m, Failures: 1[0m[37;41m.[0m

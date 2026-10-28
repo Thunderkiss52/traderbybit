@@ -1,0 +1,23 @@
+PHPUnit 12.5.39 by Sebastian Bergmann and contributors.
+
+Runtime:       PHP 8.5.12
+Configuration: /var/www/html/phpunit.xml
+
+...........[41;37mF[0m...........                                           23 / 23 (100%)
+
+Time: 00:02.369, Memory: 22.00 MB
+
+There was 1 failure:
+
+1) Tests\Feature\Research\AutonomyResearchTest::test_the_kill_switch_blocks_the_promotion_and_is_recorded
+Failed asserting that two strings are identical.
+--- Expected
++++ Actual
+@@ @@
+-'BLOCKED_KILL_SWITCH'
++'BLOCKED_FLAG_OFF'
+
+/var/www/html/tests/Feature/Research/AutonomyResearchTest.php:278
+
+[37;41mFAILURES![0m
+[37;41mTests: 23[0m[37;41m, Assertions: 144[0m[37;41m, Failures: 1[0m[37;41m.[0m

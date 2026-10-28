@@ -1,0 +1,18 @@
+PHPUnit 12.5.39 by Sebastian Bergmann and contributors.
+
+Runtime:       PHP 8.5.12
+Configuration: /var/www/html/phpunit.xml
+
+....[31;1mE[0m                                                               5 / 5 (100%)
+
+Time: 00:01.936, Memory: 20.00 MB
+
+There was 1 error:
+
+1) Tests\Feature\Research\CandidateLabValidationLifecycleTest::test_f25_evaluate_strategy_candidate_job_durable_backtest_linkage_with_competing_unrelated_run
+PHPUnit\Framework\MockObject\Generator\ClassIsFinalException: Class "App\Backtest\Application\BacktestRunService" is declared "final" and cannot be doubled
+
+/var/www/html/tests/Feature/Research/CandidateLabValidationLifecycleTest.php:237
+
+[37;41mERRORS![0m
+[37;41mTests: 5[0m[37;41m, Assertions: 33[0m[37;41m, Errors: 1[0m[37;41m.[0m
