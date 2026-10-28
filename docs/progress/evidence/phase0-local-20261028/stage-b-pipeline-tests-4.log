@@ -1,0 +1,15 @@
+PHPUnit 12.5.39 by Sebastian Bergmann and contributors.
+
+Runtime:       PHP 8.5.12
+Configuration: /var/www/html/phpunit.xml
+
+...{"message":"Recovery: Terminalized upstream event bybit:BTCUSDT:15:2026-10-28T13:24:37+00:00:SIGNALS_EVALUATED to COMPLETED matching existing downstream PAPER_PROCESSED.","context":{},"level":200,"level_name":"INFO","channel":"testing","datetime":"2026-10-28T13:25:22.325513+00:00","extra":{}}
+.{"message":"ProcessPaperPipelineJob account provenance/executable check failed: c417ed71-e784-4327-af13-18560b481623 (invalid_strategy_never_configured): Binance PRIMARY account provenance is not verified.","context":{"account_id":"c417ed71-e784-4327-af13-18560b481623","strategy_id":"invalid_strategy_never_configured","exception":"DomainException"},"level":300,"level_name":"WARNING","channel":"testing","datetime":"2026-10-28T13:25:22.397849+00:00","extra":{}}
+{"message":"ProcessPaperPipelineJob completed with individual account errors.","context":{"failed_count":1,"total_accounts":2,"eligible_accounts":2,"processed_accounts":1,"failures":[{"account_id":"c417ed71-e784-4327-af13-18560b481623","error":"Binance PRIMARY account provenance is not verified."}]},"level":300,"level_name":"WARNING","channel":"testing","datetime":"2026-10-28T13:25:22.397989+00:00","extra":{}}
+...{"message":"ProcessPaperPipelineJob account provenance/executable check failed: 716ea2d8-0297-4e8e-b5a0-eaf8b8b10396 (invalid_strategy_failing_provenance): Binance PRIMARY account provenance is not verified.","context":{"account_id":"716ea2d8-0297-4e8e-b5a0-eaf8b8b10396","strategy_id":"invalid_strategy_failing_provenance","exception":"DomainException"},"level":300,"level_name":"WARNING","channel":"testing","datetime":"2026-10-28T13:25:22.518128+00:00","extra":{}}
+{"message":"ProcessPaperPipelineJob completed with individual account errors.","context":{"failed_count":1,"total_accounts":2,"eligible_accounts":2,"processed_accounts":1,"failures":[{"account_id":"716ea2d8-0297-4e8e-b5a0-eaf8b8b10396","error":"Binance PRIMARY account provenance is not verified."}]},"level":300,"level_name":"WARNING","channel":"testing","datetime":"2026-10-28T13:25:22.525697+00:00","extra":{}}
+.                                                            8 / 8 (100%)
+
+Time: 00:01.913, Memory: 20.00 MB
+
+[30;42mOK (8 tests, 40 assertions)[0m

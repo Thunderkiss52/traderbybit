@@ -2,21 +2,21 @@
 
 **PROVISIONAL** — independently calculated scores; not product readiness.
 
-Source HEAD: `a30291e3681963f8a3da4a5d284b0679746e8b48`. Assessment source: `d9a0aeb5d14233fc95e9e5cc55d8748814362f59`.
+Source HEAD: `02ea3e7ceab97eaf3926b71cde78aa453092e47f`. Assessment source: `d9a0aeb5d14233fc95e9e5cc55d8748814362f59`.
 Assessment date: 2026-10-28; scope: `VECTOR-SCOPE-20261027-v1`.
-Registry hash: `a38a1228fabb69a93b4c8e72b5af64f5974e77e3f41b5a8c5aed05c522185728`.
+Registry hash: `3e5658946d73a8935551af89a86fed57f9ae72d0e139ea18a8ad21d754e3492a`.
 
 | Metric | Completion |
 |---|---:|
 | Implementation | 42.2882% |
-| Verification | 4.7619% |
+| Verification | 5.5556% |
 | Product | 0.0000% |
 
 Phase 6 documentation is excluded from runtime Implementation, not counted as live trading.
 
 | Phase | Requirements | Implemented runtime | Verified | Accepted capabilities | Implementation % | Verification % | Product % |
 |---|---:|---:|---:|---:|---:|---:|---:|
-| 0 | 45 | 4 | 0 | 0 | 78.5714 | 15.873 | 0.0 |
+| 0 | 45 | 4 | 0 | 0 | 78.5714 | 18.5185 | 0.0 |
 | 1 | 8 | 0 | 0 | 0 | 18.75 | 0.0 | 0.0 |
 | 2 | 10 | 0 | 0 | 0 | 40.9091 | 0.0 | 0.0 |
 | 3 | 11 | 0 | 0 | 0 | 31.8182 | 0.0 | 0.0 |
@@ -24,7 +24,7 @@ Phase 6 documentation is excluded from runtime Implementation, not counted as li
 | 5 | 8 | 0 | 0 | 0 | 17.6471 | 0.0 | 0.0 |
 | 6 | 5 | 0 | 0 | 0 | N/A | 0.0 | 0.0 |
 
-Evidence freshness: `{"CURRENT": 20, "FAILED": 1, "UNAVAILABLE": 208}`.
+Evidence freshness: `{"CURRENT": 23, "FAILED": 1, "UNAVAILABLE": 205}`.
 
 ## Immediate next actions
 
@@ -40,7 +40,7 @@ Evidence freshness: `{"CURRENT": 20, "FAILED": 1, "UNAVAILABLE": 208}`.
 ## Remaining requirements and evidence
 
 - **VEC-P0-001** (BLOCKED): 26 independent PAPER account topology. Blockers: Local V1 passed; production V2, applicable browser V3 and explicit product acceptance remain pending.. Missing: VEC-P0-001-V2:UNAVAILABLE.
-- **VEC-P0-002** (BLOCKED): PAPER pipeline terminalization and recovery. Blockers: Local V1 incomplete: Completion, PARTIAL, stale recovery and targeted selection pass; no assertion directly exercises all-accounts-failed -> FAILED or recovery retry of failed accounts after a mixed batch without repeating successes. The frozen obligation says every transition. Production V2 and explicit product acceptance pending.. Missing: VEC-P0-002-V1:UNAVAILABLE, VEC-P0-002-V2:UNAVAILABLE.
+- **VEC-P0-002** (BLOCKED): PAPER pipeline terminalization and recovery. Blockers: Local V1 passed; production V2, applicable browser V3 and explicit product acceptance remain pending.. Missing: VEC-P0-002-V2:UNAVAILABLE.
 - **VEC-P0-003** (BLOCKED): Financial ledger and funding completeness. Blockers: Local V1 incomplete: Exact synthetic fee/funding identities and negative controls pass. The atomic criterion also asks for reconciliation of the current account population, unavailable here. Production V2 and explicit product acceptance pending.. Missing: VEC-P0-003-V1:UNAVAILABLE, VEC-P0-003-V2:UNAVAILABLE.
 - **VEC-P0-004** (BLOCKED): Risk gates and account isolation. Blockers: Local V1 passed; production V2, applicable browser V3 and explicit product acceptance remain pending.. Missing: VEC-P0-004-V2:UNAVAILABLE.
 - **VEC-P0-005** (BLOCKED): Binance execution approval configuration. Blockers: Local V1 passed; production V2, applicable browser V3 and explicit product acceptance remain pending.. Missing: VEC-P0-005-V2:UNAVAILABLE.
@@ -48,7 +48,7 @@ Evidence freshness: `{"CURRENT": 20, "FAILED": 1, "UNAVAILABLE": 208}`.
 - **VEC-P0-007** (BLOCKED): PostgreSQL acceptance infrastructure. Blockers: Local V1 passed; production V2, applicable browser V3 and explicit product acceptance remain pending.. Missing: VEC-P0-007-V2:UNAVAILABLE.
 - **VEC-P0-008** (BLOCKED): Production acceptance gate. Blockers: Local V1 incomplete: Both atomic criteria require operator-authorized current-release evidence and independent acceptance. None was collected. Production V2 and explicit product acceptance pending.. Missing: VEC-P0-008-V1:UNAVAILABLE, VEC-P0-008-V2:UNAVAILABLE.
 - **VEC-P0-009** (FAILED): Resource and performance baseline. Blockers: Local ingestion gate failed: 500 new rows P95 74.860 ms >=50 ms. Mixed PAPER/research load and effective host limits unverified. Production V2 and explicit product acceptance pending.. Missing: VEC-P0-009-V1:FAILED, VEC-P0-009-V2:UNAVAILABLE.
-- **VEC-P0-101** (BLOCKED): F01 — False Decision Replay Verification & State Mutation [HIGH]. Blockers: Local V1 incomplete: Stored-only status is asserted. The global GET write detector uses a nonexistent replay ID; successful replay test does not count writes. This does not prove zero writes for an existing observation. Production V2 and explicit product acceptance pending.. Missing: VEC-P0-101-V1:UNAVAILABLE, VEC-P0-101-V2:UNAVAILABLE.
+- **VEC-P0-101** (BLOCKED): F01 — False Decision Replay Verification & State Mutation [HIGH]. Blockers: Local V1 passed; production V2, applicable browser V3 and explicit product acceptance remain pending.. Missing: VEC-P0-101-V2:UNAVAILABLE.
 - **VEC-P0-102** (BLOCKED): F02 — Profitability Response Envelope Chain Breakdown [CRITICAL]. Blockers: Local V1 incomplete: API success/error shapes pass; frontend tests are source-contract tests, not executed Vue-to-service integration. Production V2 and explicit product acceptance pending. Browser V3 pending.. Missing: VEC-P0-102-V1:UNAVAILABLE, VEC-P0-102-V2:UNAVAILABLE, VEC-P0-102-V3:UNAVAILABLE.
 - **VEC-P0-103** (BLOCKED): F03 — Fabricated Financial Fallback Values in UI [CRITICAL]. Blockers: Local V1 incomplete: Absent-account API control passes; no rendered profitability null-vs-real-zero financial test. Production V2 and explicit product acceptance pending. Browser V3 pending.. Missing: VEC-P0-103-V1:UNAVAILABLE, VEC-P0-103-V2:UNAVAILABLE, VEC-P0-103-V3:UNAVAILABLE.
 - **VEC-P0-104** (BLOCKED): F04 — Reconciliation Findings Misread in Controller [HIGH]. Blockers: Local V1 passed; production V2, applicable browser V3 and explicit product acceptance remain pending.. Missing: VEC-P0-104-V2:UNAVAILABLE.
@@ -57,7 +57,7 @@ Evidence freshness: `{"CURRENT": 20, "FAILED": 1, "UNAVAILABLE": 208}`.
 - **VEC-P0-107** (BLOCKED): F07 — Audit ZIP Export Silent Column Dropping [HIGH]. Blockers: Local V1 incomplete: ZIP tests check members and some headings; they do not compare every required column or inject a missing source column. Production V2 and explicit product acceptance pending.. Missing: VEC-P0-107-V1:UNAVAILABLE, VEC-P0-107-V2:UNAVAILABLE.
 - **VEC-P0-108** (BLOCKED): F08 — Strategy Funnel Cohort & Status Discrepancy [MEDIUM]. Blockers: Local V1 incomplete: Half-open window and risk funnel tests pass separately; no comparison of exported strategy funnel populations to scoped source queries. Production V2 and explicit product acceptance pending.. Missing: VEC-P0-108-V1:UNAVAILABLE, VEC-P0-108-V2:UNAVAILABLE.
 - **VEC-P0-109** (BLOCKED): F09 — Frontend Single-Account Display Default Blinds Multi-Account System [HIGH]. Blockers: Local V1 incomplete: Selector tests seed Bybit only. Separate 26-account census does not prove all 26 selectable or distinct aggregate/account economics. Production V2 and explicit product acceptance pending. Browser V3 pending.. Missing: VEC-P0-109-V1:UNAVAILABLE, VEC-P0-109-V2:UNAVAILABLE, VEC-P0-109-V3:UNAVAILABLE.
-- **VEC-P0-110** (BLOCKED): F10 — Signal Annotation Query Reversal and Account Scope Defect [HIGH]. Blockers: Local V1 incomplete: HTTP success smoke coverage lacks competing annotation rows and qualified newest-match assertions. Production V2 and explicit product acceptance pending.. Missing: VEC-P0-110-V1:UNAVAILABLE, VEC-P0-110-V2:UNAVAILABLE.
+- **VEC-P0-110** (BLOCKED): F10 — Signal Annotation Query Reversal and Account Scope Defect [HIGH]. Blockers: Local V1 passed; production V2, applicable browser V3 and explicit product acceptance remain pending.. Missing: VEC-P0-110-V2:UNAVAILABLE.
 - **VEC-P0-111** (BLOCKED): F11 — Statistics Page Lifecycle Population Mixing [MEDIUM]. Blockers: Local V1 passed; production V2, applicable browser V3 and explicit product acceptance remain pending.. Missing: VEC-P0-111-V2:UNAVAILABLE.
 - **VEC-P0-112** (BLOCKED): F12 — Daily Performance Marks Missing Opening as Complete [HIGH]. Blockers: Local V1 passed; production V2, applicable browser V3 and explicit product acceptance remain pending.. Missing: VEC-P0-112-V2:UNAVAILABLE.
 - **VEC-P0-113** (BLOCKED): F13 — Research Health Funnel False Healthy Parent Status and Hardcoded Lookback [MEDIUM]. Blockers: Local V1 passed; production V2, applicable browser V3 and explicit product acceptance remain pending.. Missing: VEC-P0-113-V2:UNAVAILABLE.

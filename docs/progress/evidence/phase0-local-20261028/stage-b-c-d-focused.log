@@ -1,0 +1,206 @@
+PHPUnit 12.5.39 by Sebastian Bergmann and contributors.
+
+Runtime:       PHP 8.5.12
+Configuration: /var/www/html/phpunit.xml
+
+..{"message":"Retrying public Bybit market-data request.","context":{"endpoint":"/v5/market/tickers","attempt":1,"delay_ms":130,"http_status":null,"ret_code":null},"level":300,"level_name":"WARNING","channel":"testing","datetime":"2026-10-28T14:00:14.044155+00:00","extra":{}}
+{"message":"Retrying public Bybit market-data request.","context":{"endpoint":"/v5/market/tickers","attempt":2,"delay_ms":415,"http_status":null,"ret_code":null},"level":300,"level_name":"WARNING","channel":"testing","datetime":"2026-10-28T14:00:14.177083+00:00","extra":{}}
+{"message":"Retrying public Bybit market-data request.","context":{"endpoint":"/v5/market/tickers","attempt":3,"delay_ms":716,"http_status":null,"ret_code":null},"level":300,"level_name":"WARNING","channel":"testing","datetime":"2026-10-28T14:00:14.593604+00:00","extra":{}}
+{"message":"Retrying public Bybit market-data request.","context":{"endpoint":"/v5/market/tickers","attempt":4,"delay_ms":1034,"http_status":null,"ret_code":null},"level":300,"level_name":"WARNING","channel":"testing","datetime":"2026-10-28T14:00:15.312182+00:00","extra":{}}
+{"message":"Market context capture non-fatal failure for bybit:BTCUSDT: Bybit HTTP connection failed.","context":{},"level":300,"level_name":"WARNING","channel":"testing","datetime":"2026-10-28T14:00:15.712725+00:00","extra":{}}
+.........{"message":"Closed candle event bybit:BTCUSDT:15:2026-10-28T13:54:26+00:00:CANDLE_CLOSED rejected as STALE (exceeded freshness window).","context":{},"level":200,"level_name":"INFO","channel":"testing","datetime":"2026-10-28T14:00:16.543918+00:00","extra":{}}
+{"message":"Closed candle event bybit:BTCUSDT:15:2026-10-28T13:54:26+00:00:CANDLE_CLOSED rejected as STALE (exceeded freshness window).","context":{},"level":200,"level_name":"INFO","channel":"testing","datetime":"2026-10-28T14:00:16.547065+00:00","extra":{}}
+......{"message":"ProcessPaperPipelineJob: bybit:BTCUSDT at 2026-10-26T10:30:00Z rejected as STALE (exceeded 300s freshness window).","context":{},"level":200,"level_name":"INFO","channel":"testing","datetime":"2026-10-28T14:00:17.057767+00:00","extra":{}}
+...{"message":"Recovery: Marked event binance:BTCUSDT:15:2026-10-28T13:53:37+00:00:CANDLE_CLOSED as STALE (exceeded freshness window).","context":{},"level":200,"level_name":"INFO","channel":"testing","datetime":"2026-10-28T14:00:17.500905+00:00","extra":{}}
+.{"message":"GenerateSignalJob: bybit:BTCUSDT already processed by event-driven pipeline; scheduled run skipped.","context":{},"level":200,"level_name":"INFO","channel":"testing","datetime":"2026-10-28T14:00:17.543855+00:00","extra":{}}
+.....{"message":"Recovery: Terminalized upstream event bybit:BTCUSDT:15:2026-10-28T13:59:32+00:00:SIGNALS_EVALUATED to COMPLETED matching existing downstream PAPER_PROCESSED.","context":{},"level":200,"level_name":"INFO","channel":"testing","datetime":"2026-10-28T14:00:17.710905+00:00","extra":{}}
+.{"message":"ProcessPaperPipelineJob account provenance/executable check failed: 5f6b6ef4-b7ec-4e87-bff5-87486758050f (invalid_strategy_never_configured): Binance PRIMARY account provenance is not verified.","context":{"account_id":"5f6b6ef4-b7ec-4e87-bff5-87486758050f","strategy_id":"invalid_strategy_never_configured","exception":"DomainException"},"level":300,"level_name":"WARNING","channel":"testing","datetime":"2026-10-28T14:00:17.749625+00:00","extra":{}}
+{"message":"ProcessPaperPipelineJob completed with individual account errors.","context":{"failed_count":1,"total_accounts":2,"eligible_accounts":2,"processed_accounts":1,"failures":[{"account_id":"5f6b6ef4-b7ec-4e87-bff5-87486758050f","error":"Binance PRIMARY account provenance is not verified."}]},"level":300,"level_name":"WARNING","channel":"testing","datetime":"2026-10-28T14:00:17.755911+00:00","extra":{}}
+...{"message":"ProcessPaperPipelineJob account provenance/executable check failed: 6c4dde19-8486-4d07-b6d5-26a5b645ecd5 (invalid_strategy_failing_provenance): Binance PRIMARY account provenance is not verified.","context":{"account_id":"6c4dde19-8486-4d07-b6d5-26a5b645ecd5","strategy_id":"invalid_strategy_failing_provenance","exception":"DomainException"},"level":300,"level_name":"WARNING","channel":"testing","datetime":"2026-10-28T14:00:17.895333+00:00","extra":{}}
+{"message":"ProcessPaperPipelineJob completed with individual account errors.","context":{"failed_count":1,"total_accounts":2,"eligible_accounts":2,"processed_accounts":1,"failures":[{"account_id":"6c4dde19-8486-4d07-b6d5-26a5b645ecd5","error":"Binance PRIMARY account provenance is not verified."}]},"level":300,"level_name":"WARNING","channel":"testing","datetime":"2026-10-28T14:00:17.901671+00:00","extra":{}}
+.....[41;37mF[0m[41;37mF[0m[41;37mF[0m[41;37mF[0m[41;37mF[0m[41;37mF[0m[41;37mF[0m[41;37mF[0m[41;37mF[0m[41;37mF[0m..[41;37mF[0m...............  63 / 100 ( 63%)
+...................................{"message":"No closed 5m history for BTCUSDT.","context":{"exception":{"class":"RuntimeException","message":"No closed 5m history for BTCUSDT.","code":0,"file":"/var/www/html/app/Backtest/Application/DatasetInspector.php:25"}},"level":400,"level_name":"ERROR","channel":"testing","datetime":"2026-10-28T14:00:47.173978+00:00","extra":{}}
+..                           100 / 100 (100%)
+
+Time: 00:38.501, Memory: 30.00 MB
+
+There were 11 failures:
+
+1) Tests\Feature\Exchanges\BinanceBatchCandleIngestionTest::test_maximum_batch_inserts_once_and_repeated_duplicates_issue_no_writes
+Failed asserting that '\n
+            INSERT INTO market_candles (\n
+                exchange, category, symbol, interval, open_time, open, high, low, close, volume, turnover, is_closed, created_at, updated_at\n
+            )\n
+            SELECT * FROM UNNEST(\n
+                ?::varchar[], ?::varchar[], ?::varchar[], ?::varchar[], ?::timestamp[],\n
+                ?::numeric[], ?::numeric[], ?::numeric[], ?::numeric[], ?::numeric[], ?::numeric[],\n
+                ?::boolean[], ?::timestamptz[], ?::timestamptz[]\n
+            )\n
+            ON CONFLICT (exchange, category, symbol, interval, open_time) DO NOTHING\n
+        ' matches PCRE pattern "/^(select .* from|insert into) "market_candles" /".
+
+/var/www/html/tests/Feature/Exchanges/BinanceBatchCandleIngestionTest.php:196
+/var/www/html/tests/Feature/Exchanges/BinanceBatchCandleIngestionTest.php:32
+
+2) Tests\Feature\Exchanges\BinanceBatchCandleIngestionTest::test_mixed_batch_only_inserts_missing_identities
+Failed asserting that '\n
+            INSERT INTO market_candles (\n
+                exchange, category, symbol, interval, open_time, open, high, low, close, volume, turnover, is_closed, created_at, updated_at\n
+            )\n
+            SELECT * FROM UNNEST(\n
+                ?::varchar[], ?::varchar[], ?::varchar[], ?::varchar[], ?::timestamp[],\n
+                ?::numeric[], ?::numeric[], ?::numeric[], ?::numeric[], ?::numeric[], ?::numeric[],\n
+                ?::boolean[], ?::timestamptz[], ?::timestamptz[]\n
+            )\n
+            ON CONFLICT (exchange, category, symbol, interval, open_time) DO NOTHING\n
+        ' matches PCRE pattern "/^(select .* from|insert into) "market_candles" /".
+
+/var/www/html/tests/Feature/Exchanges/BinanceBatchCandleIngestionTest.php:196
+/var/www/html/tests/Feature/Exchanges/BinanceBatchCandleIngestionTest.php:45
+
+3) Tests\Feature\Exchanges\BinanceBatchCandleIngestionTest::test_each_exact_ohlcv_conflict_fails_closed_and_can_be_retried@open with data (1, '100.000000000002', 'open')
+Failed asserting that '\n
+            INSERT INTO market_candles (\n
+                exchange, category, symbol, interval, open_time, open, high, low, close, volume, turnover, is_closed, created_at, updated_at\n
+            )\n
+            SELECT * FROM UNNEST(\n
+                ?::varchar[], ?::varchar[], ?::varchar[], ?::varchar[], ?::timestamp[],\n
+                ?::numeric[], ?::numeric[], ?::numeric[], ?::numeric[], ?::numeric[], ?::numeric[],\n
+                ?::boolean[], ?::timestamptz[], ?::timestamptz[]\n
+            )\n
+            ON CONFLICT (exchange, category, symbol, interval, open_time) DO NOTHING\n
+        ' matches PCRE pattern "/^(select .* from|insert into) "market_candles" /".
+
+/var/www/html/tests/Feature/Exchanges/BinanceBatchCandleIngestionTest.php:196
+/var/www/html/tests/Feature/Exchanges/BinanceBatchCandleIngestionTest.php:57
+
+4) Tests\Feature\Exchanges\BinanceBatchCandleIngestionTest::test_each_exact_ohlcv_conflict_fails_closed_and_can_be_retried@high with data (2, '105.000000000001', 'high')
+Failed asserting that '\n
+            INSERT INTO market_candles (\n
+                exchange, category, symbol, interval, open_time, open, high, low, close, volume, turnover, is_closed, created_at, updated_at\n
+            )\n
+            SELECT * FROM UNNEST(\n
+                ?::varchar[], ?::varchar[], ?::varchar[], ?::varchar[], ?::timestamp[],\n
+                ?::numeric[], ?::numeric[], ?::numeric[], ?::numeric[], ?::numeric[], ?::numeric[],\n
+                ?::boolean[], ?::timestamptz[], ?::timestamptz[]\n
+            )\n
+            ON CONFLICT (exchange, category, symbol, interval, open_time) DO NOTHING\n
+        ' matches PCRE pattern "/^(select .* from|insert into) "market_candles" /".
+
+/var/www/html/tests/Feature/Exchanges/BinanceBatchCandleIngestionTest.php:196
+/var/www/html/tests/Feature/Exchanges/BinanceBatchCandleIngestionTest.php:57
+
+5) Tests\Feature\Exchanges\BinanceBatchCandleIngestionTest::test_each_exact_ohlcv_conflict_fails_closed_and_can_be_retried@low with data (3, '99.000000000001', 'low')
+Failed asserting that '\n
+            INSERT INTO market_candles (\n
+                exchange, category, symbol, interval, open_time, open, high, low, close, volume, turnover, is_closed, created_at, updated_at\n
+            )\n
+            SELECT * FROM UNNEST(\n
+                ?::varchar[], ?::varchar[], ?::varchar[], ?::varchar[], ?::timestamp[],\n
+                ?::numeric[], ?::numeric[], ?::numeric[], ?::numeric[], ?::numeric[], ?::numeric[],\n
+                ?::boolean[], ?::timestamptz[], ?::timestamptz[]\n
+            )\n
+            ON CONFLICT (exchange, category, symbol, interval, open_time) DO NOTHING\n
+        ' matches PCRE pattern "/^(select .* from|insert into) "market_candles" /".
+
+/var/www/html/tests/Feature/Exchanges/BinanceBatchCandleIngestionTest.php:196
+/var/www/html/tests/Feature/Exchanges/BinanceBatchCandleIngestionTest.php:57
+
+6) Tests\Feature\Exchanges\BinanceBatchCandleIngestionTest::test_each_exact_ohlcv_conflict_fails_closed_and_can_be_retried@close with data (4, '102.000000000001', 'close')
+Failed asserting that '\n
+            INSERT INTO market_candles (\n
+                exchange, category, symbol, interval, open_time, open, high, low, close, volume, turnover, is_closed, created_at, updated_at\n
+            )\n
+            SELECT * FROM UNNEST(\n
+                ?::varchar[], ?::varchar[], ?::varchar[], ?::varchar[], ?::timestamp[],\n
+                ?::numeric[], ?::numeric[], ?::numeric[], ?::numeric[], ?::numeric[], ?::numeric[],\n
+                ?::boolean[], ?::timestamptz[], ?::timestamptz[]\n
+            )\n
+            ON CONFLICT (exchange, category, symbol, interval, open_time) DO NOTHING\n
+        ' matches PCRE pattern "/^(select .* from|insert into) "market_candles" /".
+
+/var/www/html/tests/Feature/Exchanges/BinanceBatchCandleIngestionTest.php:196
+/var/www/html/tests/Feature/Exchanges/BinanceBatchCandleIngestionTest.php:57
+
+7) Tests\Feature\Exchanges\BinanceBatchCandleIngestionTest::test_each_exact_ohlcv_conflict_fails_closed_and_can_be_retried@volume with data (5, '10.000000000001', 'volume')
+Failed asserting that '\n
+            INSERT INTO market_candles (\n
+                exchange, category, symbol, interval, open_time, open, high, low, close, volume, turnover, is_closed, created_at, updated_at\n
+            )\n
+            SELECT * FROM UNNEST(\n
+                ?::varchar[], ?::varchar[], ?::varchar[], ?::varchar[], ?::timestamp[],\n
+                ?::numeric[], ?::numeric[], ?::numeric[], ?::numeric[], ?::numeric[], ?::numeric[],\n
+                ?::boolean[], ?::timestamptz[], ?::timestamptz[]\n
+            )\n
+            ON CONFLICT (exchange, category, symbol, interval, open_time) DO NOTHING\n
+        ' matches PCRE pattern "/^(select .* from|insert into) "market_candles" /".
+
+/var/www/html/tests/Feature/Exchanges/BinanceBatchCandleIngestionTest.php:196
+/var/www/html/tests/Feature/Exchanges/BinanceBatchCandleIngestionTest.php:57
+
+8) Tests\Feature\Exchanges\BinanceBatchCandleIngestionTest::test_each_exact_ohlcv_conflict_fails_closed_and_can_be_retried@turnover with data (7, '1010.000000000001', 'turnover')
+Failed asserting that '\n
+            INSERT INTO market_candles (\n
+                exchange, category, symbol, interval, open_time, open, high, low, close, volume, turnover, is_closed, created_at, updated_at\n
+            )\n
+            SELECT * FROM UNNEST(\n
+                ?::varchar[], ?::varchar[], ?::varchar[], ?::varchar[], ?::timestamp[],\n
+                ?::numeric[], ?::numeric[], ?::numeric[], ?::numeric[], ?::numeric[], ?::numeric[],\n
+                ?::boolean[], ?::timestamptz[], ?::timestamptz[]\n
+            )\n
+            ON CONFLICT (exchange, category, symbol, interval, open_time) DO NOTHING\n
+        ' matches PCRE pattern "/^(select .* from|insert into) "market_candles" /".
+
+/var/www/html/tests/Feature/Exchanges/BinanceBatchCandleIngestionTest.php:196
+/var/www/html/tests/Feature/Exchanges/BinanceBatchCandleIngestionTest.php:57
+
+9) Tests\Feature\Exchanges\BinanceBatchCandleIngestionTest::test_full_identity_scope_preserves_other_exchanges_categories_symbols_and_intervals
+Failed asserting that '\n
+            INSERT INTO market_candles (\n
+                exchange, category, symbol, interval, open_time, open, high, low, close, volume, turnover, is_closed, created_at, updated_at\n
+            )\n
+            SELECT * FROM UNNEST(\n
+                ?::varchar[], ?::varchar[], ?::varchar[], ?::varchar[], ?::timestamp[],\n
+                ?::numeric[], ?::numeric[], ?::numeric[], ?::numeric[], ?::numeric[], ?::numeric[],\n
+                ?::boolean[], ?::timestamptz[], ?::timestamptz[]\n
+            )\n
+            ON CONFLICT (exchange, category, symbol, interval, open_time) DO NOTHING\n
+        ' matches PCRE pattern "/^(select .* from|insert into) "market_candles" /".
+
+/var/www/html/tests/Feature/Exchanges/BinanceBatchCandleIngestionTest.php:196
+/var/www/html/tests/Feature/Exchanges/BinanceBatchCandleIngestionTest.php:88
+
+10) Tests\Feature\Exchanges\BinanceBatchCandleIngestionTest::test_unclosed_stored_identity_is_never_overwritten
+Failed asserting that '\n
+            INSERT INTO market_candles (\n
+                exchange, category, symbol, interval, open_time, open, high, low, close, volume, turnover, is_closed, created_at, updated_at\n
+            )\n
+            SELECT * FROM UNNEST(\n
+                ?::varchar[], ?::varchar[], ?::varchar[], ?::varchar[], ?::timestamp[],\n
+                ?::numeric[], ?::numeric[], ?::numeric[], ?::numeric[], ?::numeric[], ?::numeric[],\n
+                ?::boolean[], ?::timestamptz[], ?::timestamptz[]\n
+            )\n
+            ON CONFLICT (exchange, category, symbol, interval, open_time) DO NOTHING\n
+        ' matches PCRE pattern "/^(select .* from|insert into) "market_candles" /".
+
+/var/www/html/tests/Feature/Exchanges/BinanceBatchCandleIngestionTest.php:196
+/var/www/html/tests/Feature/Exchanges/BinanceBatchCandleIngestionTest.php:103
+
+11) Tests\Feature\Exchanges\BinanceBatchCandleIngestionTest::test_later_chunk_conflict_rolls_back_earlier_chunk_and_retry_succeeds
+Failed asserting that '\n
+            INSERT INTO market_candles (\n
+                exchange, category, symbol, interval, open_time, open, high, low, close, volume, turnover, is_closed, created_at, updated_at\n
+            )\n
+            SELECT * FROM UNNEST(\n
+                ?::varchar[], ?::varchar[], ?::varchar[], ?::varchar[], ?::timestamp[],\n
+                ?::numeric[], ?::numeric[], ?::numeric[], ?::numeric[], ?::numeric[], ?::numeric[],\n
+                ?::boolean[], ?::timestamptz[], ?::timestamptz[]\n
+            )\n
+            ON CONFLICT (exchange, category, symbol, interval, open_time) DO NOTHING\n
+        ' matches PCRE pattern "/^(select .* from|insert into) "market_candles" /".
+
+/var/www/html/tests/Feature/Exchanges/BinanceBatchCandleIngestionTest.php:196
+/var/www/html/tests/Feature/Exchanges/BinanceBatchCandleIngestionTest.php:135
+
+[37;41mFAILURES![0m
+[37;41mTests: 100[0m[37;41m, Assertions: 942[0m[37;41m, Failures: 11[0m[37;41m.[0m

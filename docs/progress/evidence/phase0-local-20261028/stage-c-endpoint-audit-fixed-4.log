@@ -1,0 +1,11 @@
+PHPUnit 12.5.39 by Sebastian Bergmann and contributors.
+
+Runtime:       PHP 8.5.12
+Configuration: /var/www/html/phpunit.xml
+
+.{"message":"No closed 5m history for BTCUSDT.","context":{"exception":{"class":"RuntimeException","message":"No closed 5m history for BTCUSDT.","code":0,"file":"/var/www/html/app/Backtest/Application/DatasetInspector.php:25"}},"level":400,"level_name":"ERROR","channel":"testing","datetime":"2026-10-28T13:57:55.401538+00:00","extra":{}}
+..                                                                 3 / 3 (100%)
+
+Time: 00:02.228, Memory: 20.00 MB
+
+[30;42mOK (3 tests, 50 assertions)[0m

@@ -1,0 +1,177 @@
+{
+  "requirement_id": "VEC-P0-001",
+  "obligation_id": "VEC-P0-001-V1",
+  "result": "PASS",
+  "command": {
+    "label": "stage-b-c-d-full-suite",
+    "command": [
+      "/home/thunder/.headroom/bin/rtk",
+      "proxy",
+      "docker",
+      "run",
+      "--rm",
+      "--label",
+      "io.traderbybit.task=phase0-local-20261028",
+      "--network",
+      "container:vector-phase0-local-20261028-pg",
+      "--user",
+      "1000:1000",
+      "--entrypoint",
+      "",
+      "-v",
+      "/tmp/vector-phase0-local-20261028:/var/www/html",
+      "-w",
+      "/var/www/html",
+      "-e",
+      "APP_ENV=testing",
+      "-e",
+      "APP_DEBUG=false",
+      "-e",
+      "APP_KEY=base64:MDEyMzQ1Njc4OWFiY2RlZjAxMjM0NTY3ODlhYmNkZWY=",
+      "-e",
+      "APP_URL=http://127.0.0.1:8000",
+      "-e",
+      "DB_CONNECTION=pgsql",
+      "-e",
+      "DB_HOST=127.0.0.1",
+      "-e",
+      "DB_PORT=5432",
+      "-e",
+      "DB_DATABASE=bybit_test",
+      "-e",
+      "DB_USERNAME=postgres",
+      "-e",
+      "DB_PASSWORD=testpass",
+      "-e",
+      "DB_URL=",
+      "-e",
+      "TEST_DB_HOST=127.0.0.1",
+      "-e",
+      "TEST_DB_PORT=5432",
+      "-e",
+      "TEST_DB_DATABASE=bybit_test",
+      "-e",
+      "TEST_DB_USERNAME=postgres",
+      "-e",
+      "TEST_DB_PASSWORD=testpass",
+      "-e",
+      "CACHE_STORE=array",
+      "-e",
+      "SESSION_DRIVER=array",
+      "-e",
+      "QUEUE_CONNECTION=sync",
+      "-e",
+      "REDIS_HOST=127.0.0.1",
+      "-e",
+      "REDIS_PORT=6379",
+      "-e",
+      "REDIS_PASSWORD=null",
+      "-e",
+      "LOG_CHANNEL=stderr",
+      "-e",
+      "GOCACHE=/tmp/go-cache",
+      "-e",
+      "GOPATH=/tmp/go",
+      "-e",
+      "RUN_BYBIT_INTEGRATION=0",
+      "-e",
+      "TZ=UTC",
+      "traderbybit-php85-test:local",
+      "php",
+      "vendor/bin/phpunit",
+      "--no-coverage",
+      "--do-not-cache-result",
+      "--log-junit",
+      "stage-b-c-d-full-suite.xml",
+      "--display-skipped"
+    ],
+    "cwd": "/home/thunder/work/traderbybit",
+    "started_at": "2026-10-28T14:02:58.943104+00:00",
+    "finished_at": "2026-10-28T14:04:49.284183+00:00",
+    "exit_code": 0,
+    "git_sha": "4a3ab5b4fbc3c1127530c14899a78dbdb2db6dea",
+    "artifact": "docs/progress/evidence/phase0-local-20261028/stage-b-c-d-full-suite.log",
+    "sha256": "94916b9f18b32ae21b4f4cdf4be6d232e3a85b16159bdd2ee837ec1d9da31eee"
+  },
+  "git_sha": "02ea3e7ceab97eaf3926b71cde78aa453092e47f",
+  "dependency_hash": "57270f5c66616b3760fa32230d2dba2b9019b7ef7871e974b1d27f7ad7e09bae",
+  "synthetic": true,
+  "environment": "isolated_postgresql",
+  "why_this_proves_condition": "Fresh synthetic census is exactly 13+13; initialization/repeat preserves seeded Bybit and active Binance history; foreign exchange and missing-account controls fail; all strategy pairs remain isolated.",
+  "tests": [
+    {
+      "test": "Tests\\Feature\\PaperTrading\\StrategyPipelineFunnelVerificationTest::test_all_26_primary_pipelines_are_registered_and_configured",
+      "assertions": 30,
+      "source": "tests/Feature/PaperTrading/StrategyPipelineFunnelVerificationTest.php"
+    },
+    {
+      "test": "Tests\\Feature\\Exchanges\\BinanceDeploymentInitializationTest::test_binance_deployment_initializer_is_idempotent_and_preserves_bybit_history",
+      "assertions": 69,
+      "source": "tests/Feature/Exchanges/BinanceDeploymentInitializationTest.php"
+    },
+    {
+      "test": "Tests\\Feature\\Exchanges\\BinanceDeploymentInitializationTest::test_deployment_initialization_is_idempotent_after_binance_activation_and_trading_history",
+      "assertions": 13,
+      "source": "tests/Feature/Exchanges/BinanceDeploymentInitializationTest.php"
+    },
+    {
+      "test": "Tests\\Feature\\Exchanges\\BinanceDeploymentInitializationTest::test_deployment_initializer_succeeds_with_historical_bybit_strategy_namespaced_account_ids",
+      "assertions": 6,
+      "source": "tests/Feature/Exchanges/BinanceDeploymentInitializationTest.php"
+    },
+    {
+      "test": "Tests\\Feature\\Exchanges\\BinancePaperIsolationTest::test_all_twenty_six_accounts_are_isolated_and_owner_allocation_cannot_change_bybit",
+      "assertions": 75,
+      "source": "tests/Feature/Exchanges/BinancePaperIsolationTest.php"
+    },
+    {
+      "test": "Tests\\Feature\\Exchanges\\BinancePaperIsolationTest::test_funded_binance_account_cannot_be_activated_by_an_equity_recalculation",
+      "assertions": 3,
+      "source": "tests/Feature/Exchanges/BinancePaperIsolationTest.php"
+    },
+    {
+      "test": "Tests\\Feature\\Exchanges\\BinancePaperIsolationTest::test_m9_rejects_primary_accounts_with_unknown_exchange_even_if_all_26_pairs_exist",
+      "assertions": 5,
+      "source": "tests/Feature/Exchanges/BinancePaperIsolationTest.php"
+    },
+    {
+      "test": "Tests\\Feature\\Exchanges\\BinancePaperIsolationTest::test_m9_rejects_foreign_capital_events_on_an_otherwise_valid_binance_account",
+      "assertions": 3,
+      "source": "tests/Feature/Exchanges/BinancePaperIsolationTest.php"
+    },
+    {
+      "test": "Tests\\Feature\\Exchanges\\BinancePaperIsolationTest::test_m9_rejects_capital_events_even_on_zero_balance_binance_accounts",
+      "assertions": 2,
+      "source": "tests/Feature/Exchanges/BinancePaperIsolationTest.php"
+    },
+    {
+      "test": "Tests\\Feature\\Exchanges\\BinancePaperIsolationTest::test_m9_reconciles_execution_quantity_and_gross_pnl_against_position",
+      "assertions": 13,
+      "source": "tests/Feature/Exchanges/BinancePaperIsolationTest.php"
+    },
+    {
+      "test": "Tests\\Feature\\Exchanges\\BinancePaperIsolationTest::test_missing_accounts_must_make_m9_reconciliation_fail",
+      "assertions": 4,
+      "source": "tests/Feature/Exchanges/BinancePaperIsolationTest.php"
+    },
+    {
+      "test": "Tests\\Feature\\Exchanges\\BinancePaperIsolationTest::test_provisioner_accepts_historical_strategy_namespaced_bybit_account_ids",
+      "assertions": 2,
+      "source": "tests/Feature/Exchanges/BinancePaperIsolationTest.php"
+    },
+    {
+      "test": "Tests\\Feature\\PaperTrading\\AllThirteenStrategiesExecutionTest::test_isolation_between_bybit_and_binance_is_strictly_enforced_for_all_strategies",
+      "assertions": 7,
+      "source": "tests/Feature/PaperTrading/AllThirteenStrategiesExecutionTest.php"
+    }
+  ],
+  "test_source_hashes": {
+    "tests/Feature/PaperTrading/StrategyPipelineFunnelVerificationTest.php": "8ced92461da07c0d53a7d8dbf5afe3aebba005a0a1a5f29469cb3b66a2faee07",
+    "tests/Feature/Exchanges/BinanceDeploymentInitializationTest.php": "a4d48b54260b65d4b6e61afcb1dba38ecc61a8ac27df76a8539a4227648f69d6",
+    "tests/Feature/Exchanges/BinancePaperIsolationTest.php": "09a5c78f24d9b5b04b3f2fb44211f1030dda10e05e72440b5c4175578aa93ab3",
+    "tests/Feature/PaperTrading/AllThirteenStrategiesExecutionTest.php": "ff0f9602a0835a472cc8f38e6b04633a9b19ecb097798fd4be81cb80d093b538"
+  },
+  "junit": "docs/progress/evidence/phase0-local-20261028/stage-b-c-d-full-suite.xml",
+  "junit_sha256": "941d779c25cc2fbbe72468105be3c01ef4f180a0c210107fedad7db9eefbb90d",
+  "limitations": "Synthetic local fixtures; production, browser and product acceptance remain pending."
+}

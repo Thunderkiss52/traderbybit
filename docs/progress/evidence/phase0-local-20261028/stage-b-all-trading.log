@@ -1,0 +1,26 @@
+PHPUnit 12.5.39 by Sebastian Bergmann and contributors.
+
+Runtime:       PHP 8.5.12
+Configuration: /var/www/html/phpunit.xml
+
+..{"message":"Retrying public Bybit market-data request.","context":{"endpoint":"/v5/market/tickers","attempt":1,"delay_ms":183,"http_status":null,"ret_code":null},"level":300,"level_name":"WARNING","channel":"testing","datetime":"2026-10-28T13:25:39.793436+00:00","extra":{}}
+{"message":"Retrying public Bybit market-data request.","context":{"endpoint":"/v5/market/tickers","attempt":2,"delay_ms":382,"http_status":null,"ret_code":null},"level":300,"level_name":"WARNING","channel":"testing","datetime":"2026-10-28T13:25:39.979556+00:00","extra":{}}
+{"message":"Retrying public Bybit market-data request.","context":{"endpoint":"/v5/market/tickers","attempt":3,"delay_ms":853,"http_status":null,"ret_code":null},"level":300,"level_name":"WARNING","channel":"testing","datetime":"2026-10-28T13:25:40.363858+00:00","extra":{}}
+{"message":"Retrying public Bybit market-data request.","context":{"endpoint":"/v5/market/tickers","attempt":4,"delay_ms":1139,"http_status":null,"ret_code":null},"level":300,"level_name":"WARNING","channel":"testing","datetime":"2026-10-28T13:25:41.219852+00:00","extra":{}}
+{"message":"Market context capture non-fatal failure for bybit:BTCUSDT: Bybit HTTP connection failed.","context":{},"level":300,"level_name":"WARNING","channel":"testing","datetime":"2026-10-28T13:25:42.361320+00:00","extra":{}}
+.........{"message":"Closed candle event bybit:BTCUSDT:15:2026-10-28T13:19:53+00:00:CANDLE_CLOSED rejected as STALE (exceeded freshness window).","context":{},"level":200,"level_name":"INFO","channel":"testing","datetime":"2026-10-28T13:25:43.264445+00:00","extra":{}}
+{"message":"Closed candle event bybit:BTCUSDT:15:2026-10-28T13:19:53+00:00:CANDLE_CLOSED rejected as STALE (exceeded freshness window).","context":{},"level":200,"level_name":"INFO","channel":"testing","datetime":"2026-10-28T13:25:43.266839+00:00","extra":{}}
+......{"message":"ProcessPaperPipelineJob: bybit:BTCUSDT at 2026-10-26T10:30:00Z rejected as STALE (exceeded 300s freshness window).","context":{},"level":200,"level_name":"INFO","channel":"testing","datetime":"2026-10-28T13:25:43.765989+00:00","extra":{}}
+...{"message":"Recovery: Marked event binance:BTCUSDT:15:2026-10-28T13:19:04+00:00:CANDLE_CLOSED as STALE (exceeded freshness window).","context":{},"level":200,"level_name":"INFO","channel":"testing","datetime":"2026-10-28T13:25:44.294740+00:00","extra":{}}
+.{"message":"ProcessPaperPipelineJob: bybit:BTCUSDT at 2026-10-28T13:15:00+00:00 rejected as STALE (exceeded 300s freshness window).","context":{},"level":200,"level_name":"INFO","channel":"testing","datetime":"2026-10-28T13:25:44.331246+00:00","extra":{}}
+{"message":"GenerateSignalJob: bybit:BTCUSDT already processed by event-driven pipeline; scheduled run skipped.","context":{},"level":200,"level_name":"INFO","channel":"testing","datetime":"2026-10-28T13:25:44.338261+00:00","extra":{}}
+.....{"message":"Recovery: Terminalized upstream event bybit:BTCUSDT:15:2026-10-28T13:24:59+00:00:SIGNALS_EVALUATED to COMPLETED matching existing downstream PAPER_PROCESSED.","context":{},"level":200,"level_name":"INFO","channel":"testing","datetime":"2026-10-28T13:25:44.514198+00:00","extra":{}}
+.{"message":"ProcessPaperPipelineJob account provenance/executable check failed: f3775fc0-9326-434f-9c17-5ae5f908c44a (invalid_strategy_never_configured): Binance PRIMARY account provenance is not verified.","context":{"account_id":"f3775fc0-9326-434f-9c17-5ae5f908c44a","strategy_id":"invalid_strategy_never_configured","exception":"DomainException"},"level":300,"level_name":"WARNING","channel":"testing","datetime":"2026-10-28T13:25:44.567824+00:00","extra":{}}
+{"message":"ProcessPaperPipelineJob completed with individual account errors.","context":{"failed_count":1,"total_accounts":2,"eligible_accounts":2,"processed_accounts":1,"failures":[{"account_id":"f3775fc0-9326-434f-9c17-5ae5f908c44a","error":"Binance PRIMARY account provenance is not verified."}]},"level":300,"level_name":"WARNING","channel":"testing","datetime":"2026-10-28T13:25:44.567995+00:00","extra":{}}
+...{"message":"ProcessPaperPipelineJob account provenance/executable check failed: b55a84fb-a490-4299-90b2-203dd398e1f6 (invalid_strategy_failing_provenance): Binance PRIMARY account provenance is not verified.","context":{"account_id":"b55a84fb-a490-4299-90b2-203dd398e1f6","strategy_id":"invalid_strategy_failing_provenance","exception":"DomainException"},"level":300,"level_name":"WARNING","channel":"testing","datetime":"2026-10-28T13:25:44.703759+00:00","extra":{}}
+{"message":"ProcessPaperPipelineJob completed with individual account errors.","context":{"failed_count":1,"total_accounts":2,"eligible_accounts":2,"processed_accounts":1,"failures":[{"account_id":"b55a84fb-a490-4299-90b2-203dd398e1f6","error":"Binance PRIMARY account provenance is not verified."}]},"level":300,"level_name":"WARNING","channel":"testing","datetime":"2026-10-28T13:25:44.703930+00:00","extra":{}}
+.                                   31 / 31 (100%)
+
+Time: 00:09.683, Memory: 26.00 MB
+
+[30;42mOK (31 tests, 148 assertions)[0m

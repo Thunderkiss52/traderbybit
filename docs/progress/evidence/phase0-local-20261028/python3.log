@@ -1,0 +1,4 @@
+Error: Failed to execute command: -c
+
+Caused by:
+    No such file or directory (os error 2)

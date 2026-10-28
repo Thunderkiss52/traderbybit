@@ -1,20 +1,20 @@
 {
   "status": "PROVISIONAL",
-  "source_head": "a30291e3681963f8a3da4a5d284b0679746e8b48",
+  "source_head": "02ea3e7ceab97eaf3926b71cde78aa453092e47f",
   "assessment_head": "d9a0aeb5d14233fc95e9e5cc55d8748814362f59",
   "assessment_date": "2026-10-28",
   "scope_baseline": "VECTOR-SCOPE-20261027-v1",
   "scope_hash": "6d207a2bd441156d909b72e93166ea2fb932c152c32627fd6d06083668d71117",
-  "registry_hash": "a38a1228fabb69a93b4c8e72b5af64f5974e77e3f41b5a8c5aed05c522185728",
+  "registry_hash": "3e5658946d73a8935551af89a86fed57f9ae72d0e139ea18a8ad21d754e3492a",
   "overall": {
     "implementation": 42.2882,
-    "verification": 4.7619,
+    "verification": 5.5556,
     "product": 0.0
   },
   "freshness": {
-    "CURRENT": 20,
+    "CURRENT": 23,
     "FAILED": 1,
-    "UNAVAILABLE": 208
+    "UNAVAILABLE": 205
   },
   "phases": [
     {
@@ -24,7 +24,7 @@
       "verified": 0,
       "accepted_capabilities": 0,
       "implementation": 78.5714,
-      "verification": 15.873,
+      "verification": 18.5185,
       "product": 0.0,
       "remaining": [
         "VEC-P0-001",
@@ -288,15 +288,14 @@
       "weight": 3,
       "capability": "CAP-P0",
       "implementation": 50.0,
-      "verification": 0.0,
+      "verification": 33.3333,
       "product": 0.0,
       "state": "BLOCKED",
       "blockers": [
-        "Local V1 incomplete: Completion, PARTIAL, stale recovery and targeted selection pass; no assertion directly exercises all-accounts-failed -> FAILED or recovery retry of failed accounts after a mixed batch without repeating successes. The frozen obligation says every transition. Production V2 and explicit product acceptance pending."
+        "Local V1 passed; production V2, applicable browser V3 and explicit product acceptance remain pending."
       ],
       "dependencies": [],
       "missing_evidence": [
-        "VEC-P0-002-V1:UNAVAILABLE",
         "VEC-P0-002-V2:UNAVAILABLE"
       ]
     },
@@ -497,15 +496,14 @@
       "weight": 1,
       "capability": "CAP-P0",
       "implementation": 0.0,
-      "verification": 0.0,
+      "verification": 33.3333,
       "product": 0.0,
       "state": "BLOCKED",
       "blockers": [
-        "Local V1 incomplete: Stored-only status is asserted. The global GET write detector uses a nonexistent replay ID; successful replay test does not count writes. This does not prove zero writes for an existing observation. Production V2 and explicit product acceptance pending."
+        "Local V1 passed; production V2, applicable browser V3 and explicit product acceptance remain pending."
       ],
       "dependencies": [],
       "missing_evidence": [
-        "VEC-P0-101-V1:UNAVAILABLE",
         "VEC-P0-101-V2:UNAVAILABLE"
       ]
     },
@@ -687,15 +685,14 @@
       "weight": 1,
       "capability": "CAP-P0",
       "implementation": 0.0,
-      "verification": 0.0,
+      "verification": 33.3333,
       "product": 0.0,
       "state": "BLOCKED",
       "blockers": [
-        "Local V1 incomplete: HTTP success smoke coverage lacks competing annotation rows and qualified newest-match assertions. Production V2 and explicit product acceptance pending."
+        "Local V1 passed; production V2, applicable browser V3 and explicit product acceptance remain pending."
       ],
       "dependencies": [],
       "missing_evidence": [
-        "VEC-P0-110-V1:UNAVAILABLE",
         "VEC-P0-110-V2:UNAVAILABLE"
       ]
     },

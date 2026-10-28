@@ -1,0 +1,37 @@
+PHPUnit 12.5.39 by Sebastian Bergmann and contributors.
+
+Runtime:       PHP 8.5.12
+Configuration: /var/www/html/phpunit.xml
+
+[41;37mF[0m[41;37mF[0m[41;37mF[0m[41;37mF[0m..                                                              6 / 6 (100%)
+
+Time: 00:01.942, Memory: 20.00 MB
+
+There were 4 failures:
+
+1) Tests\Integration\BinanceCandleInsertionRaceTest::test_concurrent_insert_reloads_every_identity_and_preserves_winning_rows@identical subset with data (false, false)
+One initial SELECT, one batch INSERT and one complete reload required.
+Failed asserting that actual size 2 matches expected size 3.
+
+/var/www/html/tests/Integration/BinanceCandleInsertionRaceTest.php:70
+
+2) Tests\Integration\BinanceCandleInsertionRaceTest::test_concurrent_insert_reloads_every_identity_and_preserves_winning_rows@conflicting final identity with data (true, false)
+One initial SELECT, one batch INSERT and one complete reload required.
+Failed asserting that actual size 2 matches expected size 3.
+
+/var/www/html/tests/Integration/BinanceCandleInsertionRaceTest.php:70
+
+3) Tests\Integration\BinanceCandleInsertionRaceTest::test_concurrent_insert_reloads_every_identity_and_preserves_winning_rows@identical complete batch with data (false, true)
+One initial SELECT, one batch INSERT and one complete reload required.
+Failed asserting that actual size 2 matches expected size 3.
+
+/var/www/html/tests/Integration/BinanceCandleInsertionRaceTest.php:70
+
+4) Tests\Integration\BinanceCandleInsertionRaceTest::test_concurrent_insert_reloads_every_identity_and_preserves_winning_rows@conflicting complete batch with data (true, true)
+One initial SELECT, one batch INSERT and one complete reload required.
+Failed asserting that actual size 2 matches expected size 3.
+
+/var/www/html/tests/Integration/BinanceCandleInsertionRaceTest.php:70
+
+[37;41mFAILURES![0m
+[37;41mTests: 6[0m[37;41m, Assertions: 28[0m[37;41m, Failures: 4[0m[37;41m.[0m

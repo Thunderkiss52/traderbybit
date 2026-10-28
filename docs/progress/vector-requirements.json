@@ -86,12 +86,12 @@
           "description": "Source declares 13 canonical PRIMARY strategy IDs with exchange-specific account provisioning",
           "status": "IMPLEMENTED",
           "evidence": {
-            "git_sha": "a30291e3681963f8a3da4a5d284b0679746e8b48",
+            "git_sha": "02ea3e7ceab97eaf3926b71cde78aa453092e47f",
             "date": "2026-10-28",
             "environment": "local",
             "limitations": "Prior limited source atoms unchanged at stage review; watched tests updated. No additional implementation or product credit.",
             "reviewer": "Codex source assessment",
-            "dependency_hash": "8ea40b4934ee50f77b17d7d5302457c2179886738d7eab3fca40863bd35d8004",
+            "dependency_hash": "57270f5c66616b3760fa32230d2dba2b9019b7ef7871e974b1d27f7ad7e09bae",
             "references": [
               {
                 "path": "config/paper.php",
@@ -159,6 +159,24 @@
               "artifact_sha256": "16a4997d72e64971ee8de4ea72c143bdff3155df951ff60bc5028140470d7da7",
               "limitations": "Synthetic local fixtures; production, browser and product acceptance remain pending.",
               "rationale": "Fresh synthetic census is exactly 13+13; initialization/repeat preserves seeded Bybit and active Binance history; foreign exchange and missing-account controls fail; all strategy pairs remain isolated."
+            },
+            {
+              "requirement_id": "VEC-P0-001",
+              "obligation_id": "VEC-P0-001-V1",
+              "type": "postgresql",
+              "result": "PASS",
+              "environment": "isolated_postgresql",
+              "fixture": "Exact cases in retained JUnit on task-owned PostgreSQL 17; no production data.",
+              "synthetic": true,
+              "git_sha": "02ea3e7ceab97eaf3926b71cde78aa453092e47f",
+              "date": "2026-10-28",
+              "execution_timestamp": "2026-10-28T14:04:49.284183+00:00",
+              "dependency_hash": "57270f5c66616b3760fa32230d2dba2b9019b7ef7871e974b1d27f7ad7e09bae",
+              "reviewer": "Codex stage-specific QA review",
+              "artifact": "docs/progress/evidence/phase0-local-20261028/stage-bcd-VEC-P0-001-V1.json",
+              "artifact_sha256": "83f9fcfd71ed2b0fda3399b54eb4bc22c03cffd59e3848670a865a08202101f9",
+              "limitations": "Synthetic local fixtures; production, browser and product acceptance remain pending.",
+              "rationale": "Fresh synthetic census is exactly 13+13; initialization/repeat preserves seeded Bybit and active Binance history; foreign exchange and missing-account controls fail; all strategy pairs remain isolated."
             }
           ]
         },
@@ -209,14 +227,15 @@
         "tests",
         "tests/Feature/PaperTrading/StrategyPipelineFunnelVerificationTest.php"
       ],
-      "last_verified_commit": "a30291e3681963f8a3da4a5d284b0679746e8b48",
+      "last_verified_commit": "02ea3e7ceab97eaf3926b71cde78aa453092e47f",
       "last_verified_environment": "isolated_postgresql",
       "last_evidence_update": "2026-10-28",
       "notes": [
         "No credit inferred from old pass counts. Runtime source atom credit does not prove integrated target behavior.",
         "2026-10-27 evidence closure: Fresh synthetic census is exactly 13+13; initialization/repeat preserves seeded Bybit and active Binance history; foreign exchange and missing-account controls fail; all strategy pairs remain isolated. Procedure: No additional local test needed for this obligation. Q1 must independently establish the real 26-account census and history continuity.",
         "Source metadata correction: config alone declares IDs; account service and initializer implement exchange provisioning. Implementation credit unchanged.",
-        "stage-a: Fresh synthetic census is exactly 13+13; initialization/repeat preserves seeded Bybit and active Binance history; foreign exchange and missing-account controls fail; all strategy pairs remain isolated."
+        "stage-a: Fresh synthetic census is exactly 13+13; initialization/repeat preserves seeded Bybit and active Binance history; foreign exchange and missing-account controls fail; all strategy pairs remain isolated.",
+        "stage-bcd: Fresh synthetic census is exactly 13+13; initialization/repeat preserves seeded Bybit and active Binance history; foreign exchange and missing-account controls fail; all strategy pairs remain isolated."
       ],
       "assessed_commit": "d9a0aeb5d14233fc95e9e5cc55d8748814362f59",
       "roadmap_reference": "docs/roadmap/VECTOR_POST_REMEDIATION_IMPLEMENTATION_ROADMAP.md",
@@ -240,12 +259,12 @@
           "description": "PAPER completion handling records downstream outcomes",
           "status": "IMPLEMENTED",
           "evidence": {
-            "git_sha": "a30291e3681963f8a3da4a5d284b0679746e8b48",
+            "git_sha": "02ea3e7ceab97eaf3926b71cde78aa453092e47f",
             "date": "2026-10-28",
             "environment": "local",
             "limitations": "Prior limited source atoms unchanged at stage review; watched tests updated. No additional implementation or product credit.",
             "reviewer": "Codex source assessment",
-            "dependency_hash": "8ea40b4934ee50f77b17d7d5302457c2179886738d7eab3fca40863bd35d8004",
+            "dependency_hash": "57270f5c66616b3760fa32230d2dba2b9019b7ef7871e974b1d27f7ad7e09bae",
             "references": [
               {
                 "path": "app/Trading/Application/TradingPipelineEventService.php",
@@ -269,7 +288,26 @@
           "environment": "isolated_postgresql",
           "weight": 1,
           "max_age_days": 90,
-          "evidence": []
+          "evidence": [
+            {
+              "requirement_id": "VEC-P0-002",
+              "obligation_id": "VEC-P0-002-V1",
+              "type": "postgresql",
+              "result": "PASS",
+              "environment": "isolated_postgresql",
+              "fixture": "Exact cases in retained JUnit on task-owned PostgreSQL 17; no production data.",
+              "synthetic": true,
+              "git_sha": "02ea3e7ceab97eaf3926b71cde78aa453092e47f",
+              "date": "2026-10-28",
+              "execution_timestamp": "2026-10-28T14:04:49.284183+00:00",
+              "dependency_hash": "57270f5c66616b3760fa32230d2dba2b9019b7ef7871e974b1d27f7ad7e09bae",
+              "reviewer": "Codex stage-specific QA review",
+              "artifact": "docs/progress/evidence/phase0-local-20261028/stage-bcd-VEC-P0-002-V1.json",
+              "artifact_sha256": "06962d4e2a3528f6d21632d1ed1f944a866be4ccac9025d9e335ae552737bea0",
+              "limitations": "Synthetic local fixtures; production, browser and product acceptance remain pending.",
+              "rationale": "When all accounts fail in paper processing, recordPaperProcessed transitions to STATUS_FAILED and terminalizes upstream SIGNALS_EVALUATED and CANDLE_CLOSED to STATUS_FAILED with completed_at populated. Targeted recovery retry for failed accounts succeeds without repeating executions or mutating ledger state on previously succeeded accounts."
+            }
+          ]
         },
         {
           "id": "VEC-P0-002-V2",
@@ -291,7 +329,7 @@
       "current_state": "IN_PROGRESS",
       "assessment": "PARTIAL",
       "blocking_issues": [
-        "Local V1 incomplete: Completion, PARTIAL, stale recovery and targeted selection pass; no assertion directly exercises all-accounts-failed -> FAILED or recovery retry of failed accounts after a mixed batch without repeating successes. The frozen obligation says every transition. Production V2 and explicit product acceptance pending."
+        "Local V1 passed; production V2, applicable browser V3 and explicit product acceptance remain pending."
       ],
       "source_paths": [
         "app/Trading/Application/TradingPipelineEventService.php"
@@ -316,16 +354,17 @@
         "routes",
         "tests"
       ],
-      "last_verified_commit": null,
-      "last_verified_environment": null,
-      "last_evidence_update": "2026-10-27",
+      "last_verified_commit": "02ea3e7ceab97eaf3926b71cde78aa453092e47f",
+      "last_verified_environment": "isolated_postgresql",
+      "last_evidence_update": "2026-10-28",
       "notes": [
         "No credit inferred from old pass counts. Runtime source atom credit does not prove integrated target behavior.",
-        "2026-10-27 evidence closure: Completion, PARTIAL, stale recovery and targeted selection pass; no assertion directly exercises all-accounts-failed -> FAILED or recovery retry of failed accounts after a mixed batch without repeating successes. The frozen obligation says every transition. Procedure: Add an isolated PostgreSQL test with two accounts, one failure then targeted recovery; assert the successful account ledger is byte-identical and the failed account executes once. Add all-failed -> FAILED and upstream terminal-state assertions; rerun tests/Feature/Trading."
+        "2026-10-27 evidence closure: Completion, PARTIAL, stale recovery and targeted selection pass; no assertion directly exercises all-accounts-failed -> FAILED or recovery retry of failed accounts after a mixed batch without repeating successes. The frozen obligation says every transition. Procedure: Add an isolated PostgreSQL test with two accounts, one failure then targeted recovery; assert the successful account ledger is byte-identical and the failed account executes once. Add all-failed -> FAILED and upstream terminal-state assertions; rerun tests/Feature/Trading.",
+        "stage-bcd: When all accounts fail in paper processing, recordPaperProcessed transitions to STATUS_FAILED and terminalizes upstream SIGNALS_EVALUATED and CANDLE_CLOSED to STATUS_FAILED with completed_at populated. Targeted recovery retry for failed accounts succeeds without repeating executions or mutating ledger state on previously succeeded accounts."
       ],
       "assessed_commit": "d9a0aeb5d14233fc95e9e5cc55d8748814362f59",
       "roadmap_reference": "docs/roadmap/VECTOR_POST_REMEDIATION_IMPLEMENTATION_ROADMAP.md",
-      "verification_assessment": "UNAVAILABLE",
+      "verification_assessment": "PARTIAL_LOCAL",
       "product_assessment": "NOT_ACCEPTED",
       "roadmap_section": "Phase 0"
     },
@@ -345,12 +384,12 @@
           "description": "Lifecycle resolves funding schedule evidence before certification",
           "status": "IMPLEMENTED",
           "evidence": {
-            "git_sha": "a30291e3681963f8a3da4a5d284b0679746e8b48",
+            "git_sha": "02ea3e7ceab97eaf3926b71cde78aa453092e47f",
             "date": "2026-10-28",
             "environment": "local",
             "limitations": "Prior limited source atoms unchanged at stage review; watched tests updated. No additional implementation or product credit.",
             "reviewer": "Codex source assessment",
-            "dependency_hash": "8ea40b4934ee50f77b17d7d5302457c2179886738d7eab3fca40863bd35d8004",
+            "dependency_hash": "57270f5c66616b3760fa32230d2dba2b9019b7ef7871e974b1d27f7ad7e09bae",
             "references": [
               {
                 "path": "app/PaperTrading/Application/PositionLifecycleService.php",
@@ -449,12 +488,12 @@
           "description": "RiskEngine rejects new entries at configured drawdown limits and account failures",
           "status": "IMPLEMENTED",
           "evidence": {
-            "git_sha": "a30291e3681963f8a3da4a5d284b0679746e8b48",
+            "git_sha": "02ea3e7ceab97eaf3926b71cde78aa453092e47f",
             "date": "2026-10-28",
             "environment": "local",
             "limitations": "Prior limited source atoms unchanged at stage review; watched tests updated. No additional implementation or product credit.",
             "reviewer": "Codex source assessment",
-            "dependency_hash": "8ea40b4934ee50f77b17d7d5302457c2179886738d7eab3fca40863bd35d8004",
+            "dependency_hash": "57270f5c66616b3760fa32230d2dba2b9019b7ef7871e974b1d27f7ad7e09bae",
             "references": [
               {
                 "path": "app/PaperTrading/Application/RiskEngine.php",
@@ -468,12 +507,12 @@
           "description": "RiskEngine enforces positive equity, class risk, total risk, notional, correlation and cooldown limits.",
           "status": "IMPLEMENTED",
           "evidence": {
-            "git_sha": "a30291e3681963f8a3da4a5d284b0679746e8b48",
+            "git_sha": "02ea3e7ceab97eaf3926b71cde78aa453092e47f",
             "date": "2026-10-28",
             "environment": "local",
             "limitations": "Prior limited source atoms unchanged at stage review; watched tests updated. No additional implementation or product credit.",
             "reviewer": "Codex source assessment",
-            "dependency_hash": "8ea40b4934ee50f77b17d7d5302457c2179886738d7eab3fca40863bd35d8004",
+            "dependency_hash": "57270f5c66616b3760fa32230d2dba2b9019b7ef7871e974b1d27f7ad7e09bae",
             "references": [
               {
                 "path": "app/PaperTrading/Application/RiskEngine.php",
@@ -507,6 +546,24 @@
               "reviewer": "Codex stage-specific QA review",
               "artifact": "docs/progress/evidence/phase0-local-20261028/stage-a-VEC-P0-004-V1.json",
               "artifact_sha256": "1d9fde724da17c26307eb5173dfee2df3f4e10892bd79e7c4c10c144d40f57a6",
+              "limitations": "Synthetic local fixtures; production, browser and product acceptance remain pending.",
+              "rationale": "Direct positive and negative risk boundaries cover equity, class A/B/C, total risk, notional, position count, correlation, cooldown and 5%/10% protection; isolated account safety and servicing regressions pass. Operational concurrency acceptance remains pending."
+            },
+            {
+              "requirement_id": "VEC-P0-004",
+              "obligation_id": "VEC-P0-004-V1",
+              "type": "postgresql",
+              "result": "PASS",
+              "environment": "isolated_postgresql",
+              "fixture": "Exact cases in retained JUnit on task-owned PostgreSQL 17; no production data.",
+              "synthetic": true,
+              "git_sha": "02ea3e7ceab97eaf3926b71cde78aa453092e47f",
+              "date": "2026-10-28",
+              "execution_timestamp": "2026-10-28T14:04:49.284183+00:00",
+              "dependency_hash": "57270f5c66616b3760fa32230d2dba2b9019b7ef7871e974b1d27f7ad7e09bae",
+              "reviewer": "Codex stage-specific QA review",
+              "artifact": "docs/progress/evidence/phase0-local-20261028/stage-bcd-VEC-P0-004-V1.json",
+              "artifact_sha256": "2f209c69c4359d8fbcf1d6993a51fedef3b70cf5ff1fdd1d7f58608faec5c9f1",
               "limitations": "Synthetic local fixtures; production, browser and product acceptance remain pending.",
               "rationale": "Direct positive and negative risk boundaries cover equity, class A/B/C, total risk, notional, position count, correlation, cooldown and 5%/10% protection; isolated account safety and servicing regressions pass. Operational concurrency acceptance remains pending."
             }
@@ -557,13 +614,14 @@
         "routes",
         "tests"
       ],
-      "last_verified_commit": "a30291e3681963f8a3da4a5d284b0679746e8b48",
+      "last_verified_commit": "02ea3e7ceab97eaf3926b71cde78aa453092e47f",
       "last_verified_environment": "isolated_postgresql",
       "last_evidence_update": "2026-10-28",
       "notes": [
         "No credit inferred from old pass counts. Runtime source atom credit does not prove integrated target behavior.",
         "2026-10-27 evidence closure: 5%/10%, cooldown, correlation, sizing and blocked-position servicing pass. Reviewed RiskAndSizingTest lacks direct RiskEngine zero-equity, class-limit and portfolio-notional boundary assertions required by the second atomic criterion. Procedure: Extend riskFailures with equity=0, negative free capital, risk above each A/B/C limit and notional above portfolio cap; assert allowed immediately below and denied at applicable boundaries. Run RiskAndSizingTest plus AccountSafetyRegressionTest on isolated PostgreSQL; never relax config.",
-        "stage-a: Direct positive and negative risk boundaries cover equity, class A/B/C, total risk, notional, position count, correlation, cooldown and 5%/10% protection; isolated account safety and servicing regressions pass. Operational concurrency acceptance remains pending."
+        "stage-a: Direct positive and negative risk boundaries cover equity, class A/B/C, total risk, notional, position count, correlation, cooldown and 5%/10% protection; isolated account safety and servicing regressions pass. Operational concurrency acceptance remains pending.",
+        "stage-bcd: Direct positive and negative risk boundaries cover equity, class A/B/C, total risk, notional, position count, correlation, cooldown and 5%/10% protection; isolated account safety and servicing regressions pass. Operational concurrency acceptance remains pending."
       ],
       "assessed_commit": "d9a0aeb5d14233fc95e9e5cc55d8748814362f59",
       "roadmap_reference": "docs/roadmap/VECTOR_POST_REMEDIATION_IMPLEMENTATION_ROADMAP.md",
@@ -587,12 +645,12 @@
           "description": "Binance executable guard requires explicit approval configuration",
           "status": "IMPLEMENTED",
           "evidence": {
-            "git_sha": "a30291e3681963f8a3da4a5d284b0679746e8b48",
+            "git_sha": "02ea3e7ceab97eaf3926b71cde78aa453092e47f",
             "date": "2026-10-28",
             "environment": "local",
             "limitations": "Prior limited source atoms unchanged at stage review; watched tests updated. No additional implementation or product credit.",
             "reviewer": "Codex source assessment",
-            "dependency_hash": "8ea40b4934ee50f77b17d7d5302457c2179886738d7eab3fca40863bd35d8004",
+            "dependency_hash": "57270f5c66616b3760fa32230d2dba2b9019b7ef7871e974b1d27f7ad7e09bae",
             "references": [
               {
                 "path": "app/Exchanges/Binance/BinancePaperSafety.php",
@@ -646,6 +704,24 @@
               "artifact_sha256": "e30fc6462676257aff5b448289a56a1b7680a4445512161176abfd8e8fa47a55",
               "limitations": "Synthetic local fixtures; production, browser and product acceptance remain pending.",
               "rationale": "False approval, missing costs, foreign provenance, blocked and unfunded accounts reject; explicit valid local approval/costs permit guard evaluation. Existing active/history fixtures survive initialization; equity recalculation cannot activate accounts."
+            },
+            {
+              "requirement_id": "VEC-P0-005",
+              "obligation_id": "VEC-P0-005-V1",
+              "type": "postgresql",
+              "result": "PASS",
+              "environment": "isolated_postgresql",
+              "fixture": "Exact cases in retained JUnit on task-owned PostgreSQL 17; no production data.",
+              "synthetic": true,
+              "git_sha": "02ea3e7ceab97eaf3926b71cde78aa453092e47f",
+              "date": "2026-10-28",
+              "execution_timestamp": "2026-10-28T14:04:49.284183+00:00",
+              "dependency_hash": "57270f5c66616b3760fa32230d2dba2b9019b7ef7871e974b1d27f7ad7e09bae",
+              "reviewer": "Codex stage-specific QA review",
+              "artifact": "docs/progress/evidence/phase0-local-20261028/stage-bcd-VEC-P0-005-V1.json",
+              "artifact_sha256": "512aebbc39c1646565acd020162cfe30e157c7023e9a27886bf0fec09649d48b",
+              "limitations": "Synthetic local fixtures; production, browser and product acceptance remain pending.",
+              "rationale": "False approval, missing costs, foreign provenance, blocked and unfunded accounts reject; explicit valid local approval/costs permit guard evaluation. Existing active/history fixtures survive initialization; equity recalculation cannot activate accounts."
             }
           ]
         },
@@ -694,14 +770,15 @@
         "tests",
         "tests/Feature/PaperTrading/StrategyPipelineFunnelVerificationTest.php"
       ],
-      "last_verified_commit": "a30291e3681963f8a3da4a5d284b0679746e8b48",
+      "last_verified_commit": "02ea3e7ceab97eaf3926b71cde78aa453092e47f",
       "last_verified_environment": "isolated_postgresql",
       "last_evidence_update": "2026-10-28",
       "notes": [
         "No credit inferred from old pass counts. Runtime source atom credit does not prove integrated target behavior.",
         "Default approval is false in config/exchanges.php; current deployed effective configuration was not queried. Do not activate Binance.",
         "2026-10-27 evidence closure: False approval, missing costs, foreign provenance, blocked and unfunded accounts reject; explicit valid local approval/costs permit guard evaluation. Existing active/history fixtures survive initialization; equity recalculation cannot activate accounts. Procedure: No additional local test needed. Read effective deployed cached approval/cost configuration through the operator procedure; do not infer it from defaults or account ACTIVE status.",
-        "stage-a: False approval, missing costs, foreign provenance, blocked and unfunded accounts reject; explicit valid local approval/costs permit guard evaluation. Existing active/history fixtures survive initialization; equity recalculation cannot activate accounts."
+        "stage-a: False approval, missing costs, foreign provenance, blocked and unfunded accounts reject; explicit valid local approval/costs permit guard evaluation. Existing active/history fixtures survive initialization; equity recalculation cannot activate accounts.",
+        "stage-bcd: False approval, missing costs, foreign provenance, blocked and unfunded accounts reject; explicit valid local approval/costs permit guard evaluation. Existing active/history fixtures survive initialization; equity recalculation cannot activate accounts."
       ],
       "assessed_commit": "d9a0aeb5d14233fc95e9e5cc55d8748814362f59",
       "roadmap_reference": "docs/roadmap/VECTOR_POST_REMEDIATION_IMPLEMENTATION_ROADMAP.md",
@@ -725,12 +802,12 @@
           "description": "Forecast recording matures causal price-bar outcomes and keeps exchange-qualified populations",
           "status": "IMPLEMENTED",
           "evidence": {
-            "git_sha": "a30291e3681963f8a3da4a5d284b0679746e8b48",
+            "git_sha": "02ea3e7ceab97eaf3926b71cde78aa453092e47f",
             "date": "2026-10-28",
             "environment": "local",
             "limitations": "Prior limited source atoms unchanged at stage review; watched tests updated. No additional implementation or product credit.",
             "reviewer": "Codex source assessment",
-            "dependency_hash": "8ea40b4934ee50f77b17d7d5302457c2179886738d7eab3fca40863bd35d8004",
+            "dependency_hash": "57270f5c66616b3760fa32230d2dba2b9019b7ef7871e974b1d27f7ad7e09bae",
             "references": [
               {
                 "path": "app/Strategy/Application/LevelProbabilityService.php",
@@ -744,12 +821,12 @@
           "description": "estimateFor uses exchange-qualified matured outcomes and rejects statistics below minimum_sample_size.",
           "status": "IMPLEMENTED",
           "evidence": {
-            "git_sha": "a30291e3681963f8a3da4a5d284b0679746e8b48",
+            "git_sha": "02ea3e7ceab97eaf3926b71cde78aa453092e47f",
             "date": "2026-10-28",
             "environment": "local",
             "limitations": "Prior limited source atoms unchanged at stage review; watched tests updated. No additional implementation or product credit.",
             "reviewer": "Codex source assessment",
-            "dependency_hash": "8ea40b4934ee50f77b17d7d5302457c2179886738d7eab3fca40863bd35d8004",
+            "dependency_hash": "57270f5c66616b3760fa32230d2dba2b9019b7ef7871e974b1d27f7ad7e09bae",
             "references": [
               {
                 "path": "app/Strategy/Application/LevelProbabilityService.php",
@@ -803,6 +880,24 @@
               "artifact_sha256": "7dccb0d2d05b2c7435f6db9f71a0dcf602bc7a4c6c9a887079e5e6f4ebe0ef70",
               "limitations": "Synthetic local fixtures; production, browser and product acceptance remain pending.",
               "rationale": "Forecast persists despite SKIP and unapproved execution; closed price bars mature outcomes without trades; 29 observations remain insufficient and 30 permit RESEARCH_BASELINE; Bybit 35 observations do not inflate Binance 5."
+            },
+            {
+              "requirement_id": "VEC-P0-006",
+              "obligation_id": "VEC-P0-006-V1",
+              "type": "postgresql",
+              "result": "PASS",
+              "environment": "isolated_postgresql",
+              "fixture": "Exact cases in retained JUnit on task-owned PostgreSQL 17; no production data.",
+              "synthetic": true,
+              "git_sha": "02ea3e7ceab97eaf3926b71cde78aa453092e47f",
+              "date": "2026-10-28",
+              "execution_timestamp": "2026-10-28T14:04:49.284183+00:00",
+              "dependency_hash": "57270f5c66616b3760fa32230d2dba2b9019b7ef7871e974b1d27f7ad7e09bae",
+              "reviewer": "Codex stage-specific QA review",
+              "artifact": "docs/progress/evidence/phase0-local-20261028/stage-bcd-VEC-P0-006-V1.json",
+              "artifact_sha256": "7feb1f94dd85c80b57bfe13eb5768f6ecc26f06db5d6d5a01b3ff74a75b01cad",
+              "limitations": "Synthetic local fixtures; production, browser and product acceptance remain pending.",
+              "rationale": "Forecast persists despite SKIP and unapproved execution; closed price bars mature outcomes without trades; 29 observations remain insufficient and 30 permit RESEARCH_BASELINE; Bybit 35 observations do not inflate Binance 5."
             }
           ]
         },
@@ -848,14 +943,15 @@
         "tests",
         "tests/Feature/Strategy/LevelProbabilityBootstrapLifecycleTest.php"
       ],
-      "last_verified_commit": "a30291e3681963f8a3da4a5d284b0679746e8b48",
+      "last_verified_commit": "02ea3e7ceab97eaf3926b71cde78aa453092e47f",
       "last_verified_environment": "isolated_postgresql",
       "last_evidence_update": "2026-10-28",
       "notes": [
         "No credit inferred from old pass counts. Runtime source atom credit does not prove integrated target behavior.",
         "d9a0aeb adds price-bar maturation, 30-sample boundary, exchange isolation and unapproved-execution fixtures; test existence is not an execution result.",
         "2026-10-27 evidence closure: Forecast persists despite SKIP and unapproved execution; closed price bars mature outcomes without trades; 29 observations remain insufficient and 30 permit RESEARCH_BASELINE; Bybit 35 observations do not inflate Binance 5. Procedure: No additional local test needed for the stated bootstrap criteria. Q5 and a decision-time cohort review must establish real Binance sample maturity; retain minimum_sample_size=30.",
-        "stage-a: Forecast persists despite SKIP and unapproved execution; closed price bars mature outcomes without trades; 29 observations remain insufficient and 30 permit RESEARCH_BASELINE; Bybit 35 observations do not inflate Binance 5."
+        "stage-a: Forecast persists despite SKIP and unapproved execution; closed price bars mature outcomes without trades; 29 observations remain insufficient and 30 permit RESEARCH_BASELINE; Bybit 35 observations do not inflate Binance 5.",
+        "stage-bcd: Forecast persists despite SKIP and unapproved execution; closed price bars mature outcomes without trades; 29 observations remain insufficient and 30 permit RESEARCH_BASELINE; Bybit 35 observations do not inflate Binance 5."
       ],
       "assessed_commit": "d9a0aeb5d14233fc95e9e5cc55d8748814362f59",
       "roadmap_reference": "docs/roadmap/VECTOR_POST_REMEDIATION_IMPLEMENTATION_ROADMAP.md",
@@ -879,12 +975,12 @@
           "description": "Workflow declares isolated PostgreSQL backend test service",
           "status": "IMPLEMENTED",
           "evidence": {
-            "git_sha": "a30291e3681963f8a3da4a5d284b0679746e8b48",
+            "git_sha": "02ea3e7ceab97eaf3926b71cde78aa453092e47f",
             "date": "2026-10-28",
             "environment": "local",
             "limitations": "Prior limited source atoms unchanged at stage review; watched tests updated. No additional implementation or product credit.",
             "reviewer": "Codex source assessment",
-            "dependency_hash": "fc43cda5bd118faaf9f96eb082e636f3ea337543bf64293f4842e4bdf9617a6f",
+            "dependency_hash": "95d1df966fd182bcc70d17430ec115da8d1ba909ad3b8270ba7eec26251ae1d1",
             "references": [
               {
                 "path": ".github/workflows/deploy.yml",
@@ -938,6 +1034,24 @@
               "artifact_sha256": "7114c73174de6cee331ff502a003ff9cf7221b4f0498a2d3986b2a872df69508",
               "limitations": "Synthetic local fixtures; production, browser and product acceptance remain pending.",
               "rationale": "Workflow service declaration reviewed; fresh PostgreSQL 17 cluster identity verified before fixtures. Real child-process candle insertion races, uniqueness negatives, migration preservation/idempotency and PHP-to-Go persistence executed with zero PostgreSQL skips."
+            },
+            {
+              "requirement_id": "VEC-P0-007",
+              "obligation_id": "VEC-P0-007-V1",
+              "type": "postgresql",
+              "result": "PASS",
+              "environment": "isolated_postgresql",
+              "fixture": "Exact cases in retained JUnit on task-owned PostgreSQL 17; no production data.",
+              "synthetic": true,
+              "git_sha": "02ea3e7ceab97eaf3926b71cde78aa453092e47f",
+              "date": "2026-10-28",
+              "execution_timestamp": "2026-10-28T14:04:49.284183+00:00",
+              "dependency_hash": "95d1df966fd182bcc70d17430ec115da8d1ba909ad3b8270ba7eec26251ae1d1",
+              "reviewer": "Codex stage-specific QA review",
+              "artifact": "docs/progress/evidence/phase0-local-20261028/stage-bcd-VEC-P0-007-V1.json",
+              "artifact_sha256": "e50ef40a2217611bca980af6e5aadd3305b88d2cbc80b2bc7e1e9cfb32b7316a",
+              "limitations": "Synthetic local fixtures; production, browser and product acceptance remain pending.",
+              "rationale": "Workflow service declaration reviewed; fresh PostgreSQL 17 cluster identity verified before fixtures. Real child-process candle insertion races, uniqueness negatives, migration preservation/idempotency and PHP-to-Go persistence executed with zero PostgreSQL skips."
             }
           ]
         },
@@ -987,13 +1101,14 @@
         "routes",
         "tests"
       ],
-      "last_verified_commit": "a30291e3681963f8a3da4a5d284b0679746e8b48",
+      "last_verified_commit": "02ea3e7ceab97eaf3926b71cde78aa453092e47f",
       "last_verified_environment": "isolated_postgresql",
       "last_evidence_update": "2026-10-28",
       "notes": [
         "No credit inferred from old pass counts. Runtime source atom credit does not prove integrated target behavior.",
         "2026-10-27 evidence closure: Workflow service declaration reviewed; fresh PostgreSQL 17 cluster identity verified before fixtures. Real child-process candle insertion races, uniqueness negatives, migration preservation/idempotency and PHP-to-Go persistence executed with zero PostgreSQL skips. Procedure: No additional local infrastructure test needed. Obtain the operator-approved deployed release/schema provenance separately; local execution does not prove GitHub Actions ran.",
-        "stage-a: Workflow service declaration reviewed; fresh PostgreSQL 17 cluster identity verified before fixtures. Real child-process candle insertion races, uniqueness negatives, migration preservation/idempotency and PHP-to-Go persistence executed with zero PostgreSQL skips."
+        "stage-a: Workflow service declaration reviewed; fresh PostgreSQL 17 cluster identity verified before fixtures. Real child-process candle insertion races, uniqueness negatives, migration preservation/idempotency and PHP-to-Go persistence executed with zero PostgreSQL skips.",
+        "stage-bcd: Workflow service declaration reviewed; fresh PostgreSQL 17 cluster identity verified before fixtures. Real child-process candle insertion races, uniqueness negatives, migration preservation/idempotency and PHP-to-Go persistence executed with zero PostgreSQL skips."
       ],
       "assessed_commit": "d9a0aeb5d14233fc95e9e5cc55d8748814362f59",
       "roadmap_reference": "docs/roadmap/VECTOR_POST_REMEDIATION_IMPLEMENTATION_ROADMAP.md",
@@ -1145,12 +1260,12 @@
           "description": "Compose specifies bounded research worker memory and CPU",
           "status": "IMPLEMENTED",
           "evidence": {
-            "git_sha": "a30291e3681963f8a3da4a5d284b0679746e8b48",
+            "git_sha": "02ea3e7ceab97eaf3926b71cde78aa453092e47f",
             "date": "2026-10-28",
             "environment": "local",
             "limitations": "Prior limited source atoms unchanged at stage review; watched tests updated. No additional implementation or product credit.",
             "reviewer": "Codex source assessment",
-            "dependency_hash": "0e42d5ea0fd56b51a1aadfba639ce33a636bb0d36870056871c7d99575cce7ab",
+            "dependency_hash": "cb483da0d06981fdf0705476b9454fb5a34eabf6379605bad74ec241d7818d05",
             "references": [
               {
                 "path": "compose.yaml",
@@ -1275,7 +1390,26 @@
           "environment": "isolated_postgresql",
           "weight": 1,
           "max_age_days": 90,
-          "evidence": []
+          "evidence": [
+            {
+              "requirement_id": "VEC-P0-101",
+              "obligation_id": "VEC-P0-101-V1",
+              "type": "integration",
+              "result": "PASS",
+              "environment": "isolated_postgresql",
+              "fixture": "Exact cases in retained JUnit on task-owned PostgreSQL 17; no production data.",
+              "synthetic": true,
+              "git_sha": "02ea3e7ceab97eaf3926b71cde78aa453092e47f",
+              "date": "2026-10-28",
+              "execution_timestamp": "2026-10-28T14:04:49.284183+00:00",
+              "dependency_hash": "57270f5c66616b3760fa32230d2dba2b9019b7ef7871e974b1d27f7ad7e09bae",
+              "reviewer": "Codex stage-specific QA review",
+              "artifact": "docs/progress/evidence/phase0-local-20261028/stage-bcd-VEC-P0-101-V1.json",
+              "artifact_sha256": "fd904dec3e97ea092c514d33d339da6877deef62fc9f83dcbda59accb520ef76",
+              "limitations": "Synthetic local fixtures; production, browser and product acceptance remain pending.",
+              "rationale": "GET /api/v1/research/replay/{id} with mode=AS_OF_DECISION returns recomputed decision while executing strictly zero INSERT/UPDATE/DELETE database mutations and leaving strategy observation records unchanged across repeated calls."
+            }
+          ]
         },
         {
           "id": "VEC-P0-101-V2",
@@ -1297,7 +1431,7 @@
       "current_state": "BLOCKED",
       "assessment": "UNKNOWN",
       "blocking_issues": [
-        "Local V1 incomplete: Stored-only status is asserted. The global GET write detector uses a nonexistent replay ID; successful replay test does not count writes. This does not prove zero writes for an existing observation. Production V2 and explicit product acceptance pending."
+        "Local V1 passed; production V2, applicable browser V3 and explicit product acceptance remain pending."
       ],
       "source_paths": [
         "app/Research/Application/DecisionReplayService.php"
@@ -1321,16 +1455,17 @@
         "tests",
         "tests/Feature/Research/ProfitabilityResearchApiTest.php"
       ],
-      "last_verified_commit": null,
-      "last_verified_environment": null,
-      "last_evidence_update": "2026-10-27",
+      "last_verified_commit": "02ea3e7ceab97eaf3926b71cde78aa453092e47f",
+      "last_verified_environment": "isolated_postgresql",
+      "last_evidence_update": "2026-10-28",
       "notes": [
         "Trace only: docs/verification/VECTOR_V26_I01_I09_PRODUCTION_EVIDENCE_REMEDIATION.md; this assurance row adds no runtime implementation denominator.",
-        "2026-10-27 evidence closure: Stored-only status is asserted. The global GET write detector uses a nonexistent replay ID; successful replay test does not count writes. This does not prove zero writes for an existing observation. Procedure: Seed an existing observation; attach DB::listen after setup; GET its replay twice and assert NOT_RECOMPUTED_STORED_ONLY, false is_reproducible and zero INSERT/UPDATE/DELETE plus unchanged replay-record count."
+        "2026-10-27 evidence closure: Stored-only status is asserted. The global GET write detector uses a nonexistent replay ID; successful replay test does not count writes. This does not prove zero writes for an existing observation. Procedure: Seed an existing observation; attach DB::listen after setup; GET its replay twice and assert NOT_RECOMPUTED_STORED_ONLY, false is_reproducible and zero INSERT/UPDATE/DELETE plus unchanged replay-record count.",
+        "stage-bcd: GET /api/v1/research/replay/{id} with mode=AS_OF_DECISION returns recomputed decision while executing strictly zero INSERT/UPDATE/DELETE database mutations and leaving strategy observation records unchanged across repeated calls."
       ],
       "assessed_commit": "d9a0aeb5d14233fc95e9e5cc55d8748814362f59",
       "roadmap_reference": "docs/roadmap/VECTOR_POST_REMEDIATION_IMPLEMENTATION_ROADMAP.md",
-      "verification_assessment": "UNAVAILABLE",
+      "verification_assessment": "PARTIAL_LOCAL",
       "product_assessment": "NOT_ACCEPTED",
       "roadmap_section": "Phase 0"
     },
@@ -1581,6 +1716,24 @@
               "artifact_sha256": "a5531aa981c765f502cf2aa36122513fc00f27c113ddfa083ef059260b87a14c",
               "limitations": "Synthetic local fixtures; production, browser and product acceptance remain pending.",
               "rationale": "Injected ledger mismatch produces actual discrepancy_count and detail findings; an account without a reconciliation run returns NO_RECORDED_RUN with null count; clean-account service control passes."
+            },
+            {
+              "requirement_id": "VEC-P0-104",
+              "obligation_id": "VEC-P0-104-V1",
+              "type": "integration",
+              "result": "PASS",
+              "environment": "isolated_postgresql",
+              "fixture": "Exact cases in retained JUnit on task-owned PostgreSQL 17; no production data.",
+              "synthetic": true,
+              "git_sha": "02ea3e7ceab97eaf3926b71cde78aa453092e47f",
+              "date": "2026-10-28",
+              "execution_timestamp": "2026-10-28T14:04:49.284183+00:00",
+              "dependency_hash": "57270f5c66616b3760fa32230d2dba2b9019b7ef7871e974b1d27f7ad7e09bae",
+              "reviewer": "Codex stage-specific QA review",
+              "artifact": "docs/progress/evidence/phase0-local-20261028/stage-bcd-VEC-P0-104-V1.json",
+              "artifact_sha256": "b43df420c8e77f1d5025f454ef3db40cd8dbe42021dfc528670881ee684b42ab",
+              "limitations": "Synthetic local fixtures; production, browser and product acceptance remain pending.",
+              "rationale": "Injected ledger mismatch produces actual discrepancy_count and detail findings; an account without a reconciliation run returns NO_RECORDED_RUN with null count; clean-account service control passes."
             }
           ]
         },
@@ -1626,13 +1779,14 @@
         "tests",
         "tests/Feature/Research/ProfitabilityResearchApiTest.php"
       ],
-      "last_verified_commit": "a30291e3681963f8a3da4a5d284b0679746e8b48",
+      "last_verified_commit": "02ea3e7ceab97eaf3926b71cde78aa453092e47f",
       "last_verified_environment": "isolated_postgresql",
       "last_evidence_update": "2026-10-28",
       "notes": [
         "Trace only: docs/verification/VECTOR_V26_I01_I09_PRODUCTION_EVIDENCE_REMEDIATION.md; this assurance row adds no runtime implementation denominator.",
         "2026-10-27 evidence closure: Injected ledger mismatch produces actual discrepancy_count and detail findings; an account without a reconciliation run returns NO_RECORDED_RUN with null count; clean-account service control passes. Procedure: No additional local test needed. Compare deployed persisted reconciliation output to summary/detail responses without running reconciliation.",
-        "stage-a: Injected ledger mismatch produces actual discrepancy_count and detail findings; an account without a reconciliation run returns NO_RECORDED_RUN with null count; clean-account service control passes."
+        "stage-a: Injected ledger mismatch produces actual discrepancy_count and detail findings; an account without a reconciliation run returns NO_RECORDED_RUN with null count; clean-account service control passes.",
+        "stage-bcd: Injected ledger mismatch produces actual discrepancy_count and detail findings; an account without a reconciliation run returns NO_RECORDED_RUN with null count; clean-account service control passes."
       ],
       "assessed_commit": "d9a0aeb5d14233fc95e9e5cc55d8748814362f59",
       "roadmap_reference": "docs/roadmap/VECTOR_POST_REMEDIATION_IMPLEMENTATION_ROADMAP.md",
@@ -1784,6 +1938,24 @@
               "artifact_sha256": "9955c6b2fc0946a9259c146888b840c7a3fbf8c6121ef03b805973fbcd82920f",
               "limitations": "Synthetic local fixtures; production, browser and product acceptance remain pending.",
               "rationale": "Clean account passes; observed drawdown above stored max is a discrepancy without mutation, while a larger historical maximum is preserved and missing history is incomplete; injected balance/execution controls also fail."
+            },
+            {
+              "requirement_id": "VEC-P0-106",
+              "obligation_id": "VEC-P0-106-V1",
+              "type": "integration",
+              "result": "PASS",
+              "environment": "isolated_postgresql",
+              "fixture": "Exact cases in retained JUnit on task-owned PostgreSQL 17; no production data.",
+              "synthetic": true,
+              "git_sha": "02ea3e7ceab97eaf3926b71cde78aa453092e47f",
+              "date": "2026-10-28",
+              "execution_timestamp": "2026-10-28T14:04:49.284183+00:00",
+              "dependency_hash": "57270f5c66616b3760fa32230d2dba2b9019b7ef7871e974b1d27f7ad7e09bae",
+              "reviewer": "Codex stage-specific QA review",
+              "artifact": "docs/progress/evidence/phase0-local-20261028/stage-bcd-VEC-P0-106-V1.json",
+              "artifact_sha256": "90f9daa3c5c746708629278e852f01429b47399687fd6c613827597b871c6cab",
+              "limitations": "Synthetic local fixtures; production, browser and product acceptance remain pending.",
+              "rationale": "Clean account passes; observed drawdown above stored max is a discrepancy without mutation, while a larger historical maximum is preserved and missing history is incomplete; injected balance/execution controls also fail."
             }
           ]
         },
@@ -1827,13 +1999,14 @@
         "routes",
         "tests"
       ],
-      "last_verified_commit": "a30291e3681963f8a3da4a5d284b0679746e8b48",
+      "last_verified_commit": "02ea3e7ceab97eaf3926b71cde78aa453092e47f",
       "last_verified_environment": "isolated_postgresql",
       "last_evidence_update": "2026-10-28",
       "notes": [
         "Trace only: docs/verification/VECTOR_V26_I01_I09_PRODUCTION_EVIDENCE_REMEDIATION.md; this assurance row adds no runtime implementation denominator.",
         "2026-10-27 evidence closure: Clean account passes; observed drawdown above stored max is a discrepancy without mutation, while a larger historical maximum is preserved and missing history is incomplete; injected balance/execution controls also fail. Procedure: No additional local test needed. Q1 plus account snapshot histories must reproduce drawdown residuals without modifying maxima.",
-        "stage-a: Clean account passes; observed drawdown above stored max is a discrepancy without mutation, while a larger historical maximum is preserved and missing history is incomplete; injected balance/execution controls also fail."
+        "stage-a: Clean account passes; observed drawdown above stored max is a discrepancy without mutation, while a larger historical maximum is preserved and missing history is incomplete; injected balance/execution controls also fail.",
+        "stage-bcd: Clean account passes; observed drawdown above stored max is a discrepancy without mutation, while a larger historical maximum is preserved and missing history is incomplete; injected balance/execution controls also fail."
       ],
       "assessed_commit": "d9a0aeb5d14233fc95e9e5cc55d8748814362f59",
       "roadmap_reference": "docs/roadmap/VECTOR_POST_REMEDIATION_IMPLEMENTATION_ROADMAP.md",
@@ -2124,7 +2297,26 @@
           "environment": "isolated_postgresql",
           "weight": 1,
           "max_age_days": 90,
-          "evidence": []
+          "evidence": [
+            {
+              "requirement_id": "VEC-P0-110",
+              "obligation_id": "VEC-P0-110-V1",
+              "type": "integration",
+              "result": "PASS",
+              "environment": "isolated_postgresql",
+              "fixture": "Exact cases in retained JUnit on task-owned PostgreSQL 17; no production data.",
+              "synthetic": true,
+              "git_sha": "02ea3e7ceab97eaf3926b71cde78aa453092e47f",
+              "date": "2026-10-28",
+              "execution_timestamp": "2026-10-28T14:04:49.284183+00:00",
+              "dependency_hash": "57270f5c66616b3760fa32230d2dba2b9019b7ef7871e974b1d27f7ad7e09bae",
+              "reviewer": "Codex stage-specific QA review",
+              "artifact": "docs/progress/evidence/phase0-local-20261028/stage-bcd-VEC-P0-110-V1.json",
+              "artifact_sha256": "0835fa48cb4b83c53ee62b40794a8f3e34fea1a9c5037d46fa39678999a3ba6e",
+              "limitations": "Synthetic local fixtures; production, browser and product acceptance remain pending.",
+              "rationale": "GET /api/v1/signals scoped by account annotates the newest matching risk decision for the requested account, correctly distinguishing older decisions and ignoring decisions belonging to foreign accounts/exchanges; unmatched signals remain null."
+            }
+          ]
         },
         {
           "id": "VEC-P0-110-V2",
@@ -2146,7 +2338,7 @@
       "current_state": "BLOCKED",
       "assessment": "UNKNOWN",
       "blocking_issues": [
-        "Local V1 incomplete: HTTP success smoke coverage lacks competing annotation rows and qualified newest-match assertions. Production V2 and explicit product acceptance pending."
+        "Local V1 passed; production V2, applicable browser V3 and explicit product acceptance remain pending."
       ],
       "source_paths": [
         "app/Http/Controllers/Api/V1/ResearchController.php"
@@ -2167,16 +2359,17 @@
         "tests",
         "tests/Feature/Api/CompleteApiEndpointAuditTest.php"
       ],
-      "last_verified_commit": null,
-      "last_verified_environment": null,
-      "last_evidence_update": "2026-10-27",
+      "last_verified_commit": "02ea3e7ceab97eaf3926b71cde78aa453092e47f",
+      "last_verified_environment": "isolated_postgresql",
+      "last_evidence_update": "2026-10-28",
       "notes": [
         "Trace only: docs/verification/VECTOR_V26_I01_I09_PRODUCTION_EVIDENCE_REMEDIATION.md; this assurance row adds no runtime implementation denominator.",
-        "2026-10-27 evidence closure: HTTP success smoke coverage lacks competing annotation rows and qualified newest-match assertions. Procedure: Seed older/newer matching decisions and a newer foreign-account/foreign-exchange decision for one signal. Read annotations and assert newest matching row only, plus missing-match unavailable state."
+        "2026-10-27 evidence closure: HTTP success smoke coverage lacks competing annotation rows and qualified newest-match assertions. Procedure: Seed older/newer matching decisions and a newer foreign-account/foreign-exchange decision for one signal. Read annotations and assert newest matching row only, plus missing-match unavailable state.",
+        "stage-bcd: GET /api/v1/signals scoped by account annotates the newest matching risk decision for the requested account, correctly distinguishing older decisions and ignoring decisions belonging to foreign accounts/exchanges; unmatched signals remain null."
       ],
       "assessed_commit": "d9a0aeb5d14233fc95e9e5cc55d8748814362f59",
       "roadmap_reference": "docs/roadmap/VECTOR_POST_REMEDIATION_IMPLEMENTATION_ROADMAP.md",
-      "verification_assessment": "UNAVAILABLE",
+      "verification_assessment": "PARTIAL_LOCAL",
       "product_assessment": "NOT_ACCEPTED",
       "roadmap_section": "Phase 0"
     },
@@ -2222,6 +2415,24 @@
               "reviewer": "Codex stage-specific QA review",
               "artifact": "docs/progress/evidence/phase0-local-20261028/stage-a-VEC-P0-111-V1.json",
               "artifact_sha256": "950482862f55107aca9320bac254745636748635195136b4211d644d68e06bcb",
+              "limitations": "Synthetic local fixtures; production, browser and product acceptance remain pending.",
+              "rationale": "Direct statistics tests exclude open and partially closed positions from closed-trade winrate, PF, R and PnL; real lifecycle entry/TP1/TP2 produces three fills counted as one closed trade, with separate realized/unrealized PnL and exact fees. Positive wins/losses and account isolation are covered."
+            },
+            {
+              "requirement_id": "VEC-P0-111",
+              "obligation_id": "VEC-P0-111-V1",
+              "type": "integration",
+              "result": "PASS",
+              "environment": "isolated_postgresql",
+              "fixture": "Exact cases in retained JUnit on task-owned PostgreSQL 17; no production data.",
+              "synthetic": true,
+              "git_sha": "02ea3e7ceab97eaf3926b71cde78aa453092e47f",
+              "date": "2026-10-28",
+              "execution_timestamp": "2026-10-28T14:04:49.284183+00:00",
+              "dependency_hash": "57270f5c66616b3760fa32230d2dba2b9019b7ef7871e974b1d27f7ad7e09bae",
+              "reviewer": "Codex stage-specific QA review",
+              "artifact": "docs/progress/evidence/phase0-local-20261028/stage-bcd-VEC-P0-111-V1.json",
+              "artifact_sha256": "b306750cf33204152cc525ed49cf1a05308ecf4e5e73426db3459416206fd03b",
               "limitations": "Synthetic local fixtures; production, browser and product acceptance remain pending.",
               "rationale": "Direct statistics tests exclude open and partially closed positions from closed-trade winrate, PF, R and PnL; real lifecycle entry/TP1/TP2 produces three fills counted as one closed trade, with separate realized/unrealized PnL and exact fees. Positive wins/losses and account isolation are covered."
             }
@@ -2271,13 +2482,14 @@
         "tests",
         "tests/Feature/PaperTrading/PerformanceStatisticsTest.php"
       ],
-      "last_verified_commit": "a30291e3681963f8a3da4a5d284b0679746e8b48",
+      "last_verified_commit": "02ea3e7ceab97eaf3926b71cde78aa453092e47f",
       "last_verified_environment": "isolated_postgresql",
       "last_evidence_update": "2026-10-28",
       "notes": [
         "Trace only: docs/verification/VECTOR_V26_I01_I09_PRODUCTION_EVIDENCE_REMEDIATION.md; this assurance row adds no runtime implementation denominator.",
         "2026-10-27 evidence closure: Open economics exclusion passes. P2 partial-population test targets a different service; no direct partial-exit negative for the Statistics page service. Procedure: Exercise PerformanceStatisticsService and statistics API with OPEN, PARTIALLY_CLOSED, CLOSED_TP and CLOSED_SL, multiple partial executions per position. Assert only closed positions form winrate/PF/R denominators and one closed position is one trade.",
-        "stage-a: Direct statistics tests exclude open and partially closed positions from closed-trade winrate, PF, R and PnL; real lifecycle entry/TP1/TP2 produces three fills counted as one closed trade, with separate realized/unrealized PnL and exact fees. Positive wins/losses and account isolation are covered."
+        "stage-a: Direct statistics tests exclude open and partially closed positions from closed-trade winrate, PF, R and PnL; real lifecycle entry/TP1/TP2 produces three fills counted as one closed trade, with separate realized/unrealized PnL and exact fees. Positive wins/losses and account isolation are covered.",
+        "stage-bcd: Direct statistics tests exclude open and partially closed positions from closed-trade winrate, PF, R and PnL; real lifecycle entry/TP1/TP2 produces three fills counted as one closed trade, with separate realized/unrealized PnL and exact fees. Positive wins/losses and account isolation are covered."
       ],
       "assessed_commit": "d9a0aeb5d14233fc95e9e5cc55d8748814362f59",
       "roadmap_reference": "docs/roadmap/VECTOR_POST_REMEDIATION_IMPLEMENTATION_ROADMAP.md",
@@ -2347,6 +2559,24 @@
               "artifact_sha256": "5479960232fa224bff230fd2e3b46f3c58014faf6964f5fd6a581cfdc8299f54",
               "limitations": "Synthetic local fixtures; production, browser and product acceptance remain pending.",
               "rationale": "Closing-only history returns null PnL and incomplete in API service and calendar CSV; inception is a justified opening control; complete period reconciles commissions/funding."
+            },
+            {
+              "requirement_id": "VEC-P0-112",
+              "obligation_id": "VEC-P0-112-V1",
+              "type": "integration",
+              "result": "PASS",
+              "environment": "isolated_postgresql",
+              "fixture": "Exact cases in retained JUnit on task-owned PostgreSQL 17; no production data.",
+              "synthetic": true,
+              "git_sha": "02ea3e7ceab97eaf3926b71cde78aa453092e47f",
+              "date": "2026-10-28",
+              "execution_timestamp": "2026-10-28T14:04:49.284183+00:00",
+              "dependency_hash": "57270f5c66616b3760fa32230d2dba2b9019b7ef7871e974b1d27f7ad7e09bae",
+              "reviewer": "Codex stage-specific QA review",
+              "artifact": "docs/progress/evidence/phase0-local-20261028/stage-bcd-VEC-P0-112-V1.json",
+              "artifact_sha256": "bdf0fc5bbb654dc350da293015eb5fe5198ded12fe00b4e767f5e0c64a1716fa",
+              "limitations": "Synthetic local fixtures; production, browser and product acceptance remain pending.",
+              "rationale": "Closing-only history returns null PnL and incomplete in API service and calendar CSV; inception is a justified opening control; complete period reconciles commissions/funding."
             }
           ]
         },
@@ -2391,13 +2621,14 @@
         "tests",
         "tests/Feature/PaperTrading/DailyPerformanceTest.php"
       ],
-      "last_verified_commit": "a30291e3681963f8a3da4a5d284b0679746e8b48",
+      "last_verified_commit": "02ea3e7ceab97eaf3926b71cde78aa453092e47f",
       "last_verified_environment": "isolated_postgresql",
       "last_evidence_update": "2026-10-28",
       "notes": [
         "Trace only: docs/verification/VECTOR_V26_I01_I09_PRODUCTION_EVIDENCE_REMEDIATION.md; this assurance row adds no runtime implementation denominator.",
         "2026-10-27 evidence closure: Closing-only history returns null PnL and incomplete in API service and calendar CSV; inception is a justified opening control; complete period reconciles commissions/funding. Procedure: No additional local test needed. Compare deployed daily API/CSV to opening/closing snapshots, including a missing-opening day.",
-        "stage-a: Closing-only history returns null PnL and incomplete in API service and calendar CSV; inception is a justified opening control; complete period reconciles commissions/funding."
+        "stage-a: Closing-only history returns null PnL and incomplete in API service and calendar CSV; inception is a justified opening control; complete period reconciles commissions/funding.",
+        "stage-bcd: Closing-only history returns null PnL and incomplete in API service and calendar CSV; inception is a justified opening control; complete period reconciles commissions/funding."
       ],
       "assessed_commit": "d9a0aeb5d14233fc95e9e5cc55d8748814362f59",
       "roadmap_reference": "docs/roadmap/VECTOR_POST_REMEDIATION_IMPLEMENTATION_ROADMAP.md",
@@ -2467,6 +2698,24 @@
               "artifact_sha256": "90463fa138012ece7fd603ca3155bf153c02b22c18502ac0759ff125a97e552b",
               "limitations": "Synthetic local fixtures; production, browser and product acceptance remain pending.",
               "rationale": "Observed BUY/SKIP counts are asserted; all-empty children produce INSUFFICIENT_DATA parent; requested 7d changes expected slots to 672."
+            },
+            {
+              "requirement_id": "VEC-P0-113",
+              "obligation_id": "VEC-P0-113-V1",
+              "type": "integration",
+              "result": "PASS",
+              "environment": "isolated_postgresql",
+              "fixture": "Exact cases in retained JUnit on task-owned PostgreSQL 17; no production data.",
+              "synthetic": true,
+              "git_sha": "02ea3e7ceab97eaf3926b71cde78aa453092e47f",
+              "date": "2026-10-28",
+              "execution_timestamp": "2026-10-28T14:04:49.284183+00:00",
+              "dependency_hash": "57270f5c66616b3760fa32230d2dba2b9019b7ef7871e974b1d27f7ad7e09bae",
+              "reviewer": "Codex stage-specific QA review",
+              "artifact": "docs/progress/evidence/phase0-local-20261028/stage-bcd-VEC-P0-113-V1.json",
+              "artifact_sha256": "f8c62f74e3a61b2c660461337b414ce14b8387b6767694a0d35efa29eab549f0",
+              "limitations": "Synthetic local fixtures; production, browser and product acceptance remain pending.",
+              "rationale": "Observed BUY/SKIP counts are asserted; all-empty children produce INSUFFICIENT_DATA parent; requested 7d changes expected slots to 672."
             }
           ]
         },
@@ -2511,13 +2760,14 @@
         "tests",
         "tests/Unit/Research/StrategyHealthServiceTest.php"
       ],
-      "last_verified_commit": "a30291e3681963f8a3da4a5d284b0679746e8b48",
+      "last_verified_commit": "02ea3e7ceab97eaf3926b71cde78aa453092e47f",
       "last_verified_environment": "isolated_postgresql",
       "last_evidence_update": "2026-10-28",
       "notes": [
         "Trace only: docs/verification/VECTOR_V26_I01_I09_PRODUCTION_EVIDENCE_REMEDIATION.md; this assurance row adds no runtime implementation denominator.",
         "2026-10-27 evidence closure: Observed BUY/SKIP counts are asserted; all-empty children produce INSUFFICIENT_DATA parent; requested 7d changes expected slots to 672. Procedure: No additional local test needed for the tested contract. Compare real 24h/7d source observations and child/parent health; do not infer activity from HEALTHY alone.",
-        "stage-a: Observed BUY/SKIP counts are asserted; all-empty children produce INSUFFICIENT_DATA parent; requested 7d changes expected slots to 672."
+        "stage-a: Observed BUY/SKIP counts are asserted; all-empty children produce INSUFFICIENT_DATA parent; requested 7d changes expected slots to 672.",
+        "stage-bcd: Observed BUY/SKIP counts are asserted; all-empty children produce INSUFFICIENT_DATA parent; requested 7d changes expected slots to 672."
       ],
       "assessed_commit": "d9a0aeb5d14233fc95e9e5cc55d8748814362f59",
       "roadmap_reference": "docs/roadmap/VECTOR_POST_REMEDIATION_IMPLEMENTATION_ROADMAP.md",
@@ -3719,6 +3969,24 @@
               "artifact_sha256": "831639be3fcb5b324120b48f4f49a04730fa58c64b2bd19ceab5a12669bd3c60",
               "limitations": "Synthetic local fixtures; production, browser and product acceptance remain pending.",
               "rationale": "Blocked drawdown SELL persists REJECTED state and PRE_RISK_ENTRY_BLOCKED journal, no RiskEngine row/fill; existing blocked-account positions still close and preserve accounting."
+            },
+            {
+              "requirement_id": "VEC-P0-127",
+              "obligation_id": "VEC-P0-127-V1",
+              "type": "integration",
+              "result": "PASS",
+              "environment": "isolated_postgresql",
+              "fixture": "Exact cases in retained JUnit on task-owned PostgreSQL 17; no production data.",
+              "synthetic": true,
+              "git_sha": "02ea3e7ceab97eaf3926b71cde78aa453092e47f",
+              "date": "2026-10-28",
+              "execution_timestamp": "2026-10-28T14:04:49.284183+00:00",
+              "dependency_hash": "57270f5c66616b3760fa32230d2dba2b9019b7ef7871e974b1d27f7ad7e09bae",
+              "reviewer": "Codex stage-specific QA review",
+              "artifact": "docs/progress/evidence/phase0-local-20261028/stage-bcd-VEC-P0-127-V1.json",
+              "artifact_sha256": "afc188dd6bf0bd2270921f4d8d527410787e9df7ef9c53c94fb90c70f3058f57",
+              "limitations": "Synthetic local fixtures; production, browser and product acceptance remain pending.",
+              "rationale": "Blocked drawdown SELL persists REJECTED state and PRE_RISK_ENTRY_BLOCKED journal, no RiskEngine row/fill; existing blocked-account positions still close and preserve accounting."
             }
           ]
         },
@@ -3765,13 +4033,14 @@
         "tests",
         "tests/Feature/PaperTrading/CentralExecutionEligibilityTest.php"
       ],
-      "last_verified_commit": "a30291e3681963f8a3da4a5d284b0679746e8b48",
+      "last_verified_commit": "02ea3e7ceab97eaf3926b71cde78aa453092e47f",
       "last_verified_environment": "isolated_postgresql",
       "last_evidence_update": "2026-10-28",
       "notes": [
         "Trace only: docs/verification/VECTOR_V26_I01_I09_PRODUCTION_EVIDENCE_REMEDIATION.md; this assurance row adds no runtime implementation denominator.",
         "2026-10-27 evidence closure: Blocked drawdown SELL persists REJECTED state and PRE_RISK_ENTRY_BLOCKED journal, no RiskEngine row/fill; existing blocked-account positions still close and preserve accounting. Procedure: No additional local test needed for this obligation. Verify real blocked-account journal/state lineage and continued open-position servicing without reactivation.",
-        "stage-a: Blocked drawdown SELL persists REJECTED state and PRE_RISK_ENTRY_BLOCKED journal, no RiskEngine row/fill; existing blocked-account positions still close and preserve accounting."
+        "stage-a: Blocked drawdown SELL persists REJECTED state and PRE_RISK_ENTRY_BLOCKED journal, no RiskEngine row/fill; existing blocked-account positions still close and preserve accounting.",
+        "stage-bcd: Blocked drawdown SELL persists REJECTED state and PRE_RISK_ENTRY_BLOCKED journal, no RiskEngine row/fill; existing blocked-account positions still close and preserve accounting."
       ],
       "assessed_commit": "d9a0aeb5d14233fc95e9e5cc55d8748814362f59",
       "roadmap_reference": "docs/roadmap/VECTOR_POST_REMEDIATION_IMPLEMENTATION_ROADMAP.md",
@@ -3841,6 +4110,24 @@
               "artifact_sha256": "4bb00bb35764a3476b3a61309c4f098aa253d0746116dfc8d38cda67f20a29d9",
               "limitations": "Synthetic local fixtures; production, browser and product acceptance remain pending.",
               "rationale": "Signals remain DISPATCHED before PAPER; completion acknowledges signals; injected unacknowledged upstream is repaired without redispatch of completed PAPER."
+            },
+            {
+              "requirement_id": "VEC-P0-201",
+              "obligation_id": "VEC-P0-201-V1",
+              "type": "integration",
+              "result": "PASS",
+              "environment": "isolated_postgresql",
+              "fixture": "Exact cases in retained JUnit on task-owned PostgreSQL 17; no production data.",
+              "synthetic": true,
+              "git_sha": "02ea3e7ceab97eaf3926b71cde78aa453092e47f",
+              "date": "2026-10-28",
+              "execution_timestamp": "2026-10-28T14:04:49.284183+00:00",
+              "dependency_hash": "57270f5c66616b3760fa32230d2dba2b9019b7ef7871e974b1d27f7ad7e09bae",
+              "reviewer": "Codex stage-specific QA review",
+              "artifact": "docs/progress/evidence/phase0-local-20261028/stage-bcd-VEC-P0-201-V1.json",
+              "artifact_sha256": "98151f8deefb54a5660848500387b1b81c0df56070d7224e6c0dea464b36b54e",
+              "limitations": "Synthetic local fixtures; production, browser and product acceptance remain pending.",
+              "rationale": "Signals remain DISPATCHED before PAPER; completion acknowledges signals; injected unacknowledged upstream is repaired without redispatch of completed PAPER."
             }
           ]
         },
@@ -3886,13 +4173,14 @@
         "tests",
         "tests/Feature/Trading/TradingPipelineStageATest.php"
       ],
-      "last_verified_commit": "a30291e3681963f8a3da4a5d284b0679746e8b48",
+      "last_verified_commit": "02ea3e7ceab97eaf3926b71cde78aa453092e47f",
       "last_verified_environment": "isolated_postgresql",
       "last_evidence_update": "2026-10-28",
       "notes": [
         "Trace only: docs/verification/VECTOR_V26_I01_I09_PRODUCTION_EVIDENCE_REMEDIATION.md; this assurance row adds no runtime implementation denominator.",
         "2026-10-27 evidence closure: Signals remain DISPATCHED before PAPER; completion acknowledges signals; injected unacknowledged upstream is repaired without redispatch of completed PAPER. Procedure: No additional local regression needed. Q4 correlate signals and PAPER terminal status by exchange/symbol/close time.",
-        "stage-a: Signals remain DISPATCHED before PAPER; completion acknowledges signals; injected unacknowledged upstream is repaired without redispatch of completed PAPER."
+        "stage-a: Signals remain DISPATCHED before PAPER; completion acknowledges signals; injected unacknowledged upstream is repaired without redispatch of completed PAPER.",
+        "stage-bcd: Signals remain DISPATCHED before PAPER; completion acknowledges signals; injected unacknowledged upstream is repaired without redispatch of completed PAPER."
       ],
       "assessed_commit": "d9a0aeb5d14233fc95e9e5cc55d8748814362f59",
       "roadmap_reference": "docs/roadmap/VECTOR_POST_REMEDIATION_IMPLEMENTATION_ROADMAP.md",
@@ -3962,6 +4250,24 @@
               "artifact_sha256": "8f72ef307f3d986d650ae0e9a2aff1f5494e5d61ac864006a761724fb2460769",
               "limitations": "Synthetic local fixtures; production, browser and product acceptance remain pending.",
               "rationale": "Minimum-step half exit creates no zero fill and leaves position open; full SL closes; normal TP1/TP2 quantity control passes."
+            },
+            {
+              "requirement_id": "VEC-P0-202",
+              "obligation_id": "VEC-P0-202-V1",
+              "type": "integration",
+              "result": "PASS",
+              "environment": "isolated_postgresql",
+              "fixture": "Exact cases in retained JUnit on task-owned PostgreSQL 17; no production data.",
+              "synthetic": true,
+              "git_sha": "02ea3e7ceab97eaf3926b71cde78aa453092e47f",
+              "date": "2026-10-28",
+              "execution_timestamp": "2026-10-28T14:04:49.284183+00:00",
+              "dependency_hash": "57270f5c66616b3760fa32230d2dba2b9019b7ef7871e974b1d27f7ad7e09bae",
+              "reviewer": "Codex stage-specific QA review",
+              "artifact": "docs/progress/evidence/phase0-local-20261028/stage-bcd-VEC-P0-202-V1.json",
+              "artifact_sha256": "100bde6ae76c5704c996fd49f6cf2a989d1e8eebecc93dce82bfbc3a41337901",
+              "limitations": "Synthetic local fixtures; production, browser and product acceptance remain pending.",
+              "rationale": "Minimum-step half exit creates no zero fill and leaves position open; full SL closes; normal TP1/TP2 quantity control passes."
             }
           ]
         },
@@ -4006,13 +4312,14 @@
         "tests",
         "tests/Feature/PaperTrading/PositionLifecycleStageBTest.php"
       ],
-      "last_verified_commit": "a30291e3681963f8a3da4a5d284b0679746e8b48",
+      "last_verified_commit": "02ea3e7ceab97eaf3926b71cde78aa453092e47f",
       "last_verified_environment": "isolated_postgresql",
       "last_evidence_update": "2026-10-28",
       "notes": [
         "Trace only: docs/verification/VECTOR_V26_I01_I09_PRODUCTION_EVIDENCE_REMEDIATION.md; this assurance row adds no runtime implementation denominator.",
         "2026-10-27 evidence closure: Minimum-step half exit creates no zero fill and leaves position open; full SL closes; normal TP1/TP2 quantity control passes. Procedure: No additional local regression needed. Q3 inspect exact lot steps and zero-quantity execution count; lack of affected examples is unavailable operational evidence.",
-        "stage-a: Minimum-step half exit creates no zero fill and leaves position open; full SL closes; normal TP1/TP2 quantity control passes."
+        "stage-a: Minimum-step half exit creates no zero fill and leaves position open; full SL closes; normal TP1/TP2 quantity control passes.",
+        "stage-bcd: Minimum-step half exit creates no zero fill and leaves position open; full SL closes; normal TP1/TP2 quantity control passes."
       ],
       "assessed_commit": "d9a0aeb5d14233fc95e9e5cc55d8748814362f59",
       "roadmap_reference": "docs/roadmap/VECTOR_POST_REMEDIATION_IMPLEMENTATION_ROADMAP.md",
@@ -4082,6 +4389,24 @@
               "artifact_sha256": "4c79a993427892da0bce11d2ba47e9e519b840de6cf70dc459605d6a7edc0c64",
               "limitations": "Synthetic local fixtures; production, browser and product acceptance remain pending.",
               "rationale": "Unknown schedule and 25-minute offset fail closed; certified 8h/dynamic 4h schedules and zero-settlement closed lifetime work; late observed settlement completes an exact held-quantity fixture."
+            },
+            {
+              "requirement_id": "VEC-P0-203",
+              "obligation_id": "VEC-P0-203-V1",
+              "type": "integration",
+              "result": "PASS",
+              "environment": "isolated_postgresql",
+              "fixture": "Exact cases in retained JUnit on task-owned PostgreSQL 17; no production data.",
+              "synthetic": true,
+              "git_sha": "02ea3e7ceab97eaf3926b71cde78aa453092e47f",
+              "date": "2026-10-28",
+              "execution_timestamp": "2026-10-28T14:04:49.284183+00:00",
+              "dependency_hash": "57270f5c66616b3760fa32230d2dba2b9019b7ef7871e974b1d27f7ad7e09bae",
+              "reviewer": "Codex stage-specific QA review",
+              "artifact": "docs/progress/evidence/phase0-local-20261028/stage-bcd-VEC-P0-203-V1.json",
+              "artifact_sha256": "fd0c0b827bf421ac8f2d41ead54a7b981a860e9094571043dfe5f2d1d43607bd",
+              "limitations": "Synthetic local fixtures; production, browser and product acceptance remain pending.",
+              "rationale": "Unknown schedule and 25-minute offset fail closed; certified 8h/dynamic 4h schedules and zero-settlement closed lifetime work; late observed settlement completes an exact held-quantity fixture."
             }
           ]
         },
@@ -4128,13 +4453,14 @@
         "tests",
         "tests/Feature/PaperTrading/PositionLifecycleStageBTest.php"
       ],
-      "last_verified_commit": "a30291e3681963f8a3da4a5d284b0679746e8b48",
+      "last_verified_commit": "02ea3e7ceab97eaf3926b71cde78aa453092e47f",
       "last_verified_environment": "isolated_postgresql",
       "last_evidence_update": "2026-10-28",
       "notes": [
         "Trace only: docs/verification/VECTOR_V26_I01_I09_PRODUCTION_EVIDENCE_REMEDIATION.md; this assurance row adds no runtime implementation denominator.",
         "2026-10-27 evidence closure: Unknown schedule and 25-minute offset fail closed; certified 8h/dynamic 4h schedules and zero-settlement closed lifetime work; late observed settlement completes an exact held-quantity fixture. Procedure: No additional local regression needed. Q3 and certified schedules must explain each production incomplete position; missing events/marks remain unknown.",
-        "stage-a: Unknown schedule and 25-minute offset fail closed; certified 8h/dynamic 4h schedules and zero-settlement closed lifetime work; late observed settlement completes an exact held-quantity fixture."
+        "stage-a: Unknown schedule and 25-minute offset fail closed; certified 8h/dynamic 4h schedules and zero-settlement closed lifetime work; late observed settlement completes an exact held-quantity fixture.",
+        "stage-bcd: Unknown schedule and 25-minute offset fail closed; certified 8h/dynamic 4h schedules and zero-settlement closed lifetime work; late observed settlement completes an exact held-quantity fixture."
       ],
       "assessed_commit": "d9a0aeb5d14233fc95e9e5cc55d8748814362f59",
       "roadmap_reference": "docs/roadmap/VECTOR_POST_REMEDIATION_IMPLEMENTATION_ROADMAP.md",
@@ -4204,6 +4530,24 @@
               "artifact_sha256": "33a0c2ba665e4a83c1959a5bf9ea3dd22dc6abb28a2733dc8fcc3b4eedc3e8b2",
               "limitations": "Synthetic local fixtures; production, browser and product acceptance remain pending.",
               "rationale": "Mixed batch reports PARTIAL with one failure/one processed; targeted account selection processes only one account and records counts."
+            },
+            {
+              "requirement_id": "VEC-P0-204",
+              "obligation_id": "VEC-P0-204-V1",
+              "type": "integration",
+              "result": "PASS",
+              "environment": "isolated_postgresql",
+              "fixture": "Exact cases in retained JUnit on task-owned PostgreSQL 17; no production data.",
+              "synthetic": true,
+              "git_sha": "02ea3e7ceab97eaf3926b71cde78aa453092e47f",
+              "date": "2026-10-28",
+              "execution_timestamp": "2026-10-28T14:04:49.284183+00:00",
+              "dependency_hash": "57270f5c66616b3760fa32230d2dba2b9019b7ef7871e974b1d27f7ad7e09bae",
+              "reviewer": "Codex stage-specific QA review",
+              "artifact": "docs/progress/evidence/phase0-local-20261028/stage-bcd-VEC-P0-204-V1.json",
+              "artifact_sha256": "a9ba5f782b47e186446e8af3fc47c8cbbfa94823538bdbfeed78419a3ff49c41",
+              "limitations": "Synthetic local fixtures; production, browser and product acceptance remain pending.",
+              "rationale": "Mixed batch reports PARTIAL with one failure/one processed; targeted account selection processes only one account and records counts."
             }
           ]
         },
@@ -4249,13 +4593,14 @@
         "tests",
         "tests/Feature/Trading/TradingPipelineStageATest.php"
       ],
-      "last_verified_commit": "a30291e3681963f8a3da4a5d284b0679746e8b48",
+      "last_verified_commit": "02ea3e7ceab97eaf3926b71cde78aa453092e47f",
       "last_verified_environment": "isolated_postgresql",
       "last_evidence_update": "2026-10-28",
       "notes": [
         "Trace only: docs/verification/VECTOR_V26_I01_I09_PRODUCTION_EVIDENCE_REMEDIATION.md; this assurance row adds no runtime implementation denominator.",
         "2026-10-27 evidence closure: Mixed batch reports PARTIAL with one failure/one processed; targeted account selection processes only one account and records counts. Procedure: No additional local regression needed for mixed-failure finding; broader all-failed/recovery matrix remains under P0-002. Q4 verify real partial-batch counters and logs.",
-        "stage-a: Mixed batch reports PARTIAL with one failure/one processed; targeted account selection processes only one account and records counts."
+        "stage-a: Mixed batch reports PARTIAL with one failure/one processed; targeted account selection processes only one account and records counts.",
+        "stage-bcd: Mixed batch reports PARTIAL with one failure/one processed; targeted account selection processes only one account and records counts."
       ],
       "assessed_commit": "d9a0aeb5d14233fc95e9e5cc55d8748814362f59",
       "roadmap_reference": "docs/roadmap/VECTOR_POST_REMEDIATION_IMPLEMENTATION_ROADMAP.md",
@@ -4325,6 +4670,24 @@
               "artifact_sha256": "beb407eb3c5f13bbdb8cf4adc1196f839499e150d413e13537f4217603e133b5",
               "limitations": "Synthetic local fixtures; production, browser and product acceptance remain pending.",
               "rationale": "Binance gap job never dispatches Bybit SyncCandlesJob; Bybit control does; Binance candle conflict rolls back rather than overwriting observations."
+            },
+            {
+              "requirement_id": "VEC-P0-205",
+              "obligation_id": "VEC-P0-205-V1",
+              "type": "integration",
+              "result": "PASS",
+              "environment": "isolated_postgresql",
+              "fixture": "Exact cases in retained JUnit on task-owned PostgreSQL 17; no production data.",
+              "synthetic": true,
+              "git_sha": "02ea3e7ceab97eaf3926b71cde78aa453092e47f",
+              "date": "2026-10-28",
+              "execution_timestamp": "2026-10-28T14:04:49.284183+00:00",
+              "dependency_hash": "57270f5c66616b3760fa32230d2dba2b9019b7ef7871e974b1d27f7ad7e09bae",
+              "reviewer": "Codex stage-specific QA review",
+              "artifact": "docs/progress/evidence/phase0-local-20261028/stage-bcd-VEC-P0-205-V1.json",
+              "artifact_sha256": "7d8a71dd4680939f042e26e64e8da11622e07bd72706f6a21b80b39895e62727",
+              "limitations": "Synthetic local fixtures; production, browser and product acceptance remain pending.",
+              "rationale": "Binance gap job never dispatches Bybit SyncCandlesJob; Bybit control does; Binance candle conflict rolls back rather than overwriting observations."
             }
           ]
         },
@@ -4371,13 +4734,14 @@
         "tests",
         "tests/Feature/PaperTrading/ExchangeIngestionAndValuationStageCTest.php"
       ],
-      "last_verified_commit": "a30291e3681963f8a3da4a5d284b0679746e8b48",
+      "last_verified_commit": "02ea3e7ceab97eaf3926b71cde78aa453092e47f",
       "last_verified_environment": "isolated_postgresql",
       "last_evidence_update": "2026-10-28",
       "notes": [
         "Trace only: docs/verification/VECTOR_V26_I01_I09_PRODUCTION_EVIDENCE_REMEDIATION.md; this assurance row adds no runtime implementation denominator.",
         "2026-10-27 evidence closure: Binance gap job never dispatches Bybit SyncCandlesJob; Bybit control does; Binance candle conflict rolls back rather than overwriting observations. Procedure: No additional local regression needed for routing. Q6 and already-recorded recovery logs must show Binance-only retrieval; never trigger production recovery for this audit.",
-        "stage-a: Binance gap job never dispatches Bybit SyncCandlesJob; Bybit control does; Binance candle conflict rolls back rather than overwriting observations."
+        "stage-a: Binance gap job never dispatches Bybit SyncCandlesJob; Bybit control does; Binance candle conflict rolls back rather than overwriting observations.",
+        "stage-bcd: Binance gap job never dispatches Bybit SyncCandlesJob; Bybit control does; Binance candle conflict rolls back rather than overwriting observations."
       ],
       "assessed_commit": "d9a0aeb5d14233fc95e9e5cc55d8748814362f59",
       "roadmap_reference": "docs/roadmap/VECTOR_POST_REMEDIATION_IMPLEMENTATION_ROADMAP.md",
@@ -4447,6 +4811,24 @@
               "artifact_sha256": "b11f7824d959d94196a1b46d8c66965a06fef831b14735f5d9bb43fcfefd2b4c",
               "limitations": "Synthetic local fixtures; production, browser and product acceptance remain pending.",
               "rationale": "Invalid Binance account provenance does not abort valid peer; event contains one failure and one processed account with PARTIAL status."
+            },
+            {
+              "requirement_id": "VEC-P0-206",
+              "obligation_id": "VEC-P0-206-V1",
+              "type": "integration",
+              "result": "PASS",
+              "environment": "isolated_postgresql",
+              "fixture": "Exact cases in retained JUnit on task-owned PostgreSQL 17; no production data.",
+              "synthetic": true,
+              "git_sha": "02ea3e7ceab97eaf3926b71cde78aa453092e47f",
+              "date": "2026-10-28",
+              "execution_timestamp": "2026-10-28T14:04:49.284183+00:00",
+              "dependency_hash": "57270f5c66616b3760fa32230d2dba2b9019b7ef7871e974b1d27f7ad7e09bae",
+              "reviewer": "Codex stage-specific QA review",
+              "artifact": "docs/progress/evidence/phase0-local-20261028/stage-bcd-VEC-P0-206-V1.json",
+              "artifact_sha256": "a02e122eb3370722b0bae86821b721f8319a69c2cf4cab78d3ad72a871a1a2ae",
+              "limitations": "Synthetic local fixtures; production, browser and product acceptance remain pending.",
+              "rationale": "Invalid Binance account provenance does not abort valid peer; event contains one failure and one processed account with PARTIAL status."
             }
           ]
         },
@@ -4491,13 +4873,14 @@
         "tests",
         "tests/Feature/Trading/TradingPipelineStageATest.php"
       ],
-      "last_verified_commit": "a30291e3681963f8a3da4a5d284b0679746e8b48",
+      "last_verified_commit": "02ea3e7ceab97eaf3926b71cde78aa453092e47f",
       "last_verified_environment": "isolated_postgresql",
       "last_evidence_update": "2026-10-28",
       "notes": [
         "Trace only: docs/verification/VECTOR_V26_I01_I09_PRODUCTION_EVIDENCE_REMEDIATION.md; this assurance row adds no runtime implementation denominator.",
         "2026-10-27 evidence closure: Invalid Binance account provenance does not abort valid peer; event contains one failure and one processed account with PARTIAL status. Procedure: No additional local regression needed. Q4 plus existing account-specific failure logs must show surviving peers completed.",
-        "stage-a: Invalid Binance account provenance does not abort valid peer; event contains one failure and one processed account with PARTIAL status."
+        "stage-a: Invalid Binance account provenance does not abort valid peer; event contains one failure and one processed account with PARTIAL status.",
+        "stage-bcd: Invalid Binance account provenance does not abort valid peer; event contains one failure and one processed account with PARTIAL status."
       ],
       "assessed_commit": "d9a0aeb5d14233fc95e9e5cc55d8748814362f59",
       "roadmap_reference": "docs/roadmap/VECTOR_POST_REMEDIATION_IMPLEMENTATION_ROADMAP.md",
@@ -4567,6 +4950,24 @@
               "artifact_sha256": "13b9cb09ac8fc4efaa7567a496c7f9f65563709bdb610e7aed6d6c4bc78d34f0",
               "limitations": "Synthetic local fixtures; production, browser and product acceptance remain pending.",
               "rationale": "Late event uses held quantity after TP1, exact -0.03 fixture amount, preserves closed status/equity identity and settles once. Missing closed mark is never fabricated."
+            },
+            {
+              "requirement_id": "VEC-P0-207",
+              "obligation_id": "VEC-P0-207-V1",
+              "type": "integration",
+              "result": "PASS",
+              "environment": "isolated_postgresql",
+              "fixture": "Exact cases in retained JUnit on task-owned PostgreSQL 17; no production data.",
+              "synthetic": true,
+              "git_sha": "02ea3e7ceab97eaf3926b71cde78aa453092e47f",
+              "date": "2026-10-28",
+              "execution_timestamp": "2026-10-28T14:04:49.284183+00:00",
+              "dependency_hash": "57270f5c66616b3760fa32230d2dba2b9019b7ef7871e974b1d27f7ad7e09bae",
+              "reviewer": "Codex stage-specific QA review",
+              "artifact": "docs/progress/evidence/phase0-local-20261028/stage-bcd-VEC-P0-207-V1.json",
+              "artifact_sha256": "f4a909149af3792df3bed57c6d5b11848def9e55ad6dc0032121e8119153a9bc",
+              "limitations": "Synthetic local fixtures; production, browser and product acceptance remain pending.",
+              "rationale": "Late event uses held quantity after TP1, exact -0.03 fixture amount, preserves closed status/equity identity and settles once. Missing closed mark is never fabricated."
             }
           ]
         },
@@ -4614,13 +5015,14 @@
         "tests",
         "tests/Feature/PaperTrading/PositionLifecycleStageBTest.php"
       ],
-      "last_verified_commit": "a30291e3681963f8a3da4a5d284b0679746e8b48",
+      "last_verified_commit": "02ea3e7ceab97eaf3926b71cde78aa453092e47f",
       "last_verified_environment": "isolated_postgresql",
       "last_evidence_update": "2026-10-28",
       "notes": [
         "Trace only: docs/verification/VECTOR_V26_I01_I09_PRODUCTION_EVIDENCE_REMEDIATION.md; this assurance row adds no runtime implementation denominator.",
         "2026-10-27 evidence closure: Late event uses held quantity after TP1, exact -0.03 fixture amount, preserves closed status/equity identity and settles once. Missing closed mark is never fabricated. Procedure: No additional local regression needed. For five historical candidates obtain exact entry/exit timing, held quantity, event rate/mark and settlement records; report unresolved amounts, never synthesize them.",
-        "stage-a: Late event uses held quantity after TP1, exact -0.03 fixture amount, preserves closed status/equity identity and settles once. Missing closed mark is never fabricated."
+        "stage-a: Late event uses held quantity after TP1, exact -0.03 fixture amount, preserves closed status/equity identity and settles once. Missing closed mark is never fabricated.",
+        "stage-bcd: Late event uses held quantity after TP1, exact -0.03 fixture amount, preserves closed status/equity identity and settles once. Missing closed mark is never fabricated."
       ],
       "assessed_commit": "d9a0aeb5d14233fc95e9e5cc55d8748814362f59",
       "roadmap_reference": "docs/roadmap/VECTOR_POST_REMEDIATION_IMPLEMENTATION_ROADMAP.md",
@@ -4690,6 +5092,24 @@
               "artifact_sha256": "eccb393170d5d48a4db1189d9de766955d693637c39ddd4e7fa19aba113a96eb",
               "limitations": "Synthetic local fixtures; production, browser and product acceptance remain pending.",
               "rationale": "Fresh checkpoint with 25-minute-old position valuation remains STALE/incomplete with valued_through retained; no-open-position case is FLAT_VERIFIED."
+            },
+            {
+              "requirement_id": "VEC-P0-208",
+              "obligation_id": "VEC-P0-208-V1",
+              "type": "integration",
+              "result": "PASS",
+              "environment": "isolated_postgresql",
+              "fixture": "Exact cases in retained JUnit on task-owned PostgreSQL 17; no production data.",
+              "synthetic": true,
+              "git_sha": "02ea3e7ceab97eaf3926b71cde78aa453092e47f",
+              "date": "2026-10-28",
+              "execution_timestamp": "2026-10-28T14:04:49.284183+00:00",
+              "dependency_hash": "57270f5c66616b3760fa32230d2dba2b9019b7ef7871e974b1d27f7ad7e09bae",
+              "reviewer": "Codex stage-specific QA review",
+              "artifact": "docs/progress/evidence/phase0-local-20261028/stage-bcd-VEC-P0-208-V1.json",
+              "artifact_sha256": "484a71b7222ab98096e26e0c7988522dd3e6b6dd5837b4e4e6e364fa3ed06be4",
+              "limitations": "Synthetic local fixtures; production, browser and product acceptance remain pending.",
+              "rationale": "Fresh checkpoint with 25-minute-old position valuation remains STALE/incomplete with valued_through retained; no-open-position case is FLAT_VERIFIED."
             }
           ]
         },
@@ -4737,13 +5157,14 @@
         "tests",
         "tests/Feature/PaperTrading/ExchangeIngestionAndValuationStageCTest.php"
       ],
-      "last_verified_commit": "a30291e3681963f8a3da4a5d284b0679746e8b48",
+      "last_verified_commit": "02ea3e7ceab97eaf3926b71cde78aa453092e47f",
       "last_verified_environment": "isolated_postgresql",
       "last_evidence_update": "2026-10-28",
       "notes": [
         "Trace only: docs/verification/VECTOR_V26_I01_I09_PRODUCTION_EVIDENCE_REMEDIATION.md; this assurance row adds no runtime implementation denominator.",
         "2026-10-27 evidence closure: Fresh checkpoint with 25-minute-old position valuation remains STALE/incomplete with valued_through retained; no-open-position case is FLAT_VERIFIED. Procedure: No additional local regression needed. Compare real snapshot recorded_at to valued_through and last_processed_event_at; a fresh snapshot alone is not evidence.",
-        "stage-a: Fresh checkpoint with 25-minute-old position valuation remains STALE/incomplete with valued_through retained; no-open-position case is FLAT_VERIFIED."
+        "stage-a: Fresh checkpoint with 25-minute-old position valuation remains STALE/incomplete with valued_through retained; no-open-position case is FLAT_VERIFIED.",
+        "stage-bcd: Fresh checkpoint with 25-minute-old position valuation remains STALE/incomplete with valued_through retained; no-open-position case is FLAT_VERIFIED."
       ],
       "assessed_commit": "d9a0aeb5d14233fc95e9e5cc55d8748814362f59",
       "roadmap_reference": "docs/roadmap/VECTOR_POST_REMEDIATION_IMPLEMENTATION_ROADMAP.md",
@@ -4813,6 +5234,24 @@
               "artifact_sha256": "f98f91734c7765bd02e62521bad139795604ba22d41558080c96b7c95cd36866",
               "limitations": "Synthetic local fixtures; production, browser and product acceptance remain pending.",
               "rationale": "5m candle is DISPATCHED before downstream processing and COMPLETED only after PAPER acknowledgment; mixed account outcomes remain PARTIAL."
+            },
+            {
+              "requirement_id": "VEC-P0-209",
+              "obligation_id": "VEC-P0-209-V1",
+              "type": "integration",
+              "result": "PASS",
+              "environment": "isolated_postgresql",
+              "fixture": "Exact cases in retained JUnit on task-owned PostgreSQL 17; no production data.",
+              "synthetic": true,
+              "git_sha": "02ea3e7ceab97eaf3926b71cde78aa453092e47f",
+              "date": "2026-10-28",
+              "execution_timestamp": "2026-10-28T14:04:49.284183+00:00",
+              "dependency_hash": "57270f5c66616b3760fa32230d2dba2b9019b7ef7871e974b1d27f7ad7e09bae",
+              "reviewer": "Codex stage-specific QA review",
+              "artifact": "docs/progress/evidence/phase0-local-20261028/stage-bcd-VEC-P0-209-V1.json",
+              "artifact_sha256": "cf27ee026316b3c3f01f639c480c6ea0c30f92271858d10300edc2e4cd715b81",
+              "limitations": "Synthetic local fixtures; production, browser and product acceptance remain pending.",
+              "rationale": "5m candle is DISPATCHED before downstream processing and COMPLETED only after PAPER acknowledgment; mixed account outcomes remain PARTIAL."
             }
           ]
         },
@@ -4858,13 +5297,14 @@
         "tests",
         "tests/Feature/Trading/TradingPipelineStageATest.php"
       ],
-      "last_verified_commit": "a30291e3681963f8a3da4a5d284b0679746e8b48",
+      "last_verified_commit": "02ea3e7ceab97eaf3926b71cde78aa453092e47f",
       "last_verified_environment": "isolated_postgresql",
       "last_evidence_update": "2026-10-28",
       "notes": [
         "Trace only: docs/verification/VECTOR_V26_I01_I09_PRODUCTION_EVIDENCE_REMEDIATION.md; this assurance row adds no runtime implementation denominator.",
         "2026-10-27 evidence closure: 5m candle is DISPATCHED before downstream processing and COMPLETED only after PAPER acknowledgment; mixed account outcomes remain PARTIAL. Procedure: No additional local regression needed. Q4 verify no completed 5m parent precedes or contradicts its PAPER outcome.",
-        "stage-a: 5m candle is DISPATCHED before downstream processing and COMPLETED only after PAPER acknowledgment; mixed account outcomes remain PARTIAL."
+        "stage-a: 5m candle is DISPATCHED before downstream processing and COMPLETED only after PAPER acknowledgment; mixed account outcomes remain PARTIAL.",
+        "stage-bcd: 5m candle is DISPATCHED before downstream processing and COMPLETED only after PAPER acknowledgment; mixed account outcomes remain PARTIAL."
       ],
       "assessed_commit": "d9a0aeb5d14233fc95e9e5cc55d8748814362f59",
       "roadmap_reference": "docs/roadmap/VECTOR_POST_REMEDIATION_IMPLEMENTATION_ROADMAP.md",
@@ -4890,12 +5330,12 @@
           "description": "Common pure input-to-decision signature is declared",
           "status": "IMPLEMENTED",
           "evidence": {
-            "git_sha": "a30291e3681963f8a3da4a5d284b0679746e8b48",
+            "git_sha": "02ea3e7ceab97eaf3926b71cde78aa453092e47f",
             "date": "2026-10-28",
             "environment": "local",
             "limitations": "Prior limited source atoms unchanged at stage review; watched tests updated. No additional implementation or product credit.",
             "reviewer": "Codex source assessment",
-            "dependency_hash": "8ea40b4934ee50f77b17d7d5302457c2179886738d7eab3fca40863bd35d8004",
+            "dependency_hash": "57270f5c66616b3760fa32230d2dba2b9019b7ef7871e974b1d27f7ad7e09bae",
             "references": [
               {
                 "path": "app/Strategy/Contracts/StrategyInterface.php",
@@ -5074,12 +5514,12 @@
           "description": "Registry exposes identifiers, versions, parameters and configuration hashes",
           "status": "IMPLEMENTED",
           "evidence": {
-            "git_sha": "a30291e3681963f8a3da4a5d284b0679746e8b48",
+            "git_sha": "02ea3e7ceab97eaf3926b71cde78aa453092e47f",
             "date": "2026-10-28",
             "environment": "local",
             "limitations": "Prior limited source atoms unchanged at stage review; watched tests updated. No additional implementation or product credit.",
             "reviewer": "Codex source assessment",
-            "dependency_hash": "8ea40b4934ee50f77b17d7d5302457c2179886738d7eab3fca40863bd35d8004",
+            "dependency_hash": "57270f5c66616b3760fa32230d2dba2b9019b7ef7871e974b1d27f7ad7e09bae",
             "references": [
               {
                 "path": "app/Strategy/Application/StrategyRegistry.php",
@@ -5258,12 +5698,12 @@
           "description": "Registry constructs only explicit approved family implementations",
           "status": "IMPLEMENTED",
           "evidence": {
-            "git_sha": "a30291e3681963f8a3da4a5d284b0679746e8b48",
+            "git_sha": "02ea3e7ceab97eaf3926b71cde78aa453092e47f",
             "date": "2026-10-28",
             "environment": "local",
             "limitations": "Prior limited source atoms unchanged at stage review; watched tests updated. No additional implementation or product credit.",
             "reviewer": "Codex source assessment",
-            "dependency_hash": "8ea40b4934ee50f77b17d7d5302457c2179886738d7eab3fca40863bd35d8004",
+            "dependency_hash": "57270f5c66616b3760fa32230d2dba2b9019b7ef7871e974b1d27f7ad7e09bae",
             "references": [
               {
                 "path": "app/Strategy/Application/StrategyRegistry.php",
@@ -5611,12 +6051,12 @@
           "description": "Existing comparison service scopes exchange results",
           "status": "IMPLEMENTED",
           "evidence": {
-            "git_sha": "a30291e3681963f8a3da4a5d284b0679746e8b48",
+            "git_sha": "02ea3e7ceab97eaf3926b71cde78aa453092e47f",
             "date": "2026-10-28",
             "environment": "local",
             "limitations": "Prior limited source atoms unchanged at stage review; watched tests updated. No additional implementation or product credit.",
             "reviewer": "Codex source assessment",
-            "dependency_hash": "8ea40b4934ee50f77b17d7d5302457c2179886738d7eab3fca40863bd35d8004",
+            "dependency_hash": "57270f5c66616b3760fa32230d2dba2b9019b7ef7871e974b1d27f7ad7e09bae",
             "references": [
               {
                 "path": "app/Exchanges/ExchangeComparisonService.php",
@@ -5721,12 +6161,12 @@
           "description": "Strategy comparison service provides per-strategy result processing",
           "status": "IMPLEMENTED",
           "evidence": {
-            "git_sha": "a30291e3681963f8a3da4a5d284b0679746e8b48",
+            "git_sha": "02ea3e7ceab97eaf3926b71cde78aa453092e47f",
             "date": "2026-10-28",
             "environment": "local",
             "limitations": "Prior limited source atoms unchanged at stage review; watched tests updated. No additional implementation or product credit.",
             "reviewer": "Codex source assessment",
-            "dependency_hash": "8ea40b4934ee50f77b17d7d5302457c2179886738d7eab3fca40863bd35d8004",
+            "dependency_hash": "57270f5c66616b3760fa32230d2dba2b9019b7ef7871e974b1d27f7ad7e09bae",
             "references": [
               {
                 "path": "app/Strategy/Application/StrategyComparisonService.php",
@@ -5831,12 +6271,12 @@
           "description": "Account performance calculations exist separately from cross-account views",
           "status": "IMPLEMENTED",
           "evidence": {
-            "git_sha": "a30291e3681963f8a3da4a5d284b0679746e8b48",
+            "git_sha": "02ea3e7ceab97eaf3926b71cde78aa453092e47f",
             "date": "2026-10-28",
             "environment": "local",
             "limitations": "Prior limited source atoms unchanged at stage review; watched tests updated. No additional implementation or product credit.",
             "reviewer": "Codex source assessment",
-            "dependency_hash": "8ea40b4934ee50f77b17d7d5302457c2179886738d7eab3fca40863bd35d8004",
+            "dependency_hash": "57270f5c66616b3760fa32230d2dba2b9019b7ef7871e974b1d27f7ad7e09bae",
             "references": [
               {
                 "path": "app/PaperTrading/Application/PerformanceStatisticsService.php",
@@ -5941,12 +6381,12 @@
           "description": "Registry defines signed funding and net gross-minus-fees-plus-funding identity",
           "status": "IMPLEMENTED",
           "evidence": {
-            "git_sha": "a30291e3681963f8a3da4a5d284b0679746e8b48",
+            "git_sha": "02ea3e7ceab97eaf3926b71cde78aa453092e47f",
             "date": "2026-10-28",
             "environment": "local",
             "limitations": "Prior limited source atoms unchanged at stage review; watched tests updated. No additional implementation or product credit.",
             "reviewer": "Codex source assessment",
-            "dependency_hash": "8ea40b4934ee50f77b17d7d5302457c2179886738d7eab3fca40863bd35d8004",
+            "dependency_hash": "57270f5c66616b3760fa32230d2dba2b9019b7ef7871e974b1d27f7ad7e09bae",
             "references": [
               {
                 "path": "app/Research/Domain/MetricRegistry.php",
@@ -6053,12 +6493,12 @@
           "description": "Registry includes drawdown-related metric definitions",
           "status": "IMPLEMENTED",
           "evidence": {
-            "git_sha": "a30291e3681963f8a3da4a5d284b0679746e8b48",
+            "git_sha": "02ea3e7ceab97eaf3926b71cde78aa453092e47f",
             "date": "2026-10-28",
             "environment": "local",
             "limitations": "Prior limited source atoms unchanged at stage review; watched tests updated. No additional implementation or product credit.",
             "reviewer": "Codex source assessment",
-            "dependency_hash": "8ea40b4934ee50f77b17d7d5302457c2179886738d7eab3fca40863bd35d8004",
+            "dependency_hash": "57270f5c66616b3760fa32230d2dba2b9019b7ef7871e974b1d27f7ad7e09bae",
             "references": [
               {
                 "path": "app/Research/Domain/MetricRegistry.php",
@@ -6259,12 +6699,12 @@
           "description": "Stored historical decisions are labelled not independently recomputed",
           "status": "IMPLEMENTED",
           "evidence": {
-            "git_sha": "a30291e3681963f8a3da4a5d284b0679746e8b48",
+            "git_sha": "02ea3e7ceab97eaf3926b71cde78aa453092e47f",
             "date": "2026-10-28",
             "environment": "local",
             "limitations": "Prior limited source atoms unchanged at stage review; watched tests updated. No additional implementation or product credit.",
             "reviewer": "Codex source assessment",
-            "dependency_hash": "8ea40b4934ee50f77b17d7d5302457c2179886738d7eab3fca40863bd35d8004",
+            "dependency_hash": "57270f5c66616b3760fa32230d2dba2b9019b7ef7871e974b1d27f7ad7e09bae",
             "references": [
               {
                 "path": "app/Research/Application/DecisionReplayService.php",
@@ -6371,12 +6811,12 @@
           "description": "Existing service builds audit export artifacts",
           "status": "IMPLEMENTED",
           "evidence": {
-            "git_sha": "a30291e3681963f8a3da4a5d284b0679746e8b48",
+            "git_sha": "02ea3e7ceab97eaf3926b71cde78aa453092e47f",
             "date": "2026-10-28",
             "environment": "local",
             "limitations": "Prior limited source atoms unchanged at stage review; watched tests updated. No additional implementation or product credit.",
             "reviewer": "Codex source assessment",
-            "dependency_hash": "8ea40b4934ee50f77b17d7d5302457c2179886738d7eab3fca40863bd35d8004",
+            "dependency_hash": "57270f5c66616b3760fa32230d2dba2b9019b7ef7871e974b1d27f7ad7e09bae",
             "references": [
               {
                 "path": "app/Audit/Application/AuditExportService.php",
@@ -6481,12 +6921,12 @@
           "description": "Daily performance service computes account-window values",
           "status": "IMPLEMENTED",
           "evidence": {
-            "git_sha": "a30291e3681963f8a3da4a5d284b0679746e8b48",
+            "git_sha": "02ea3e7ceab97eaf3926b71cde78aa453092e47f",
             "date": "2026-10-28",
             "environment": "local",
             "limitations": "Prior limited source atoms unchanged at stage review; watched tests updated. No additional implementation or product credit.",
             "reviewer": "Codex source assessment",
-            "dependency_hash": "8ea40b4934ee50f77b17d7d5302457c2179886738d7eab3fca40863bd35d8004",
+            "dependency_hash": "57270f5c66616b3760fa32230d2dba2b9019b7ef7871e974b1d27f7ad7e09bae",
             "references": [
               {
                 "path": "app/PaperTrading/Application/DailyPerformanceService.php",
@@ -6685,12 +7125,12 @@
           "description": "Existing generator stores bounded parameter mutations and seed",
           "status": "IMPLEMENTED",
           "evidence": {
-            "git_sha": "a30291e3681963f8a3da4a5d284b0679746e8b48",
+            "git_sha": "02ea3e7ceab97eaf3926b71cde78aa453092e47f",
             "date": "2026-10-28",
             "environment": "local",
             "limitations": "Prior limited source atoms unchanged at stage review; watched tests updated. No additional implementation or product credit.",
             "reviewer": "Codex source assessment",
-            "dependency_hash": "8ea40b4934ee50f77b17d7d5302457c2179886738d7eab3fca40863bd35d8004",
+            "dependency_hash": "57270f5c66616b3760fa32230d2dba2b9019b7ef7871e974b1d27f7ad7e09bae",
             "references": [
               {
                 "path": "app/Research/Application/StrategyEvolutionService.php",
@@ -6797,12 +7237,12 @@
           "description": "Existing grid optimizer enumerates research parameter combinations",
           "status": "IMPLEMENTED",
           "evidence": {
-            "git_sha": "a30291e3681963f8a3da4a5d284b0679746e8b48",
+            "git_sha": "02ea3e7ceab97eaf3926b71cde78aa453092e47f",
             "date": "2026-10-28",
             "environment": "local",
             "limitations": "Prior limited source atoms unchanged at stage review; watched tests updated. No additional implementation or product credit.",
             "reviewer": "Codex source assessment",
-            "dependency_hash": "8ea40b4934ee50f77b17d7d5302457c2179886738d7eab3fca40863bd35d8004",
+            "dependency_hash": "57270f5c66616b3760fa32230d2dba2b9019b7ef7871e974b1d27f7ad7e09bae",
             "references": [
               {
                 "path": "app/Backtest/Application/GridOptimizer.php",
@@ -7003,12 +7443,12 @@
           "description": "Research job records carry dataset hash and as-of metadata",
           "status": "IMPLEMENTED",
           "evidence": {
-            "git_sha": "a30291e3681963f8a3da4a5d284b0679746e8b48",
+            "git_sha": "02ea3e7ceab97eaf3926b71cde78aa453092e47f",
             "date": "2026-10-28",
             "environment": "local",
             "limitations": "Prior limited source atoms unchanged at stage review; watched tests updated. No additional implementation or product credit.",
             "reviewer": "Codex source assessment",
-            "dependency_hash": "8ea40b4934ee50f77b17d7d5302457c2179886738d7eab3fca40863bd35d8004",
+            "dependency_hash": "57270f5c66616b3760fa32230d2dba2b9019b7ef7871e974b1d27f7ad7e09bae",
             "references": [
               {
                 "path": "app/Research/Application/ResearchJobService.php",
@@ -7115,12 +7555,12 @@
           "description": "Existing jobs provide claim and lease lifecycle",
           "status": "IMPLEMENTED",
           "evidence": {
-            "git_sha": "a30291e3681963f8a3da4a5d284b0679746e8b48",
+            "git_sha": "02ea3e7ceab97eaf3926b71cde78aa453092e47f",
             "date": "2026-10-28",
             "environment": "local",
             "limitations": "Prior limited source atoms unchanged at stage review; watched tests updated. No additional implementation or product credit.",
             "reviewer": "Codex source assessment",
-            "dependency_hash": "8ea40b4934ee50f77b17d7d5302457c2179886738d7eab3fca40863bd35d8004",
+            "dependency_hash": "57270f5c66616b3760fa32230d2dba2b9019b7ef7871e974b1d27f7ad7e09bae",
             "references": [
               {
                 "path": "app/Research/Application/ResearchJobService.php",
@@ -7227,12 +7667,12 @@
           "description": "Candidates retain parent family, version, parameters and mutation diff",
           "status": "IMPLEMENTED",
           "evidence": {
-            "git_sha": "a30291e3681963f8a3da4a5d284b0679746e8b48",
+            "git_sha": "02ea3e7ceab97eaf3926b71cde78aa453092e47f",
             "date": "2026-10-28",
             "environment": "local",
             "limitations": "Prior limited source atoms unchanged at stage review; watched tests updated. No additional implementation or product credit.",
             "reviewer": "Codex source assessment",
-            "dependency_hash": "8ea40b4934ee50f77b17d7d5302457c2179886738d7eab3fca40863bd35d8004",
+            "dependency_hash": "57270f5c66616b3760fa32230d2dba2b9019b7ef7871e974b1d27f7ad7e09bae",
             "references": [
               {
                 "path": "app/Research/Application/StrategyEvolutionService.php",
@@ -7339,12 +7779,12 @@
           "description": "Candidate evaluation links completed backtest run into candidate metadata",
           "status": "IMPLEMENTED",
           "evidence": {
-            "git_sha": "a30291e3681963f8a3da4a5d284b0679746e8b48",
+            "git_sha": "02ea3e7ceab97eaf3926b71cde78aa453092e47f",
             "date": "2026-10-28",
             "environment": "local",
             "limitations": "Prior limited source atoms unchanged at stage review; watched tests updated. No additional implementation or product credit.",
             "reviewer": "Codex source assessment",
-            "dependency_hash": "8ea40b4934ee50f77b17d7d5302457c2179886738d7eab3fca40863bd35d8004",
+            "dependency_hash": "57270f5c66616b3760fa32230d2dba2b9019b7ef7871e974b1d27f7ad7e09bae",
             "references": [
               {
                 "path": "app/Research/Jobs/EvaluateStrategyCandidateJob.php",
@@ -7449,12 +7889,12 @@
           "description": "Research jobs expose fenced ownership and heartbeat updates",
           "status": "IMPLEMENTED",
           "evidence": {
-            "git_sha": "a30291e3681963f8a3da4a5d284b0679746e8b48",
+            "git_sha": "02ea3e7ceab97eaf3926b71cde78aa453092e47f",
             "date": "2026-10-28",
             "environment": "local",
             "limitations": "Prior limited source atoms unchanged at stage review; watched tests updated. No additional implementation or product credit.",
             "reviewer": "Codex source assessment",
-            "dependency_hash": "8ea40b4934ee50f77b17d7d5302457c2179886738d7eab3fca40863bd35d8004",
+            "dependency_hash": "57270f5c66616b3760fa32230d2dba2b9019b7ef7871e974b1d27f7ad7e09bae",
             "references": [
               {
                 "path": "app/Research/Application/ResearchJobService.php",
@@ -7844,12 +8284,12 @@
           "description": "Backtest service orchestrates historical simulation",
           "status": "IMPLEMENTED",
           "evidence": {
-            "git_sha": "a30291e3681963f8a3da4a5d284b0679746e8b48",
+            "git_sha": "02ea3e7ceab97eaf3926b71cde78aa453092e47f",
             "date": "2026-10-28",
             "environment": "local",
             "limitations": "Prior limited source atoms unchanged at stage review; watched tests updated. No additional implementation or product credit.",
             "reviewer": "Codex source assessment",
-            "dependency_hash": "8ea40b4934ee50f77b17d7d5302457c2179886738d7eab3fca40863bd35d8004",
+            "dependency_hash": "57270f5c66616b3760fa32230d2dba2b9019b7ef7871e974b1d27f7ad7e09bae",
             "references": [
               {
                 "path": "app/Backtest/Application/BacktestRunService.php",
@@ -7957,12 +8397,12 @@
           "description": "Chronological splitter separates train, validation and test",
           "status": "IMPLEMENTED",
           "evidence": {
-            "git_sha": "a30291e3681963f8a3da4a5d284b0679746e8b48",
+            "git_sha": "02ea3e7ceab97eaf3926b71cde78aa453092e47f",
             "date": "2026-10-28",
             "environment": "local",
             "limitations": "Prior limited source atoms unchanged at stage review; watched tests updated. No additional implementation or product credit.",
             "reviewer": "Codex source assessment",
-            "dependency_hash": "8ea40b4934ee50f77b17d7d5302457c2179886738d7eab3fca40863bd35d8004",
+            "dependency_hash": "57270f5c66616b3760fa32230d2dba2b9019b7ef7871e974b1d27f7ad7e09bae",
             "references": [
               {
                 "path": "app/Backtest/Application/ChronologicalSplitter.php",
@@ -8070,12 +8510,12 @@
           "description": "Go walk-forward implementation exists for bounded research",
           "status": "IMPLEMENTED",
           "evidence": {
-            "git_sha": "a30291e3681963f8a3da4a5d284b0679746e8b48",
+            "git_sha": "02ea3e7ceab97eaf3926b71cde78aa453092e47f",
             "date": "2026-10-28",
             "environment": "local",
             "limitations": "Prior limited source atoms unchanged at stage review; watched tests updated. No additional implementation or product credit.",
             "reviewer": "Codex source assessment",
-            "dependency_hash": "8ea40b4934ee50f77b17d7d5302457c2179886738d7eab3fca40863bd35d8004",
+            "dependency_hash": "57270f5c66616b3760fa32230d2dba2b9019b7ef7871e974b1d27f7ad7e09bae",
             "references": [
               {
                 "path": "research-go/internal/walkforward/wfo.go",
@@ -8181,12 +8621,12 @@
           "description": "Go simulation implementation exists for Monte Carlo work",
           "status": "IMPLEMENTED",
           "evidence": {
-            "git_sha": "a30291e3681963f8a3da4a5d284b0679746e8b48",
+            "git_sha": "02ea3e7ceab97eaf3926b71cde78aa453092e47f",
             "date": "2026-10-28",
             "environment": "local",
             "limitations": "Prior limited source atoms unchanged at stage review; watched tests updated. No additional implementation or product credit.",
             "reviewer": "Codex source assessment",
-            "dependency_hash": "8ea40b4934ee50f77b17d7d5302457c2179886738d7eab3fca40863bd35d8004",
+            "dependency_hash": "57270f5c66616b3760fa32230d2dba2b9019b7ef7871e974b1d27f7ad7e09bae",
             "references": [
               {
                 "path": "research-go/internal/simulation/montecarlo.go",
@@ -8387,12 +8827,12 @@
           "description": "Policy computes multiplicity-adjusted improvement lower bounds",
           "status": "IMPLEMENTED",
           "evidence": {
-            "git_sha": "a30291e3681963f8a3da4a5d284b0679746e8b48",
+            "git_sha": "02ea3e7ceab97eaf3926b71cde78aa453092e47f",
             "date": "2026-10-28",
             "environment": "local",
             "limitations": "Prior limited source atoms unchanged at stage review; watched tests updated. No additional implementation or product credit.",
             "reviewer": "Codex source assessment",
-            "dependency_hash": "8ea40b4934ee50f77b17d7d5302457c2179886738d7eab3fca40863bd35d8004",
+            "dependency_hash": "57270f5c66616b3760fa32230d2dba2b9019b7ef7871e974b1d27f7ad7e09bae",
             "references": [
               {
                 "path": "app/Research/Application/PromotionPolicyService.php",
@@ -8500,12 +8940,12 @@
           "description": "Policy fails closed when prospective evidence is absent",
           "status": "IMPLEMENTED",
           "evidence": {
-            "git_sha": "a30291e3681963f8a3da4a5d284b0679746e8b48",
+            "git_sha": "02ea3e7ceab97eaf3926b71cde78aa453092e47f",
             "date": "2026-10-28",
             "environment": "local",
             "limitations": "Prior limited source atoms unchanged at stage review; watched tests updated. No additional implementation or product credit.",
             "reviewer": "Codex source assessment",
-            "dependency_hash": "8ea40b4934ee50f77b17d7d5302457c2179886738d7eab3fca40863bd35d8004",
+            "dependency_hash": "57270f5c66616b3760fa32230d2dba2b9019b7ef7871e974b1d27f7ad7e09bae",
             "references": [
               {
                 "path": "app/Research/Application/PromotionPolicyService.php",
@@ -8808,12 +9248,12 @@
           "description": "Autonomy permissions mediate research actions",
           "status": "IMPLEMENTED",
           "evidence": {
-            "git_sha": "a30291e3681963f8a3da4a5d284b0679746e8b48",
+            "git_sha": "02ea3e7ceab97eaf3926b71cde78aa453092e47f",
             "date": "2026-10-28",
             "environment": "local",
             "limitations": "Prior limited source atoms unchanged at stage review; watched tests updated. No additional implementation or product credit.",
             "reviewer": "Codex source assessment",
-            "dependency_hash": "8ea40b4934ee50f77b17d7d5302457c2179886738d7eab3fca40863bd35d8004",
+            "dependency_hash": "57270f5c66616b3760fa32230d2dba2b9019b7ef7871e974b1d27f7ad7e09bae",
             "references": [
               {
                 "path": "app/Research/Application/AutonomyPermissionService.php",
@@ -8921,12 +9361,12 @@
           "description": "Shared interface declares public market-data methods only",
           "status": "IMPLEMENTED",
           "evidence": {
-            "git_sha": "a30291e3681963f8a3da4a5d284b0679746e8b48",
+            "git_sha": "02ea3e7ceab97eaf3926b71cde78aa453092e47f",
             "date": "2026-10-28",
             "environment": "local",
             "limitations": "Prior limited source atoms unchanged at stage review; watched tests updated. No additional implementation or product credit.",
             "reviewer": "Codex source assessment",
-            "dependency_hash": "8ea40b4934ee50f77b17d7d5302457c2179886738d7eab3fca40863bd35d8004",
+            "dependency_hash": "57270f5c66616b3760fa32230d2dba2b9019b7ef7871e974b1d27f7ad7e09bae",
             "references": [
               {
                 "path": "app/Exchanges/Contracts/ExchangeAdapter.php",
@@ -9109,12 +9549,12 @@
           "description": "Binance adapter validates and normalizes candle rows",
           "status": "IMPLEMENTED",
           "evidence": {
-            "git_sha": "a30291e3681963f8a3da4a5d284b0679746e8b48",
+            "git_sha": "02ea3e7ceab97eaf3926b71cde78aa453092e47f",
             "date": "2026-10-28",
             "environment": "local",
             "limitations": "Prior limited source atoms unchanged at stage review; watched tests updated. No additional implementation or product credit.",
             "reviewer": "Codex source assessment",
-            "dependency_hash": "8ea40b4934ee50f77b17d7d5302457c2179886738d7eab3fca40863bd35d8004",
+            "dependency_hash": "57270f5c66616b3760fa32230d2dba2b9019b7ef7871e974b1d27f7ad7e09bae",
             "references": [
               {
                 "path": "app/Exchanges/Binance/BinancePublicAdapter.php",
@@ -9213,12 +9653,12 @@
           "description": "Binance public adapter discovers instrument specifications",
           "status": "IMPLEMENTED",
           "evidence": {
-            "git_sha": "a30291e3681963f8a3da4a5d284b0679746e8b48",
+            "git_sha": "02ea3e7ceab97eaf3926b71cde78aa453092e47f",
             "date": "2026-10-28",
             "environment": "local",
             "limitations": "Prior limited source atoms unchanged at stage review; watched tests updated. No additional implementation or product credit.",
             "reviewer": "Codex source assessment",
-            "dependency_hash": "8ea40b4934ee50f77b17d7d5302457c2179886738d7eab3fca40863bd35d8004",
+            "dependency_hash": "57270f5c66616b3760fa32230d2dba2b9019b7ef7871e974b1d27f7ad7e09bae",
             "references": [
               {
                 "path": "app/Exchanges/Binance/BinancePublicAdapter.php",
@@ -9659,7 +10099,7 @@
           "description": "Boundary document separates research from real credentials/risk/execution",
           "status": "IMPLEMENTED",
           "evidence": {
-            "git_sha": "a30291e3681963f8a3da4a5d284b0679746e8b48",
+            "git_sha": "02ea3e7ceab97eaf3926b71cde78aa453092e47f",
             "date": "2026-10-28",
             "environment": "documentation",
             "limitations": "Prior limited source atoms unchanged at stage review; watched tests updated. No additional implementation or product credit.",
@@ -9734,7 +10174,7 @@
           "description": "Document proposes immutable qualified decision intent and idempotency fields",
           "status": "IMPLEMENTED",
           "evidence": {
-            "git_sha": "a30291e3681963f8a3da4a5d284b0679746e8b48",
+            "git_sha": "02ea3e7ceab97eaf3926b71cde78aa453092e47f",
             "date": "2026-10-28",
             "environment": "documentation",
             "limitations": "Prior limited source atoms unchanged at stage review; watched tests updated. No additional implementation or product credit.",
@@ -9809,7 +10249,7 @@
           "description": "Document requires independent authorization and separate security program",
           "status": "IMPLEMENTED",
           "evidence": {
-            "git_sha": "a30291e3681963f8a3da4a5d284b0679746e8b48",
+            "git_sha": "02ea3e7ceab97eaf3926b71cde78aa453092e47f",
             "date": "2026-10-28",
             "environment": "documentation",
             "limitations": "Prior limited source atoms unchanged at stage review; watched tests updated. No additional implementation or product credit.",
@@ -9884,7 +10324,7 @@
           "description": "Document distinguishes delivery, authorization, execution and callbacks",
           "status": "IMPLEMENTED",
           "evidence": {
-            "git_sha": "a30291e3681963f8a3da4a5d284b0679746e8b48",
+            "git_sha": "02ea3e7ceab97eaf3926b71cde78aa453092e47f",
             "date": "2026-10-28",
             "environment": "documentation",
             "limitations": "Prior limited source atoms unchanged at stage review; watched tests updated. No additional implementation or product credit.",
@@ -9959,7 +10399,7 @@
           "description": "Document specifies fake-service failure scenarios and activation gates",
           "status": "IMPLEMENTED",
           "evidence": {
-            "git_sha": "a30291e3681963f8a3da4a5d284b0679746e8b48",
+            "git_sha": "02ea3e7ceab97eaf3926b71cde78aa453092e47f",
             "date": "2026-10-28",
             "environment": "documentation",
             "limitations": "Prior limited source atoms unchanged at stage review; watched tests updated. No additional implementation or product credit.",

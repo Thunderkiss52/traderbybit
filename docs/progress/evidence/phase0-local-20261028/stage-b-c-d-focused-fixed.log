@@ -1,0 +1,27 @@
+PHPUnit 12.5.39 by Sebastian Bergmann and contributors.
+
+Runtime:       PHP 8.5.12
+Configuration: /var/www/html/phpunit.xml
+
+..{"message":"Retrying public Bybit market-data request.","context":{"endpoint":"/v5/market/tickers","attempt":1,"delay_ms":212,"http_status":null,"ret_code":null},"level":300,"level_name":"WARNING","channel":"testing","datetime":"2026-10-28T14:02:19.863406+00:00","extra":{}}
+{"message":"Retrying public Bybit market-data request.","context":{"endpoint":"/v5/market/tickers","attempt":2,"delay_ms":353,"http_status":null,"ret_code":null},"level":300,"level_name":"WARNING","channel":"testing","datetime":"2026-10-28T14:02:20.077100+00:00","extra":{}}
+{"message":"Retrying public Bybit market-data request.","context":{"endpoint":"/v5/market/tickers","attempt":3,"delay_ms":584,"http_status":null,"ret_code":null},"level":300,"level_name":"WARNING","channel":"testing","datetime":"2026-10-28T14:02:20.433157+00:00","extra":{}}
+{"message":"Retrying public Bybit market-data request.","context":{"endpoint":"/v5/market/tickers","attempt":4,"delay_ms":1173,"http_status":null,"ret_code":null},"level":300,"level_name":"WARNING","channel":"testing","datetime":"2026-10-28T14:02:21.020745+00:00","extra":{}}
+{"message":"Market context capture non-fatal failure for bybit:BTCUSDT: Bybit HTTP connection failed.","context":{},"level":300,"level_name":"WARNING","channel":"testing","datetime":"2026-10-28T14:02:22.196866+00:00","extra":{}}
+.........{"message":"Closed candle event bybit:BTCUSDT:15:2026-10-28T13:56:32+00:00:CANDLE_CLOSED rejected as STALE (exceeded freshness window).","context":{},"level":200,"level_name":"INFO","channel":"testing","datetime":"2026-10-28T14:02:22.975172+00:00","extra":{}}
+{"message":"Closed candle event bybit:BTCUSDT:15:2026-10-28T13:56:32+00:00:CANDLE_CLOSED rejected as STALE (exceeded freshness window).","context":{},"level":200,"level_name":"INFO","channel":"testing","datetime":"2026-10-28T14:02:22.977501+00:00","extra":{}}
+......{"message":"ProcessPaperPipelineJob: bybit:BTCUSDT at 2026-10-26T10:30:00Z rejected as STALE (exceeded 300s freshness window).","context":{},"level":200,"level_name":"INFO","channel":"testing","datetime":"2026-10-28T14:02:23.516304+00:00","extra":{}}
+...{"message":"Recovery: Marked event binance:BTCUSDT:15:2026-10-28T13:55:43+00:00:CANDLE_CLOSED as STALE (exceeded freshness window).","context":{},"level":200,"level_name":"INFO","channel":"testing","datetime":"2026-10-28T14:02:23.965580+00:00","extra":{}}
+.{"message":"GenerateSignalJob: bybit:BTCUSDT already processed by event-driven pipeline; scheduled run skipped.","context":{},"level":200,"level_name":"INFO","channel":"testing","datetime":"2026-10-28T14:02:24.031192+00:00","extra":{}}
+.....{"message":"Recovery: Terminalized upstream event bybit:BTCUSDT:15:2026-10-28T14:01:39+00:00:SIGNALS_EVALUATED to COMPLETED matching existing downstream PAPER_PROCESSED.","context":{},"level":200,"level_name":"INFO","channel":"testing","datetime":"2026-10-28T14:02:24.213734+00:00","extra":{}}
+.{"message":"ProcessPaperPipelineJob account provenance/executable check failed: 74ebcada-fbd9-416d-8cbb-1c6dc240cdf9 (invalid_strategy_never_configured): Binance PRIMARY account provenance is not verified.","context":{"account_id":"74ebcada-fbd9-416d-8cbb-1c6dc240cdf9","strategy_id":"invalid_strategy_never_configured","exception":"DomainException"},"level":300,"level_name":"WARNING","channel":"testing","datetime":"2026-10-28T14:02:24.253323+00:00","extra":{}}
+{"message":"ProcessPaperPipelineJob completed with individual account errors.","context":{"failed_count":1,"total_accounts":2,"eligible_accounts":2,"processed_accounts":1,"failures":[{"account_id":"74ebcada-fbd9-416d-8cbb-1c6dc240cdf9","error":"Binance PRIMARY account provenance is not verified."}]},"level":300,"level_name":"WARNING","channel":"testing","datetime":"2026-10-28T14:02:24.260463+00:00","extra":{}}
+...{"message":"ProcessPaperPipelineJob account provenance/executable check failed: df9f2343-a23d-4100-8900-ed8711ca4b57 (invalid_strategy_failing_provenance): Binance PRIMARY account provenance is not verified.","context":{"account_id":"df9f2343-a23d-4100-8900-ed8711ca4b57","strategy_id":"invalid_strategy_failing_provenance","exception":"DomainException"},"level":300,"level_name":"WARNING","channel":"testing","datetime":"2026-10-28T14:02:24.389994+00:00","extra":{}}
+{"message":"ProcessPaperPipelineJob completed with individual account errors.","context":{"failed_count":1,"total_accounts":2,"eligible_accounts":2,"processed_accounts":1,"failures":[{"account_id":"df9f2343-a23d-4100-8900-ed8711ca4b57","error":"Binance PRIMARY account provenance is not verified."}]},"level":300,"level_name":"WARNING","channel":"testing","datetime":"2026-10-28T14:02:24.390217+00:00","extra":{}}
+.................................  63 / 100 ( 63%)
+...................................{"message":"No closed 5m history for BTCUSDT.","context":{"exception":{"class":"RuntimeException","message":"No closed 5m history for BTCUSDT.","code":0,"file":"/var/www/html/app/Backtest/Application/DatasetInspector.php:25"}},"level":400,"level_name":"ERROR","channel":"testing","datetime":"2026-10-28T14:02:51.117737+00:00","extra":{}}
+..                           100 / 100 (100%)
+
+Time: 00:36.370, Memory: 30.00 MB
+
+[30;42mOK (100 tests, 1094 assertions)[0m

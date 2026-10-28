@@ -1,0 +1,18 @@
+PHPUnit 12.5.39 by Sebastian Bergmann and contributors.
+
+Runtime:       PHP 8.5.12
+Configuration: /var/www/html/phpunit.xml
+
+.[31;1mE[0m..                                                                4 / 4 (100%)
+
+Time: 00:01.767, Memory: 18.00 MB
+
+There was 1 error:
+
+1) Tests\Feature\Research\StageTwoApiTest::test_replay_endpoint
+Error: Class "Tests\Feature\Research\DB" not found
+
+/var/www/html/tests/Feature/Research/StageTwoApiTest.php:97
+
+[37;41mERRORS![0m
+[37;41mTests: 4[0m[37;41m, Assertions: 21[0m[37;41m, Errors: 1[0m[37;41m.[0m

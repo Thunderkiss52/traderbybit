@@ -1,0 +1,981 @@
+{
+    "revision": "4a3ab5b4fbc3c1127530c14899a78dbdb2db6dea",
+    "generated_at_utc": "2026-10-28T13:05:47+00:00",
+    "php": "8.5.12",
+    "postgresql": "PostgreSQL 17.11 on x86_64-pc-linux-musl, compiled by gcc (Alpine 15.2.0) 15.2.0, 64-bit",
+    "database": "bybit_test",
+    "isolation": "read committed",
+    "method": "Sequential ingest calls with faked HTTP, exact decimals, real PostgreSQL commits; cleanup and seeding excluded. Query counts exclude PDO transaction control. Nearest-rank percentiles.",
+    "prior_baseline_ms": 51.11,
+    "runs_per_case": 30,
+    "warmup_per_case": 5,
+    "ingestion_sha256": "2cabe8ee09508c9b22f735a9c41b8fe7b716fcb41c6358e9722a4f71748fcf7d",
+    "cases": [
+        {
+            "scenario": "new",
+            "batch_size": 100,
+            "existing": 0,
+            "queries_min": 1,
+            "queries_max": 1,
+            "p50_ms": 13.783,
+            "p95_ms": 19.063,
+            "samples": [
+                {
+                    "latency_ms": 12.657,
+                    "queries": 1,
+                    "sql_ms": 8.31
+                },
+                {
+                    "latency_ms": 13.176,
+                    "queries": 1,
+                    "sql_ms": 8.65
+                },
+                {
+                    "latency_ms": 12.918,
+                    "queries": 1,
+                    "sql_ms": 8.45
+                },
+                {
+                    "latency_ms": 14.257,
+                    "queries": 1,
+                    "sql_ms": 9.92
+                },
+                {
+                    "latency_ms": 13.783,
+                    "queries": 1,
+                    "sql_ms": 9.17
+                },
+                {
+                    "latency_ms": 15.039,
+                    "queries": 1,
+                    "sql_ms": 9.79
+                },
+                {
+                    "latency_ms": 12.954,
+                    "queries": 1,
+                    "sql_ms": 8.51
+                },
+                {
+                    "latency_ms": 13.136,
+                    "queries": 1,
+                    "sql_ms": 8.43
+                },
+                {
+                    "latency_ms": 17.213,
+                    "queries": 1,
+                    "sql_ms": 12.22
+                },
+                {
+                    "latency_ms": 17.146,
+                    "queries": 1,
+                    "sql_ms": 10.72
+                },
+                {
+                    "latency_ms": 19.395,
+                    "queries": 1,
+                    "sql_ms": 9.12
+                },
+                {
+                    "latency_ms": 14.718,
+                    "queries": 1,
+                    "sql_ms": 9.46
+                },
+                {
+                    "latency_ms": 14.776,
+                    "queries": 1,
+                    "sql_ms": 10.29
+                },
+                {
+                    "latency_ms": 14.338,
+                    "queries": 1,
+                    "sql_ms": 9.94
+                },
+                {
+                    "latency_ms": 13.436,
+                    "queries": 1,
+                    "sql_ms": 8.96
+                },
+                {
+                    "latency_ms": 15.669,
+                    "queries": 1,
+                    "sql_ms": 9.25
+                },
+                {
+                    "latency_ms": 13.115,
+                    "queries": 1,
+                    "sql_ms": 8.91
+                },
+                {
+                    "latency_ms": 13.029,
+                    "queries": 1,
+                    "sql_ms": 8.87
+                },
+                {
+                    "latency_ms": 12.668,
+                    "queries": 1,
+                    "sql_ms": 8.34
+                },
+                {
+                    "latency_ms": 12.617,
+                    "queries": 1,
+                    "sql_ms": 8.37
+                },
+                {
+                    "latency_ms": 13.775,
+                    "queries": 1,
+                    "sql_ms": 8.44
+                },
+                {
+                    "latency_ms": 12.971,
+                    "queries": 1,
+                    "sql_ms": 8.33
+                },
+                {
+                    "latency_ms": 13.584,
+                    "queries": 1,
+                    "sql_ms": 8.48
+                },
+                {
+                    "latency_ms": 13.202,
+                    "queries": 1,
+                    "sql_ms": 8.63
+                },
+                {
+                    "latency_ms": 19.063,
+                    "queries": 1,
+                    "sql_ms": 13.8
+                },
+                {
+                    "latency_ms": 16.692,
+                    "queries": 1,
+                    "sql_ms": 9.36
+                },
+                {
+                    "latency_ms": 13.806,
+                    "queries": 1,
+                    "sql_ms": 8.95
+                },
+                {
+                    "latency_ms": 14.84,
+                    "queries": 1,
+                    "sql_ms": 8.9
+                },
+                {
+                    "latency_ms": 15.309,
+                    "queries": 1,
+                    "sql_ms": 9.8
+                },
+                {
+                    "latency_ms": 14.112,
+                    "queries": 1,
+                    "sql_ms": 8.87
+                }
+            ]
+        },
+        {
+            "scenario": "duplicate",
+            "batch_size": 100,
+            "existing": 100,
+            "queries_min": 2,
+            "queries_max": 2,
+            "p50_ms": 15.304,
+            "p95_ms": 22.036,
+            "samples": [
+                {
+                    "latency_ms": 15.351,
+                    "queries": 2,
+                    "sql_ms": 9.13
+                },
+                {
+                    "latency_ms": 14.738,
+                    "queries": 2,
+                    "sql_ms": 8.94
+                },
+                {
+                    "latency_ms": 15.57,
+                    "queries": 2,
+                    "sql_ms": 8.85
+                },
+                {
+                    "latency_ms": 13.886,
+                    "queries": 2,
+                    "sql_ms": 8.33
+                },
+                {
+                    "latency_ms": 14.319,
+                    "queries": 2,
+                    "sql_ms": 8.82
+                },
+                {
+                    "latency_ms": 14.213,
+                    "queries": 2,
+                    "sql_ms": 8.48
+                },
+                {
+                    "latency_ms": 15.146,
+                    "queries": 2,
+                    "sql_ms": 9.26
+                },
+                {
+                    "latency_ms": 15.304,
+                    "queries": 2,
+                    "sql_ms": 9.95
+                },
+                {
+                    "latency_ms": 15.617,
+                    "queries": 2,
+                    "sql_ms": 9.75
+                },
+                {
+                    "latency_ms": 14.867,
+                    "queries": 2,
+                    "sql_ms": 8.95
+                },
+                {
+                    "latency_ms": 15.223,
+                    "queries": 2,
+                    "sql_ms": 9.42
+                },
+                {
+                    "latency_ms": 17.009,
+                    "queries": 2,
+                    "sql_ms": 11.17
+                },
+                {
+                    "latency_ms": 15.764,
+                    "queries": 2,
+                    "sql_ms": 10.31
+                },
+                {
+                    "latency_ms": 13.676,
+                    "queries": 2,
+                    "sql_ms": 8.51
+                },
+                {
+                    "latency_ms": 18.764,
+                    "queries": 2,
+                    "sql_ms": 11.99
+                },
+                {
+                    "latency_ms": 14.535,
+                    "queries": 2,
+                    "sql_ms": 8.65
+                },
+                {
+                    "latency_ms": 22.036,
+                    "queries": 2,
+                    "sql_ms": 14.76
+                },
+                {
+                    "latency_ms": 16.111,
+                    "queries": 2,
+                    "sql_ms": 9.77
+                },
+                {
+                    "latency_ms": 17.229,
+                    "queries": 2,
+                    "sql_ms": 9.86
+                },
+                {
+                    "latency_ms": 13.492,
+                    "queries": 2,
+                    "sql_ms": 8.2
+                },
+                {
+                    "latency_ms": 19.738,
+                    "queries": 2,
+                    "sql_ms": 13.24
+                },
+                {
+                    "latency_ms": 27.088,
+                    "queries": 2,
+                    "sql_ms": 18.8
+                },
+                {
+                    "latency_ms": 17.623,
+                    "queries": 2,
+                    "sql_ms": 10.96
+                },
+                {
+                    "latency_ms": 17.165,
+                    "queries": 2,
+                    "sql_ms": 9.87
+                },
+                {
+                    "latency_ms": 17.1,
+                    "queries": 2,
+                    "sql_ms": 10.88
+                },
+                {
+                    "latency_ms": 14.744,
+                    "queries": 2,
+                    "sql_ms": 8.89
+                },
+                {
+                    "latency_ms": 14.308,
+                    "queries": 2,
+                    "sql_ms": 8.69
+                },
+                {
+                    "latency_ms": 16.145,
+                    "queries": 2,
+                    "sql_ms": 10.29
+                },
+                {
+                    "latency_ms": 14.332,
+                    "queries": 2,
+                    "sql_ms": 8.93
+                },
+                {
+                    "latency_ms": 13.056,
+                    "queries": 2,
+                    "sql_ms": 7.93
+                }
+            ]
+        },
+        {
+            "scenario": "mixed",
+            "batch_size": 100,
+            "existing": 50,
+            "queries_min": 2,
+            "queries_max": 2,
+            "p50_ms": 15.707,
+            "p95_ms": 20.115,
+            "samples": [
+                {
+                    "latency_ms": 15.201,
+                    "queries": 2,
+                    "sql_ms": 9.7
+                },
+                {
+                    "latency_ms": 15.707,
+                    "queries": 2,
+                    "sql_ms": 10.4
+                },
+                {
+                    "latency_ms": 15.079,
+                    "queries": 2,
+                    "sql_ms": 9.58
+                },
+                {
+                    "latency_ms": 15.465,
+                    "queries": 2,
+                    "sql_ms": 9.62
+                },
+                {
+                    "latency_ms": 15.784,
+                    "queries": 2,
+                    "sql_ms": 9.95
+                },
+                {
+                    "latency_ms": 15.751,
+                    "queries": 2,
+                    "sql_ms": 10.13
+                },
+                {
+                    "latency_ms": 15.983,
+                    "queries": 2,
+                    "sql_ms": 10.11
+                },
+                {
+                    "latency_ms": 19.715,
+                    "queries": 2,
+                    "sql_ms": 12.82
+                },
+                {
+                    "latency_ms": 15.635,
+                    "queries": 2,
+                    "sql_ms": 9.93
+                },
+                {
+                    "latency_ms": 14.54,
+                    "queries": 2,
+                    "sql_ms": 9.18
+                },
+                {
+                    "latency_ms": 14.336,
+                    "queries": 2,
+                    "sql_ms": 8.9
+                },
+                {
+                    "latency_ms": 14.551,
+                    "queries": 2,
+                    "sql_ms": 9.13
+                },
+                {
+                    "latency_ms": 16.253,
+                    "queries": 2,
+                    "sql_ms": 10.14
+                },
+                {
+                    "latency_ms": 14.159,
+                    "queries": 2,
+                    "sql_ms": 9.01
+                },
+                {
+                    "latency_ms": 19.037,
+                    "queries": 2,
+                    "sql_ms": 13.02
+                },
+                {
+                    "latency_ms": 15.916,
+                    "queries": 2,
+                    "sql_ms": 9.87
+                },
+                {
+                    "latency_ms": 18.43,
+                    "queries": 2,
+                    "sql_ms": 11.92
+                },
+                {
+                    "latency_ms": 19.368,
+                    "queries": 2,
+                    "sql_ms": 12.44
+                },
+                {
+                    "latency_ms": 15.703,
+                    "queries": 2,
+                    "sql_ms": 9.96
+                },
+                {
+                    "latency_ms": 20.125,
+                    "queries": 2,
+                    "sql_ms": 13.33
+                },
+                {
+                    "latency_ms": 19.05,
+                    "queries": 2,
+                    "sql_ms": 11.13
+                },
+                {
+                    "latency_ms": 15.453,
+                    "queries": 2,
+                    "sql_ms": 9.67
+                },
+                {
+                    "latency_ms": 14.156,
+                    "queries": 2,
+                    "sql_ms": 8.85
+                },
+                {
+                    "latency_ms": 16.737,
+                    "queries": 2,
+                    "sql_ms": 10.75
+                },
+                {
+                    "latency_ms": 15.224,
+                    "queries": 2,
+                    "sql_ms": 9.37
+                },
+                {
+                    "latency_ms": 14.967,
+                    "queries": 2,
+                    "sql_ms": 9.5
+                },
+                {
+                    "latency_ms": 15.844,
+                    "queries": 2,
+                    "sql_ms": 9.54
+                },
+                {
+                    "latency_ms": 20.115,
+                    "queries": 2,
+                    "sql_ms": 13.61
+                },
+                {
+                    "latency_ms": 17.03,
+                    "queries": 2,
+                    "sql_ms": 11.24
+                },
+                {
+                    "latency_ms": 15.461,
+                    "queries": 2,
+                    "sql_ms": 9.94
+                }
+            ]
+        },
+        {
+            "scenario": "new",
+            "batch_size": 500,
+            "existing": 0,
+            "queries_min": 1,
+            "queries_max": 1,
+            "p50_ms": 58.123,
+            "p95_ms": 81.9,
+            "samples": [
+                {
+                    "latency_ms": 57.905,
+                    "queries": 1,
+                    "sql_ms": 43.17
+                },
+                {
+                    "latency_ms": 65.826,
+                    "queries": 1,
+                    "sql_ms": 47.76
+                },
+                {
+                    "latency_ms": 59.408,
+                    "queries": 1,
+                    "sql_ms": 44.65
+                },
+                {
+                    "latency_ms": 77.269,
+                    "queries": 1,
+                    "sql_ms": 61.3
+                },
+                {
+                    "latency_ms": 84.924,
+                    "queries": 1,
+                    "sql_ms": 66.78
+                },
+                {
+                    "latency_ms": 62.772,
+                    "queries": 1,
+                    "sql_ms": 44.31
+                },
+                {
+                    "latency_ms": 55.656,
+                    "queries": 1,
+                    "sql_ms": 41.34
+                },
+                {
+                    "latency_ms": 57.426,
+                    "queries": 1,
+                    "sql_ms": 41.67
+                },
+                {
+                    "latency_ms": 59.886,
+                    "queries": 1,
+                    "sql_ms": 42.56
+                },
+                {
+                    "latency_ms": 57.709,
+                    "queries": 1,
+                    "sql_ms": 41.25
+                },
+                {
+                    "latency_ms": 57.735,
+                    "queries": 1,
+                    "sql_ms": 42.59
+                },
+                {
+                    "latency_ms": 58.462,
+                    "queries": 1,
+                    "sql_ms": 44.3
+                },
+                {
+                    "latency_ms": 56.041,
+                    "queries": 1,
+                    "sql_ms": 41.04
+                },
+                {
+                    "latency_ms": 56.417,
+                    "queries": 1,
+                    "sql_ms": 40.71
+                },
+                {
+                    "latency_ms": 61.276,
+                    "queries": 1,
+                    "sql_ms": 46.87
+                },
+                {
+                    "latency_ms": 63.768,
+                    "queries": 1,
+                    "sql_ms": 49.3
+                },
+                {
+                    "latency_ms": 57.165,
+                    "queries": 1,
+                    "sql_ms": 42.85
+                },
+                {
+                    "latency_ms": 58.123,
+                    "queries": 1,
+                    "sql_ms": 44.22
+                },
+                {
+                    "latency_ms": 62.463,
+                    "queries": 1,
+                    "sql_ms": 47.54
+                },
+                {
+                    "latency_ms": 63.387,
+                    "queries": 1,
+                    "sql_ms": 47.93
+                },
+                {
+                    "latency_ms": 67.985,
+                    "queries": 1,
+                    "sql_ms": 50.78
+                },
+                {
+                    "latency_ms": 54.449,
+                    "queries": 1,
+                    "sql_ms": 40.78
+                },
+                {
+                    "latency_ms": 56.189,
+                    "queries": 1,
+                    "sql_ms": 42.24
+                },
+                {
+                    "latency_ms": 81.9,
+                    "queries": 1,
+                    "sql_ms": 63.4
+                },
+                {
+                    "latency_ms": 68.04,
+                    "queries": 1,
+                    "sql_ms": 48.31
+                },
+                {
+                    "latency_ms": 57.15,
+                    "queries": 1,
+                    "sql_ms": 42.43
+                },
+                {
+                    "latency_ms": 62.156,
+                    "queries": 1,
+                    "sql_ms": 46.54
+                },
+                {
+                    "latency_ms": 56.669,
+                    "queries": 1,
+                    "sql_ms": 42.19
+                },
+                {
+                    "latency_ms": 57.488,
+                    "queries": 1,
+                    "sql_ms": 42.76
+                },
+                {
+                    "latency_ms": 56.402,
+                    "queries": 1,
+                    "sql_ms": 41.34
+                }
+            ]
+        },
+        {
+            "scenario": "duplicate",
+            "batch_size": 500,
+            "existing": 500,
+            "queries_min": 2,
+            "queries_max": 2,
+            "p50_ms": 56.574,
+            "p95_ms": 63.904,
+            "samples": [
+                {
+                    "latency_ms": 57.832,
+                    "queries": 2,
+                    "sql_ms": 39.6
+                },
+                {
+                    "latency_ms": 53.872,
+                    "queries": 2,
+                    "sql_ms": 37.31
+                },
+                {
+                    "latency_ms": 55.417,
+                    "queries": 2,
+                    "sql_ms": 37.95
+                },
+                {
+                    "latency_ms": 61.499,
+                    "queries": 2,
+                    "sql_ms": 43.42
+                },
+                {
+                    "latency_ms": 55.543,
+                    "queries": 2,
+                    "sql_ms": 38.31
+                },
+                {
+                    "latency_ms": 59.1,
+                    "queries": 2,
+                    "sql_ms": 40.76
+                },
+                {
+                    "latency_ms": 53.036,
+                    "queries": 2,
+                    "sql_ms": 36.53
+                },
+                {
+                    "latency_ms": 56.537,
+                    "queries": 2,
+                    "sql_ms": 40
+                },
+                {
+                    "latency_ms": 56.069,
+                    "queries": 2,
+                    "sql_ms": 37.15
+                },
+                {
+                    "latency_ms": 55.939,
+                    "queries": 2,
+                    "sql_ms": 37.84
+                },
+                {
+                    "latency_ms": 57.488,
+                    "queries": 2,
+                    "sql_ms": 39.82
+                },
+                {
+                    "latency_ms": 55.775,
+                    "queries": 2,
+                    "sql_ms": 36.67
+                },
+                {
+                    "latency_ms": 52.678,
+                    "queries": 2,
+                    "sql_ms": 35.96
+                },
+                {
+                    "latency_ms": 56.574,
+                    "queries": 2,
+                    "sql_ms": 38.81
+                },
+                {
+                    "latency_ms": 55.308,
+                    "queries": 2,
+                    "sql_ms": 38.18
+                },
+                {
+                    "latency_ms": 54.738,
+                    "queries": 2,
+                    "sql_ms": 38.55
+                },
+                {
+                    "latency_ms": 57.121,
+                    "queries": 2,
+                    "sql_ms": 39.99
+                },
+                {
+                    "latency_ms": 57.993,
+                    "queries": 2,
+                    "sql_ms": 39.66
+                },
+                {
+                    "latency_ms": 58.112,
+                    "queries": 2,
+                    "sql_ms": 39.99
+                },
+                {
+                    "latency_ms": 54.93,
+                    "queries": 2,
+                    "sql_ms": 37.39
+                },
+                {
+                    "latency_ms": 57.027,
+                    "queries": 2,
+                    "sql_ms": 38.29
+                },
+                {
+                    "latency_ms": 59.213,
+                    "queries": 2,
+                    "sql_ms": 41.58
+                },
+                {
+                    "latency_ms": 61.969,
+                    "queries": 2,
+                    "sql_ms": 43.13
+                },
+                {
+                    "latency_ms": 56.143,
+                    "queries": 2,
+                    "sql_ms": 38.9
+                },
+                {
+                    "latency_ms": 58.041,
+                    "queries": 2,
+                    "sql_ms": 39.04
+                },
+                {
+                    "latency_ms": 58.494,
+                    "queries": 2,
+                    "sql_ms": 41.24
+                },
+                {
+                    "latency_ms": 63.904,
+                    "queries": 2,
+                    "sql_ms": 41.64
+                },
+                {
+                    "latency_ms": 67.713,
+                    "queries": 2,
+                    "sql_ms": 47.29
+                },
+                {
+                    "latency_ms": 55.964,
+                    "queries": 2,
+                    "sql_ms": 38.03
+                },
+                {
+                    "latency_ms": 57.723,
+                    "queries": 2,
+                    "sql_ms": 39.74
+                }
+            ]
+        },
+        {
+            "scenario": "mixed",
+            "batch_size": 500,
+            "existing": 250,
+            "queries_min": 2,
+            "queries_max": 2,
+            "p50_ms": 70.63,
+            "p95_ms": 109.384,
+            "samples": [
+                {
+                    "latency_ms": 59.944,
+                    "queries": 2,
+                    "sql_ms": 41.38
+                },
+                {
+                    "latency_ms": 58.458,
+                    "queries": 2,
+                    "sql_ms": 40.6
+                },
+                {
+                    "latency_ms": 56.865,
+                    "queries": 2,
+                    "sql_ms": 40.2
+                },
+                {
+                    "latency_ms": 59.567,
+                    "queries": 2,
+                    "sql_ms": 40.79
+                },
+                {
+                    "latency_ms": 65.738,
+                    "queries": 2,
+                    "sql_ms": 47.35
+                },
+                {
+                    "latency_ms": 63.38,
+                    "queries": 2,
+                    "sql_ms": 45.22
+                },
+                {
+                    "latency_ms": 64.312,
+                    "queries": 2,
+                    "sql_ms": 46.21
+                },
+                {
+                    "latency_ms": 64.069,
+                    "queries": 2,
+                    "sql_ms": 45.41
+                },
+                {
+                    "latency_ms": 66.955,
+                    "queries": 2,
+                    "sql_ms": 47.27
+                },
+                {
+                    "latency_ms": 65.971,
+                    "queries": 2,
+                    "sql_ms": 46.62
+                },
+                {
+                    "latency_ms": 71.259,
+                    "queries": 2,
+                    "sql_ms": 50.79
+                },
+                {
+                    "latency_ms": 69.62,
+                    "queries": 2,
+                    "sql_ms": 50.03
+                },
+                {
+                    "latency_ms": 79.559,
+                    "queries": 2,
+                    "sql_ms": 56.2
+                },
+                {
+                    "latency_ms": 89.073,
+                    "queries": 2,
+                    "sql_ms": 63.15
+                },
+                {
+                    "latency_ms": 65.098,
+                    "queries": 2,
+                    "sql_ms": 47.15
+                },
+                {
+                    "latency_ms": 69.221,
+                    "queries": 2,
+                    "sql_ms": 49.51
+                },
+                {
+                    "latency_ms": 69.459,
+                    "queries": 2,
+                    "sql_ms": 48.13
+                },
+                {
+                    "latency_ms": 70.63,
+                    "queries": 2,
+                    "sql_ms": 46.91
+                },
+                {
+                    "latency_ms": 80.243,
+                    "queries": 2,
+                    "sql_ms": 56.96
+                },
+                {
+                    "latency_ms": 103.719,
+                    "queries": 2,
+                    "sql_ms": 74.54
+                },
+                {
+                    "latency_ms": 109.161,
+                    "queries": 2,
+                    "sql_ms": 76.58
+                },
+                {
+                    "latency_ms": 106.408,
+                    "queries": 2,
+                    "sql_ms": 74.02
+                },
+                {
+                    "latency_ms": 109.384,
+                    "queries": 2,
+                    "sql_ms": 77.26
+                },
+                {
+                    "latency_ms": 105.284,
+                    "queries": 2,
+                    "sql_ms": 74.19
+                },
+                {
+                    "latency_ms": 99.764,
+                    "queries": 2,
+                    "sql_ms": 70.8
+                },
+                {
+                    "latency_ms": 111.695,
+                    "queries": 2,
+                    "sql_ms": 79.99
+                },
+                {
+                    "latency_ms": 91.901,
+                    "queries": 2,
+                    "sql_ms": 64.48
+                },
+                {
+                    "latency_ms": 85.242,
+                    "queries": 2,
+                    "sql_ms": 60.68
+                },
+                {
+                    "latency_ms": 81.429,
+                    "queries": 2,
+                    "sql_ms": 56.21
+                },
+                {
+                    "latency_ms": 73.567,
+                    "queries": 2,
+                    "sql_ms": 48.83
+                }
+            ]
+        }
+    ]
+}

@@ -1,0 +1,19 @@
+PHPUnit 12.5.39 by Sebastian Bergmann and contributors.
+
+Runtime:       PHP 8.5.12
+Configuration: /var/www/html/phpunit.xml
+
+.{"message":"No closed 5m history for BTCUSDT.","context":{"exception":{"class":"RuntimeException","message":"No closed 5m history for BTCUSDT.","code":0,"file":"/var/www/html/app/Backtest/Application/DatasetInspector.php:25"}},"level":400,"level_name":"ERROR","channel":"testing","datetime":"2026-10-28T13:55:07.388337+00:00","extra":{}}
+.[41;37mF[0m                                                                 3 / 3 (100%)
+
+Time: 00:02.356, Memory: 20.00 MB
+
+There was 1 failure:
+
+1) Tests\Feature\Api\CompleteApiEndpointAuditTest::test_signals_endpoint_annotates_latest_matching_scoped_risk_decision
+Failed asserting that null is not null.
+
+/var/www/html/tests/Feature/Api/CompleteApiEndpointAuditTest.php:232
+
+[37;41mFAILURES![0m
+[37;41mTests: 3[0m[37;41m, Assertions: 47[0m[37;41m, Failures: 1[0m[37;41m.[0m

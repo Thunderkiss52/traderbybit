@@ -1,0 +1,49 @@
+PHPUnit 12.5.39 by Sebastian Bergmann and contributors.
+
+Runtime:       PHP 8.5.12
+Configuration: /var/www/html/phpunit.xml
+
+.{"message":"No closed 5m history for BTCUSDT.","context":{"exception":{"class":"RuntimeException","message":"No closed 5m history for BTCUSDT.","code":0,"file":"/var/www/html/app/Backtest/Application/DatasetInspector.php:25"}},"level":400,"level_name":"ERROR","channel":"testing","datetime":"2026-10-28T13:52:24.452529+00:00","extra":{}}
+.[31;1mE[0m                                                                 3 / 3 (100%)
+
+Time: 00:02.608, Memory: 20.00 MB
+
+There was 1 error:
+
+1) Tests\Feature\Api\CompleteApiEndpointAuditTest::test_signals_endpoint_annotates_latest_matching_scoped_risk_decision
+Illuminate\Database\QueryException: SQLSTATE[23502]: Not null violation: 7 ERROR:  null value in column "indicator_snapshot" of relation "signals" violates not-null constraint
+DETAIL:  Failing row contains (677f9fde-c3aa-49d1-a7bd-bcb0996e5c2b, bybit, linear, BTCUSDT, 15, BUY, A, 85, 2026-10-28 13:37:24+00, 2026-10-28 13:37:24+00, 65000.000000000000, 65500.000000000000, 64000.000000000000, 67000.000000000000, 69000.000000000000, null, null, null, 2026-10-28 15:52:24+00, 120, ["trend_aligned"], [], null, null, 1.0.0, null, 2026-10-28 13:52:24+00, 2026-10-28 13:52:24+00, trend_pullback). (Connection: pgsql, Host: 127.0.0.1, Port: 5432, Database: bybit_test, SQL: insert into "signals" ("id", "exchange", "category", "symbol", "timeframe", "side", "quality_class", "score", "entry_low", "entry_high", "stop_loss", "take_profit_1", "take_profit_2", "reasons", "risks", "strategy_id", "strategy_version", "maximum_holding_minutes", "decision_time", "candle_close_time", "expires_at", "updated_at", "created_at") values (677f9fde-c3aa-49d1-a7bd-bcb0996e5c2b, bybit, linear, BTCUSDT, 15, BUY, A, 85, 65000, 65500, 64000, 67000, 69000, ["trend_aligned"], [], trend_pullback, 1.0.0, 120, 2026-10-28 13:37:24, 2026-10-28 13:37:24, 2026-10-28 15:52:24, 2026-10-28 13:52:24, 2026-10-28 13:52:24))
+
+/var/www/html/vendor/laravel/framework/src/Illuminate/Database/Connection.php:864
+/var/www/html/vendor/laravel/framework/src/Illuminate/Database/Connection.php:820
+/var/www/html/vendor/laravel/framework/src/Illuminate/Database/Connection.php:597
+/var/www/html/vendor/laravel/framework/src/Illuminate/Database/Connection.php:561
+/var/www/html/vendor/laravel/framework/src/Illuminate/Database/Query/Builder.php:4231
+/var/www/html/vendor/laravel/framework/src/Illuminate/Database/Eloquent/Builder.php:2350
+/var/www/html/vendor/laravel/framework/src/Illuminate/Database/Eloquent/Model.php:1641
+/var/www/html/vendor/laravel/framework/src/Illuminate/Database/Eloquent/Model.php:1432
+/var/www/html/vendor/laravel/framework/src/Illuminate/Database/Eloquent/Builder.php:1270
+/var/www/html/vendor/laravel/framework/src/Illuminate/Support/helpers.php:393
+/var/www/html/vendor/laravel/framework/src/Illuminate/Database/Eloquent/Builder.php:1269
+/var/www/html/tests/Feature/Api/CompleteApiEndpointAuditTest.php:136
+
+Caused by
+PDOException: SQLSTATE[23502]: Not null violation: 7 ERROR:  null value in column "indicator_snapshot" of relation "signals" violates not-null constraint
+DETAIL:  Failing row contains (677f9fde-c3aa-49d1-a7bd-bcb0996e5c2b, bybit, linear, BTCUSDT, 15, BUY, A, 85, 2026-10-28 13:37:24+00, 2026-10-28 13:37:24+00, 65000.000000000000, 65500.000000000000, 64000.000000000000, 67000.000000000000, 69000.000000000000, null, null, null, 2026-10-28 15:52:24+00, 120, ["trend_aligned"], [], null, null, 1.0.0, null, 2026-10-28 13:52:24+00, 2026-10-28 13:52:24+00, trend_pullback).
+
+/var/www/html/vendor/laravel/framework/src/Illuminate/Database/Connection.php:608
+/var/www/html/vendor/laravel/framework/src/Illuminate/Database/Connection.php:853
+/var/www/html/vendor/laravel/framework/src/Illuminate/Database/Connection.php:820
+/var/www/html/vendor/laravel/framework/src/Illuminate/Database/Connection.php:597
+/var/www/html/vendor/laravel/framework/src/Illuminate/Database/Connection.php:561
+/var/www/html/vendor/laravel/framework/src/Illuminate/Database/Query/Builder.php:4231
+/var/www/html/vendor/laravel/framework/src/Illuminate/Database/Eloquent/Builder.php:2350
+/var/www/html/vendor/laravel/framework/src/Illuminate/Database/Eloquent/Model.php:1641
+/var/www/html/vendor/laravel/framework/src/Illuminate/Database/Eloquent/Model.php:1432
+/var/www/html/vendor/laravel/framework/src/Illuminate/Database/Eloquent/Builder.php:1270
+/var/www/html/vendor/laravel/framework/src/Illuminate/Support/helpers.php:393
+/var/www/html/vendor/laravel/framework/src/Illuminate/Database/Eloquent/Builder.php:1269
+/var/www/html/tests/Feature/Api/CompleteApiEndpointAuditTest.php:136
+
+[37;41mERRORS![0m
+[37;41mTests: 3[0m[37;41m, Assertions: 45[0m[37;41m, Errors: 1[0m[37;41m.[0m

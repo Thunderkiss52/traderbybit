@@ -1,0 +1,43 @@
+PHPUnit 12.5.39 by Sebastian Bergmann and contributors.
+
+Runtime:       PHP 8.5.12
+Configuration: /var/www/html/phpunit.xml
+
+...{"message":"Recovery: Terminalized upstream event bybit:BTCUSDT:15:2026-10-28T13:19:44+00:00:SIGNALS_EVALUATED to COMPLETED matching existing downstream PAPER_PROCESSED.","context":{},"level":200,"level_name":"INFO","channel":"testing","datetime":"2026-10-28T13:20:29.634717+00:00","extra":{}}
+.{"message":"ProcessPaperPipelineJob account provenance/executable check failed: 093eaf5e-ad0a-4e8d-9aac-4744bfa866cc (invalid_strategy_never_configured): Binance PRIMARY account provenance is not verified.","context":{"account_id":"093eaf5e-ad0a-4e8d-9aac-4744bfa866cc","strategy_id":"invalid_strategy_never_configured","exception":"DomainException"},"level":300,"level_name":"WARNING","channel":"testing","datetime":"2026-10-28T13:20:29.750274+00:00","extra":{}}
+{"message":"ProcessPaperPipelineJob completed with individual account errors.","context":{"failed_count":1,"total_accounts":2,"eligible_accounts":2,"processed_accounts":1,"failures":[{"account_id":"093eaf5e-ad0a-4e8d-9aac-4744bfa866cc","error":"Binance PRIMARY account provenance is not verified."}]},"level":300,"level_name":"WARNING","channel":"testing","datetime":"2026-10-28T13:20:29.786523+00:00","extra":{}}
+...{"message":"ProcessPaperPipelineJob account provenance/executable check failed: 39c07c2e-b292-4d49-942f-98702908b16f (invalid_strategy_failing_provenance): Binance PRIMARY account provenance is not verified.","context":{"account_id":"39c07c2e-b292-4d49-942f-98702908b16f","strategy_id":"invalid_strategy_failing_provenance","exception":"DomainException"},"level":300,"level_name":"WARNING","channel":"testing","datetime":"2026-10-28T13:20:30.033338+00:00","extra":{}}
+{"message":"ProcessPaperPipelineJob completed with individual account errors.","context":{"failed_count":1,"total_accounts":2,"eligible_accounts":2,"processed_accounts":1,"failures":[{"account_id":"39c07c2e-b292-4d49-942f-98702908b16f","error":"Binance PRIMARY account provenance is not verified."}]},"level":300,"level_name":"WARNING","channel":"testing","datetime":"2026-10-28T13:20:30.043635+00:00","extra":{}}
+[31;1mE[0m                                                            8 / 8 (100%)
+
+Time: 00:03.410, Memory: 20.00 MB
+
+There was 1 error:
+
+1) Tests\Feature\Trading\TradingPipelineStageATest::test_recovery_retry_only_retries_failed_accounts_without_repeating_successes
+Illuminate\Database\QueryException: SQLSTATE[42P01]: Undefined table: 7 ERROR:  relation "virtual_account_journal_entries" does not exist
+LINE 1: select * from "virtual_account_journal_entries" where "accou...
+                      ^ (Connection: pgsql, Host: 127.0.0.1, Port: 5432, Database: bybit_test, SQL: select * from "virtual_account_journal_entries" where "account_id" = 94b97f13-107d-54a9-b4eb-1ca5a9c79743)
+
+/var/www/html/vendor/laravel/framework/src/Illuminate/Database/Connection.php:864
+/var/www/html/vendor/laravel/framework/src/Illuminate/Database/Connection.php:820
+/var/www/html/vendor/laravel/framework/src/Illuminate/Database/Connection.php:433
+/var/www/html/vendor/laravel/framework/src/Illuminate/Database/Query/Builder.php:3640
+/var/www/html/vendor/laravel/framework/src/Illuminate/Database/Query/Builder.php:3624
+/var/www/html/tests/Feature/Trading/TradingPipelineStageATest.php:304
+
+Caused by
+PDOException: SQLSTATE[42P01]: Undefined table: 7 ERROR:  relation "virtual_account_journal_entries" does not exist
+LINE 1: select * from "virtual_account_journal_entries" where "accou...
+                      ^
+
+/var/www/html/vendor/laravel/framework/src/Illuminate/Database/Connection.php:447
+/var/www/html/vendor/laravel/framework/src/Illuminate/Database/Connection.php:853
+/var/www/html/vendor/laravel/framework/src/Illuminate/Database/Connection.php:820
+/var/www/html/vendor/laravel/framework/src/Illuminate/Database/Connection.php:433
+/var/www/html/vendor/laravel/framework/src/Illuminate/Database/Query/Builder.php:3640
+/var/www/html/vendor/laravel/framework/src/Illuminate/Database/Query/Builder.php:3624
+/var/www/html/tests/Feature/Trading/TradingPipelineStageATest.php:304
+
+[37;41mERRORS![0m
+[37;41mTests: 8[0m[37;41m, Assertions: 32[0m[37;41m, Errors: 1[0m[37;41m.[0m

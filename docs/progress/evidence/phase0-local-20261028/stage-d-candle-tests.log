@@ -1,0 +1,78 @@
+PHPUnit 12.5.39 by Sebastian Bergmann and contributors.
+
+Runtime:       PHP 8.5.12
+Configuration: /var/www/html/phpunit.xml
+
+[31;1mE[0m[31;1mE[0m[31;1mE[0m[31;1mE[0m[31;1mE[0m.                                                              6 / 6 (100%)
+
+Time: 00:01.966, Memory: 20.00 MB
+
+There were 5 errors:
+
+1) Tests\Integration\BinanceCandleInsertionRaceTest::test_concurrent_insert_reloads_every_identity_and_preserves_winning_rows@identical subset with data (false, false)
+ParseError: syntax error, unexpected token "private", expecting end of file
+
+/var/www/html/app/Exchanges/Binance/BinanceCandleIngestion.php:162
+/var/www/html/vendor/laravel/framework/src/Illuminate/Container/Container.php:1005
+/var/www/html/vendor/laravel/framework/src/Illuminate/Container/Container.php:991
+/var/www/html/vendor/laravel/framework/src/Illuminate/Container/Container.php:932
+/var/www/html/vendor/laravel/framework/src/Illuminate/Foundation/Application.php:1086
+/var/www/html/vendor/laravel/framework/src/Illuminate/Container/Container.php:867
+/var/www/html/vendor/laravel/framework/src/Illuminate/Foundation/Application.php:1066
+/var/www/html/vendor/laravel/framework/src/Illuminate/Foundation/helpers.php:138
+/var/www/html/tests/Integration/BinanceCandleInsertionRaceTest.php:63
+
+2) Tests\Integration\BinanceCandleInsertionRaceTest::test_concurrent_insert_reloads_every_identity_and_preserves_winning_rows@conflicting final identity with data (true, false)
+ParseError: syntax error, unexpected token "private", expecting end of file
+
+/var/www/html/app/Exchanges/Binance/BinanceCandleIngestion.php:162
+/var/www/html/vendor/laravel/framework/src/Illuminate/Container/Container.php:1005
+/var/www/html/vendor/laravel/framework/src/Illuminate/Container/Container.php:991
+/var/www/html/vendor/laravel/framework/src/Illuminate/Container/Container.php:932
+/var/www/html/vendor/laravel/framework/src/Illuminate/Foundation/Application.php:1086
+/var/www/html/vendor/laravel/framework/src/Illuminate/Container/Container.php:867
+/var/www/html/vendor/laravel/framework/src/Illuminate/Foundation/Application.php:1066
+/var/www/html/vendor/laravel/framework/src/Illuminate/Foundation/helpers.php:138
+/var/www/html/tests/Integration/BinanceCandleInsertionRaceTest.php:63
+
+3) Tests\Integration\BinanceCandleInsertionRaceTest::test_concurrent_insert_reloads_every_identity_and_preserves_winning_rows@identical complete batch with data (false, true)
+ParseError: syntax error, unexpected token "private", expecting end of file
+
+/var/www/html/app/Exchanges/Binance/BinanceCandleIngestion.php:162
+/var/www/html/vendor/laravel/framework/src/Illuminate/Container/Container.php:1005
+/var/www/html/vendor/laravel/framework/src/Illuminate/Container/Container.php:991
+/var/www/html/vendor/laravel/framework/src/Illuminate/Container/Container.php:932
+/var/www/html/vendor/laravel/framework/src/Illuminate/Foundation/Application.php:1086
+/var/www/html/vendor/laravel/framework/src/Illuminate/Container/Container.php:867
+/var/www/html/vendor/laravel/framework/src/Illuminate/Foundation/Application.php:1066
+/var/www/html/vendor/laravel/framework/src/Illuminate/Foundation/helpers.php:138
+/var/www/html/tests/Integration/BinanceCandleInsertionRaceTest.php:63
+
+4) Tests\Integration\BinanceCandleInsertionRaceTest::test_concurrent_insert_reloads_every_identity_and_preserves_winning_rows@conflicting complete batch with data (true, true)
+ParseError: syntax error, unexpected token "private", expecting end of file
+
+/var/www/html/app/Exchanges/Binance/BinanceCandleIngestion.php:162
+/var/www/html/vendor/laravel/framework/src/Illuminate/Container/Container.php:1005
+/var/www/html/vendor/laravel/framework/src/Illuminate/Container/Container.php:991
+/var/www/html/vendor/laravel/framework/src/Illuminate/Container/Container.php:932
+/var/www/html/vendor/laravel/framework/src/Illuminate/Foundation/Application.php:1086
+/var/www/html/vendor/laravel/framework/src/Illuminate/Container/Container.php:867
+/var/www/html/vendor/laravel/framework/src/Illuminate/Foundation/Application.php:1066
+/var/www/html/vendor/laravel/framework/src/Illuminate/Foundation/helpers.php:138
+/var/www/html/tests/Integration/BinanceCandleInsertionRaceTest.php:63
+
+5) Tests\Feature\Exchanges\BinanceImmutableMarketIngestionTest::test_candle_replay_is_idempotent_and_conflicting_batch_rolls_back
+ParseError: syntax error, unexpected token "private", expecting end of file
+
+/var/www/html/app/Exchanges/Binance/BinanceCandleIngestion.php:162
+/var/www/html/vendor/laravel/framework/src/Illuminate/Container/Container.php:1005
+/var/www/html/vendor/laravel/framework/src/Illuminate/Container/Container.php:991
+/var/www/html/vendor/laravel/framework/src/Illuminate/Container/Container.php:932
+/var/www/html/vendor/laravel/framework/src/Illuminate/Foundation/Application.php:1086
+/var/www/html/vendor/laravel/framework/src/Illuminate/Container/Container.php:867
+/var/www/html/vendor/laravel/framework/src/Illuminate/Foundation/Application.php:1066
+/var/www/html/vendor/laravel/framework/src/Illuminate/Foundation/helpers.php:138
+/var/www/html/tests/Feature/Exchanges/BinanceImmutableMarketIngestionTest.php:34
+
+[37;41mERRORS![0m
+[37;41mTests: 6[0m[37;41m, Assertions: 10[0m[37;41m, Errors: 5[0m[37;41m.[0m
