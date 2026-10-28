@@ -9,6 +9,7 @@ use App\MarketData\Infrastructure\Persistence\CandleRecord;
 use App\PaperTrading\Application\PaperAccountService;
 use App\Research\Application\ResearchReportService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Redis;
 use Illuminate\Support\Str;
 use Tests\TestCase;
 
@@ -138,6 +139,8 @@ final class AutonomousLearningApiTest extends TestCase
 
     public function test_f14_research_report_freshness_shapes_and_stale_reasons(): void
     {
+        Redis::shouldReceive('connection->llen')->andReturn(0);
+
         // 1. Fresh candle scenario: seed fresh candle within 5 minutes
         $now = now('UTC');
         CandleRecord::query()->create([
