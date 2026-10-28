@@ -64,7 +64,7 @@ final readonly class BinanceCandleIngestion
                     continue;
                 }
 
-                $insertedNow = DB::table('market_candles')->insertOrIgnore(array_values($missing));
+                $insertedNow = $this->insertCandlesUnnest(array_values($missing));
                 if ($insertedNow !== count($missing)) {
                     // A concurrent writer can win after the initial read. A separate
                     // statement sees its committed rows under PostgreSQL READ COMMITTED.
@@ -91,6 +91,68 @@ final readonly class BinanceCandleIngestion
             'fetched' => count($rows), 'new_closed_candles' => $inserted,
             'execution_status' => 'PAPER_EXECUTION_BLOCKED_UNTIL_VERIFIED',
         ];
+    }
+
+    /**
+     * High-throughput PostgreSQL unnest bulk insert.
+     * Preserves strict NUMERIC types, idempotency and unique identity constraint.
+     */
+    private function insertCandlesUnnest(array $chunk): int
+    {
+        if (empty($chunk)) {
+            return 0;
+        }
+
+        $exchanges = [];
+        $categories = [];
+        $symbols = [];
+        $intervals = [];
+        $openTimes = [];
+        $opens = [];
+        $highs = [];
+        $lows = [];
+        $closes = [];
+        $volumes = [];
+        $turnovers = [];
+        $isClosed = [];
+        $createdAts = [];
+        $updatedAts = [];
+
+        foreach ($chunk as $row) {
+            $exchanges[] = $row['exchange'];
+            $categories[] = $row['category'];
+            $symbols[] = $row['symbol'];
+            $intervals[] = $row['interval'];
+            $openTimes[] = $row['open_time'];
+            $opens[] = (string) $row['open'];
+            $highs[] = (string) $row['high'];
+            $lows[] = (string) $row['low'];
+            $closes[] = (string) $row['close'];
+            $volumes[] = (string) $row['volume'];
+            $turnovers[] = (string) $row['turnover'];
+            $isClosed[] = $row['is_closed'] ? 't' : 'f';
+            $createdAts[] = $row['created_at'];
+            $updatedAts[] = $row['updated_at'];
+        }
+
+        $toPgArray = static fn (array $arr): string => '{'.implode(',', array_map(static fn ($v): string => '"'.addcslashes((string) $v, '"\\').'"', $arr)).'}';
+
+        return DB::affectingStatement('insert into "market_candles" (exchange, category, symbol, interval, open_time, open, high, low, close, volume, turnover, is_closed, created_at, updated_at) select * from unnest(?::varchar[], ?::varchar[], ?::varchar[], ?::varchar[], ?::timestamp[], ?::numeric[], ?::numeric[], ?::numeric[], ?::numeric[], ?::numeric[], ?::numeric[], ?::boolean[], ?::timestamptz[], ?::timestamptz[]) on conflict (exchange, category, symbol, interval, open_time) do nothing', [
+            $toPgArray($exchanges),
+            $toPgArray($categories),
+            $toPgArray($symbols),
+            $toPgArray($intervals),
+            $toPgArray($openTimes),
+            $toPgArray($opens),
+            $toPgArray($highs),
+            $toPgArray($lows),
+            $toPgArray($closes),
+            $toPgArray($volumes),
+            $toPgArray($turnovers),
+            $toPgArray($isClosed),
+            $toPgArray($createdAts),
+            $toPgArray($updatedAts),
+        ]);
     }
 
     private function storedCandles(array $scope, array $batch): array
