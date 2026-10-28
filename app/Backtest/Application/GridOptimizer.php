@@ -24,8 +24,8 @@ final readonly class GridOptimizer
             foreach ($parameters as $path => $value) {
                 Arr::set($strategy, $path, $value);
             }
-            $trainResult = $this->engine->simulate($symbols, $train, $strategy, $execution, $balance);
-            $validationResult = $this->engine->simulate($symbols, $validation, $strategy, $execution, $balance);
+            $trainResult = $this->engine->simulate($symbols, $train, $strategy, $execution, $balance, $baseStrategy['_exchange'] ?? 'bybit');
+            $validationResult = $this->engine->simulate($symbols, $validation, $strategy, $execution, $balance, $baseStrategy['_exchange'] ?? 'bybit');
             $trainMetrics = $this->metrics->calculate($trainResult->trades, $trainResult->equity, (array) config('backtest.returns'));
             $validationMetrics = $this->metrics->calculate($validationResult->trades, $validationResult->equity, (array) config('backtest.returns'));
             $score = $this->objective($trainMetrics, $validationMetrics, $settings);

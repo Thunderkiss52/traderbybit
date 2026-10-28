@@ -33,12 +33,28 @@ class BacktestRunService
         private array $config,
     ) {}
 
-    public function run(array $symbols, DateTimeImmutable $from, DateTimeImmutable $to, bool $walkForward = false, ?array $strategyOverride = null): BacktestRunRecord
+    public function run(array $symbols, DateTimeImmutable $from, DateTimeImmutable $to, bool $walkForward = false, ?array $strategyOverride = null, string $exchange = 'bybit'): BacktestRunRecord
     {
         sort($symbols);
-        $dataset = $this->datasets->inspect($symbols, $from, $to, (int) $this->config['warmup_bars']);
+        $dataset = $this->datasets->inspect($symbols, $from, $to, (int) $this->config['warmup_bars'], $exchange);
         $strategy = $strategyOverride ?? (array) config('strategy');
+        // The run argument owns exchange selection; overrides cannot redirect data reads.
+        unset($strategy['_exchange']);
+        if ($exchange !== 'bybit') {
+            $strategy['_exchange'] = $exchange;
+        }
         $paper = (array) config('paper');
+        if ($exchange === 'binance') {
+            foreach (['paper_taker_rate', 'paper_slippage_rate'] as $key) {
+                $value = config('exchanges.binance.'.$key);
+                if (! is_string($value) || ! preg_match('/^(?:0|[1-9][0-9]*)(?:\.[0-9]+)?$/D', $value)
+                    || BigDecimal::of($value)->isGreaterThanOrEqualTo(1)) {
+                    throw new \RuntimeException('Binance historical execution cost unavailable: '.$key);
+                }
+            }
+            $paper['fees']['taker_rate'] = config('exchanges.binance.paper_taker_rate');
+            $paper['slippage_rate'] = config('exchanges.binance.paper_slippage_rate');
+        }
         $type = $walkForward ? 'walk_forward' : 'split';
         $fingerprint = $this->fingerprint([$type, $symbols, $from->format(DATE_ATOM), $to->format(DATE_ATOM), $dataset['checksum'], $strategy, $paper, $this->config]);
         $id = Uuid::uuid5(Uuid::NAMESPACE_URL, 'traderbybit:backtest:'.$fingerprint)->toString();
@@ -97,7 +113,7 @@ class BacktestRunService
         $allEquity = [];
         foreach ([$train, $validation, $test] as $index => $segment) {
             $this->guardCancellation($run);
-            $result = $this->engine->simulate($symbols, $segment, $selected, $paper, (string) $this->config['starting_balance']);
+            $result = $this->engine->simulate($symbols, $segment, $selected, $paper, (string) $this->config['starting_balance'], $strategy['_exchange'] ?? 'bybit');
             $metrics = $this->metrics->calculate($result->trades, $result->equity, (array) $this->config['returns']);
             $this->saveSegment($run->id, $segment, $selected, $result, $metrics);
             $warnings = array_merge($warnings, $result->warnings);
@@ -131,7 +147,7 @@ class BacktestRunService
                 $empty = new SimulationResult([], [], [], ['optimization_only_not_persisted_as_trades']);
                 $this->saveSegment($run->id, $segment, $selected, $empty, $optimized['selected'][$segment->kind.'_metrics']);
             }
-            $result = $this->engine->simulate($symbols, $test, $selected, $paper, $oosBalance);
+            $result = $this->engine->simulate($symbols, $test, $selected, $paper, $oosBalance, $strategy['_exchange'] ?? 'bybit');
             $metric = $this->metrics->calculate($result->trades, $result->equity, (array) $this->config['returns']);
             $this->saveSegment($run->id, $test, $selected, $result, $metric);
             foreach ($result->trades as $trade) {
@@ -186,30 +202,30 @@ class BacktestRunService
                 } else {
                     $variant['slippage_rate'] = (string) BigDecimal::of($paper['slippage_rate'])->multipliedBy($multiplier);
                 }
-                $simulation = $this->engine->simulate($symbols, $test, $strategy, $variant, (string) $this->config['starting_balance']);
+                $simulation = $this->engine->simulate($symbols, $test, $strategy, $variant, (string) $this->config['starting_balance'], $strategy['_exchange'] ?? 'bybit');
                 $results["{$kind}_x{$multiplier}"] = $this->metrics->calculate($simulation->trades, $simulation->equity, (array) $this->config['returns']);
             }
         }
         foreach ($symbols as $symbol) {
-            $simulation = $this->engine->simulate([$symbol], $test, $strategy, $paper, (string) $this->config['starting_balance']);
+            $simulation = $this->engine->simulate([$symbol], $test, $strategy, $paper, (string) $this->config['starting_balance'], $strategy['_exchange'] ?? 'bybit');
             $results['symbol_'.$symbol] = $this->metrics->calculate($simulation->trades, $simulation->equity, (array) $this->config['returns']);
         }
-        $baseline = $this->engine->simulate($symbols, $test, $strategy, $paper, (string) $this->config['starting_balance']);
+        $baseline = $this->engine->simulate($symbols, $test, $strategy, $paper, (string) $this->config['starting_balance'], $strategy['_exchange'] ?? 'bybit');
         $clean = array_values(array_filter($baseline->trades, fn (array $trade): bool => ! $trade['ambiguous_execution']));
         $results['exclude_ambiguous'] = $this->metrics->calculate($clean, $baseline->equity, (array) $this->config['returns']);
-        $results['market_regimes'] = $this->regimeMetrics($baseline->trades);
+        $results['market_regimes'] = $this->regimeMetrics($baseline->trades, $strategy['_exchange'] ?? 'bybit');
 
         return $results;
     }
 
-    private function regimeMetrics(array $trades): array
+    private function regimeMetrics(array $trades, string $exchange): array
     {
         $groups = ['bullish' => [], 'sideways' => [], 'bearish' => []];
         foreach ($trades as $trade) {
             $at = $trade['signal_at'];
-            $latest = CandleRecord::query()->where(['exchange' => 'bybit', 'category' => 'linear', 'symbol' => $trade['symbol'], 'interval' => '60', 'is_closed' => true])
+            $latest = CandleRecord::query()->where(['exchange' => $exchange, 'category' => 'linear', 'symbol' => $trade['symbol'], 'interval' => '60', 'is_closed' => true])
                 ->where('open_time', '<=', $at->modify('-1 hour'))->latest('open_time')->first();
-            $earlier = CandleRecord::query()->where(['exchange' => 'bybit', 'category' => 'linear', 'symbol' => $trade['symbol'], 'interval' => '60', 'is_closed' => true])
+            $earlier = CandleRecord::query()->where(['exchange' => $exchange, 'category' => 'linear', 'symbol' => $trade['symbol'], 'interval' => '60', 'is_closed' => true])
                 ->where('open_time', '<=', $at->modify('-'.(int) $this->config['regimes']['lookback_days'].' days'))->latest('open_time')->first();
             $regime = 'sideways';
             if ($latest !== null && $earlier !== null && ! BigDecimal::of($earlier->close)->isZero()) {

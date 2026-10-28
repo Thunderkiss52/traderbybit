@@ -18,14 +18,18 @@ final class HistoricalStrategyParityTest extends TestCase
     {
         $evaluator = app(StrategySignalEvaluator::class);
         $at = new DateTimeImmutable('2026-01-01T12:00:00Z');
-        foreach (config('paper.primary_strategies') as $id) {
-            $configuration = config('strategy');
-            $configuration['_research_strategy_id'] = $id;
-            $configuration['_research_parameters'] = config("research.strategies.{$id}", []);
-            $first = $evaluator->evaluate('BTCUSDT', $at, $configuration);
-            $second = $evaluator->evaluate('BTCUSDT', $at, $configuration);
-            self::assertSame(SignalSide::Skip, $first->side, $id);
-            self::assertSame($first->reasons, $second->reasons, $id);
+        foreach (['bybit', 'binance'] as $exchange) {
+            foreach (config('paper.primary_strategies') as $id) {
+                $configuration = config('strategy');
+                $configuration['_research_strategy_id'] = $id;
+                $configuration['_exchange'] = $exchange;
+                $configuration['_research_parameters'] = config("research.strategies.{$id}", []);
+                $first = $evaluator->evaluate('BTCUSDT', $at, $configuration);
+                $second = $evaluator->evaluate('BTCUSDT', $at, $configuration);
+                self::assertSame($exchange, $first->exchange);
+                self::assertSame(SignalSide::Skip, $first->side, $id);
+                self::assertSame($first->reasons, $second->reasons, $id);
+            }
         }
     }
 }
