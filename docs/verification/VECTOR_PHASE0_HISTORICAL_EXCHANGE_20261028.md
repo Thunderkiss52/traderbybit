@@ -56,4 +56,13 @@ From b8d9591: HistoricalStrategyParityTest now seeds separate closed 5m/15m/30m/
 
 Candidate generation accepts validated exchange identity (default Bybit); candidate metadata carries it into the historical worker. A foreign-exchange run is rejected before linkage. Binance forward promotion is explicitly blocked because the existing account provisioner is default-exchange only. No owner approval flag changes. CandidateExchangeTest, CandidateLabValidationLifecycleTest and PromotedCandidateExecutionTest passed on isolated PostgreSQL 14: exit 0, 10 tests, 89 assertions. Correct-exchange candidate linkage uses a mocked backtest boundary; actual historical execution is covered separately by the backtest tests. Full Pint passed.
 
-Next: verify direct candidate evidence ingestion also rejects cross-exchange run IDs, extend valid-history walk-forward/financial reference cases, and run the full applicable regression. Phase 0 remains blocked; these tests grant no production acceptance.
+## Direct candidate evidence cross-exchange rejection and walk-forward continuation
+
+PromotionPolicyService candidate evaluation now enforces strict exchange equality when validating evidence from BacktestRunRecord and ResearchJobRecord: a candidate configured for one exchange (e.g. Binance) explicitly rejects linked evidence originating from another exchange (e.g. Bybit) with status REJECTED and failure reason `exchange_mismatch`.
+
+ChronologicalSplitter::walkForward now supports minute/day units in addition to months, allowing end-to-end historical walk-forward execution and validation on bounded datasets. Binance walk-forward simulation verifies isolated dataset inspection, explicit Binance execution costs, and persistence of the exchange and walk_forward run type.
+
+Verified on isolated PostgreSQL 14 at 127.0.0.1:25439/bybit_test:
+- `tests/Feature/Backtest tests/Unit/Backtest tests/Feature/Research/CandidateExchangeTest.php tests/Feature/Research/CandidateLabValidationLifecycleTest.php`
+- Exit 0: 36 tests, 776 assertions, 168.853 seconds. Full Pint exit 0; git diff check exit 0.
+- No production financial records or database schemas were mutated. Phase 0 remains blocked by external production acceptance and Binance immutable observation conflicts.

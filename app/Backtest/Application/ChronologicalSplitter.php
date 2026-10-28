@@ -27,15 +27,24 @@ final class ChronologicalSplitter
         $windows = [];
         $cursor = $from;
         $index = 0;
+        $unit = isset($config['step_minutes']) || isset($config['train_minutes']) ? 'minutes' : (isset($config['step_days']) || isset($config['train_days']) ? 'days' : 'months');
+        $trainAmount = (int) ($config["train_{$unit}"] ?? $config['train_months'] ?? 6);
+        $validationAmount = (int) ($config["validation_{$unit}"] ?? $config['validation_months'] ?? 2);
+        $testAmount = (int) ($config["test_{$unit}"] ?? $config['test_months'] ?? 2);
+        $stepAmount = (int) ($config["step_{$unit}"] ?? $config['step_months'] ?? 2);
+        if ($trainAmount <= 0 || $validationAmount <= 0 || $testAmount <= 0 || $stepAmount <= 0) {
+            throw new InvalidArgumentException('Invalid walk forward step or window duration.');
+        }
+
         while (true) {
-            $trainEnd = $cursor->modify('+'.(int) $config['train_months'].' months');
-            $validationEnd = $trainEnd->modify('+'.(int) $config['validation_months'].' months');
-            $testEnd = $validationEnd->modify('+'.(int) $config['test_months'].' months');
+            $trainEnd = $cursor->modify("+{$trainAmount} {$unit}");
+            $validationEnd = $trainEnd->modify("+{$validationAmount} {$unit}");
+            $testEnd = $validationEnd->modify("+{$testAmount} {$unit}");
             if ($testEnd > $to) {
                 break;
             }
             $windows[] = [new Segment('train', $cursor, $trainEnd, $index), new Segment('validation', $trainEnd, $validationEnd, $index), new Segment('test', $validationEnd, $testEnd, $index)];
-            $cursor = $cursor->modify('+'.(int) $config['step_months'].' months');
+            $cursor = $cursor->modify("+{$stepAmount} {$unit}");
             $index++;
         }
 

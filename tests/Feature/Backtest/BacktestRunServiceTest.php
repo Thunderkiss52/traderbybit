@@ -98,6 +98,29 @@ final class BacktestRunServiceTest extends TestCase
         self::assertSame(0, BacktestRunRecord::query()->count());
     }
 
+    public function test_binance_walk_forward_run_persists_exchange_and_walk_type(): void
+    {
+        $this->seedCompleteHour('binance');
+        config()->set('backtest.warmup_bars', 0);
+        config()->set('backtest.walk_forward', ['train_minutes' => 30, 'validation_minutes' => 15, 'test_minutes' => 15, 'step_minutes' => 15]);
+        config()->set('backtest.optimization.grid', ['trend.adx_min' => ['20']]);
+        config()->set('backtest.optimization.minimum_trades', 0);
+        config()->set('exchanges.binance.paper_taker_rate', '0.0004');
+        config()->set('exchanges.binance.paper_slippage_rate', '0.0002');
+
+        $from = new DateTimeImmutable('2026-01-01T00:00:00Z');
+        $to = new DateTimeImmutable('2026-01-01T01:00:00Z');
+
+        $service = app(BacktestRunService::class);
+        $run = $service->run(['BTCUSDT'], $from, $to, walkForward: true, exchange: 'binance');
+
+        self::assertSame('COMPLETED', $run->status);
+        self::assertSame('walk_forward', $run->type);
+        self::assertSame('binance', $run->strategy_config['_exchange']);
+        self::assertSame(1, BacktestRunRecord::query()->where('type', 'walk_forward')->count());
+        self::assertSame(3, DB::table('backtest_segments')->where('backtest_run_id', $run->id)->count());
+    }
+
     private function seedCompleteHour(string $exchange = 'bybit'): void
     {
         foreach ([5, 15, 30, 60] as $minutes) {

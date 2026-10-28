@@ -523,10 +523,28 @@ final class PromotionPolicyService
         $metrics = null;
         $sourceType = null;
         $gate6Eval = null;
+        $candidateExchange = (string) ($candidate->search_metadata['exchange'] ?? 'bybit');
 
         // 1. Check BacktestRunRecord
         $backtestRun = BacktestRunRecord::query()->find($runId);
         if ($backtestRun !== null) {
+            $runExchange = (string) ($backtestRun->strategy_config['_exchange'] ?? 'bybit');
+            if ($runExchange !== $candidateExchange) {
+                $candidate->update([
+                    'status' => 'REJECTED',
+                    'validation_gates' => [
+                        'all_gates_passed' => false,
+                        'status' => 'FAILED',
+                        'failure_reason' => 'exchange_mismatch',
+                        'detail' => "Linked backtest run {$runId} exchange {$runExchange} does not match candidate exchange {$candidateExchange}.",
+                        'policy_version' => $this->getPolicyVersion(),
+                        'policy_hash' => $this->getPolicyHash(),
+                    ],
+                ]);
+
+                return $candidate->fresh();
+            }
+
             if ($backtestRun->status !== 'COMPLETED' || ! is_array($backtestRun->metrics)) {
                 $candidate->update([
                     'status' => 'REJECTED',
@@ -549,6 +567,25 @@ final class PromotionPolicyService
             // 2. Check ResearchJobRecord
             $researchJob = ResearchJobRecord::query()->where('job_id', $runId)->first();
             if ($researchJob !== null) {
+                $jobPayload = (array) $researchJob->payload;
+                $jobResult = (array) $researchJob->result_payload;
+                $jobExchange = $jobPayload['exchange'] ?? $jobResult['exchange'] ?? null;
+                if ($jobExchange !== null && (string) $jobExchange !== $candidateExchange) {
+                    $candidate->update([
+                        'status' => 'REJECTED',
+                        'validation_gates' => [
+                            'all_gates_passed' => false,
+                            'status' => 'FAILED',
+                            'failure_reason' => 'exchange_mismatch',
+                            'detail' => "Linked research job {$runId} exchange {$jobExchange} does not match candidate exchange {$candidateExchange}.",
+                            'policy_version' => $this->getPolicyVersion(),
+                            'policy_hash' => $this->getPolicyHash(),
+                        ],
+                    ]);
+
+                    return $candidate->fresh();
+                }
+
                 if ($researchJob->status !== 'SUCCEEDED' || ! is_array($researchJob->result_payload)) {
                     $candidate->update([
                         'status' => 'REJECTED',
