@@ -10,6 +10,7 @@ use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
 use Illuminate\Queue\Middleware\WithoutOverlapping;
 use Illuminate\Support\Facades\Log;
+use RuntimeException;
 use Throwable;
 
 final class RecoverCandleGapsJob implements ShouldQueue
@@ -19,6 +20,8 @@ final class RecoverCandleGapsJob implements ShouldQueue
     public int $tries = 2;
 
     public int $timeout = 900;
+
+    public array $backoff = [60, 300];
 
     public function __construct(
         public readonly ?string $exchange = null,
@@ -41,16 +44,23 @@ final class RecoverCandleGapsJob implements ShouldQueue
 
         if ($targetExchange === 'binance') {
             $ingestion = app(BinanceCandleIngestion::class);
+            $failures = [];
             foreach ($symbols as $symbol) {
-                try {
-                    $ingestion->ingest((string) $symbol, '5m', 100);
-                    $ingestion->ingest((string) $symbol, '15m', 100);
-                } catch (Throwable $e) {
-                    Log::warning("Binance candle gap recovery failed for {$symbol}: ".$e->getMessage(), [
-                        'symbol' => $symbol,
-                        'exception' => $e::class,
-                    ]);
+                foreach (['5m', '15m'] as $interval) {
+                    try {
+                        $ingestion->ingest((string) $symbol, $interval, 100);
+                    } catch (Throwable $e) {
+                        $failures[] = $symbol.':'.$interval;
+                        Log::warning('Binance candle gap recovery failed', [
+                            'exchange' => 'binance', 'symbol' => $symbol,
+                            'interval' => $interval, 'exception' => $e::class,
+                        ]);
+                    }
                 }
+            }
+            if ($failures !== []) {
+                // Successful scopes stay committed; retry verifies their immutable rows.
+                throw new RuntimeException('Binance candle gap recovery incomplete: '.implode(', ', $failures));
             }
 
             return;

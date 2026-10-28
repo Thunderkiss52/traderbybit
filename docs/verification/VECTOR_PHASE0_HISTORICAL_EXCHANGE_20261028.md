@@ -27,3 +27,15 @@ php -dxdebug.mode=off artisan test tests/Feature/Backtest tests/Unit/Backtest te
 ```
 
 Exit 0: 112 tests, 1,298 assertions, 80.349 seconds. Full Pint exit 0; diff check exit 0. New tests cover both CLI modes/exchanges, the worker service call, legacy payload defaults and invalid dispatch rejection. Production worker consumption and PostgreSQL 17 remain unverified.
+
+## Strategy and PAPER regression
+
+The subsequent isolated run of `tests/Unit/Strategy tests/Feature/Strategy tests/Feature/PaperTrading` completed with exit 0: 162 tests, 3,060 assertions, 110.573 seconds. No production evidence or frozen acceptance credit is inferred.
+
+## Binance recovery failure propagation
+
+Confirmed source defect: RecoverCandleGapsJob caught ingestion exceptions around both intervals, skipped the remaining interval after a failure, and returned successfully. Queue retry/failure handling could therefore not observe the failure. This is independent of the still-unexplained production source revision/conflict.
+
+The corrected job attempts its existing bounded 5m/15m recovery scopes independently, records failed scopes, and throws after attempting the batch. It adds explicit retry backoff. Successful scopes remain committed; retries verify immutable identities. No signals, risk decisions or PAPER entries are dispatched by recovery. This is not a complete historical backfill procedure for all HTF intervals.
+
+Negative control: temporarily restoring the original job while retaining the two new regression tests produced two failures, exit 1. Fixed-source verification with BinanceGapRecoveryTest, BinanceBatchCandleIngestionTest, BinanceImmutableMarketIngestionTest and ExchangeIngestionAndValuationStageCTest passed: exit 0, 22 tests, 243 assertions. Full Pint exit 0. Tests verify malformed data failure, continued processing of other scopes, successful retry without duplicate/changed rows, and immutable conflicts still failing on repeated attempts. Actual production queue retry and terminal failed-job persistence remain unverified.
