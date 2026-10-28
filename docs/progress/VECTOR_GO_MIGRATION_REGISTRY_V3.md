@@ -1,8 +1,8 @@
-# VECTOR Go Migration Registry V3.1
+# VECTOR Go Migration Registry V3.2
 
 **Status:** Proposed Scope & Migration Tracking Registry
 **Baseline Reference:** [`VECTOR-SCOPE-20261027-v1`](file:///home/thunder/work/traderbybit/docs/progress/baselines/VECTOR-SCOPE-20261027-v1.json) (Frozen)
-**Target Architecture:** [`VECTOR_GO_FIRST_ROADMAP_V3.md`](file:///home/thunder/work/traderbybit/docs/roadmap/VECTOR_GO_FIRST_ROADMAP_V3.md) (Roadmap V3.1)
+**Target Architecture:** [`VECTOR_GO_FIRST_ROADMAP_V3.md`](file:///home/thunder/work/traderbybit/docs/roadmap/VECTOR_GO_FIRST_ROADMAP_V3.md) (Roadmap V3.2)
 
 ---
 
@@ -44,6 +44,12 @@ Every workload is assigned a Migration Value Gate (MVG) disposition based on emp
 | **MIG-15** | Strategy Extensibility SDK | PHP Registry | Go `pkg/strategy` | Phase 3 | **APPROVED** | Dynamic descriptor onboarding in 1 file | Stub strategy registration test |
 | **MIG-16** | Profitability Research Engine | PHP `ProfitabilityResearch` | Go `internal/research/profit` | Phase 4 | **APPROVED** | Sub-100ms slippage & cost attribution | Attribution reconciliation test |
 | **MIG-17** | Multi-Exchange Extensibility SDK| PHP Adapters | Go `pkg/exchange` | Phase 6 | **APPROVED** | Modular onboarding of new exchanges | Stub adapter conformance test |
+| **MIG-18** | Declarative Strategy Rules Engine| New capability | Go `pkg/strategy/declarative` | Phase 3 | **APPROVED** | Deterministic config-driven rule execution | Rule grammar evaluation fixture |
+| **MIG-19** | Strategy Builder UI & Validator | New capability | Vue 3 / Laravel / Go schema | Phase 3/4 | **APPROVED** | Visual & JSON rule onboarding without code | Schema validation & roundtrip tests |
+| **MIG-20** | Exchange Config Schema & CSV Parser| New capability | Go `pkg/exchange/config` | Phase 6 | **APPROVED** | Validated CSV onboarding with SSRF checks | Schema compliance & SSRF boundary test |
+| **MIG-21** | Generic Exchange Adapter Runtime| New capability | Go `pkg/exchange/generic` | Phase 6 | **APPROVED** | Config-driven REST/WS ingestion without Go code| Adapter capability conformance test |
+| **MIG-22** | Exchange Onboarding UI & Lifecycle| New capability | Vue 3 / Laravel / Go | Phase 6 | **APPROVED** | CSV upload, endpoint preview, dry-run & approval| Lifecycle state machine transition test |
+| **MIG-23** | Exchange Conformance Test Harness| New capability | Go `pkg/exchange/conformance` | Phase 6 | **APPROVED** | Automated 10-criteria contract verification | Multi-exchange conformance suite |
 | **RET-01** | REST API & Sanctum Auth | PHP Laravel | PHP Laravel | Retained | **RETAINED** | Excellent, maintainable thin API | API contract tests |
 | **RET-02** | Candidate Lab Promotion Gate | PHP Laravel | PHP Laravel | Retained | **RETAINED** | Human operator approval workflow | Promotion policy tests |
 | **RET-03** | Operational Dashboard UI | Vue 3 / Quasar | Vue 3 / Quasar | Retained | **RETAINED** | High usability, zero trading keys | Frontend component tests |
