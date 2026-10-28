@@ -11,7 +11,7 @@ use Illuminate\Console\Command;
 
 class RunBacktestCommand extends Command
 {
-    protected $signature = 'backtest:run {--symbols=BTCUSDT,ETHUSDT} {--from=} {--to=} {--queue}';
+    protected $signature = 'backtest:run {--symbols=BTCUSDT,ETHUSDT} {--from=} {--to=} {--queue} {--exchange=bybit}';
 
     protected $description = 'Run an isolated chronological train/validation/test backtest';
 
@@ -27,15 +27,19 @@ class RunBacktestCommand extends Command
                 throw new \InvalidArgumentException('--from and --to are required.');
             }
             $symbols = array_values(array_unique(array_filter(array_map('strtoupper', explode(',', (string) $this->option('symbols'))))));
+            $exchange = (string) $this->option('exchange');
+            if (! in_array($exchange, ['bybit', 'binance'], true)) {
+                throw new \InvalidArgumentException('Unsupported backtest exchange.');
+            }
             $from = new DateTimeImmutable((string) $this->option('from').' 00:00:00 UTC');
             $to = new DateTimeImmutable((string) $this->option('to').' 00:00:00 UTC');
             if ($this->option('queue')) {
-                RunBacktestJob::dispatch($symbols, $from->format(DATE_ATOM), $to->format(DATE_ATOM), $walk);
+                RunBacktestJob::dispatch($symbols, $from->format(DATE_ATOM), $to->format(DATE_ATOM), $walk, $exchange);
                 $this->info('Backtest queued.');
 
                 return self::SUCCESS;
             }
-            $run = $service->run($symbols, $from, $to, $walk);
+            $run = $service->run($symbols, $from, $to, $walk, exchange: $exchange);
             $this->line(json_encode(['id' => $run->id, 'status' => $run->status, 'metrics' => $run->metrics, 'warnings' => $run->warnings], JSON_PRETTY_PRINT | JSON_THROW_ON_ERROR));
 
             return self::SUCCESS;

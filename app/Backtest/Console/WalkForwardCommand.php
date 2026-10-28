@@ -8,7 +8,7 @@ use App\Backtest\Application\BacktestRunService;
 
 final class WalkForwardCommand extends RunBacktestCommand
 {
-    protected $signature = 'backtest:walk-forward {--symbols=BTCUSDT,ETHUSDT} {--from=} {--to=} {--queue}';
+    protected $signature = 'backtest:walk-forward {--symbols=BTCUSDT,ETHUSDT} {--from=} {--to=} {--queue} {--exchange=bybit}';
 
     protected $description = 'Run rolling train/validation/out-of-sample windows';
 
