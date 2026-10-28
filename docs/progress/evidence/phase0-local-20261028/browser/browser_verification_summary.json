@@ -1,0 +1,17 @@
+{
+  "timestamp": "2026-10-28T15:29:03Z",
+  "obligations": {
+    "VEC-P0-102-V3": "PASS",
+    "VEC-P0-103-V3": "PASS",
+    "VEC-P0-109-V3": "PASS",
+    "VEC-P0-114-V3": "PASS",
+    "VEC-P0-119-V3": "PASS",
+    "VEC-P0-120-V3": "PASS",
+    "VEC-P0-122-V3": "PASS",
+    "VEC-P0-123-V3": "PASS",
+    "VEC-P0-125-V3": "PASS"
+  },
+  "all_passed": true,
+  "browser": "Chromium 138 (Headless)",
+  "frontend_host": "http://127.0.0.1:8099"
+}
