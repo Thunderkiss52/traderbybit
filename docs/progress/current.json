@@ -1,20 +1,20 @@
 {
   "status": "PROVISIONAL",
-  "source_head": "c8d51156b2c72b03f009d10e6a634ff80cff77ff",
+  "source_head": "a30291e3681963f8a3da4a5d284b0679746e8b48",
   "assessment_head": "d9a0aeb5d14233fc95e9e5cc55d8748814362f59",
   "assessment_date": "2026-10-28",
   "scope_baseline": "VECTOR-SCOPE-20261027-v1",
   "scope_hash": "6d207a2bd441156d909b72e93166ea2fb932c152c32627fd6d06083668d71117",
-  "registry_hash": "7cbd160247277753a39039ac3170261e23b4e1ab3d1434d9097aeda6f8d39cdb",
+  "registry_hash": "a38a1228fabb69a93b4c8e72b5af64f5974e77e3f41b5a8c5aed05c522185728",
   "overall": {
     "implementation": 42.2882,
-    "verification": 4.127,
+    "verification": 4.7619,
     "product": 0.0
   },
   "freshness": {
-    "CURRENT": 18,
+    "CURRENT": 20,
     "FAILED": 1,
-    "UNAVAILABLE": 210
+    "UNAVAILABLE": 208
   },
   "phases": [
     {
@@ -24,7 +24,7 @@
       "verified": 0,
       "accepted_capabilities": 0,
       "implementation": 78.5714,
-      "verification": 13.7566,
+      "verification": 15.873,
       "product": 0.0,
       "remaining": [
         "VEC-P0-001",
@@ -272,7 +272,7 @@
       "product": 0.0,
       "state": "BLOCKED",
       "blockers": [
-        "Local V1 admitted; Production V2 and explicit product acceptance pending."
+        "Local V1 passed; production V2, applicable browser V3 and explicit product acceptance remain pending."
       ],
       "dependencies": [],
       "missing_evidence": [
@@ -330,15 +330,14 @@
       "weight": 3,
       "capability": "CAP-P0",
       "implementation": 100.0,
-      "verification": 0.0,
+      "verification": 33.3333,
       "product": 0.0,
       "state": "BLOCKED",
       "blockers": [
-        "Local V1 incomplete: 5%/10%, cooldown, correlation, sizing and blocked-position servicing pass. Reviewed RiskAndSizingTest lacks direct RiskEngine zero-equity, class-limit and portfolio-notional boundary assertions required by the second atomic criterion. Production V2 and explicit product acceptance pending."
+        "Local V1 passed; production V2, applicable browser V3 and explicit product acceptance remain pending."
       ],
       "dependencies": [],
       "missing_evidence": [
-        "VEC-P0-004-V1:UNAVAILABLE",
         "VEC-P0-004-V2:UNAVAILABLE"
       ]
     },
@@ -355,7 +354,7 @@
       "product": 0.0,
       "state": "BLOCKED",
       "blockers": [
-        "Local V1 admitted; Production V2 and explicit product acceptance pending."
+        "Local V1 passed; production V2, applicable browser V3 and explicit product acceptance remain pending."
       ],
       "dependencies": [],
       "missing_evidence": [
@@ -375,7 +374,7 @@
       "product": 0.0,
       "state": "BLOCKED",
       "blockers": [
-        "Local V1 admitted; Production V2 and explicit product acceptance pending."
+        "Local V1 passed; production V2, applicable browser V3 and explicit product acceptance remain pending."
       ],
       "dependencies": [],
       "missing_evidence": [
@@ -395,7 +394,7 @@
       "product": 0.0,
       "state": "BLOCKED",
       "blockers": [
-        "Local V1 admitted; Production V2 and explicit product acceptance pending."
+        "Local V1 passed; production V2, applicable browser V3 and explicit product acceptance remain pending."
       ],
       "dependencies": [],
       "missing_evidence": [
@@ -567,7 +566,7 @@
       "product": 0.0,
       "state": "BLOCKED",
       "blockers": [
-        "Local V1 admitted; Production V2 and explicit product acceptance pending."
+        "Local V1 passed; production V2, applicable browser V3 and explicit product acceptance remain pending."
       ],
       "dependencies": [],
       "missing_evidence": [
@@ -608,7 +607,7 @@
       "product": 0.0,
       "state": "BLOCKED",
       "blockers": [
-        "Local V1 admitted; Production V2 and explicit product acceptance pending."
+        "Local V1 passed; production V2, applicable browser V3 and explicit product acceptance remain pending."
       ],
       "dependencies": [],
       "missing_evidence": [
@@ -709,15 +708,14 @@
       "weight": 1,
       "capability": "CAP-P0",
       "implementation": 0.0,
-      "verification": 0.0,
+      "verification": 33.3333,
       "product": 0.0,
       "state": "BLOCKED",
       "blockers": [
-        "Local V1 incomplete: Open economics exclusion passes. P2 partial-population test targets a different service; no direct partial-exit negative for the Statistics page service. Production V2 and explicit product acceptance pending."
+        "Local V1 passed; production V2, applicable browser V3 and explicit product acceptance remain pending."
       ],
       "dependencies": [],
       "missing_evidence": [
-        "VEC-P0-111-V1:UNAVAILABLE",
         "VEC-P0-111-V2:UNAVAILABLE"
       ]
     },
@@ -734,7 +732,7 @@
       "product": 0.0,
       "state": "BLOCKED",
       "blockers": [
-        "Local V1 admitted; Production V2 and explicit product acceptance pending."
+        "Local V1 passed; production V2, applicable browser V3 and explicit product acceptance remain pending."
       ],
       "dependencies": [],
       "missing_evidence": [
@@ -754,7 +752,7 @@
       "product": 0.0,
       "state": "BLOCKED",
       "blockers": [
-        "Local V1 admitted; Production V2 and explicit product acceptance pending."
+        "Local V1 passed; production V2, applicable browser V3 and explicit product acceptance remain pending."
       ],
       "dependencies": [],
       "missing_evidence": [
@@ -1053,7 +1051,7 @@
       "product": 0.0,
       "state": "BLOCKED",
       "blockers": [
-        "Local V1 admitted; Production V2 and explicit product acceptance pending."
+        "Local V1 passed; production V2, applicable browser V3 and explicit product acceptance remain pending."
       ],
       "dependencies": [],
       "missing_evidence": [
@@ -1073,7 +1071,7 @@
       "product": 0.0,
       "state": "BLOCKED",
       "blockers": [
-        "Local V1 admitted; Production V2 and explicit product acceptance pending."
+        "Local V1 passed; production V2, applicable browser V3 and explicit product acceptance remain pending."
       ],
       "dependencies": [],
       "missing_evidence": [
@@ -1093,7 +1091,7 @@
       "product": 0.0,
       "state": "BLOCKED",
       "blockers": [
-        "Local V1 admitted; Production V2 and explicit product acceptance pending."
+        "Local V1 passed; production V2, applicable browser V3 and explicit product acceptance remain pending."
       ],
       "dependencies": [],
       "missing_evidence": [
@@ -1113,7 +1111,7 @@
       "product": 0.0,
       "state": "BLOCKED",
       "blockers": [
-        "Local V1 admitted; Production V2 and explicit product acceptance pending."
+        "Local V1 passed; production V2, applicable browser V3 and explicit product acceptance remain pending."
       ],
       "dependencies": [],
       "missing_evidence": [
@@ -1133,7 +1131,7 @@
       "product": 0.0,
       "state": "BLOCKED",
       "blockers": [
-        "Local V1 admitted; Production V2 and explicit product acceptance pending."
+        "Local V1 passed; production V2, applicable browser V3 and explicit product acceptance remain pending."
       ],
       "dependencies": [],
       "missing_evidence": [
@@ -1153,7 +1151,7 @@
       "product": 0.0,
       "state": "BLOCKED",
       "blockers": [
-        "Local V1 admitted; Production V2 and explicit product acceptance pending."
+        "Local V1 passed; production V2, applicable browser V3 and explicit product acceptance remain pending."
       ],
       "dependencies": [],
       "missing_evidence": [
@@ -1173,7 +1171,7 @@
       "product": 0.0,
       "state": "BLOCKED",
       "blockers": [
-        "Local V1 admitted; Production V2 and explicit product acceptance pending."
+        "Local V1 passed; production V2, applicable browser V3 and explicit product acceptance remain pending."
       ],
       "dependencies": [],
       "missing_evidence": [
@@ -1193,7 +1191,7 @@
       "product": 0.0,
       "state": "BLOCKED",
       "blockers": [
-        "Local V1 admitted; Production V2 and explicit product acceptance pending."
+        "Local V1 passed; production V2, applicable browser V3 and explicit product acceptance remain pending."
       ],
       "dependencies": [],
       "missing_evidence": [
@@ -1213,7 +1211,7 @@
       "product": 0.0,
       "state": "BLOCKED",
       "blockers": [
-        "Local V1 admitted; Production V2 and explicit product acceptance pending."
+        "Local V1 passed; production V2, applicable browser V3 and explicit product acceptance remain pending."
       ],
       "dependencies": [],
       "missing_evidence": [
@@ -1233,7 +1231,7 @@
       "product": 0.0,
       "state": "BLOCKED",
       "blockers": [
-        "Local V1 admitted; Production V2 and explicit product acceptance pending."
+        "Local V1 passed; production V2, applicable browser V3 and explicit product acceptance remain pending."
       ],
       "dependencies": [],
       "missing_evidence": [

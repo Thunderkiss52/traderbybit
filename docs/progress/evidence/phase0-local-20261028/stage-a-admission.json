@@ -1,0 +1,195 @@
+{
+  "VEC-P0-006": {
+    "test_prefixes": [
+      "Tests\\Feature\\Strategy\\LevelProbabilityBootstrapLifecycleTest::test_forecast_creation_is_autonomous_and_decoupled_from_strategy_execution",
+      "Tests\\Feature\\Strategy\\LevelProbabilityBootstrapLifecycleTest::test_outcome_maturation_occurs_via_price_bars_without_trading_activity",
+      "Tests\\Feature\\Strategy\\LevelProbabilityBootstrapLifecycleTest::test_statistical_gating_transitions_to_active_trading_at_thirty_samples",
+      "Tests\\Feature\\Strategy\\LevelProbabilityBootstrapLifecycleTest::test_exchange_isolation_prevents_cross_contamination_of_sample_populations",
+      "Tests\\Feature\\Strategy\\LevelProbabilityBootstrapLifecycleTest::test_forecast_accumulation_proceeds_identically_when_paper_execution_is_unapproved"
+    ],
+    "rationale": "Forecast persists despite SKIP and unapproved execution; closed price bars mature outcomes without trades; 29 observations remain insufficient and 30 permit RESEARCH_BASELINE; Bybit 35 observations do not inflate Binance 5."
+  },
+  "VEC-P0-113": {
+    "test_prefixes": [
+      "Tests\\Unit\\Research\\StrategyHealthServiceTest::test_evaluates_strategy_health_and_builds_funnel",
+      "Tests\\Unit\\Research\\StrategyHealthServiceTest::test_identifies_insufficient_data_status"
+    ],
+    "rationale": "Observed BUY/SKIP counts are asserted; all-empty children produce INSUFFICIENT_DATA parent; requested 7d changes expected slots to 672."
+  },
+  "VEC-P0-104": {
+    "test_prefixes": [
+      "Tests\\Feature\\Research\\ProfitabilityResearchApiTest::test_persisted_discrepancies_and_missing_reconciliation_are_not_reported_as_clean",
+      "Tests\\Unit\\Research\\LedgerReconciliationServiceTest::test_reconciliation_passes_on_clean_account"
+    ],
+    "rationale": "Injected ledger mismatch produces actual discrepancy_count and detail findings; an account without a reconciliation run returns NO_RECORDED_RUN with null count; clean-account service control passes."
+  },
+  "VEC-P0-112": {
+    "test_prefixes": [
+      "Tests\\Feature\\PaperTrading\\DailyPerformanceTest::test_daily_equity_returns_are_paginated_and_use_the_selected_timezone",
+      "Tests\\Feature\\PaperTrading\\DailyPerformanceTest::test_symbol_filter_does_not_fabricate_historical_mark_to_market_returns",
+      "Tests\\Feature\\PaperTrading\\DailyPerformanceTest::test_invalid_timezone_is_rejected",
+      "Tests\\Feature\\PaperTrading\\DailyPerformanceTest::test_large_snapshot_history_returns_only_ten_server_aggregated_days_under_payload_limit",
+      "Tests\\Feature\\PaperTrading\\DailyPerformanceTest::test_aggregates_exact_fees_funding_windows_and_symbol_metrics_without_n_plus_one",
+      "Tests\\Feature\\PaperTrading\\DailyPerformanceTest::test_missing_opening_is_not_cumulative_daily_profit_and_csv_semantics_match",
+      "Tests\\Feature\\PaperTrading\\DailyPerformanceTest::test_account_inception_is_a_justified_opening_boundary"
+    ],
+    "rationale": "Closing-only history returns null PnL and incomplete in API service and calendar CSV; inception is a justified opening control; complete period reconciles commissions/funding."
+  },
+  "VEC-P0-207": {
+    "test_prefixes": [
+      "Tests\\Feature\\PaperTrading\\PositionLifecycleStageBTest::test_late_arriving_funding_settles_on_closed_position_with_correct_historical_quantity",
+      "Tests\\Feature\\MarketData\\FundingHistorySynchronizerTest::test_closed_candle_mark_price_is_persisted_idempotently",
+      "Tests\\Feature\\MarketData\\FundingHistorySynchronizerTest::test_missing_closed_mark_candle_does_not_fabricate_funding_price"
+    ],
+    "rationale": "Late event uses held quantity after TP1, exact -0.03 fixture amount, preserves closed status/equity identity and settles once. Missing closed mark is never fabricated."
+  },
+  "VEC-P0-203": {
+    "test_prefixes": [
+      "Tests\\Feature\\PaperTrading\\FundingScheduleSafetyTest::test_expected_funding_boundaries_returns_null_when_exchange_or_symbol_is_uncertified",
+      "Tests\\Feature\\PaperTrading\\FundingScheduleSafetyTest::test_expected_funding_boundaries_resolves_standard_eight_hour_schedule",
+      "Tests\\Feature\\PaperTrading\\FundingScheduleSafetyTest::test_expected_funding_boundaries_resolves_dynamic_four_hour_schedule_from_continuous_events",
+      "Tests\\Feature\\PaperTrading\\FundingScheduleSafetyTest::test_evaluate_funding_completeness_fails_closed_when_schedule_is_uncertified",
+      "Tests\\Feature\\PaperTrading\\FundingScheduleSafetyTest::test_evaluate_funding_completeness_rejects_arbitrary_thirty_minute_offset",
+      "Tests\\Feature\\PaperTrading\\PositionLifecycleStageBTest::test_funding_completeness_evaluates_correctly_for_zero_settlement_lifetime",
+      "Tests\\Feature\\PaperTrading\\PositionLifecycleStageBTest::test_late_arriving_funding_settles_on_closed_position_with_correct_historical_quantity"
+    ],
+    "rationale": "Unknown schedule and 25-minute offset fail closed; certified 8h/dynamic 4h schedules and zero-settlement closed lifetime work; late observed settlement completes an exact held-quantity fixture."
+  },
+  "VEC-P0-005": {
+    "test_prefixes": [
+      "Tests\\Unit\\Exchanges\\BinancePaperSafetyTest::test_explicit_cost_and_activation_evidence_are_required",
+      "Tests\\Unit\\Exchanges\\BinancePaperSafetyTest::test_bybit_or_nonprimary_account_must_never_execute_on_binance",
+      "Tests\\Feature\\PaperTrading\\StrategyPipelineFunnelVerificationTest::test_binance_directional_signals_blocked_at_prerisk_when_execution_unapproved",
+      "Tests\\Feature\\Exchanges\\BinanceDeploymentInitializationTest::test_deployment_initialization_is_idempotent_after_binance_activation_and_trading_history",
+      "Tests\\Feature\\Exchanges\\BinancePaperIsolationTest::test_funded_binance_account_cannot_be_activated_by_an_equity_recalculation"
+    ],
+    "rationale": "False approval, missing costs, foreign provenance, blocked and unfunded accounts reject; explicit valid local approval/costs permit guard evaluation. Existing active/history fixtures survive initialization; equity recalculation cannot activate accounts."
+  },
+  "VEC-P0-206": {
+    "test_prefixes": [
+      "Tests\\Feature\\Trading\\TradingPipelineStageATest::test_binance_provenance_failure_on_one_account_does_not_abort_others"
+    ],
+    "rationale": "Invalid Binance account provenance does not abort valid peer; event contains one failure and one processed account with PARTIAL status."
+  },
+  "VEC-P0-001": {
+    "test_prefixes": [
+      "Tests\\Feature\\PaperTrading\\StrategyPipelineFunnelVerificationTest::test_all_26_primary_pipelines_are_registered_and_configured",
+      "Tests\\Feature\\Exchanges\\BinanceDeploymentInitializationTest::test_binance_deployment_initializer_is_idempotent_and_preserves_bybit_history",
+      "Tests\\Feature\\Exchanges\\BinanceDeploymentInitializationTest::test_deployment_initialization_is_idempotent_after_binance_activation_and_trading_history",
+      "Tests\\Feature\\Exchanges\\BinanceDeploymentInitializationTest::test_deployment_initializer_succeeds_with_historical_bybit_strategy_namespaced_account_ids",
+      "Tests\\Feature\\Exchanges\\BinancePaperIsolationTest::test_all_twenty_six_accounts_are_isolated_and_owner_allocation_cannot_change_bybit",
+      "Tests\\Feature\\Exchanges\\BinancePaperIsolationTest::test_funded_binance_account_cannot_be_activated_by_an_equity_recalculation",
+      "Tests\\Feature\\Exchanges\\BinancePaperIsolationTest::test_m9_rejects_primary_accounts_with_unknown_exchange_even_if_all_26_pairs_exist",
+      "Tests\\Feature\\Exchanges\\BinancePaperIsolationTest::test_m9_rejects_foreign_capital_events_on_an_otherwise_valid_binance_account",
+      "Tests\\Feature\\Exchanges\\BinancePaperIsolationTest::test_m9_rejects_capital_events_even_on_zero_balance_binance_accounts",
+      "Tests\\Feature\\Exchanges\\BinancePaperIsolationTest::test_m9_reconciles_execution_quantity_and_gross_pnl_against_position",
+      "Tests\\Feature\\Exchanges\\BinancePaperIsolationTest::test_missing_accounts_must_make_m9_reconciliation_fail",
+      "Tests\\Feature\\Exchanges\\BinancePaperIsolationTest::test_provisioner_accepts_historical_strategy_namespaced_bybit_account_ids",
+      "Tests\\Feature\\PaperTrading\\AllThirteenStrategiesExecutionTest::test_isolation_between_bybit_and_binance_is_strictly_enforced_for_all_strategies"
+    ],
+    "rationale": "Fresh synthetic census is exactly 13+13; initialization/repeat preserves seeded Bybit and active Binance history; foreign exchange and missing-account controls fail; all strategy pairs remain isolated."
+  },
+  "VEC-P0-106": {
+    "test_prefixes": [
+      "Tests\\Unit\\Research\\LedgerReconciliationServiceTest::test_reconciliation_passes_on_clean_account",
+      "Tests\\Unit\\Research\\LedgerReconciliationServiceTest::test_missing_history_is_incomplete_and_higher_historical_drawdown_is_not_corruption",
+      "Tests\\Unit\\Research\\LedgerReconciliationServiceTest::test_observed_drawdown_above_stored_maximum_is_reported_without_rewriting_account",
+      "Tests\\Unit\\Research\\LedgerReconciliationServiceTest::test_orphan_execution_is_reported_globally_without_inventing_account_ownership",
+      "Tests\\Unit\\Research\\LedgerReconciliationServiceTest::test_reconciliation_detects_injected_discrepancies",
+      "Tests\\Unit\\Research\\LedgerReconciliationServiceTest::test_reconciliation_verifies_executions_with_partial_and_full_exits_and_funding"
+    ],
+    "rationale": "Clean account passes; observed drawdown above stored max is a discrepancy without mutation, while a larger historical maximum is preserved and missing history is incomplete; injected balance/execution controls also fail."
+  },
+  "VEC-P0-208": {
+    "test_prefixes": [
+      "Tests\\Feature\\PaperTrading\\ExchangeIngestionAndValuationStageCTest::test_flat_account_checkpoint_is_verified_complete_with_flat_verified_valuation",
+      "Tests\\Feature\\PaperTrading\\ExchangeIngestionAndValuationStageCTest::test_account_with_stale_market_valuation_is_flagged_as_stale_and_incomplete"
+    ],
+    "rationale": "Fresh checkpoint with 25-minute-old position valuation remains STALE/incomplete with valued_through retained; no-open-position case is FLAT_VERIFIED."
+  },
+  "VEC-P0-007": {
+    "test_prefixes": [
+      "Tests\\Integration\\BinanceCandleInsertionRaceTest::test_concurrent_insert_reloads_every_identity_and_preserves_winning_rows with data set \"identical subset\"",
+      "Tests\\Integration\\BinanceCandleInsertionRaceTest::test_concurrent_insert_reloads_every_identity_and_preserves_winning_rows with data set \"conflicting final identity\"",
+      "Tests\\Integration\\BinanceCandleInsertionRaceTest::test_concurrent_insert_reloads_every_identity_and_preserves_winning_rows with data set \"identical complete batch\"",
+      "Tests\\Integration\\BinanceCandleInsertionRaceTest::test_concurrent_insert_reloads_every_identity_and_preserves_winning_rows with data set \"conflicting complete batch\"",
+      "Tests\\Integration\\StrategyObservationSlotMigrationPostgresIntegrationTest::test_migration_canonicalizes_duplicate_slots_deterministically_and_preserves_all_rows",
+      "Tests\\Integration\\StrategyObservationSlotMigrationPostgresIntegrationTest::test_migration_creates_valid_unique_partial_index_verified_via_catalog",
+      "Tests\\Integration\\StrategyObservationSlotMigrationPostgresIntegrationTest::test_migration_is_safely_idempotent_on_repeated_runs",
+      "Tests\\Integration\\StrategyObservationSlotMigrationPostgresIntegrationTest::test_legacy_rollback_write_path_compatibility",
+      "Tests\\Integration\\StrategyObservationSlotMigrationPostgresIntegrationTest::test_negative_control_duplicate_canonical_direct_insert_rejected",
+      "Tests\\Integration\\CounterfactualSlotIdempotencyPostgresIntegrationTest::test_sequential_rerun_returns_canonical_evaluation_without_duplicate",
+      "Tests\\Integration\\CounterfactualSlotIdempotencyPostgresIntegrationTest::test_distinct_strategy_versions_preserve_separate_evaluations",
+      "Tests\\Integration\\CounterfactualSlotIdempotencyPostgresIntegrationTest::test_negative_control_duplicate_direct_insert_rejected_by_postgresql_unique_constraint",
+      "Tests\\Integration\\CounterfactualSlotIdempotencyPostgresIntegrationTest::test_historical_golden_replay_resolves_eight_raw_to_four_canonical",
+      "Tests\\Integration\\CounterfactualSlotIdempotencyPostgresIntegrationTest::test_negative_control_duplicate_observation_rejected_by_slot_unique_constraint",
+      "Tests\\Integration\\LedgerReconciliationPostgresIntegrationTest::test_reconcile_all_primary_accounts_in_postgresql_succeeds_without_sql_error",
+      "Tests\\Integration\\LedgerReconciliationPostgresIntegrationTest::test_postgresql_financial_reconciliation_with_partial_and_full_exits_and_funding",
+      "Tests\\Integration\\LedgerReconciliationPostgresIntegrationTest::test_postgresql_reconciliation_detects_balance_discrepancy",
+      "Tests\\Integration\\SlippageAttributionPostgresIntegrationTest::test_postgres_slippage_generation_and_unique_constraints",
+      "Tests\\Integration\\SlippageAttributionPostgresIntegrationTest::test_postgres_unique_idempotency_key_constraint",
+      "Tests\\Integration\\GoResearchWorkerIntegrationTest::test_scheduler_queue_go_worker_persists_succeeded_result"
+    ],
+    "rationale": "Workflow service declaration reviewed; fresh PostgreSQL 17 cluster identity verified before fixtures. Real child-process candle insertion races, uniqueness negatives, migration preservation/idempotency and PHP-to-Go persistence executed with zero PostgreSQL skips."
+  },
+  "VEC-P0-127": {
+    "test_prefixes": [
+      "Tests\\Feature\\PaperTrading\\CentralExecutionEligibilityTest::test_f27_blocked_drawdown_account_ingests_and_rejects_signals_with_audit_lineage",
+      "Tests\\Feature\\PaperTrading\\PaperLifecycleTest::test_blocked_account_still_closes_existing_paper_position",
+      "Tests\\Feature\\Trading\\TradingPipelineConcurrencyAndSafetyTest::test_existing_open_positions_continue_lifecycle_even_when_new_entries_are_blocked"
+    ],
+    "rationale": "Blocked drawdown SELL persists REJECTED state and PRE_RISK_ENTRY_BLOCKED journal, no RiskEngine row/fill; existing blocked-account positions still close and preserve accounting."
+  },
+  "VEC-P0-204": {
+    "test_prefixes": [
+      "Tests\\Feature\\Trading\\TradingPipelineStageATest::test_record_paper_processed_marks_partial_on_failures",
+      "Tests\\Feature\\Trading\\TradingPipelineStageATest::test_binance_provenance_failure_on_one_account_does_not_abort_others",
+      "Tests\\Feature\\Trading\\TradingPipelineStageATest::test_process_paper_pipeline_job_supports_targeted_retry_with_only_account_ids"
+    ],
+    "rationale": "Mixed batch reports PARTIAL with one failure/one processed; targeted account selection processes only one account and records counts."
+  },
+  "VEC-P0-201": {
+    "test_prefixes": [
+      "Tests\\Feature\\Trading\\TradingPipelineStageATest::test_record_paper_processed_terminalizes_signals_evaluated_to_completed",
+      "Tests\\Feature\\Trading\\TradingPipelineStageATest::test_recovery_reconciles_unacknowledged_upstream_event_from_completed_paper"
+    ],
+    "rationale": "Signals remain DISPATCHED before PAPER; completion acknowledges signals; injected unacknowledged upstream is repaired without redispatch of completed PAPER."
+  },
+  "VEC-P0-209": {
+    "test_prefixes": [
+      "Tests\\Feature\\Trading\\TradingPipelineStageATest::test_record_paper_processed_terminalizes_5m_candle_closed_to_completed",
+      "Tests\\Feature\\Trading\\TradingPipelineStageATest::test_record_paper_processed_marks_partial_on_failures"
+    ],
+    "rationale": "5m candle is DISPATCHED before downstream processing and COMPLETED only after PAPER acknowledgment; mixed account outcomes remain PARTIAL."
+  },
+  "VEC-P0-202": {
+    "test_prefixes": [
+      "Tests\\Feature\\PaperTrading\\PositionLifecycleStageBTest::test_tp1_zero_quantity_is_safely_skipped_without_creating_execution",
+      "Tests\\Feature\\PaperTrading\\PositionLifecycleStageBTest::test_standard_tp1_and_tp2_execute_correct_fractions_and_preserve_identities"
+    ],
+    "rationale": "Minimum-step half exit creates no zero fill and leaves position open; full SL closes; normal TP1/TP2 quantity control passes."
+  },
+  "VEC-P0-205": {
+    "test_prefixes": [
+      "Tests\\Feature\\PaperTrading\\ExchangeIngestionAndValuationStageCTest::test_gap_recovery_routes_strictly_to_binance_ingestion_for_binance_exchange",
+      "Tests\\Feature\\PaperTrading\\ExchangeIngestionAndValuationStageCTest::test_gap_recovery_routes_to_bybit_sync_candles_job_for_bybit_exchange",
+      "Tests\\Feature\\Exchanges\\BinanceImmutableMarketIngestionTest::test_candle_replay_is_idempotent_and_conflicting_batch_rolls_back"
+    ],
+    "rationale": "Binance gap job never dispatches Bybit SyncCandlesJob; Bybit control does; Binance candle conflict rolls back rather than overwriting observations."
+  },
+  "VEC-P0-004": {
+    "test_prefixes": [
+      "Tests\\Unit\\PaperTrading\\RiskAndSizingTest::",
+      "Tests\\Feature\\PaperTrading\\AccountSafetyRegressionTest::",
+      "Tests\\Feature\\PaperTrading\\CentralExecutionEligibilityTest::"
+    ],
+    "rationale": "Direct positive and negative risk boundaries cover equity, class A/B/C, total risk, notional, position count, correlation, cooldown and 5%/10% protection; isolated account safety and servicing regressions pass. Operational concurrency acceptance remains pending."
+  },
+  "VEC-P0-111": {
+    "test_prefixes": [
+      "Tests\\Feature\\PaperTrading\\PerformanceStatisticsTest::",
+      "Tests\\Feature\\PaperTrading\\PositionLifecycleStageBTest::test_standard_tp1_and_tp2_execute_correct_fractions_and_preserve_identities"
+    ],
+    "rationale": "Direct statistics tests exclude open and partially closed positions from closed-trade winrate, PF, R and PnL; real lifecycle entry/TP1/TP2 produces three fills counted as one closed trade, with separate realized/unrealized PnL and exact fees. Positive wins/losses and account isolation are covered."
+  }
+}

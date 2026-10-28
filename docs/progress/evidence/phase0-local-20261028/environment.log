@@ -1,0 +1,2 @@
+/vector-phase0-local-20261028-pg sha256:79bd7c99e923138f136f8009d6bffa66e21e9d4fda5c0c561b00fc9c90cfe537 {"io.traderbybit.task":"phase0-local-20261028"} none
+/vector-phase0-local-20261028-redis sha256:f84b0c4678011602b9b98c227a4dcd5468bf8b088b02fdd4165cb7758bad8058 {"io.traderbybit.task":"phase0-local-20261028"} container:1640886d6ebf18ef88197a1daa61214e27f169576ef0542bcbe428117b6fe7ff

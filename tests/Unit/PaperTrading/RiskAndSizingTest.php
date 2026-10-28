@@ -44,6 +44,13 @@ final class RiskAndSizingTest extends TestCase
     public static function riskFailures(): array
     {
         return [
+            'zero equity' => [['equity' => '0'], 'insufficient_free_capital'],
+            'negative equity' => [['equity' => '-1'], 'insufficient_free_capital'],
+            'exhausted capital' => [['free_capital' => '-0.000000000001'], 'insufficient_free_capital'],
+            'class A excess' => [['risk_percent' => '0.500000000001'], 'signal_risk_above_class_limit'],
+            'class B excess' => [['quality_class' => 'B', 'risk_percent' => '0.250000000001'], 'signal_risk_above_class_limit'],
+            'class C excess' => [['quality_class' => 'C', 'risk_percent' => '0.100000000001'], 'signal_risk_above_class_limit'],
+            'notional excess' => [['notional_after' => '20000.000000000001'], 'portfolio_notional_limit'],
             'zero risk' => [['risk_percent' => '0'], 'invalid_signal_risk'],
             'negative risk' => [['risk_percent' => '-0.50'], 'invalid_signal_risk'],
             'maximum positions' => [['open_positions' => 3], 'maximum_positions_reached'],
@@ -54,6 +61,28 @@ final class RiskAndSizingTest extends TestCase
             'drawdown halt' => [['drawdown_percent' => '10'], 'drawdown_halt'],
             'cooldown' => [['cooldown_until' => new DateTimeImmutable('2026-10-14T11:00:00Z')], 'losing_streak_cooldown'],
             'market safety' => [['market_failures' => ['market_data_stale']], 'market_data_stale'],
+        ];
+    }
+
+    #[DataProvider('allowedBoundaries')]
+    public function test_exact_risk_boundaries_remain_allowed(array $override): void
+    {
+        $result = (new RiskEngine($this->config()))->assess(array_replace($this->baseRiskInput(), $override));
+        self::assertTrue($result->allowed, implode(', ', $result->reasons));
+        self::assertSame([], $result->reasons);
+    }
+
+    public static function allowedBoundaries(): array
+    {
+        return [
+            'A limit' => [['risk_percent' => '0.50']],
+            'B limit' => [['quality_class' => 'B', 'risk_percent' => '0.25']],
+            'C limit' => [['quality_class' => 'C', 'risk_percent' => '0.10']],
+            'portfolio risk limit' => [['total_risk_percent' => '1.00', 'risk_percent' => '0.50']],
+            'portfolio notional limit' => [['notional_after' => '20000']],
+            'position below limit' => [['open_positions' => 2]],
+            'drawdown below block' => [['drawdown_percent' => '4.999999999999']],
+            'cooldown expires now' => [['cooldown_until' => new DateTimeImmutable('2026-10-14T10:00:00Z')]],
         ];
     }
 

@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Tests\Feature\PaperTrading;
 
 use App\PaperTrading\Application\PaperAccountService;
+use App\PaperTrading\Application\PerformanceStatisticsService;
 use App\PaperTrading\Application\PositionLifecycleService;
 use App\PaperTrading\Domain\ExecutionQuote;
 use App\PaperTrading\Domain\ExecutionType;
@@ -18,6 +19,7 @@ use App\Strategy\Infrastructure\Persistence\SignalRecord;
 use Brick\Math\BigDecimal;
 use DateTimeImmutable;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\DB;
 use Ramsey\Uuid\Uuid;
 use Tests\TestCase;
 
@@ -100,6 +102,19 @@ final class PositionLifecycleStageBTest extends TestCase
 
         self::assertSame(PositionStatus::PartiallyClosed->value, $partiallyClosed->status);
         self::assertSame('0.005000000000', (string) $partiallyClosed->remaining_quantity);
+        $partialMetrics = app(PerformanceStatisticsService::class)->calculate($account->id)->metrics;
+        self::assertSame(0, $partialMetrics['closed_positions']);
+        self::assertNull($partialMetrics['win_rate']);
+        self::assertNull($partialMetrics['profit_factor']);
+        self::assertNull($partialMetrics['average_r']);
+        self::assertDecimalSame('0', $partialMetrics['net_pnl']);
+        self::assertDecimalSame((string) $partiallyClosed->fees, $partialMetrics['open_position_fees']);
+        self::assertDecimalSame('10', (string) $partiallyClosed->gross_pnl);
+        self::assertDecimalSame((string) BigDecimal::of('10')->minus($partiallyClosed->fees)->plus($partiallyClosed->funding), (string) $partiallyClosed->net_pnl);
+        $lifecycle->markToMarket($partiallyClosed, '63000', new DateTimeImmutable('2026-10-27T10:06:00Z'));
+        self::assertDecimalSame('15', (string) $partiallyClosed->fresh()->unrealized_pnl);
+        self::assertDecimalSame('9.4995', (string) $account->fresh()->realized_pnl);
+        self::assertDecimalSame('15', (string) $account->fresh()->unrealized_pnl);
 
         // TP2 execution
         $tp2Quote = new ExecutionQuote(ExecutionType::TakeProfit2, '64000', '64000', '0', 'test', false);
@@ -108,6 +123,14 @@ final class PositionLifecycleStageBTest extends TestCase
         self::assertSame(PositionStatus::ClosedTp->value, $fullyClosed->status);
         self::assertSame('0.000000000000', (string) $fullyClosed->remaining_quantity);
         self::assertSame(3, VirtualExecutionRecord::query()->where('position_id', $position->id)->count());
+        $closedMetrics = app(PerformanceStatisticsService::class)->calculate($account->id)->metrics;
+        self::assertSame(1, $closedMetrics['closed_positions']);
+        self::assertSame(1, $closedMetrics['winning_trades']);
+        self::assertDecimalSame('100', $closedMetrics['win_rate']);
+        self::assertDecimalSame((string) $fullyClosed->net_pnl, $closedMetrics['net_pnl']);
+        self::assertDecimalSame((string) $fullyClosed->fees, $closedMetrics['fees']);
+        self::assertDecimalSame('0', $closedMetrics['open_position_fees']);
+        self::assertDecimalSame('0', (string) $fullyClosed->unrealized_pnl);
     }
 
     public function test_late_arriving_funding_settles_on_closed_position_with_correct_historical_quantity(): void
@@ -227,6 +250,52 @@ final class PositionLifecycleStageBTest extends TestCase
 
         // Closed position with provably zero expected settlements is immediately verified funding complete
         self::assertTrue($closed->fresh()->funding_complete);
+    }
+
+    public function test_out_of_order_funding_preserves_prior_settlements_and_execution_history(): void
+    {
+        $lifecycle = app(PositionLifecycleService::class);
+        $account = app(PaperAccountService::class)->default();
+        $signal = $this->createSignal('bybit', 'BTCUSDT', 'BUY');
+        $state = PaperSignalStateRecord::query()->create([
+            'id' => Uuid::uuid4()->toString(), 'paper_account_id' => $account->id,
+            'signal_id' => $signal->id, 'status' => 'PENDING_ENTRY',
+        ]);
+        $position = $lifecycle->open($account, $state, $signal,
+            new PositionSize(true, '0.010', '100', '10', '600', qtyStep: '0.001'),
+            new ExecutionQuote(ExecutionType::Entry, '60000', '60000', '0', 'fixture', false),
+            new DateTimeImmutable('2026-10-27T07:45:00Z'));
+        $position = $lifecycle->executeExit($position,
+            new ExecutionQuote(ExecutionType::TakeProfit1, '61000', '61000', '0', 'fixture', false),
+            new DateTimeImmutable('2026-10-27T15:55:00Z'));
+        $position = $lifecycle->executeExit($position,
+            new ExecutionQuote(ExecutionType::StopLoss, '59000', '59000', '0', 'fixture', false),
+            new DateTimeImmutable('2026-10-27T16:10:00Z'));
+        $executions = DB::table('virtual_executions')->orderBy('id')->get()->toJson();
+        $netBefore = $position->net_pnl;
+        foreach (['16:00' => '0.005', '08:00' => '0.010'] as $time => $quantity) {
+            $existing = DB::table('position_funding_events')->orderBy('id')->get();
+            $event = MarketFundingEventRecord::query()->create([
+                'exchange' => 'bybit', 'category' => 'linear', 'symbol' => 'BTCUSDT',
+                'funding_at' => new DateTimeImmutable("2026-10-27T{$time}:00Z"),
+                'rate' => '0.0001', 'mark_price' => '60000',
+            ]);
+            $lifecycle->applyFunding($position->fresh(), new DateTimeImmutable('2026-10-27T17:00:00Z'));
+            $settlement = PositionFundingEventRecord::query()->where('market_funding_event_id', $event->id)->sole();
+            self::assertDecimalSame($quantity, (string) $settlement->quantity);
+            foreach ($existing as $row) {
+                self::assertEquals($row, DB::table('position_funding_events')->where('id', $row->id)->sole());
+            }
+        }
+        $beforeRetry = DB::table('position_funding_events')->orderBy('id')->get()->toJson();
+        $lifecycle->applyFunding($position->fresh(), new DateTimeImmutable('2026-10-27T17:00:00Z'));
+        self::assertSame($beforeRetry, DB::table('position_funding_events')->orderBy('id')->get()->toJson());
+        self::assertSame($executions, DB::table('virtual_executions')->orderBy('id')->get()->toJson());
+        self::assertSame(2, PositionFundingEventRecord::query()->count());
+        self::assertDecimalSame('-0.09', (string) $position->fresh()->funding);
+        self::assertDecimalSame((string) BigDecimal::of($netBefore)->minus('0.09'), (string) $position->fresh()->net_pnl);
+        self::assertSame(PositionStatus::ClosedSl->value, $position->fresh()->status);
+        self::assertDecimalSame((string) BigDecimal::of($account->starting_balance)->plus($account->fresh()->realized_pnl), (string) $account->fresh()->current_equity);
     }
 
     private function createSignal(string $exchange, string $symbol, string $side): SignalRecord

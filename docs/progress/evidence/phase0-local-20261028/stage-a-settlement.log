@@ -1,0 +1,11 @@
+PHPUnit 12.5.39 by Sebastian Bergmann and contributors.
+
+Runtime:       PHP 8.5.12
+Configuration: /var/www/html/phpunit.xml
+
+{"message":"executeExit: TP1 quantity rounded to zero for position 9c6a2573-1fe9-56a2-a40e-7ef89d85e2ad (initial: 0.001000000000, step: 0.001000000000). Skipping partial exit.","context":{},"level":300,"level_name":"WARNING","channel":"testing","datetime":"2026-10-28T11:09:03.909334+00:00","extra":{}}
+.....                                                               5 / 5 (100%)
+
+Time: 00:03.813, Memory: 18.00 MB
+
+[30;42mOK (5 tests, 78 assertions)[0m

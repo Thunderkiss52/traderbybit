@@ -1,0 +1,214 @@
+{
+  "requirement_id": "VEC-P0-007",
+  "obligation_id": "VEC-P0-007-V1",
+  "result": "PASS",
+  "command": {
+    "label": "stage-a-full-corrected",
+    "command": [
+      "/home/thunder/.headroom/bin/rtk",
+      "proxy",
+      "docker",
+      "run",
+      "--rm",
+      "--label",
+      "io.traderbybit.task=phase0-local-20261028",
+      "--network",
+      "container:vector-phase0-local-20261028-pg",
+      "--user",
+      "1000:1000",
+      "--entrypoint",
+      "",
+      "-v",
+      "/tmp/vector-phase0-local-20261028:/var/www/html",
+      "-w",
+      "/var/www/html",
+      "-e",
+      "APP_ENV=testing",
+      "-e",
+      "APP_DEBUG=false",
+      "-e",
+      "APP_KEY=base64:MDEyMzQ1Njc4OWFiY2RlZjAxMjM0NTY3ODlhYmNkZWY=",
+      "-e",
+      "APP_URL=http://127.0.0.1:8000",
+      "-e",
+      "DB_CONNECTION=pgsql",
+      "-e",
+      "DB_HOST=127.0.0.1",
+      "-e",
+      "DB_PORT=5432",
+      "-e",
+      "DB_DATABASE=bybit_test",
+      "-e",
+      "DB_USERNAME=postgres",
+      "-e",
+      "DB_PASSWORD=testpass",
+      "-e",
+      "DB_URL=",
+      "-e",
+      "TEST_DB_HOST=127.0.0.1",
+      "-e",
+      "TEST_DB_PORT=5432",
+      "-e",
+      "TEST_DB_DATABASE=bybit_test",
+      "-e",
+      "TEST_DB_USERNAME=postgres",
+      "-e",
+      "TEST_DB_PASSWORD=testpass",
+      "-e",
+      "CACHE_STORE=array",
+      "-e",
+      "SESSION_DRIVER=array",
+      "-e",
+      "QUEUE_CONNECTION=sync",
+      "-e",
+      "REDIS_HOST=127.0.0.1",
+      "-e",
+      "REDIS_PORT=6379",
+      "-e",
+      "REDIS_PASSWORD=null",
+      "-e",
+      "LOG_CHANNEL=stderr",
+      "-e",
+      "GOCACHE=/tmp/go-cache",
+      "-e",
+      "GOPATH=/tmp/go",
+      "-e",
+      "RUN_BYBIT_INTEGRATION=0",
+      "-e",
+      "TZ=UTC",
+      "traderbybit-php85-test:local",
+      "php",
+      "vendor/bin/phpunit",
+      "--no-coverage",
+      "--do-not-cache-result",
+      "--log-junit",
+      "stage-a-full-corrected.xml",
+      "--display-skipped"
+    ],
+    "cwd": "/home/thunder/work/traderbybit",
+    "started_at": "2026-10-28T11:13:39.558912+00:00",
+    "finished_at": "2026-10-28T11:17:04.985066+00:00",
+    "exit_code": 0,
+    "git_sha": "a30291e3681963f8a3da4a5d284b0679746e8b48",
+    "artifact": "docs/progress/evidence/phase0-local-20261028/stage-a-full-corrected.log",
+    "sha256": "7fa6d61746aaa0875d6ae96adfd7be202ab4d7792f3893975f59f2eca2c566e2"
+  },
+  "git_sha": "a30291e3681963f8a3da4a5d284b0679746e8b48",
+  "dependency_hash": "fc43cda5bd118faaf9f96eb082e636f3ea337543bf64293f4842e4bdf9617a6f",
+  "synthetic": true,
+  "environment": "isolated_postgresql",
+  "why_this_proves_condition": "Workflow service declaration reviewed; fresh PostgreSQL 17 cluster identity verified before fixtures. Real child-process candle insertion races, uniqueness negatives, migration preservation/idempotency and PHP-to-Go persistence executed with zero PostgreSQL skips.",
+  "tests": [
+    {
+      "test": "Tests\\Integration\\BinanceCandleInsertionRaceTest::test_concurrent_insert_reloads_every_identity_and_preserves_winning_rows with data set \"identical subset\"",
+      "assertions": 17,
+      "source": "tests/Integration/BinanceCandleInsertionRaceTest.php"
+    },
+    {
+      "test": "Tests\\Integration\\BinanceCandleInsertionRaceTest::test_concurrent_insert_reloads_every_identity_and_preserves_winning_rows with data set \"conflicting final identity\"",
+      "assertions": 17,
+      "source": "tests/Integration/BinanceCandleInsertionRaceTest.php"
+    },
+    {
+      "test": "Tests\\Integration\\BinanceCandleInsertionRaceTest::test_concurrent_insert_reloads_every_identity_and_preserves_winning_rows with data set \"identical complete batch\"",
+      "assertions": 21,
+      "source": "tests/Integration/BinanceCandleInsertionRaceTest.php"
+    },
+    {
+      "test": "Tests\\Integration\\BinanceCandleInsertionRaceTest::test_concurrent_insert_reloads_every_identity_and_preserves_winning_rows with data set \"conflicting complete batch\"",
+      "assertions": 21,
+      "source": "tests/Integration/BinanceCandleInsertionRaceTest.php"
+    },
+    {
+      "test": "Tests\\Integration\\StrategyObservationSlotMigrationPostgresIntegrationTest::test_migration_canonicalizes_duplicate_slots_deterministically_and_preserves_all_rows",
+      "assertions": 6,
+      "source": "tests/Integration/StrategyObservationSlotMigrationPostgresIntegrationTest.php"
+    },
+    {
+      "test": "Tests\\Integration\\StrategyObservationSlotMigrationPostgresIntegrationTest::test_migration_creates_valid_unique_partial_index_verified_via_catalog",
+      "assertions": 10,
+      "source": "tests/Integration/StrategyObservationSlotMigrationPostgresIntegrationTest.php"
+    },
+    {
+      "test": "Tests\\Integration\\StrategyObservationSlotMigrationPostgresIntegrationTest::test_migration_is_safely_idempotent_on_repeated_runs",
+      "assertions": 1,
+      "source": "tests/Integration/StrategyObservationSlotMigrationPostgresIntegrationTest.php"
+    },
+    {
+      "test": "Tests\\Integration\\StrategyObservationSlotMigrationPostgresIntegrationTest::test_legacy_rollback_write_path_compatibility",
+      "assertions": 2,
+      "source": "tests/Integration/StrategyObservationSlotMigrationPostgresIntegrationTest.php"
+    },
+    {
+      "test": "Tests\\Integration\\StrategyObservationSlotMigrationPostgresIntegrationTest::test_negative_control_duplicate_canonical_direct_insert_rejected",
+      "assertions": 1,
+      "source": "tests/Integration/StrategyObservationSlotMigrationPostgresIntegrationTest.php"
+    },
+    {
+      "test": "Tests\\Integration\\CounterfactualSlotIdempotencyPostgresIntegrationTest::test_sequential_rerun_returns_canonical_evaluation_without_duplicate",
+      "assertions": 7,
+      "source": "tests/Integration/CounterfactualSlotIdempotencyPostgresIntegrationTest.php"
+    },
+    {
+      "test": "Tests\\Integration\\CounterfactualSlotIdempotencyPostgresIntegrationTest::test_distinct_strategy_versions_preserve_separate_evaluations",
+      "assertions": 3,
+      "source": "tests/Integration/CounterfactualSlotIdempotencyPostgresIntegrationTest.php"
+    },
+    {
+      "test": "Tests\\Integration\\CounterfactualSlotIdempotencyPostgresIntegrationTest::test_negative_control_duplicate_direct_insert_rejected_by_postgresql_unique_constraint",
+      "assertions": 1,
+      "source": "tests/Integration/CounterfactualSlotIdempotencyPostgresIntegrationTest.php"
+    },
+    {
+      "test": "Tests\\Integration\\CounterfactualSlotIdempotencyPostgresIntegrationTest::test_historical_golden_replay_resolves_eight_raw_to_four_canonical",
+      "assertions": 9,
+      "source": "tests/Integration/CounterfactualSlotIdempotencyPostgresIntegrationTest.php"
+    },
+    {
+      "test": "Tests\\Integration\\CounterfactualSlotIdempotencyPostgresIntegrationTest::test_negative_control_duplicate_observation_rejected_by_slot_unique_constraint",
+      "assertions": 1,
+      "source": "tests/Integration/CounterfactualSlotIdempotencyPostgresIntegrationTest.php"
+    },
+    {
+      "test": "Tests\\Integration\\LedgerReconciliationPostgresIntegrationTest::test_reconcile_all_primary_accounts_in_postgresql_succeeds_without_sql_error",
+      "assertions": 48,
+      "source": "tests/Integration/LedgerReconciliationPostgresIntegrationTest.php"
+    },
+    {
+      "test": "Tests\\Integration\\LedgerReconciliationPostgresIntegrationTest::test_postgresql_financial_reconciliation_with_partial_and_full_exits_and_funding",
+      "assertions": 7,
+      "source": "tests/Integration/LedgerReconciliationPostgresIntegrationTest.php"
+    },
+    {
+      "test": "Tests\\Integration\\LedgerReconciliationPostgresIntegrationTest::test_postgresql_reconciliation_detects_balance_discrepancy",
+      "assertions": 5,
+      "source": "tests/Integration/LedgerReconciliationPostgresIntegrationTest.php"
+    },
+    {
+      "test": "Tests\\Integration\\SlippageAttributionPostgresIntegrationTest::test_postgres_slippage_generation_and_unique_constraints",
+      "assertions": 5,
+      "source": "tests/Integration/SlippageAttributionPostgresIntegrationTest.php"
+    },
+    {
+      "test": "Tests\\Integration\\SlippageAttributionPostgresIntegrationTest::test_postgres_unique_idempotency_key_constraint",
+      "assertions": 1,
+      "source": "tests/Integration/SlippageAttributionPostgresIntegrationTest.php"
+    },
+    {
+      "test": "Tests\\Integration\\GoResearchWorkerIntegrationTest::test_scheduler_queue_go_worker_persists_succeeded_result",
+      "assertions": 12,
+      "source": "tests/Integration/GoResearchWorkerIntegrationTest.php"
+    }
+  ],
+  "test_source_hashes": {
+    "tests/Integration/BinanceCandleInsertionRaceTest.php": "f5ff71122d3bc6c4b62449b8b581d5373269c22e5aebbdb89029dc9c806bf119",
+    "tests/Integration/StrategyObservationSlotMigrationPostgresIntegrationTest.php": "a57929b62e22745f69b765744d70b97f095750dc842c2fb1737b16f4be03b19e",
+    "tests/Integration/CounterfactualSlotIdempotencyPostgresIntegrationTest.php": "a2431d66b98fe3651f8cae98489b3365fab2addef933716af6e25db49aa77ed2",
+    "tests/Integration/LedgerReconciliationPostgresIntegrationTest.php": "8bdbad1053e4d12eef21438281f33e25b7da885857b7f33037b89c1bb00a9efa",
+    "tests/Integration/SlippageAttributionPostgresIntegrationTest.php": "9244f818ad2835acb3b5b84898a2f5ec2f863418a3b02c9fdc54ec011f6573bd",
+    "tests/Integration/GoResearchWorkerIntegrationTest.php": "05ea5afcf98b01cc29418b6b0cd13aec53e764cdbcaf9908d0fd32b93c93e644"
+  },
+  "junit": "docs/progress/evidence/phase0-local-20261028/stage-a-full-corrected.xml",
+  "junit_sha256": "810c7604408a210e371b71615262bca67ebefc328d9c4dfcb94e6ca1590e2d8b",
+  "limitations": "Synthetic local fixtures; production, browser and product acceptance remain pending."
+}

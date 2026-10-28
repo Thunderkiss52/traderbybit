@@ -1,0 +1,85 @@
+PHPUnit 12.5.39 by Sebastian Bergmann and contributors.
+
+Runtime:       PHP 8.5.12
+Configuration: /var/www/html/phpunit.xml
+
+...............................................................  63 / 919 (  6%)
+............................................................... 126 / 919 ( 13%)
+..........................{"message":"Closed candle event bybit:BTCUSDT:5:2023-11-14T22:18:20+00:00:CANDLE_CLOSED rejected as STALE (exceeded freshness window).","context":{},"level":200,"level_name":"INFO","channel":"testing","datetime":"2026-10-28T11:13:47.097108+00:00","extra":{}}
+..................................... 189 / 919 ( 20%)
+.................................................{"message":"Ambiguous signal match for counterfactual observation; rejecting attachment.","context":{"observation_id":"86a4d79b-6205-4a34-9aa1-b1ddbe821b8b","symbol":"BTCUSDT","strategy_id":"trend_pullback","timeframe":"15","decision_time":"2026-10-28 05:13:48","candidate_signal_ids":["2ddcee8d-a78d-4844-b6ce-81715a1a22cd","91b5d44c-9597-4787-844f-bc59704bddb9"]},"level":300,"level_name":"WARNING","channel":"testing","datetime":"2026-10-28T11:13:48.785894+00:00","extra":{}}
+.............. 252 / 919 ( 27%)
+............................................................... 315 / 919 ( 34%)
+..........{"message":"Research job submission validation failed.","context":{"exception_type":"InvalidArgumentException"},"level":300,"level_name":"WARNING","channel":"testing","datetime":"2026-10-28T11:13:53.313312+00:00","extra":{}}
+..................................................... 378 / 919 ( 41%)
+......................{"message":"No closed 5m history for BTCUSDT.","context":{"exception":{"class":"RuntimeException","message":"No closed 5m history for BTCUSDT.","code":0,"file":"/var/www/html/app/Backtest/Application/DatasetInspector.php:25"}},"level":400,"level_name":"ERROR","channel":"testing","datetime":"2026-10-28T11:13:57.579886+00:00","extra":{}}
+......{"message":"Research API operation failed.","context":{"operation":"App\\Http\\Controllers\\Api\\V1\\ResearchIntelligenceController::opportunityDetail","exception_type":"Illuminate\\Database\\Eloquent\\ModelNotFoundException"},"level":400,"level_name":"ERROR","channel":"testing","datetime":"2026-10-28T11:13:59.228584+00:00","extra":{}}
+{"message":"Slow or large API response.","context":{"request_id":"c5965584-e386-4668-b61c-e2e186cb8a5e","method":"GET","path":"api/v1/exchanges/binance/market/BTCUSDT/candles","status":503,"duration_ms":611.94,"response_bytes":186},"level":300,"level_name":"WARNING","channel":"testing","datetime":"2026-10-28T11:14:00.275017+00:00","extra":{}}
+............{"message":"sensitive detail","context":{"exception":{"class":"RuntimeException","message":"sensitive detail","code":0,"file":"/var/www/html/tests/Feature/Api/ResearchApiTest.php:157"}},"level":400,"level_name":"ERROR","channel":"testing","datetime":"2026-10-28T11:14:03.093717+00:00","extra":{}}
+..................{"message":"Slow or large API response.","context":{"request_id":"163dd0e2-3e2c-4f23-a62b-54582a3d8416","method":"GET","path":"api/v1/backtests/20f1e1e4-3be2-4128-a545-69a3f6cd914b/equity","status":200,"duration_ms":698.05,"response_bytes":25806},"level":300,"level_name":"WARNING","channel":"testing","datetime":"2026-10-28T11:14:07.702571+00:00","extra":{}}
+..... 441 / 919 ( 47%)
+............................................................... 504 / 919 ( 54%)
+.....{"message":"Closed candle event bybit:BTCUSDT:5:2024-01-01T00:05:00+00:00:CANDLE_CLOSED rejected as STALE (exceeded freshness window).","context":{},"level":200,"level_name":"INFO","channel":"testing","datetime":"2026-10-28T11:15:08.971708+00:00","extra":{}}
+..................{"message":"Bybit public WebSocket disconnected; reconnecting.","context":{"exception":"RuntimeException","message":"disconnected","cycle":1},"level":300,"level_name":"WARNING","channel":"testing","datetime":"2026-10-28T11:15:12.446595+00:00","extra":{}}
+{"message":"Bybit public WebSocket disconnected; reconnecting.","context":{"exception":"RuntimeException","message":"disconnected","cycle":2},"level":300,"level_name":"WARNING","channel":"testing","datetime":"2026-10-28T11:15:12.450566+00:00","extra":{}}
+........................................ 567 / 919 ( 61%)
+................................{"message":"executeExit: TP1 quantity rounded to zero for position 27651628-96df-59a0-bcda-fb6024c04f6b (initial: 0.001000000000, step: 0.001000000000). Skipping partial exit.","context":{},"level":300,"level_name":"WARNING","channel":"testing","datetime":"2026-10-28T11:15:42.826413+00:00","extra":{}}
+............................... 630 / 919 ( 68%)
+...................{"message":"[AutonomousLearning] Starting autonomous research & quantitative learning cycle.","context":{},"level":200,"level_name":"INFO","channel":"testing","datetime":"2026-10-28T11:15:56.398343+00:00","extra":{}}
+{"message":"[AutonomousLearning] Matured 0 pending feature snapshots.","context":{},"level":200,"level_name":"INFO","channel":"testing","datetime":"2026-10-28T11:15:56.409999+00:00","extra":{}}
+{"message":"[AutonomousLearning] Initiating model training for BTCUSDT (trigger: TRAIN_INITIAL).","context":{},"level":200,"level_name":"INFO","channel":"testing","datetime":"2026-10-28T11:15:56.413178+00:00","extra":{}}
+{"message":"[AutonomousLearning] Trained model Logistic_TP_BEFORE_SL_BTCUSDT v20261028.111556 status: ACTIVE.","context":{},"level":200,"level_name":"INFO","channel":"testing","datetime":"2026-10-28T11:15:56.423928+00:00","extra":{}}
+{"message":"[AutonomousLearning] Initiating model training for ETHUSDT (trigger: TRAIN_INITIAL).","context":{},"level":200,"level_name":"INFO","channel":"testing","datetime":"2026-10-28T11:15:56.425676+00:00","extra":{}}
+{"message":"[AutonomousLearning] Queued candidate evaluation.","context":{"candidate_id":"b1c0a804-1108-4cbe-93d9-96ca5e67a42d","family":"baseline","retry":false},"level":200,"level_name":"INFO","channel":"testing","datetime":"2026-10-28T11:15:56.467243+00:00","extra":{}}
+{"message":"[AutonomousLearning] Queued candidate evaluation.","context":{"candidate_id":"e0c4f253-e9bd-48e9-bea1-c11877b7a5b8","family":"trend_pullback","retry":false},"level":200,"level_name":"INFO","channel":"testing","datetime":"2026-10-28T11:15:56.471237+00:00","extra":{}}
+{"message":"[AutonomousLearning] Completed autonomous research & learning cycle successfully.","context":{},"level":200,"level_name":"INFO","channel":"testing","datetime":"2026-10-28T11:15:56.524391+00:00","extra":{}}
+.{"message":"[AutonomousLearning] Starting autonomous research & quantitative learning cycle.","context":{},"level":200,"level_name":"INFO","channel":"testing","datetime":"2026-10-28T11:15:56.573619+00:00","extra":{}}
+{"message":"[AutonomousLearning] Matured 0 pending feature snapshots.","context":{},"level":200,"level_name":"INFO","channel":"testing","datetime":"2026-10-28T11:15:56.585019+00:00","extra":{}}
+{"message":"[AutonomousLearning] Initiating model training for BTCUSDT (trigger: TRAIN_INITIAL).","context":{},"level":200,"level_name":"INFO","channel":"testing","datetime":"2026-10-28T11:15:56.589450+00:00","extra":{}}
+{"message":"[AutonomousLearning] Initiating model training for ETHUSDT (trigger: TRAIN_INITIAL).","context":{},"level":200,"level_name":"INFO","channel":"testing","datetime":"2026-10-28T11:15:56.592330+00:00","extra":{}}
+{"message":"[AutonomousLearning] Queued candidate evaluation.","context":{"candidate_id":"2bc77e8d-cc58-4274-aefc-196e22cec56c","family":"baseline","retry":false},"level":200,"level_name":"INFO","channel":"testing","datetime":"2026-10-28T11:15:56.624230+00:00","extra":{}}
+{"message":"[AutonomousLearning] Queued candidate evaluation.","context":{"candidate_id":"1b5f6314-8287-45d6-8b65-509ec22ebb0d","family":"trend_pullback","retry":false},"level":200,"level_name":"INFO","channel":"testing","datetime":"2026-10-28T11:15:56.627316+00:00","extra":{}}
+{"message":"[AutonomousLearning] Completed autonomous research & learning cycle successfully.","context":{},"level":200,"level_name":"INFO","channel":"testing","datetime":"2026-10-28T11:15:56.681257+00:00","extra":{}}
+{"message":"[AutonomousLearning] Starting autonomous research & quantitative learning cycle.","context":{},"level":200,"level_name":"INFO","channel":"testing","datetime":"2026-10-28T11:15:56.681512+00:00","extra":{}}
+{"message":"[AutonomousLearning] Matured 0 pending feature snapshots.","context":{},"level":200,"level_name":"INFO","channel":"testing","datetime":"2026-10-28T11:15:56.684889+00:00","extra":{}}
+{"message":"[AutonomousLearning] Initiating model training for BTCUSDT (trigger: TRAIN_INITIAL).","context":{},"level":200,"level_name":"INFO","channel":"testing","datetime":"2026-10-28T11:15:56.686969+00:00","extra":{}}
+{"message":"[AutonomousLearning] Initiating model training for ETHUSDT (trigger: TRAIN_INITIAL).","context":{},"level":200,"level_name":"INFO","channel":"testing","datetime":"2026-10-28T11:15:56.689600+00:00","extra":{}}
+{"message":"[AutonomousLearning] Queued candidate evaluation.","context":{"candidate_id":"711f1889-e24a-4e01-a53a-1558dde11b5c","family":"bollinger_mean_reversion","retry":false},"level":200,"level_name":"INFO","channel":"testing","datetime":"2026-10-28T11:15:56.716218+00:00","extra":{}}
+{"message":"[AutonomousLearning] Queued candidate evaluation.","context":{"candidate_id":"136a0cb4-4dd1-43af-9409-5c1d1757c309","family":"donchian_atr_breakout","retry":false},"level":200,"level_name":"INFO","channel":"testing","datetime":"2026-10-28T11:15:56.719670+00:00","extra":{}}
+{"message":"[AutonomousLearning] Completed autonomous research & learning cycle successfully.","context":{},"level":200,"level_name":"INFO","channel":"testing","datetime":"2026-10-28T11:15:56.769844+00:00","extra":{}}
+........................................... 693 / 919 ( 75%)
+............................................................... 756 / 919 ( 82%)
+.....................{"message":"Ledger reconciliation detected discrepancies in paper accounts.","context":{"accounts_count":2,"total_discrepancies":4,"failed_accounts":[{"account_id":"38f02fb0-e535-4515-9fcb-6d7d2feeac4d","status":"DISCREPANCY_DETECTED","discrepancies":2},{"account_id":"e93d8bae-0102-4cc5-90aa-1b0f614a0d8b","status":"DISCREPANCY_DETECTED","discrepancies":2}]},"level":300,"level_name":"WARNING","channel":"testing","datetime":"2026-10-28T11:16:08.202618+00:00","extra":{}}
+.....{"message":"Slow or large API response.","context":{"request_id":"d82c8cd1-3ae1-455a-85e6-24a836cc28a1","method":"POST","path":"api/v1/research/health/reconcile","status":200,"duration_ms":2599.65,"response_bytes":676},"level":300,"level_name":"WARNING","channel":"testing","datetime":"2026-10-28T11:16:11.043798+00:00","extra":{}}
+......{"message":"Counterfactual SKIP analysis completed.","context":{"analyzed_count":0,"resolved_count":0,"limit":25},"level":200,"level_name":"INFO","channel":"testing","datetime":"2026-10-28T11:16:11.322439+00:00","extra":{}}
+.{"message":"Ledger reconciliation completed successfully for all accounts.","context":{"accounts_count":1,"total_discrepancies":0},"level":200,"level_name":"INFO","channel":"testing","datetime":"2026-10-28T11:16:11.400200+00:00","extra":{}}
+..{"message":"Counterfactual SKIP analysis completed.","context":{"analyzed_count":0,"resolved_count":0,"limit":25},"level":200,"level_name":"INFO","channel":"testing","datetime":"2026-10-28T11:16:11.459427+00:00","extra":{}}
+............................ 819 / 919 ( 89%)
+..................................{"message":"Retrying public Bybit market-data request.","context":{"endpoint":"/v5/market/tickers","attempt":1,"delay_ms":206,"http_status":null,"ret_code":null},"level":300,"level_name":"WARNING","channel":"testing","datetime":"2026-10-28T11:16:50.642129+00:00","extra":{}}
+{"message":"Retrying public Bybit market-data request.","context":{"endpoint":"/v5/market/tickers","attempt":2,"delay_ms":474,"http_status":null,"ret_code":null},"level":300,"level_name":"WARNING","channel":"testing","datetime":"2026-10-28T11:16:50.850139+00:00","extra":{}}
+{"message":"Retrying public Bybit market-data request.","context":{"endpoint":"/v5/market/tickers","attempt":3,"delay_ms":996,"http_status":null,"ret_code":null},"level":300,"level_name":"WARNING","channel":"testing","datetime":"2026-10-28T11:16:51.326067+00:00","extra":{}}
+{"message":"Retrying public Bybit market-data request.","context":{"endpoint":"/v5/market/tickers","attempt":4,"delay_ms":1909,"http_status":null,"ret_code":null},"level":300,"level_name":"WARNING","channel":"testing","datetime":"2026-10-28T11:16:52.323955+00:00","extra":{}}
+{"message":"Market context capture non-fatal failure for bybit:BTCUSDT: Bybit HTTP connection failed.","context":{},"level":300,"level_name":"WARNING","channel":"testing","datetime":"2026-10-28T11:16:54.235416+00:00","extra":{}}
+.........{"message":"Closed candle event bybit:BTCUSDT:15:2026-10-28T11:11:05+00:00:CANDLE_CLOSED rejected as STALE (exceeded freshness window).","context":{},"level":200,"level_name":"INFO","channel":"testing","datetime":"2026-10-28T11:16:55.834357+00:00","extra":{}}
+{"message":"Closed candle event bybit:BTCUSDT:15:2026-10-28T11:11:05+00:00:CANDLE_CLOSED rejected as STALE (exceeded freshness window).","context":{},"level":200,"level_name":"INFO","channel":"testing","datetime":"2026-10-28T11:16:55.840248+00:00","extra":{}}
+......{"message":"ProcessPaperPipelineJob: bybit:BTCUSDT at 2026-10-26T10:30:00Z rejected as STALE (exceeded 300s freshness window).","context":{},"level":200,"level_name":"INFO","channel":"testing","datetime":"2026-10-28T11:16:56.806122+00:00","extra":{}}
+..{"message":"Recovery: Marked event bybit:BTCUSDT:5:2023-11-14T22:18:20+00:00:CANDLE_CLOSED as STALE (exceeded freshness window).","context":{},"level":200,"level_name":"INFO","channel":"testing","datetime":"2026-10-28T11:16:57.725670+00:00","extra":{}}
+.{"message":"Recovery: Marked event bybit:BTCUSDT:5:2023-11-14T22:18:20+00:00:CANDLE_CLOSED as STALE (exceeded freshness window).","context":{},"level":200,"level_name":"INFO","channel":"testing","datetime":"2026-10-28T11:16:57.805156+00:00","extra":{}}
+{"message":"Recovery: Marked event binance:BTCUSDT:15:2026-10-28T11:10:17+00:00:CANDLE_CLOSED as STALE (exceeded freshness window).","context":{},"level":200,"level_name":"INFO","channel":"testing","datetime":"2026-10-28T11:16:57.808774+00:00","extra":{}}
+.{"message":"GenerateSignalJob: bybit:BTCUSDT already processed by event-driven pipeline; scheduled run skipped.","context":{},"level":200,"level_name":"INFO","channel":"testing","datetime":"2026-10-28T11:16:57.903817+00:00","extra":{}}
+.....{"message":"Recovery: Marked event bybit:BTCUSDT:5:2023-11-14T22:18:20+00:00:CANDLE_CLOSED as STALE (exceeded freshness window).","context":{},"level":200,"level_name":"INFO","channel":"testing","datetime":"2026-10-28T11:16:58.250256+00:00","extra":{}}
+{"message":"Recovery: Terminalized upstream event bybit:BTCUSDT:15:2026-10-28T11:16:13+00:00:SIGNALS_EVALUATED to COMPLETED matching existing downstream PAPER_PROCESSED.","context":{},"level":200,"level_name":"INFO","channel":"testing","datetime":"2026-10-28T11:16:58.256621+00:00","extra":{}}
+.{"message":"ProcessPaperPipelineJob account provenance/executable check failed: ece2a7a7-404b-47be-88e0-b7aa5377d019 (invalid_strategy_never_configured): Binance PRIMARY account provenance is not verified.","context":{"account_id":"ece2a7a7-404b-47be-88e0-b7aa5377d019","strategy_id":"invalid_strategy_never_configured","exception":"DomainException"},"level":300,"level_name":"WARNING","channel":"testing","datetime":"2026-10-28T11:16:58.364740+00:00","extra":{}}
+{"message":"ProcessPaperPipelineJob completed with individual account errors.","context":{"failed_count":1,"total_accounts":2,"eligible_accounts":2,"processed_accounts":1,"failures":[{"account_id":"ece2a7a7-404b-47be-88e0-b7aa5377d019","error":"Binance PRIMARY account provenance is not verified."}]},"level":300,"level_name":"WARNING","channel":"testing","datetime":"2026-10-28T11:16:58.365030+00:00","extra":{}}
+.... 882 / 919 ( 95%)
+..[36;1mS[0m..................................                           919 / 919 (100%)
+
+Time: 03:24.042, Memory: 46.00 MB
+
+There was 1 skipped test:
+
+1) Tests\Integration\BybitPublicApiIntegrationTest::test_public_linear_market_endpoints_match_the_documented_contract
+Set RUN_BYBIT_INTEGRATION=1 to call the public Bybit API.
+
+[30;42mOK, but some tests were skipped![0m
+[30;42mTests: 919[0m[30;42m, Assertions: 8174[0m[30;42m, Skipped: 1[0m[30;42m.[0m
