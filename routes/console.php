@@ -232,11 +232,10 @@ if ((bool) config('exchanges.binance.research_cycle_enabled', false)) {
         Schedule::call(fn () => app(BinanceCandleIngestion::class)->ingest($symbol, '5m', 30))
             ->cron('1,6,11,16,21,26,31,36,41,46,51,56 * * * *')
             ->name("binance:5m:{$symbol}")->withoutOverlapping();
-        Schedule::call(function () use ($symbol): void {
-            foreach (['15m', '30m', '1h', '4h'] as $interval) {
-                app(BinanceCandleIngestion::class)->ingest($symbol, $interval, 250);
-            }
-        })->cron('1,16,31,46 * * * *')->name("binance:htf:{$symbol}")->withoutOverlapping();
+        foreach (['15m', '30m', '1h', '4h'] as $interval) {
+            Schedule::call(fn () => app(BinanceCandleIngestion::class)->ingest($symbol, $interval, 250))
+                ->cron('1,16,31,46 * * * *')->name("binance:htf:{$symbol}:{$interval}")->withoutOverlapping();
+        }
         Schedule::call(fn () => app(BinanceFundingIngestion::class)->ingest($symbol))
             ->cron('10 * * * *')->name("binance:funding:{$symbol}")->withoutOverlapping();
         Schedule::call(function () use ($symbol): void {

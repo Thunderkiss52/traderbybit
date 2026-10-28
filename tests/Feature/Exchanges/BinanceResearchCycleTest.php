@@ -181,19 +181,21 @@ final class BinanceResearchCycleTest extends TestCase
         foreach (['BTCUSDT', 'ETHUSDT'] as $symbol) {
             $context = $events->first(fn ($e): bool => $e->getSummaryForDisplay() === "binance:context:{$symbol}");
             $m5 = $events->first(fn ($e): bool => $e->getSummaryForDisplay() === "binance:5m:{$symbol}");
-            $htf = $events->first(fn ($e): bool => $e->getSummaryForDisplay() === "binance:htf:{$symbol}");
             $funding = $events->first(fn ($e): bool => $e->getSummaryForDisplay() === "binance:funding:{$symbol}");
             $signals = $events->first(fn ($e): bool => $e->getSummaryForDisplay() === "binance:signals:{$symbol}");
 
             self::assertNotNull($context, "binance:context:{$symbol} scheduled");
             self::assertNotNull($m5, "binance:5m:{$symbol} scheduled");
-            self::assertNotNull($htf, "binance:htf:{$symbol} scheduled");
+            foreach (['15m', '30m', '1h', '4h'] as $interval) {
+                $htf = $events->first(fn ($e): bool => $e->getSummaryForDisplay() === "binance:htf:{$symbol}:{$interval}");
+                self::assertNotNull($htf, "binance:htf:{$symbol}:{$interval} scheduled");
+                self::assertSame('1,16,31,46 * * * *', $htf->expression);
+            }
             self::assertNotNull($funding, "binance:funding:{$symbol} scheduled");
             self::assertNotNull($signals, "binance:signals:{$symbol} scheduled");
 
             self::assertSame('13,28,43,58 * * * *', $context->expression);
             self::assertSame('1,6,11,16,21,26,31,36,41,46,51,56 * * * *', $m5->expression);
-            self::assertSame('1,16,31,46 * * * *', $htf->expression);
             self::assertSame('10 * * * *', $funding->expression);
             self::assertSame('2,17,32,47 * * * *', $signals->expression);
         }
