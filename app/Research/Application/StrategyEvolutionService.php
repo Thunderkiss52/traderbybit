@@ -30,8 +30,11 @@ final class StrategyEvolutionService
     /**
      * Search a bounded parameter space and generate an evolved candidate strategy.
      */
-    public function generateCandidate(string $parentStrategyId = 'trend_pullback', ?int $seed = null): LearningCandidateStrategyRecord
+    public function generateCandidate(string $parentStrategyId = 'trend_pullback', ?int $seed = null, string $exchange = 'bybit'): LearningCandidateStrategyRecord
     {
+        if (! in_array($exchange, ['bybit', 'binance'], true)) {
+            throw new \InvalidArgumentException('Unsupported candidate exchange.');
+        }
         if (! in_array($parentStrategyId, $this->families(), true)) {
             throw new \InvalidArgumentException("Unknown strategy family: {$parentStrategyId}");
         }
@@ -102,6 +105,7 @@ final class StrategyEvolutionService
             'parameters' => $mutatedParams,
             'parameter_diff' => $parameterDiff,
             'search_metadata' => [
+                'exchange' => $exchange,
                 'seed' => $seed,
                 'trial_count' => 1,
                 'family' => $parentStrategyId,

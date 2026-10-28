@@ -187,11 +187,12 @@ final class AutonomousLearningController extends Controller
 
     public function generateCandidate(Request $request, StrategyEvolutionService $evolution): ResearchResource|JsonResponse
     {
+        $validated = $request->validate(['exchange' => ['sometimes', 'string', 'in:bybit,binance']]);
         try {
             $parentStrategyId = $request->string('parent_strategy_id', 'trend_pullback')->toString();
             $seed = $request->has('seed') ? $request->integer('seed') : null;
 
-            return $this->ok($evolution->generateCandidate($parentStrategyId, $seed));
+            return $this->ok($evolution->generateCandidate($parentStrategyId, $seed, $validated['exchange'] ?? 'bybit'));
         } catch (Throwable $e) {
             Log::error('Research API operation failed.', ['operation' => __METHOD__, 'exception_type' => $e::class]);
 

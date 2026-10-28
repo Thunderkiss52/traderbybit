@@ -49,3 +49,11 @@ The combined HTF callback previously aborted its sequential interval loop on the
 After commit 009041a, wider `tests/Feature/MarketData tests/Feature/Trading` regression passed: exit 0, 55 tests, 370 assertions, 22.892 seconds. Strict scorecard validation passed with provisional percentages still zero due to the existing evidence freshness state. No production gates were admitted.
 
 Continuation: complete positive valid-history parity and exchange-qualified candidate evaluation, then renew requirement-specific Phase 0 evidence. Production conflict diagnosis requires the structured conflict record (symbol, interval, UTC open time, stored/incoming decimals), source response at that identity, and host clock/scheduler logs. Do not repair stored observations or replay historical PAPER execution. Phase 1 remains blocked.
+
+## Warm-history parity and candidate exchange continuation
+
+From b8d9591: HistoricalStrategyParityTest now seeds separate closed 5m/15m/30m/1h histories and market context for both exchanges and both symbols. It verifies valid/warm input, distinct exchange prices, peer input, all 13 identities, agreement with registered strategy logic, deterministic repeated evaluation and no persisted signals or positions. Exit 0: 2 tests, 361 assertions, 149.067 seconds. These are deterministic synthetic inputs, not historical exchange performance or independent mathematical reference vectors.
+
+Candidate generation accepts validated exchange identity (default Bybit); candidate metadata carries it into the historical worker. A foreign-exchange run is rejected before linkage. Binance forward promotion is explicitly blocked because the existing account provisioner is default-exchange only. No owner approval flag changes. CandidateExchangeTest, CandidateLabValidationLifecycleTest and PromotedCandidateExecutionTest passed on isolated PostgreSQL 14: exit 0, 10 tests, 89 assertions. Correct-exchange candidate linkage uses a mocked backtest boundary; actual historical execution is covered separately by the backtest tests. Full Pint passed.
+
+Next: verify direct candidate evidence ingestion also rejects cross-exchange run IDs, extend valid-history walk-forward/financial reference cases, and run the full applicable regression. Phase 0 remains blocked; these tests grant no production acceptance.

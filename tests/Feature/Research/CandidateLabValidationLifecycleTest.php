@@ -11,6 +11,7 @@ use App\Research\Jobs\EvaluateStrategyCandidateJob;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Queue;
 use Illuminate\Support\Str;
+use PHPUnit\Framework\Attributes\DataProvider;
 use Tests\TestCase;
 
 final class CandidateLabValidationLifecycleTest extends TestCase
@@ -161,7 +162,8 @@ final class CandidateLabValidationLifecycleTest extends TestCase
             ->assertJsonPath('data.validation_gates.failure_reason', 'insufficient_sample_size');
     }
 
-    public function test_f25_evaluate_strategy_candidate_job_durable_backtest_linkage_with_competing_unrelated_run(): void
+    #[DataProvider('candidateExchanges')]
+    public function test_f25_evaluate_strategy_candidate_job_durable_backtest_linkage_with_competing_unrelated_run(string $exchange): void
     {
         // 1. Create a competing unrelated backtest run in the database
         $competingRun = BacktestRunRecord::query()->create([
@@ -234,10 +236,15 @@ final class CandidateLabValidationLifecycleTest extends TestCase
             'completed_at' => now(),
         ]);
 
+        $candidate = LearningCandidateStrategyRecord::query()->findOrFail($candidateId);
+        $candidate->update(['search_metadata' => array_replace($candidate->search_metadata, ['exchange' => $exchange])]);
+        $ownedRun->update(['strategy_config' => array_replace($ownedRun->strategy_config, ['_exchange' => $exchange])]);
+
         // Mock BacktestRunService to return the candidate's owned run
         $mockBacktestService = $this->createMock(BacktestRunService::class);
         $mockBacktestService->expects($this->once())
             ->method('run')
+            ->with($this->anything(), $this->anything(), $this->anything(), true, $this->anything(), $exchange)
             ->willReturn($ownedRun);
         $this->app->instance(BacktestRunService::class, $mockBacktestService);
 
@@ -252,6 +259,7 @@ final class CandidateLabValidationLifecycleTest extends TestCase
         $this->assertSame($ownedRun->id, $reloaded->search_metadata['backtest_run_id']);
         $this->assertNotSame($competingRun->id, $reloaded->search_metadata['backtest_run_id']);
         $this->assertSame('COMPLETED', $reloaded->search_metadata['evaluation_status']);
+        $this->assertSame($exchange, $reloaded->search_metadata['exchange']);
         $this->assertSame(1, $reloaded->search_metadata['evaluation_attempts']);
 
         // Assert validation gates evaluated and durable outcome recorded
@@ -261,5 +269,10 @@ final class CandidateLabValidationLifecycleTest extends TestCase
         // Assert no live exchange promotion occurred (strict safety invariant)
         $this->assertNotSame('ACTIVE', $reloaded->status);
         $this->assertNotSame('LIVE_PROMOTED', $reloaded->status);
+    }
+
+    public static function candidateExchanges(): array
+    {
+        return [['bybit'], ['binance']];
     }
 }

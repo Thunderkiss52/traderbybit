@@ -64,6 +64,10 @@ final class EvaluateStrategyCandidateJob implements ShouldQueue
         $symbols = (array) config('market_data.symbols', ['BTCUSDT', 'ETHUSDT']);
 
         try {
+            $exchange = $metadata['exchange'] ?? 'bybit';
+            if (! in_array($exchange, ['bybit', 'binance'], true)) {
+                throw new \InvalidArgumentException('Unsupported candidate exchange.');
+            }
             $config = $evolution->strategyConfig($candidate);
             $run = $backtests->run(
                 $symbols,
@@ -71,7 +75,12 @@ final class EvaluateStrategyCandidateJob implements ShouldQueue
                 new DateTimeImmutable($to->toIso8601String()),
                 true,
                 $config,
+                $exchange,
             );
+
+            if (($run->strategy_config['_exchange'] ?? 'bybit') !== $exchange) {
+                throw new \RuntimeException('Candidate backtest exchange mismatch.');
+            }
 
             $metadata['evaluation_status'] = 'COMPLETED';
             $metadata['backtest_run_id'] = $run->id;

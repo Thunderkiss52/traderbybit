@@ -743,6 +743,9 @@ final class PromotionPolicyService
                 if ($candidate->status === 'PAPER_PROMOTED' && $candidate->paper_account_id !== null) {
                     return $candidate;
                 }
+                if (($candidate->search_metadata['exchange'] ?? 'bybit') !== 'bybit') {
+                    throw ValidationException::withMessages(['gates' => 'Candidate exchange is unsupported by forward account provisioning.']);
+                }
                 $previousGates = (array) $candidate->validation_gates;
                 $candidate = $this->evaluateCandidate($candidateId, $previousGates['validation_run_id'] ?? null);
                 if (! ($candidate->validation_gates['all_gates_passed'] ?? false)) {
