@@ -12,14 +12,17 @@ use RuntimeException;
 
 final class DatasetInspector
 {
-    public function inspect(array $symbols, DateTimeImmutable $from, DateTimeImmutable $to, int $warmupBars): array
+    public function inspect(array $symbols, DateTimeImmutable $from, DateTimeImmutable $to, int $warmupBars, string $exchange = 'bybit'): array
     {
+        if (! in_array($exchange, ['bybit', 'binance'], true)) {
+            throw new \InvalidArgumentException('Unsupported backtest exchange.');
+        }
         $hash = hash_init('sha256');
         $warnings = [];
         foreach ($symbols as $symbol) {
             foreach (['5' => 300, '15' => 900, '60' => 3600] as $interval => $seconds) {
                 $warmupFrom = $from->modify('-'.($warmupBars * $seconds).' seconds');
-                $rows = CandleRecord::query()->where(['exchange' => 'bybit', 'category' => 'linear', 'symbol' => $symbol, 'interval' => $interval, 'is_closed' => true])
+                $rows = CandleRecord::query()->where(['exchange' => $exchange, 'category' => 'linear', 'symbol' => $symbol, 'interval' => $interval, 'is_closed' => true])
                     ->where('open_time', '>=', $warmupFrom)->where('open_time', '<', $to)->orderBy('open_time')->get();
                 if ($rows->isEmpty()) {
                     throw new RuntimeException("No closed {$interval}m history for {$symbol}.");
@@ -43,10 +46,10 @@ final class DatasetInspector
                     $warnings[] = "insufficient_warmup:{$symbol}:{$interval}:{$before}/{$warmupBars}";
                 }
             }
-            MarketContextRecord::query()->where(['exchange' => 'bybit', 'category' => 'linear', 'symbol' => $symbol])->whereBetween('observed_at', [$from, $to])->orderBy('observed_at')->each(function ($row) use ($hash): void {
+            MarketContextRecord::query()->where(['exchange' => $exchange, 'category' => 'linear', 'symbol' => $symbol])->whereBetween('observed_at', [$from, $to])->orderBy('observed_at')->each(function ($row) use ($hash): void {
                 hash_update($hash, implode('|', ['context', $row->symbol, $row->observed_at->getTimestamp(), $row->bid, $row->ask, $row->turnover_24h, $row->tick_size, $row->funding_rate, $row->open_interest, $row->open_interest_change, $row->qty_step, $row->min_order_qty, $row->max_order_qty, $row->min_notional_value])."\n");
             });
-            MarketFundingEventRecord::query()->where(['exchange' => 'bybit', 'category' => 'linear', 'symbol' => $symbol])->whereBetween('funding_at', [$from, $to])->orderBy('funding_at')->each(function ($row) use ($hash): void {
+            MarketFundingEventRecord::query()->where(['exchange' => $exchange, 'category' => 'linear', 'symbol' => $symbol])->whereBetween('funding_at', [$from, $to])->orderBy('funding_at')->each(function ($row) use ($hash): void {
                 hash_update($hash, implode('|', ['funding', $row->symbol, $row->funding_at->getTimestamp(), $row->rate, $row->mark_price])."\n");
             });
         }

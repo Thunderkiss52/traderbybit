@@ -38,6 +38,22 @@ final class DatasetInspectorTest extends TestCase
         (new DatasetInspector)->inspect(['BTCUSDT'], new DateTimeImmutable('2026-01-01T00:00:00Z'), new DateTimeImmutable('2026-01-01T00:15:00Z'), 0);
     }
 
+    public function test_binance_does_not_use_bybit_history(): void
+    {
+        foreach (['00:00', '00:05', '00:10'] as $time) {
+            $this->candle('5', "2026-01-01 {$time}:00+00:00");
+        }
+        $this->candle('15', '2026-01-01 00:00:00+00:00');
+        $this->candle('60', '2026-01-01 00:00:00+00:00');
+        $service = new DatasetInspector;
+        $from = new DateTimeImmutable('2026-01-01T00:00:00Z');
+        $to = new DateTimeImmutable('2026-01-01T00:15:00Z');
+        self::assertSame($service->inspect(['BTCUSDT'], $from, $to, 0), $service->inspect(['BTCUSDT'], $from, $to, 0, 'bybit'));
+        $this->expectException(RuntimeException::class);
+        $this->expectExceptionMessage('No closed 5m history');
+        $service->inspect(['BTCUSDT'], $from, $to, 0, 'binance');
+    }
+
     private function candle(string $interval, string $time): void
     {
         CandleRecord::query()->create(['exchange' => 'bybit', 'category' => 'linear', 'symbol' => 'BTCUSDT', 'interval' => $interval, 'open_time' => $time, 'open' => '100', 'high' => '101', 'low' => '99', 'close' => '100', 'volume' => '1', 'turnover' => '100', 'is_closed' => true]);
