@@ -214,4 +214,118 @@ final class TradingPipelineStageATest extends TestCase
         self::assertSame(1, $payload['processed_accounts']);
         self::assertSame(0, $payload['failures_count']);
     }
+
+    public function test_record_paper_processed_marks_failed_when_all_accounts_fail_and_terminalizes_upstream(): void
+    {
+        Queue::fake();
+        config(['trading.pipeline_mode' => 'EVENT_DRIVEN']);
+
+        $service = app(TradingPipelineEventService::class);
+        $closeAt = new DateTimeImmutable('now');
+
+        $candleRecord = $service->recordCandleClosed('bybit', 'BTCUSDT', '5', $closeAt);
+        $sigRecord = $service->recordSignalsEvaluated('bybit', 'BTCUSDT', $closeAt, 2);
+
+        self::assertSame(TradingPipelineEventRecord::STATUS_DISPATCHED, $candleRecord->status);
+        self::assertSame(TradingPipelineEventRecord::STATUS_DISPATCHED, $sigRecord->status);
+
+        // All accounts fail: eligible=5, failures=5, processed=0
+        $paperRecord = $service->recordPaperProcessed('bybit', 'BTCUSDT', $closeAt, 0, [
+            'failures_count' => 5,
+            'eligible_accounts' => 5,
+            'processed_accounts' => 0,
+            'failures' => [['account_id' => 'dummy1', 'error' => 'Fatal risk rejection']],
+        ]);
+
+        // Paper event must be STATUS_FAILED
+        self::assertSame(TradingPipelineEventRecord::STATUS_FAILED, $paperRecord->status);
+
+        // Upstream SIGNALS_EVALUATED must be terminalized to STATUS_FAILED with completed_at set
+        $sigFresh = $sigRecord->fresh();
+        self::assertSame(TradingPipelineEventRecord::STATUS_FAILED, $sigFresh->status);
+        self::assertNotNull($sigFresh->completed_at);
+
+        // Upstream 5m CANDLE_CLOSED must also be terminalized to STATUS_FAILED with completed_at set
+        $candleFresh = $candleRecord->fresh();
+        self::assertSame(TradingPipelineEventRecord::STATUS_FAILED, $candleFresh->status);
+        self::assertNotNull($candleFresh->completed_at);
+    }
+
+    public function test_recovery_retry_only_retries_failed_accounts_without_repeating_successes(): void
+    {
+        config(['trading.pipeline_mode' => 'EVENT_DRIVEN']);
+        config(['exchanges.binance.paper_execution_approved' => true]);
+        config(['exchanges.binance.paper_taker_rate' => '0.0005']);
+        config(['exchanges.binance.paper_slippage_rate' => '0.0002']);
+
+        // Account 1: valid Binance account with canonical primary strategy
+        $accountService = app(PaperAccountService::class);
+        $acc1 = $accountService->default();
+        $acc1->update([
+            'exchange_id' => 'binance',
+            'is_primary' => true,
+            'status' => 'ACTIVE',
+            'primary_strategy_id' => 'trend_pullback',
+            'strategy_id' => 'trend_pullback',
+            'starting_balance' => '10000',
+            'current_equity' => '10000',
+            'peak_equity' => '10000',
+        ]);
+
+        // Account 2: Binance account with invalid provenance strategy that will fail
+        $acc2 = PaperAccountRecord::query()->create([
+            'id' => Uuid::uuid4()->toString(),
+            'name' => 'Binance Recoverable Account',
+            'exchange_id' => 'binance',
+            'is_primary' => true,
+            'status' => 'ACTIVE',
+            'primary_strategy_id' => 'invalid_strategy_failing_provenance',
+            'strategy_id' => 'invalid_strategy_failing_provenance',
+            'starting_balance' => '10000',
+            'current_equity' => '10000',
+            'peak_equity' => '10000',
+        ]);
+
+        $closeAt = new DateTimeImmutable('now');
+        $closeIso = $closeAt->format(DATE_ATOM);
+
+        // Initial run across all accounts
+        $job1 = new ProcessPaperPipelineJob('binance', 'BTCUSDT', $closeIso);
+        $job1->handle(app(TradingPipelineEventService::class), app(PaperProcessingService::class));
+
+        // Verify initial mixed batch resulted in STATUS_PARTIAL
+        $eventKey = "binance:BTCUSDT:{$closeIso}:".TradingPipelineEventRecord::STAGE_PAPER_PROCESSED;
+        $paperEvent1 = TradingPipelineEventRecord::query()->where('event_key', $eventKey)->first();
+        self::assertNotNull($paperEvent1);
+        self::assertSame(TradingPipelineEventRecord::STATUS_PARTIAL, $paperEvent1->status);
+
+        // Snapshot acc1 state and ledger entries
+        $acc1Snapshot = $acc1->fresh()->toArray();
+        $acc1Journals = DB::table('trading_journal_events')->where('paper_account_id', $acc1->id)->get()->toArray();
+        $acc1Positions = DB::table('virtual_positions')->where('paper_account_id', $acc1->id)->get()->toArray();
+
+        // Now fix acc2 by giving it a valid canonical primary strategy
+        $acc2->update([
+            'primary_strategy_id' => 'donchian_atr_breakout',
+            'strategy_id' => 'donchian_atr_breakout',
+        ]);
+
+        // Run targeted retry ONLY for the failed account ($acc2->id)
+        $job2 = new ProcessPaperPipelineJob('binance', 'BTCUSDT', $closeIso, [$acc2->id]);
+        $job2->handle(app(TradingPipelineEventService::class), app(PaperProcessingService::class));
+
+        // 1. Assert successful account (acc1) was untouched (byte-identical ledger, no duplicate executions)
+        self::assertEquals($acc1Snapshot, $acc1->fresh()->toArray());
+        self::assertEquals($acc1Journals, DB::table('trading_journal_events')->where('paper_account_id', $acc1->id)->get()->toArray());
+        self::assertEquals($acc1Positions, DB::table('virtual_positions')->where('paper_account_id', $acc1->id)->get()->toArray());
+
+        // 2. Assert failed account (acc2) executed successfully on targeted retry
+        $paperEvent2 = TradingPipelineEventRecord::query()->where('event_key', $eventKey)->first();
+        self::assertNotNull($paperEvent2);
+        self::assertSame(TradingPipelineEventRecord::STATUS_COMPLETED, $paperEvent2->status);
+        $payload2 = is_string($paperEvent2->payload) ? json_decode($paperEvent2->payload, true) : (array) $paperEvent2->payload;
+        self::assertSame(1, $payload2['eligible_accounts']);
+        self::assertSame(1, $payload2['processed_accounts']);
+        self::assertSame(0, $payload2['failures_count']);
+    }
 }
