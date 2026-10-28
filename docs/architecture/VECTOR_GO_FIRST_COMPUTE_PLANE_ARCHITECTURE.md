@@ -1,5 +1,9 @@
 # VECTOR Architecture: Go-First Compute Plane & Laravel Control Plane
 
+> [!NOTE]
+> **Canonical Roadmap Reference:**  
+> The comprehensive engineering roadmap and migration plan for transitioning core market data, strategy runtime, risk, and PAPER accounting to Golang is codified in [`VECTOR_GO_FIRST_ROADMAP_V3.md`](file:///home/thunder/work/traderbybit/docs/roadmap/VECTOR_GO_FIRST_ROADMAP_V3.md).
+
 This document codifies the architectural division of responsibilities between the **Laravel Control Plane** and the **Go Compute Plane (`research-go`)** in VECTOR.
 
 ---

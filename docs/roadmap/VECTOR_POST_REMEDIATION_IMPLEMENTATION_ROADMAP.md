@@ -1,5 +1,9 @@
 # VECTOR post-remediation implementation roadmap
 
+> [!IMPORTANT]
+> **Superceded Architectural Trajectory:**  
+> This V2 roadmap is preserved for historical baseline continuity. The active, canonical engineering roadmap reflecting the owner-approved Go-First architecture is codified in [`VECTOR_GO_FIRST_ROADMAP_V3.md`](file:///home/thunder/work/traderbybit/docs/roadmap/VECTOR_GO_FIRST_ROADMAP_V3.md).
+
 Status: implementation specification, NOT authorization to start. Prepared 2026-10-27 from clean source HEAD `a12bac4a80f2af3baef00611a0ce6365721f165f`. No production verification or feature implementation in this documentation cycle. This replaces the task-text placeholder formerly at this path; the architecture-directory duplicate now links here.
 
 ## Program gates and dependencies
