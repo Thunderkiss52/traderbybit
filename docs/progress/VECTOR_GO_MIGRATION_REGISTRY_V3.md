@@ -18,6 +18,7 @@ To preserve the auditability of the platform, migration progress is tracked as a
    - `GO_SHADOW` (50% Migration Credit): Go implementation exists, is running in parallel shadow mode, and is validated by parity tests.
    - `GO_AUTH` (100% Migration Credit): Go is the sole authoritative writer; database fencing protects against PHP dual writes.
    - `PHP_RETIRED` (Clean Sunset): Duplicate PHP computational logic is cleanly removed from the repository.
+5. **Scope vs Verification Distinction:** `APPROVED ARCHITECTURAL SCOPE != IMPLEMENTED RUNTIME CAPABILITY`. Planned migration packages (MIG-18 through MIG-29) represent approved planned architecture milestones, not completed implementations. Phase 0 status remains BLOCKED; Phase 1 remains NOT STARTED.
 
 ---
 
@@ -51,7 +52,7 @@ Every workload is assigned a Migration Value Gate (MVG) disposition based on emp
 | **MIG-22** | Exchange Onboarding UI & Lifecycle| New capability | Vue 3 / Laravel / Go | Phase 6 | **APPROVED** | CSV upload, endpoint preview, dry-run & approval| Lifecycle state machine transition test |
 | **MIG-23** | Exchange Conformance Test Harness| New capability | Go `pkg/exchange/conformance` | Phase 6 | **APPROVED** | Automated 10-criteria contract verification | Multi-exchange conformance suite |
 | **MIG-24** | Historical Dataset Schema & Provenance| New capability | Go `pkg/dataset` | Phase 1/2 | **APPROVED** | Standardized manifest & SHA-256 validation | Manifest JSON serialization test |
-| **MIG-25** | Secure Historical File Import & Validation | New capability | Go `internal/dataset/importer` | Phase 2 | **APPROVED** | Streaming CSV/Parquet parser & gap detection | Corrupt file & zip bomb tests |
+| **MIG-25** | Secure Historical File Import & Validation | New capability | Go `internal/dataset/importer` | Phase 2 | **APPROVED** | Bounded streaming parser & zero silent conflict checks | Corrupt file, bomb & conflict tests |
 | **MIG-26** | Dataset Storage & Versioning | New capability | Postgres / Go `internal/dataset/storage` | Phase 2 | **APPROVED** | Isolated historical partitions with immutable hashing | Partition isolation & immutability test |
 | **MIG-27** | Research Dataset Selection & Loader | New capability | Go `internal/research/loader` | Phase 4 | **APPROVED** | Chronological data feeding & leakage protection | Lookahead leakage injection test |
 | **MIG-28** | Dataset Manager UI & Quality Reporting | New capability | Vue 3 / Laravel / Go | Phase 2 | **APPROVED** | Upload wizard, column mapping & quality reports | UI upload & mapping roundtrip test |

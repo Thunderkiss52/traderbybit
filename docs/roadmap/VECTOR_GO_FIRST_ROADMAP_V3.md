@@ -1,9 +1,9 @@
 # VECTOR Go-First Architecture Roadmap V3.3: Research Data Import & Dataset Manager
 
 **Document Version:** V3.3 (Authoritative Engineering Specification)
-**Status:** Canonical Approved Technical Roadmap & Architecture Plan
+**Document Status:** Canonical Approved Technical Roadmap & Architecture Plan — READY_FOR_OWNER_APPROVAL (Frozen for Phase 0 Production Acceptance)
 **Governing Standards:** [`AGENTS.md`](file:///home/thunder/work/traderbybit/AGENTS.md) and [`SKILL.md`](file:///home/thunder/work/traderbybit/SKILL.md)
-**Source Baseline SHA:** `7113f2257d00f73ee01dd392c0d8b4e72782b6b6` (Roadmap V3.2 Baseline)
+**Source Baseline SHA:** `5a8fcd62660e5dc7a28e5a7ce6bcae4fb14ffb35` (Roadmap V3.3 Baseline)
 **Historical Scope Baseline:** `VECTOR-SCOPE-20261027-v1` (Frozen, 97 Requirements, 229 Obligations)
 **Target Proposal Baseline:** `VECTOR-SCOPE-20261028-v3.3`
 **Execution Mode:** STRICTLY VIRTUAL PAPER TRADING ONLY. Zero real exchange trading; zero private trade credentials; zero order placement endpoints.
@@ -33,63 +33,57 @@ The owner and architecture board have codified the primary architectural traject
 2. **Fundamental Data Isolation:** Imported historical datasets, continuous exchange observations, external research evidence, synthetic fixtures, backtests, out-of-sample evaluations, shadow runs, and prospective PAPER observations maintain absolute provenance and storage separation. Imported data cannot retroactively become genuine live observations or forward-paper evidence.
 3. **Exchange Identity Without Exchange API Connection:** Offline research source identity (e.g. OKX historical research) can be registered, explored, and backtested without requiring live exchange API connectivity, credentials, or paper account creation.
 4. **Financial Accuracy & Cost Modeling:** Historical OHLCV alone does not establish actual trading costs or execution quality. Where cost data is absent, fees or funding are never fabricated; simulation assumptions are explicitly tagged and segregated from verified PAPER facts.
-5. **Zero Mandatory LLM / No AI Trade Decisions:** The platform operates with 100% determinism. No LLM credentials, embedded agents, prompt injections, or external token costs exist in the trading, market data, evaluation, or accounting execution paths. External AI tools (e.g. Codex) may be used offline by developers to generate code or configurations, but the runtime remains strictly deterministic.
-6. **Dual Certification — Correctness vs Profitability:** Technical correctness (flawless execution, zero lookahead, deterministic calculations, accounting reconciliation) is strictly separated from economic profitability (net R-multiples, slippage drag, fee decay, drawdown, and statistical stability). An operationally sound strategy may be unprofitable; a backtest-profitable strategy may be statistically fragile. Neither condition is ever obscured.
-7. **Single Authoritative Writer:** To guarantee absolute financial integrity across all independent PAPER accounts, at any given millisecond exactly **ONE** engine is the authoritative writer for any given financial or ledger entity. Dual-writing is strictly prohibited. Fencing tokens and monotonic epochs enforce this invariant in PostgreSQL.
-8. **Efficiency Over Migration for Its Own Sake:** Workload migration must be justified by empirical performance gains (throughput, latency, memory bounds, mathematical determinism). Arbitrary code deletion goals (e.g. "remove 40% of PHP code") are permanently revoked.
-9. **Strict Safety Invariants:** Virtual PAPER mode only; zero real exchange orders; zero trade credentials; preserved 5% entry-block and 10% halt risk thresholds; preserved independent account isolation; zero historical financial record mutation; ECONOM resources strictly untouched.
+5. **Zero Silent Conflicts Policy:** The allowable rate of silent data conflicts is exactly zero. Every contradictory observation must be logged, counted, and audited. Duplicate identical rows are handled idempotently; conflicting prices at identical timestamps are quarantined.
+6. **Measurable Performance Contracts (No Unconditional Fixed-Memory Claims):** Memory consumption is managed via bounded streaming parsers, chunked transactions, and backpressure. Ingestion memory is bounded by an explicit performance target (Peak RSS < 256 MiB under the standard benchmark profile) with hard container cgroup limits (512 MiB), rather than an unconditional claim of fixed memory for arbitrary adversarial inputs.
+7. **Bounded Decompression Security:** Decompression bomb defenses enforce total decompressed byte ceilings (2.0 GB) and per-entry limits rather than arbitrary compression ratio thresholds, allowing highly compressible repetitive market data CSVs to be ingested safely.
+8. **Scope Distinction Principle:** `APPROVED ARCHITECTURAL SCOPE != IMPLEMENTED RUNTIME CAPABILITY`. Planned migration packages (MIG-18 through MIG-29) are approved architectural milestones, not completed implementations.
+9. **Zero Mandatory LLM / No AI Trade Decisions:** The platform operates with 100% determinism. No LLM credentials, embedded agents, prompt injections, or external token costs exist in the trading, market data, evaluation, or accounting execution paths. External AI tools (e.g. Codex) may be used offline by developers to generate code or configurations, but the runtime remains strictly deterministic.
+10. **Dual Certification — Correctness vs Profitability:** Technical correctness (flawless execution, zero lookahead, deterministic calculations, accounting reconciliation) is strictly separated from economic profitability (net R-multiples, slippage drag, fee decay, drawdown, and statistical stability). An operationally sound strategy may be unprofitable; a backtest-profitable strategy may be statistically fragile. Neither condition is ever obscured.
+11. **Single Authoritative Writer:** To guarantee absolute financial integrity across all independent PAPER accounts, at any given millisecond exactly **ONE** engine is the authoritative writer for any given financial or ledger entity. Dual-writing is strictly prohibited. Fencing tokens and monotonic epochs enforce this invariant in PostgreSQL.
+12. **Strict Safety Invariants:** Virtual PAPER mode only; zero real exchange orders; zero trade credentials; preserved 5% entry-block and 10% halt risk thresholds; preserved independent account isolation; zero historical financial record mutation; ECONOM resources strictly untouched.
 
 ---
 
-## Roadmap V3.3 Change Log & Superseded Requirements
+## Roadmap V3.3 Change Log & Final Clarifications
 
-### What Changed in Roadmap V3.3 (from V3.2)
+### Final Architectural Corrections & Freeze for Phase 0 Handoff
+1. **Correction A — Memory Resource Budget & Performance Contract:**
+   - Replaced the unconditional claim of "RSS < 256 MiB independently of dataset size" with a rigorous, measurable performance contract.
+   - Defined the **Standard Benchmark Profile** (50,000 to 2,000,000 rows, 100 MB to 1.5 GB uncompressed CSV/Parquet, 1 vCPU, 512 MiB cgroup ceiling, chunk size 5,000 rows, channel depth 1,000).
+   - Distinguished baseline RSS (idle: 20–30 MiB), steady-state streaming RSS (80–160 MiB), peak target RSS (< 256 MiB), and hard container ceiling (512 MiB).
+   - Specified incremental chunked streaming into PostgreSQL with backpressure and context cancellation; jobs exceeding quotas abort safely without corrupting published datasets.
+2. **Correction B — Bounded ZIP Decompression Security:**
+   - Removed the rigid rejection rule `compression ratio > 10:1` which falsely rejected legitimate, highly repetitive historical OHLCV CSV archives.
+   - Replaced with bounded decompression controls: maximum total decompressed size of **2.0 GB**, maximum single-entry size of **1.5 GB**, maximum entry count of **100 files**, and a **120-second** processing deadline.
+   - Added streaming `io.LimitReader` tracking cumulative extracted bytes, path traversal rejection (`../`, leading slashes, symlinks), and rejection of nested or encrypted archives.
+   - High compression ratios (> 10:1) are retained solely as informational audit signals, not automatic rejection triggers.
+3. **Correction C — Zero-Tolerance Policy on Silent Conflicts:**
+   - Clarified that the allowable rate of silent data conflicts is **EXACTLY ZERO**.
+   - Differentiated identical duplicates (exact timestamp and OHLCV matches, handled idempotently and logged in `duplicate_rows`) from genuine contradictory observations (identical timestamp with differing OHLCV values, logged in `dataset_conflicts`).
+   - Confirmed that the 1% threshold is an escalation/quarantine threshold for automatic dataset quarantine, but **ANY** non-zero conflict (> 0) prevents clean certification (`VALIDATED`) and must be explicitly recorded and audited.
+   - Prohibited silent selection, averaging, interpolation, or overwriting of conflicting values.
+4. **Scope vs Verification Distinction:**
+   - Explicitly codified that `APPROVED ARCHITECTURAL SCOPE != IMPLEMENTED RUNTIME CAPABILITY`. Packages `MIG-18` through `MIG-29` are approved planned architecture, not implemented or verified code.
+   - Phase 0 status remains strictly **BLOCKED** pending operator execution of `phase0_production_acceptance.sql` on the VPS; Phase 1 remains **NOT STARTED**.
+5. **Roadmap Designation:** Marked as **`READY_FOR_OWNER_APPROVAL`** and frozen for Phase 0 production acceptance.
+
+### What Changed in Roadmap V3.3 (Initial Draft)
 1. **Research Data Import & Dataset Manager (Section 9):**
-   - Added a dedicated architectural specification for offline historical data ingestion, dataset versioning, and provenance tracking.
+   - Added architectural specification for offline historical data ingestion, dataset versioning, and provenance tracking.
    - Formalized three distinct data categories: **(A) Exchange-Collected Market Data**, **(B) Imported Historical Market Data**, and **(C) Imported Research Evidence**.
    - Established the **Dataset Manifest Canonical Schema** (`dataset_id`, `dataset_version`, `source_exchange_id`, `canonical_content_checksum`, `provenance_status`, etc.) guaranteeing cryptographic immutability and provenance.
    - Defined the **Historical OHLCV CSV Format** with clear distinction from exchange configuration and strategy rule CSV formats.
-2. **Data Quality & Validation Engine (Phase 2 & Section 9.5):**
-   - Specified a deterministic Go validation pipeline enforcing UTC alignment, decimal precision, OHLC relationship constraints ($low \le open, close \le high$, $volume \ge 0$), gap detection, and conflict quarantine.
-   - Established fail-closed policies: `REJECT`, `QUARANTINE`, `WARN`, and `ACCEPT_WITH_LIMITATIONS`. Fabricating candles to fill gaps is strictly prohibited.
-3. **Secure File Processing & Streaming Architecture (Section 9.6):**
-   - Specified strict security boundaries for untrusted file uploads: 500 MB upload limit, 2 GB archive ceiling, streaming parsing with bounded memory (RSS < 256 MiB), ZIP bomb prevention (10:1 ratio limit), path traversal protection, and safe temporary directory handling. Zero exchange trading credentials.
-4. **Exchange Identity Without Exchange API Connection (Section 9.7):**
+2. **Exchange Identity Without Exchange API Connection (Section 9.7):**
    - Decoupled offline research source identities (e.g. OKX historical data) from live exchange API connectivity, WebSocket listeners, and PAPER account provisioning.
-5. **Historical Research Integration & Leakage Protection (Phase 4 & Section 9.8):**
+3. **Historical Research Integration & Leakage Protection (Phase 4 & Section 9.8):**
    - Implemented the research selection tuple: `STRATEGY + EXCHANGE + DATASET + INSTRUMENT + TIME WINDOW`.
    - Enforced chronological evaluation, point-in-time feature availability, indicator warm-up handling, and strict chronological isolation between training and out-of-sample periods.
-6. **Live vs Imported Data Comparison & Dedicated UI (Section 9.10 & 9.11):**
+4. **Live vs Imported Data Comparison & Dedicated UI (Section 9.10 & 9.11):**
    - Designed comparative analytical views combining datasets without compromising source isolation.
    - Added UI specifications for `Research -> Data Manager`, `Research -> New Backtest`, and `Research -> Dataset Comparison`.
-7. **Migration Registry Updates:**
+5. **Migration Registry Updates:**
    - Added work packages `MIG-24` through `MIG-29` to `docs/progress/VECTOR_GO_MIGRATION_REGISTRY_V3.md`.
    - Defined 25 comprehensive, measurable acceptance criteria for dataset ingestion and management.
-
-### What Changed in Roadmap V3.2 (from V3.1)
-1. **Declarative Exchange Onboarding (Phase 6 & Section 7):**
-   - Added a work package for the Declarative Exchange Builder / CSV Configuration Import.
-   - Defined the canonical Exchange Configuration Schema and SSRF prevention boundaries.
-   - Defined the 10-state Exchange Lifecycle and fail-closed error handling (`REQUIRES_CUSTOM_ADAPTER`).
-2. **Declarative Strategy Onboarding (Phase 3 & Section 6):**
-   - Introduced three strategy creation modes: Mode A (Native Go), Mode B (Declarative Config), Mode C (Visual Builder UI).
-   - Defined canonical Declarative Strategy Schema, rule grammar, and fallback (`REQUIRES_CUSTOM_STRATEGY`).
-3. **No Mandatory LLM Architectural Invariant:**
-   - Explicitly codified that VECTOR core does not require OpenAI/Claude API keys, local LLMs, or AI agent decision-making.
-
-### What Changed in Roadmap V3.1 (from V3.0)
-1. **Dynamic Extensibility Model:** Replaced hardcoded assumptions of "13 strategies and 2 exchanges" with versioned Strategy SDK and Exchange SDK architectures ($N$ strategies $\times$ $M$ exchanges = $N \times M$ accounts).
-2. **PROFIT-1 Research & Quantitative Intelligence:** Added independent slippage attribution, risk-adjusted performance (ESS, uncertainty bounds), cost structure decomposition, portfolio concentration analysis, and quarantined counterfactual rejected-signal replay.
-3. **Autonomous Research Loop:** Formalized a 16-step autonomous experimentation loop with human owner approval for PRIMARY trading changes.
-4. **Phase 0 Status Realignment:** Synchronized Phase 0 with commit `8e04eba` (42 local V1 PASS, 9 browser V3 PASS, 45 production V2 pending operator execution).
-
-### Obsolete Requirements Explicitly Superseded
-- **Superseded:** Waiting months for exchange observation accumulation before conducting research. **Authoritative Rule:** Secure offline historical dataset ingestion allows immediate backtesting and walk-forward research while live ingestion accumulates prospective data.
-- **Superseded:** Merging or backfilling imported data into live production market tables. **Authoritative Rule:** Imported datasets and live market streams are strictly isolated in separate storage partitions.
-- **Superseded:** Mandatory live exchange API connection to perform historical research on that exchange. **Authoritative Rule:** Offline research source identity supports full backtesting without active API adapters or accounts.
-- **Superseded:** Treating missing trading costs as zero in historical backtests. **Authoritative Rule:** Unknown costs must be explicitly disclosed; assumed costs must be segregated from observed facts.
-- **Superseded:** The obsolete 8 PRIMARY + 5 RESEARCH_CANDIDATE split. **Authoritative Rule:** All 13 strategy families are PRIMARY production strategies on Bybit and Binance.
-- **Superseded:** Premature phase transition while Phase 0 is incomplete. **Authoritative Rule:** Phase 0 remains strictly BLOCKED until operator production checklist evidence is recorded; Phase 1 remains NOT STARTED.
 
 ---
 
@@ -105,23 +99,23 @@ An exhaustive inspection of `/home/thunder/work/traderbybit` classifies every ma
 | **Leased Worker Orchestration** | Go: `research-go/internal/jobrunner/` | **Active in Go** (`FOR UPDATE SKIP LOCKED`). Heartbeats active. | **REUSE** (Durable lease heartbeats). | Phase 4 |
 | **Pattern & Breakout Mining** | Go: `research-go/internal/patterns/` | **Implemented in Go**, standalone capability. | **REUSE & INTEGRATE**. | Phase 4 |
 | **Decision Replay & Attribution** | Go: `research-go/internal/replay/` | **Implemented in Go**, counterfactual replay runner. | **REUSE & EXTEND**. | Phase 4 |
-| **Historical Dataset Ingestion & Parsing**| Planned: Go `internal/dataset/importer` | **New in V3.3**. High-throughput streaming CSV/Parquet importer. | **IMPLEMENT** in Go Core / Research. | Phase 2 |
-| **Dataset Storage & Manifests** | Planned: Go `internal/dataset/storage` | **New in V3.3**. Immutability checksums, metadata, PostgreSQL. | **IMPLEMENT** in Go Core / Postgres. | Phase 2 |
-| **Data Quality & Validation Engine** | Planned: Go `internal/dataset/validation` | **New in V3.3**. Deterministic validation, gaps, anomalies. | **IMPLEMENT** in Go Core. | Phase 2 |
-| **Research Dataset Loader & Backtest** | Planned: Go `internal/research/loader` | **New in V3.3**. Chronological loading, warm-up, leakage checks. | **IMPLEMENT** in Go Research. | Phase 4 |
-| **Dataset Manager UI & Reporting** | Planned: Vue 3 / Quasar + Laravel API | **New in V3.3**. Upload UI, quality reports, manifest browser. | **IMPLEMENT** in Laravel / Vue. | Phase 2 |
-| **Cross-Dataset Research Comparison** | Planned: Go `internal/research/comparison` | **New in V3.3**. Analytical views without data contamination. | **IMPLEMENT** in Go Research. | Phase 4/6 |
+| **Historical Dataset Ingestion & Parsing**| Planned: Go `internal/dataset/importer` | **Planned in V3.3 (`MIG-25`)**. Bounded streaming CSV/Parquet importer. | **IMPLEMENT** in Go Core / Research. | Phase 2 |
+| **Dataset Storage & Manifests** | Planned: Go `internal/dataset/storage` | **Planned in V3.3 (`MIG-26`)**. Immutability checksums, metadata, PostgreSQL. | **IMPLEMENT** in Go Core / Postgres. | Phase 2 |
+| **Data Quality & Validation Engine** | Planned: Go `internal/dataset/validation` | **Planned in V3.3 (`MIG-25`)**. Deterministic validation, zero silent conflicts. | **IMPLEMENT** in Go Core. | Phase 2 |
+| **Research Dataset Loader & Backtest** | Planned: Go `internal/research/loader` | **Planned in V3.3 (`MIG-27`)**. Chronological loading, warm-up, leakage checks. | **IMPLEMENT** in Go Research. | Phase 4 |
+| **Dataset Manager UI & Reporting** | Planned: Vue 3 / Quasar + Laravel API | **Planned in V3.3 (`MIG-28`)**. Upload UI, quality reports, manifest browser. | **IMPLEMENT** in Laravel / Vue. | Phase 2 |
+| **Cross-Dataset Research Comparison** | Planned: Go `internal/research/comparison` | **Planned in V3.3 (`MIG-29`)**. Analytical views without data contamination. | **IMPLEMENT** in Go Research. | Phase 4/6 |
 | **Candidate Strategies (5 Families)**| Go: `research-go/internal/candidates/` | **Implemented in Go**, candidate contract tests passing. | **STANDARDIZE** into Go Strategy SDK. | Phase 3 |
 | **PRIMARY Strategies (13 Families)**| PHP: `app/Strategy/Research/` | **Implemented in PHP**. Scoped by exchange in Backtest/PAPER. | **MIGRATE & CONSOLIDATE** into Go Strategy SDK. | Phase 3 |
-| **Declarative Strategy Engine** | Planned: Go `pkg/strategy/declarative` | **New in V3.2**. Evaluates JSON/CSV rule definitions. | **IMPLEMENT** in Go Strategy SDK. | Phase 3 |
+| **Declarative Strategy Engine** | Planned: Go `pkg/strategy/declarative` | **Planned in V3.2 (`MIG-18`)**. Evaluates JSON/CSV rule definitions. | **IMPLEMENT** in Go Strategy SDK. | Phase 3 |
 | **Technical Indicators** | PHP (`app/Indicators/`) & Go (`algorithms/`) | **Duplicated math across PHP and Go**. | **CONSOLIDATE** into shared Go package. | Phase 1 & 3 |
 | **Candle Ingestion & WS Streaming** | PHP: `BinanceCandleIngestion`, Artisan WS | **Implemented in PHP**. Bottleneck (P95 50.49ms on 500 rows). | **MIGRATE** to Go Market Data Engine. | Phase 2 |
-| **Generic Config-Driven Adapter** | Planned: Go `pkg/exchange/generic` | **New in V3.2**. Parses CSV exchange templates. | **IMPLEMENT** in Go Multi-Exchange SDK. | Phase 6 |
+| **Generic Config-Driven Adapter** | Planned: Go `pkg/exchange/generic` | **Planned in V3.2 (`MIG-21`)**. Parses CSV exchange templates. | **IMPLEMENT** in Go Multi-Exchange SDK. | Phase 6 |
 | **Portfolio Risk Engine** | PHP: `app/PaperTrading/Application/RiskEngine.php` | **Implemented in PHP**. Polling queue execution. | **MIGRATE** to Go Core (Phase 5 Shadow, Phase 7 Cutover). | Phase 5 |
 | **Position Lifecycle State Machine**| PHP: `PositionLifecycleService.php` | **Implemented in PHP**. Sequential account loops. | **MIGRATE** to Go Core (Phase 5 Shadow, Phase 7 Cutover). | Phase 5 |
 | **Double-Entry Financial Accounting**| PHP: `LedgerRecord.php`, `DailyPerformanceService.php` | **Implemented in PHP**. System of record in PostgreSQL. | **MIGRATE** to Go Core (Phase 5 Shadow, Phase 7 Cutover). | Phase 5 |
 | **Multi-Exchange Adapters** | PHP: `app/Exchanges/` | **Implemented in PHP** (Bybit & Binance). | **CONSOLIDATE** into unified Go Exchange SDK. | Phase 6 |
-| **REST API, Auth & Control Plane** | PHP: Laravel 11/13 + Sanctum | **Implemented in PHP**. Operating effectively as Web API. | **RETAIN IN PHP** (Thin Control Plane). | Control Plane |
+| **REST API, Auth & Control Plane** | PHP Laravel 11/13 + Sanctum | **Implemented in PHP**. Operating effectively as Web API. | **RETAIN IN PHP** (Thin Control Plane). | Control Plane |
 | **Vue 3 Operational Dashboard** | TypeScript / Vue 3 / Quasar | **Browser SPA**. Clean observability, zero trading keys. | **RETAIN** (Decoupled Frontend). | Frontend |
 
 ---
@@ -212,20 +206,20 @@ No component is migrated simply because it is written in PHP. Every proposed wor
 | **Technical Indicators** | PHP `app/Indicators` & Go `algorithms` | Duplicated math | Rounding drift risk. Consolidate into single Go library. | **CONSOLIDATE** | Phase 1 & 3 |
 | **13 PRIMARY Strategies** | PHP `app/Strategy/Research` | 13 PHP, 5 Go candidates | Dual maintenance. Strategies must evaluate identically in research and paper trading. | **CONSOLIDATE** | Phase 3 |
 | **Strategy Extensibility SDK** | PHP `StrategyRegistry.php` | Hardcoded switch dispatches | Adding a strategy requires modifying core files. Go descriptor model enables 1-file additions. | **MIGRATE** | Phase 3 |
-| **Declarative Strategy Engine**| New in V3.2 | N/A (New capability) | Allows non-programmers to define strategies via UI/config without compiling code. | **IMPLEMENT** | Phase 3 |
-| **Historical Dataset Schema & Contracts**| New in V3.3 (`MIG-24`)| N/A (New capability) | Standardizes immutable dataset manifests, schema validation, and provenance. | **IMPLEMENT** | Phase 1/2 |
-| **Secure Historical Import & Validation**| New in V3.3 (`MIG-25`)| N/A (New capability) | High-speed Go streaming parser for CSV/Parquet with gap & anomaly detection. | **IMPLEMENT** | Phase 2 |
-| **Dataset Storage & Versioning**| New in V3.3 (`MIG-26`)| N/A (New capability) | Isolated PostgreSQL tables with immutable content hashing and zero live contamination. | **IMPLEMENT** | Phase 2 |
-| **Research Dataset Selection & Loader** | New in V3.3 (`MIG-27`)| N/A (New capability) | Chronological data loading, indicator warm-up, and leakage protection for research. | **IMPLEMENT** | Phase 4 |
-| **Dataset Manager UI & Reporting** | New in V3.3 (`MIG-28`)| N/A (New capability) | Quasar/Vue UI for dataset upload, field mapping, quality summary, and version browsing. | **IMPLEMENT** | Phase 2 |
-| **Multi-Dataset Research Comparison** | New in V3.3 (`MIG-29`)| N/A (New capability) | Side-by-side analytical evaluation across datasets, exchanges, and timeframes. | **IMPLEMENT** | Phase 4/6 |
+| **Declarative Strategy Engine**| New in V3.2 | N/A (Planned scope) | Allows non-programmers to define strategies via UI/config without compiling code. | **IMPLEMENT** | Phase 3 |
+| **Historical Dataset Schema & Contracts**| New in V3.3 (`MIG-24`)| N/A (Planned scope) | Standardizes immutable dataset manifests, schema validation, and provenance. | **IMPLEMENT** | Phase 1/2 |
+| **Secure Historical Import & Validation**| New in V3.3 (`MIG-25`)| N/A (Planned scope) | Bounded streaming Go parser for CSV/Parquet with zero silent conflict guarantee. | **IMPLEMENT** | Phase 2 |
+| **Dataset Storage & Versioning**| New in V3.3 (`MIG-26`)| N/A (Planned scope) | Isolated PostgreSQL partitions with immutable content hashing and zero live contamination. | **IMPLEMENT** | Phase 2 |
+| **Research Dataset Selection & Loader** | New in V3.3 (`MIG-27`)| N/A (Planned scope) | Chronological data loading, indicator warm-up, and leakage protection for research. | **IMPLEMENT** | Phase 4 |
+| **Dataset Manager UI & Reporting** | New in V3.3 (`MIG-28`)| N/A (Planned scope) | Quasar/Vue UI for dataset upload, field mapping, quality summary, and version browsing. | **IMPLEMENT** | Phase 2 |
+| **Multi-Dataset Research Comparison** | New in V3.3 (`MIG-29`)| N/A (Planned scope) | Side-by-side analytical evaluation across datasets, exchanges, and timeframes. | **IMPLEMENT** | Phase 4/6 |
 | **Profitability Research Engine**| PHP `ProfitabilityResearchApiTest` | Multi-second aggregations | Heavy SQL joins across 26 accounts. Go streaming attribution generates reports in sub-100ms. | **MIGRATE** | Phase 4 |
 | **Candidate Search & Evolution**| PHP `StrategyEvolutionService` | High memory in PHP | Parameter mutation loops separated from Go backtest create IPC overhead. | **MIGRATE** | Phase 4 |
 | **RiskEngine & Position Sizing** | PHP `RiskEngine.php` | Scheduled 15m polling | Polling delays fill acknowledgment. Go in-memory evaluation responds in milliseconds. | **MIGRATE** | Phase 5 |
 | **Position Lifecycle & Fills** | PHP `PositionLifecycleService` | Sequential account loops | Sequential PHP transactions on 26 accounts cause queue latency spikes during volatile bars. | **MIGRATE** | Phase 5 |
 | **Double-Entry Paper Ledger** | PHP `LedgerRecord.php` | Synchronous SQL | Must reside alongside Position Lifecycle to avoid distributed multi-phase commit overhead. | **MIGRATE** | Phase 5 |
 | **Multi-Exchange Adapters** | PHP `app/Exchanges` | Disparate interfaces | Bybit and Binance use different contracts. Consolidate into standardized Go Exchange SDK. | **CONSOLIDATE** | Phase 6 |
-| **Generic Config-Driven Adapter**| New in V3.2 | N/A (New capability) | Allows onboarding standard exchanges via validated CSV templates without code. | **IMPLEMENT** | Phase 6 |
+| **Generic Config-Driven Adapter**| New in V3.2 | N/A (Planned scope) | Allows onboarding standard exchanges via validated CSV templates without code. | **IMPLEMENT** | Phase 6 |
 | **Candidate Lab Governance** | PHP `PromotionPolicyService` | Low-frequency admin action | Approval requires human operator intervention. Laravel excels at authenticated admin workflows. | **RETAIN** | Control Plane |
 | **REST API & Auth** | PHP Laravel 11/13 + Sanctum | P95 < 20 ms for API | Thin presentation layer, robust ecosystem for authentication, validation, and JSON schemas. | **RETAIN** | Control Plane |
 | **Vue 3 Operational Dashboard**| TypeScript / Vue 3 / Quasar | Browser client | Clean, responsive UI with zero trading keys. Fully decoupled from backend language. | **RETAIN** | Frontend |
@@ -249,7 +243,8 @@ All arbitrary code deletion goals are permanently struck. Technical efficiency i
 │ 5. Memory Footprint Stability       │ Bounded Go daemon RSS < 256 MiB  │
 │ 6. Strategy Authoring Efficiency    │ 1 implementation OR 1 JSON config│
 │ 7. Exchange Onboarding Efficiency   │ 1 validated CSV template for std │
-│ 8. Historical Dataset Parsing Rate  │ PROPOSED > 100,000 candles/sec   │
+│ 8. Historical Dataset Ingestion     │ PROPOSED > 100,000 candles/sec   │
+│    (Standard Benchmark Profile)     │ Target Peak RSS < 256 MiB        │
 │ 9. Financial Accounting Parity      │ 0.000000000000 discrepancy       │
 │ 10. Deterministic Replay Parity     │ 100.000% bit-exact decision match│
 │ 11. Profitability Report Generation │ PROPOSED < 100 ms for 90d window │
@@ -343,8 +338,8 @@ Every phase follows a standardized 18-point execution contract.
    - `internal/marketdata/binance`: Binance public WebSocket client with sequence number tracking and server-time alignment.
    - `internal/marketdata/ringbuffer`: Lock-free circular candle buffer holding 500 closed bars per symbol/timeframe.
    - `internal/marketdata/writer`: Direct PostgreSQL bulk insertion using optimized binary `COPY` / unnest queries.
-   - `internal/dataset/importer`: High-throughput streaming CSV, JSON, and Parquet parser (`MIG-25`).
-   - `internal/dataset/validation`: Deterministic data quality engine: gap detection, OHLC integrity, conflict quarantine (`MIG-25`).
+   - `internal/dataset/importer`: Bounded streaming CSV, JSON, and Parquet parser (`MIG-25`).
+   - `internal/dataset/validation`: Deterministic data quality engine: zero silent conflicts, gap detection, OHLC integrity, conflict quarantine (`MIG-25`).
    - `internal/dataset/storage`: Isolated historical dataset persistence in PostgreSQL (`dataset_candles`, `dataset_manifests`) (`MIG-26`).
 6. **Interfaces & Versioned Contracts:** `MarketDataStreamer` interface emitting immutable `CandleClosedEvent` structs; `DatasetImporter` interface producing validated `DatasetManifest` records.
 7. **State and Event Ownership:** Go becomes authoritative writer for `market_candles`, `market_funding_rates`, `market_open_interests`, and `dataset_*` tables. Laravel cron ingestion retired.
@@ -361,13 +356,14 @@ Every phase follows a standardized 18-point execution contract.
     - 500-candle bulk ingestion PROPOSED P95 < 20.0 ms (resolving the failing 50.49 ms PHP baseline).
     - Zero dropped candles over 72 continuous hours.
     - Candle finality evaluated strictly against exchange server timestamp: $t_{\text{close}} \le t_{\text{server}}$.
-    - Historical CSV parser processes > 100,000 candles/sec with memory RSS < 256 MiB.
+    - Historical CSV parser processes > 100,000 candles/sec under the Standard Benchmark Profile with Target Peak RSS < 256 MiB (container hard ceiling 512 MiB).
     - Uploaded historical datasets are strictly quarantined from `market_candles` and `paper_*` tables.
-    - Corrupted OHLC rows, timestamp gaps, and ZIP path traversals are rejected with explicit error diagnostics.
-11. **Test Requirements:** Mock WebSocket servers emitting malformed payloads; clock skew injections; zip bomb and path traversal security test suite; corrupt OHLC boundary tests.
-12. **Performance & Resource Budgets:** Peak RSS < 256 MiB; CPU load < 0.3 cores under simultaneous live ingestion and offline file import.
+    - Corrupted OHLC rows, timestamp gaps, and archive security violations (path traversal, decompression bombs > 2 GB) are rejected with explicit error diagnostics.
+    - Allowable rate of silent observation conflicts is exactly zero.
+11. **Test Requirements:** Mock WebSocket servers emitting malformed payloads; clock skew injections; zip bomb (> 2 GB) and path traversal security test suite; legitimate highly compressible CSV test suite; corrupt OHLC boundary tests; conflict quarantine tests.
+12. **Performance & Resource Budgets:** Target peak RSS < 256 MiB under benchmark profile; container hard limit 512 MiB; CPU load < 0.3 cores under simultaneous live ingestion and offline file import.
 13. **Shadow Execution & Rollback:** Parallel ingestion to shadow database table; hash comparison against PHP; one-switch cutover via configuration.
-14. **Security & Data Integrity:** Public endpoints only; zero trading credentials; untrusted file processing with strict 500 MB upload ceiling and ZIP bomb protection; SSRF protection on any remote fetches.
+14. **Security & Data Integrity:** Public endpoints only; zero trading credentials; untrusted file processing with strict 500 MB upload ceiling and bounded 2 GB extraction limit; SSRF protection on any remote fetches.
 15. **Git Commit Boundaries:** Live market data engine packages, dataset ingestion packages, Dataset Manager UI, and test suites.
 16. **Evidence & Scorecard Mappings:** Resolves `VEC-P0-009-V1` permanently; feeds live market stream to `VEC-P1-001` through `VEC-P1-008`; maps to `MIG-25`, `MIG-26`, `MIG-28`.
 17. **Explicit Out-of-Scope Items:** No private exchange endpoints, no orderbook L2/L3 tick streaming, no real trading keys.
@@ -817,37 +813,74 @@ open_time,open,high,low,close,volume
 
 - **Schema Separation Notice:** CSV exchange configurations (Section 7), CSV strategy definitions (Section 6), and CSV historical market datasets (Section 9) belong to **three distinct schema families**. They have separate upload endpoints, separate parsers, and separate validation rules. Never mix their execution contexts.
 
-### 9.5 Data Quality & Validation Engine
+### 9.5 Data Quality & Zero-Tolerance Conflict Policy
 The Go validation pipeline (`internal/dataset/validation`) applies deterministic checks to every observation:
-1. **Timestamp Normalization:** Strict UTC parsing (`RFC3339` or millisecond Unix epochs). Non-monotonic or out-of-order records trigger automatic sorting or quarantine.
-2. **Timeframe Alignment:** Every bar must align with boundary multiples (e.g. $t \pmod{300} = 0$ for 5m bars).
-3. **OHLC Relationship Integrity:**
+1. **Zero-Tolerance Conflict Invariant:** The allowable rate of silent data conflicts is **EXACTLY ZERO**. Every contradictory observation must be logged, counted, and audited.
+2. **Duplicate vs Contradictory Observation Distinction:**
+   - **Identical Duplicates:** Multiple rows sharing the identical timestamp and identical OHLCV values. These are handled idempotently, deduplicated cleanly, and recorded in `quality_summary.duplicate_rows`.
+   - **Contradictory Observations (Genuine Conflicts):** Rows sharing the identical timestamp but containing differing OHLCV values. These are strictly logged in `dataset_conflicts` with exact fields: `dataset_id`, `dataset_version`, `source_exchange_id`, `instrument_id`, `timeframe`, `observation_timestamp`, `source_row_number`, and conflicting values.
+3. **No Silent Resolution:** The system **never** silently chooses one contradictory record over another, and **never** silently averages, interpolates, merges, or overwrites conflicting values.
+4. **Escalation Thresholds & Action Policies:**
+   - **Zero Conflicts (100% clean):** Dataset receives `validation_status = 'VALIDATED'`.
+   - **Conflicts > 0 and <= 1%:** Dataset receives `validation_status = 'ACCEPT_WITH_LIMITATIONS'` ONLY IF conflicting records are explicitly isolated into a quarantine partition and the remaining research scope is certified with documented caveats. Unresolved conflicts permanently block clean certification.
+   - **Conflicts > 1%:** Dataset automatically escalates to `validation_status = 'QUARANTINE'`. Research execution is blocked pending operator investigation.
+   - **Fatal Flaws:** Corrupted headers, unparseable lines, or security violations trigger immediate `REJECT`.
+5. **Timestamp Normalization & Gap Reporting:** Strict UTC parsing (`RFC3339` or millisecond Unix epochs). Missing bars are counted and recorded in `timestamp_gaps`. Under **NO CIRCUMSTANCES** does VECTOR fabricate, interpolate, or synthesize missing candles to fill gaps. Research engines must evaluate with authentic historical gaps.
+6. **OHLC Relationship Integrity:**
    $$low \le open \le high \quad \text{and} \quad low \le close \le high \quad \text{and} \quad high \ge low$$
    $$volume \ge 0.0$$
-4. **Finite Numerical Precision:** Rejection of `NaN`, `+Inf`, `-Inf`, nulls, or values exceeding 12-decimal scaled precision.
-5. **Duplicate & Conflict Detection:** Identical timestamps with differing prices are flagged as `DATA_CONFLICT` and quarantined.
-6. **Gap Reporting Without Fabrication:** Missing bars are recorded in `timestamp_gaps`. Under **NO CIRCUMSTANCES** does VECTOR fabricate, interpolate, or synthesize missing candles to fill gaps. Research engines must evaluate with authentic historical gaps.
-7. **Action Policies:**
-   - `REJECT`: File corrupted, unparseable, invalid headers, or security violation.
-   - `QUARANTINE`: > 1% conflicting or out-of-order records pending manual inspection.
-   - `WARN`: Minor gaps documented in the manifest without rejecting valid observations.
-   - `ACCEPT_WITH_LIMITATIONS`: Clean data with minor documented coverage gaps.
+7. **Finite Numerical Precision:** Rejection of `NaN`, `+Inf`, `-Inf`, nulls, or values exceeding 12-decimal scaled precision.
 
-### 9.6 Secure File Processing Architecture
+### 9.6 Secure File Processing & Bounded Decompression Architecture
 Uploaded datasets are treated as untrusted external input:
-- **Resource Constraints:**
+- **Resource Constraints & Limits:**
   - Maximum upload size: **500 MB** (compressed archive) or **1.5 GB** (uncompressed CSV/Parquet).
-  - Maximum expanded archive size: **2 GB**.
+  - Maximum total decompressed size: **2.0 GB** per archive across all extracted entries.
+  - Maximum single entry decompressed size: **1.5 GB**.
   - Maximum extracted file count: **100 files** per ZIP archive.
-- **Streaming Parser:** Go parser reads files using streaming scanners (`bufio.Scanner`, `parquet-go`) with fixed-size worker pools. Memory footprint is strictly bounded (RSS < 256 MiB regardless of dataset length).
-- **Security Defenses:**
-  - **ZIP Bomb Protection:** Decompression ratio enforced strictly $\le 10:1$. Extraction halts immediately if expansion exceeds threshold.
-  - **Path Traversal Protection:** Archive paths containing `../`, leading slashes `/`, null bytes, or symbolic links are rejected immediately.
-  - **Executable Rejection:** Magic-byte sniffing rejects ELF, PE, Mach-O, shell scripts, or binary executables disguised as CSV/ZIP.
-  - **CSV Formula Escaping:** Characters `=, +, -, @` at the beginning of fields are sanitized to prevent spreadsheet formula injection upon export.
-  - **Credential Rejection:** Files containing strings resembling API keys or private credentials fail validation instantly.
+  - Maximum wall-clock extraction timeout: **120 seconds** per archive job.
+- **Bounded Decompression Security (Replacing Ratio-Only Rejection):**
+  - **No False Rejection on Repetitive Data:** Legitimate historical market datasets with highly repetitive price structures can naturally achieve compression ratios exceeding 10:1 (e.g. 15:1 to 20:1). VECTOR does **not** automatically reject an archive solely because its compression ratio exceeds 10:1.
+  - **Streaming `LimitReader` Protection:** Decompression is executed via a streaming counting reader (`io.LimitReader`). If cumulative decompressed bytes exceed the 2.0 GB ceiling at any moment during extraction, the process aborts immediately with error `ARCHIVE_DECOMPRESSED_SIZE_EXCEEDED`.
+  - **Ratio as Anomaly Signal:** Compression ratios > 10:1 are logged as informational audit warnings for operator review, not hard rejections.
+  - **Archive Traversal Defenses:** Archive entries containing `../`, leading slashes `/`, null bytes, or symbolic links escaping the extraction boundary are rejected immediately (`UNSAFE_ARCHIVE_PATH`).
+  - **Structure Protections:** Encrypted archives, password-protected entries, and nested archives (ZIP within ZIP) are rejected by default (`UNSUPPORTED_ARCHIVE_STRUCTURE`).
+  - **Declared vs Actual Size Check:** Archive entries whose actual decompressed stream length diverges from the archive header declaration by more than 10% are flagged as suspicious.
+- **Executable & Script Defense:** Magic-byte sniffing rejects ELF, PE, Mach-O, shell scripts, or binary executables disguised as CSV/ZIP.
+- **CSV Formula Injection Defense:** Characters `=, +, -, @` at the beginning of fields are sanitized upon export to prevent spreadsheet formula execution.
+- **Zero Credentials:** Uploaded datasets must never contain or require exchange trading credentials.
 
-### 9.7 Exchange Identity Without Exchange API Connection
+### 9.7 Resource & Memory Performance Contract
+Memory consumption during dataset ingestion is managed via a strict, measurable performance contract rather than an unconditional fixed-memory guarantee:
+
+```
+┌────────────────────────────────────────────────────────────────────────┐
+│                   MEMORY RESOURCE PERFORMANCE CONTRACT                 │
+├─────────────────────────────────────┬──────────────────────────────────┤
+│ Metric Category                     │ Specification & Threshold        │
+├─────────────────────────────────────┼──────────────────────────────────┤
+│ Baseline Idle RSS                   │ 20 – 30 MiB (idle Go worker)     │
+├─────────────────────────────────────┼──────────────────────────────────┤
+│ Steady-State Streaming RSS          │ 80 – 160 MiB during chunk stream │
+├─────────────────────────────────────┼──────────────────────────────────┤
+│ Target Peak RSS                     │ < 256 MiB under Standard Profile │
+├─────────────────────────────────────┼──────────────────────────────────┤
+│ Container cgroup Memory Ceiling     │ 512 MiB hard limit (OOM guard)   │
+├─────────────────────────────────────┼──────────────────────────────────┤
+│ Standard Benchmark Profile          │ 50,000 – 2,000,000 OHLCV rows    │
+│                                     │ 100 MB – 1.5 GB uncompressed     │
+│                                     │ Concurrency: 1–2 jobs / worker   │
+│                                     │ Chunk size: 5,000 rows           │
+│                                     │ Channel buffer depth: 1,000      │
+└─────────────────────────────────────┴──────────────────────────────────┘
+```
+
+- **Incremental Chunked Streaming:** The Go parser processes files incrementally using streaming scanners (`bufio.Scanner`, `parquet-go`). Rows are batched into chunks of 5,000 records and flushed directly to PostgreSQL using binary `COPY` / unnest statements. Datasets are **never** loaded into memory in their entirety.
+- **Backpressure & Cancellation:** A buffered channel (depth 1,000) provides backpressure between the file reader and the database writer. If the writer lags, the reader pauses. Context cancellation allows instant, clean termination.
+- **Safe Quota Abortion:** If an ingestion job breaches memory thresholds or timeout limits, the active transaction is rolled back, temporary files are purged, and the manifest is marked `FAILED_RESOURCE_EXCEEDED`. Already published datasets remain completely uncorrupted.
+- **Empirical Validation Required:** Memory consumption, throughput, and duration are collected empirically during Phase 2 benchmarks; no synthetic PASS claims are accepted prior to authentic test execution. Increasing dataset length does not authorize unbounded memory usage, nor does it imply a universal fixed-memory guarantee for arbitrary adversarial inputs.
+
+### 9.8 Exchange Identity Without Exchange API Connection
 A crucial architectural capability: **Historical research on an exchange does NOT require an active Exchange API connection.**
 - VECTOR can register offline exchange source identities (e.g. OKX, Kraken, dYdX) solely for historical backtesting and cross-market comparisons.
 - Five distinct exchange states:
@@ -857,7 +890,7 @@ A crucial architectural capability: **Historical research on an exchange does NO
   4. `PAPER_ELIGIBLE_EXCHANGE`: Passed 14-day data contract conformance tests.
   5. `ACTIVE_PAPER_EXCHANGE`: Human operator approved; PAPER accounts provisioned.
 
-### 9.8 Historical Research Integration & Leakage Protection
+### 9.9 Historical Research Integration & Leakage Protection
 Researchers can select any combination:
 $$\mathbf{STRATEGY} + \mathbf{EXCHANGE} + \mathbf{DATASET} + \mathbf{INSTRUMENT} + \mathbf{TIME\ WINDOW}$$
 
@@ -871,7 +904,7 @@ $$\text{Dataset Selection} \rightarrow \text{Compatibility Validation} \rightarr
 4. **Chronological Splitting:** In WFO and Train/Validation/Test splits, the test period occurs strictly **after** the training period chronologically.
 5. **No Forward Substitution:** Historical backtests on imported data can **NEVER** substitute for prospective forward PAPER observations required for strategy promotion.
 
-### 9.9 Financial Accuracy, Cost Modeling & Disclaimers
+### 9.10 Financial Accuracy, Cost Modeling & Disclaimers
 Historical OHLCV observations do not contain private execution queue positions, liquidity depth, or funding schedules.
 - **Explicit Cost Policies:**
   - When historical funding rates are missing, the system does **not** assume zero funding; it flags `FUNDING_UNKNOWN` and provides parameterizable stress estimates.
@@ -880,18 +913,18 @@ Historical OHLCV observations do not contain private execution queue positions, 
   - Research reports clearly distinguish between **Observed Facts** (raw OHLCV) and **Simulated Assumptions** (fill prices, fees, slippage).
   - Profitability certification (Dimension B) cannot be granted if cost parameters are unverified.
 
-### 9.10 Live and Imported Data Comparison
+### 9.11 Live and Imported Data Comparison
 The platform provides analytical comparison views that juxtapose datasets without combining their physical records:
 - **Divergence Analysis:** Compare exchange-collected candles against third-party imported candles for the same symbol and timeframe to detect vendor anomalies or exchange bad-prints.
 - **Cross-Exchange Regime Analysis:** Compare strategy performance on Bybit vs OKX over the same historical window.
 - **Reporting Disclosures:** Every comparative report explicitly discloses source hashes, observation counts, and data provenance.
 
-### 9.11 User Interface Architecture
+### 9.12 User Interface Architecture
 Three dedicated functional areas in Quasar 2 / Vue 3:
 1. **`Research -> Data Manager`:**
    - Dataset upload dropzone (CSV, Parquet, ZIP).
    - Column mapping wizard with live data preview.
-   - Comprehensive Data Quality Report (accepted rows, gaps, conflicts).
+   - Comprehensive Data Quality Report (accepted rows, gaps, conflicts, duplicate count).
    - Dataset manifest browser with immutable versioning and provenance badges.
 2. **`Research -> New Backtest`:**
    - Dropdown selectors: Strategy $\rightarrow$ Exchange $\rightarrow$ Dataset $\rightarrow$ Instrument $\rightarrow$ Date Range.
@@ -900,22 +933,22 @@ Three dedicated functional areas in Quasar 2 / Vue 3:
    - Side-by-side data coverage visualizer.
    - Backtest performance overlay across multiple datasets.
 
-### 9.12 Data Governance, Retention & Reproducibility
+### 9.13 Data Governance, Retention & Reproducibility
 - **Version Immutability:** Once published, a dataset version is read-only. Updates create a new monotonically incremented `dataset_version`.
 - **Reproducibility Guarantee:** Any research report can be re-run bit-exact by specifying the exact `dataset_id` and `canonical_content_checksum`.
 - **Safe Retention Policy:** Datasets referenced by approved Candidate Lab proposals or published research reports cannot be deleted while those reports remain active.
 
-### 9.13 25 Acceptance Criteria for Research Data Ingestion & Dataset Manager
+### 9.14 25 Acceptance Criteria for Research Data Ingestion & Dataset Manager
 1. A valid historical OHLCV CSV is uploaded and accepted.
 2. The file is validated and normalized into UTC and canonical units.
 3. Its immutable SHA-256 checksum is recorded in the manifest.
 4. Exchange, instrument, market type, and timeframe identities are strictly preserved.
 5. Duplicate file upload is detected via content hash and flagged cleanly.
-6. Timestamp gaps are detected, counted, and reported in the quality summary.
-7. Corrupted OHLC rows ($high < low$, negative volume) fail validation and are rejected.
+6. Timestamp gaps are detected, counted, and reported without synthesizing or interpolating missing candles.
+7. Corrupted OHLC rows ($high < low$, negative volume, non-finite values) fail validation and are rejected.
 8. Decimal precision is maintained with zero floating-point rounding errors.
 9. Parquet and JSON files follow the identical canonical normalization schema.
-10. ZIP path traversal (`../`) and decompression bomb attacks (> 10:1 ratio) are rejected safely.
+10. ZIP decompression security: Archives exceeding 2.0 GB decompressed size or containing path traversals (`../`) are safely rejected; legitimate highly compressible CSV archives (> 10:1 ratio, < 2.0 GB) pass extraction successfully.
 11. Dataset publication to PostgreSQL is atomic; failures leave zero orphaned records.
 12. Incomplete or partially imported files cannot appear as certified complete datasets.
 13. A published dataset can be selected immediately in the Research Engine.
@@ -930,7 +963,7 @@ Three dedicated functional areas in Quasar 2 / Vue 3:
 22. Offline OKX historical research operates deterministically without an active OKX API adapter.
 23. Zero new PAPER accounts are provisioned as a result of dataset ingestion.
 24. Existing Bybit and Binance live ingestion and paper trading continue completely uninterrupted.
-25. Ingestion of 1,000,000 candles completes within documented CPU and memory budgets (RSS < 256 MiB).
+25. Ingestion worker respects documented resource budgets under the Standard Benchmark Profile (Target Peak RSS < 256 MiB, container ceiling 512 MiB); jobs exceeding quotas abort safely without corrupting published datasets.
 
 ---
 
@@ -1008,7 +1041,8 @@ To maintain audit integrity, the frozen baseline is strictly protected:
 1. **Frozen Baseline Preserved:** `VECTOR-SCOPE-20261027-v1` remains immutable in `docs/progress/baselines/VECTOR-SCOPE-20261027-v1.json`.
 2. **Proposed Baseline V3.3:** Proposed file `docs/progress/baselines/VECTOR-SCOPE-20261028-v3-proposal.json` maps the requirements to the 9-phase sequence.
 3. **Go Migration Registry (`docs/progress/VECTOR_GO_MIGRATION_REGISTRY_V3.md`):** Tracks the operational migration of each component independently across four states (`PHP_AUTH`, `GO_SHADOW`, `GO_AUTH`, `PHP_RETIRED`), now including `MIG-01` through `MIG-29`.
-4. **Four Independent Progress Dimensions:** Functional Implementation %, Verification %, Product %, and Go Migration %.
+4. **Scope Distinction:** `APPROVED ARCHITECTURAL SCOPE != IMPLEMENTED RUNTIME CAPABILITY`. Packages `MIG-18` through `MIG-29` are approved planned milestones, not completed implementations.
+5. **Four Independent Progress Dimensions:** Functional Implementation %, Verification %, Product %, and Go Migration %.
 
 ---
 
@@ -1054,11 +1088,11 @@ To maintain audit integrity, the frozen baseline is strictly protected:
 
 ## 15. Implementation Handoff & Next Steps
 
-### Current System Status at Baseline `7113f22`
+### Current System Status at Baseline `5a8fcd6`
 - **Phase 0 Status:** **BLOCKED**. All 42 local V1 obligations and 9 browser V3 obligations have authentic passing verification evidence. All 922 backend PHP tests, 64 frontend tests, and Go research tests are passing cleanly.
 - **Phase 0 Blocker:** 45 Production V2 obligations require operator execution of [`phase0_production_acceptance.sql`](file:///home/thunder/work/traderbybit/scripts/diagnostics/phase0_production_acceptance.sql) on the VPS according to [`OPERATOR_CHECKLIST.md`](file:///home/thunder/work/traderbybit/docs/progress/evidence/phase0-production-acceptance/OPERATOR_CHECKLIST.md).
 - **Binance Immutable Candle Investigation:** Server-time clock skew is an established hypothesis; awaiting operator capture of exact production conflict record to verify.
-- **Phase 1 Status:** **NOT STARTED**. Strictly blocked until formal Phase 0 operator sign-off.
+- **Phase 1 Status:** **NOT STARTED**. Strictly blocked until formal Phase 0 operator sign-off. Implementation of planned packages `MIG-18` through `MIG-29` is **not** a prerequisite for Phase 1.
 
 ### Immediate Action Required by Next Engineer / Operator:
 1. **Operator Action:** Execute the production diagnostic queries on the VPS and record output in `docs/progress/evidence/phase0-production-acceptance/`.
