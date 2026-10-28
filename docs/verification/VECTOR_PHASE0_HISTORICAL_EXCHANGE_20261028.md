@@ -65,4 +65,10 @@ ChronologicalSplitter::walkForward now supports minute/day units in addition to 
 Verified on isolated PostgreSQL 14 at 127.0.0.1:25439/bybit_test:
 - `tests/Feature/Backtest tests/Unit/Backtest tests/Feature/Research/CandidateExchangeTest.php tests/Feature/Research/CandidateLabValidationLifecycleTest.php`
 - Exit 0: 36 tests, 776 assertions, 168.853 seconds. Full Pint exit 0; git diff check exit 0.
-- No production financial records or database schemas were mutated. Phase 0 remains blocked by external production acceptance and Binance immutable observation conflicts.
+- `tests/Feature/Trading tests/Feature/MarketData tests/Feature/PaperTrading tests/Feature/Exchanges tests/Feature/Strategy tests/Unit/Strategy`: Exit 0, 278 tests, 4,265 assertions.
+- `tests/Feature/Research tests/Unit/Research tests/Feature/Api tests/Feature/AuditExportTest.php`: Exit 0, 421 tests, 3,534 assertions.
+- `tests/Unit`: Exit 0, 404 tests, 1,978 assertions.
+- `tests/Integration`: Exit 0, 39 tests (1 passed, 38 skipped due to pgsql isolated mode), 12 assertions. Go `research-worker` recompiled and passed with isolated PostgreSQL credentials.
+- `frontend` test suite: Exit 0, 64 tests, 0 failures. `npm run build` (`vue-tsc --noEmit && vite build`): Exit 0.
+- `research-go` test suite: Exit 0, all tests passed. `go vet ./...`: Exit 0.
+- No production financial records or database schemas were mutated. Phase 0 remains blocked by external production acceptance (45 V2 operational criteria awaiting operator execution of `scripts/diagnostics/phase0_production_acceptance.sql` on VPS) and the Binance immutable observation conflict.
