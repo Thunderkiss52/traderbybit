@@ -1,8 +1,8 @@
-# VECTOR Go Migration Registry V3.2
+# VECTOR Go Migration Registry V3.3
 
 **Status:** Proposed Scope & Migration Tracking Registry
 **Baseline Reference:** [`VECTOR-SCOPE-20261027-v1`](file:///home/thunder/work/traderbybit/docs/progress/baselines/VECTOR-SCOPE-20261027-v1.json) (Frozen)
-**Target Architecture:** [`VECTOR_GO_FIRST_ROADMAP_V3.md`](file:///home/thunder/work/traderbybit/docs/roadmap/VECTOR_GO_FIRST_ROADMAP_V3.md) (Roadmap V3.2)
+**Target Architecture:** [`VECTOR_GO_FIRST_ROADMAP_V3.md`](file:///home/thunder/work/traderbybit/docs/roadmap/VECTOR_GO_FIRST_ROADMAP_V3.md) (Roadmap V3.3)
 
 ---
 
@@ -50,6 +50,12 @@ Every workload is assigned a Migration Value Gate (MVG) disposition based on emp
 | **MIG-21** | Generic Exchange Adapter Runtime| New capability | Go `pkg/exchange/generic` | Phase 6 | **APPROVED** | Config-driven REST/WS ingestion without Go code| Adapter capability conformance test |
 | **MIG-22** | Exchange Onboarding UI & Lifecycle| New capability | Vue 3 / Laravel / Go | Phase 6 | **APPROVED** | CSV upload, endpoint preview, dry-run & approval| Lifecycle state machine transition test |
 | **MIG-23** | Exchange Conformance Test Harness| New capability | Go `pkg/exchange/conformance` | Phase 6 | **APPROVED** | Automated 10-criteria contract verification | Multi-exchange conformance suite |
+| **MIG-24** | Historical Dataset Schema & Provenance| New capability | Go `pkg/dataset` | Phase 1/2 | **APPROVED** | Standardized manifest & SHA-256 validation | Manifest JSON serialization test |
+| **MIG-25** | Secure Historical File Import & Validation | New capability | Go `internal/dataset/importer` | Phase 2 | **APPROVED** | Streaming CSV/Parquet parser & gap detection | Corrupt file & zip bomb tests |
+| **MIG-26** | Dataset Storage & Versioning | New capability | Postgres / Go `internal/dataset/storage` | Phase 2 | **APPROVED** | Isolated historical partitions with immutable hashing | Partition isolation & immutability test |
+| **MIG-27** | Research Dataset Selection & Loader | New capability | Go `internal/research/loader` | Phase 4 | **APPROVED** | Chronological data feeding & leakage protection | Lookahead leakage injection test |
+| **MIG-28** | Dataset Manager UI & Quality Reporting | New capability | Vue 3 / Laravel / Go | Phase 2 | **APPROVED** | Upload wizard, column mapping & quality reports | UI upload & mapping roundtrip test |
+| **MIG-29** | Multi-Dataset Research Comparison | New capability | Go `internal/research/comparison` | Phase 4/6 | **APPROVED** | Cross-dataset comparison without data contamination | Divergence & comparison suite |
 | **RET-01** | REST API & Sanctum Auth | PHP Laravel | PHP Laravel | Retained | **RETAINED** | Excellent, maintainable thin API | API contract tests |
 | **RET-02** | Candidate Lab Promotion Gate | PHP Laravel | PHP Laravel | Retained | **RETAINED** | Human operator approval workflow | Promotion policy tests |
 | **RET-03** | Operational Dashboard UI | Vue 3 / Quasar | Vue 3 / Quasar | Retained | **RETAINED** | High usability, zero trading keys | Frontend component tests |
