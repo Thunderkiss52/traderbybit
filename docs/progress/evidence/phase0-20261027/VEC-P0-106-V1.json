@@ -1,0 +1,165 @@
+{
+  "requirement_id": "VEC-P0-106",
+  "obligation_id": "VEC-P0-106-V1",
+  "acceptance_condition": "Reconciliation must detect drawdown mismatch in addition to balance and position mismatches. Reproduce negative and positive cases in isolated integration.",
+  "result": "PASS",
+  "why_this_proves_condition": "Clean account passes; observed drawdown above stored max is a discrepancy without mutation, while a larger historical maximum is preserved and missing history is incomplete; injected balance/execution controls also fail.",
+  "git_sha": "c8d51156b2c72b03f009d10e6a634ff80cff77ff",
+  "execution_started_at": "2026-10-27T18:56:59.001985+00:00",
+  "execution_finished_at": "2026-10-27T18:58:43.309903+00:00",
+  "command": [
+    "/home/thunder/.headroom/bin/rtk",
+    "proxy",
+    "docker",
+    "run",
+    "--rm",
+    "--label",
+    "io.traderbybit.task=phase0-evidence-20261027",
+    "--network",
+    "container:vector-phase0-20261027-pg",
+    "--user",
+    "1000:1000",
+    "--entrypoint",
+    "",
+    "-v",
+    "/tmp/vector-phase0-20261027:/var/www/html",
+    "-w",
+    "/var/www/html",
+    "-e",
+    "APP_ENV=testing",
+    "-e",
+    "APP_DEBUG=false",
+    "-e",
+    "APP_KEY=base64:MDEyMzQ1Njc4OWFiY2RlZjAxMjM0NTY3ODlhYmNkZWY=",
+    "-e",
+    "APP_URL=http://127.0.0.1:8000",
+    "-e",
+    "DB_CONNECTION=pgsql",
+    "-e",
+    "DB_HOST=127.0.0.1",
+    "-e",
+    "DB_PORT=5432",
+    "-e",
+    "DB_DATABASE=bybit_test",
+    "-e",
+    "DB_USERNAME=postgres",
+    "-e",
+    "DB_PASSWORD=testpass",
+    "-e",
+    "DB_URL=",
+    "-e",
+    "TEST_DB_HOST=127.0.0.1",
+    "-e",
+    "TEST_DB_PORT=5432",
+    "-e",
+    "TEST_DB_DATABASE=bybit_test",
+    "-e",
+    "TEST_DB_USERNAME=postgres",
+    "-e",
+    "TEST_DB_PASSWORD=testpass",
+    "-e",
+    "CACHE_STORE=array",
+    "-e",
+    "SESSION_DRIVER=array",
+    "-e",
+    "QUEUE_CONNECTION=sync",
+    "-e",
+    "REDIS_HOST=127.0.0.1",
+    "-e",
+    "REDIS_PORT=6379",
+    "-e",
+    "REDIS_PASSWORD=null",
+    "-e",
+    "LOG_CHANNEL=stderr",
+    "-e",
+    "GOCACHE=/tmp/go-cache",
+    "-e",
+    "GOPATH=/tmp/go",
+    "-e",
+    "RUN_BYBIT_INTEGRATION=0",
+    "-e",
+    "TZ=UTC",
+    "traderbybit-php85-test:local",
+    "php",
+    "vendor/bin/phpunit",
+    "--no-coverage",
+    "--do-not-cache-result",
+    "--log-junit",
+    "phase0-full.xml",
+    "--display-skipped"
+  ],
+  "environment": "isolated_postgresql",
+  "environment_details": "PHP 8.5.12; PostgreSQL 17.11; Redis 7.4; UTC; task-owned network namespace with no external network or published ports; synthetic fixtures only.",
+  "fixture": "Fixtures and setup at the exact test source paths/lines below, unchanged from source SHA; no production dataset.",
+  "tests": [
+    {
+      "test": "Tests\\Unit\\Research\\LedgerReconciliationServiceTest::test_reconciliation_passes_on_clean_account",
+      "source": "tests/Unit/Research/LedgerReconciliationServiceTest.php",
+      "line": 25,
+      "assertions": 5,
+      "result": "PASS"
+    },
+    {
+      "test": "Tests\\Unit\\Research\\LedgerReconciliationServiceTest::test_missing_history_is_incomplete_and_higher_historical_drawdown_is_not_corruption",
+      "source": "tests/Unit/Research/LedgerReconciliationServiceTest.php",
+      "line": 40,
+      "assertions": 5,
+      "result": "PASS"
+    },
+    {
+      "test": "Tests\\Unit\\Research\\LedgerReconciliationServiceTest::test_observed_drawdown_above_stored_maximum_is_reported_without_rewriting_account",
+      "source": "tests/Unit/Research/LedgerReconciliationServiceTest.php",
+      "line": 53,
+      "assertions": 3,
+      "result": "PASS"
+    },
+    {
+      "test": "Tests\\Unit\\Research\\LedgerReconciliationServiceTest::test_orphan_execution_is_reported_globally_without_inventing_account_ownership",
+      "source": "tests/Unit/Research/LedgerReconciliationServiceTest.php",
+      "line": 62,
+      "assertions": 4,
+      "result": "PASS"
+    },
+    {
+      "test": "Tests\\Unit\\Research\\LedgerReconciliationServiceTest::test_reconciliation_detects_injected_discrepancies",
+      "source": "tests/Unit/Research/LedgerReconciliationServiceTest.php",
+      "line": 81,
+      "assertions": 4,
+      "result": "PASS"
+    },
+    {
+      "test": "Tests\\Unit\\Research\\LedgerReconciliationServiceTest::test_reconciliation_verifies_executions_with_partial_and_full_exits_and_funding",
+      "source": "tests/Unit/Research/LedgerReconciliationServiceTest.php",
+      "line": 148,
+      "assertions": 6,
+      "result": "PASS"
+    }
+  ],
+  "skipped_applicable_tests": [],
+  "suite_skips": [
+    "Tests\\Integration\\BybitPublicApiIntegrationTest::test_public_linear_market_endpoints_match_the_documented_contract (opt-in public network test; not evidence for this obligation)"
+  ],
+  "logs": [
+    {
+      "path": "docs/progress/evidence/phase0-20261027/full.xml",
+      "sha256": "e1445538dac252c3af57575ff401ed9469666f2eeb9ebb6fcbe8ff7b0dc2a5b3"
+    },
+    {
+      "path": "docs/progress/evidence/phase0-20261027/full-backend.log",
+      "sha256": "2b0899719c72178242faa402f3333e69dbaf6e95d2c7807ebe95b87884dabf71"
+    },
+    {
+      "path": "docs/progress/evidence/phase0-20261027/postgres-identity.log",
+      "sha256": "1f5f5435b82504754fe5903ba9aed83606befe98bc93a9fbf29c89975f61eb50"
+    },
+    {
+      "path": "docs/progress/evidence/phase0-20261027/database-guard.log",
+      "sha256": "8e8f4badfca2e509f50869ea451643912db2a4ef536223b70fd16bc0c649e630"
+    }
+  ],
+  "test_source_hashes": {
+    "tests/Unit/Research/LedgerReconciliationServiceTest.php": "fecd5fb3d51d70a649eeb2b5d5f2d805a7e030c05fc82d6dda4e295adc49bdca"
+  },
+  "reviewer": "Codex requirement-specific QA review",
+  "limitations": "Local synthetic verification only. No production/browser acceptance, market profitability, current deployed configuration or complete feature certification. Real concurrent candle races are distinct from sequential PAPER duplicate simulations."
+}

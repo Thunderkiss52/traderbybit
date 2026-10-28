@@ -1,18 +1,20 @@
 {
   "status": "PROVISIONAL",
-  "source_head": "d9a0aeb5d14233fc95e9e5cc55d8748814362f59",
+  "source_head": "c8d51156b2c72b03f009d10e6a634ff80cff77ff",
   "assessment_head": "d9a0aeb5d14233fc95e9e5cc55d8748814362f59",
-  "assessment_date": "2026-10-27",
+  "assessment_date": "2026-10-28",
   "scope_baseline": "VECTOR-SCOPE-20261027-v1",
   "scope_hash": "6d207a2bd441156d909b72e93166ea2fb932c152c32627fd6d06083668d71117",
-  "registry_hash": "ce79f3fdbff3453157cded397e08828b5c166f22151a46ef272ccd38cf3c5a8a",
+  "registry_hash": "7cbd160247277753a39039ac3170261e23b4e1ab3d1434d9097aeda6f8d39cdb",
   "overall": {
     "implementation": 42.2882,
-    "verification": 0.0,
+    "verification": 4.127,
     "product": 0.0
   },
   "freshness": {
-    "UNAVAILABLE": 229
+    "CURRENT": 18,
+    "FAILED": 1,
+    "UNAVAILABLE": 210
   },
   "phases": [
     {
@@ -22,7 +24,7 @@
       "verified": 0,
       "accepted_capabilities": 0,
       "implementation": 78.5714,
-      "verification": 0.0,
+      "verification": 13.7566,
       "product": 0.0,
       "remaining": [
         "VEC-P0-001",
@@ -266,15 +268,14 @@
       "weight": 3,
       "capability": "CAP-P0",
       "implementation": 50.0,
-      "verification": 0.0,
+      "verification": 33.3333,
       "product": 0.0,
       "state": "BLOCKED",
       "blockers": [
-        "Current requirement-specific execution evidence and explicit product acceptance unavailable."
+        "Local V1 admitted; Production V2 and explicit product acceptance pending."
       ],
       "dependencies": [],
       "missing_evidence": [
-        "VEC-P0-001-V1:UNAVAILABLE",
         "VEC-P0-001-V2:UNAVAILABLE"
       ]
     },
@@ -291,7 +292,7 @@
       "product": 0.0,
       "state": "BLOCKED",
       "blockers": [
-        "Current requirement-specific execution evidence and explicit product acceptance unavailable."
+        "Local V1 incomplete: Completion, PARTIAL, stale recovery and targeted selection pass; no assertion directly exercises all-accounts-failed -> FAILED or recovery retry of failed accounts after a mixed batch without repeating successes. The frozen obligation says every transition. Production V2 and explicit product acceptance pending."
       ],
       "dependencies": [],
       "missing_evidence": [
@@ -312,7 +313,7 @@
       "product": 0.0,
       "state": "BLOCKED",
       "blockers": [
-        "Current requirement-specific execution evidence and explicit product acceptance unavailable."
+        "Local V1 incomplete: Exact synthetic fee/funding identities and negative controls pass. The atomic criterion also asks for reconciliation of the current account population, unavailable here. Production V2 and explicit product acceptance pending."
       ],
       "dependencies": [],
       "missing_evidence": [
@@ -333,7 +334,7 @@
       "product": 0.0,
       "state": "BLOCKED",
       "blockers": [
-        "Current requirement-specific execution evidence and explicit product acceptance unavailable."
+        "Local V1 incomplete: 5%/10%, cooldown, correlation, sizing and blocked-position servicing pass. Reviewed RiskAndSizingTest lacks direct RiskEngine zero-equity, class-limit and portfolio-notional boundary assertions required by the second atomic criterion. Production V2 and explicit product acceptance pending."
       ],
       "dependencies": [],
       "missing_evidence": [
@@ -350,15 +351,14 @@
       "weight": 3,
       "capability": "CAP-P0",
       "implementation": 100.0,
-      "verification": 0.0,
+      "verification": 33.3333,
       "product": 0.0,
       "state": "BLOCKED",
       "blockers": [
-        "Current requirement-specific execution evidence and explicit product acceptance unavailable."
+        "Local V1 admitted; Production V2 and explicit product acceptance pending."
       ],
       "dependencies": [],
       "missing_evidence": [
-        "VEC-P0-005-V1:UNAVAILABLE",
         "VEC-P0-005-V2:UNAVAILABLE"
       ]
     },
@@ -371,15 +371,14 @@
       "weight": 3,
       "capability": "CAP-P0",
       "implementation": 100.0,
-      "verification": 0.0,
+      "verification": 33.3333,
       "product": 0.0,
       "state": "BLOCKED",
       "blockers": [
-        "Current requirement-specific execution evidence and explicit product acceptance unavailable."
+        "Local V1 admitted; Production V2 and explicit product acceptance pending."
       ],
       "dependencies": [],
       "missing_evidence": [
-        "VEC-P0-006-V1:UNAVAILABLE",
         "VEC-P0-006-V2:UNAVAILABLE"
       ]
     },
@@ -392,15 +391,14 @@
       "weight": 3,
       "capability": "CAP-P0",
       "implementation": 100.0,
-      "verification": 0.0,
+      "verification": 33.3333,
       "product": 0.0,
       "state": "BLOCKED",
       "blockers": [
-        "Current requirement-specific execution evidence and explicit product acceptance unavailable."
+        "Local V1 admitted; Production V2 and explicit product acceptance pending."
       ],
       "dependencies": [],
       "missing_evidence": [
-        "VEC-P0-007-V1:UNAVAILABLE",
         "VEC-P0-007-V2:UNAVAILABLE"
       ]
     },
@@ -417,7 +415,7 @@
       "product": 0.0,
       "state": "BLOCKED",
       "blockers": [
-        "No current acceptance evidence."
+        "Local V1 incomplete: Both atomic criteria require operator-authorized current-release evidence and independent acceptance. None was collected. Production V2 and explicit product acceptance pending."
       ],
       "dependencies": [
         "VEC-P0-001",
@@ -481,13 +479,13 @@
       "implementation": 50.0,
       "verification": 0.0,
       "product": 0.0,
-      "state": "BLOCKED",
+      "state": "FAILED",
       "blockers": [
-        "Current requirement-specific execution evidence and explicit product acceptance unavailable."
+        "Local ingestion gate failed: 500 new rows P95 74.860 ms >=50 ms. Mixed PAPER/research load and effective host limits unverified. Production V2 and explicit product acceptance pending."
       ],
       "dependencies": [],
       "missing_evidence": [
-        "VEC-P0-009-V1:UNAVAILABLE",
+        "VEC-P0-009-V1:FAILED",
         "VEC-P0-009-V2:UNAVAILABLE"
       ]
     },
@@ -504,7 +502,7 @@
       "product": 0.0,
       "state": "BLOCKED",
       "blockers": [
-        "Historical report status not independently revalidated at current HEAD."
+        "Local V1 incomplete: Stored-only status is asserted. The global GET write detector uses a nonexistent replay ID; successful replay test does not count writes. This does not prove zero writes for an existing observation. Production V2 and explicit product acceptance pending."
       ],
       "dependencies": [],
       "missing_evidence": [
@@ -525,7 +523,7 @@
       "product": 0.0,
       "state": "BLOCKED",
       "blockers": [
-        "Historical report status not independently revalidated at current HEAD."
+        "Local V1 incomplete: API success/error shapes pass; frontend tests are source-contract tests, not executed Vue-to-service integration. Production V2 and explicit product acceptance pending. Browser V3 pending."
       ],
       "dependencies": [],
       "missing_evidence": [
@@ -547,7 +545,7 @@
       "product": 0.0,
       "state": "BLOCKED",
       "blockers": [
-        "Historical report status not independently revalidated at current HEAD."
+        "Local V1 incomplete: Absent-account API control passes; no rendered profitability null-vs-real-zero financial test. Production V2 and explicit product acceptance pending. Browser V3 pending."
       ],
       "dependencies": [],
       "missing_evidence": [
@@ -565,15 +563,14 @@
       "weight": 1,
       "capability": "CAP-P0",
       "implementation": 0.0,
-      "verification": 0.0,
+      "verification": 33.3333,
       "product": 0.0,
       "state": "BLOCKED",
       "blockers": [
-        "Historical report status not independently revalidated at current HEAD."
+        "Local V1 admitted; Production V2 and explicit product acceptance pending."
       ],
       "dependencies": [],
       "missing_evidence": [
-        "VEC-P0-104-V1:UNAVAILABLE",
         "VEC-P0-104-V2:UNAVAILABLE"
       ]
     },
@@ -590,7 +587,7 @@
       "product": 0.0,
       "state": "BLOCKED",
       "blockers": [
-        "Historical report status not independently revalidated at current HEAD."
+        "Local V1 incomplete: Tests assert fixed module statuses, not their consistency with available evidence or negative changes in module readiness. Production V2 and explicit product acceptance pending."
       ],
       "dependencies": [],
       "missing_evidence": [
@@ -607,15 +604,14 @@
       "weight": 1,
       "capability": "CAP-P0",
       "implementation": 0.0,
-      "verification": 0.0,
+      "verification": 33.3333,
       "product": 0.0,
       "state": "BLOCKED",
       "blockers": [
-        "Historical report status not independently revalidated at current HEAD."
+        "Local V1 admitted; Production V2 and explicit product acceptance pending."
       ],
       "dependencies": [],
       "missing_evidence": [
-        "VEC-P0-106-V1:UNAVAILABLE",
         "VEC-P0-106-V2:UNAVAILABLE"
       ]
     },
@@ -632,7 +628,7 @@
       "product": 0.0,
       "state": "BLOCKED",
       "blockers": [
-        "Historical report status not independently revalidated at current HEAD."
+        "Local V1 incomplete: ZIP tests check members and some headings; they do not compare every required column or inject a missing source column. Production V2 and explicit product acceptance pending."
       ],
       "dependencies": [],
       "missing_evidence": [
@@ -653,7 +649,7 @@
       "product": 0.0,
       "state": "BLOCKED",
       "blockers": [
-        "Historical report status not independently revalidated at current HEAD."
+        "Local V1 incomplete: Half-open window and risk funnel tests pass separately; no comparison of exported strategy funnel populations to scoped source queries. Production V2 and explicit product acceptance pending."
       ],
       "dependencies": [],
       "missing_evidence": [
@@ -674,7 +670,7 @@
       "product": 0.0,
       "state": "BLOCKED",
       "blockers": [
-        "Historical report status not independently revalidated at current HEAD."
+        "Local V1 incomplete: Selector tests seed Bybit only. Separate 26-account census does not prove all 26 selectable or distinct aggregate/account economics. Production V2 and explicit product acceptance pending. Browser V3 pending."
       ],
       "dependencies": [],
       "missing_evidence": [
@@ -696,7 +692,7 @@
       "product": 0.0,
       "state": "BLOCKED",
       "blockers": [
-        "Historical report status not independently revalidated at current HEAD."
+        "Local V1 incomplete: HTTP success smoke coverage lacks competing annotation rows and qualified newest-match assertions. Production V2 and explicit product acceptance pending."
       ],
       "dependencies": [],
       "missing_evidence": [
@@ -717,7 +713,7 @@
       "product": 0.0,
       "state": "BLOCKED",
       "blockers": [
-        "Historical report status not independently revalidated at current HEAD."
+        "Local V1 incomplete: Open economics exclusion passes. P2 partial-population test targets a different service; no direct partial-exit negative for the Statistics page service. Production V2 and explicit product acceptance pending."
       ],
       "dependencies": [],
       "missing_evidence": [
@@ -734,15 +730,14 @@
       "weight": 1,
       "capability": "CAP-P0",
       "implementation": 0.0,
-      "verification": 0.0,
+      "verification": 33.3333,
       "product": 0.0,
       "state": "BLOCKED",
       "blockers": [
-        "Historical report status not independently revalidated at current HEAD."
+        "Local V1 admitted; Production V2 and explicit product acceptance pending."
       ],
       "dependencies": [],
       "missing_evidence": [
-        "VEC-P0-112-V1:UNAVAILABLE",
         "VEC-P0-112-V2:UNAVAILABLE"
       ]
     },
@@ -755,15 +750,14 @@
       "weight": 1,
       "capability": "CAP-P0",
       "implementation": 0.0,
-      "verification": 0.0,
+      "verification": 33.3333,
       "product": 0.0,
       "state": "BLOCKED",
       "blockers": [
-        "Historical report status not independently revalidated at current HEAD."
+        "Local V1 admitted; Production V2 and explicit product acceptance pending."
       ],
       "dependencies": [],
       "missing_evidence": [
-        "VEC-P0-113-V1:UNAVAILABLE",
         "VEC-P0-113-V2:UNAVAILABLE"
       ]
     },
@@ -780,7 +774,7 @@
       "product": 0.0,
       "state": "BLOCKED",
       "blockers": [
-        "Historical report status not independently revalidated at current HEAD."
+        "Local V1 incomplete: Freshness service and API shapes tested separately; report-to-page stale/unknown shape regression is not asserted. Production V2 and explicit product acceptance pending. Browser V3 pending."
       ],
       "dependencies": [],
       "missing_evidence": [
@@ -802,7 +796,7 @@
       "product": 0.0,
       "state": "BLOCKED",
       "blockers": [
-        "Historical report status not independently revalidated at current HEAD."
+        "Local V1 incomplete: Lifecycle inclusion and aligned fixture correlation pass; no deliberately permuted trade-order/time alignment negative. Production V2 and explicit product acceptance pending."
       ],
       "dependencies": [],
       "missing_evidence": [
@@ -823,7 +817,7 @@
       "product": 0.0,
       "state": "BLOCKED",
       "blockers": [
-        "Historical report status not independently revalidated at current HEAD."
+        "Local V1 incomplete: Degradation fixtures use Bybit only; P5 exchange comparisons do not directly test degradation isolation. Production V2 and explicit product acceptance pending."
       ],
       "dependencies": [],
       "missing_evidence": [
@@ -844,7 +838,7 @@
       "product": 0.0,
       "state": "BLOCKED",
       "blockers": [
-        "Historical report status not independently revalidated at current HEAD."
+        "Local V1 incomplete: Point-in-time snapshot/label pass with Bybit only; missing cross-exchange contamination negative. Production V2 and explicit product acceptance pending."
       ],
       "dependencies": [],
       "missing_evidence": [
@@ -865,7 +859,7 @@
       "product": 0.0,
       "state": "BLOCKED",
       "blockers": [
-        "Historical report status not independently revalidated at current HEAD."
+        "Local V1 incomplete: Training pipeline succeeds but does not drive insufficient purged samples through the fallback path. Production V2 and explicit product acceptance pending."
       ],
       "dependencies": [],
       "missing_evidence": [
@@ -886,7 +880,7 @@
       "product": 0.0,
       "state": "BLOCKED",
       "blockers": [
-        "Historical report status not independently revalidated at current HEAD."
+        "Local V1 incomplete: Service restrictions pass; settings API asserts raw capabilities but not the effective permission map under conflicting flags. Production V2 and explicit product acceptance pending. Browser V3 pending."
       ],
       "dependencies": [],
       "missing_evidence": [
@@ -908,7 +902,7 @@
       "product": 0.0,
       "state": "BLOCKED",
       "blockers": [
-        "Historical report status not independently revalidated at current HEAD."
+        "Local V1 incomplete: Each kill-switch has tests; no matrix toggles each authority independently and asserts both effective views agree. Production V2 and explicit product acceptance pending. Browser V3 pending."
       ],
       "dependencies": [],
       "missing_evidence": [
@@ -930,7 +924,7 @@
       "product": 0.0,
       "state": "BLOCKED",
       "blockers": [
-        "Historical report status not independently revalidated at current HEAD."
+        "Local V1 incomplete: Static routing and real worker success pass; missing unsupported-version/offline-worker capability negative. Production V2 and explicit product acceptance pending."
       ],
       "dependencies": [],
       "missing_evidence": [
@@ -951,7 +945,7 @@
       "product": 0.0,
       "state": "BLOCKED",
       "blockers": [
-        "Historical report status not independently revalidated at current HEAD."
+        "Local V1 incomplete: quote_integrity.test.js checks source contracts, not an executed HTTP failure reaching the page. Production V2 and explicit product acceptance pending. Browser V3 pending."
       ],
       "dependencies": [],
       "missing_evidence": [
@@ -973,7 +967,7 @@
       "product": 0.0,
       "state": "BLOCKED",
       "blockers": [
-        "Historical report status not independently revalidated at current HEAD."
+        "Local V1 incomplete: Some backend pagination and frontend source checks pass; no rendered navigation beyond first page on each affected page. Production V2 and explicit product acceptance pending. Browser V3 pending."
       ],
       "dependencies": [],
       "missing_evidence": [
@@ -995,7 +989,7 @@
       "product": 0.0,
       "state": "BLOCKED",
       "blockers": [
-        "Historical report status not independently revalidated at current HEAD."
+        "Local V1 incomplete: Latest/explicit generation, no-writes and missing-position controls pass; qualified account/exchange mismatch is not covered. Production V2 and explicit product acceptance pending."
       ],
       "dependencies": [],
       "missing_evidence": [
@@ -1016,7 +1010,7 @@
       "product": 0.0,
       "state": "BLOCKED",
       "blockers": [
-        "Historical report status not independently revalidated at current HEAD."
+        "Local V1 incomplete: Bounded queued attempts, kill-switch and rejection pass; completed run is manually supplied. No test executes EvaluateStrategyCandidateJob and proves durable linkage to the correct run. Production V2 and explicit product acceptance pending. Browser V3 pending."
       ],
       "dependencies": [],
       "missing_evidence": [
@@ -1038,7 +1032,7 @@
       "product": 0.0,
       "state": "BLOCKED",
       "blockers": [
-        "Historical report status not independently revalidated at current HEAD."
+        "Local V1 incomplete: Rejection event persists after exception, but test does not assert append-only enforcement or concurrent retry behavior. Production V2 and explicit product acceptance pending."
       ],
       "dependencies": [],
       "missing_evidence": [
@@ -1055,15 +1049,14 @@
       "weight": 1,
       "capability": "CAP-P0",
       "implementation": 0.0,
-      "verification": 0.0,
+      "verification": 33.3333,
       "product": 0.0,
       "state": "BLOCKED",
       "blockers": [
-        "Historical report status not independently revalidated at current HEAD."
+        "Local V1 admitted; Production V2 and explicit product acceptance pending."
       ],
       "dependencies": [],
       "missing_evidence": [
-        "VEC-P0-127-V1:UNAVAILABLE",
         "VEC-P0-127-V2:UNAVAILABLE"
       ]
     },
@@ -1076,15 +1069,14 @@
       "weight": 1,
       "capability": "CAP-P0",
       "implementation": 0.0,
-      "verification": 0.0,
+      "verification": 33.3333,
       "product": 0.0,
       "state": "BLOCKED",
       "blockers": [
-        "Historical report status not independently revalidated at current HEAD."
+        "Local V1 admitted; Production V2 and explicit product acceptance pending."
       ],
       "dependencies": [],
       "missing_evidence": [
-        "VEC-P0-201-V1:UNAVAILABLE",
         "VEC-P0-201-V2:UNAVAILABLE"
       ]
     },
@@ -1097,15 +1089,14 @@
       "weight": 1,
       "capability": "CAP-P0",
       "implementation": 0.0,
-      "verification": 0.0,
+      "verification": 33.3333,
       "product": 0.0,
       "state": "BLOCKED",
       "blockers": [
-        "Historical report status not independently revalidated at current HEAD."
+        "Local V1 admitted; Production V2 and explicit product acceptance pending."
       ],
       "dependencies": [],
       "missing_evidence": [
-        "VEC-P0-202-V1:UNAVAILABLE",
         "VEC-P0-202-V2:UNAVAILABLE"
       ]
     },
@@ -1118,15 +1109,14 @@
       "weight": 1,
       "capability": "CAP-P0",
       "implementation": 0.0,
-      "verification": 0.0,
+      "verification": 33.3333,
       "product": 0.0,
       "state": "BLOCKED",
       "blockers": [
-        "Historical report status not independently revalidated at current HEAD."
+        "Local V1 admitted; Production V2 and explicit product acceptance pending."
       ],
       "dependencies": [],
       "missing_evidence": [
-        "VEC-P0-203-V1:UNAVAILABLE",
         "VEC-P0-203-V2:UNAVAILABLE"
       ]
     },
@@ -1139,15 +1129,14 @@
       "weight": 1,
       "capability": "CAP-P0",
       "implementation": 0.0,
-      "verification": 0.0,
+      "verification": 33.3333,
       "product": 0.0,
       "state": "BLOCKED",
       "blockers": [
-        "Historical report status not independently revalidated at current HEAD."
+        "Local V1 admitted; Production V2 and explicit product acceptance pending."
       ],
       "dependencies": [],
       "missing_evidence": [
-        "VEC-P0-204-V1:UNAVAILABLE",
         "VEC-P0-204-V2:UNAVAILABLE"
       ]
     },
@@ -1160,15 +1149,14 @@
       "weight": 1,
       "capability": "CAP-P0",
       "implementation": 0.0,
-      "verification": 0.0,
+      "verification": 33.3333,
       "product": 0.0,
       "state": "BLOCKED",
       "blockers": [
-        "Historical report status not independently revalidated at current HEAD."
+        "Local V1 admitted; Production V2 and explicit product acceptance pending."
       ],
       "dependencies": [],
       "missing_evidence": [
-        "VEC-P0-205-V1:UNAVAILABLE",
         "VEC-P0-205-V2:UNAVAILABLE"
       ]
     },
@@ -1181,15 +1169,14 @@
       "weight": 1,
       "capability": "CAP-P0",
       "implementation": 0.0,
-      "verification": 0.0,
+      "verification": 33.3333,
       "product": 0.0,
       "state": "BLOCKED",
       "blockers": [
-        "Historical report status not independently revalidated at current HEAD."
+        "Local V1 admitted; Production V2 and explicit product acceptance pending."
       ],
       "dependencies": [],
       "missing_evidence": [
-        "VEC-P0-206-V1:UNAVAILABLE",
         "VEC-P0-206-V2:UNAVAILABLE"
       ]
     },
@@ -1202,15 +1189,14 @@
       "weight": 1,
       "capability": "CAP-P0",
       "implementation": 0.0,
-      "verification": 0.0,
+      "verification": 33.3333,
       "product": 0.0,
       "state": "BLOCKED",
       "blockers": [
-        "Historical report status not independently revalidated at current HEAD."
+        "Local V1 admitted; Production V2 and explicit product acceptance pending."
       ],
       "dependencies": [],
       "missing_evidence": [
-        "VEC-P0-207-V1:UNAVAILABLE",
         "VEC-P0-207-V2:UNAVAILABLE"
       ]
     },
@@ -1223,15 +1209,14 @@
       "weight": 1,
       "capability": "CAP-P0",
       "implementation": 0.0,
-      "verification": 0.0,
+      "verification": 33.3333,
       "product": 0.0,
       "state": "BLOCKED",
       "blockers": [
-        "Historical report status not independently revalidated at current HEAD."
+        "Local V1 admitted; Production V2 and explicit product acceptance pending."
       ],
       "dependencies": [],
       "missing_evidence": [
-        "VEC-P0-208-V1:UNAVAILABLE",
         "VEC-P0-208-V2:UNAVAILABLE"
       ]
     },
@@ -1244,15 +1229,14 @@
       "weight": 1,
       "capability": "CAP-P0",
       "implementation": 0.0,
-      "verification": 0.0,
+      "verification": 33.3333,
       "product": 0.0,
       "state": "BLOCKED",
       "blockers": [
-        "Historical report status not independently revalidated at current HEAD."
+        "Local V1 admitted; Production V2 and explicit product acceptance pending."
       ],
       "dependencies": [],
       "missing_evidence": [
-        "VEC-P0-209-V1:UNAVAILABLE",
         "VEC-P0-209-V2:UNAVAILABLE"
       ]
     },

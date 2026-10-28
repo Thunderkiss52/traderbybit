@@ -1,0 +1,122 @@
+{
+  "source_head": "c8d51156b2c72b03f009d10e6a634ff80cff77ff",
+  "environment": {
+    "platform": "Linux-6.18.54.1-microsoft-standard-WSL2-x86_64-with-glibc2.35",
+    "python": "3.10.12",
+    "cwd": "/home/thunder/work/traderbybit"
+  },
+  "scope": "Offline evidence finalization; no platform test credit added",
+  "commands": [
+    {
+      "command": [
+        "/home/thunder/.headroom/bin/rtk",
+        "proxy",
+        "python3",
+        "scripts/vector_progress.py",
+        "--generate"
+      ],
+      "started_at": "2026-10-28T10:52:04.104397+00:00",
+      "finished_at": "2026-10-28T10:52:06.073947+00:00",
+      "exit_code": 0,
+      "artifact": "docs/progress/evidence/phase0-20261027/continuation-generate.log",
+      "sha256": "46fd6328fb37e19d2bafa56fc37a7bef4fbb37f2abed5944421e7bf168b42744"
+    },
+    {
+      "command": [
+        "/home/thunder/.headroom/bin/rtk",
+        "proxy",
+        "python3",
+        "-m",
+        "unittest",
+        "discover",
+        "-s",
+        "scripts/tests",
+        "-p",
+        "test_vector_progress.py",
+        "-v"
+      ],
+      "started_at": "2026-10-28T10:52:06.074097+00:00",
+      "finished_at": "2026-10-28T10:52:07.064121+00:00",
+      "exit_code": 0,
+      "artifact": "docs/progress/evidence/phase0-20261027/continuation-tracker.log",
+      "sha256": "60edd16383fd954eff02f2e6eae6d406462f813608b4ef767b2f032533fae73c"
+    },
+    {
+      "command": [
+        "/home/thunder/.headroom/bin/rtk",
+        "proxy",
+        "python3",
+        "/home/thunder/work/traderbybit/docs/progress/evidence/phase0-20261027/verify_artifacts.py"
+      ],
+      "started_at": "2026-10-28T10:52:07.064275+00:00",
+      "finished_at": "2026-10-28T10:52:07.686271+00:00",
+      "exit_code": 0,
+      "artifact": "docs/progress/evidence/phase0-20261027/continuation-artifacts.log",
+      "sha256": "a21eceedea9434f8fb5d64f34f851a0f68e810c2f6b44d9d385f982257af8581"
+    },
+    {
+      "command": [
+        "/home/thunder/.headroom/bin/rtk",
+        "proxy",
+        "python3",
+        "scripts/vector_progress.py",
+        "--strict",
+        "--base-ref",
+        "c8d51156b2c72b03f009d10e6a634ff80cff77ff"
+      ],
+      "started_at": "2026-10-28T10:52:07.686378+00:00",
+      "finished_at": "2026-10-28T10:52:09.674205+00:00",
+      "exit_code": 0,
+      "artifact": "docs/progress/evidence/phase0-20261027/continuation-strict.log",
+      "sha256": "46fd6328fb37e19d2bafa56fc37a7bef4fbb37f2abed5944421e7bf168b42744"
+    },
+    {
+      "command": [
+        "/home/thunder/.headroom/bin/rtk",
+        "proxy",
+        "php",
+        "-dxdebug.mode=off",
+        "vendor/bin/pint",
+        "--test"
+      ],
+      "started_at": "2026-10-28T10:52:09.674430+00:00",
+      "finished_at": "2026-10-28T10:52:33.193229+00:00",
+      "exit_code": 0,
+      "artifact": "docs/progress/evidence/phase0-20261027/continuation-pint.log",
+      "sha256": "cd1a94fc2cf6a965b86e1a4809d6c7fb9148b1ee374e1010ed2ac96ff4876ec2"
+    },
+    {
+      "command": [
+        "/home/thunder/.headroom/bin/rtk",
+        "proxy",
+        "git",
+        "diff",
+        "--check",
+        "HEAD"
+      ],
+      "started_at": "2026-10-28T10:52:33.193408+00:00",
+      "finished_at": "2026-10-28T10:52:33.224455+00:00",
+      "exit_code": 2,
+      "artifact": "docs/progress/evidence/phase0-20261027/continuation-diff.log",
+      "sha256": "03d9ed0e5ccce6c6c272981a52f6209109ff6d3591329135ea07e4f49202afd1"
+    },
+    {
+      "command": [
+        "/home/thunder/.headroom/bin/rtk",
+        "proxy",
+        "git",
+        "diff",
+        "--cached",
+        "--check",
+        "--",
+        ".",
+        ":(exclude)docs/progress/evidence/**/*.log"
+      ],
+      "started_at": "2026-10-28T10:53:05.403580+00:00",
+      "finished_at": "2026-10-28T10:53:05.428068+00:00",
+      "exit_code": 0,
+      "artifact": "docs/progress/evidence/phase0-20261027/continuation-authored-diff.log",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    }
+  ]
+}

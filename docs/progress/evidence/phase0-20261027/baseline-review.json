@@ -1,0 +1,609 @@
+{
+  "reviewer": "Codex QA source/metadata review",
+  "source_head": "c8d51156b2c72b03f009d10e6a634ff80cff77ff",
+  "requirements": 97,
+  "obligations": 229,
+  "phase0_requirements": 45,
+  "phase0_obligations": 99,
+  "scope_hash": "6d207a2bd441156d909b72e93166ea2fb932c152c32627fd6d06083668d71117",
+  "scope_unchanged_from_c8d5115": true,
+  "runtime_workspace_hash": "b7c4f24813da51d362f582f7b9fb5f760aca63d28c43b5b7dd7ad23ead45d9cc",
+  "runtime_workspace_watch_paths": [
+    ".github/workflows/deploy.yml",
+    "app",
+    "composer.lock",
+    "config",
+    "database/migrations",
+    "frontend/src",
+    "frontend/tests",
+    "research-go/internal",
+    "research-go/tests",
+    "routes",
+    "tests"
+  ],
+  "workspace_matches_source": true,
+  "source_assessments": [
+    {
+      "requirement_id": "VEC-P0-001",
+      "criterion": "VEC-P0-001-I1",
+      "limited_claim": "Source declares 13 canonical PRIMARY strategy IDs with exchange-specific account provisioning",
+      "references": [
+        {
+          "path": "config/paper.php",
+          "anchor": "primary_strategies",
+          "sha256": "36dc00a874821973581f3fded01ba05cf7a85292211640d26cc0d7873ab82f40"
+        },
+        {
+          "path": "app/PaperTrading/Application/PaperAccountService.php",
+          "anchor": "public function allPrimaryAccounts",
+          "sha256": "ba5c15b6176d16cf6525cb13a4a28d91ce22fdfc6558cce9658a11ecc15c0519"
+        },
+        {
+          "path": "app/Exchanges/Binance/BinanceDeploymentInitializer.php",
+          "anchor": "function initialize",
+          "sha256": "c571764b5be67ce84a239eb7fcca1e32d0d2c8e088ac4f30f344f057bb5d4b01"
+        }
+      ],
+      "review": "Retained only the limited source behavior stated by this atomic criterion; no requirement-level completion or runtime acceptance inferred."
+    },
+    {
+      "requirement_id": "VEC-P0-002",
+      "criterion": "VEC-P0-002-I1",
+      "limited_claim": "PAPER completion handling records downstream outcomes",
+      "references": [
+        {
+          "path": "app/Trading/Application/TradingPipelineEventService.php",
+          "anchor": "recordPaperProcessed",
+          "sha256": "5b137007f0bdec95aebc98bedf7e216669422693d47c9b9b545506e6c8e282bf"
+        }
+      ],
+      "review": "Retained only the limited source behavior stated by this atomic criterion; no requirement-level completion or runtime acceptance inferred."
+    },
+    {
+      "requirement_id": "VEC-P0-003",
+      "criterion": "VEC-P0-003-I1",
+      "limited_claim": "Lifecycle resolves funding schedule evidence before certification",
+      "references": [
+        {
+          "path": "app/PaperTrading/Application/PositionLifecycleService.php",
+          "anchor": "resolveFundingScheduleInterval",
+          "sha256": "98dfeea1f6e1141909622855a192c2cbcb0aa12c5788da1eb4c3e462ace6b3db"
+        }
+      ],
+      "review": "Retained only the limited source behavior stated by this atomic criterion; no requirement-level completion or runtime acceptance inferred."
+    },
+    {
+      "requirement_id": "VEC-P0-004",
+      "criterion": "VEC-P0-004-I1",
+      "limited_claim": "RiskEngine rejects new entries at configured drawdown limits and account failures",
+      "references": [
+        {
+          "path": "app/PaperTrading/Application/RiskEngine.php",
+          "anchor": "drawdown_halt",
+          "sha256": "2d7b3d9de3f1e52862a970dd5bd049f96081d8e6d2ec567624319cb9f15cb0f6"
+        }
+      ],
+      "review": "Retained only the limited source behavior stated by this atomic criterion; no requirement-level completion or runtime acceptance inferred."
+    },
+    {
+      "requirement_id": "VEC-P0-004",
+      "criterion": "VEC-P0-004-I2",
+      "limited_claim": "RiskEngine enforces positive equity, class risk, total risk, notional, correlation and cooldown limits.",
+      "references": [
+        {
+          "path": "app/PaperTrading/Application/RiskEngine.php",
+          "anchor": "portfolio_risk_limit",
+          "sha256": "2d7b3d9de3f1e52862a970dd5bd049f96081d8e6d2ec567624319cb9f15cb0f6"
+        }
+      ],
+      "review": "Retained only the limited source behavior stated by this atomic criterion; no requirement-level completion or runtime acceptance inferred."
+    },
+    {
+      "requirement_id": "VEC-P0-005",
+      "criterion": "VEC-P0-005-I1",
+      "limited_claim": "Binance executable guard requires explicit approval configuration",
+      "references": [
+        {
+          "path": "app/Exchanges/Binance/BinancePaperSafety.php",
+          "anchor": "paper_execution_approved",
+          "sha256": "9cb7d49ecc138eb0943a2b19a9594027445e568d1a716d4fc4cace57e53e3ef1"
+        }
+      ],
+      "review": "Retained only the limited source behavior stated by this atomic criterion; no requirement-level completion or runtime acceptance inferred."
+    },
+    {
+      "requirement_id": "VEC-P0-006",
+      "criterion": "VEC-P0-006-I1",
+      "limited_claim": "Forecast recording matures causal price-bar outcomes and keeps exchange-qualified populations",
+      "references": [
+        {
+          "path": "app/Strategy/Application/LevelProbabilityService.php",
+          "anchor": "resolveMatured",
+          "sha256": "d5399750c926c053bc17dd5bf476e91045581a9ee18663a90b59404699064e5a"
+        }
+      ],
+      "review": "Retained only the limited source behavior stated by this atomic criterion; no requirement-level completion or runtime acceptance inferred."
+    },
+    {
+      "requirement_id": "VEC-P0-006",
+      "criterion": "VEC-P0-006-I2",
+      "limited_claim": "estimateFor uses exchange-qualified matured outcomes and rejects statistics below minimum_sample_size.",
+      "references": [
+        {
+          "path": "app/Strategy/Application/LevelProbabilityService.php",
+          "anchor": "'validation_status' => 'INSUFFICIENT_DATA'",
+          "sha256": "d5399750c926c053bc17dd5bf476e91045581a9ee18663a90b59404699064e5a"
+        }
+      ],
+      "review": "Retained only the limited source behavior stated by this atomic criterion; no requirement-level completion or runtime acceptance inferred."
+    },
+    {
+      "requirement_id": "VEC-P0-007",
+      "criterion": "VEC-P0-007-I1",
+      "limited_claim": "Workflow declares isolated PostgreSQL backend test service",
+      "references": [
+        {
+          "path": ".github/workflows/deploy.yml",
+          "anchor": "postgres:17-alpine",
+          "sha256": "61454e396866a0fd1fd6e3a3b4d61f9cc4b43dff7a61859df6e6148aeb93764a"
+        }
+      ],
+      "review": "Retained only the limited source behavior stated by this atomic criterion; no requirement-level completion or runtime acceptance inferred."
+    },
+    {
+      "requirement_id": "VEC-P0-009",
+      "criterion": "VEC-P0-009-I1",
+      "limited_claim": "Compose specifies bounded research worker memory and CPU",
+      "references": [
+        {
+          "path": "compose.yaml",
+          "anchor": "RESEARCH_WORKER_MEMORY_LIMIT",
+          "sha256": "a72910466b9b511e9875354c62c6bf60abf424e8bf44f76e2f7e7d2df759e9c5"
+        }
+      ],
+      "review": "Retained only the limited source behavior stated by this atomic criterion; no requirement-level completion or runtime acceptance inferred."
+    },
+    {
+      "requirement_id": "VEC-P1-001",
+      "criterion": "VEC-P1-001-I1",
+      "limited_claim": "Common pure input-to-decision signature is declared",
+      "references": [
+        {
+          "path": "app/Strategy/Contracts/StrategyInterface.php",
+          "anchor": "evaluate(StrategyInput $input): SignalDecision",
+          "sha256": "bbf8796dcd4cc1cfcf6a6ac555720484cca83ee85841b948a8288093fba38186"
+        }
+      ],
+      "review": "Retained only the limited source behavior stated by this atomic criterion; no requirement-level completion or runtime acceptance inferred."
+    },
+    {
+      "requirement_id": "VEC-P1-003",
+      "criterion": "VEC-P1-003-I1",
+      "limited_claim": "Registry exposes identifiers, versions, parameters and configuration hashes",
+      "references": [
+        {
+          "path": "app/Strategy/Application/StrategyRegistry.php",
+          "anchor": "public function metadata",
+          "sha256": "b322942ffa95cba0ec320d12b1963ea9b68b433aa1c0ccff83ce793e7789cdc2"
+        }
+      ],
+      "review": "Retained only the limited source behavior stated by this atomic criterion; no requirement-level completion or runtime acceptance inferred."
+    },
+    {
+      "requirement_id": "VEC-P1-005",
+      "criterion": "VEC-P1-005-I1",
+      "limited_claim": "Registry constructs only explicit approved family implementations",
+      "references": [
+        {
+          "path": "app/Strategy/Application/StrategyRegistry.php",
+          "anchor": "public function make",
+          "sha256": "b322942ffa95cba0ec320d12b1963ea9b68b433aa1c0ccff83ce793e7789cdc2"
+        }
+      ],
+      "review": "Retained only the limited source behavior stated by this atomic criterion; no requirement-level completion or runtime acceptance inferred."
+    },
+    {
+      "requirement_id": "VEC-P2-001",
+      "criterion": "VEC-P2-001-I1",
+      "limited_claim": "Existing comparison service scopes exchange results",
+      "references": [
+        {
+          "path": "app/Exchanges/ExchangeComparisonService.php",
+          "anchor": "class ExchangeComparisonService",
+          "sha256": "ea754e068433463f0e04511f07b88c3c20e7d61a897d5032b5d7e1d14b5390fe"
+        }
+      ],
+      "review": "Retained only the limited source behavior stated by this atomic criterion; no requirement-level completion or runtime acceptance inferred."
+    },
+    {
+      "requirement_id": "VEC-P2-002",
+      "criterion": "VEC-P2-002-I1",
+      "limited_claim": "Strategy comparison service provides per-strategy result processing",
+      "references": [
+        {
+          "path": "app/Strategy/Application/StrategyComparisonService.php",
+          "anchor": "class StrategyComparisonService",
+          "sha256": "a25d72d27e975eadfbf7569d1905878c4e0c1518bd4ac796956531ce0d18addd"
+        }
+      ],
+      "review": "Retained only the limited source behavior stated by this atomic criterion; no requirement-level completion or runtime acceptance inferred."
+    },
+    {
+      "requirement_id": "VEC-P2-003",
+      "criterion": "VEC-P2-003-I1",
+      "limited_claim": "Account performance calculations exist separately from cross-account views",
+      "references": [
+        {
+          "path": "app/PaperTrading/Application/PerformanceStatisticsService.php",
+          "anchor": "class PerformanceStatisticsService",
+          "sha256": "303bfaae76b8d48074368bf25cda5d77471a2c0809a54b239fe95142bacaf544"
+        }
+      ],
+      "review": "Retained only the limited source behavior stated by this atomic criterion; no requirement-level completion or runtime acceptance inferred."
+    },
+    {
+      "requirement_id": "VEC-P2-004",
+      "criterion": "VEC-P2-004-I1",
+      "limited_claim": "Registry defines signed funding and net gross-minus-fees-plus-funding identity",
+      "references": [
+        {
+          "path": "app/Research/Domain/MetricRegistry.php",
+          "anchor": "signed_funding",
+          "sha256": "742c753d3c92a1c4af861f9c65760f6421fe8bac2be0d6fba9bfb59180033267"
+        }
+      ],
+      "review": "Retained only the limited source behavior stated by this atomic criterion; no requirement-level completion or runtime acceptance inferred."
+    },
+    {
+      "requirement_id": "VEC-P2-005",
+      "criterion": "VEC-P2-005-I1",
+      "limited_claim": "Registry includes drawdown-related metric definitions",
+      "references": [
+        {
+          "path": "app/Research/Domain/MetricRegistry.php",
+          "anchor": "drawdown",
+          "sha256": "742c753d3c92a1c4af861f9c65760f6421fe8bac2be0d6fba9bfb59180033267"
+        }
+      ],
+      "review": "Retained only the limited source behavior stated by this atomic criterion; no requirement-level completion or runtime acceptance inferred."
+    },
+    {
+      "requirement_id": "VEC-P2-007",
+      "criterion": "VEC-P2-007-I1",
+      "limited_claim": "Stored historical decisions are labelled not independently recomputed",
+      "references": [
+        {
+          "path": "app/Research/Application/DecisionReplayService.php",
+          "anchor": "NOT_RECOMPUTED_STORED_ONLY",
+          "sha256": "81569947b8a20500524d8ebb8824e0ddff21949f48689aca52a004d40e84b9a1"
+        }
+      ],
+      "review": "Retained only the limited source behavior stated by this atomic criterion; no requirement-level completion or runtime acceptance inferred."
+    },
+    {
+      "requirement_id": "VEC-P2-008",
+      "criterion": "VEC-P2-008-I1",
+      "limited_claim": "Existing service builds audit export artifacts",
+      "references": [
+        {
+          "path": "app/Audit/Application/AuditExportService.php",
+          "anchor": "class AuditExportService",
+          "sha256": "616443876a85f5f825cf7c6f9107fb835acd6ba677b1d1ca944c20ae5efe00f8"
+        }
+      ],
+      "review": "Retained only the limited source behavior stated by this atomic criterion; no requirement-level completion or runtime acceptance inferred."
+    },
+    {
+      "requirement_id": "VEC-P2-009",
+      "criterion": "VEC-P2-009-I1",
+      "limited_claim": "Daily performance service computes account-window values",
+      "references": [
+        {
+          "path": "app/PaperTrading/Application/DailyPerformanceService.php",
+          "anchor": "class DailyPerformanceService",
+          "sha256": "368ad502829b6179a28e613758d9bf5bd8ccbe2044d6511b2ca5ea9b084be3e1"
+        }
+      ],
+      "review": "Retained only the limited source behavior stated by this atomic criterion; no requirement-level completion or runtime acceptance inferred."
+    },
+    {
+      "requirement_id": "VEC-P3-001",
+      "criterion": "VEC-P3-001-I1",
+      "limited_claim": "Existing generator stores bounded parameter mutations and seed",
+      "references": [
+        {
+          "path": "app/Research/Application/StrategyEvolutionService.php",
+          "anchor": "generateCandidate",
+          "sha256": "46d17290b96e2891cad3093d176e55e6b3964f414e6a01e9beb9b9d1f57e7485"
+        }
+      ],
+      "review": "Retained only the limited source behavior stated by this atomic criterion; no requirement-level completion or runtime acceptance inferred."
+    },
+    {
+      "requirement_id": "VEC-P3-002",
+      "criterion": "VEC-P3-002-I1",
+      "limited_claim": "Existing grid optimizer enumerates research parameter combinations",
+      "references": [
+        {
+          "path": "app/Backtest/Application/GridOptimizer.php",
+          "anchor": "class GridOptimizer",
+          "sha256": "5ee7f0ff9df9cfa3f7b9934f37f6b1139aef1c068d4f3c0c84e0b192ba23c20c"
+        }
+      ],
+      "review": "Retained only the limited source behavior stated by this atomic criterion; no requirement-level completion or runtime acceptance inferred."
+    },
+    {
+      "requirement_id": "VEC-P3-004",
+      "criterion": "VEC-P3-004-I1",
+      "limited_claim": "Research job records carry dataset hash and as-of metadata",
+      "references": [
+        {
+          "path": "app/Research/Application/ResearchJobService.php",
+          "anchor": "dataset_sha256",
+          "sha256": "2c8312f8a995ce730e03182d71ee0c4b0b36e5ea74ac3a43e77df61269afc6c7"
+        }
+      ],
+      "review": "Retained only the limited source behavior stated by this atomic criterion; no requirement-level completion or runtime acceptance inferred."
+    },
+    {
+      "requirement_id": "VEC-P3-005",
+      "criterion": "VEC-P3-005-I1",
+      "limited_claim": "Existing jobs provide claim and lease lifecycle",
+      "references": [
+        {
+          "path": "app/Research/Application/ResearchJobService.php",
+          "anchor": "claimNextJob",
+          "sha256": "2c8312f8a995ce730e03182d71ee0c4b0b36e5ea74ac3a43e77df61269afc6c7"
+        }
+      ],
+      "review": "Retained only the limited source behavior stated by this atomic criterion; no requirement-level completion or runtime acceptance inferred."
+    },
+    {
+      "requirement_id": "VEC-P3-006",
+      "criterion": "VEC-P3-006-I1",
+      "limited_claim": "Candidates retain parent family, version, parameters and mutation diff",
+      "references": [
+        {
+          "path": "app/Research/Application/StrategyEvolutionService.php",
+          "anchor": "parameter_diff",
+          "sha256": "46d17290b96e2891cad3093d176e55e6b3964f414e6a01e9beb9b9d1f57e7485"
+        }
+      ],
+      "review": "Retained only the limited source behavior stated by this atomic criterion; no requirement-level completion or runtime acceptance inferred."
+    },
+    {
+      "requirement_id": "VEC-P3-007",
+      "criterion": "VEC-P3-007-I1",
+      "limited_claim": "Candidate evaluation links completed backtest run into candidate metadata",
+      "references": [
+        {
+          "path": "app/Research/Jobs/EvaluateStrategyCandidateJob.php",
+          "anchor": "backtest_run_id",
+          "sha256": "90e17baa38fc7d8b5e2a31a875e89ebda35665d8df7c117ef42c6ea839ab9977"
+        }
+      ],
+      "review": "Retained only the limited source behavior stated by this atomic criterion; no requirement-level completion or runtime acceptance inferred."
+    },
+    {
+      "requirement_id": "VEC-P3-008",
+      "criterion": "VEC-P3-008-I1",
+      "limited_claim": "Research jobs expose fenced ownership and heartbeat updates",
+      "references": [
+        {
+          "path": "app/Research/Application/ResearchJobService.php",
+          "anchor": "fencingToken",
+          "sha256": "2c8312f8a995ce730e03182d71ee0c4b0b36e5ea74ac3a43e77df61269afc6c7"
+        }
+      ],
+      "review": "Retained only the limited source behavior stated by this atomic criterion; no requirement-level completion or runtime acceptance inferred."
+    },
+    {
+      "requirement_id": "VEC-P4-001",
+      "criterion": "VEC-P4-001-I1",
+      "limited_claim": "Backtest service orchestrates historical simulation",
+      "references": [
+        {
+          "path": "app/Backtest/Application/BacktestRunService.php",
+          "anchor": "class BacktestRunService",
+          "sha256": "fafe73c4102b08846a8f031139542159f8be20f8c11d1b5ab9ac29e3510824d3"
+        }
+      ],
+      "review": "Retained only the limited source behavior stated by this atomic criterion; no requirement-level completion or runtime acceptance inferred."
+    },
+    {
+      "requirement_id": "VEC-P4-002",
+      "criterion": "VEC-P4-002-I1",
+      "limited_claim": "Chronological splitter separates train, validation and test",
+      "references": [
+        {
+          "path": "app/Backtest/Application/ChronologicalSplitter.php",
+          "anchor": "public function split",
+          "sha256": "74a54b4c6b2477e980ffae93c352f630561679986d4c92fdb345d3cde4cba9db"
+        }
+      ],
+      "review": "Retained only the limited source behavior stated by this atomic criterion; no requirement-level completion or runtime acceptance inferred."
+    },
+    {
+      "requirement_id": "VEC-P4-003",
+      "criterion": "VEC-P4-003-I1",
+      "limited_claim": "Go walk-forward implementation exists for bounded research",
+      "references": [
+        {
+          "path": "research-go/internal/walkforward/wfo.go",
+          "anchor": "package walkforward",
+          "sha256": "02bec8cfd08bbc5e41d956b51b50a8bbb20abf9de19a3b4402f4f098ea2f4168"
+        }
+      ],
+      "review": "Retained only the limited source behavior stated by this atomic criterion; no requirement-level completion or runtime acceptance inferred."
+    },
+    {
+      "requirement_id": "VEC-P4-004",
+      "criterion": "VEC-P4-004-I1",
+      "limited_claim": "Go simulation implementation exists for Monte Carlo work",
+      "references": [
+        {
+          "path": "research-go/internal/simulation/montecarlo.go",
+          "anchor": "package simulation",
+          "sha256": "604441ec5d4a8f59363c9f59080c56a63dbf09f02d6e6d8980209846563aa02f"
+        }
+      ],
+      "review": "Retained only the limited source behavior stated by this atomic criterion; no requirement-level completion or runtime acceptance inferred."
+    },
+    {
+      "requirement_id": "VEC-P4-006",
+      "criterion": "VEC-P4-006-I1",
+      "limited_claim": "Policy computes multiplicity-adjusted improvement lower bounds",
+      "references": [
+        {
+          "path": "app/Research/Application/PromotionPolicyService.php",
+          "anchor": "computeMultiplicityAdjustedLcb",
+          "sha256": "1c0cb2294314e2ae6313f145d69761b88290a90c8d9940f3ecefec84ce0386ae"
+        }
+      ],
+      "review": "Retained only the limited source behavior stated by this atomic criterion; no requirement-level completion or runtime acceptance inferred."
+    },
+    {
+      "requirement_id": "VEC-P4-007",
+      "criterion": "VEC-P4-007-I1",
+      "limited_claim": "Policy fails closed when prospective evidence is absent",
+      "references": [
+        {
+          "path": "app/Research/Application/PromotionPolicyService.php",
+          "anchor": "missing_verified_prospective_evidence",
+          "sha256": "1c0cb2294314e2ae6313f145d69761b88290a90c8d9940f3ecefec84ce0386ae"
+        }
+      ],
+      "review": "Retained only the limited source behavior stated by this atomic criterion; no requirement-level completion or runtime acceptance inferred."
+    },
+    {
+      "requirement_id": "VEC-P4-010",
+      "criterion": "VEC-P4-010-I1",
+      "limited_claim": "Autonomy permissions mediate research actions",
+      "references": [
+        {
+          "path": "app/Research/Application/AutonomyPermissionService.php",
+          "anchor": "class AutonomyPermissionService",
+          "sha256": "9eeae477e10f9d7e5f3a933c1b8b03f969f8f02459f83690d8d4c4d8a74ac8bc"
+        }
+      ],
+      "review": "Retained only the limited source behavior stated by this atomic criterion; no requirement-level completion or runtime acceptance inferred."
+    },
+    {
+      "requirement_id": "VEC-P5-001",
+      "criterion": "VEC-P5-001-I1",
+      "limited_claim": "Shared interface declares public market-data methods only",
+      "references": [
+        {
+          "path": "app/Exchanges/Contracts/ExchangeAdapter.php",
+          "anchor": "interface ExchangeAdapter",
+          "sha256": "a2aead1a3dac30a50efb17544f019ae9c3727d466c42d9b1bb76b3d4bc7595f8"
+        }
+      ],
+      "review": "Retained only the limited source behavior stated by this atomic criterion; no requirement-level completion or runtime acceptance inferred."
+    },
+    {
+      "requirement_id": "VEC-P5-003",
+      "criterion": "VEC-P5-003-I1",
+      "limited_claim": "Binance adapter validates and normalizes candle rows",
+      "references": [
+        {
+          "path": "app/Exchanges/Binance/BinancePublicAdapter.php",
+          "anchor": "normalizeCandles",
+          "sha256": "4518785049691c2be86c811891232a41c6eb912ad4f6a1ce0994d6fa912e0ab1"
+        }
+      ],
+      "review": "Retained only the limited source behavior stated by this atomic criterion; no requirement-level completion or runtime acceptance inferred."
+    },
+    {
+      "requirement_id": "VEC-P5-004",
+      "criterion": "VEC-P5-004-I1",
+      "limited_claim": "Binance public adapter discovers instrument specifications",
+      "references": [
+        {
+          "path": "app/Exchanges/Binance/BinancePublicAdapter.php",
+          "anchor": "fetchSymbols",
+          "sha256": "4518785049691c2be86c811891232a41c6eb912ad4f6a1ce0994d6fa912e0ab1"
+        }
+      ],
+      "review": "Retained only the limited source behavior stated by this atomic criterion; no requirement-level completion or runtime acceptance inferred."
+    },
+    {
+      "requirement_id": "VEC-P6-001",
+      "criterion": "VEC-P6-001-I1",
+      "limited_claim": "Boundary document separates research from real credentials/risk/execution",
+      "references": [
+        {
+          "path": "docs/specifications/VECTOR_FUTURE_EXTERNAL_EXECUTION_BOUNDARY.md",
+          "anchor": "VECTOR owns",
+          "sha256": "64ff597e104c00a0d5ea89f0ae6f0911fb5b0e7b4ae642a5d98a5f0688c4310a"
+        }
+      ],
+      "review": "Retained only the limited source behavior stated by this atomic criterion; no requirement-level completion or runtime acceptance inferred."
+    },
+    {
+      "requirement_id": "VEC-P6-002",
+      "criterion": "VEC-P6-002-I1",
+      "limited_claim": "Document proposes immutable qualified decision intent and idempotency fields",
+      "references": [
+        {
+          "path": "docs/specifications/VECTOR_FUTURE_EXTERNAL_EXECUTION_BOUNDARY.md",
+          "anchor": "StrategyDecisionIntent",
+          "sha256": "64ff597e104c00a0d5ea89f0ae6f0911fb5b0e7b4ae642a5d98a5f0688c4310a"
+        }
+      ],
+      "review": "Retained only the limited source behavior stated by this atomic criterion; no requirement-level completion or runtime acceptance inferred."
+    },
+    {
+      "requirement_id": "VEC-P6-003",
+      "criterion": "VEC-P6-003-I1",
+      "limited_claim": "Document requires independent authorization and separate security program",
+      "references": [
+        {
+          "path": "docs/specifications/VECTOR_FUTURE_EXTERNAL_EXECUTION_BOUNDARY.md",
+          "anchor": "independent",
+          "sha256": "64ff597e104c00a0d5ea89f0ae6f0911fb5b0e7b4ae642a5d98a5f0688c4310a"
+        }
+      ],
+      "review": "Retained only the limited source behavior stated by this atomic criterion; no requirement-level completion or runtime acceptance inferred."
+    },
+    {
+      "requirement_id": "VEC-P6-004",
+      "criterion": "VEC-P6-004-I1",
+      "limited_claim": "Document distinguishes delivery, authorization, execution and callbacks",
+      "references": [
+        {
+          "path": "docs/specifications/VECTOR_FUTURE_EXTERNAL_EXECUTION_BOUNDARY.md",
+          "anchor": "acknowledgments",
+          "sha256": "64ff597e104c00a0d5ea89f0ae6f0911fb5b0e7b4ae642a5d98a5f0688c4310a"
+        }
+      ],
+      "review": "Retained only the limited source behavior stated by this atomic criterion; no requirement-level completion or runtime acceptance inferred."
+    },
+    {
+      "requirement_id": "VEC-P6-005",
+      "criterion": "VEC-P6-005-I1",
+      "limited_claim": "Document specifies fake-service failure scenarios and activation gates",
+      "references": [
+        {
+          "path": "docs/specifications/VECTOR_FUTURE_EXTERNAL_EXECUTION_BOUNDARY.md",
+          "anchor": "Future tests",
+          "sha256": "64ff597e104c00a0d5ea89f0ae6f0911fb5b0e7b4ae642a5d98a5f0688c4310a"
+        }
+      ],
+      "review": "Retained only the limited source behavior stated by this atomic criterion; no requirement-level completion or runtime acceptance inferred."
+    }
+  ],
+  "confirmed_incorrect_implementation_credits": [],
+  "policy_limits": [
+    "Frozen baseline remains PROPOSED; current user instruction does not silently ratify weights.",
+    "Some P0 atomic criteria mix implementation and operational demonstration. Preserve frozen semantics and withhold credit rather than rewriting scope.",
+    "F/I assurance rows remain outside runtime implementation denominator. PASS V1 does not accept their entire requirement.",
+    "Class/function existence was checked against limited behavior, not interpreted as full target-platform implementation."
+  ],
+  "metadata_corrections": [
+    "P0-001 source refs now include exchange provisioning services.",
+    "P0-109 test refs include MultiAccountSelectionTest but all-26 selector coverage remains pending.",
+    "P0-125 test refs include CandidateLabValidationLifecycleTest and job source; durable linkage remains pending.",
+    "All Phase 0 test paths expanded to actual reviewed cases; no frozen criteria, obligations, watch paths, weights or history changed."
+  ]
+}

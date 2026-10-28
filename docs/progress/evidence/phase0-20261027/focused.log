@@ -1,0 +1,14 @@
+PHPUnit 12.5.39 by Sebastian Bergmann and contributors.
+
+Runtime:       PHP 8.5.12
+Configuration: /var/www/html/phpunit.xml
+
+...{"message":"Recovery: Terminalized upstream event bybit:BTCUSDT:15:2026-10-27T18:55:30+00:00:SIGNALS_EVALUATED to COMPLETED matching existing downstream PAPER_PROCESSED.","context":{},"level":200,"level_name":"INFO","channel":"testing","datetime":"2026-10-27T18:56:15.820806+00:00","extra":{}}
+.{"message":"ProcessPaperPipelineJob account provenance/executable check failed: ea36db8a-211c-4819-ac08-eae50ee6954e (invalid_strategy_never_configured): Binance PRIMARY account provenance is not verified.","context":{"account_id":"ea36db8a-211c-4819-ac08-eae50ee6954e","strategy_id":"invalid_strategy_never_configured","exception":"DomainException"},"level":300,"level_name":"WARNING","channel":"testing","datetime":"2026-10-27T18:56:15.894736+00:00","extra":{}}
+{"message":"ProcessPaperPipelineJob completed with individual account errors.","context":{"failed_count":1,"total_accounts":2,"eligible_accounts":2,"processed_accounts":1,"failures":[{"account_id":"ea36db8a-211c-4819-ac08-eae50ee6954e","error":"Binance PRIMARY account provenance is not verified."}]},"level":300,"level_name":"WARNING","channel":"testing","datetime":"2026-10-27T18:56:15.894918+00:00","extra":{}}
+..{"message":"executeExit: TP1 quantity rounded to zero for position 6dd8800b-3838-5f5a-a198-9f2a57cbd3a8 (initial: 0.001000000000, step: 0.001000000000). Skipping partial exit.","context":{},"level":300,"level_name":"WARNING","channel":"testing","datetime":"2026-10-27T18:56:15.992164+00:00","extra":{}}
+...........................                                 33 / 33 (100%)
+
+Time: 00:03.384, Memory: 24.00 MB
+
+[30;42mOK (33 tests, 1238 assertions)[0m

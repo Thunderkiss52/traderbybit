@@ -1,0 +1,161 @@
+{
+  "requirement_id": "VEC-P0-005",
+  "obligation_id": "VEC-P0-005-V1",
+  "acceptance_condition": "postgresql evidence demonstrates all atomic criteria for Binance execution approval configuration; include negative cases and limitations.",
+  "result": "PASS",
+  "why_this_proves_condition": "False approval, missing costs, foreign provenance, blocked and unfunded accounts reject; explicit valid local approval/costs permit guard evaluation. Existing active/history fixtures survive initialization; equity recalculation cannot activate accounts.",
+  "git_sha": "c8d51156b2c72b03f009d10e6a634ff80cff77ff",
+  "execution_started_at": "2026-10-27T18:56:59.001985+00:00",
+  "execution_finished_at": "2026-10-27T18:58:43.309903+00:00",
+  "command": [
+    "/home/thunder/.headroom/bin/rtk",
+    "proxy",
+    "docker",
+    "run",
+    "--rm",
+    "--label",
+    "io.traderbybit.task=phase0-evidence-20261027",
+    "--network",
+    "container:vector-phase0-20261027-pg",
+    "--user",
+    "1000:1000",
+    "--entrypoint",
+    "",
+    "-v",
+    "/tmp/vector-phase0-20261027:/var/www/html",
+    "-w",
+    "/var/www/html",
+    "-e",
+    "APP_ENV=testing",
+    "-e",
+    "APP_DEBUG=false",
+    "-e",
+    "APP_KEY=base64:MDEyMzQ1Njc4OWFiY2RlZjAxMjM0NTY3ODlhYmNkZWY=",
+    "-e",
+    "APP_URL=http://127.0.0.1:8000",
+    "-e",
+    "DB_CONNECTION=pgsql",
+    "-e",
+    "DB_HOST=127.0.0.1",
+    "-e",
+    "DB_PORT=5432",
+    "-e",
+    "DB_DATABASE=bybit_test",
+    "-e",
+    "DB_USERNAME=postgres",
+    "-e",
+    "DB_PASSWORD=testpass",
+    "-e",
+    "DB_URL=",
+    "-e",
+    "TEST_DB_HOST=127.0.0.1",
+    "-e",
+    "TEST_DB_PORT=5432",
+    "-e",
+    "TEST_DB_DATABASE=bybit_test",
+    "-e",
+    "TEST_DB_USERNAME=postgres",
+    "-e",
+    "TEST_DB_PASSWORD=testpass",
+    "-e",
+    "CACHE_STORE=array",
+    "-e",
+    "SESSION_DRIVER=array",
+    "-e",
+    "QUEUE_CONNECTION=sync",
+    "-e",
+    "REDIS_HOST=127.0.0.1",
+    "-e",
+    "REDIS_PORT=6379",
+    "-e",
+    "REDIS_PASSWORD=null",
+    "-e",
+    "LOG_CHANNEL=stderr",
+    "-e",
+    "GOCACHE=/tmp/go-cache",
+    "-e",
+    "GOPATH=/tmp/go",
+    "-e",
+    "RUN_BYBIT_INTEGRATION=0",
+    "-e",
+    "TZ=UTC",
+    "traderbybit-php85-test:local",
+    "php",
+    "vendor/bin/phpunit",
+    "--no-coverage",
+    "--do-not-cache-result",
+    "--log-junit",
+    "phase0-full.xml",
+    "--display-skipped"
+  ],
+  "environment": "isolated_postgresql",
+  "environment_details": "PHP 8.5.12; PostgreSQL 17.11; Redis 7.4; UTC; task-owned network namespace with no external network or published ports; synthetic fixtures only.",
+  "fixture": "Fixtures and setup at the exact test source paths/lines below, unchanged from source SHA; no production dataset.",
+  "tests": [
+    {
+      "test": "Tests\\Unit\\Exchanges\\BinancePaperSafetyTest::test_explicit_cost_and_activation_evidence_are_required",
+      "source": "tests/Unit/Exchanges/BinancePaperSafetyTest.php",
+      "line": 14,
+      "assertions": 4,
+      "result": "PASS"
+    },
+    {
+      "test": "Tests\\Unit\\Exchanges\\BinancePaperSafetyTest::test_bybit_or_nonprimary_account_must_never_execute_on_binance",
+      "source": "tests/Unit/Exchanges/BinancePaperSafetyTest.php",
+      "line": 37,
+      "assertions": 2,
+      "result": "PASS"
+    },
+    {
+      "test": "Tests\\Feature\\PaperTrading\\StrategyPipelineFunnelVerificationTest::test_binance_directional_signals_blocked_at_prerisk_when_execution_unapproved",
+      "source": "tests/Feature/PaperTrading/StrategyPipelineFunnelVerificationTest.php",
+      "line": 464,
+      "assertions": 7,
+      "result": "PASS"
+    },
+    {
+      "test": "Tests\\Feature\\Exchanges\\BinanceDeploymentInitializationTest::test_deployment_initialization_is_idempotent_after_binance_activation_and_trading_history",
+      "source": "tests/Feature/Exchanges/BinanceDeploymentInitializationTest.php",
+      "line": 178,
+      "assertions": 13,
+      "result": "PASS"
+    },
+    {
+      "test": "Tests\\Feature\\Exchanges\\BinancePaperIsolationTest::test_funded_binance_account_cannot_be_activated_by_an_equity_recalculation",
+      "source": "tests/Feature/Exchanges/BinancePaperIsolationTest.php",
+      "line": 60,
+      "assertions": 3,
+      "result": "PASS"
+    }
+  ],
+  "skipped_applicable_tests": [],
+  "suite_skips": [
+    "Tests\\Integration\\BybitPublicApiIntegrationTest::test_public_linear_market_endpoints_match_the_documented_contract (opt-in public network test; not evidence for this obligation)"
+  ],
+  "logs": [
+    {
+      "path": "docs/progress/evidence/phase0-20261027/full.xml",
+      "sha256": "e1445538dac252c3af57575ff401ed9469666f2eeb9ebb6fcbe8ff7b0dc2a5b3"
+    },
+    {
+      "path": "docs/progress/evidence/phase0-20261027/full-backend.log",
+      "sha256": "2b0899719c72178242faa402f3333e69dbaf6e95d2c7807ebe95b87884dabf71"
+    },
+    {
+      "path": "docs/progress/evidence/phase0-20261027/postgres-identity.log",
+      "sha256": "1f5f5435b82504754fe5903ba9aed83606befe98bc93a9fbf29c89975f61eb50"
+    },
+    {
+      "path": "docs/progress/evidence/phase0-20261027/database-guard.log",
+      "sha256": "8e8f4badfca2e509f50869ea451643912db2a4ef536223b70fd16bc0c649e630"
+    }
+  ],
+  "test_source_hashes": {
+    "tests/Feature/Exchanges/BinanceDeploymentInitializationTest.php": "a4d48b54260b65d4b6e61afcb1dba38ecc61a8ac27df76a8539a4227648f69d6",
+    "tests/Feature/Exchanges/BinancePaperIsolationTest.php": "09a5c78f24d9b5b04b3f2fb44211f1030dda10e05e72440b5c4175578aa93ab3",
+    "tests/Feature/PaperTrading/StrategyPipelineFunnelVerificationTest.php": "8ced92461da07c0d53a7d8dbf5afe3aebba005a0a1a5f29469cb3b66a2faee07",
+    "tests/Unit/Exchanges/BinancePaperSafetyTest.php": "ac0ed598681a2387c5b1b6ab96f360541ee05bb13ed148014f12f910979b8fe7"
+  },
+  "reviewer": "Codex requirement-specific QA review",
+  "limitations": "Local synthetic verification only. No production/browser acceptance, market profitability, current deployed configuration or complete feature certification. Real concurrent candle races are distinct from sequential PAPER duplicate simulations."
+}

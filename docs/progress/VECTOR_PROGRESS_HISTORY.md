@@ -5,6 +5,7 @@ Scope baseline: `VECTOR-SCOPE-20261027-v1` (proposed weights). No comparable pri
 | Snapshot | Source assessment HEAD | Implementation | Verification | Product | Comparison |
 |---|---|---:|---:|---:|---|
 | [Initial, 2026-10-27](history/initial.json) | `d9a0aeb5d14233fc95e9e5cc55d8748814362f59` | 42.2882% | 0.0000% | 0.0000% | NO_COMPARABLE_SNAPSHOT |
+| [Phase 0 evidence, 2026-10-27](history/phase0-evidence-20261027.json) | `c8d51156b2c72b03f009d10e6a634ff80cff77ff` | 42.2882% | 4.1270% | 0.0000% | Same scope; verification +4.1270 points |
 
 97 requirements: 45/8/10/11/10/8/5 in Phases 0–6. F01–F27 and I01–I09 are individual assurance rows, excluded from duplicate runtime implementation credit. Phase 6 is documentation only and excluded from runtime A.
 
@@ -21,3 +22,9 @@ The committed remediation report's section 10 records F09/F25 local completion a
 Never overwrite existing snapshots. After an authorized stage, append a uniquely named JSON report under `history/`, link it here and record source/registry hashes, scope ID, actual scores, delivery delta or SCOPE_CHANGED, changed requirement IDs and blockers. Compare with `python3 scripts/vector_progress.py --compare <prior-snapshot>`. Scope changes require an approved new baseline and preserve old denominators. Code/evidence invalidation may lower scores; record its reason rather than hiding the decrease.
 
 This first snapshot measures platform requirements only. The completion tracker itself is not added to the product denominator, so its implementation cannot inflate the platform score.
+
+## Phase 0 evidence packet finalized after session recovery
+
+The continuation inherited the staged 2026-10-27 packet at `c8d51156b2c72b03f009d10e6a634ff80cff77ff`. It verified retained command hashes, JUnit identities, source fingerprints and unchanged scope before reusing the executed suites. The existing immutable snapshot above was preserved; recovery adds no verification credit and does not duplicate that snapshot.
+
+All 45 Phase 0 requirements are mapped, including F01–F27 and I01–I09. Eighteen local obligations pass; one performance obligation fails; 80 remain unavailable. Production acceptance and Phase 1 remain blocked. The [closure report](PHASE0_EVIDENCE_CLOSURE_20261027.md) and [matrix](evidence/phase0-20261027/MATRIX.md) distinguish missing local assertions from operator evidence and give the remaining procedures. This records evidence review completion, not completion of all local coverage or Phase 0 acceptance.

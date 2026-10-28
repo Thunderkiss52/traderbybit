@@ -1,0 +1,3798 @@
+[
+  {
+    "requirement_id": "VEC-P0-001",
+    "title": "26 independent PAPER account topology",
+    "local_obligation": "VEC-P0-001-V1",
+    "local_status": "PASS",
+    "tests": [
+      {
+        "test": "Tests\\Feature\\PaperTrading\\StrategyPipelineFunnelVerificationTest::test_all_26_primary_pipelines_are_registered_and_configured",
+        "source": "tests/Feature/PaperTrading/StrategyPipelineFunnelVerificationTest.php",
+        "line": 47,
+        "assertions": 30,
+        "result": "PASS"
+      },
+      {
+        "test": "Tests\\Feature\\Exchanges\\BinanceDeploymentInitializationTest::test_binance_deployment_initializer_is_idempotent_and_preserves_bybit_history",
+        "source": "tests/Feature/Exchanges/BinanceDeploymentInitializationTest.php",
+        "line": 25,
+        "assertions": 69,
+        "result": "PASS"
+      },
+      {
+        "test": "Tests\\Feature\\Exchanges\\BinanceDeploymentInitializationTest::test_deployment_initialization_is_idempotent_after_binance_activation_and_trading_history",
+        "source": "tests/Feature/Exchanges/BinanceDeploymentInitializationTest.php",
+        "line": 178,
+        "assertions": 13,
+        "result": "PASS"
+      },
+      {
+        "test": "Tests\\Feature\\Exchanges\\BinanceDeploymentInitializationTest::test_deployment_initializer_succeeds_with_historical_bybit_strategy_namespaced_account_ids",
+        "source": "tests/Feature/Exchanges/BinanceDeploymentInitializationTest.php",
+        "line": 301,
+        "assertions": 6,
+        "result": "PASS"
+      },
+      {
+        "test": "Tests\\Feature\\Exchanges\\BinancePaperIsolationTest::test_all_twenty_six_accounts_are_isolated_and_owner_allocation_cannot_change_bybit",
+        "source": "tests/Feature/Exchanges/BinancePaperIsolationTest.php",
+        "line": 28,
+        "assertions": 75,
+        "result": "PASS"
+      },
+      {
+        "test": "Tests\\Feature\\Exchanges\\BinancePaperIsolationTest::test_funded_binance_account_cannot_be_activated_by_an_equity_recalculation",
+        "source": "tests/Feature/Exchanges/BinancePaperIsolationTest.php",
+        "line": 60,
+        "assertions": 3,
+        "result": "PASS"
+      },
+      {
+        "test": "Tests\\Feature\\Exchanges\\BinancePaperIsolationTest::test_m9_rejects_primary_accounts_with_unknown_exchange_even_if_all_26_pairs_exist",
+        "source": "tests/Feature/Exchanges/BinancePaperIsolationTest.php",
+        "line": 80,
+        "assertions": 5,
+        "result": "PASS"
+      },
+      {
+        "test": "Tests\\Feature\\Exchanges\\BinancePaperIsolationTest::test_m9_rejects_foreign_capital_events_on_an_otherwise_valid_binance_account",
+        "source": "tests/Feature/Exchanges/BinancePaperIsolationTest.php",
+        "line": 101,
+        "assertions": 3,
+        "result": "PASS"
+      },
+      {
+        "test": "Tests\\Feature\\Exchanges\\BinancePaperIsolationTest::test_m9_rejects_capital_events_even_on_zero_balance_binance_accounts",
+        "source": "tests/Feature/Exchanges/BinancePaperIsolationTest.php",
+        "line": 124,
+        "assertions": 2,
+        "result": "PASS"
+      },
+      {
+        "test": "Tests\\Feature\\Exchanges\\BinancePaperIsolationTest::test_m9_reconciles_execution_quantity_and_gross_pnl_against_position",
+        "source": "tests/Feature/Exchanges/BinancePaperIsolationTest.php",
+        "line": 144,
+        "assertions": 13,
+        "result": "PASS"
+      },
+      {
+        "test": "Tests\\Feature\\Exchanges\\BinancePaperIsolationTest::test_missing_accounts_must_make_m9_reconciliation_fail",
+        "source": "tests/Feature/Exchanges/BinancePaperIsolationTest.php",
+        "line": 236,
+        "assertions": 4,
+        "result": "PASS"
+      },
+      {
+        "test": "Tests\\Feature\\Exchanges\\BinancePaperIsolationTest::test_provisioner_accepts_historical_strategy_namespaced_bybit_account_ids",
+        "source": "tests/Feature/Exchanges/BinancePaperIsolationTest.php",
+        "line": 246,
+        "assertions": 2,
+        "result": "PASS"
+      },
+      {
+        "test": "Tests\\Feature\\PaperTrading\\AllThirteenStrategiesExecutionTest::test_isolation_between_bybit_and_binance_is_strictly_enforced_for_all_strategies",
+        "source": "tests/Feature/PaperTrading/AllThirteenStrategiesExecutionTest.php",
+        "line": 272,
+        "assertions": 7,
+        "result": "PASS"
+      }
+    ],
+    "rationale": "Fresh synthetic census is exactly 13+13; initialization/repeat preserves seeded Bybit and active Binance history; foreign exchange and missing-account controls fail; all strategy pairs remain isolated.",
+    "next_local_procedure": "No additional local test needed for this obligation. Q1 must independently establish the real 26-account census and history continuity.",
+    "production_status": "UNAVAILABLE",
+    "operator_action_required": true,
+    "runtime_code_change_required": "Not established; verify first",
+    "test_change_required": false,
+    "source_references": [
+      "config/paper.php",
+      "app/PaperTrading/Application/PaperAccountService.php",
+      "app/Exchanges/Binance/BinanceDeploymentInitializer.php"
+    ],
+    "acceptance_criteria": [
+      {
+        "id": "VEC-P0-001-A1",
+        "description": "Demonstrate current census of 26 isolated accounts with preserved histories; end-to-end demonstration and explicit acceptance against all obligations."
+      }
+    ],
+    "obligations": [
+      {
+        "id": "VEC-P0-001-V1",
+        "description": "postgresql evidence demonstrates all atomic criteria for 26 independent PAPER account topology; include negative cases and limitations.",
+        "environment": "isolated_postgresql",
+        "status": "PASS"
+      },
+      {
+        "id": "VEC-P0-001-V2",
+        "description": "operational evidence demonstrates all atomic criteria for 26 independent PAPER account topology; include negative cases and limitations.",
+        "environment": "production",
+        "status": "UNAVAILABLE"
+      }
+    ],
+    "production_procedure": "Q1: require exactly the 13 canonical IDs on each exchange, unique qualified account IDs, preserved statuses and before/after historical record hashes. Q2/Q3 trace BUY/SELL/SKIP, entries and exits per account; zero activity is not automatically a defect."
+  },
+  {
+    "requirement_id": "VEC-P0-002",
+    "title": "PAPER pipeline terminalization and recovery",
+    "local_obligation": "VEC-P0-002-V1",
+    "local_status": "UNAVAILABLE",
+    "tests": [
+      {
+        "test": "Tests\\Feature\\Trading\\TradingPipelineStageATest::test_record_paper_processed_terminalizes_signals_evaluated_to_completed",
+        "source": "tests/Feature/Trading/TradingPipelineStageATest.php",
+        "line": 26,
+        "assertions": 4,
+        "result": "PASS"
+      },
+      {
+        "test": "Tests\\Feature\\Trading\\TradingPipelineStageATest::test_record_paper_processed_terminalizes_5m_candle_closed_to_completed",
+        "source": "tests/Feature/Trading/TradingPipelineStageATest.php",
+        "line": 48,
+        "assertions": 4,
+        "result": "PASS"
+      },
+      {
+        "test": "Tests\\Feature\\Trading\\TradingPipelineStageATest::test_record_paper_processed_marks_partial_on_failures",
+        "source": "tests/Feature/Trading/TradingPipelineStageATest.php",
+        "line": 70,
+        "assertions": 3,
+        "result": "PASS"
+      },
+      {
+        "test": "Tests\\Feature\\Trading\\TradingPipelineStageATest::test_recovery_reconciles_unacknowledged_upstream_event_from_completed_paper",
+        "source": "tests/Feature/Trading/TradingPipelineStageATest.php",
+        "line": 92,
+        "assertions": 4,
+        "result": "PASS"
+      },
+      {
+        "test": "Tests\\Feature\\Trading\\TradingPipelineStageATest::test_binance_provenance_failure_on_one_account_does_not_abort_others",
+        "source": "tests/Feature/Trading/TradingPipelineStageATest.php",
+        "line": 126,
+        "assertions": 4,
+        "result": "PASS"
+      },
+      {
+        "test": "Tests\\Feature\\Trading\\TradingPipelineStageATest::test_process_paper_pipeline_job_supports_targeted_retry_with_only_account_ids",
+        "source": "tests/Feature/Trading/TradingPipelineStageATest.php",
+        "line": 177,
+        "assertions": 4,
+        "result": "PASS"
+      },
+      {
+        "test": "Tests\\Feature\\Trading\\TradingPipelineEventContractTest::test_record_candle_closed_dispatches_to_isolated_bybit_queue",
+        "source": "tests/Feature/Trading/TradingPipelineEventContractTest.php",
+        "line": 20,
+        "assertions": 7,
+        "result": "PASS"
+      },
+      {
+        "test": "Tests\\Feature\\Trading\\TradingPipelineEventContractTest::test_record_candle_closed_dispatches_to_isolated_binance_queue",
+        "source": "tests/Feature/Trading/TradingPipelineEventContractTest.php",
+        "line": 40,
+        "assertions": 7,
+        "result": "PASS"
+      },
+      {
+        "test": "Tests\\Feature\\Trading\\TradingPipelineEventContractTest::test_duplicate_candle_closure_is_strictly_idempotent",
+        "source": "tests/Feature/Trading/TradingPipelineEventContractTest.php",
+        "line": 60,
+        "assertions": 5,
+        "result": "PASS"
+      },
+      {
+        "test": "Tests\\Feature\\Trading\\TradingPipelineEventContractTest::test_scheduled_mode_suppresses_queue_dispatch_and_keeps_event_pending",
+        "source": "tests/Feature/Trading/TradingPipelineEventContractTest.php",
+        "line": 80,
+        "assertions": 3,
+        "result": "PASS"
+      },
+      {
+        "test": "Tests\\Feature\\Trading\\TradingPipelineEventContractTest::test_stale_candle_closure_is_rejected_and_marked_stale",
+        "source": "tests/Feature/Trading/TradingPipelineEventContractTest.php",
+        "line": 96,
+        "assertions": 3,
+        "result": "PASS"
+      },
+      {
+        "test": "Tests\\Feature\\Trading\\TradingPipelineEventContractTest::test_signals_evaluated_dispatches_paper_trading_on_isolated_queue",
+        "source": "tests/Feature/Trading/TradingPipelineEventContractTest.php",
+        "line": 122,
+        "assertions": 1,
+        "result": "PASS"
+      },
+      {
+        "test": "Tests\\Feature\\Trading\\TradingPipelineRecoveryAndRollbackTest::test_recovery_redispatches_fresh_uncompleted_events",
+        "source": "tests/Feature/Trading/TradingPipelineRecoveryAndRollbackTest.php",
+        "line": 23,
+        "assertions": 4,
+        "result": "PASS"
+      },
+      {
+        "test": "Tests\\Feature\\Trading\\TradingPipelineRecoveryAndRollbackTest::test_recovery_marks_expired_events_as_stale_without_dispatching",
+        "source": "tests/Feature/Trading/TradingPipelineRecoveryAndRollbackTest.php",
+        "line": 48,
+        "assertions": 6,
+        "result": "PASS"
+      },
+      {
+        "test": "Tests\\Feature\\Trading\\TradingPipelineRecoveryAndRollbackTest::test_scheduled_job_skips_when_event_driven_pipeline_already_serviced_decision",
+        "source": "tests/Feature/Trading/TradingPipelineRecoveryAndRollbackTest.php",
+        "line": 79,
+        "assertions": 2,
+        "result": "PASS"
+      },
+      {
+        "test": "Tests\\Feature\\Trading\\TradingPipelineRecoveryAndRollbackTest::test_feature_flag_rollback_switches_cleanly_without_duplicate_writers",
+        "source": "tests/Feature/Trading/TradingPipelineRecoveryAndRollbackTest.php",
+        "line": 104,
+        "assertions": 6,
+        "result": "PASS"
+      },
+      {
+        "test": "Tests\\Feature\\Trading\\EventDrivenTradingPipelineChainTest::test_bybit_complete_candle_to_signal_to_paper_event_chain",
+        "source": "tests/Feature/Trading/EventDrivenTradingPipelineChainTest.php",
+        "line": 51,
+        "assertions": 13,
+        "result": "PASS"
+      },
+      {
+        "test": "Tests\\Feature\\Trading\\EventDrivenTradingPipelineChainTest::test_binance_complete_candle_to_signal_to_paper_event_chain",
+        "source": "tests/Feature/Trading/EventDrivenTradingPipelineChainTest.php",
+        "line": 158,
+        "assertions": 14,
+        "result": "PASS"
+      },
+      {
+        "test": "Tests\\Feature\\Trading\\TradingPipelineConcurrencyAndSafetyTest::test_concurrent_workers_processing_same_event_are_fenced_and_idempotent",
+        "source": "tests/Feature/Trading/TradingPipelineConcurrencyAndSafetyTest.php",
+        "line": 49,
+        "assertions": 3,
+        "result": "PASS"
+      },
+      {
+        "test": "Tests\\Feature\\Trading\\TradingPipelineConcurrencyAndSafetyTest::test_duplicate_paper_jobs_do_not_produce_duplicate_positions_or_financial_writes",
+        "source": "tests/Feature/Trading/TradingPipelineConcurrencyAndSafetyTest.php",
+        "line": 71,
+        "assertions": 2,
+        "result": "PASS"
+      },
+      {
+        "test": "Tests\\Feature\\Trading\\TradingPipelineConcurrencyAndSafetyTest::test_temporal_causality_guards_prevent_retroactive_fills",
+        "source": "tests/Feature/Trading/TradingPipelineConcurrencyAndSafetyTest.php",
+        "line": 161,
+        "assertions": 1,
+        "result": "PASS"
+      },
+      {
+        "test": "Tests\\Feature\\Trading\\TradingPipelineConcurrencyAndSafetyTest::test_existing_open_positions_continue_lifecycle_even_when_new_entries_are_blocked",
+        "source": "tests/Feature/Trading/TradingPipelineConcurrencyAndSafetyTest.php",
+        "line": 232,
+        "assertions": 3,
+        "result": "PASS"
+      },
+      {
+        "test": "Tests\\Feature\\Trading\\TradingPipelineConcurrencyAndSafetyTest::test_paper_execution_ownership_preserves_ledger_integrity_and_reconciliation",
+        "source": "tests/Feature/Trading/TradingPipelineConcurrencyAndSafetyTest.php",
+        "line": 326,
+        "assertions": 2,
+        "result": "PASS"
+      }
+    ],
+    "rationale": "Completion, PARTIAL, stale recovery and targeted selection pass; no assertion directly exercises all-accounts-failed -> FAILED or recovery retry of failed accounts after a mixed batch without repeating successes. The frozen obligation says every transition.",
+    "next_local_procedure": "Add an isolated PostgreSQL test with two accounts, one failure then targeted recovery; assert the successful account ledger is byte-identical and the failed account executes once. Add all-failed -> FAILED and upstream terminal-state assertions; rerun tests/Feature/Trading.",
+    "production_status": "UNAVAILABLE",
+    "operator_action_required": true,
+    "runtime_code_change_required": "Not established; verify first",
+    "test_change_required": true,
+    "source_references": [
+      "app/Trading/Application/TradingPipelineEventService.php"
+    ],
+    "acceptance_criteria": [
+      {
+        "id": "VEC-P0-002-A1",
+        "description": "Verify every upstream transition and failed-account retry against the accepted I01/I04/I06/I09 contract; end-to-end demonstration and explicit acceptance against all obligations."
+      }
+    ],
+    "obligations": [
+      {
+        "id": "VEC-P0-002-V1",
+        "description": "postgresql evidence demonstrates all atomic criteria for PAPER pipeline terminalization and recovery; include negative cases and limitations.",
+        "environment": "isolated_postgresql",
+        "status": "UNAVAILABLE"
+      },
+      {
+        "id": "VEC-P0-002-V2",
+        "description": "operational evidence demonstrates all atomic criteria for PAPER pipeline terminalization and recovery; include negative cases and limitations.",
+        "environment": "production",
+        "status": "UNAVAILABLE"
+      }
+    ],
+    "production_procedure": "Q4: correlate all SIGNALS_EVALUATED and 5m CANDLE_CLOSED parents with PAPER_PROCESSED by exchange/symbol/close time. Read existing worker logs for stale/partial batches and targeted retries; require no false completion or repeated successful-account fills."
+  },
+  {
+    "requirement_id": "VEC-P0-003",
+    "title": "Financial ledger and funding completeness",
+    "local_obligation": "VEC-P0-003-V1",
+    "local_status": "UNAVAILABLE",
+    "tests": [
+      {
+        "test": "Tests\\Feature\\PaperTrading\\PositionLifecycleStageBTest::test_tp1_zero_quantity_is_safely_skipped_without_creating_execution",
+        "source": "tests/Feature/PaperTrading/PositionLifecycleStageBTest.php",
+        "line": 28,
+        "assertions": 12,
+        "result": "PASS"
+      },
+      {
+        "test": "Tests\\Feature\\PaperTrading\\PositionLifecycleStageBTest::test_standard_tp1_and_tp2_execute_correct_fractions_and_preserve_identities",
+        "source": "tests/Feature/PaperTrading/PositionLifecycleStageBTest.php",
+        "line": 76,
+        "assertions": 5,
+        "result": "PASS"
+      },
+      {
+        "test": "Tests\\Feature\\PaperTrading\\PositionLifecycleStageBTest::test_late_arriving_funding_settles_on_closed_position_with_correct_historical_quantity",
+        "source": "tests/Feature/PaperTrading/PositionLifecycleStageBTest.php",
+        "line": 113,
+        "assertions": 14,
+        "result": "PASS"
+      },
+      {
+        "test": "Tests\\Feature\\PaperTrading\\PositionLifecycleStageBTest::test_funding_completeness_evaluates_correctly_for_zero_settlement_lifetime",
+        "source": "tests/Feature/PaperTrading/PositionLifecycleStageBTest.php",
+        "line": 193,
+        "assertions": 2,
+        "result": "PASS"
+      },
+      {
+        "test": "Tests\\Feature\\PaperTrading\\FundingScheduleSafetyTest::test_expected_funding_boundaries_returns_null_when_exchange_or_symbol_is_uncertified",
+        "source": "tests/Feature/PaperTrading/FundingScheduleSafetyTest.php",
+        "line": 57,
+        "assertions": 2,
+        "result": "PASS"
+      },
+      {
+        "test": "Tests\\Feature\\PaperTrading\\FundingScheduleSafetyTest::test_expected_funding_boundaries_resolves_standard_eight_hour_schedule",
+        "source": "tests/Feature/PaperTrading/FundingScheduleSafetyTest.php",
+        "line": 70,
+        "assertions": 4,
+        "result": "PASS"
+      },
+      {
+        "test": "Tests\\Feature\\PaperTrading\\FundingScheduleSafetyTest::test_expected_funding_boundaries_resolves_dynamic_four_hour_schedule_from_continuous_events",
+        "source": "tests/Feature/PaperTrading/FundingScheduleSafetyTest.php",
+        "line": 83,
+        "assertions": 4,
+        "result": "PASS"
+      },
+      {
+        "test": "Tests\\Feature\\PaperTrading\\FundingScheduleSafetyTest::test_evaluate_funding_completeness_fails_closed_when_schedule_is_uncertified",
+        "source": "tests/Feature/PaperTrading/FundingScheduleSafetyTest.php",
+        "line": 116,
+        "assertions": 2,
+        "result": "PASS"
+      },
+      {
+        "test": "Tests\\Feature\\PaperTrading\\FundingScheduleSafetyTest::test_evaluate_funding_completeness_rejects_arbitrary_thirty_minute_offset",
+        "source": "tests/Feature/PaperTrading/FundingScheduleSafetyTest.php",
+        "line": 171,
+        "assertions": 2,
+        "result": "PASS"
+      },
+      {
+        "test": "Tests\\Integration\\LedgerReconciliationPostgresIntegrationTest::test_reconcile_all_primary_accounts_in_postgresql_succeeds_without_sql_error",
+        "source": "tests/Integration/LedgerReconciliationPostgresIntegrationTest.php",
+        "line": 72,
+        "assertions": 48,
+        "result": "PASS"
+      },
+      {
+        "test": "Tests\\Integration\\LedgerReconciliationPostgresIntegrationTest::test_postgresql_financial_reconciliation_with_partial_and_full_exits_and_funding",
+        "source": "tests/Integration/LedgerReconciliationPostgresIntegrationTest.php",
+        "line": 101,
+        "assertions": 7,
+        "result": "PASS"
+      },
+      {
+        "test": "Tests\\Integration\\LedgerReconciliationPostgresIntegrationTest::test_postgresql_reconciliation_detects_balance_discrepancy",
+        "source": "tests/Integration/LedgerReconciliationPostgresIntegrationTest.php",
+        "line": 288,
+        "assertions": 5,
+        "result": "PASS"
+      },
+      {
+        "test": "Tests\\Integration\\FinancialAccountingAndReconciliationPostgresIntegrationTest::test_golden_positions_lifecycle_accounting_identities",
+        "source": "tests/Integration/FinancialAccountingAndReconciliationPostgresIntegrationTest.php",
+        "line": 75,
+        "assertions": 34,
+        "result": "PASS"
+      },
+      {
+        "test": "Tests\\Integration\\FinancialAccountingAndReconciliationPostgresIntegrationTest::test_window_reconciliation_detects_boundary_fills_and_matches_fee_gap",
+        "source": "tests/Integration/FinancialAccountingAndReconciliationPostgresIntegrationTest.php",
+        "line": 114,
+        "assertions": 7,
+        "result": "PASS"
+      },
+      {
+        "test": "Tests\\Integration\\FinancialAccountingAndReconciliationPostgresIntegrationTest::test_negative_control_inverted_funding_sign_fails_reconciliation",
+        "source": "tests/Integration/FinancialAccountingAndReconciliationPostgresIntegrationTest.php",
+        "line": 247,
+        "assertions": 4,
+        "result": "PASS"
+      }
+    ],
+    "rationale": "Exact synthetic fee/funding identities and negative controls pass. The atomic criterion also asks for reconciliation of the current account population, unavailable here.",
+    "next_local_procedure": "Retain the named fixture results; obtain Q1/Q3 plus certified historical schedules and independently recalculate the current population, including all five previously reported late-funding candidates. No repair command.",
+    "production_status": "UNAVAILABLE",
+    "operator_action_required": true,
+    "runtime_code_change_required": "Not established; verify first",
+    "test_change_required": false,
+    "source_references": [
+      "app/PaperTrading/Application/PositionLifecycleService.php"
+    ],
+    "acceptance_criteria": [
+      {
+        "id": "VEC-P0-003-A1",
+        "description": "Reconcile exact held quantities, late funding, fees and balances for the current account population; end-to-end demonstration and explicit acceptance against all obligations."
+      }
+    ],
+    "obligations": [
+      {
+        "id": "VEC-P0-003-V1",
+        "description": "postgresql evidence demonstrates all atomic criteria for Financial ledger and funding completeness; include negative cases and limitations.",
+        "environment": "isolated_postgresql",
+        "status": "UNAVAILABLE"
+      },
+      {
+        "id": "VEC-P0-003-V2",
+        "description": "operational evidence demonstrates all atomic criteria for Financial ledger and funding completeness; include negative cases and limitations.",
+        "environment": "production",
+        "status": "UNAVAILABLE"
+      }
+    ],
+    "production_procedure": "Q1/Q3: independently reconcile exact decimal execution gross PnL, commissions, signed settlements and account journals. Obtain certified historical exchange/symbol funding schedules, held quantities at every boundary and actual marks/rates for the five reported late cases. Missing data remains incomplete; repairs need separate authorization."
+  },
+  {
+    "requirement_id": "VEC-P0-004",
+    "title": "Risk gates and account isolation",
+    "local_obligation": "VEC-P0-004-V1",
+    "local_status": "UNAVAILABLE",
+    "tests": [
+      {
+        "test": "Tests\\Unit\\PaperTrading\\RiskAndSizingTest::test_position_size_includes_fees_slippage_and_rounds_down_to_qty_step",
+        "source": "tests/Unit/PaperTrading/RiskAndSizingTest.php",
+        "line": 17,
+        "assertions": 4,
+        "result": "PASS"
+      },
+      {
+        "test": "Tests\\Unit\\PaperTrading\\RiskAndSizingTest::test_position_size_rejects_minimum_notional_and_exposure_limit",
+        "source": "tests/Unit/PaperTrading/RiskAndSizingTest.php",
+        "line": 27,
+        "assertions": 2,
+        "result": "PASS"
+      },
+      {
+        "test": "Tests\\Unit\\PaperTrading\\RiskAndSizingTest::test_risk_engine_rejects_portfolio_guards with data set \"zero risk\"",
+        "source": "tests/Unit/PaperTrading/RiskAndSizingTest.php",
+        "line": 38,
+        "assertions": 1,
+        "result": "PASS"
+      },
+      {
+        "test": "Tests\\Unit\\PaperTrading\\RiskAndSizingTest::test_risk_engine_rejects_portfolio_guards with data set \"negative risk\"",
+        "source": "tests/Unit/PaperTrading/RiskAndSizingTest.php",
+        "line": 38,
+        "assertions": 1,
+        "result": "PASS"
+      },
+      {
+        "test": "Tests\\Unit\\PaperTrading\\RiskAndSizingTest::test_risk_engine_rejects_portfolio_guards with data set \"maximum positions\"",
+        "source": "tests/Unit/PaperTrading/RiskAndSizingTest.php",
+        "line": 38,
+        "assertions": 1,
+        "result": "PASS"
+      },
+      {
+        "test": "Tests\\Unit\\PaperTrading\\RiskAndSizingTest::test_risk_engine_rejects_portfolio_guards with data set \"portfolio risk\"",
+        "source": "tests/Unit/PaperTrading/RiskAndSizingTest.php",
+        "line": 38,
+        "assertions": 1,
+        "result": "PASS"
+      },
+      {
+        "test": "Tests\\Unit\\PaperTrading\\RiskAndSizingTest::test_risk_engine_rejects_portfolio_guards with data set \"correlation\"",
+        "source": "tests/Unit/PaperTrading/RiskAndSizingTest.php",
+        "line": 38,
+        "assertions": 1,
+        "result": "PASS"
+      },
+      {
+        "test": "Tests\\Unit\\PaperTrading\\RiskAndSizingTest::test_risk_engine_rejects_portfolio_guards with data set \"missing correlation\"",
+        "source": "tests/Unit/PaperTrading/RiskAndSizingTest.php",
+        "line": 38,
+        "assertions": 1,
+        "result": "PASS"
+      },
+      {
+        "test": "Tests\\Unit\\PaperTrading\\RiskAndSizingTest::test_risk_engine_rejects_portfolio_guards with data set \"drawdown block\"",
+        "source": "tests/Unit/PaperTrading/RiskAndSizingTest.php",
+        "line": 38,
+        "assertions": 1,
+        "result": "PASS"
+      },
+      {
+        "test": "Tests\\Unit\\PaperTrading\\RiskAndSizingTest::test_risk_engine_rejects_portfolio_guards with data set \"drawdown halt\"",
+        "source": "tests/Unit/PaperTrading/RiskAndSizingTest.php",
+        "line": 38,
+        "assertions": 1,
+        "result": "PASS"
+      },
+      {
+        "test": "Tests\\Unit\\PaperTrading\\RiskAndSizingTest::test_risk_engine_rejects_portfolio_guards with data set \"cooldown\"",
+        "source": "tests/Unit/PaperTrading/RiskAndSizingTest.php",
+        "line": 38,
+        "assertions": 1,
+        "result": "PASS"
+      },
+      {
+        "test": "Tests\\Unit\\PaperTrading\\RiskAndSizingTest::test_risk_engine_rejects_portfolio_guards with data set \"market safety\"",
+        "source": "tests/Unit/PaperTrading/RiskAndSizingTest.php",
+        "line": 38,
+        "assertions": 1,
+        "result": "PASS"
+      },
+      {
+        "test": "Tests\\Unit\\PaperTrading\\RiskAndSizingTest::test_pearson_correlation_is_deterministic",
+        "source": "tests/Unit/PaperTrading/RiskAndSizingTest.php",
+        "line": 60,
+        "assertions": 3,
+        "result": "PASS"
+      },
+      {
+        "test": "Tests\\Feature\\PaperTrading\\AccountSafetyRegressionTest::test_resume_keeps_hard_drawdown_limits_and_cannot_override_cooldown",
+        "source": "tests/Feature/PaperTrading/AccountSafetyRegressionTest.php",
+        "line": 17,
+        "assertions": 3,
+        "result": "PASS"
+      },
+      {
+        "test": "Tests\\Feature\\PaperTrading\\AccountSafetyRegressionTest::test_forward_accounts_are_version_and_configuration_isolated_without_resetting_history",
+        "source": "tests/Feature/PaperTrading/AccountSafetyRegressionTest.php",
+        "line": 32,
+        "assertions": 5,
+        "result": "PASS"
+      },
+      {
+        "test": "Tests\\Feature\\PaperTrading\\AccountSafetyRegressionTest::test_drawdown_metrics_include_starting_equity",
+        "source": "tests/Feature/PaperTrading/AccountSafetyRegressionTest.php",
+        "line": 51,
+        "assertions": 4,
+        "result": "PASS"
+      },
+      {
+        "test": "Tests\\Feature\\PaperTrading\\PaperLifecycleTest::test_automatic_forward_paper_does_not_replay_signals_before_account_creation",
+        "source": "tests/Feature/PaperTrading/PaperLifecycleTest.php",
+        "line": 32,
+        "assertions": 2,
+        "result": "PASS"
+      },
+      {
+        "test": "Tests\\Feature\\PaperTrading\\PaperLifecycleTest::test_blocked_account_still_closes_existing_paper_position",
+        "source": "tests/Feature/PaperTrading/PaperLifecycleTest.php",
+        "line": 46,
+        "assertions": 1,
+        "result": "PASS"
+      },
+      {
+        "test": "Tests\\Feature\\PaperTrading\\PaperLifecycleTest::test_late_backfilled_signal_cannot_create_forward_entry",
+        "source": "tests/Feature/PaperTrading/PaperLifecycleTest.php",
+        "line": 63,
+        "assertions": 4,
+        "result": "PASS"
+      },
+      {
+        "test": "Tests\\Feature\\PaperTrading\\PaperLifecycleTest::test_complete_buy_lifecycle_entry_tp1_tp2_is_idempotent_and_journaled",
+        "source": "tests/Feature/PaperTrading/PaperLifecycleTest.php",
+        "line": 84,
+        "assertions": 13,
+        "result": "PASS"
+      },
+      {
+        "test": "Tests\\Feature\\PaperTrading\\PaperLifecycleTest::test_non_baseline_actionable_signal_reaches_isolated_paper_execution",
+        "source": "tests/Feature/PaperTrading/PaperLifecycleTest.php",
+        "line": 112,
+        "assertions": 5,
+        "result": "PASS"
+      },
+      {
+        "test": "Tests\\Feature\\PaperTrading\\PaperLifecycleTest::test_spot_sell_is_risk_rejected_and_never_opens_a_short",
+        "source": "tests/Feature/PaperTrading/PaperLifecycleTest.php",
+        "line": 138,
+        "assertions": 3,
+        "result": "PASS"
+      },
+      {
+        "test": "Tests\\Feature\\PaperTrading\\PaperLifecycleTest::test_spot_buy_is_rejected_by_linear_paper_with_an_audited_reason",
+        "source": "tests/Feature/PaperTrading/PaperLifecycleTest.php",
+        "line": 154,
+        "assertions": 5,
+        "result": "PASS"
+      },
+      {
+        "test": "Tests\\Feature\\PaperTrading\\PaperLifecycleTest::test_extreme_funding_and_open_interest_are_hard_risk_rejections",
+        "source": "tests/Feature/PaperTrading/PaperLifecycleTest.php",
+        "line": 170,
+        "assertions": 4,
+        "result": "PASS"
+      },
+      {
+        "test": "Tests\\Feature\\PaperTrading\\PaperLifecycleTest::test_buy_and_sell_close_at_stop with data set #0",
+        "source": "tests/Feature/PaperTrading/PaperLifecycleTest.php",
+        "line": 190,
+        "assertions": 2,
+        "result": "PASS"
+      },
+      {
+        "test": "Tests\\Feature\\PaperTrading\\PaperLifecycleTest::test_buy_and_sell_close_at_stop with data set #1",
+        "source": "tests/Feature/PaperTrading/PaperLifecycleTest.php",
+        "line": 190,
+        "assertions": 2,
+        "result": "PASS"
+      },
+      {
+        "test": "Tests\\Feature\\PaperTrading\\PaperLifecycleTest::test_sell_can_take_tp1_then_stop_remaining_quantity",
+        "source": "tests/Feature/PaperTrading/PaperLifecycleTest.php",
+        "line": 212,
+        "assertions": 4,
+        "result": "PASS"
+      },
+      {
+        "test": "Tests\\Feature\\PaperTrading\\PaperLifecycleTest::test_pending_signal_expires_and_missing_metadata_is_risk_rejected",
+        "source": "tests/Feature/PaperTrading/PaperLifecycleTest.php",
+        "line": 228,
+        "assertions": 4,
+        "result": "PASS"
+      },
+      {
+        "test": "Tests\\Feature\\PaperTrading\\PaperLifecycleTest::test_skip_ingestion_is_bounded_and_idempotently_marked_complete",
+        "source": "tests/Feature/PaperTrading/PaperLifecycleTest.php",
+        "line": 245,
+        "assertions": 3,
+        "result": "PASS"
+      },
+      {
+        "test": "Tests\\Feature\\PaperTrading\\PaperLifecycleTest::test_timeout_waits_for_next_available_closed_bar_without_lookahead",
+        "source": "tests/Feature/PaperTrading/PaperLifecycleTest.php",
+        "line": 258,
+        "assertions": 4,
+        "result": "PASS"
+      },
+      {
+        "test": "Tests\\Feature\\PaperTrading\\PaperLifecycleTest::test_gap_stops_processing_and_marks_position_waiting_for_data",
+        "source": "tests/Feature/PaperTrading/PaperLifecycleTest.php",
+        "line": 276,
+        "assertions": 3,
+        "result": "PASS"
+      },
+      {
+        "test": "Tests\\Feature\\PaperTrading\\PaperLifecycleTest::test_funding_event_is_applied_once",
+        "source": "tests/Feature/PaperTrading/PaperLifecycleTest.php",
+        "line": 289,
+        "assertions": 3,
+        "result": "PASS"
+      },
+      {
+        "test": "Tests\\Feature\\PaperTrading\\PaperLifecycleTest::test_three_completed_losses_start_a_sixty_minute_cooldown",
+        "source": "tests/Feature/PaperTrading/PaperLifecycleTest.php",
+        "line": 305,
+        "assertions": 2,
+        "result": "PASS"
+      },
+      {
+        "test": "Tests\\Feature\\PaperTrading\\PaperLifecycleTest::test_losing_streak_cooldown_is_monotonic_and_resilient_to_out_of_order_signal_states",
+        "source": "tests/Feature/PaperTrading/PaperLifecycleTest.php",
+        "line": 319,
+        "assertions": 2,
+        "result": "PASS"
+      },
+      {
+        "test": "Tests\\Feature\\PaperTrading\\PaperLifecycleTest::test_recorded_execution_and_risk_decision_are_immutable_across_configuration_changes",
+        "source": "tests/Feature/PaperTrading/PaperLifecycleTest.php",
+        "line": 343,
+        "assertions": 3,
+        "result": "PASS"
+      },
+      {
+        "test": "Tests\\Feature\\PaperTrading\\PaperLifecycleTest::test_default_account_and_artisan_commands_work",
+        "source": "tests/Feature/PaperTrading/PaperLifecycleTest.php",
+        "line": 358,
+        "assertions": 6,
+        "result": "PASS"
+      },
+      {
+        "test": "Tests\\Feature\\PaperTrading\\CentralExecutionEligibilityTest::test_signal_only_strategy_is_rejected_and_never_fills_even_when_job_runs",
+        "source": "tests/Feature/PaperTrading/CentralExecutionEligibilityTest.php",
+        "line": 39,
+        "assertions": 4,
+        "result": "PASS"
+      },
+      {
+        "test": "Tests\\Feature\\PaperTrading\\CentralExecutionEligibilityTest::test_missing_or_mismatched_configuration_hash_rejects_entry",
+        "source": "tests/Feature/PaperTrading/CentralExecutionEligibilityTest.php",
+        "line": 80,
+        "assertions": 6,
+        "result": "PASS"
+      },
+      {
+        "test": "Tests\\Feature\\PaperTrading\\CentralExecutionEligibilityTest::test_unpromoted_research_candidate_rejects_entry",
+        "source": "tests/Feature/PaperTrading/CentralExecutionEligibilityTest.php",
+        "line": 103,
+        "assertions": 3,
+        "result": "PASS"
+      },
+      {
+        "test": "Tests\\Feature\\PaperTrading\\CentralExecutionEligibilityTest::test_inactive_account_rejects_new_entries_while_processing",
+        "source": "tests/Feature/PaperTrading/CentralExecutionEligibilityTest.php",
+        "line": 147,
+        "assertions": 4,
+        "result": "PASS"
+      },
+      {
+        "test": "Tests\\Feature\\PaperTrading\\CentralExecutionEligibilityTest::test_safe_prospective_hash_binding_for_canonical_primary_account_with_history",
+        "source": "tests/Feature/PaperTrading/CentralExecutionEligibilityTest.php",
+        "line": 177,
+        "assertions": 5,
+        "result": "PASS"
+      },
+      {
+        "test": "Tests\\Feature\\PaperTrading\\CentralExecutionEligibilityTest::test_audit_export_primary_coverage_requires_non_null_configuration_hash",
+        "source": "tests/Feature/PaperTrading/CentralExecutionEligibilityTest.php",
+        "line": 225,
+        "assertions": 2,
+        "result": "PASS"
+      },
+      {
+        "test": "Tests\\Feature\\PaperTrading\\CentralExecutionEligibilityTest::test_paper_processing_auto_adopts_canonical_bybit_primary_account_under_lock_and_preserves_provenance",
+        "source": "tests/Feature/PaperTrading/CentralExecutionEligibilityTest.php",
+        "line": 265,
+        "assertions": 7,
+        "result": "PASS"
+      },
+      {
+        "test": "Tests\\Feature\\PaperTrading\\CentralExecutionEligibilityTest::test_f27_blocked_drawdown_account_ingests_and_rejects_signals_with_audit_lineage",
+        "source": "tests/Feature/PaperTrading/CentralExecutionEligibilityTest.php",
+        "line": 349,
+        "assertions": 7,
+        "result": "PASS"
+      },
+      {
+        "test": "Tests\\Feature\\Trading\\TradingPipelineConcurrencyAndSafetyTest::test_concurrent_workers_processing_same_event_are_fenced_and_idempotent",
+        "source": "tests/Feature/Trading/TradingPipelineConcurrencyAndSafetyTest.php",
+        "line": 49,
+        "assertions": 3,
+        "result": "PASS"
+      },
+      {
+        "test": "Tests\\Feature\\Trading\\TradingPipelineConcurrencyAndSafetyTest::test_duplicate_paper_jobs_do_not_produce_duplicate_positions_or_financial_writes",
+        "source": "tests/Feature/Trading/TradingPipelineConcurrencyAndSafetyTest.php",
+        "line": 71,
+        "assertions": 2,
+        "result": "PASS"
+      },
+      {
+        "test": "Tests\\Feature\\Trading\\TradingPipelineConcurrencyAndSafetyTest::test_temporal_causality_guards_prevent_retroactive_fills",
+        "source": "tests/Feature/Trading/TradingPipelineConcurrencyAndSafetyTest.php",
+        "line": 161,
+        "assertions": 1,
+        "result": "PASS"
+      },
+      {
+        "test": "Tests\\Feature\\Trading\\TradingPipelineConcurrencyAndSafetyTest::test_existing_open_positions_continue_lifecycle_even_when_new_entries_are_blocked",
+        "source": "tests/Feature/Trading/TradingPipelineConcurrencyAndSafetyTest.php",
+        "line": 232,
+        "assertions": 3,
+        "result": "PASS"
+      },
+      {
+        "test": "Tests\\Feature\\Trading\\TradingPipelineConcurrencyAndSafetyTest::test_paper_execution_ownership_preserves_ledger_integrity_and_reconciliation",
+        "source": "tests/Feature/Trading/TradingPipelineConcurrencyAndSafetyTest.php",
+        "line": 326,
+        "assertions": 2,
+        "result": "PASS"
+      }
+    ],
+    "rationale": "5%/10%, cooldown, correlation, sizing and blocked-position servicing pass. Reviewed RiskAndSizingTest lacks direct RiskEngine zero-equity, class-limit and portfolio-notional boundary assertions required by the second atomic criterion.",
+    "next_local_procedure": "Extend riskFailures with equity=0, negative free capital, risk above each A/B/C limit and notional above portfolio cap; assert allowed immediately below and denied at applicable boundaries. Run RiskAndSizingTest plus AccountSafetyRegressionTest on isolated PostgreSQL; never relax config.",
+    "production_status": "UNAVAILABLE",
+    "operator_action_required": true,
+    "runtime_code_change_required": "Not established; verify first",
+    "test_change_required": true,
+    "source_references": [
+      "app/PaperTrading/Application/RiskEngine.php"
+    ],
+    "acceptance_criteria": [
+      {
+        "id": "VEC-P0-004-A1",
+        "description": "Prove concurrent processing preserves account isolation and services existing positions under every entry block; end-to-end demonstration and explicit acceptance against all obligations."
+      }
+    ],
+    "obligations": [
+      {
+        "id": "VEC-P0-004-V1",
+        "description": "postgresql evidence demonstrates all atomic criteria for Risk gates and account isolation; include negative cases and limitations.",
+        "environment": "isolated_postgresql",
+        "status": "UNAVAILABLE"
+      },
+      {
+        "id": "VEC-P0-004-V2",
+        "description": "operational evidence demonstrates all atomic criteria for Risk gates and account isolation; include negative cases and limitations.",
+        "environment": "production",
+        "status": "UNAVAILABLE"
+      }
+    ],
+    "production_procedure": "Q1/Q3 plus persisted risk/journal records: establish effective 5% block and 10% halt, each account cooldown, no bypass on BLOCKED accounts, and continued exits/funding on existing positions. Observe existing boundary cases; do not manufacture production drawdowns."
+  },
+  {
+    "requirement_id": "VEC-P0-005",
+    "title": "Binance execution approval configuration",
+    "local_obligation": "VEC-P0-005-V1",
+    "local_status": "PASS",
+    "tests": [
+      {
+        "test": "Tests\\Unit\\Exchanges\\BinancePaperSafetyTest::test_explicit_cost_and_activation_evidence_are_required",
+        "source": "tests/Unit/Exchanges/BinancePaperSafetyTest.php",
+        "line": 14,
+        "assertions": 4,
+        "result": "PASS"
+      },
+      {
+        "test": "Tests\\Unit\\Exchanges\\BinancePaperSafetyTest::test_bybit_or_nonprimary_account_must_never_execute_on_binance",
+        "source": "tests/Unit/Exchanges/BinancePaperSafetyTest.php",
+        "line": 37,
+        "assertions": 2,
+        "result": "PASS"
+      },
+      {
+        "test": "Tests\\Feature\\PaperTrading\\StrategyPipelineFunnelVerificationTest::test_binance_directional_signals_blocked_at_prerisk_when_execution_unapproved",
+        "source": "tests/Feature/PaperTrading/StrategyPipelineFunnelVerificationTest.php",
+        "line": 464,
+        "assertions": 7,
+        "result": "PASS"
+      },
+      {
+        "test": "Tests\\Feature\\Exchanges\\BinanceDeploymentInitializationTest::test_deployment_initialization_is_idempotent_after_binance_activation_and_trading_history",
+        "source": "tests/Feature/Exchanges/BinanceDeploymentInitializationTest.php",
+        "line": 178,
+        "assertions": 13,
+        "result": "PASS"
+      },
+      {
+        "test": "Tests\\Feature\\Exchanges\\BinancePaperIsolationTest::test_funded_binance_account_cannot_be_activated_by_an_equity_recalculation",
+        "source": "tests/Feature/Exchanges/BinancePaperIsolationTest.php",
+        "line": 60,
+        "assertions": 3,
+        "result": "PASS"
+      }
+    ],
+    "rationale": "False approval, missing costs, foreign provenance, blocked and unfunded accounts reject; explicit valid local approval/costs permit guard evaluation. Existing active/history fixtures survive initialization; equity recalculation cannot activate accounts.",
+    "next_local_procedure": "No additional local test needed. Read effective deployed cached approval/cost configuration through the operator procedure; do not infer it from defaults or account ACTIVE status.",
+    "production_status": "UNAVAILABLE",
+    "operator_action_required": true,
+    "runtime_code_change_required": "Not established; verify first",
+    "test_change_required": false,
+    "source_references": [
+      "app/Exchanges/Binance/BinancePaperSafety.php"
+    ],
+    "acceptance_criteria": [
+      {
+        "id": "VEC-P0-005-A1",
+        "description": "Verify deployed effective approval state without activating execution or treating ACTIVE account status as approval; end-to-end demonstration and explicit acceptance against all obligations."
+      }
+    ],
+    "obligations": [
+      {
+        "id": "VEC-P0-005-V1",
+        "description": "postgresql evidence demonstrates all atomic criteria for Binance execution approval configuration; include negative cases and limitations.",
+        "environment": "isolated_postgresql",
+        "status": "PASS"
+      },
+      {
+        "id": "VEC-P0-005-V2",
+        "description": "operational evidence demonstrates all atomic criteria for Binance execution approval configuration; include negative cases and limitations.",
+        "environment": "production",
+        "status": "UNAVAILABLE"
+      }
+    ],
+    "production_procedure": "Operator inspects effective cached exchanges.binance.paper_execution_approved, paper_taker_rate, paper_slippage_rate, research.forward_paper.signal_only_strategies and running release identity; export only these non-secret fields. If cache absent, trace only these environment/config keys without printing the environment. Q1/Q3 verify ACTIVE status and history remain unchanged. Do not run initializer/activation."
+  },
+  {
+    "requirement_id": "VEC-P0-006",
+    "title": "Support/resistance statistical bootstrap",
+    "local_obligation": "VEC-P0-006-V1",
+    "local_status": "PASS",
+    "tests": [
+      {
+        "test": "Tests\\Feature\\Strategy\\LevelProbabilityBootstrapLifecycleTest::test_forecast_creation_is_autonomous_and_decoupled_from_strategy_execution",
+        "source": "tests/Feature/Strategy/LevelProbabilityBootstrapLifecycleTest.php",
+        "line": 34,
+        "assertions": 15,
+        "result": "PASS"
+      },
+      {
+        "test": "Tests\\Feature\\Strategy\\LevelProbabilityBootstrapLifecycleTest::test_outcome_maturation_occurs_via_price_bars_without_trading_activity",
+        "source": "tests/Feature/Strategy/LevelProbabilityBootstrapLifecycleTest.php",
+        "line": 73,
+        "assertions": 7,
+        "result": "PASS"
+      },
+      {
+        "test": "Tests\\Feature\\Strategy\\LevelProbabilityBootstrapLifecycleTest::test_statistical_gating_transitions_to_active_trading_at_thirty_samples",
+        "source": "tests/Feature/Strategy/LevelProbabilityBootstrapLifecycleTest.php",
+        "line": 131,
+        "assertions": 10,
+        "result": "PASS"
+      },
+      {
+        "test": "Tests\\Feature\\Strategy\\LevelProbabilityBootstrapLifecycleTest::test_exchange_isolation_prevents_cross_contamination_of_sample_populations",
+        "source": "tests/Feature/Strategy/LevelProbabilityBootstrapLifecycleTest.php",
+        "line": 205,
+        "assertions": 7,
+        "result": "PASS"
+      },
+      {
+        "test": "Tests\\Feature\\Strategy\\LevelProbabilityBootstrapLifecycleTest::test_forecast_accumulation_proceeds_identically_when_paper_execution_is_unapproved",
+        "source": "tests/Feature/Strategy/LevelProbabilityBootstrapLifecycleTest.php",
+        "line": 278,
+        "assertions": 4,
+        "result": "PASS"
+      }
+    ],
+    "rationale": "Forecast persists despite SKIP and unapproved execution; closed price bars mature outcomes without trades; 29 observations remain insufficient and 30 permit RESEARCH_BASELINE; Bybit 35 observations do not inflate Binance 5.",
+    "next_local_procedure": "No additional local test needed for the stated bootstrap criteria. Q5 and a decision-time cohort review must establish real Binance sample maturity; retain minimum_sample_size=30.",
+    "production_status": "UNAVAILABLE",
+    "operator_action_required": true,
+    "runtime_code_change_required": "Not established; verify first",
+    "test_change_required": false,
+    "source_references": [
+      "app/Strategy/Application/LevelProbabilityService.php"
+    ],
+    "acceptance_criteria": [
+      {
+        "id": "VEC-P0-006-A1",
+        "description": "Demonstrate current forward observation accumulation through insufficient-sample gates without requiring executions; end-to-end demonstration and explicit acceptance against all obligations."
+      }
+    ],
+    "obligations": [
+      {
+        "id": "VEC-P0-006-V1",
+        "description": "postgresql evidence demonstrates all atomic criteria for Support/resistance statistical bootstrap; include negative cases and limitations.",
+        "environment": "isolated_postgresql",
+        "status": "PASS"
+      },
+      {
+        "id": "VEC-P0-006-V2",
+        "description": "operational evidence demonstrates all atomic criteria for Support/resistance statistical bootstrap; include negative cases and limitations.",
+        "environment": "production",
+        "status": "UNAVAILABLE"
+      }
+    ],
+    "production_procedure": "Q5: compare timestamp-qualified prior outcomes to the actual decision-time population/cohort fields and effective maximum_history/minimum_sample_size. Require >=30 eligible observations per actual Binance event population before statistical readiness; RESEARCH_BASELINE is not permission to execute or proof of profitability."
+  },
+  {
+    "requirement_id": "VEC-P0-007",
+    "title": "PostgreSQL acceptance infrastructure",
+    "local_obligation": "VEC-P0-007-V1",
+    "local_status": "PASS",
+    "tests": [
+      {
+        "test": "Tests\\Integration\\BinanceCandleInsertionRaceTest::test_concurrent_insert_reloads_every_identity_and_preserves_winning_rows with data set \"identical subset\"",
+        "source": "tests/Integration/BinanceCandleInsertionRaceTest.php",
+        "line": 19,
+        "assertions": 17,
+        "result": "PASS"
+      },
+      {
+        "test": "Tests\\Integration\\BinanceCandleInsertionRaceTest::test_concurrent_insert_reloads_every_identity_and_preserves_winning_rows with data set \"conflicting final identity\"",
+        "source": "tests/Integration/BinanceCandleInsertionRaceTest.php",
+        "line": 19,
+        "assertions": 17,
+        "result": "PASS"
+      },
+      {
+        "test": "Tests\\Integration\\BinanceCandleInsertionRaceTest::test_concurrent_insert_reloads_every_identity_and_preserves_winning_rows with data set \"identical complete batch\"",
+        "source": "tests/Integration/BinanceCandleInsertionRaceTest.php",
+        "line": 19,
+        "assertions": 21,
+        "result": "PASS"
+      },
+      {
+        "test": "Tests\\Integration\\BinanceCandleInsertionRaceTest::test_concurrent_insert_reloads_every_identity_and_preserves_winning_rows with data set \"conflicting complete batch\"",
+        "source": "tests/Integration/BinanceCandleInsertionRaceTest.php",
+        "line": 19,
+        "assertions": 21,
+        "result": "PASS"
+      },
+      {
+        "test": "Tests\\Integration\\StrategyObservationSlotMigrationPostgresIntegrationTest::test_migration_canonicalizes_duplicate_slots_deterministically_and_preserves_all_rows",
+        "source": "tests/Integration/StrategyObservationSlotMigrationPostgresIntegrationTest.php",
+        "line": 35,
+        "assertions": 6,
+        "result": "PASS"
+      },
+      {
+        "test": "Tests\\Integration\\StrategyObservationSlotMigrationPostgresIntegrationTest::test_migration_creates_valid_unique_partial_index_verified_via_catalog",
+        "source": "tests/Integration/StrategyObservationSlotMigrationPostgresIntegrationTest.php",
+        "line": 157,
+        "assertions": 10,
+        "result": "PASS"
+      },
+      {
+        "test": "Tests\\Integration\\StrategyObservationSlotMigrationPostgresIntegrationTest::test_migration_is_safely_idempotent_on_repeated_runs",
+        "source": "tests/Integration/StrategyObservationSlotMigrationPostgresIntegrationTest.php",
+        "line": 185,
+        "assertions": 1,
+        "result": "PASS"
+      },
+      {
+        "test": "Tests\\Integration\\StrategyObservationSlotMigrationPostgresIntegrationTest::test_legacy_rollback_write_path_compatibility",
+        "source": "tests/Integration/StrategyObservationSlotMigrationPostgresIntegrationTest.php",
+        "line": 204,
+        "assertions": 2,
+        "result": "PASS"
+      },
+      {
+        "test": "Tests\\Integration\\StrategyObservationSlotMigrationPostgresIntegrationTest::test_negative_control_duplicate_canonical_direct_insert_rejected",
+        "source": "tests/Integration/StrategyObservationSlotMigrationPostgresIntegrationTest.php",
+        "line": 262,
+        "assertions": 1,
+        "result": "PASS"
+      },
+      {
+        "test": "Tests\\Integration\\CounterfactualSlotIdempotencyPostgresIntegrationTest::test_sequential_rerun_returns_canonical_evaluation_without_duplicate",
+        "source": "tests/Integration/CounterfactualSlotIdempotencyPostgresIntegrationTest.php",
+        "line": 55,
+        "assertions": 7,
+        "result": "PASS"
+      },
+      {
+        "test": "Tests\\Integration\\CounterfactualSlotIdempotencyPostgresIntegrationTest::test_distinct_strategy_versions_preserve_separate_evaluations",
+        "source": "tests/Integration/CounterfactualSlotIdempotencyPostgresIntegrationTest.php",
+        "line": 179,
+        "assertions": 3,
+        "result": "PASS"
+      },
+      {
+        "test": "Tests\\Integration\\CounterfactualSlotIdempotencyPostgresIntegrationTest::test_negative_control_duplicate_direct_insert_rejected_by_postgresql_unique_constraint",
+        "source": "tests/Integration/CounterfactualSlotIdempotencyPostgresIntegrationTest.php",
+        "line": 245,
+        "assertions": 1,
+        "result": "PASS"
+      },
+      {
+        "test": "Tests\\Integration\\CounterfactualSlotIdempotencyPostgresIntegrationTest::test_historical_golden_replay_resolves_eight_raw_to_four_canonical",
+        "source": "tests/Integration/CounterfactualSlotIdempotencyPostgresIntegrationTest.php",
+        "line": 298,
+        "assertions": 9,
+        "result": "PASS"
+      },
+      {
+        "test": "Tests\\Integration\\CounterfactualSlotIdempotencyPostgresIntegrationTest::test_negative_control_duplicate_observation_rejected_by_slot_unique_constraint",
+        "source": "tests/Integration/CounterfactualSlotIdempotencyPostgresIntegrationTest.php",
+        "line": 372,
+        "assertions": 1,
+        "result": "PASS"
+      },
+      {
+        "test": "Tests\\Integration\\LedgerReconciliationPostgresIntegrationTest::test_reconcile_all_primary_accounts_in_postgresql_succeeds_without_sql_error",
+        "source": "tests/Integration/LedgerReconciliationPostgresIntegrationTest.php",
+        "line": 72,
+        "assertions": 48,
+        "result": "PASS"
+      },
+      {
+        "test": "Tests\\Integration\\LedgerReconciliationPostgresIntegrationTest::test_postgresql_financial_reconciliation_with_partial_and_full_exits_and_funding",
+        "source": "tests/Integration/LedgerReconciliationPostgresIntegrationTest.php",
+        "line": 101,
+        "assertions": 7,
+        "result": "PASS"
+      },
+      {
+        "test": "Tests\\Integration\\LedgerReconciliationPostgresIntegrationTest::test_postgresql_reconciliation_detects_balance_discrepancy",
+        "source": "tests/Integration/LedgerReconciliationPostgresIntegrationTest.php",
+        "line": 288,
+        "assertions": 5,
+        "result": "PASS"
+      },
+      {
+        "test": "Tests\\Integration\\SlippageAttributionPostgresIntegrationTest::test_postgres_slippage_generation_and_unique_constraints",
+        "source": "tests/Integration/SlippageAttributionPostgresIntegrationTest.php",
+        "line": 66,
+        "assertions": 5,
+        "result": "PASS"
+      },
+      {
+        "test": "Tests\\Integration\\SlippageAttributionPostgresIntegrationTest::test_postgres_unique_idempotency_key_constraint",
+        "source": "tests/Integration/SlippageAttributionPostgresIntegrationTest.php",
+        "line": 189,
+        "assertions": 1,
+        "result": "PASS"
+      },
+      {
+        "test": "Tests\\Integration\\GoResearchWorkerIntegrationTest::test_scheduler_queue_go_worker_persists_succeeded_result",
+        "source": "tests/Integration/GoResearchWorkerIntegrationTest.php",
+        "line": 27,
+        "assertions": 12,
+        "result": "PASS"
+      }
+    ],
+    "rationale": "Workflow service declaration reviewed; fresh PostgreSQL 17 cluster identity verified before fixtures. Real child-process candle insertion races, uniqueness negatives, migration preservation/idempotency and PHP-to-Go persistence executed with zero PostgreSQL skips.",
+    "next_local_procedure": "No additional local infrastructure test needed. Obtain the operator-approved deployed release/schema provenance separately; local execution does not prove GitHub Actions ran.",
+    "production_status": "UNAVAILABLE",
+    "operator_action_required": true,
+    "runtime_code_change_required": "Not established; verify first",
+    "test_change_required": false,
+    "source_references": [
+      ".github/workflows/deploy.yml"
+    ],
+    "acceptance_criteria": [
+      {
+        "id": "VEC-P0-007-A1",
+        "description": "Resolve skipped applicable database concurrency and migration tests with current executed evidence; end-to-end demonstration and explicit acceptance against all obligations."
+      }
+    ],
+    "obligations": [
+      {
+        "id": "VEC-P0-007-V1",
+        "description": "postgresql evidence demonstrates all atomic criteria for PostgreSQL acceptance infrastructure; include negative cases and limitations.",
+        "environment": "isolated_postgresql",
+        "status": "PASS"
+      },
+      {
+        "id": "VEC-P0-007-V2",
+        "description": "operational evidence demonstrates all atomic criteria for PostgreSQL acceptance infrastructure; include negative cases and limitations.",
+        "environment": "production",
+        "status": "UNAVAILABLE"
+      }
+    ],
+    "production_procedure": "Provide release SHA/image digest, migration inventory and retained CI PostgreSQL job output for that release. Local cluster results do not establish deployed schema compatibility or remote workflow success."
+  },
+  {
+    "requirement_id": "VEC-P0-008",
+    "title": "Production acceptance gate",
+    "local_obligation": "VEC-P0-008-V1",
+    "local_status": "UNAVAILABLE",
+    "tests": [],
+    "rationale": "Both atomic criteria require operator-authorized current-release evidence and independent acceptance. None was collected.",
+    "next_local_procedure": "Collect the production packets below, map each acceptance ID, obtain explicit responsible-actor acceptance and retain authorization. Local fixtures cannot satisfy this obligation.",
+    "production_status": "UNAVAILABLE",
+    "operator_action_required": true,
+    "runtime_code_change_required": "Not established; verify first",
+    "test_change_required": false,
+    "source_references": [],
+    "acceptance_criteria": [
+      {
+        "id": "VEC-P0-008-A1",
+        "description": "All required account, pipeline, funding and configuration evidence independently accepted; end-to-end demonstration and explicit acceptance against all obligations."
+      }
+    ],
+    "obligations": [
+      {
+        "id": "VEC-P0-008-V1",
+        "description": "postgresql evidence demonstrates all atomic criteria for Production acceptance gate; include negative cases and limitations.",
+        "environment": "isolated_postgresql",
+        "status": "UNAVAILABLE"
+      },
+      {
+        "id": "VEC-P0-008-V2",
+        "description": "operational evidence demonstrates all atomic criteria for Production acceptance gate; include negative cases and limitations.",
+        "environment": "production",
+        "status": "UNAVAILABLE"
+      }
+    ],
+    "production_procedure": "Assemble all authorized packets with capture timestamp, actor, release SHA, exact procedures, hashes, limitations and acceptance IDs. Independent responsible actor must explicitly accept every Phase 0 requirement; no automatic acceptance."
+  },
+  {
+    "requirement_id": "VEC-P0-009",
+    "title": "Resource and performance baseline",
+    "local_obligation": "VEC-P0-009-V1",
+    "local_status": "FAIL",
+    "tests": [
+      {
+        "test": "Tests\\Integration\\BinanceCandleInsertionRaceTest::test_concurrent_insert_reloads_every_identity_and_preserves_winning_rows with data set \"identical subset\"",
+        "source": "tests/Integration/BinanceCandleInsertionRaceTest.php",
+        "line": 19,
+        "assertions": 17,
+        "result": "PASS"
+      },
+      {
+        "test": "Tests\\Integration\\BinanceCandleInsertionRaceTest::test_concurrent_insert_reloads_every_identity_and_preserves_winning_rows with data set \"conflicting final identity\"",
+        "source": "tests/Integration/BinanceCandleInsertionRaceTest.php",
+        "line": 19,
+        "assertions": 17,
+        "result": "PASS"
+      },
+      {
+        "test": "Tests\\Integration\\BinanceCandleInsertionRaceTest::test_concurrent_insert_reloads_every_identity_and_preserves_winning_rows with data set \"identical complete batch\"",
+        "source": "tests/Integration/BinanceCandleInsertionRaceTest.php",
+        "line": 19,
+        "assertions": 21,
+        "result": "PASS"
+      },
+      {
+        "test": "Tests\\Integration\\BinanceCandleInsertionRaceTest::test_concurrent_insert_reloads_every_identity_and_preserves_winning_rows with data set \"conflicting complete batch\"",
+        "source": "tests/Integration/BinanceCandleInsertionRaceTest.php",
+        "line": 19,
+        "assertions": 21,
+        "result": "PASS"
+      }
+    ],
+    "rationale": "500-new-row ingestion P95 failed twice: 65.641ms overlapping PHP lint, then 74.860ms without that task load; target <50ms. Effective shared-host limits and PAPER latency under research load remain unmeasured.",
+    "next_local_procedure": "Repeat scripts/benchmark-binance-ingestion.php --runs=30 --warmup=5 in the verified environment with PHP lint idle; retain every run. Separately measure PAPER P50/P95, RSS and SQL counts with/without bounded research over 30 repetitions and effective task-owned limits. A timing failure needs a separately scoped fix, not altered thresholds.",
+    "production_status": "UNAVAILABLE",
+    "operator_action_required": true,
+    "runtime_code_change_required": "Not established; verify first",
+    "test_change_required": false,
+    "source_references": [
+      "compose.yaml"
+    ],
+    "acceptance_criteria": [
+      {
+        "id": "VEC-P0-009-A1",
+        "description": "Measure effective shared-host limits and PAPER latency under bounded research load; end-to-end demonstration and explicit acceptance against all obligations."
+      }
+    ],
+    "obligations": [
+      {
+        "id": "VEC-P0-009-V1",
+        "description": "postgresql evidence demonstrates all atomic criteria for Resource and performance baseline; include negative cases and limitations.",
+        "environment": "isolated_postgresql",
+        "status": "FAIL"
+      },
+      {
+        "id": "VEC-P0-009-V2",
+        "description": "operational evidence demonstrates all atomic criteria for Resource and performance baseline; include negative cases and limitations.",
+        "environment": "production",
+        "status": "UNAVAILABLE"
+      }
+    ],
+    "production_procedure": "Read only VECTOR service effective CPU/memory/worker limits and existing PAPER latency/RSS/SQL telemetry. Capture >=30 observations under documented normal and bounded research load; require the roadmap latency limits and <=5% PAPER P95 regression. Do not launch production load or inspect unrelated projects under this task."
+  },
+  {
+    "requirement_id": "VEC-P0-101",
+    "title": "F01 \u2014 False Decision Replay Verification & State Mutation [HIGH]",
+    "local_obligation": "VEC-P0-101-V1",
+    "local_status": "UNAVAILABLE",
+    "tests": [
+      {
+        "test": "Tests\\Unit\\Research\\DecisionReplayServiceTest::test_replays_decision_deterministically",
+        "source": "tests/Unit/Research/DecisionReplayServiceTest.php",
+        "line": 18,
+        "assertions": 5,
+        "result": "PASS"
+      },
+      {
+        "test": "Tests\\Feature\\Research\\StageTwoApiTest::test_replay_endpoint",
+        "source": "tests/Feature/Research/StageTwoApiTest.php",
+        "line": 63,
+        "assertions": 5,
+        "result": "PASS"
+      },
+      {
+        "test": "Tests\\Feature\\Api\\ReadOnlyGetEndpointsTest::test_all_registered_get_endpoints_are_read_only",
+        "source": "tests/Feature/Api/ReadOnlyGetEndpointsTest.php",
+        "line": 22,
+        "assertions": 2,
+        "result": "PASS"
+      }
+    ],
+    "rationale": "Stored-only status is asserted. The global GET write detector uses a nonexistent replay ID; successful replay test does not count writes. This does not prove zero writes for an existing observation.",
+    "next_local_procedure": "Seed an existing observation; attach DB::listen after setup; GET its replay twice and assert NOT_RECOMPUTED_STORED_ONLY, false is_reproducible and zero INSERT/UPDATE/DELETE plus unchanged replay-record count.",
+    "production_status": "UNAVAILABLE",
+    "operator_action_required": true,
+    "runtime_code_change_required": "Not established; verify first",
+    "test_change_required": true,
+    "source_references": [
+      "app/Research/Application/DecisionReplayService.php"
+    ],
+    "acceptance_criteria": [
+      {
+        "id": "VEC-P0-101-A1",
+        "description": "Stored decision retrieval must return NOT_RECOMPUTED_STORED_ONLY and perform zero writes on read requests. Independent closure accepts current evidence and preserved histories."
+      }
+    ],
+    "obligations": [
+      {
+        "id": "VEC-P0-101-V1",
+        "description": "Stored decision retrieval must return NOT_RECOMPUTED_STORED_ONLY and perform zero writes on read requests. Reproduce negative and positive cases in isolated integration.",
+        "environment": "isolated_postgresql",
+        "status": "UNAVAILABLE"
+      },
+      {
+        "id": "VEC-P0-101-V2",
+        "description": "Confirm affected deployed behavior from operator-authorized current evidence; no deployment implied.",
+        "environment": "production",
+        "status": "UNAVAILABLE"
+      }
+    ],
+    "production_procedure": "From an already-captured successful replay GET, compare stored-only label and existing SQL/write audit around repeated requests. If no write trace exists, evidence remains pending; do not treat the missing-ID GET test as successful-path proof."
+  },
+  {
+    "requirement_id": "VEC-P0-102",
+    "title": "F02 \u2014 Profitability Response Envelope Chain Breakdown [CRITICAL]",
+    "local_obligation": "VEC-P0-102-V1",
+    "local_status": "UNAVAILABLE",
+    "tests": [
+      {
+        "test": "Tests\\Feature\\Research\\ProfitabilityResearchApiTest::test_profitability_summary_returns_separated_accounting_scopes_and_gated_placeholders",
+        "source": "tests/Feature/Research/ProfitabilityResearchApiTest.php",
+        "line": 24,
+        "assertions": 48,
+        "result": "PASS"
+      },
+      {
+        "test": "Tests\\Feature\\Research\\ProfitabilityResearchApiTest::test_profitability_strategies_lists_all_primary_accounts",
+        "source": "tests/Feature/Research/ProfitabilityResearchApiTest.php",
+        "line": 91,
+        "assertions": 72,
+        "result": "PASS"
+      },
+      {
+        "test": "Tests\\Feature\\Research\\ProfitabilityResearchApiTest::test_profitability_strategy_detail_returns_specific_strategy",
+        "source": "tests/Feature/Research/ProfitabilityResearchApiTest.php",
+        "line": 113,
+        "assertions": 14,
+        "result": "PASS"
+      },
+      {
+        "test": "Tests\\Feature\\Research\\ProfitabilityResearchApiTest::test_profitability_strategy_detail_returns_404_on_unknown_strategy",
+        "source": "tests/Feature/Research/ProfitabilityResearchApiTest.php",
+        "line": 135,
+        "assertions": 2,
+        "result": "PASS"
+      },
+      {
+        "test": "Tests\\Feature\\Research\\ProfitabilityResearchApiTest::test_metric_registry_endpoint_returns_catalog",
+        "source": "tests/Feature/Research/ProfitabilityResearchApiTest.php",
+        "line": 143,
+        "assertions": 8,
+        "result": "PASS"
+      },
+      {
+        "test": "Tests\\Feature\\Research\\ProfitabilityResearchApiTest::test_profitability_reads_do_not_reprovision_missing_primary_accounts",
+        "source": "tests/Feature/Research/ProfitabilityResearchApiTest.php",
+        "line": 158,
+        "assertions": 5,
+        "result": "PASS"
+      },
+      {
+        "test": "Tests\\Feature\\Research\\ProfitabilityResearchApiTest::test_persisted_discrepancies_and_missing_reconciliation_are_not_reported_as_clean",
+        "source": "tests/Feature/Research/ProfitabilityResearchApiTest.php",
+        "line": 172,
+        "assertions": 6,
+        "result": "PASS"
+      },
+      {
+        "test": "Tests\\Feature\\Research\\ProfitabilityResearchApiTest::test_profitability_get_endpoints_are_strictly_read_only",
+        "source": "tests/Feature/Research/ProfitabilityResearchApiTest.php",
+        "line": 190,
+        "assertions": 5,
+        "result": "PASS"
+      }
+    ],
+    "rationale": "API success/error shapes pass; frontend tests are source-contract tests, not executed Vue-to-service integration.",
+    "next_local_procedure": "Mount ProfitabilityResearchPage with real api.ts response handling against isolated API success and 404/error fixtures. Assert one envelope unwrap and rendered error; retain browser network/DOM evidence for V3.",
+    "production_status": "UNAVAILABLE",
+    "operator_action_required": true,
+    "runtime_code_change_required": "Not established; verify first",
+    "test_change_required": true,
+    "source_references": [
+      "app/Http/Controllers/Api/V1/ProfitabilityResearchController.php"
+    ],
+    "acceptance_criteria": [
+      {
+        "id": "VEC-P0-102-A1",
+        "description": "Profitability controller, service and Vue page must agree on response envelope for both success and error. Independent closure accepts current evidence and preserved histories."
+      }
+    ],
+    "obligations": [
+      {
+        "id": "VEC-P0-102-V1",
+        "description": "Profitability controller, service and Vue page must agree on response envelope for both success and error. Reproduce negative and positive cases in isolated integration.",
+        "environment": "isolated_postgresql",
+        "status": "UNAVAILABLE"
+      },
+      {
+        "id": "VEC-P0-102-V2",
+        "description": "Confirm affected deployed behavior from operator-authorized current evidence; no deployment implied.",
+        "environment": "production",
+        "status": "UNAVAILABLE"
+      },
+      {
+        "id": "VEC-P0-102-V3",
+        "description": "Profitability controller, service and Vue page must agree on response envelope for both success and error. Verify rendered control/error and backend contract together.",
+        "environment": "browser",
+        "status": "UNAVAILABLE"
+      }
+    ],
+    "production_procedure": "Capture profitability summary/detail/error response and the corresponding rendered page from the same release; require a single data envelope and visible errors. Review controller/middleware GET side effects first."
+  },
+  {
+    "requirement_id": "VEC-P0-103",
+    "title": "F03 \u2014 Fabricated Financial Fallback Values in UI [CRITICAL]",
+    "local_obligation": "VEC-P0-103-V1",
+    "local_status": "UNAVAILABLE",
+    "tests": [
+      {
+        "test": "Tests\\Feature\\MarketData\\MarketExchangeIsolationTest::test_dashboard_does_not_fabricate_active_or_equity_for_unprovisioned_accounts",
+        "source": "tests/Feature/MarketData/MarketExchangeIsolationTest.php",
+        "line": 114,
+        "assertions": 82,
+        "result": "PASS"
+      },
+      {
+        "test": "Tests\\Feature\\Research\\ProfitabilityResearchApiTest::test_profitability_summary_returns_separated_accounting_scopes_and_gated_placeholders",
+        "source": "tests/Feature/Research/ProfitabilityResearchApiTest.php",
+        "line": 24,
+        "assertions": 48,
+        "result": "PASS"
+      },
+      {
+        "test": "Tests\\Feature\\Research\\ProfitabilityResearchApiTest::test_profitability_strategies_lists_all_primary_accounts",
+        "source": "tests/Feature/Research/ProfitabilityResearchApiTest.php",
+        "line": 91,
+        "assertions": 72,
+        "result": "PASS"
+      },
+      {
+        "test": "Tests\\Feature\\Research\\ProfitabilityResearchApiTest::test_profitability_strategy_detail_returns_specific_strategy",
+        "source": "tests/Feature/Research/ProfitabilityResearchApiTest.php",
+        "line": 113,
+        "assertions": 14,
+        "result": "PASS"
+      },
+      {
+        "test": "Tests\\Feature\\Research\\ProfitabilityResearchApiTest::test_profitability_strategy_detail_returns_404_on_unknown_strategy",
+        "source": "tests/Feature/Research/ProfitabilityResearchApiTest.php",
+        "line": 135,
+        "assertions": 2,
+        "result": "PASS"
+      },
+      {
+        "test": "Tests\\Feature\\Research\\ProfitabilityResearchApiTest::test_metric_registry_endpoint_returns_catalog",
+        "source": "tests/Feature/Research/ProfitabilityResearchApiTest.php",
+        "line": 143,
+        "assertions": 8,
+        "result": "PASS"
+      },
+      {
+        "test": "Tests\\Feature\\Research\\ProfitabilityResearchApiTest::test_profitability_reads_do_not_reprovision_missing_primary_accounts",
+        "source": "tests/Feature/Research/ProfitabilityResearchApiTest.php",
+        "line": 158,
+        "assertions": 5,
+        "result": "PASS"
+      },
+      {
+        "test": "Tests\\Feature\\Research\\ProfitabilityResearchApiTest::test_persisted_discrepancies_and_missing_reconciliation_are_not_reported_as_clean",
+        "source": "tests/Feature/Research/ProfitabilityResearchApiTest.php",
+        "line": 172,
+        "assertions": 6,
+        "result": "PASS"
+      },
+      {
+        "test": "Tests\\Feature\\Research\\ProfitabilityResearchApiTest::test_profitability_get_endpoints_are_strictly_read_only",
+        "source": "tests/Feature/Research/ProfitabilityResearchApiTest.php",
+        "line": 190,
+        "assertions": 5,
+        "result": "PASS"
+      }
+    ],
+    "rationale": "Absent-account API control passes; no rendered profitability null-vs-real-zero financial test.",
+    "next_local_procedure": "Render missing/null equity, PnL and counts beside legitimate zero fixtures. Assert unavailable labels for null and numeric zero only for actual zero; retain API and DOM for V3.",
+    "production_status": "UNAVAILABLE",
+    "operator_action_required": true,
+    "runtime_code_change_required": "Not established; verify first",
+    "test_change_required": true,
+    "source_references": [
+      "frontend/src/pages/ProfitabilityResearchPage.vue"
+    ],
+    "acceptance_criteria": [
+      {
+        "id": "VEC-P0-103-A1",
+        "description": "Missing financial values must render unavailable, never invented equity, PnL or sample counts. Independent closure accepts current evidence and preserved histories."
+      }
+    ],
+    "obligations": [
+      {
+        "id": "VEC-P0-103-V1",
+        "description": "Missing financial values must render unavailable, never invented equity, PnL or sample counts. Reproduce negative and positive cases in isolated integration.",
+        "environment": "isolated_postgresql",
+        "status": "UNAVAILABLE"
+      },
+      {
+        "id": "VEC-P0-103-V2",
+        "description": "Confirm affected deployed behavior from operator-authorized current evidence; no deployment implied.",
+        "environment": "production",
+        "status": "UNAVAILABLE"
+      },
+      {
+        "id": "VEC-P0-103-V3",
+        "description": "Missing financial values must render unavailable, never invented equity, PnL or sample counts. Verify rendered control/error and backend contract together.",
+        "environment": "browser",
+        "status": "UNAVAILABLE"
+      }
+    ],
+    "production_procedure": "Compare existing absent/null and real-zero financial API examples to rendered cells. No invented equity, PnL or sample counts; absence of a null example leaves the negative case pending."
+  },
+  {
+    "requirement_id": "VEC-P0-104",
+    "title": "F04 \u2014 Reconciliation Findings Misread in Controller [HIGH]",
+    "local_obligation": "VEC-P0-104-V1",
+    "local_status": "PASS",
+    "tests": [
+      {
+        "test": "Tests\\Feature\\Research\\ProfitabilityResearchApiTest::test_persisted_discrepancies_and_missing_reconciliation_are_not_reported_as_clean",
+        "source": "tests/Feature/Research/ProfitabilityResearchApiTest.php",
+        "line": 172,
+        "assertions": 6,
+        "result": "PASS"
+      },
+      {
+        "test": "Tests\\Unit\\Research\\LedgerReconciliationServiceTest::test_reconciliation_passes_on_clean_account",
+        "source": "tests/Unit/Research/LedgerReconciliationServiceTest.php",
+        "line": 25,
+        "assertions": 5,
+        "result": "PASS"
+      }
+    ],
+    "rationale": "Injected ledger mismatch produces actual discrepancy_count and detail findings; an account without a reconciliation run returns NO_RECORDED_RUN with null count; clean-account service control passes.",
+    "next_local_procedure": "No additional local test needed. Compare deployed persisted reconciliation output to summary/detail responses without running reconciliation.",
+    "production_status": "UNAVAILABLE",
+    "operator_action_required": true,
+    "runtime_code_change_required": "Not established; verify first",
+    "test_change_required": false,
+    "source_references": [
+      "app/Http/Controllers/Api/V1/ProfitabilityResearchController.php"
+    ],
+    "acceptance_criteria": [
+      {
+        "id": "VEC-P0-104-A1",
+        "description": "Controller must consume actual reconciliation findings and surface incomplete or mismatched evidence. Independent closure accepts current evidence and preserved histories."
+      }
+    ],
+    "obligations": [
+      {
+        "id": "VEC-P0-104-V1",
+        "description": "Controller must consume actual reconciliation findings and surface incomplete or mismatched evidence. Reproduce negative and positive cases in isolated integration.",
+        "environment": "isolated_postgresql",
+        "status": "PASS"
+      },
+      {
+        "id": "VEC-P0-104-V2",
+        "description": "Confirm affected deployed behavior from operator-authorized current evidence; no deployment implied.",
+        "environment": "production",
+        "status": "UNAVAILABLE"
+      }
+    ],
+    "production_procedure": "Read existing reconciliation_runs records and corresponding summary/detail responses. Require identical findings/counts and NO_RECORDED_RUN for missing data; never invoke reconciliation to obtain a prettier result."
+  },
+  {
+    "requirement_id": "VEC-P0-105",
+    "title": "F05 \u2014 Outdated Roadmap Module Statuses [MEDIUM]",
+    "local_obligation": "VEC-P0-105-V1",
+    "local_status": "UNAVAILABLE",
+    "tests": [
+      {
+        "test": "Tests\\Feature\\Research\\ProfitabilityResearchApiTest::test_profitability_summary_returns_separated_accounting_scopes_and_gated_placeholders",
+        "source": "tests/Feature/Research/ProfitabilityResearchApiTest.php",
+        "line": 24,
+        "assertions": 48,
+        "result": "PASS"
+      }
+    ],
+    "rationale": "Tests assert fixed module statuses, not their consistency with available evidence or negative changes in module readiness.",
+    "next_local_procedure": "Exercise implemented, missing evidence and prohibited modules; compare each API status to source-backed availability and assert missing evidence cannot be IMPLEMENTED_VERIFIED merely because a constant says so.",
+    "production_status": "UNAVAILABLE",
+    "operator_action_required": true,
+    "runtime_code_change_required": "Not established; verify first",
+    "test_change_required": true,
+    "source_references": [
+      "app/Http/Controllers/Api/V1/ProfitabilityResearchController.php"
+    ],
+    "acceptance_criteria": [
+      {
+        "id": "VEC-P0-105-A1",
+        "description": "Module status must reflect actual implementation and evidence state, not static optimistic roadmap text. Independent closure accepts current evidence and preserved histories."
+      }
+    ],
+    "obligations": [
+      {
+        "id": "VEC-P0-105-V1",
+        "description": "Module status must reflect actual implementation and evidence state, not static optimistic roadmap text. Reproduce negative and positive cases in isolated integration.",
+        "environment": "isolated_postgresql",
+        "status": "UNAVAILABLE"
+      },
+      {
+        "id": "VEC-P0-105-V2",
+        "description": "Confirm affected deployed behavior from operator-authorized current evidence; no deployment implied.",
+        "environment": "production",
+        "status": "UNAVAILABLE"
+      }
+    ],
+    "production_procedure": "Compare every profitability gated_modules status to current deployed source and retained module-specific evidence; static labels alone cannot establish verification."
+  },
+  {
+    "requirement_id": "VEC-P0-106",
+    "title": "F06 \u2014 Reconciliation Ignores Drawdown Mismatch [HIGH]",
+    "local_obligation": "VEC-P0-106-V1",
+    "local_status": "PASS",
+    "tests": [
+      {
+        "test": "Tests\\Unit\\Research\\LedgerReconciliationServiceTest::test_reconciliation_passes_on_clean_account",
+        "source": "tests/Unit/Research/LedgerReconciliationServiceTest.php",
+        "line": 25,
+        "assertions": 5,
+        "result": "PASS"
+      },
+      {
+        "test": "Tests\\Unit\\Research\\LedgerReconciliationServiceTest::test_missing_history_is_incomplete_and_higher_historical_drawdown_is_not_corruption",
+        "source": "tests/Unit/Research/LedgerReconciliationServiceTest.php",
+        "line": 40,
+        "assertions": 5,
+        "result": "PASS"
+      },
+      {
+        "test": "Tests\\Unit\\Research\\LedgerReconciliationServiceTest::test_observed_drawdown_above_stored_maximum_is_reported_without_rewriting_account",
+        "source": "tests/Unit/Research/LedgerReconciliationServiceTest.php",
+        "line": 53,
+        "assertions": 3,
+        "result": "PASS"
+      },
+      {
+        "test": "Tests\\Unit\\Research\\LedgerReconciliationServiceTest::test_orphan_execution_is_reported_globally_without_inventing_account_ownership",
+        "source": "tests/Unit/Research/LedgerReconciliationServiceTest.php",
+        "line": 62,
+        "assertions": 4,
+        "result": "PASS"
+      },
+      {
+        "test": "Tests\\Unit\\Research\\LedgerReconciliationServiceTest::test_reconciliation_detects_injected_discrepancies",
+        "source": "tests/Unit/Research/LedgerReconciliationServiceTest.php",
+        "line": 81,
+        "assertions": 4,
+        "result": "PASS"
+      },
+      {
+        "test": "Tests\\Unit\\Research\\LedgerReconciliationServiceTest::test_reconciliation_verifies_executions_with_partial_and_full_exits_and_funding",
+        "source": "tests/Unit/Research/LedgerReconciliationServiceTest.php",
+        "line": 148,
+        "assertions": 6,
+        "result": "PASS"
+      }
+    ],
+    "rationale": "Clean account passes; observed drawdown above stored max is a discrepancy without mutation, while a larger historical maximum is preserved and missing history is incomplete; injected balance/execution controls also fail.",
+    "next_local_procedure": "No additional local test needed. Q1 plus account snapshot histories must reproduce drawdown residuals without modifying maxima.",
+    "production_status": "UNAVAILABLE",
+    "operator_action_required": true,
+    "runtime_code_change_required": "Not established; verify first",
+    "test_change_required": false,
+    "source_references": [
+      "app/Research/Application/LedgerReconciliationService.php"
+    ],
+    "acceptance_criteria": [
+      {
+        "id": "VEC-P0-106-A1",
+        "description": "Reconciliation must detect drawdown mismatch in addition to balance and position mismatches. Independent closure accepts current evidence and preserved histories."
+      }
+    ],
+    "obligations": [
+      {
+        "id": "VEC-P0-106-V1",
+        "description": "Reconciliation must detect drawdown mismatch in addition to balance and position mismatches. Reproduce negative and positive cases in isolated integration.",
+        "environment": "isolated_postgresql",
+        "status": "PASS"
+      },
+      {
+        "id": "VEC-P0-106-V2",
+        "description": "Confirm affected deployed behavior from operator-authorized current evidence; no deployment implied.",
+        "environment": "production",
+        "status": "UNAVAILABLE"
+      }
+    ],
+    "production_procedure": "Read account peak/current/max drawdown plus snapshot history. Independently calculate observed drawdown and compare persisted findings; retain higher legitimate historical maxima, never rewrite them."
+  },
+  {
+    "requirement_id": "VEC-P0-107",
+    "title": "F07 \u2014 Audit ZIP Export Silent Column Dropping [HIGH]",
+    "local_obligation": "VEC-P0-107-V1",
+    "local_status": "UNAVAILABLE",
+    "tests": [
+      {
+        "test": "Tests\\Feature\\AuditExportTest::test_paper_state_export_uses_half_open_adjacent_windows",
+        "source": "tests/Feature/AuditExportTest.php",
+        "line": 24,
+        "assertions": 5,
+        "result": "PASS"
+      },
+      {
+        "test": "Tests\\Feature\\AuditExportTest::test_audit_window_uses_real_request_time_without_quarter_hour_rounding",
+        "source": "tests/Feature/AuditExportTest.php",
+        "line": 63,
+        "assertions": 4,
+        "result": "PASS"
+      },
+      {
+        "test": "Tests\\Feature\\AuditExportTest::test_exports_deduplicate_repeated_clicks",
+        "source": "tests/Feature/AuditExportTest.php",
+        "line": 77,
+        "assertions": 4,
+        "result": "PASS"
+      },
+      {
+        "test": "Tests\\Feature\\AuditExportTest::test_export_contains_manifest_csv_and_rejects_anonymous_download",
+        "source": "tests/Feature/AuditExportTest.php",
+        "line": 86,
+        "assertions": 6,
+        "result": "PASS"
+      },
+      {
+        "test": "Tests\\Feature\\AuditExportTest::test_all_four_export_periods_generate_successfully_with_learning_and_health_datasets",
+        "source": "tests/Feature/AuditExportTest.php",
+        "line": 111,
+        "assertions": 244,
+        "result": "PASS"
+      }
+    ],
+    "rationale": "ZIP tests check members and some headings; they do not compare every required column or inject a missing source column.",
+    "next_local_procedure": "Generate an isolated export with representative nullable fields; compare every CSV header to the declared dataset schema. Remove a required field only in a disposable schema and assert explicit missing-field failure/metadata, not silent omission.",
+    "production_status": "UNAVAILABLE",
+    "operator_action_required": true,
+    "runtime_code_change_required": "Not established; verify first",
+    "test_change_required": true,
+    "source_references": [
+      "app/Audit/Application/AuditExportService.php"
+    ],
+    "acceptance_criteria": [
+      {
+        "id": "VEC-P0-107-A1",
+        "description": "Audit ZIP must preserve all required schema columns and declare missing fields explicitly. Independent closure accepts current evidence and preserved histories."
+      }
+    ],
+    "obligations": [
+      {
+        "id": "VEC-P0-107-V1",
+        "description": "Audit ZIP must preserve all required schema columns and declare missing fields explicitly. Reproduce negative and positive cases in isolated integration.",
+        "environment": "isolated_postgresql",
+        "status": "UNAVAILABLE"
+      },
+      {
+        "id": "VEC-P0-107-V2",
+        "description": "Confirm affected deployed behavior from operator-authorized current evidence; no deployment implied.",
+        "environment": "production",
+        "status": "UNAVAILABLE"
+      }
+    ],
+    "production_procedure": "Download an already-generated authorized ZIP after GET review; compare every header against source schema, manifest missing-field declaration and checksums. Do not create an export job during production read-only inspection."
+  },
+  {
+    "requirement_id": "VEC-P0-108",
+    "title": "F08 \u2014 Strategy Funnel Cohort & Status Discrepancy [MEDIUM]",
+    "local_obligation": "VEC-P0-108-V1",
+    "local_status": "UNAVAILABLE",
+    "tests": [
+      {
+        "test": "Tests\\Feature\\AuditExportTest::test_paper_state_export_uses_half_open_adjacent_windows",
+        "source": "tests/Feature/AuditExportTest.php",
+        "line": 24,
+        "assertions": 5,
+        "result": "PASS"
+      },
+      {
+        "test": "Tests\\Feature\\AuditExportTest::test_audit_window_uses_real_request_time_without_quarter_hour_rounding",
+        "source": "tests/Feature/AuditExportTest.php",
+        "line": 63,
+        "assertions": 4,
+        "result": "PASS"
+      },
+      {
+        "test": "Tests\\Feature\\AuditExportTest::test_exports_deduplicate_repeated_clicks",
+        "source": "tests/Feature/AuditExportTest.php",
+        "line": 77,
+        "assertions": 4,
+        "result": "PASS"
+      },
+      {
+        "test": "Tests\\Feature\\AuditExportTest::test_export_contains_manifest_csv_and_rejects_anonymous_download",
+        "source": "tests/Feature/AuditExportTest.php",
+        "line": 86,
+        "assertions": 6,
+        "result": "PASS"
+      },
+      {
+        "test": "Tests\\Feature\\AuditExportTest::test_all_four_export_periods_generate_successfully_with_learning_and_health_datasets",
+        "source": "tests/Feature/AuditExportTest.php",
+        "line": 111,
+        "assertions": 244,
+        "result": "PASS"
+      },
+      {
+        "test": "Tests\\Integration\\SlotIntegrityAndRiskFunnelPostgresIntegrationTest::test_golden_risk_decisions_funnel_and_reason_multisets",
+        "source": "tests/Integration/SlotIntegrityAndRiskFunnelPostgresIntegrationTest.php",
+        "line": 61,
+        "assertions": 14,
+        "result": "PASS"
+      },
+      {
+        "test": "Tests\\Integration\\SlotIntegrityAndRiskFunnelPostgresIntegrationTest::test_slot_integrity_cadence_detects_missing_unexplained_and_market_data_unavailable",
+        "source": "tests/Integration/SlotIntegrityAndRiskFunnelPostgresIntegrationTest.php",
+        "line": 110,
+        "assertions": 7,
+        "result": "PASS"
+      },
+      {
+        "test": "Tests\\Integration\\SlotIntegrityAndRiskFunnelPostgresIntegrationTest::test_opportunity_tracer_separates_signal_opportunity_from_risk_decision_events",
+        "source": "tests/Integration/SlotIntegrityAndRiskFunnelPostgresIntegrationTest.php",
+        "line": 152,
+        "assertions": 11,
+        "result": "PASS"
+      },
+      {
+        "test": "Tests\\Integration\\SlotIntegrityAndRiskFunnelPostgresIntegrationTest::test_negative_control_duplicate_risk_decision_rejected_by_unique_constraint",
+        "source": "tests/Integration/SlotIntegrityAndRiskFunnelPostgresIntegrationTest.php",
+        "line": 229,
+        "assertions": 1,
+        "result": "PASS"
+      }
+    ],
+    "rationale": "Half-open window and risk funnel tests pass separately; no comparison of exported strategy funnel populations to scoped source queries.",
+    "next_local_procedure": "Seed BUY/SELL/SKIP and open/partial/closed states on both exchanges and two adjacent windows. Parse exported funnel CSV and compare exact cohorts/counts to qualified SELECTs; reject cross-exchange rows.",
+    "production_status": "UNAVAILABLE",
+    "operator_action_required": true,
+    "runtime_code_change_required": "Not established; verify first",
+    "test_change_required": true,
+    "source_references": [
+      "app/Audit/Application/AuditExportService.php"
+    ],
+    "acceptance_criteria": [
+      {
+        "id": "VEC-P0-108-A1",
+        "description": "Export funnel populations, lifecycle states and exchange/account scope must agree with source queries. Independent closure accepts current evidence and preserved histories."
+      }
+    ],
+    "obligations": [
+      {
+        "id": "VEC-P0-108-V1",
+        "description": "Export funnel populations, lifecycle states and exchange/account scope must agree with source queries. Reproduce negative and positive cases in isolated integration.",
+        "environment": "isolated_postgresql",
+        "status": "UNAVAILABLE"
+      },
+      {
+        "id": "VEC-P0-108-V2",
+        "description": "Confirm affected deployed behavior from operator-authorized current evidence; no deployment implied.",
+        "environment": "production",
+        "status": "UNAVAILABLE"
+      }
+    ],
+    "production_procedure": "Compare the same retained ZIP funnel to bounded qualified SELECT counts over identical half-open window and lifecycle cohort; require no cross-exchange/account or partial-exit population mismatch."
+  },
+  {
+    "requirement_id": "VEC-P0-109",
+    "title": "F09 \u2014 Frontend Single-Account Display Default Blinds Multi-Account System [HIGH]",
+    "local_obligation": "VEC-P0-109-V1",
+    "local_status": "UNAVAILABLE",
+    "tests": [
+      {
+        "test": "Tests\\Feature\\Api\\MultiAccountSelectionTest::test_dashboard_returns_aggregate_portfolio_when_all_is_selected",
+        "source": "tests/Feature/Api/MultiAccountSelectionTest.php",
+        "line": 26,
+        "assertions": 13,
+        "result": "PASS"
+      },
+      {
+        "test": "Tests\\Feature\\Api\\MultiAccountSelectionTest::test_dashboard_returns_account_scoped_portfolio_when_specific_account_requested",
+        "source": "tests/Feature/Api/MultiAccountSelectionTest.php",
+        "line": 48,
+        "assertions": 9,
+        "result": "PASS"
+      },
+      {
+        "test": "Tests\\Feature\\Api\\MultiAccountSelectionTest::test_statistics_accepts_account_param_and_returns_account_provenance",
+        "source": "tests/Feature/Api/MultiAccountSelectionTest.php",
+        "line": 69,
+        "assertions": 7,
+        "result": "PASS"
+      },
+      {
+        "test": "Tests\\Feature\\Api\\MultiAccountSelectionTest::test_risk_accepts_account_param_and_scopes_decisions",
+        "source": "tests/Feature/Api/MultiAccountSelectionTest.php",
+        "line": 88,
+        "assertions": 5,
+        "result": "PASS"
+      },
+      {
+        "test": "Tests\\Feature\\Api\\MultiAccountSelectionTest::test_paper_accounts_endpoint_returns_accounts_with_exchange_filtering",
+        "source": "tests/Feature/Api/MultiAccountSelectionTest.php",
+        "line": 137,
+        "assertions": 15,
+        "result": "PASS"
+      },
+      {
+        "test": "Tests\\Feature\\PaperTrading\\StrategyPipelineFunnelVerificationTest::test_all_26_primary_pipelines_are_registered_and_configured",
+        "source": "tests/Feature/PaperTrading/StrategyPipelineFunnelVerificationTest.php",
+        "line": 47,
+        "assertions": 30,
+        "result": "PASS"
+      }
+    ],
+    "rationale": "Selector tests seed Bybit only. Separate 26-account census does not prove all 26 selectable or distinct aggregate/account economics.",
+    "next_local_procedure": "Seed 13+13 accounts with distinct balances; request dashboard/statistics/risk for every account and exchange plus aggregate. Assert IDs, sums, foreign-ID rejection and no provisioning; exercise selectors in browser for V3.",
+    "production_status": "UNAVAILABLE",
+    "operator_action_required": true,
+    "runtime_code_change_required": "Not established; verify first",
+    "test_change_required": true,
+    "source_references": [
+      "app/Http/Controllers/Api/V1/ResearchController.php",
+      "frontend/src/pages/DashboardPage.vue"
+    ],
+    "acceptance_criteria": [
+      {
+        "id": "VEC-P0-109-A1",
+        "description": "All 26 accounts must be selectable with exchange-qualified identity and distinct account/aggregate values. Independent closure accepts current evidence and preserved histories."
+      }
+    ],
+    "obligations": [
+      {
+        "id": "VEC-P0-109-V1",
+        "description": "All 26 accounts must be selectable with exchange-qualified identity and distinct account/aggregate values. Reproduce negative and positive cases in isolated integration.",
+        "environment": "isolated_postgresql",
+        "status": "UNAVAILABLE"
+      },
+      {
+        "id": "VEC-P0-109-V2",
+        "description": "Confirm affected deployed behavior from operator-authorized current evidence; no deployment implied.",
+        "environment": "production",
+        "status": "UNAVAILABLE"
+      },
+      {
+        "id": "VEC-P0-109-V3",
+        "description": "All 26 accounts must be selectable with exchange-qualified identity and distinct account/aggregate values. Verify rendered control/error and backend contract together.",
+        "environment": "browser",
+        "status": "UNAVAILABLE"
+      }
+    ],
+    "production_procedure": "After GET review, select all 13 accounts on each exchange in dashboard/statistics/risk and aggregate mode. Capture each account ID and exact numeric values; compare to Q1/current persisted data and independently summed aggregates."
+  },
+  {
+    "requirement_id": "VEC-P0-110",
+    "title": "F10 \u2014 Signal Annotation Query Reversal and Account Scope Defect [HIGH]",
+    "local_obligation": "VEC-P0-110-V1",
+    "local_status": "UNAVAILABLE",
+    "tests": [
+      {
+        "test": "Tests\\Feature\\Api\\CompleteApiEndpointAuditTest::test_all_registered_api_endpoints_are_discovered_and_tested",
+        "source": "tests/Feature/Api/CompleteApiEndpointAuditTest.php",
+        "line": 16,
+        "assertions": 44,
+        "result": "PASS"
+      },
+      {
+        "test": "Tests\\Feature\\Api\\CompleteApiEndpointAuditTest::test_research_write_routes_do_not_require_local_token_when_authenticated",
+        "source": "tests/Feature/Api/CompleteApiEndpointAuditTest.php",
+        "line": 97,
+        "assertions": 1,
+        "result": "PASS"
+      }
+    ],
+    "rationale": "HTTP success smoke coverage lacks competing annotation rows and qualified newest-match assertions.",
+    "next_local_procedure": "Seed older/newer matching decisions and a newer foreign-account/foreign-exchange decision for one signal. Read annotations and assert newest matching row only, plus missing-match unavailable state.",
+    "production_status": "UNAVAILABLE",
+    "operator_action_required": true,
+    "runtime_code_change_required": "Not established; verify first",
+    "test_change_required": true,
+    "source_references": [
+      "app/Http/Controllers/Api/V1/ResearchController.php"
+    ],
+    "acceptance_criteria": [
+      {
+        "id": "VEC-P0-110-A1",
+        "description": "Signal annotation must choose latest matching record within requested account/exchange scope. Independent closure accepts current evidence and preserved histories."
+      }
+    ],
+    "obligations": [
+      {
+        "id": "VEC-P0-110-V1",
+        "description": "Signal annotation must choose latest matching record within requested account/exchange scope. Reproduce negative and positive cases in isolated integration.",
+        "environment": "isolated_postgresql",
+        "status": "UNAVAILABLE"
+      },
+      {
+        "id": "VEC-P0-110-V2",
+        "description": "Confirm affected deployed behavior from operator-authorized current evidence; no deployment implied.",
+        "environment": "production",
+        "status": "UNAVAILABLE"
+      }
+    ],
+    "production_procedure": "Use an existing signal with multiple risk annotations; read matching account/exchange rows ordered by decision time, compare the displayed newest qualified record; foreign/newer records must not win."
+  },
+  {
+    "requirement_id": "VEC-P0-111",
+    "title": "F11 \u2014 Statistics Page Lifecycle Population Mixing [MEDIUM]",
+    "local_obligation": "VEC-P0-111-V1",
+    "local_status": "UNAVAILABLE",
+    "tests": [
+      {
+        "test": "Tests\\Feature\\PaperTrading\\PerformanceStatisticsTest::test_win_rate_profit_factor_average_r_and_equity_drawdown",
+        "source": "tests/Feature/PaperTrading/PerformanceStatisticsTest.php",
+        "line": 22,
+        "assertions": 12,
+        "result": "PASS"
+      },
+      {
+        "test": "Tests\\Feature\\PaperTrading\\PerformanceStatisticsTest::test_profit_factor_is_null_with_explicit_reason_when_there_are_no_losses_and_filters_isolate_portfolios",
+        "source": "tests/Feature/PaperTrading/PerformanceStatisticsTest.php",
+        "line": 46,
+        "assertions": 5,
+        "result": "PASS"
+      },
+      {
+        "test": "Tests\\Feature\\PaperTrading\\PerformanceStatisticsTest::test_closed_trade_fees_exclude_open_position_economics",
+        "source": "tests/Feature/PaperTrading/PerformanceStatisticsTest.php",
+        "line": 60,
+        "assertions": 11,
+        "result": "PASS"
+      },
+      {
+        "test": "Tests\\Feature\\PaperTrading\\PerformanceStatisticsTest::test_legitimate_historical_maximum_survives_partial_snapshot_history",
+        "source": "tests/Feature/PaperTrading/PerformanceStatisticsTest.php",
+        "line": 75,
+        "assertions": 4,
+        "result": "PASS"
+      },
+      {
+        "test": "Tests\\Feature\\PaperTrading\\PaperLifecycleTest::test_complete_buy_lifecycle_entry_tp1_tp2_is_idempotent_and_journaled",
+        "source": "tests/Feature/PaperTrading/PaperLifecycleTest.php",
+        "line": 84,
+        "assertions": 13,
+        "result": "PASS"
+      },
+      {
+        "test": "Tests\\Feature\\Research\\P2RiskCapitalMetricsTest::test_partially_closed_position_is_excluded_from_the_lifecycle_population",
+        "source": "tests/Feature/Research/P2RiskCapitalMetricsTest.php",
+        "line": 196,
+        "assertions": 4,
+        "result": "PASS"
+      }
+    ],
+    "rationale": "Open economics exclusion passes. P2 partial-population test targets a different service; no direct partial-exit negative for the Statistics page service.",
+    "next_local_procedure": "Exercise PerformanceStatisticsService and statistics API with OPEN, PARTIALLY_CLOSED, CLOSED_TP and CLOSED_SL, multiple partial executions per position. Assert only closed positions form winrate/PF/R denominators and one closed position is one trade.",
+    "production_status": "UNAVAILABLE",
+    "operator_action_required": true,
+    "runtime_code_change_required": "Not established; verify first",
+    "test_change_required": true,
+    "source_references": [
+      "app/PaperTrading/Application/PerformanceStatisticsService.php"
+    ],
+    "acceptance_criteria": [
+      {
+        "id": "VEC-P0-111-A1",
+        "description": "Closed-trade metrics must not mix open/partial positions or count partial exits as extra trades. Independent closure accepts current evidence and preserved histories."
+      }
+    ],
+    "obligations": [
+      {
+        "id": "VEC-P0-111-V1",
+        "description": "Closed-trade metrics must not mix open/partial positions or count partial exits as extra trades. Reproduce negative and positive cases in isolated integration.",
+        "environment": "isolated_postgresql",
+        "status": "UNAVAILABLE"
+      },
+      {
+        "id": "VEC-P0-111-V2",
+        "description": "Confirm affected deployed behavior from operator-authorized current evidence; no deployment implied.",
+        "environment": "production",
+        "status": "UNAVAILABLE"
+      }
+    ],
+    "production_procedure": "Compare statistics API/DOM with closed-position population and separately open/partial records for the same account/window. Count a position once regardless of partial execution legs."
+  },
+  {
+    "requirement_id": "VEC-P0-112",
+    "title": "F12 \u2014 Daily Performance Marks Missing Opening as Complete [HIGH]",
+    "local_obligation": "VEC-P0-112-V1",
+    "local_status": "PASS",
+    "tests": [
+      {
+        "test": "Tests\\Feature\\PaperTrading\\DailyPerformanceTest::test_daily_equity_returns_are_paginated_and_use_the_selected_timezone",
+        "source": "tests/Feature/PaperTrading/DailyPerformanceTest.php",
+        "line": 22,
+        "assertions": 13,
+        "result": "PASS"
+      },
+      {
+        "test": "Tests\\Feature\\PaperTrading\\DailyPerformanceTest::test_symbol_filter_does_not_fabricate_historical_mark_to_market_returns",
+        "source": "tests/Feature/PaperTrading/DailyPerformanceTest.php",
+        "line": 47,
+        "assertions": 6,
+        "result": "PASS"
+      },
+      {
+        "test": "Tests\\Feature\\PaperTrading\\DailyPerformanceTest::test_invalid_timezone_is_rejected",
+        "source": "tests/Feature/PaperTrading/DailyPerformanceTest.php",
+        "line": 62,
+        "assertions": 1,
+        "result": "PASS"
+      },
+      {
+        "test": "Tests\\Feature\\PaperTrading\\DailyPerformanceTest::test_large_snapshot_history_returns_only_ten_server_aggregated_days_under_payload_limit",
+        "source": "tests/Feature/PaperTrading/DailyPerformanceTest.php",
+        "line": 69,
+        "assertions": 5,
+        "result": "PASS"
+      },
+      {
+        "test": "Tests\\Feature\\PaperTrading\\DailyPerformanceTest::test_aggregates_exact_fees_funding_windows_and_symbol_metrics_without_n_plus_one",
+        "source": "tests/Feature/PaperTrading/DailyPerformanceTest.php",
+        "line": 83,
+        "assertions": 24,
+        "result": "PASS"
+      },
+      {
+        "test": "Tests\\Feature\\PaperTrading\\DailyPerformanceTest::test_missing_opening_is_not_cumulative_daily_profit_and_csv_semantics_match",
+        "source": "tests/Feature/PaperTrading/DailyPerformanceTest.php",
+        "line": 145,
+        "assertions": 9,
+        "result": "PASS"
+      },
+      {
+        "test": "Tests\\Feature\\PaperTrading\\DailyPerformanceTest::test_account_inception_is_a_justified_opening_boundary",
+        "source": "tests/Feature/PaperTrading/DailyPerformanceTest.php",
+        "line": 166,
+        "assertions": 4,
+        "result": "PASS"
+      }
+    ],
+    "rationale": "Closing-only history returns null PnL and incomplete in API service and calendar CSV; inception is a justified opening control; complete period reconciles commissions/funding.",
+    "next_local_procedure": "No additional local test needed. Compare deployed daily API/CSV to opening/closing snapshots, including a missing-opening day.",
+    "production_status": "UNAVAILABLE",
+    "operator_action_required": true,
+    "runtime_code_change_required": "Not established; verify first",
+    "test_change_required": false,
+    "source_references": [
+      "app/PaperTrading/Application/DailyPerformanceService.php"
+    ],
+    "acceptance_criteria": [
+      {
+        "id": "VEC-P0-112-A1",
+        "description": "Daily results without verified opening equity must be incomplete rather than certified. Independent closure accepts current evidence and preserved histories."
+      }
+    ],
+    "obligations": [
+      {
+        "id": "VEC-P0-112-V1",
+        "description": "Daily results without verified opening equity must be incomplete rather than certified. Reproduce negative and positive cases in isolated integration.",
+        "environment": "isolated_postgresql",
+        "status": "PASS"
+      },
+      {
+        "id": "VEC-P0-112-V2",
+        "description": "Confirm affected deployed behavior from operator-authorized current evidence; no deployment implied.",
+        "environment": "production",
+        "status": "UNAVAILABLE"
+      }
+    ],
+    "production_procedure": "Compare daily API and retained CSV to exact opening/closing snapshots. Missing opening must be incomplete/null except documented account inception; fresh rendering cannot certify absent history."
+  },
+  {
+    "requirement_id": "VEC-P0-113",
+    "title": "F13 \u2014 Research Health Funnel False Healthy Parent Status and Hardcoded Lookback [MEDIUM]",
+    "local_obligation": "VEC-P0-113-V1",
+    "local_status": "PASS",
+    "tests": [
+      {
+        "test": "Tests\\Unit\\Research\\StrategyHealthServiceTest::test_evaluates_strategy_health_and_builds_funnel",
+        "source": "tests/Unit/Research/StrategyHealthServiceTest.php",
+        "line": 20,
+        "assertions": 11,
+        "result": "PASS"
+      },
+      {
+        "test": "Tests\\Unit\\Research\\StrategyHealthServiceTest::test_identifies_insufficient_data_status",
+        "source": "tests/Unit/Research/StrategyHealthServiceTest.php",
+        "line": 60,
+        "assertions": 5,
+        "result": "PASS"
+      }
+    ],
+    "rationale": "Observed BUY/SKIP counts are asserted; all-empty children produce INSUFFICIENT_DATA parent; requested 7d changes expected slots to 672.",
+    "next_local_procedure": "No additional local test needed for the tested contract. Compare real 24h/7d source observations and child/parent health; do not infer activity from HEALTHY alone.",
+    "production_status": "UNAVAILABLE",
+    "operator_action_required": true,
+    "runtime_code_change_required": "Not established; verify first",
+    "test_change_required": false,
+    "source_references": [
+      "app/Research/Application/StrategyHealthService.php"
+    ],
+    "acceptance_criteria": [
+      {
+        "id": "VEC-P0-113-A1",
+        "description": "Research health must propagate insufficient child evidence and derive expected slots from requested window. Independent closure accepts current evidence and preserved histories."
+      }
+    ],
+    "obligations": [
+      {
+        "id": "VEC-P0-113-V1",
+        "description": "Research health must propagate insufficient child evidence and derive expected slots from requested window. Reproduce negative and positive cases in isolated integration.",
+        "environment": "isolated_postgresql",
+        "status": "PASS"
+      },
+      {
+        "id": "VEC-P0-113-V2",
+        "description": "Confirm affected deployed behavior from operator-authorized current evidence; no deployment implied.",
+        "environment": "production",
+        "status": "UNAVAILABLE"
+      }
+    ],
+    "production_procedure": "Compare existing 24h/7d health responses to qualified observation counts; inspect every child and parent status and effective cadence/symbol set. Do not infer coverage from hardcoded theoretical 192/1344 totals."
+  },
+  {
+    "requirement_id": "VEC-P0-114",
+    "title": "F14 \u2014 Research Report Freshness Shape Mismatches [MEDIUM]",
+    "local_obligation": "VEC-P0-114-V1",
+    "local_status": "UNAVAILABLE",
+    "tests": [
+      {
+        "test": "Tests\\Feature\\Research\\AutonomousLearningApiTest::test_learning_overview_and_autonomy_settings_endpoints",
+        "source": "tests/Feature/Research/AutonomousLearningApiTest.php",
+        "line": 17,
+        "assertions": 15,
+        "result": "PASS"
+      },
+      {
+        "test": "Tests\\Feature\\Research\\AutonomousLearningApiTest::test_candidate_lifecycle_api_endpoints",
+        "source": "tests/Feature/Research/AutonomousLearningApiTest.php",
+        "line": 52,
+        "assertions": 13,
+        "result": "PASS"
+      },
+      {
+        "test": "Tests\\Feature\\Research\\AutonomousLearningApiTest::test_models_endpoint",
+        "source": "tests/Feature/Research/AutonomousLearningApiTest.php",
+        "line": 125,
+        "assertions": 2,
+        "result": "PASS"
+      },
+      {
+        "test": "Tests\\Unit\\Research\\SystemFreshnessServiceTest::test_freshness_check_detects_lag_and_generates_alerts",
+        "source": "tests/Unit/Research/SystemFreshnessServiceTest.php",
+        "line": 16,
+        "assertions": 7,
+        "result": "PASS"
+      }
+    ],
+    "rationale": "Freshness service and API shapes tested separately; report-to-page stale/unknown shape regression is not asserted.",
+    "next_local_procedure": "Exercise the report endpoint with fresh, stale and missing underlying marks; mount its consumer and assert actual field names plus stale/unknown UI. Capture V3 DOM and API together.",
+    "production_status": "UNAVAILABLE",
+    "operator_action_required": true,
+    "runtime_code_change_required": "Not established; verify first",
+    "test_change_required": true,
+    "source_references": [
+      "app/Http/Controllers/Api/V1/AutonomousLearningController.php"
+    ],
+    "acceptance_criteria": [
+      {
+        "id": "VEC-P0-114-A1",
+        "description": "Report freshness fields must conform to actual service shape and expose stale/unknown state. Independent closure accepts current evidence and preserved histories."
+      }
+    ],
+    "obligations": [
+      {
+        "id": "VEC-P0-114-V1",
+        "description": "Report freshness fields must conform to actual service shape and expose stale/unknown state. Reproduce negative and positive cases in isolated integration.",
+        "environment": "isolated_postgresql",
+        "status": "UNAVAILABLE"
+      },
+      {
+        "id": "VEC-P0-114-V2",
+        "description": "Confirm affected deployed behavior from operator-authorized current evidence; no deployment implied.",
+        "environment": "production",
+        "status": "UNAVAILABLE"
+      },
+      {
+        "id": "VEC-P0-114-V3",
+        "description": "Report freshness fields must conform to actual service shape and expose stale/unknown state. Verify rendered control/error and backend contract together.",
+        "environment": "browser",
+        "status": "UNAVAILABLE"
+      }
+    ],
+    "production_procedure": "Compare report freshness response fields with actual underlying mark timestamps and rendered stale/unknown state; capture same release, request and account."
+  },
+  {
+    "requirement_id": "VEC-P0-115",
+    "title": "F15 \u2014 Portfolio Correlation Invalid Status Check and Trade-Order Pairing [HIGH]",
+    "local_obligation": "VEC-P0-115-V1",
+    "local_status": "UNAVAILABLE",
+    "tests": [
+      {
+        "test": "Tests\\Unit\\Research\\PortfolioCorrelationServiceTest::test_computes_portfolio_correlation_and_overlap",
+        "source": "tests/Unit/Research/PortfolioCorrelationServiceTest.php",
+        "line": 53,
+        "assertions": 5,
+        "result": "PASS"
+      },
+      {
+        "test": "Tests\\Unit\\Research\\PortfolioCorrelationServiceTest::test_f15_real_lifecycle_closed_and_partially_closed_positions_are_included",
+        "source": "tests/Unit/Research/PortfolioCorrelationServiceTest.php",
+        "line": 211,
+        "assertions": 4,
+        "result": "PASS"
+      }
+    ],
+    "rationale": "Lifecycle inclusion and aligned fixture correlation pass; no deliberately permuted trade-order/time alignment negative.",
+    "next_local_procedure": "Create time-overlapping and non-overlapping trades with permuted insertion order and missing intervals. Assert correlation uses common time observations and never pairs by row order.",
+    "production_status": "UNAVAILABLE",
+    "operator_action_required": true,
+    "runtime_code_change_required": "Not established; verify first",
+    "test_change_required": true,
+    "source_references": [
+      "app/Research/Application/PortfolioCorrelationService.php"
+    ],
+    "acceptance_criteria": [
+      {
+        "id": "VEC-P0-115-A1",
+        "description": "Correlation must align valid lifecycle populations in time rather than pair rows by trade order. Independent closure accepts current evidence and preserved histories."
+      }
+    ],
+    "obligations": [
+      {
+        "id": "VEC-P0-115-V1",
+        "description": "Correlation must align valid lifecycle populations in time rather than pair rows by trade order. Reproduce negative and positive cases in isolated integration.",
+        "environment": "isolated_postgresql",
+        "status": "UNAVAILABLE"
+      },
+      {
+        "id": "VEC-P0-115-V2",
+        "description": "Confirm affected deployed behavior from operator-authorized current evidence; no deployment implied.",
+        "environment": "production",
+        "status": "UNAVAILABLE"
+      }
+    ],
+    "production_procedure": "Use existing common-time return series with retained sample IDs; independently align timestamps and recompute correlation. Do not use trade insertion order; missing common intervals remain unavailable."
+  },
+  {
+    "requirement_id": "VEC-P0-116",
+    "title": "F16 \u2014 Strategy Degradation Cross-Exchange Pollution [HIGH]",
+    "local_obligation": "VEC-P0-116-V1",
+    "local_status": "UNAVAILABLE",
+    "tests": [
+      {
+        "test": "Tests\\Unit\\Research\\StrategyDegradationServiceTest::test_evaluates_degradation_with_insufficient_data",
+        "source": "tests/Unit/Research/StrategyDegradationServiceTest.php",
+        "line": 21,
+        "assertions": 3,
+        "result": "PASS"
+      },
+      {
+        "test": "Tests\\Unit\\Research\\StrategyDegradationServiceTest::test_detects_regime_mismatch_degradation",
+        "source": "tests/Unit/Research/StrategyDegradationServiceTest.php",
+        "line": 31,
+        "assertions": 4,
+        "result": "PASS"
+      },
+      {
+        "test": "Tests\\Unit\\Research\\StrategyDegradationServiceTest::test_detects_closed_positions_with_enum_statuses",
+        "source": "tests/Unit/Research/StrategyDegradationServiceTest.php",
+        "line": 129,
+        "assertions": 3,
+        "result": "PASS"
+      },
+      {
+        "test": "Tests\\Feature\\Research\\P5DependenceConcentrationTest::test_generation_is_idempotent_and_never_mutates_the_paper_ledger",
+        "source": "tests/Feature/Research/P5DependenceConcentrationTest.php",
+        "line": 42,
+        "assertions": 5,
+        "result": "PASS"
+      },
+      {
+        "test": "Tests\\Feature\\Research\\P5DependenceConcentrationTest::test_same_side_and_opposite_side_clusters_are_distinct_and_traceable_to_position_ids",
+        "source": "tests/Feature/Research/P5DependenceConcentrationTest.php",
+        "line": 80,
+        "assertions": 15,
+        "result": "PASS"
+      },
+      {
+        "test": "Tests\\Feature\\Research\\P5DependenceConcentrationTest::test_open_position_is_clipped_to_the_cutoff_and_keeps_only_realized_pnl_in_concentration",
+        "source": "tests/Feature/Research/P5DependenceConcentrationTest.php",
+        "line": 155,
+        "assertions": 5,
+        "result": "PASS"
+      },
+      {
+        "test": "Tests\\Feature\\Research\\P5DependenceConcentrationTest::test_partial_close_does_not_end_the_position_interval",
+        "source": "tests/Feature/Research/P5DependenceConcentrationTest.php",
+        "line": 186,
+        "assertions": 3,
+        "result": "PASS"
+      },
+      {
+        "test": "Tests\\Feature\\Research\\P5DependenceConcentrationTest::test_cluster_ids_are_deterministic_across_runs",
+        "source": "tests/Feature/Research/P5DependenceConcentrationTest.php",
+        "line": 215,
+        "assertions": 2,
+        "result": "PASS"
+      },
+      {
+        "test": "Tests\\Feature\\Research\\P5DependenceConcentrationTest::test_cross_symbol_exposure_is_reported_gross_without_netting",
+        "source": "tests/Feature/Research/P5DependenceConcentrationTest.php",
+        "line": 244,
+        "assertions": 5,
+        "result": "PASS"
+      },
+      {
+        "test": "Tests\\Feature\\Research\\P5DependenceConcentrationTest::test_missing_equity_snapshots_make_the_cross_account_view_not_comparable",
+        "source": "tests/Feature/Research/P5DependenceConcentrationTest.php",
+        "line": 278,
+        "assertions": 4,
+        "result": "PASS"
+      },
+      {
+        "test": "Tests\\Feature\\Research\\P5DependenceConcentrationTest::test_top_k_concentration_is_traceable_to_source_position_ids",
+        "source": "tests/Feature/Research/P5DependenceConcentrationTest.php",
+        "line": 300,
+        "assertions": 4,
+        "result": "PASS"
+      },
+      {
+        "test": "Tests\\Feature\\Research\\P5DependenceConcentrationTest::test_generation_without_positions_is_reported_as_insufficient_data",
+        "source": "tests/Feature/Research/P5DependenceConcentrationTest.php",
+        "line": 334,
+        "assertions": 3,
+        "result": "PASS"
+      }
+    ],
+    "rationale": "Degradation fixtures use Bybit only; P5 exchange comparisons do not directly test degradation isolation.",
+    "next_local_procedure": "Seed the same strategy on Bybit with gains and Binance with losses; evaluate degradation for each exchange and assert each sample/metric ignores the other; repeat with swapped insertion order.",
+    "production_status": "UNAVAILABLE",
+    "operator_action_required": true,
+    "runtime_code_change_required": "Not established; verify first",
+    "test_change_required": true,
+    "source_references": [
+      "app/Research/Application/StrategyDegradationService.php"
+    ],
+    "acceptance_criteria": [
+      {
+        "id": "VEC-P0-116-A1",
+        "description": "Degradation calculations must not pool unrelated exchange histories. Independent closure accepts current evidence and preserved histories."
+      }
+    ],
+    "obligations": [
+      {
+        "id": "VEC-P0-116-V1",
+        "description": "Degradation calculations must not pool unrelated exchange histories. Reproduce negative and positive cases in isolated integration.",
+        "environment": "isolated_postgresql",
+        "status": "UNAVAILABLE"
+      },
+      {
+        "id": "VEC-P0-116-V2",
+        "description": "Confirm affected deployed behavior from operator-authorized current evidence; no deployment implied.",
+        "environment": "production",
+        "status": "UNAVAILABLE"
+      }
+    ],
+    "production_procedure": "Read degradation source populations for the same strategy on both exchanges. Independently recompute each result using only its exchange and compare snapshots/API."
+  },
+  {
+    "requirement_id": "VEC-P0-117",
+    "title": "F17 \u2014 Learning Feature Store Missing Exchange Filter [MEDIUM]",
+    "local_obligation": "VEC-P0-117-V1",
+    "local_status": "UNAVAILABLE",
+    "tests": [
+      {
+        "test": "Tests\\Unit\\Research\\LearningFeatureStoreServiceTest::test_assembles_point_in_time_snapshot_and_matures_label",
+        "source": "tests/Unit/Research/LearningFeatureStoreServiceTest.php",
+        "line": 17,
+        "assertions": 9,
+        "result": "PASS"
+      }
+    ],
+    "rationale": "Point-in-time snapshot/label pass with Bybit only; missing cross-exchange contamination negative.",
+    "next_local_procedure": "Seed opposing Bybit/Binance candles and outcomes at identical times; build each feature snapshot and assert only its exchange supplies all features and labels.",
+    "production_status": "UNAVAILABLE",
+    "operator_action_required": true,
+    "runtime_code_change_required": "Not established; verify first",
+    "test_change_required": true,
+    "source_references": [
+      "app/Research/Application/LearningFeatureStoreService.php"
+    ],
+    "acceptance_criteria": [
+      {
+        "id": "VEC-P0-117-A1",
+        "description": "Learning features must filter exchange-qualified populations before model input construction. Independent closure accepts current evidence and preserved histories."
+      }
+    ],
+    "obligations": [
+      {
+        "id": "VEC-P0-117-V1",
+        "description": "Learning features must filter exchange-qualified populations before model input construction. Reproduce negative and positive cases in isolated integration.",
+        "environment": "isolated_postgresql",
+        "status": "UNAVAILABLE"
+      },
+      {
+        "id": "VEC-P0-117-V2",
+        "description": "Confirm affected deployed behavior from operator-authorized current evidence; no deployment implied.",
+        "environment": "production",
+        "status": "UNAVAILABLE"
+      }
+    ],
+    "production_procedure": "Trace stored feature snapshot exchange and source candle/outcome IDs; verify identical-time rows on the other exchange cannot enter features or labels."
+  },
+  {
+    "requirement_id": "VEC-P0-118",
+    "title": "F18 \u2014 Model Training Purging Fallback Leakage [MEDIUM]",
+    "local_obligation": "VEC-P0-118-V1",
+    "local_status": "UNAVAILABLE",
+    "tests": [
+      {
+        "test": "Tests\\Feature\\Research\\AutonomousLearningPipelineTest::test_full_autonomous_learning_pipeline_execution",
+        "source": "tests/Feature/Research/AutonomousLearningPipelineTest.php",
+        "line": 30,
+        "assertions": 16,
+        "result": "PASS"
+      },
+      {
+        "test": "Tests\\Feature\\Research\\AutonomousLearningPipelineTest::test_candidate_generation_rotates_fairly_across_all_families",
+        "source": "tests/Feature/Research/AutonomousLearningPipelineTest.php",
+        "line": 173,
+        "assertions": 2,
+        "result": "PASS"
+      }
+    ],
+    "rationale": "Training pipeline succeeds but does not drive insufficient purged samples through the fallback path.",
+    "next_local_procedure": "Construct overlapping labels whose purge removes most samples; train and assert insufficient-data failure instead of unpurged fallback. Verify no label with outcome_at after cutoff enters training.",
+    "production_status": "UNAVAILABLE",
+    "operator_action_required": true,
+    "runtime_code_change_required": "Not established; verify first",
+    "test_change_required": true,
+    "source_references": [],
+    "acceptance_criteria": [
+      {
+        "id": "VEC-P0-118-A1",
+        "description": "Training fallback must not remove chronological purging or leak future labels. Independent closure accepts current evidence and preserved histories."
+      }
+    ],
+    "obligations": [
+      {
+        "id": "VEC-P0-118-V1",
+        "description": "Training fallback must not remove chronological purging or leak future labels. Reproduce negative and positive cases in isolated integration.",
+        "environment": "isolated_postgresql",
+        "status": "UNAVAILABLE"
+      },
+      {
+        "id": "VEC-P0-118-V2",
+        "description": "Confirm affected deployed behavior from operator-authorized current evidence; no deployment implied.",
+        "environment": "production",
+        "status": "UNAVAILABLE"
+      }
+    ],
+    "production_procedure": "Inspect a retained training manifest and exact sample label/cutoff times, purge/embargo and fallback outcome. Require no post-cutoff label and no disabled purge fallback; do not trigger retraining."
+  },
+  {
+    "requirement_id": "VEC-P0-119",
+    "title": "F19 \u2014 Autonomy Settings Raw Flags vs Permissions [LOW]",
+    "local_obligation": "VEC-P0-119-V1",
+    "local_status": "UNAVAILABLE",
+    "tests": [
+      {
+        "test": "Tests\\Unit\\Research\\AutonomyPermissionServiceTest::test_autonomy_defaults_and_hard_invariants",
+        "source": "tests/Unit/Research/AutonomyPermissionServiceTest.php",
+        "line": 16,
+        "assertions": 11,
+        "result": "PASS"
+      },
+      {
+        "test": "Tests\\Unit\\Research\\AutonomyPermissionServiceTest::test_kill_switch_immediately_blocks_all_autonomy",
+        "source": "tests/Unit/Research/AutonomyPermissionServiceTest.php",
+        "line": 46,
+        "assertions": 6,
+        "result": "PASS"
+      },
+      {
+        "test": "Tests\\Feature\\Research\\AutonomousLearningApiTest::test_learning_overview_and_autonomy_settings_endpoints",
+        "source": "tests/Feature/Research/AutonomousLearningApiTest.php",
+        "line": 17,
+        "assertions": 15,
+        "result": "PASS"
+      }
+    ],
+    "rationale": "Service restrictions pass; settings API asserts raw capabilities but not the effective permission map under conflicting flags.",
+    "next_local_procedure": "Set raw permission true with global enable false or kill switch true in isolated fixtures; GET settings and assert effective permission false alongside the raw value and reason. Render in browser for V3.",
+    "production_status": "UNAVAILABLE",
+    "operator_action_required": true,
+    "runtime_code_change_required": "Not established; verify first",
+    "test_change_required": true,
+    "source_references": [
+      "app/Research/Application/AutonomyPermissionService.php"
+    ],
+    "acceptance_criteria": [
+      {
+        "id": "VEC-P0-119-A1",
+        "description": "Autonomy settings must expose effective permissions, not only configured flags. Independent closure accepts current evidence and preserved histories."
+      }
+    ],
+    "obligations": [
+      {
+        "id": "VEC-P0-119-V1",
+        "description": "Autonomy settings must expose effective permissions, not only configured flags. Reproduce negative and positive cases in isolated integration.",
+        "environment": "isolated_postgresql",
+        "status": "UNAVAILABLE"
+      },
+      {
+        "id": "VEC-P0-119-V2",
+        "description": "Confirm affected deployed behavior from operator-authorized current evidence; no deployment implied.",
+        "environment": "production",
+        "status": "UNAVAILABLE"
+      },
+      {
+        "id": "VEC-P0-119-V3",
+        "description": "Autonomy settings must expose effective permissions, not only configured flags. Verify rendered control/error and backend contract together.",
+        "environment": "browser",
+        "status": "UNAVAILABLE"
+      }
+    ],
+    "production_procedure": "Capture raw and effective permission maps and existing config/switch state from the same release. Effective action must be false under either blocking authority even if raw flag is true; do not toggle flags."
+  },
+  {
+    "requirement_id": "VEC-P0-120",
+    "title": "F20 \u2014 Dual Kill-Switch Divergence & Blindness [HIGH]",
+    "local_obligation": "VEC-P0-120-V1",
+    "local_status": "UNAVAILABLE",
+    "tests": [
+      {
+        "test": "Tests\\Unit\\Research\\AutonomyPermissionServiceTest::test_autonomy_defaults_and_hard_invariants",
+        "source": "tests/Unit/Research/AutonomyPermissionServiceTest.php",
+        "line": 16,
+        "assertions": 11,
+        "result": "PASS"
+      },
+      {
+        "test": "Tests\\Unit\\Research\\AutonomyPermissionServiceTest::test_kill_switch_immediately_blocks_all_autonomy",
+        "source": "tests/Unit/Research/AutonomyPermissionServiceTest.php",
+        "line": 46,
+        "assertions": 6,
+        "result": "PASS"
+      },
+      {
+        "test": "Tests\\Feature\\Research\\AutonomyResearchTest::test_the_registry_endpoint_exposes_the_candidates_and_keeps_the_flag_off",
+        "source": "tests/Feature/Research/AutonomyResearchTest.php",
+        "line": 33,
+        "assertions": 6,
+        "result": "PASS"
+      },
+      {
+        "test": "Tests\\Feature\\Research\\AutonomyResearchTest::test_registering_a_hypothesis_is_idempotent_and_the_record_is_append_only",
+        "source": "tests/Feature/Research/AutonomyResearchTest.php",
+        "line": 46,
+        "assertions": 5,
+        "result": "PASS"
+      },
+      {
+        "test": "Tests\\Feature\\Research\\AutonomyResearchTest::test_an_experiment_cannot_skip_the_data_check",
+        "source": "tests/Feature/Research/AutonomyResearchTest.php",
+        "line": 60,
+        "assertions": 3,
+        "result": "PASS"
+      },
+      {
+        "test": "Tests\\Feature\\Research\\AutonomyResearchTest::test_a_registered_experiment_records_its_transitions",
+        "source": "tests/Feature/Research/AutonomyResearchTest.php",
+        "line": 73,
+        "assertions": 4,
+        "result": "PASS"
+      },
+      {
+        "test": "Tests\\Feature\\Research\\AutonomyResearchTest::test_the_promotion_is_not_eligible_without_a_shadow_history",
+        "source": "tests/Feature/Research/AutonomyResearchTest.php",
+        "line": 98,
+        "assertions": 3,
+        "result": "PASS"
+      },
+      {
+        "test": "Tests\\Feature\\Research\\AutonomyResearchTest::test_the_promotion_is_blocked_while_the_feature_flag_is_off",
+        "source": "tests/Feature/Research/AutonomyResearchTest.php",
+        "line": 120,
+        "assertions": 2,
+        "result": "PASS"
+      },
+      {
+        "test": "Tests\\Feature\\Research\\AutonomyResearchTest::test_a_recorded_promotion_decision_is_never_applied",
+        "source": "tests/Feature/Research/AutonomyResearchTest.php",
+        "line": 143,
+        "assertions": 4,
+        "result": "PASS"
+      },
+      {
+        "test": "Tests\\Feature\\Research\\AutonomyResearchTest::test_the_autonomy_packages_never_touch_the_paper_ledger",
+        "source": "tests/Feature/Research/AutonomyResearchTest.php",
+        "line": 174,
+        "assertions": 4,
+        "result": "PASS"
+      },
+      {
+        "test": "Tests\\Feature\\Research\\AutonomyResearchTest::test_the_write_endpoints_require_the_research_token",
+        "source": "tests/Feature/Research/AutonomyResearchTest.php",
+        "line": 201,
+        "assertions": 2,
+        "result": "PASS"
+      },
+      {
+        "test": "Tests\\Feature\\Research\\AutonomyResearchTest::test_the_experiment_endpoint_records_and_refuses_transitions",
+        "source": "tests/Feature/Research/AutonomyResearchTest.php",
+        "line": 214,
+        "assertions": 4,
+        "result": "PASS"
+      },
+      {
+        "test": "Tests\\Feature\\Research\\AutonomyResearchTest::test_the_allocation_proposal_is_research_only",
+        "source": "tests/Feature/Research/AutonomyResearchTest.php",
+        "line": 235,
+        "assertions": 4,
+        "result": "PASS"
+      },
+      {
+        "test": "Tests\\Feature\\Research\\AutonomyResearchTest::test_the_kill_switch_blocks_the_promotion_and_is_recorded",
+        "source": "tests/Feature/Research/AutonomyResearchTest.php",
+        "line": 251,
+        "assertions": 6,
+        "result": "PASS"
+      },
+      {
+        "test": "Tests\\Feature\\Research\\AutonomyResearchTest::test_the_kill_switch_release_is_refused_by_default",
+        "source": "tests/Feature/Research/AutonomyResearchTest.php",
+        "line": 283,
+        "assertions": 2,
+        "result": "PASS"
+      },
+      {
+        "test": "Tests\\Feature\\Research\\AutonomyResearchTest::test_the_kill_switch_release_requires_the_explicit_authorisation_flag",
+        "source": "tests/Feature/Research/AutonomyResearchTest.php",
+        "line": 294,
+        "assertions": 2,
+        "result": "PASS"
+      },
+      {
+        "test": "Tests\\Feature\\Research\\AutonomyResearchTest::test_a_rollback_is_refused_when_operational_restoration_is_unsupported",
+        "source": "tests/Feature/Research/AutonomyResearchTest.php",
+        "line": 306,
+        "assertions": 9,
+        "result": "PASS"
+      },
+      {
+        "test": "Tests\\Feature\\Research\\AutonomyResearchTest::test_repeated_rollback_requests_are_idempotent_and_never_claim_success",
+        "source": "tests/Feature/Research/AutonomyResearchTest.php",
+        "line": 330,
+        "assertions": 7,
+        "result": "PASS"
+      },
+      {
+        "test": "Tests\\Feature\\Research\\AutonomyResearchTest::test_a_rollback_of_an_unknown_decision_is_refused",
+        "source": "tests/Feature/Research/AutonomyResearchTest.php",
+        "line": 380,
+        "assertions": 2,
+        "result": "PASS"
+      },
+      {
+        "test": "Tests\\Feature\\Research\\AutonomyResearchTest::test_a_malformed_promotion_decision_id_is_refused_without_a_uuid_query",
+        "source": "tests/Feature/Research/AutonomyResearchTest.php",
+        "line": 390,
+        "assertions": 2,
+        "result": "PASS"
+      },
+      {
+        "test": "Tests\\Feature\\Research\\AutonomyResearchTest::test_the_rollback_endpoint_reports_unsupported_restoration_as_a_conflict",
+        "source": "tests/Feature/Research/AutonomyResearchTest.php",
+        "line": 400,
+        "assertions": 5,
+        "result": "PASS"
+      },
+      {
+        "test": "Tests\\Feature\\Research\\AutonomyResearchTest::test_the_control_endpoints_are_readable_and_write_protected",
+        "source": "tests/Feature/Research/AutonomyResearchTest.php",
+        "line": 416,
+        "assertions": 4,
+        "result": "PASS"
+      },
+      {
+        "test": "Tests\\Feature\\Research\\AutonomyResearchTest::test_the_kill_switch_endpoint_activates_and_refuses_the_release",
+        "source": "tests/Feature/Research/AutonomyResearchTest.php",
+        "line": 432,
+        "assertions": 4,
+        "result": "PASS"
+      }
+    ],
+    "rationale": "Each kill-switch has tests; no matrix toggles each authority independently and asserts both effective views agree.",
+    "next_local_procedure": "Exercise four combinations of both switch stores; assert effective blocking in both APIs/services and display both authorities without writes on GET. Browser V3 requires rendered disabled controls.",
+    "production_status": "UNAVAILABLE",
+    "operator_action_required": true,
+    "runtime_code_change_required": "Not established; verify first",
+    "test_change_required": true,
+    "source_references": [
+      "app/Research/Application/AutonomyPermissionService.php"
+    ],
+    "acceptance_criteria": [
+      {
+        "id": "VEC-P0-120-A1",
+        "description": "Both kill-switch authorities must agree on effective blocking and be visible to operators. Independent closure accepts current evidence and preserved histories."
+      }
+    ],
+    "obligations": [
+      {
+        "id": "VEC-P0-120-V1",
+        "description": "Both kill-switch authorities must agree on effective blocking and be visible to operators. Reproduce negative and positive cases in isolated integration.",
+        "environment": "isolated_postgresql",
+        "status": "UNAVAILABLE"
+      },
+      {
+        "id": "VEC-P0-120-V2",
+        "description": "Confirm affected deployed behavior from operator-authorized current evidence; no deployment implied.",
+        "environment": "production",
+        "status": "UNAVAILABLE"
+      },
+      {
+        "id": "VEC-P0-120-V3",
+        "description": "Both kill-switch authorities must agree on effective blocking and be visible to operators. Verify rendered control/error and backend contract together.",
+        "environment": "browser",
+        "status": "UNAVAILABLE"
+      }
+    ],
+    "production_procedure": "Read both switch authorities and effective views; compare existing denial logs and rendered controls. Do not toggle production switches to manufacture cases; unavailable combinations stay pending."
+  },
+  {
+    "requirement_id": "VEC-P0-121",
+    "title": "F21 \u2014 Compute Workers Static Capability Map [MEDIUM]",
+    "local_obligation": "VEC-P0-121-V1",
+    "local_status": "UNAVAILABLE",
+    "tests": [
+      {
+        "test": "Tests\\Unit\\Research\\ResearchJobServiceTest::test_capability_routing",
+        "source": "tests/Unit/Research/ResearchJobServiceTest.php",
+        "line": 183,
+        "assertions": 3,
+        "result": "PASS"
+      },
+      {
+        "test": "Tests\\Feature\\Research\\ResearchJobApiTest::test_returns_capabilities_routing",
+        "source": "tests/Feature/Research/ResearchJobApiTest.php",
+        "line": 97,
+        "assertions": 16,
+        "result": "PASS"
+      },
+      {
+        "test": "Tests\\Integration\\GoResearchWorkerIntegrationTest::test_scheduler_queue_go_worker_persists_succeeded_result",
+        "source": "tests/Integration/GoResearchWorkerIntegrationTest.php",
+        "line": 27,
+        "assertions": 12,
+        "result": "PASS"
+      }
+    ],
+    "rationale": "Static routing and real worker success pass; missing unsupported-version/offline-worker capability negative.",
+    "next_local_procedure": "Register supported, unsupported-version and expired-heartbeat workers; query capabilities and assert only actual compatible availability, with unavailable reasons for others.",
+    "production_status": "UNAVAILABLE",
+    "operator_action_required": true,
+    "runtime_code_change_required": "Not established; verify first",
+    "test_change_required": true,
+    "source_references": [
+      "app/Research/Application/ResearchJobService.php"
+    ],
+    "acceptance_criteria": [
+      {
+        "id": "VEC-P0-121-A1",
+        "description": "Research capabilities must reflect actual supported worker/version availability. Independent closure accepts current evidence and preserved histories."
+      }
+    ],
+    "obligations": [
+      {
+        "id": "VEC-P0-121-V1",
+        "description": "Research capabilities must reflect actual supported worker/version availability. Reproduce negative and positive cases in isolated integration.",
+        "environment": "isolated_postgresql",
+        "status": "UNAVAILABLE"
+      },
+      {
+        "id": "VEC-P0-121-V2",
+        "description": "Confirm affected deployed behavior from operator-authorized current evidence; no deployment implied.",
+        "environment": "production",
+        "status": "UNAVAILABLE"
+      }
+    ],
+    "production_procedure": "Read registered worker versions, heartbeat timestamps, capabilities and routed task history. Require unsupported/stale workers not advertised as available; no worker restarts or new tasks."
+  },
+  {
+    "requirement_id": "VEC-P0-122",
+    "title": "F22 \u2014 Quote Integrity Silent Error Swallowing [MEDIUM]",
+    "local_obligation": "VEC-P0-122-V1",
+    "local_status": "UNAVAILABLE",
+    "tests": [],
+    "rationale": "quote_integrity.test.js checks source contracts, not an executed HTTP failure reaching the page.",
+    "next_local_procedure": "Mock rejected HTTP, timeout and malformed success envelope in the real quoteIntegrityApi consumer; render visible error and preserve last-good/stale distinction. Verify with local API and browser for V3.",
+    "production_status": "UNAVAILABLE",
+    "operator_action_required": true,
+    "runtime_code_change_required": "Not established; verify first",
+    "test_change_required": true,
+    "source_references": [
+      "frontend/src/services/quoteIntegrityApi.ts"
+    ],
+    "acceptance_criteria": [
+      {
+        "id": "VEC-P0-122-A1",
+        "description": "Quote integrity request failures must be visible errors, not silently empty successful data. Independent closure accepts current evidence and preserved histories."
+      }
+    ],
+    "obligations": [
+      {
+        "id": "VEC-P0-122-V1",
+        "description": "Quote integrity request failures must be visible errors, not silently empty successful data. Reproduce negative and positive cases in isolated integration.",
+        "environment": "isolated_postgresql",
+        "status": "UNAVAILABLE"
+      },
+      {
+        "id": "VEC-P0-122-V2",
+        "description": "Confirm affected deployed behavior from operator-authorized current evidence; no deployment implied.",
+        "environment": "production",
+        "status": "UNAVAILABLE"
+      },
+      {
+        "id": "VEC-P0-122-V3",
+        "description": "Quote integrity request failures must be visible errors, not silently empty successful data. Verify rendered control/error and backend contract together.",
+        "environment": "browser",
+        "status": "UNAVAILABLE"
+      }
+    ],
+    "production_procedure": "Retain an existing failed quote-integrity request with matching visible error/unknown state; do not induce production outage. Local browser fault injection is separate from production evidence."
+  },
+  {
+    "requirement_id": "VEC-P0-123",
+    "title": "F23 \u2014 UI Pagination Truncations [LOW]",
+    "local_obligation": "VEC-P0-123-V1",
+    "local_status": "UNAVAILABLE",
+    "tests": [
+      {
+        "test": "Tests\\Feature\\PaperTrading\\DailyPerformanceTest::test_daily_equity_returns_are_paginated_and_use_the_selected_timezone",
+        "source": "tests/Feature/PaperTrading/DailyPerformanceTest.php",
+        "line": 22,
+        "assertions": 13,
+        "result": "PASS"
+      }
+    ],
+    "rationale": "Some backend pagination and frontend source checks pass; no rendered navigation beyond first page on each affected page.",
+    "next_local_procedure": "Seed 25 distinct journal/history rows; request pages 1/2/3 with per_page=10 and assert 25 unique IDs, stable order and no loss. Navigate all three pages in the browser for V3.",
+    "production_status": "UNAVAILABLE",
+    "operator_action_required": true,
+    "runtime_code_change_required": "Not established; verify first",
+    "test_change_required": true,
+    "source_references": [
+      "frontend/src/pages/JournalPage.vue"
+    ],
+    "acceptance_criteria": [
+      {
+        "id": "VEC-P0-123-A1",
+        "description": "Paginated UI must allow retrieval beyond the first page without silent truncation. Independent closure accepts current evidence and preserved histories."
+      }
+    ],
+    "obligations": [
+      {
+        "id": "VEC-P0-123-V1",
+        "description": "Paginated UI must allow retrieval beyond the first page without silent truncation. Reproduce negative and positive cases in isolated integration.",
+        "environment": "isolated_postgresql",
+        "status": "UNAVAILABLE"
+      },
+      {
+        "id": "VEC-P0-123-V2",
+        "description": "Confirm affected deployed behavior from operator-authorized current evidence; no deployment implied.",
+        "environment": "production",
+        "status": "UNAVAILABLE"
+      },
+      {
+        "id": "VEC-P0-123-V3",
+        "description": "Paginated UI must allow retrieval beyond the first page without silent truncation. Verify rendered control/error and backend contract together.",
+        "environment": "browser",
+        "status": "UNAVAILABLE"
+      }
+    ],
+    "production_procedure": "After GET review, page beyond the first ten journal/history rows and compare unique IDs, stable ordering and backend totals. Missing >10-row population remains pending."
+  },
+  {
+    "requirement_id": "VEC-P0-124",
+    "title": "F24 \u2014 Slippage Position Trace Scope [MEDIUM]",
+    "local_obligation": "VEC-P0-124-V1",
+    "local_status": "UNAVAILABLE",
+    "tests": [
+      {
+        "test": "Tests\\Feature\\Research\\SlippageAttributionApiTest::test_get_slippage_attribution_is_purely_read_only",
+        "source": "tests/Feature/Research/SlippageAttributionApiTest.php",
+        "line": 32,
+        "assertions": 6,
+        "result": "PASS"
+      },
+      {
+        "test": "Tests\\Feature\\Research\\SlippageAttributionApiTest::test_position_slippage_attribution_endpoint_read_only_and_not_found",
+        "source": "tests/Feature/Research/SlippageAttributionApiTest.php",
+        "line": 55,
+        "assertions": 13,
+        "result": "PASS"
+      },
+      {
+        "test": "Tests\\Feature\\Research\\SlippageAttributionApiTest::test_post_generations_requires_auth_and_rejects_idempotency_conflicts",
+        "source": "tests/Feature/Research/SlippageAttributionApiTest.php",
+        "line": 138,
+        "assertions": 8,
+        "result": "PASS"
+      }
+    ],
+    "rationale": "Latest/explicit generation, no-writes and missing-position controls pass; qualified account/exchange mismatch is not covered.",
+    "next_local_procedure": "Seed two accounts/exchanges and two generations for each position; request position trace with correct and foreign account/exchange filters. Assert zero foreign fills and only requested generation.",
+    "production_status": "UNAVAILABLE",
+    "operator_action_required": true,
+    "runtime_code_change_required": "Not established; verify first",
+    "test_change_required": true,
+    "source_references": [
+      "app/Http/Controllers/Api/V1/ProfitabilityResearchController.php"
+    ],
+    "acceptance_criteria": [
+      {
+        "id": "VEC-P0-124-A1",
+        "description": "Slippage position trace must use the requested qualified position/account scope. Independent closure accepts current evidence and preserved histories."
+      }
+    ],
+    "obligations": [
+      {
+        "id": "VEC-P0-124-V1",
+        "description": "Slippage position trace must use the requested qualified position/account scope. Reproduce negative and positive cases in isolated integration.",
+        "environment": "isolated_postgresql",
+        "status": "UNAVAILABLE"
+      },
+      {
+        "id": "VEC-P0-124-V2",
+        "description": "Confirm affected deployed behavior from operator-authorized current evidence; no deployment implied.",
+        "environment": "production",
+        "status": "UNAVAILABLE"
+      }
+    ],
+    "production_procedure": "Compare position/account/exchange/generation-qualified slippage rows to the trace response. Require latest or explicitly requested generation and no foreign fills."
+  },
+  {
+    "requirement_id": "VEC-P0-125",
+    "title": "F25 \u2014 Candidate Lab Immediate Evaluation Rejection Due to Missing Backtest Linkage [HIGH]",
+    "local_obligation": "VEC-P0-125-V1",
+    "local_status": "UNAVAILABLE",
+    "tests": [
+      {
+        "test": "Tests\\Feature\\Research\\CandidateLabValidationLifecycleTest::test_candidate_without_run_id_marks_missing_evidence_and_allows_validation_scheduling",
+        "source": "tests/Feature/Research/CandidateLabValidationLifecycleTest.php",
+        "line": 19,
+        "assertions": 11,
+        "result": "PASS"
+      },
+      {
+        "test": "Tests\\Feature\\Research\\CandidateLabValidationLifecycleTest::test_candidate_validation_scheduling_is_bounded_and_idempotent",
+        "source": "tests/Feature/Research/CandidateLabValidationLifecycleTest.php",
+        "line": 47,
+        "assertions": 12,
+        "result": "PASS"
+      },
+      {
+        "test": "Tests\\Feature\\Research\\CandidateLabValidationLifecycleTest::test_candidate_validation_scheduling_fails_closed_when_kill_switch_active",
+        "source": "tests/Feature/Research/CandidateLabValidationLifecycleTest.php",
+        "line": 89,
+        "assertions": 6,
+        "result": "PASS"
+      },
+      {
+        "test": "Tests\\Feature\\Research\\CandidateLabValidationLifecycleTest::test_candidate_evaluates_with_completed_backtest_evidence_and_records_rejection_reasons",
+        "source": "tests/Feature/Research/CandidateLabValidationLifecycleTest.php",
+        "line": 113,
+        "assertions": 4,
+        "result": "PASS"
+      },
+      {
+        "test": "Tests\\Feature\\Research\\AutonomousLearningPipelineTest::test_full_autonomous_learning_pipeline_execution",
+        "source": "tests/Feature/Research/AutonomousLearningPipelineTest.php",
+        "line": 30,
+        "assertions": 16,
+        "result": "PASS"
+      },
+      {
+        "test": "Tests\\Feature\\Research\\AutonomousLearningPipelineTest::test_candidate_generation_rotates_fairly_across_all_families",
+        "source": "tests/Feature/Research/AutonomousLearningPipelineTest.php",
+        "line": 173,
+        "assertions": 2,
+        "result": "PASS"
+      }
+    ],
+    "rationale": "Bounded queued attempts, kill-switch and rejection pass; completed run is manually supplied. No test executes EvaluateStrategyCandidateJob and proves durable linkage to the correct run.",
+    "next_local_procedure": "Execute EvaluateStrategyCandidateJob on a bounded synthetic historical dataset with a competing unrelated run. Reload candidate and assert exact owned backtest_run_id, outcome, missing/failure state, retry bound and no promotion; render transitions for V3.",
+    "production_status": "UNAVAILABLE",
+    "operator_action_required": true,
+    "runtime_code_change_required": "Not established; verify first",
+    "test_change_required": true,
+    "source_references": [
+      "app/Research/Application/PromotionPolicyService.php",
+      "frontend/src/pages/ResearchLearningPage.vue",
+      "app/Research/Jobs/EvaluateStrategyCandidateJob.php"
+    ],
+    "acceptance_criteria": [
+      {
+        "id": "VEC-P0-125-A1",
+        "description": "Candidate validation must durably link the correct run and distinguish queued, missing evidence and rejection. Independent closure accepts current evidence and preserved histories."
+      }
+    ],
+    "obligations": [
+      {
+        "id": "VEC-P0-125-V1",
+        "description": "Candidate validation must durably link the correct run and distinguish queued, missing evidence and rejection. Reproduce negative and positive cases in isolated integration.",
+        "environment": "isolated_postgresql",
+        "status": "UNAVAILABLE"
+      },
+      {
+        "id": "VEC-P0-125-V2",
+        "description": "Confirm affected deployed behavior from operator-authorized current evidence; no deployment implied.",
+        "environment": "production",
+        "status": "UNAVAILABLE"
+      },
+      {
+        "id": "VEC-P0-125-V3",
+        "description": "Candidate validation must durably link the correct run and distinguish queued, missing evidence and rejection. Verify rendered control/error and backend contract together.",
+        "environment": "browser",
+        "status": "UNAVAILABLE"
+      }
+    ],
+    "production_procedure": "Q7 plus existing backtest run records and job logs: trace queued -> exact completed run linkage -> fail-closed verdict/rejection. Observe existing bounded retries/kill-switch denials; do not generate, validate, promote or execute candidates in production."
+  },
+  {
+    "requirement_id": "VEC-P0-126",
+    "title": "F26 \u2014 Autonomy Approval Audit Trail Loses Rejected Promotions [HIGH]",
+    "local_obligation": "VEC-P0-126-V1",
+    "local_status": "UNAVAILABLE",
+    "tests": [
+      {
+        "test": "Tests\\Feature\\Research\\Gate6PromotionPolicyTest::test_f26_promotion_rejection_records_audit_trail_event",
+        "source": "tests/Feature/Research/Gate6PromotionPolicyTest.php",
+        "line": 409,
+        "assertions": 3,
+        "result": "PASS"
+      }
+    ],
+    "rationale": "Rejection event persists after exception, but test does not assert append-only enforcement or concurrent retry behavior.",
+    "next_local_procedure": "Reject promotion, verify persisted event after rollback; attempt UPDATE/DELETE with application role and require denial. Race identical rejected requests on separate PostgreSQL connections and verify documented immutable audit semantics.",
+    "production_status": "UNAVAILABLE",
+    "operator_action_required": true,
+    "runtime_code_change_required": "Not established; verify first",
+    "test_change_required": true,
+    "source_references": [
+      "app/Research/Application/PromotionPolicyService.php"
+    ],
+    "acceptance_criteria": [
+      {
+        "id": "VEC-P0-126-A1",
+        "description": "Rejected promotion must persist an immutable audit event outside any rolled-back transaction. Independent closure accepts current evidence and preserved histories."
+      }
+    ],
+    "obligations": [
+      {
+        "id": "VEC-P0-126-V1",
+        "description": "Rejected promotion must persist an immutable audit event outside any rolled-back transaction. Reproduce negative and positive cases in isolated integration.",
+        "environment": "isolated_postgresql",
+        "status": "UNAVAILABLE"
+      },
+      {
+        "id": "VEC-P0-126-V2",
+        "description": "Confirm affected deployed behavior from operator-authorized current evidence; no deployment implied.",
+        "environment": "production",
+        "status": "UNAVAILABLE"
+      }
+    ],
+    "production_procedure": "Read existing CANDIDATE_PROMOTION_REJECTED audit events and rollback/error logs for the same attempt. Verify database append-only controls from schema metadata; never test production UPDATE/DELETE."
+  },
+  {
+    "requirement_id": "VEC-P0-127",
+    "title": "F27 \u2014 Account-Level Entry Block Observability Void [HIGH]",
+    "local_obligation": "VEC-P0-127-V1",
+    "local_status": "PASS",
+    "tests": [
+      {
+        "test": "Tests\\Feature\\PaperTrading\\CentralExecutionEligibilityTest::test_f27_blocked_drawdown_account_ingests_and_rejects_signals_with_audit_lineage",
+        "source": "tests/Feature/PaperTrading/CentralExecutionEligibilityTest.php",
+        "line": 349,
+        "assertions": 7,
+        "result": "PASS"
+      },
+      {
+        "test": "Tests\\Feature\\PaperTrading\\PaperLifecycleTest::test_blocked_account_still_closes_existing_paper_position",
+        "source": "tests/Feature/PaperTrading/PaperLifecycleTest.php",
+        "line": 46,
+        "assertions": 1,
+        "result": "PASS"
+      },
+      {
+        "test": "Tests\\Feature\\Trading\\TradingPipelineConcurrencyAndSafetyTest::test_existing_open_positions_continue_lifecycle_even_when_new_entries_are_blocked",
+        "source": "tests/Feature/Trading/TradingPipelineConcurrencyAndSafetyTest.php",
+        "line": 232,
+        "assertions": 3,
+        "result": "PASS"
+      }
+    ],
+    "rationale": "Blocked drawdown SELL persists REJECTED state and PRE_RISK_ENTRY_BLOCKED journal, no RiskEngine row/fill; existing blocked-account positions still close and preserve accounting.",
+    "next_local_procedure": "No additional local test needed for this obligation. Verify real blocked-account journal/state lineage and continued open-position servicing without reactivation.",
+    "production_status": "UNAVAILABLE",
+    "operator_action_required": true,
+    "runtime_code_change_required": "Not established; verify first",
+    "test_change_required": false,
+    "source_references": [
+      "app/PaperTrading/Application/PaperProcessingService.php"
+    ],
+    "acceptance_criteria": [
+      {
+        "id": "VEC-P0-127-A1",
+        "description": "Pre-risk account entry blocks must persist signal state and decision lineage while servicing existing positions. Independent closure accepts current evidence and preserved histories."
+      }
+    ],
+    "obligations": [
+      {
+        "id": "VEC-P0-127-V1",
+        "description": "Pre-risk account entry blocks must persist signal state and decision lineage while servicing existing positions. Reproduce negative and positive cases in isolated integration.",
+        "environment": "isolated_postgresql",
+        "status": "PASS"
+      },
+      {
+        "id": "VEC-P0-127-V2",
+        "description": "Confirm affected deployed behavior from operator-authorized current evidence; no deployment implied.",
+        "environment": "production",
+        "status": "UNAVAILABLE"
+      }
+    ],
+    "production_procedure": "Read blocked-account paper_signal_states and PRE_RISK_ENTRY_BLOCKED journal alongside existing-position exits/funding. Require visible reason and no new fill; do not reactivate the account."
+  },
+  {
+    "requirement_id": "VEC-P0-201",
+    "title": "I01 \u2014 Lifecycle: `SIGNALS_EVALUATED` never correctly terminalizes",
+    "local_obligation": "VEC-P0-201-V1",
+    "local_status": "PASS",
+    "tests": [
+      {
+        "test": "Tests\\Feature\\Trading\\TradingPipelineStageATest::test_record_paper_processed_terminalizes_signals_evaluated_to_completed",
+        "source": "tests/Feature/Trading/TradingPipelineStageATest.php",
+        "line": 26,
+        "assertions": 4,
+        "result": "PASS"
+      },
+      {
+        "test": "Tests\\Feature\\Trading\\TradingPipelineStageATest::test_recovery_reconciles_unacknowledged_upstream_event_from_completed_paper",
+        "source": "tests/Feature/Trading/TradingPipelineStageATest.php",
+        "line": 92,
+        "assertions": 4,
+        "result": "PASS"
+      }
+    ],
+    "rationale": "Signals remain DISPATCHED before PAPER; completion acknowledges signals; injected unacknowledged upstream is repaired without redispatch of completed PAPER.",
+    "next_local_procedure": "No additional local regression needed. Q4 correlate signals and PAPER terminal status by exchange/symbol/close time.",
+    "production_status": "UNAVAILABLE",
+    "operator_action_required": true,
+    "runtime_code_change_required": "Not established; verify first",
+    "test_change_required": false,
+    "source_references": [
+      "app/Trading/Application/TradingPipelineEventService.php",
+      "app/Trading/Application/TradingPipelineRecoveryService.php"
+    ],
+    "acceptance_criteria": [
+      {
+        "id": "VEC-P0-201-A1",
+        "description": "Independent reviewer accepts finding-specific closure in applicable environments; reconcile report contradictions."
+      }
+    ],
+    "obligations": [
+      {
+        "id": "VEC-P0-201-V1",
+        "description": "Lifecycle: `SIGNALS_EVALUATED` never correctly terminalizes regression including negative control, current source and isolated PostgreSQL where applicable.",
+        "environment": "isolated_postgresql",
+        "status": "PASS"
+      },
+      {
+        "id": "VEC-P0-201-V2",
+        "description": "Confirm affected deployed behavior from operator-authorized current evidence; no deployment implied.",
+        "environment": "production",
+        "status": "UNAVAILABLE"
+      }
+    ],
+    "production_procedure": "Q4 and existing recovery logs: signals remain dispatched until PAPER terminal acknowledgment; stale upstream with completed downstream is acknowledged without duplicate PAPER execution."
+  },
+  {
+    "requirement_id": "VEC-P0-202",
+    "title": "I02 \u2014 TP1 fractional exit can round to zero",
+    "local_obligation": "VEC-P0-202-V1",
+    "local_status": "PASS",
+    "tests": [
+      {
+        "test": "Tests\\Feature\\PaperTrading\\PositionLifecycleStageBTest::test_tp1_zero_quantity_is_safely_skipped_without_creating_execution",
+        "source": "tests/Feature/PaperTrading/PositionLifecycleStageBTest.php",
+        "line": 28,
+        "assertions": 12,
+        "result": "PASS"
+      },
+      {
+        "test": "Tests\\Feature\\PaperTrading\\PositionLifecycleStageBTest::test_standard_tp1_and_tp2_execute_correct_fractions_and_preserve_identities",
+        "source": "tests/Feature/PaperTrading/PositionLifecycleStageBTest.php",
+        "line": 76,
+        "assertions": 5,
+        "result": "PASS"
+      }
+    ],
+    "rationale": "Minimum-step half exit creates no zero fill and leaves position open; full SL closes; normal TP1/TP2 quantity control passes.",
+    "next_local_procedure": "No additional local regression needed. Q3 inspect exact lot steps and zero-quantity execution count; lack of affected examples is unavailable operational evidence.",
+    "production_status": "UNAVAILABLE",
+    "operator_action_required": true,
+    "runtime_code_change_required": "Not established; verify first",
+    "test_change_required": false,
+    "source_references": [
+      "app/PaperTrading/Application/PositionLifecycleService.php"
+    ],
+    "acceptance_criteria": [
+      {
+        "id": "VEC-P0-202-A1",
+        "description": "Independent reviewer accepts finding-specific closure in applicable environments; reconcile report contradictions."
+      }
+    ],
+    "obligations": [
+      {
+        "id": "VEC-P0-202-V1",
+        "description": "TP1 fractional exit can round to zero regression including negative control, current source and isolated PostgreSQL where applicable.",
+        "environment": "isolated_postgresql",
+        "status": "PASS"
+      },
+      {
+        "id": "VEC-P0-202-V2",
+        "description": "Confirm affected deployed behavior from operator-authorized current evidence; no deployment implied.",
+        "environment": "production",
+        "status": "UNAVAILABLE"
+      }
+    ],
+    "production_procedure": "Q3 plus lot-step metadata: inspect smallest partial exit and subsequent full exit. Require zero invalid/zero-quantity fills and unchanged residual quantity when TP1 rounds to zero."
+  },
+  {
+    "requirement_id": "VEC-P0-203",
+    "title": "I03 \u2014 `funding_complete=false` persists for all positions",
+    "local_obligation": "VEC-P0-203-V1",
+    "local_status": "PASS",
+    "tests": [
+      {
+        "test": "Tests\\Feature\\PaperTrading\\FundingScheduleSafetyTest::test_expected_funding_boundaries_returns_null_when_exchange_or_symbol_is_uncertified",
+        "source": "tests/Feature/PaperTrading/FundingScheduleSafetyTest.php",
+        "line": 57,
+        "assertions": 2,
+        "result": "PASS"
+      },
+      {
+        "test": "Tests\\Feature\\PaperTrading\\FundingScheduleSafetyTest::test_expected_funding_boundaries_resolves_standard_eight_hour_schedule",
+        "source": "tests/Feature/PaperTrading/FundingScheduleSafetyTest.php",
+        "line": 70,
+        "assertions": 4,
+        "result": "PASS"
+      },
+      {
+        "test": "Tests\\Feature\\PaperTrading\\FundingScheduleSafetyTest::test_expected_funding_boundaries_resolves_dynamic_four_hour_schedule_from_continuous_events",
+        "source": "tests/Feature/PaperTrading/FundingScheduleSafetyTest.php",
+        "line": 83,
+        "assertions": 4,
+        "result": "PASS"
+      },
+      {
+        "test": "Tests\\Feature\\PaperTrading\\FundingScheduleSafetyTest::test_evaluate_funding_completeness_fails_closed_when_schedule_is_uncertified",
+        "source": "tests/Feature/PaperTrading/FundingScheduleSafetyTest.php",
+        "line": 116,
+        "assertions": 2,
+        "result": "PASS"
+      },
+      {
+        "test": "Tests\\Feature\\PaperTrading\\FundingScheduleSafetyTest::test_evaluate_funding_completeness_rejects_arbitrary_thirty_minute_offset",
+        "source": "tests/Feature/PaperTrading/FundingScheduleSafetyTest.php",
+        "line": 171,
+        "assertions": 2,
+        "result": "PASS"
+      },
+      {
+        "test": "Tests\\Feature\\PaperTrading\\PositionLifecycleStageBTest::test_funding_completeness_evaluates_correctly_for_zero_settlement_lifetime",
+        "source": "tests/Feature/PaperTrading/PositionLifecycleStageBTest.php",
+        "line": 193,
+        "assertions": 2,
+        "result": "PASS"
+      },
+      {
+        "test": "Tests\\Feature\\PaperTrading\\PositionLifecycleStageBTest::test_late_arriving_funding_settles_on_closed_position_with_correct_historical_quantity",
+        "source": "tests/Feature/PaperTrading/PositionLifecycleStageBTest.php",
+        "line": 113,
+        "assertions": 14,
+        "result": "PASS"
+      }
+    ],
+    "rationale": "Unknown schedule and 25-minute offset fail closed; certified 8h/dynamic 4h schedules and zero-settlement closed lifetime work; late observed settlement completes an exact held-quantity fixture.",
+    "next_local_procedure": "No additional local regression needed. Q3 and certified schedules must explain each production incomplete position; missing events/marks remain unknown.",
+    "production_status": "UNAVAILABLE",
+    "operator_action_required": true,
+    "runtime_code_change_required": "Not established; verify first",
+    "test_change_required": false,
+    "source_references": [
+      "app/PaperTrading/Application/PaperProcessingService.php",
+      "app/PaperTrading/Application/PositionLifecycleService.php"
+    ],
+    "acceptance_criteria": [
+      {
+        "id": "VEC-P0-203-A1",
+        "description": "Independent reviewer accepts finding-specific closure in applicable environments; reconcile report contradictions."
+      }
+    ],
+    "obligations": [
+      {
+        "id": "VEC-P0-203-V1",
+        "description": "`funding_complete=false` persists for all positions regression including negative control, current source and isolated PostgreSQL where applicable.",
+        "environment": "isolated_postgresql",
+        "status": "PASS"
+      },
+      {
+        "id": "VEC-P0-203-V2",
+        "description": "Confirm affected deployed behavior from operator-authorized current evidence; no deployment implied.",
+        "environment": "production",
+        "status": "UNAVAILABLE"
+      }
+    ],
+    "production_procedure": "Q3 plus certified schedules: enumerate expected settlement boundaries; compare actual event and settlement IDs. Unknown schedules, missing marks or late-offset events cannot certify completeness."
+  },
+  {
+    "requirement_id": "VEC-P0-204",
+    "title": "I04 \u2014 `PAPER_PROCESSED=COMPLETED` despite per-account failures",
+    "local_obligation": "VEC-P0-204-V1",
+    "local_status": "PASS",
+    "tests": [
+      {
+        "test": "Tests\\Feature\\Trading\\TradingPipelineStageATest::test_record_paper_processed_marks_partial_on_failures",
+        "source": "tests/Feature/Trading/TradingPipelineStageATest.php",
+        "line": 70,
+        "assertions": 3,
+        "result": "PASS"
+      },
+      {
+        "test": "Tests\\Feature\\Trading\\TradingPipelineStageATest::test_binance_provenance_failure_on_one_account_does_not_abort_others",
+        "source": "tests/Feature/Trading/TradingPipelineStageATest.php",
+        "line": 126,
+        "assertions": 4,
+        "result": "PASS"
+      },
+      {
+        "test": "Tests\\Feature\\Trading\\TradingPipelineStageATest::test_process_paper_pipeline_job_supports_targeted_retry_with_only_account_ids",
+        "source": "tests/Feature/Trading/TradingPipelineStageATest.php",
+        "line": 177,
+        "assertions": 4,
+        "result": "PASS"
+      }
+    ],
+    "rationale": "Mixed batch reports PARTIAL with one failure/one processed; targeted account selection processes only one account and records counts.",
+    "next_local_procedure": "No additional local regression needed for mixed-failure finding; broader all-failed/recovery matrix remains under P0-002. Q4 verify real partial-batch counters and logs.",
+    "production_status": "UNAVAILABLE",
+    "operator_action_required": true,
+    "runtime_code_change_required": "Not established; verify first",
+    "test_change_required": false,
+    "source_references": [
+      "app/Trading/Application/TradingPipelineEventService.php",
+      "app/Trading/Jobs/ProcessPaperPipelineJob.php"
+    ],
+    "acceptance_criteria": [
+      {
+        "id": "VEC-P0-204-A1",
+        "description": "Independent reviewer accepts finding-specific closure in applicable environments; reconcile report contradictions."
+      }
+    ],
+    "obligations": [
+      {
+        "id": "VEC-P0-204-V1",
+        "description": "`PAPER_PROCESSED=COMPLETED` despite per-account failures regression including negative control, current source and isolated PostgreSQL where applicable.",
+        "environment": "isolated_postgresql",
+        "status": "PASS"
+      },
+      {
+        "id": "VEC-P0-204-V2",
+        "description": "Confirm affected deployed behavior from operator-authorized current evidence; no deployment implied.",
+        "environment": "production",
+        "status": "UNAVAILABLE"
+      }
+    ],
+    "production_procedure": "Q4 and per-account failure logs: mixed success must be PARTIAL with exact processed/failure counts; confirm successful peers and targeted failed-account retry without duplicate ledger entries."
+  },
+  {
+    "requirement_id": "VEC-P0-205",
+    "title": "I05 \u2014 Binance 5m candle gap invokes Bybit-only recovery",
+    "local_obligation": "VEC-P0-205-V1",
+    "local_status": "PASS",
+    "tests": [
+      {
+        "test": "Tests\\Feature\\PaperTrading\\ExchangeIngestionAndValuationStageCTest::test_gap_recovery_routes_strictly_to_binance_ingestion_for_binance_exchange",
+        "source": "tests/Feature/PaperTrading/ExchangeIngestionAndValuationStageCTest.php",
+        "line": 28,
+        "assertions": 1,
+        "result": "PASS"
+      },
+      {
+        "test": "Tests\\Feature\\PaperTrading\\ExchangeIngestionAndValuationStageCTest::test_gap_recovery_routes_to_bybit_sync_candles_job_for_bybit_exchange",
+        "source": "tests/Feature/PaperTrading/ExchangeIngestionAndValuationStageCTest.php",
+        "line": 42,
+        "assertions": 1,
+        "result": "PASS"
+      },
+      {
+        "test": "Tests\\Feature\\Exchanges\\BinanceImmutableMarketIngestionTest::test_candle_replay_is_idempotent_and_conflicting_batch_rolls_back",
+        "source": "tests/Feature/Exchanges/BinanceImmutableMarketIngestionTest.php",
+        "line": 25,
+        "assertions": 6,
+        "result": "PASS"
+      }
+    ],
+    "rationale": "Binance gap job never dispatches Bybit SyncCandlesJob; Bybit control does; Binance candle conflict rolls back rather than overwriting observations.",
+    "next_local_procedure": "No additional local regression needed for routing. Q6 and already-recorded recovery logs must show Binance-only retrieval; never trigger production recovery for this audit.",
+    "production_status": "UNAVAILABLE",
+    "operator_action_required": true,
+    "runtime_code_change_required": "Not established; verify first",
+    "test_change_required": false,
+    "source_references": [
+      "app/MarketData/Jobs/RecoverCandleGapsJob.php",
+      "app/PaperTrading/Application/PaperProcessingService.php"
+    ],
+    "acceptance_criteria": [
+      {
+        "id": "VEC-P0-205-A1",
+        "description": "Independent reviewer accepts finding-specific closure in applicable environments; reconcile report contradictions."
+      }
+    ],
+    "obligations": [
+      {
+        "id": "VEC-P0-205-V1",
+        "description": "Binance 5m candle gap invokes Bybit-only recovery regression including negative control, current source and isolated PostgreSQL where applicable.",
+        "environment": "isolated_postgresql",
+        "status": "PASS"
+      },
+      {
+        "id": "VEC-P0-205-V2",
+        "description": "Confirm affected deployed behavior from operator-authorized current evidence; no deployment implied.",
+        "environment": "production",
+        "status": "UNAVAILABLE"
+      }
+    ],
+    "production_procedure": "Q6 and already-recorded recovery job logs: Binance gaps use Binance public market data; compare retained Bybit row hashes before/after the recovery window. Do not enqueue recovery."
+  },
+  {
+    "requirement_id": "VEC-P0-206",
+    "title": "I06 \u2014 Binance provenance exception outside per-account catch",
+    "local_obligation": "VEC-P0-206-V1",
+    "local_status": "PASS",
+    "tests": [
+      {
+        "test": "Tests\\Feature\\Trading\\TradingPipelineStageATest::test_binance_provenance_failure_on_one_account_does_not_abort_others",
+        "source": "tests/Feature/Trading/TradingPipelineStageATest.php",
+        "line": 126,
+        "assertions": 4,
+        "result": "PASS"
+      }
+    ],
+    "rationale": "Invalid Binance account provenance does not abort valid peer; event contains one failure and one processed account with PARTIAL status.",
+    "next_local_procedure": "No additional local regression needed. Q4 plus existing account-specific failure logs must show surviving peers completed.",
+    "production_status": "UNAVAILABLE",
+    "operator_action_required": true,
+    "runtime_code_change_required": "Not established; verify first",
+    "test_change_required": false,
+    "source_references": [
+      "app/Trading/Jobs/ProcessPaperPipelineJob.php"
+    ],
+    "acceptance_criteria": [
+      {
+        "id": "VEC-P0-206-A1",
+        "description": "Independent reviewer accepts finding-specific closure in applicable environments; reconcile report contradictions."
+      }
+    ],
+    "obligations": [
+      {
+        "id": "VEC-P0-206-V1",
+        "description": "Binance provenance exception outside per-account catch regression including negative control, current source and isolated PostgreSQL where applicable.",
+        "environment": "isolated_postgresql",
+        "status": "PASS"
+      },
+      {
+        "id": "VEC-P0-206-V2",
+        "description": "Confirm affected deployed behavior from operator-authorized current evidence; no deployment implied.",
+        "environment": "production",
+        "status": "UNAVAILABLE"
+      }
+    ],
+    "production_procedure": "Q4 and existing invalid-provenance log: identify failed Binance account and successful peer, confirm isolated exception and PARTIAL batch; absence of such a real sample remains pending."
+  },
+  {
+    "requirement_id": "VEC-P0-207",
+    "title": "I07 \u2014 Late funding may never settle on closed positions",
+    "local_obligation": "VEC-P0-207-V1",
+    "local_status": "PASS",
+    "tests": [
+      {
+        "test": "Tests\\Feature\\PaperTrading\\PositionLifecycleStageBTest::test_late_arriving_funding_settles_on_closed_position_with_correct_historical_quantity",
+        "source": "tests/Feature/PaperTrading/PositionLifecycleStageBTest.php",
+        "line": 113,
+        "assertions": 14,
+        "result": "PASS"
+      },
+      {
+        "test": "Tests\\Feature\\MarketData\\FundingHistorySynchronizerTest::test_closed_candle_mark_price_is_persisted_idempotently",
+        "source": "tests/Feature/MarketData/FundingHistorySynchronizerTest.php",
+        "line": 20,
+        "assertions": 6,
+        "result": "PASS"
+      },
+      {
+        "test": "Tests\\Feature\\MarketData\\FundingHistorySynchronizerTest::test_missing_closed_mark_candle_does_not_fabricate_funding_price",
+        "source": "tests/Feature/MarketData/FundingHistorySynchronizerTest.php",
+        "line": 68,
+        "assertions": 3,
+        "result": "PASS"
+      }
+    ],
+    "rationale": "Late event uses held quantity after TP1, exact -0.03 fixture amount, preserves closed status/equity identity and settles once. Missing closed mark is never fabricated.",
+    "next_local_procedure": "No additional local regression needed. For five historical candidates obtain exact entry/exit timing, held quantity, event rate/mark and settlement records; report unresolved amounts, never synthesize them.",
+    "production_status": "UNAVAILABLE",
+    "operator_action_required": true,
+    "runtime_code_change_required": "Not established; verify first",
+    "test_change_required": false,
+    "source_references": [
+      "app/Exchanges/Binance/BinanceFundingIngestion.php",
+      "app/MarketData/Application/FundingHistorySynchronizer.php",
+      "app/PaperTrading/Application/PositionLifecycleService.php"
+    ],
+    "acceptance_criteria": [
+      {
+        "id": "VEC-P0-207-A1",
+        "description": "Independent reviewer accepts finding-specific closure in applicable environments; reconcile report contradictions."
+      }
+    ],
+    "obligations": [
+      {
+        "id": "VEC-P0-207-V1",
+        "description": "Late funding may never settle on closed positions regression including negative control, current source and isolated PostgreSQL where applicable.",
+        "environment": "isolated_postgresql",
+        "status": "PASS"
+      },
+      {
+        "id": "VEC-P0-207-V2",
+        "description": "Confirm affected deployed behavior from operator-authorized current evidence; no deployment implied.",
+        "environment": "production",
+        "status": "UNAVAILABLE"
+      }
+    ],
+    "production_procedure": "Q3: locate each of the five historical late-funding candidates from the prior incident report; obtain IDs, exact rates/marks, held quantities after partial exits and actual settlement timestamps. Classify settled/pending/insufficient without amounts invented or any mutation."
+  },
+  {
+    "requirement_id": "VEC-P0-208",
+    "title": "I08 \u2014 Fresh snapshot timestamp can certify stale market valuation",
+    "local_obligation": "VEC-P0-208-V1",
+    "local_status": "PASS",
+    "tests": [
+      {
+        "test": "Tests\\Feature\\PaperTrading\\ExchangeIngestionAndValuationStageCTest::test_flat_account_checkpoint_is_verified_complete_with_flat_verified_valuation",
+        "source": "tests/Feature/PaperTrading/ExchangeIngestionAndValuationStageCTest.php",
+        "line": 55,
+        "assertions": 6,
+        "result": "PASS"
+      },
+      {
+        "test": "Tests\\Feature\\PaperTrading\\ExchangeIngestionAndValuationStageCTest::test_account_with_stale_market_valuation_is_flagged_as_stale_and_incomplete",
+        "source": "tests/Feature/PaperTrading/ExchangeIngestionAndValuationStageCTest.php",
+        "line": 86,
+        "assertions": 7,
+        "result": "PASS"
+      }
+    ],
+    "rationale": "Fresh checkpoint with 25-minute-old position valuation remains STALE/incomplete with valued_through retained; no-open-position case is FLAT_VERIFIED.",
+    "next_local_procedure": "No additional local regression needed. Compare real snapshot recorded_at to valued_through and last_processed_event_at; a fresh snapshot alone is not evidence.",
+    "production_status": "UNAVAILABLE",
+    "operator_action_required": true,
+    "runtime_code_change_required": "Not established; verify first",
+    "test_change_required": false,
+    "source_references": [
+      "app/PaperTrading/Application/DailyPerformanceService.php",
+      "app/PaperTrading/Application/PaperAccountService.php",
+      "app/PaperTrading/Jobs/CapturePaperEquityJob.php",
+      "database/migrations/2026_10_27_120000_add_valuation_provenance_to_equity_snapshots.php"
+    ],
+    "acceptance_criteria": [
+      {
+        "id": "VEC-P0-208-A1",
+        "description": "Independent reviewer accepts finding-specific closure in applicable environments; reconcile report contradictions."
+      }
+    ],
+    "obligations": [
+      {
+        "id": "VEC-P0-208-V1",
+        "description": "Fresh snapshot timestamp can certify stale market valuation regression including negative control, current source and isolated PostgreSQL where applicable.",
+        "environment": "isolated_postgresql",
+        "status": "PASS"
+      },
+      {
+        "id": "VEC-P0-208-V2",
+        "description": "Confirm affected deployed behavior from operator-authorized current evidence; no deployment implied.",
+        "environment": "production",
+        "status": "UNAVAILABLE"
+      }
+    ],
+    "production_procedure": "Read existing equity_snapshots valued_through/valuation_fresh and open position last_processed_event_at; compare daily API. Fresh recorded_at with old mark must remain stale; flat accounts may be FLAT_VERIFIED."
+  },
+  {
+    "requirement_id": "VEC-P0-209",
+    "title": "I09 \u2014 5m `CANDLE_CLOSED` acknowledged before downstream PAPER completion",
+    "local_obligation": "VEC-P0-209-V1",
+    "local_status": "PASS",
+    "tests": [
+      {
+        "test": "Tests\\Feature\\Trading\\TradingPipelineStageATest::test_record_paper_processed_terminalizes_5m_candle_closed_to_completed",
+        "source": "tests/Feature/Trading/TradingPipelineStageATest.php",
+        "line": 48,
+        "assertions": 4,
+        "result": "PASS"
+      },
+      {
+        "test": "Tests\\Feature\\Trading\\TradingPipelineStageATest::test_record_paper_processed_marks_partial_on_failures",
+        "source": "tests/Feature/Trading/TradingPipelineStageATest.php",
+        "line": 70,
+        "assertions": 3,
+        "result": "PASS"
+      }
+    ],
+    "rationale": "5m candle is DISPATCHED before downstream processing and COMPLETED only after PAPER acknowledgment; mixed account outcomes remain PARTIAL.",
+    "next_local_procedure": "No additional local regression needed. Q4 verify no completed 5m parent precedes or contradicts its PAPER outcome.",
+    "production_status": "UNAVAILABLE",
+    "operator_action_required": true,
+    "runtime_code_change_required": "Not established; verify first",
+    "test_change_required": false,
+    "source_references": [
+      "app/Trading/Application/TradingPipelineEventService.php",
+      "app/Trading/Jobs/ProcessClosedCandleEventJob.php"
+    ],
+    "acceptance_criteria": [
+      {
+        "id": "VEC-P0-209-A1",
+        "description": "Independent reviewer accepts finding-specific closure in applicable environments; reconcile report contradictions."
+      }
+    ],
+    "obligations": [
+      {
+        "id": "VEC-P0-209-V1",
+        "description": "5m `CANDLE_CLOSED` acknowledged before downstream PAPER completion regression including negative control, current source and isolated PostgreSQL where applicable.",
+        "environment": "isolated_postgresql",
+        "status": "PASS"
+      },
+      {
+        "id": "VEC-P0-209-V2",
+        "description": "Confirm affected deployed behavior from operator-authorized current evidence; no deployment implied.",
+        "environment": "production",
+        "status": "UNAVAILABLE"
+      }
+    ],
+    "production_procedure": "Q4: match 5m candle parent completion time/status to downstream PAPER, including mixed failures. Dispatch alone must never certify completed 5m processing."
+  }
+]

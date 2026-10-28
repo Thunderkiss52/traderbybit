@@ -1,0 +1,5 @@
+ current_database |                                         version                                          |     current_setting      | current_setting | initial_tables 
+------------------+------------------------------------------------------------------------------------------+--------------------------+-----------------+----------------
+ bybit_test       | PostgreSQL 17.11 on x86_64-pc-linux-musl, compiled by gcc (Alpine 15.2.0) 15.2.0, 64-bit | /var/lib/postgresql/data | UTC             |              0
+(1 row)
+

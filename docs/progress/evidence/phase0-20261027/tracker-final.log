@@ -1,0 +1,30 @@
+test_accepted_evidence_expiry_decreases_score (test_vector_progress.ScorecardTest) ... ok
+test_accepted_requires_complete_evidence (test_vector_progress.ScorecardTest) ... ok
+test_artifact_tampering (test_vector_progress.ScorecardTest) ... ok
+test_atomic_output (test_vector_progress.ScorecardTest) ... ok
+test_cli_detects_manually_edited_markdown (test_vector_progress.ScorecardTest) ... ok
+test_cli_generate_strict_json_and_phase (test_vector_progress.ScorecardTest) ... ok
+test_cli_strict_requires_snapshot (test_vector_progress.ScorecardTest) ... ok
+test_cycle (test_vector_progress.ScorecardTest) ... ok
+test_dependency_change_decreases_both_scores (test_vector_progress.ScorecardTest) ... ok
+test_different_scope_has_no_delivery_delta (test_vector_progress.ScorecardTest) ... ok
+test_documentation_excluded_from_runtime (test_vector_progress.ScorecardTest) ... ok
+test_duplicate_ids_and_criteria (test_vector_progress.ScorecardTest) ... ok
+test_future_evidence_is_stale (test_vector_progress.ScorecardTest) ... ok
+test_historical_baseline_immutable (test_vector_progress.ScorecardTest) ... ok
+test_invalid_dependency (test_vector_progress.ScorecardTest) ... ok
+test_missing_skipped_failed_expired (test_vector_progress.ScorecardTest) ... ok
+test_no_false_operational_verification (test_vector_progress.ScorecardTest) ... ok
+test_path_escape_rejected (test_vector_progress.ScorecardTest) ... ok
+test_product_is_independent_and_requires_acceptance (test_vector_progress.ScorecardTest) ... ok
+test_scope_change_and_comparison (test_vector_progress.ScorecardTest) ... ok
+test_stable_json_markdown (test_vector_progress.ScorecardTest) ... ok
+test_verified_state_requires_evidence (test_vector_progress.ScorecardTest) ... ok
+test_watch_tree_addition_invalidates (test_vector_progress.ScorecardTest) ... ok
+test_weights_normalized (test_vector_progress.ScorecardTest) ... ok
+test_zero_and_partial (test_vector_progress.ScorecardTest) ... ok
+
+----------------------------------------------------------------------
+Ran 25 tests in 0.610s
+
+OK

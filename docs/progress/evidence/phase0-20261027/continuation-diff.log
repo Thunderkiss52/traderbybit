@@ -1,0 +1,52 @@
+docs/progress/evidence/phase0-20261027/diagnostic-checked.log:5: trailing whitespace.
++ current_database | current_user |                                         version                                          | current_setting | current_setting |          captured_at          |      window_start      |         as_of          
+docs/progress/evidence/phase0-20261027/diagnostic-checked.log:10: trailing whitespace.
++                  id                  | exchange_id |       primary_strategy_id       |           strategy_id           | strategy_version | configuration_hash | status |       created_at       |  starting_balance  |   current_equity   |  realized_pnl  | unrealized_pnl |    peak_equity     | current_drawdown_percent | maximum_drawdown_percent | cooldown_until | stored_identity_residual | total_primary_accounts 
+docs/progress/evidence/phase0-20261027/diagnostic-checked.log:27: trailing whitespace.
++ exchange | strategy_id | strategy_version | side | decisions | first_decision | last_decision 
+docs/progress/evidence/phase0-20261027/diagnostic-checked.log:31: trailing whitespace.
++ exchange | strategy_id | reasons | skip_decisions 
+docs/progress/evidence/phase0-20261027/diagnostic-checked.log:35: trailing whitespace.
++ id | paper_account_id | exchange_id | symbol | side | status | opened_at | closed_at | initial_quantity | remaining_quantity | gross_pnl | fees | funding | net_pnl | funding_complete | position_identity_residual | last_processed_event_at 
+docs/progress/evidence/phase0-20261027/diagnostic-checked.log:39: trailing whitespace.
++ paper_account_id | exchange_id | position_id | execution_id | execution_exchange | type | quantity | price | commission | gross_pnl | market_event_at | idempotency_key 
+docs/progress/evidence/phase0-20261027/diagnostic-checked.log:43: trailing whitespace.
++ paper_account_id | exchange_id | position_id | symbol | side | market_event_id | funding_at | market_rate | market_mark | settlement_id | recorded_held_quantity | settlement_rate | settlement_mark | amount | market_event_arrived_at | settled_at 
+docs/progress/evidence/phase0-20261027/diagnostic-final.log:5: trailing whitespace.
++ current_database | current_user |                                         version                                          | current_setting | current_setting |          captured_at          |      window_start      |         as_of          
+docs/progress/evidence/phase0-20261027/diagnostic-final.log:10: trailing whitespace.
++                  id                  | exchange_id |       primary_strategy_id       |           strategy_id           | strategy_version | configuration_hash | status |       created_at       |  starting_balance  |   current_equity   |  realized_pnl  | unrealized_pnl |    peak_equity     | current_drawdown_percent | maximum_drawdown_percent | cooldown_until | stored_identity_residual | total_primary_accounts 
+docs/progress/evidence/phase0-20261027/diagnostic-final.log:27: trailing whitespace.
++ exchange | strategy_id | strategy_version | side | decisions | first_decision | last_decision 
+docs/progress/evidence/phase0-20261027/diagnostic-final.log:31: trailing whitespace.
++ exchange | strategy_id | reasons | skip_decisions 
+docs/progress/evidence/phase0-20261027/diagnostic-final.log:35: trailing whitespace.
++ id | paper_account_id | exchange_id | symbol | side | status | opened_at | closed_at | initial_quantity | remaining_quantity | gross_pnl | fees | funding | net_pnl | funding_complete | position_identity_residual | last_processed_event_at 
+docs/progress/evidence/phase0-20261027/diagnostic-final.log:39: trailing whitespace.
++ paper_account_id | exchange_id | position_id | execution_id | execution_exchange | type | quantity | price | commission | gross_pnl | market_event_at | idempotency_key 
+docs/progress/evidence/phase0-20261027/diagnostic-final.log:43: trailing whitespace.
++ paper_account_id | exchange_id | position_id | symbol | side | market_event_id | funding_at | market_rate | market_mark | settlement_id | recorded_held_quantity | settlement_rate | settlement_mark | amount | market_event_arrived_at | settled_at 
+docs/progress/evidence/phase0-20261027/diagnostic-final.log:47: trailing whitespace.
++ exchange | symbol | timeframe | stage | status | event_key | candle_close_at | completed_at | failures_count | eligible_accounts | processed_accounts 
+docs/progress/evidence/phase0-20261027/diagnostic-final.log:51: trailing whitespace.
++ exchange | category | symbol | event | prior_observations_capped_2000 | successes | failures | unresolved_outcomes 
+docs/progress/evidence/phase0-20261027/diagnostic-final.log:55: trailing whitespace.
++ exchange | category | symbol | event | triggered_at | horizon_ends_at | outcome_at | sample_size | validation_status | model_version | configuration_hash | cohort_sample_size | probability_population 
+docs/progress/evidence/phase0-20261027/diagnostic-final.log:59: trailing whitespace.
++ exchange | symbol | interval | closed_bars | min | max | irregular_intervals 
+docs/progress/evidence/phase0-20261027/diagnostic-final.log:63: trailing whitespace.
++ id | parent_strategy_id | candidate_version | configuration_hash | status | backtest_run_id | evaluation_status | evaluation_attempts | gate_status | failure_reason 
+docs/progress/evidence/phase0-20261027/diagnostic-syntax.log:5: trailing whitespace.
++ current_database | current_user |                                         version                                          | current_setting | current_setting |          captured_at          |      window_start      |         as_of          
+docs/progress/evidence/phase0-20261027/diagnostic-syntax.log:10: trailing whitespace.
++                  id                  | exchange_id |       primary_strategy_id       |           strategy_id           | strategy_version | configuration_hash | status |       created_at       |  starting_balance  |   current_equity   |  realized_pnl  | unrealized_pnl |    peak_equity     | current_drawdown_percent | maximum_drawdown_percent | cooldown_until | stored_identity_residual | total_primary_accounts 
+docs/progress/evidence/phase0-20261027/diagnostic-syntax.log:27: trailing whitespace.
++ exchange | strategy_id | strategy_version | side | decisions | first_decision | last_decision 
+docs/progress/evidence/phase0-20261027/pint.log:12: trailing whitespace.
++  ──────────────────────────────────────────────────────────────────── Laravel  
+docs/progress/evidence/phase0-20261027/pint.log:13: trailing whitespace.
++    PASS   ......................................................... 683 files  
+docs/progress/evidence/phase0-20261027/pint.log:14: new blank line at EOF.
+docs/progress/evidence/phase0-20261027/postgres-identity.log:1: trailing whitespace.
++ current_database |                                         version                                          |     current_setting      | current_setting | initial_tables 
+docs/progress/evidence/phase0-20261027/postgres-identity.log:5: new blank line at EOF.

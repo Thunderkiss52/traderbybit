@@ -96,6 +96,14 @@
               {
                 "path": "config/paper.php",
                 "anchor": "primary_strategies"
+              },
+              {
+                "path": "app/PaperTrading/Application/PaperAccountService.php",
+                "anchor": "public function allPrimaryAccounts"
+              },
+              {
+                "path": "app/Exchanges/Binance/BinanceDeploymentInitializer.php",
+                "anchor": "function initialize"
               }
             ]
           }
@@ -115,7 +123,26 @@
           "environment": "isolated_postgresql",
           "weight": 1,
           "max_age_days": 90,
-          "evidence": []
+          "evidence": [
+            {
+              "requirement_id": "VEC-P0-001",
+              "obligation_id": "VEC-P0-001-V1",
+              "type": "postgresql",
+              "result": "PASS",
+              "environment": "isolated_postgresql",
+              "fixture": "Fixtures and setup at the exact test source paths/lines below, unchanged from source SHA; no production dataset.",
+              "synthetic": true,
+              "git_sha": "c8d51156b2c72b03f009d10e6a634ff80cff77ff",
+              "date": "2026-10-27",
+              "execution_timestamp": "2026-10-27T18:58:43.309903+00:00",
+              "dependency_hash": "f55934a32cb549d43fef11d0fdb36ea9f42ba10678cfe90863ab4ac8e9450a07",
+              "reviewer": "Codex requirement-specific QA review",
+              "artifact": "docs/progress/evidence/phase0-20261027/VEC-P0-001-V1.json",
+              "artifact_sha256": "a74496e6eb9f15b9a95d5e98cc2b3550bab378b941da8517f61c764cfa665274",
+              "limitations": "Local synthetic verification only. No production/browser acceptance, market profitability, current deployed configuration or complete feature certification. Real concurrent candle races are distinct from sequential PAPER duplicate simulations.",
+              "rationale": "Fresh synthetic census is exactly 13+13; initialization/repeat preserves seeded Bybit and active Binance history; foreign exchange and missing-account controls fail; all strategy pairs remain isolated."
+            }
+          ]
         },
         {
           "id": "VEC-P0-001-V2",
@@ -137,12 +164,17 @@
       "current_state": "IN_PROGRESS",
       "assessment": "PARTIAL",
       "blocking_issues": [
-        "Current requirement-specific execution evidence and explicit product acceptance unavailable."
+        "Local V1 admitted; Production V2 and explicit product acceptance pending."
       ],
       "source_paths": [
-        "config/paper.php"
+        "config/paper.php",
+        "app/PaperTrading/Application/PaperAccountService.php",
+        "app/Exchanges/Binance/BinanceDeploymentInitializer.php"
       ],
       "test_paths": [
+        "tests/Feature/Exchanges/BinanceDeploymentInitializationTest.php",
+        "tests/Feature/Exchanges/BinancePaperIsolationTest.php",
+        "tests/Feature/PaperTrading/AllThirteenStrategiesExecutionTest.php",
         "tests/Feature/PaperTrading/StrategyPipelineFunnelVerificationTest.php"
       ],
       "watch_paths": [
@@ -159,15 +191,17 @@
         "tests",
         "tests/Feature/PaperTrading/StrategyPipelineFunnelVerificationTest.php"
       ],
-      "last_verified_commit": null,
-      "last_verified_environment": null,
+      "last_verified_commit": "c8d51156b2c72b03f009d10e6a634ff80cff77ff",
+      "last_verified_environment": "isolated_postgresql",
       "last_evidence_update": "2026-10-27",
       "notes": [
-        "No credit inferred from old pass counts. Runtime source atom credit does not prove integrated target behavior."
+        "No credit inferred from old pass counts. Runtime source atom credit does not prove integrated target behavior.",
+        "2026-10-27 evidence closure: Fresh synthetic census is exactly 13+13; initialization/repeat preserves seeded Bybit and active Binance history; foreign exchange and missing-account controls fail; all strategy pairs remain isolated. Procedure: No additional local test needed for this obligation. Q1 must independently establish the real 26-account census and history continuity.",
+        "Source metadata correction: config alone declares IDs; account service and initializer implement exchange provisioning. Implementation credit unchanged."
       ],
       "assessed_commit": "d9a0aeb5d14233fc95e9e5cc55d8748814362f59",
       "roadmap_reference": "docs/roadmap/VECTOR_POST_REMEDIATION_IMPLEMENTATION_ROADMAP.md",
-      "verification_assessment": "UNAVAILABLE",
+      "verification_assessment": "PARTIAL_LOCAL",
       "product_assessment": "NOT_ACCEPTED",
       "roadmap_section": "Phase 0"
     },
@@ -238,12 +272,18 @@
       "current_state": "IN_PROGRESS",
       "assessment": "PARTIAL",
       "blocking_issues": [
-        "Current requirement-specific execution evidence and explicit product acceptance unavailable."
+        "Local V1 incomplete: Completion, PARTIAL, stale recovery and targeted selection pass; no assertion directly exercises all-accounts-failed -> FAILED or recovery retry of failed accounts after a mixed batch without repeating successes. The frozen obligation says every transition. Production V2 and explicit product acceptance pending."
       ],
       "source_paths": [
         "app/Trading/Application/TradingPipelineEventService.php"
       ],
-      "test_paths": [],
+      "test_paths": [
+        "tests/Feature/Trading/EventDrivenTradingPipelineChainTest.php",
+        "tests/Feature/Trading/TradingPipelineConcurrencyAndSafetyTest.php",
+        "tests/Feature/Trading/TradingPipelineEventContractTest.php",
+        "tests/Feature/Trading/TradingPipelineRecoveryAndRollbackTest.php",
+        "tests/Feature/Trading/TradingPipelineStageATest.php"
+      ],
       "watch_paths": [
         "app",
         "app/Trading/Application/TradingPipelineEventService.php",
@@ -261,7 +301,8 @@
       "last_verified_environment": null,
       "last_evidence_update": "2026-10-27",
       "notes": [
-        "No credit inferred from old pass counts. Runtime source atom credit does not prove integrated target behavior."
+        "No credit inferred from old pass counts. Runtime source atom credit does not prove integrated target behavior.",
+        "2026-10-27 evidence closure: Completion, PARTIAL, stale recovery and targeted selection pass; no assertion directly exercises all-accounts-failed -> FAILED or recovery retry of failed accounts after a mixed batch without repeating successes. The frozen obligation says every transition. Procedure: Add an isolated PostgreSQL test with two accounts, one failure then targeted recovery; assert the successful account ledger is byte-identical and the failed account executes once. Add all-failed -> FAILED and upstream terminal-state assertions; rerun tests/Feature/Trading."
       ],
       "assessed_commit": "d9a0aeb5d14233fc95e9e5cc55d8748814362f59",
       "roadmap_reference": "docs/roadmap/VECTOR_POST_REMEDIATION_IMPLEMENTATION_ROADMAP.md",
@@ -336,12 +377,17 @@
       "current_state": "IN_PROGRESS",
       "assessment": "PARTIAL",
       "blocking_issues": [
-        "Current requirement-specific execution evidence and explicit product acceptance unavailable."
+        "Local V1 incomplete: Exact synthetic fee/funding identities and negative controls pass. The atomic criterion also asks for reconciliation of the current account population, unavailable here. Production V2 and explicit product acceptance pending."
       ],
       "source_paths": [
         "app/PaperTrading/Application/PositionLifecycleService.php"
       ],
-      "test_paths": [],
+      "test_paths": [
+        "tests/Feature/PaperTrading/FundingScheduleSafetyTest.php",
+        "tests/Feature/PaperTrading/PositionLifecycleStageBTest.php",
+        "tests/Integration/FinancialAccountingAndReconciliationPostgresIntegrationTest.php",
+        "tests/Integration/LedgerReconciliationPostgresIntegrationTest.php"
+      ],
       "watch_paths": [
         "app",
         "app/PaperTrading/Application/PositionLifecycleService.php",
@@ -359,7 +405,8 @@
       "last_verified_environment": null,
       "last_evidence_update": "2026-10-27",
       "notes": [
-        "No credit inferred from old pass counts. Runtime source atom credit does not prove integrated target behavior."
+        "No credit inferred from old pass counts. Runtime source atom credit does not prove integrated target behavior.",
+        "2026-10-27 evidence closure: Exact synthetic fee/funding identities and negative controls pass. The atomic criterion also asks for reconciliation of the current account population, unavailable here. Procedure: Retain the named fixture results; obtain Q1/Q3 plus certified historical schedules and independently recalculate the current population, including all five previously reported late-funding candidates. No repair command."
       ],
       "assessed_commit": "d9a0aeb5d14233fc95e9e5cc55d8748814362f59",
       "roadmap_reference": "docs/roadmap/VECTOR_POST_REMEDIATION_IMPLEMENTATION_ROADMAP.md",
@@ -447,12 +494,18 @@
       "current_state": "IN_PROGRESS",
       "assessment": "CONFIRMED_IMPLEMENTED",
       "blocking_issues": [
-        "Current requirement-specific execution evidence and explicit product acceptance unavailable."
+        "Local V1 incomplete: 5%/10%, cooldown, correlation, sizing and blocked-position servicing pass. Reviewed RiskAndSizingTest lacks direct RiskEngine zero-equity, class-limit and portfolio-notional boundary assertions required by the second atomic criterion. Production V2 and explicit product acceptance pending."
       ],
       "source_paths": [
         "app/PaperTrading/Application/RiskEngine.php"
       ],
-      "test_paths": [],
+      "test_paths": [
+        "tests/Feature/PaperTrading/AccountSafetyRegressionTest.php",
+        "tests/Feature/PaperTrading/CentralExecutionEligibilityTest.php",
+        "tests/Feature/PaperTrading/PaperLifecycleTest.php",
+        "tests/Feature/Trading/TradingPipelineConcurrencyAndSafetyTest.php",
+        "tests/Unit/PaperTrading/RiskAndSizingTest.php"
+      ],
       "watch_paths": [
         "app",
         "app/PaperTrading/Application/RiskEngine.php",
@@ -470,7 +523,8 @@
       "last_verified_environment": null,
       "last_evidence_update": "2026-10-27",
       "notes": [
-        "No credit inferred from old pass counts. Runtime source atom credit does not prove integrated target behavior."
+        "No credit inferred from old pass counts. Runtime source atom credit does not prove integrated target behavior.",
+        "2026-10-27 evidence closure: 5%/10%, cooldown, correlation, sizing and blocked-position servicing pass. Reviewed RiskAndSizingTest lacks direct RiskEngine zero-equity, class-limit and portfolio-notional boundary assertions required by the second atomic criterion. Procedure: Extend riskFailures with equity=0, negative free capital, risk above each A/B/C limit and notional above portfolio cap; assert allowed immediately below and denied at applicable boundaries. Run RiskAndSizingTest plus AccountSafetyRegressionTest on isolated PostgreSQL; never relax config."
       ],
       "assessed_commit": "d9a0aeb5d14233fc95e9e5cc55d8748814362f59",
       "roadmap_reference": "docs/roadmap/VECTOR_POST_REMEDIATION_IMPLEMENTATION_ROADMAP.md",
@@ -517,7 +571,26 @@
           "environment": "isolated_postgresql",
           "weight": 1,
           "max_age_days": 90,
-          "evidence": []
+          "evidence": [
+            {
+              "requirement_id": "VEC-P0-005",
+              "obligation_id": "VEC-P0-005-V1",
+              "type": "postgresql",
+              "result": "PASS",
+              "environment": "isolated_postgresql",
+              "fixture": "Fixtures and setup at the exact test source paths/lines below, unchanged from source SHA; no production dataset.",
+              "synthetic": true,
+              "git_sha": "c8d51156b2c72b03f009d10e6a634ff80cff77ff",
+              "date": "2026-10-27",
+              "execution_timestamp": "2026-10-27T18:58:43.309903+00:00",
+              "dependency_hash": "f55934a32cb549d43fef11d0fdb36ea9f42ba10678cfe90863ab4ac8e9450a07",
+              "reviewer": "Codex requirement-specific QA review",
+              "artifact": "docs/progress/evidence/phase0-20261027/VEC-P0-005-V1.json",
+              "artifact_sha256": "6d57d71e3b6ce4b47ea40143e9f58b49d4ddb2bfe8a6d841b79b2ed0e7300dd7",
+              "limitations": "Local synthetic verification only. No production/browser acceptance, market profitability, current deployed configuration or complete feature certification. Real concurrent candle races are distinct from sequential PAPER duplicate simulations.",
+              "rationale": "False approval, missing costs, foreign provenance, blocked and unfunded accounts reject; explicit valid local approval/costs permit guard evaluation. Existing active/history fixtures survive initialization; equity recalculation cannot activate accounts."
+            }
+          ]
         },
         {
           "id": "VEC-P0-005-V2",
@@ -539,12 +612,14 @@
       "current_state": "IMPLEMENTED_UNVERIFIED",
       "assessment": "CONFIRMED_IMPLEMENTED",
       "blocking_issues": [
-        "Current requirement-specific execution evidence and explicit product acceptance unavailable."
+        "Local V1 admitted; Production V2 and explicit product acceptance pending."
       ],
       "source_paths": [
         "app/Exchanges/Binance/BinancePaperSafety.php"
       ],
       "test_paths": [
+        "tests/Feature/Exchanges/BinanceDeploymentInitializationTest.php",
+        "tests/Feature/Exchanges/BinancePaperIsolationTest.php",
         "tests/Feature/PaperTrading/StrategyPipelineFunnelVerificationTest.php",
         "tests/Unit/Exchanges/BinancePaperSafetyTest.php"
       ],
@@ -562,16 +637,17 @@
         "tests",
         "tests/Feature/PaperTrading/StrategyPipelineFunnelVerificationTest.php"
       ],
-      "last_verified_commit": null,
-      "last_verified_environment": null,
+      "last_verified_commit": "c8d51156b2c72b03f009d10e6a634ff80cff77ff",
+      "last_verified_environment": "isolated_postgresql",
       "last_evidence_update": "2026-10-27",
       "notes": [
         "No credit inferred from old pass counts. Runtime source atom credit does not prove integrated target behavior.",
-        "Default approval is false in config/exchanges.php; current deployed effective configuration was not queried. Do not activate Binance."
+        "Default approval is false in config/exchanges.php; current deployed effective configuration was not queried. Do not activate Binance.",
+        "2026-10-27 evidence closure: False approval, missing costs, foreign provenance, blocked and unfunded accounts reject; explicit valid local approval/costs permit guard evaluation. Existing active/history fixtures survive initialization; equity recalculation cannot activate accounts. Procedure: No additional local test needed. Read effective deployed cached approval/cost configuration through the operator procedure; do not infer it from defaults or account ACTIVE status."
       ],
       "assessed_commit": "d9a0aeb5d14233fc95e9e5cc55d8748814362f59",
       "roadmap_reference": "docs/roadmap/VECTOR_POST_REMEDIATION_IMPLEMENTATION_ROADMAP.md",
-      "verification_assessment": "UNAVAILABLE",
+      "verification_assessment": "PARTIAL_LOCAL",
       "product_assessment": "NOT_ACCEPTED",
       "roadmap_section": "Phase 0"
     },
@@ -633,7 +709,26 @@
           "environment": "isolated_postgresql",
           "weight": 1,
           "max_age_days": 90,
-          "evidence": []
+          "evidence": [
+            {
+              "requirement_id": "VEC-P0-006",
+              "obligation_id": "VEC-P0-006-V1",
+              "type": "postgresql",
+              "result": "PASS",
+              "environment": "isolated_postgresql",
+              "fixture": "Fixtures and setup at the exact test source paths/lines below, unchanged from source SHA; no production dataset.",
+              "synthetic": true,
+              "git_sha": "c8d51156b2c72b03f009d10e6a634ff80cff77ff",
+              "date": "2026-10-27",
+              "execution_timestamp": "2026-10-27T18:58:43.309903+00:00",
+              "dependency_hash": "f55934a32cb549d43fef11d0fdb36ea9f42ba10678cfe90863ab4ac8e9450a07",
+              "reviewer": "Codex requirement-specific QA review",
+              "artifact": "docs/progress/evidence/phase0-20261027/VEC-P0-006-V1.json",
+              "artifact_sha256": "85fe8e541befa693019348fc3efd31b96dbf79bd2e6f25f6bc52abb777da2cef",
+              "limitations": "Local synthetic verification only. No production/browser acceptance, market profitability, current deployed configuration or complete feature certification. Real concurrent candle races are distinct from sequential PAPER duplicate simulations.",
+              "rationale": "Forecast persists despite SKIP and unapproved execution; closed price bars mature outcomes without trades; 29 observations remain insufficient and 30 permit RESEARCH_BASELINE; Bybit 35 observations do not inflate Binance 5."
+            }
+          ]
         },
         {
           "id": "VEC-P0-006-V2",
@@ -655,7 +750,7 @@
       "current_state": "IN_PROGRESS",
       "assessment": "CONFIRMED_IMPLEMENTED",
       "blocking_issues": [
-        "Current requirement-specific execution evidence and explicit product acceptance unavailable."
+        "Local V1 admitted; Production V2 and explicit product acceptance pending."
       ],
       "source_paths": [
         "app/Strategy/Application/LevelProbabilityService.php"
@@ -677,16 +772,17 @@
         "tests",
         "tests/Feature/Strategy/LevelProbabilityBootstrapLifecycleTest.php"
       ],
-      "last_verified_commit": null,
-      "last_verified_environment": null,
+      "last_verified_commit": "c8d51156b2c72b03f009d10e6a634ff80cff77ff",
+      "last_verified_environment": "isolated_postgresql",
       "last_evidence_update": "2026-10-27",
       "notes": [
         "No credit inferred from old pass counts. Runtime source atom credit does not prove integrated target behavior.",
-        "d9a0aeb adds price-bar maturation, 30-sample boundary, exchange isolation and unapproved-execution fixtures; test existence is not an execution result."
+        "d9a0aeb adds price-bar maturation, 30-sample boundary, exchange isolation and unapproved-execution fixtures; test existence is not an execution result.",
+        "2026-10-27 evidence closure: Forecast persists despite SKIP and unapproved execution; closed price bars mature outcomes without trades; 29 observations remain insufficient and 30 permit RESEARCH_BASELINE; Bybit 35 observations do not inflate Binance 5. Procedure: No additional local test needed for the stated bootstrap criteria. Q5 and a decision-time cohort review must establish real Binance sample maturity; retain minimum_sample_size=30."
       ],
       "assessed_commit": "d9a0aeb5d14233fc95e9e5cc55d8748814362f59",
       "roadmap_reference": "docs/roadmap/VECTOR_POST_REMEDIATION_IMPLEMENTATION_ROADMAP.md",
-      "verification_assessment": "UNAVAILABLE",
+      "verification_assessment": "PARTIAL_LOCAL",
       "product_assessment": "NOT_ACCEPTED",
       "roadmap_section": "Phase 0"
     },
@@ -729,7 +825,26 @@
           "environment": "isolated_postgresql",
           "weight": 1,
           "max_age_days": 90,
-          "evidence": []
+          "evidence": [
+            {
+              "requirement_id": "VEC-P0-007",
+              "obligation_id": "VEC-P0-007-V1",
+              "type": "postgresql",
+              "result": "PASS",
+              "environment": "isolated_postgresql",
+              "fixture": "Fixtures and setup at the exact test source paths/lines below, unchanged from source SHA; no production dataset.",
+              "synthetic": true,
+              "git_sha": "c8d51156b2c72b03f009d10e6a634ff80cff77ff",
+              "date": "2026-10-27",
+              "execution_timestamp": "2026-10-27T18:58:43.309903+00:00",
+              "dependency_hash": "b7c4f24813da51d362f582f7b9fb5f760aca63d28c43b5b7dd7ad23ead45d9cc",
+              "reviewer": "Codex requirement-specific QA review",
+              "artifact": "docs/progress/evidence/phase0-20261027/VEC-P0-007-V1.json",
+              "artifact_sha256": "7723cb809758d21e054e78a91efc89c8db30b37af09a1b7dd2e21a02f64cdbac",
+              "limitations": "Local synthetic verification only. No production/browser acceptance, market profitability, current deployed configuration or complete feature certification. Real concurrent candle races are distinct from sequential PAPER duplicate simulations.",
+              "rationale": "Workflow service declaration reviewed; fresh PostgreSQL 17 cluster identity verified before fixtures. Real child-process candle insertion races, uniqueness negatives, migration preservation/idempotency and PHP-to-Go persistence executed with zero PostgreSQL skips."
+            }
+          ]
         },
         {
           "id": "VEC-P0-007-V2",
@@ -751,12 +866,19 @@
       "current_state": "IMPLEMENTED_UNVERIFIED",
       "assessment": "CONFIRMED_IMPLEMENTED",
       "blocking_issues": [
-        "Current requirement-specific execution evidence and explicit product acceptance unavailable."
+        "Local V1 admitted; Production V2 and explicit product acceptance pending."
       ],
       "source_paths": [
         ".github/workflows/deploy.yml"
       ],
-      "test_paths": [],
+      "test_paths": [
+        "tests/Integration/BinanceCandleInsertionRaceTest.php",
+        "tests/Integration/CounterfactualSlotIdempotencyPostgresIntegrationTest.php",
+        "tests/Integration/GoResearchWorkerIntegrationTest.php",
+        "tests/Integration/LedgerReconciliationPostgresIntegrationTest.php",
+        "tests/Integration/SlippageAttributionPostgresIntegrationTest.php",
+        "tests/Integration/StrategyObservationSlotMigrationPostgresIntegrationTest.php"
+      ],
       "watch_paths": [
         ".github/workflows/deploy.yml",
         "app",
@@ -770,15 +892,16 @@
         "routes",
         "tests"
       ],
-      "last_verified_commit": null,
-      "last_verified_environment": null,
+      "last_verified_commit": "c8d51156b2c72b03f009d10e6a634ff80cff77ff",
+      "last_verified_environment": "isolated_postgresql",
       "last_evidence_update": "2026-10-27",
       "notes": [
-        "No credit inferred from old pass counts. Runtime source atom credit does not prove integrated target behavior."
+        "No credit inferred from old pass counts. Runtime source atom credit does not prove integrated target behavior.",
+        "2026-10-27 evidence closure: Workflow service declaration reviewed; fresh PostgreSQL 17 cluster identity verified before fixtures. Real child-process candle insertion races, uniqueness negatives, migration preservation/idempotency and PHP-to-Go persistence executed with zero PostgreSQL skips. Procedure: No additional local infrastructure test needed. Obtain the operator-approved deployed release/schema provenance separately; local execution does not prove GitHub Actions ran."
       ],
       "assessed_commit": "d9a0aeb5d14233fc95e9e5cc55d8748814362f59",
       "roadmap_reference": "docs/roadmap/VECTOR_POST_REMEDIATION_IMPLEMENTATION_ROADMAP.md",
-      "verification_assessment": "UNAVAILABLE",
+      "verification_assessment": "PARTIAL_LOCAL",
       "product_assessment": "NOT_ACCEPTED",
       "roadmap_section": "Phase 0"
     },
@@ -881,7 +1004,7 @@
       "current_state": "BLOCKED",
       "assessment": "UNKNOWN",
       "blocking_issues": [
-        "No current acceptance evidence."
+        "Local V1 incomplete: Both atomic criteria require operator-authorized current-release evidence and independent acceptance. None was collected. Production V2 and explicit product acceptance pending."
       ],
       "source_paths": [],
       "test_paths": [],
@@ -901,7 +1024,8 @@
       "last_verified_environment": null,
       "last_evidence_update": "2026-10-27",
       "notes": [
-        "No credit inferred from old pass counts. Runtime source atom credit does not prove integrated target behavior."
+        "No credit inferred from old pass counts. Runtime source atom credit does not prove integrated target behavior.",
+        "2026-10-27 evidence closure: Both atomic criteria require operator-authorized current-release evidence and independent acceptance. None was collected. Procedure: Collect the production packets below, map each acceptance ID, obtain explicit responsible-actor acceptance and retain authorization. Local fixtures cannot satisfy this obligation."
       ],
       "assessed_commit": "d9a0aeb5d14233fc95e9e5cc55d8748814362f59",
       "roadmap_reference": "docs/roadmap/VECTOR_POST_REMEDIATION_IMPLEMENTATION_ROADMAP.md",
@@ -954,7 +1078,25 @@
           "environment": "isolated_postgresql",
           "weight": 1,
           "max_age_days": 90,
-          "evidence": []
+          "evidence": [
+            {
+              "requirement_id": "VEC-P0-009",
+              "obligation_id": "VEC-P0-009-V1",
+              "type": "postgresql",
+              "result": "FAIL",
+              "environment": "isolated_postgresql",
+              "fixture": "500 new synthetic January 2026 Binance candles, faked HTTP, actual PostgreSQL commits",
+              "synthetic": true,
+              "git_sha": "c8d51156b2c72b03f009d10e6a634ff80cff77ff",
+              "date": "2026-10-27",
+              "execution_timestamp": "2026-10-27T19:04:59.860342+00:00",
+              "dependency_hash": "f5224ee8f4d3ab7ac80366ae5d20cdb7e495720cc6cf1feecb161afd97018212",
+              "reviewer": "Codex measured performance review",
+              "artifact": "docs/progress/evidence/phase0-20261027/performance-assessment.json",
+              "artifact_sha256": "5969d925c57a5823ff278aca4b4daf19665bcb1a11b543b7003d4932980f37a9",
+              "limitations": "Not a production benchmark; no PAPER/research mixed-load or shared-host headroom evidence. Earlier overlapping PHP-lint run was 65.641 ms; repeat without task lint was 74.860 ms. Existing benchmark prior_baseline_ms=51.11 is a historical constant, not a fresh measurement. No functional failure or root cause inferred."
+            }
+          ]
         },
         {
           "id": "VEC-P0-009-V2",
@@ -976,12 +1118,14 @@
       "current_state": "IN_PROGRESS",
       "assessment": "PARTIAL",
       "blocking_issues": [
-        "Current requirement-specific execution evidence and explicit product acceptance unavailable."
+        "Local ingestion gate failed: 500 new rows P95 74.860 ms >=50 ms. Mixed PAPER/research load and effective host limits unverified. Production V2 and explicit product acceptance pending."
       ],
       "source_paths": [
         "compose.yaml"
       ],
-      "test_paths": [],
+      "test_paths": [
+        "tests/Integration/BinanceCandleInsertionRaceTest.php"
+      ],
       "watch_paths": [
         "app",
         "compose.yaml",
@@ -999,11 +1143,13 @@
       "last_verified_environment": null,
       "last_evidence_update": "2026-10-27",
       "notes": [
-        "No credit inferred from old pass counts. Runtime source atom credit does not prove integrated target behavior."
+        "No credit inferred from old pass counts. Runtime source atom credit does not prove integrated target behavior.",
+        "2026-10-27 evidence closure: Ingestion benchmark measured 500-new-row P95 65.641ms against the roadmap <50ms gate. Effective shared-host limits and PAPER latency under research load remain unmeasured. Procedure: Repeat scripts/benchmark-binance-ingestion.php --runs=30 --warmup=5 in the verified environment with PHP lint idle; retain every run. Separately measure PAPER P50/P95, RSS and SQL counts with/without bounded research over 30 repetitions and effective task-owned limits. A timing failure needs a separately scoped fix, not altered thresholds.",
+        "Measured ingestion gate failed twice; idle-task repeat P95 74.860 ms. No implementation change or credit. See performance-assessment.json."
       ],
       "assessed_commit": "d9a0aeb5d14233fc95e9e5cc55d8748814362f59",
       "roadmap_reference": "docs/roadmap/VECTOR_POST_REMEDIATION_IMPLEMENTATION_ROADMAP.md",
-      "verification_assessment": "UNAVAILABLE",
+      "verification_assessment": "FAILED_LOCAL",
       "product_assessment": "NOT_ACCEPTED",
       "roadmap_section": "Phase 0"
     },
@@ -1055,13 +1201,15 @@
       "current_state": "BLOCKED",
       "assessment": "UNKNOWN",
       "blocking_issues": [
-        "Historical report status not independently revalidated at current HEAD."
+        "Local V1 incomplete: Stored-only status is asserted. The global GET write detector uses a nonexistent replay ID; successful replay test does not count writes. This does not prove zero writes for an existing observation. Production V2 and explicit product acceptance pending."
       ],
       "source_paths": [
         "app/Research/Application/DecisionReplayService.php"
       ],
       "test_paths": [
+        "tests/Feature/Api/ReadOnlyGetEndpointsTest.php",
         "tests/Feature/Research/ProfitabilityResearchApiTest.php",
+        "tests/Feature/Research/StageTwoApiTest.php",
         "tests/Unit/Research/DecisionReplayServiceTest.php"
       ],
       "watch_paths": [
@@ -1081,7 +1229,8 @@
       "last_verified_environment": null,
       "last_evidence_update": "2026-10-27",
       "notes": [
-        "Trace only: docs/verification/VECTOR_V26_I01_I09_PRODUCTION_EVIDENCE_REMEDIATION.md; this assurance row adds no runtime implementation denominator."
+        "Trace only: docs/verification/VECTOR_V26_I01_I09_PRODUCTION_EVIDENCE_REMEDIATION.md; this assurance row adds no runtime implementation denominator.",
+        "2026-10-27 evidence closure: Stored-only status is asserted. The global GET write detector uses a nonexistent replay ID; successful replay test does not count writes. This does not prove zero writes for an existing observation. Procedure: Seed an existing observation; attach DB::listen after setup; GET its replay twice and assert NOT_RECOMPUTED_STORED_ONLY, false is_reproducible and zero INSERT/UPDATE/DELETE plus unchanged replay-record count."
       ],
       "assessed_commit": "d9a0aeb5d14233fc95e9e5cc55d8748814362f59",
       "roadmap_reference": "docs/roadmap/VECTOR_POST_REMEDIATION_IMPLEMENTATION_ROADMAP.md",
@@ -1146,13 +1295,14 @@
       "current_state": "BLOCKED",
       "assessment": "UNKNOWN",
       "blocking_issues": [
-        "Historical report status not independently revalidated at current HEAD."
+        "Local V1 incomplete: API success/error shapes pass; frontend tests are source-contract tests, not executed Vue-to-service integration. Production V2 and explicit product acceptance pending. Browser V3 pending."
       ],
       "source_paths": [
         "app/Http/Controllers/Api/V1/ProfitabilityResearchController.php"
       ],
       "test_paths": [
-        "frontend/tests/profitability_research.test.js"
+        "frontend/tests/profitability_research.test.js",
+        "tests/Feature/Research/ProfitabilityResearchApiTest.php"
       ],
       "watch_paths": [
         "app",
@@ -1171,7 +1321,8 @@
       "last_verified_environment": null,
       "last_evidence_update": "2026-10-27",
       "notes": [
-        "Trace only: docs/verification/VECTOR_V26_I01_I09_PRODUCTION_EVIDENCE_REMEDIATION.md; this assurance row adds no runtime implementation denominator."
+        "Trace only: docs/verification/VECTOR_V26_I01_I09_PRODUCTION_EVIDENCE_REMEDIATION.md; this assurance row adds no runtime implementation denominator.",
+        "2026-10-27 evidence closure: API success/error shapes pass; frontend tests are source-contract tests, not executed Vue-to-service integration. Procedure: Mount ProfitabilityResearchPage with real api.ts response handling against isolated API success and 404/error fixtures. Assert one envelope unwrap and rendered error; retain browser network/DOM evidence for V3."
       ],
       "assessed_commit": "d9a0aeb5d14233fc95e9e5cc55d8748814362f59",
       "roadmap_reference": "docs/roadmap/VECTOR_POST_REMEDIATION_IMPLEMENTATION_ROADMAP.md",
@@ -1236,13 +1387,15 @@
       "current_state": "BLOCKED",
       "assessment": "UNKNOWN",
       "blocking_issues": [
-        "Historical report status not independently revalidated at current HEAD."
+        "Local V1 incomplete: Absent-account API control passes; no rendered profitability null-vs-real-zero financial test. Production V2 and explicit product acceptance pending. Browser V3 pending."
       ],
       "source_paths": [
         "frontend/src/pages/ProfitabilityResearchPage.vue"
       ],
       "test_paths": [
-        "frontend/tests/profitability_research.test.js"
+        "frontend/tests/profitability_research.test.js",
+        "tests/Feature/MarketData/MarketExchangeIsolationTest.php",
+        "tests/Feature/Research/ProfitabilityResearchApiTest.php"
       ],
       "watch_paths": [
         "app",
@@ -1261,7 +1414,8 @@
       "last_verified_environment": null,
       "last_evidence_update": "2026-10-27",
       "notes": [
-        "Trace only: docs/verification/VECTOR_V26_I01_I09_PRODUCTION_EVIDENCE_REMEDIATION.md; this assurance row adds no runtime implementation denominator."
+        "Trace only: docs/verification/VECTOR_V26_I01_I09_PRODUCTION_EVIDENCE_REMEDIATION.md; this assurance row adds no runtime implementation denominator.",
+        "2026-10-27 evidence closure: Absent-account API control passes; no rendered profitability null-vs-real-zero financial test. Procedure: Render missing/null equity, PnL and counts beside legitimate zero fixtures. Assert unavailable labels for null and numeric zero only for actual zero; retain API and DOM for V3."
       ],
       "assessed_commit": "d9a0aeb5d14233fc95e9e5cc55d8748814362f59",
       "roadmap_reference": "docs/roadmap/VECTOR_POST_REMEDIATION_IMPLEMENTATION_ROADMAP.md",
@@ -1295,7 +1449,26 @@
           "environment": "isolated_postgresql",
           "weight": 1,
           "max_age_days": 90,
-          "evidence": []
+          "evidence": [
+            {
+              "requirement_id": "VEC-P0-104",
+              "obligation_id": "VEC-P0-104-V1",
+              "type": "integration",
+              "result": "PASS",
+              "environment": "isolated_postgresql",
+              "fixture": "Fixtures and setup at the exact test source paths/lines below, unchanged from source SHA; no production dataset.",
+              "synthetic": true,
+              "git_sha": "c8d51156b2c72b03f009d10e6a634ff80cff77ff",
+              "date": "2026-10-27",
+              "execution_timestamp": "2026-10-27T18:58:43.309903+00:00",
+              "dependency_hash": "f55934a32cb549d43fef11d0fdb36ea9f42ba10678cfe90863ab4ac8e9450a07",
+              "reviewer": "Codex requirement-specific QA review",
+              "artifact": "docs/progress/evidence/phase0-20261027/VEC-P0-104-V1.json",
+              "artifact_sha256": "d1c391f047940c64158408f84e255bd3359cc40832913c44a09a8016c1702f1a",
+              "limitations": "Local synthetic verification only. No production/browser acceptance, market profitability, current deployed configuration or complete feature certification. Real concurrent candle races are distinct from sequential PAPER duplicate simulations.",
+              "rationale": "Injected ledger mismatch produces actual discrepancy_count and detail findings; an account without a reconciliation run returns NO_RECORDED_RUN with null count; clean-account service control passes."
+            }
+          ]
         },
         {
           "id": "VEC-P0-104-V2",
@@ -1317,13 +1490,14 @@
       "current_state": "BLOCKED",
       "assessment": "UNKNOWN",
       "blocking_issues": [
-        "Historical report status not independently revalidated at current HEAD."
+        "Local V1 admitted; Production V2 and explicit product acceptance pending."
       ],
       "source_paths": [
         "app/Http/Controllers/Api/V1/ProfitabilityResearchController.php"
       ],
       "test_paths": [
-        "tests/Feature/Research/ProfitabilityResearchApiTest.php"
+        "tests/Feature/Research/ProfitabilityResearchApiTest.php",
+        "tests/Unit/Research/LedgerReconciliationServiceTest.php"
       ],
       "watch_paths": [
         "app",
@@ -1338,15 +1512,16 @@
         "tests",
         "tests/Feature/Research/ProfitabilityResearchApiTest.php"
       ],
-      "last_verified_commit": null,
-      "last_verified_environment": null,
+      "last_verified_commit": "c8d51156b2c72b03f009d10e6a634ff80cff77ff",
+      "last_verified_environment": "isolated_postgresql",
       "last_evidence_update": "2026-10-27",
       "notes": [
-        "Trace only: docs/verification/VECTOR_V26_I01_I09_PRODUCTION_EVIDENCE_REMEDIATION.md; this assurance row adds no runtime implementation denominator."
+        "Trace only: docs/verification/VECTOR_V26_I01_I09_PRODUCTION_EVIDENCE_REMEDIATION.md; this assurance row adds no runtime implementation denominator.",
+        "2026-10-27 evidence closure: Injected ledger mismatch produces actual discrepancy_count and detail findings; an account without a reconciliation run returns NO_RECORDED_RUN with null count; clean-account service control passes. Procedure: No additional local test needed. Compare deployed persisted reconciliation output to summary/detail responses without running reconciliation."
       ],
       "assessed_commit": "d9a0aeb5d14233fc95e9e5cc55d8748814362f59",
       "roadmap_reference": "docs/roadmap/VECTOR_POST_REMEDIATION_IMPLEMENTATION_ROADMAP.md",
-      "verification_assessment": "UNAVAILABLE",
+      "verification_assessment": "PARTIAL_LOCAL",
       "product_assessment": "NOT_ACCEPTED",
       "roadmap_section": "Phase 0"
     },
@@ -1398,7 +1573,7 @@
       "current_state": "BLOCKED",
       "assessment": "UNKNOWN",
       "blocking_issues": [
-        "Historical report status not independently revalidated at current HEAD."
+        "Local V1 incomplete: Tests assert fixed module statuses, not their consistency with available evidence or negative changes in module readiness. Production V2 and explicit product acceptance pending."
       ],
       "source_paths": [
         "app/Http/Controllers/Api/V1/ProfitabilityResearchController.php"
@@ -1423,7 +1598,8 @@
       "last_verified_environment": null,
       "last_evidence_update": "2026-10-27",
       "notes": [
-        "Trace only: docs/verification/VECTOR_V26_I01_I09_PRODUCTION_EVIDENCE_REMEDIATION.md; this assurance row adds no runtime implementation denominator."
+        "Trace only: docs/verification/VECTOR_V26_I01_I09_PRODUCTION_EVIDENCE_REMEDIATION.md; this assurance row adds no runtime implementation denominator.",
+        "2026-10-27 evidence closure: Tests assert fixed module statuses, not their consistency with available evidence or negative changes in module readiness. Procedure: Exercise implemented, missing evidence and prohibited modules; compare each API status to source-backed availability and assert missing evidence cannot be IMPLEMENTED_VERIFIED merely because a constant says so."
       ],
       "assessed_commit": "d9a0aeb5d14233fc95e9e5cc55d8748814362f59",
       "roadmap_reference": "docs/roadmap/VECTOR_POST_REMEDIATION_IMPLEMENTATION_ROADMAP.md",
@@ -1457,7 +1633,26 @@
           "environment": "isolated_postgresql",
           "weight": 1,
           "max_age_days": 90,
-          "evidence": []
+          "evidence": [
+            {
+              "requirement_id": "VEC-P0-106",
+              "obligation_id": "VEC-P0-106-V1",
+              "type": "integration",
+              "result": "PASS",
+              "environment": "isolated_postgresql",
+              "fixture": "Fixtures and setup at the exact test source paths/lines below, unchanged from source SHA; no production dataset.",
+              "synthetic": true,
+              "git_sha": "c8d51156b2c72b03f009d10e6a634ff80cff77ff",
+              "date": "2026-10-27",
+              "execution_timestamp": "2026-10-27T18:58:43.309903+00:00",
+              "dependency_hash": "f55934a32cb549d43fef11d0fdb36ea9f42ba10678cfe90863ab4ac8e9450a07",
+              "reviewer": "Codex requirement-specific QA review",
+              "artifact": "docs/progress/evidence/phase0-20261027/VEC-P0-106-V1.json",
+              "artifact_sha256": "00f2079fb688e65db4542da5b8e38d8db7d5ad227b2522cf7f9a80fb6533dd36",
+              "limitations": "Local synthetic verification only. No production/browser acceptance, market profitability, current deployed configuration or complete feature certification. Real concurrent candle races are distinct from sequential PAPER duplicate simulations.",
+              "rationale": "Clean account passes; observed drawdown above stored max is a discrepancy without mutation, while a larger historical maximum is preserved and missing history is incomplete; injected balance/execution controls also fail."
+            }
+          ]
         },
         {
           "id": "VEC-P0-106-V2",
@@ -1479,7 +1674,7 @@
       "current_state": "BLOCKED",
       "assessment": "UNKNOWN",
       "blocking_issues": [
-        "Historical report status not independently revalidated at current HEAD."
+        "Local V1 admitted; Production V2 and explicit product acceptance pending."
       ],
       "source_paths": [
         "app/Research/Application/LedgerReconciliationService.php"
@@ -1499,15 +1694,16 @@
         "routes",
         "tests"
       ],
-      "last_verified_commit": null,
-      "last_verified_environment": null,
+      "last_verified_commit": "c8d51156b2c72b03f009d10e6a634ff80cff77ff",
+      "last_verified_environment": "isolated_postgresql",
       "last_evidence_update": "2026-10-27",
       "notes": [
-        "Trace only: docs/verification/VECTOR_V26_I01_I09_PRODUCTION_EVIDENCE_REMEDIATION.md; this assurance row adds no runtime implementation denominator."
+        "Trace only: docs/verification/VECTOR_V26_I01_I09_PRODUCTION_EVIDENCE_REMEDIATION.md; this assurance row adds no runtime implementation denominator.",
+        "2026-10-27 evidence closure: Clean account passes; observed drawdown above stored max is a discrepancy without mutation, while a larger historical maximum is preserved and missing history is incomplete; injected balance/execution controls also fail. Procedure: No additional local test needed. Q1 plus account snapshot histories must reproduce drawdown residuals without modifying maxima."
       ],
       "assessed_commit": "d9a0aeb5d14233fc95e9e5cc55d8748814362f59",
       "roadmap_reference": "docs/roadmap/VECTOR_POST_REMEDIATION_IMPLEMENTATION_ROADMAP.md",
-      "verification_assessment": "UNAVAILABLE",
+      "verification_assessment": "PARTIAL_LOCAL",
       "product_assessment": "NOT_ACCEPTED",
       "roadmap_section": "Phase 0"
     },
@@ -1559,12 +1755,14 @@
       "current_state": "BLOCKED",
       "assessment": "UNKNOWN",
       "blocking_issues": [
-        "Historical report status not independently revalidated at current HEAD."
+        "Local V1 incomplete: ZIP tests check members and some headings; they do not compare every required column or inject a missing source column. Production V2 and explicit product acceptance pending."
       ],
       "source_paths": [
         "app/Audit/Application/AuditExportService.php"
       ],
-      "test_paths": [],
+      "test_paths": [
+        "tests/Feature/AuditExportTest.php"
+      ],
       "watch_paths": [
         "app",
         "composer.lock",
@@ -1581,7 +1779,8 @@
       "last_verified_environment": null,
       "last_evidence_update": "2026-10-27",
       "notes": [
-        "Trace only: docs/verification/VECTOR_V26_I01_I09_PRODUCTION_EVIDENCE_REMEDIATION.md; this assurance row adds no runtime implementation denominator."
+        "Trace only: docs/verification/VECTOR_V26_I01_I09_PRODUCTION_EVIDENCE_REMEDIATION.md; this assurance row adds no runtime implementation denominator.",
+        "2026-10-27 evidence closure: ZIP tests check members and some headings; they do not compare every required column or inject a missing source column. Procedure: Generate an isolated export with representative nullable fields; compare every CSV header to the declared dataset schema. Remove a required field only in a disposable schema and assert explicit missing-field failure/metadata, not silent omission."
       ],
       "assessed_commit": "d9a0aeb5d14233fc95e9e5cc55d8748814362f59",
       "roadmap_reference": "docs/roadmap/VECTOR_POST_REMEDIATION_IMPLEMENTATION_ROADMAP.md",
@@ -1637,12 +1836,15 @@
       "current_state": "BLOCKED",
       "assessment": "UNKNOWN",
       "blocking_issues": [
-        "Historical report status not independently revalidated at current HEAD."
+        "Local V1 incomplete: Half-open window and risk funnel tests pass separately; no comparison of exported strategy funnel populations to scoped source queries. Production V2 and explicit product acceptance pending."
       ],
       "source_paths": [
         "app/Audit/Application/AuditExportService.php"
       ],
-      "test_paths": [],
+      "test_paths": [
+        "tests/Feature/AuditExportTest.php",
+        "tests/Integration/SlotIntegrityAndRiskFunnelPostgresIntegrationTest.php"
+      ],
       "watch_paths": [
         "app",
         "composer.lock",
@@ -1659,7 +1861,8 @@
       "last_verified_environment": null,
       "last_evidence_update": "2026-10-27",
       "notes": [
-        "Trace only: docs/verification/VECTOR_V26_I01_I09_PRODUCTION_EVIDENCE_REMEDIATION.md; this assurance row adds no runtime implementation denominator."
+        "Trace only: docs/verification/VECTOR_V26_I01_I09_PRODUCTION_EVIDENCE_REMEDIATION.md; this assurance row adds no runtime implementation denominator.",
+        "2026-10-27 evidence closure: Half-open window and risk funnel tests pass separately; no comparison of exported strategy funnel populations to scoped source queries. Procedure: Seed BUY/SELL/SKIP and open/partial/closed states on both exchanges and two adjacent windows. Parse exported funnel CSV and compare exact cohorts/counts to qualified SELECTs; reject cross-exchange rows."
       ],
       "assessed_commit": "d9a0aeb5d14233fc95e9e5cc55d8748814362f59",
       "roadmap_reference": "docs/roadmap/VECTOR_POST_REMEDIATION_IMPLEMENTATION_ROADMAP.md",
@@ -1724,14 +1927,16 @@
       "current_state": "BLOCKED",
       "assessment": "UNKNOWN",
       "blocking_issues": [
-        "Historical report status not independently revalidated at current HEAD."
+        "Local V1 incomplete: Selector tests seed Bybit only. Separate 26-account census does not prove all 26 selectable or distinct aggregate/account economics. Production V2 and explicit product acceptance pending. Browser V3 pending."
       ],
       "source_paths": [
         "app/Http/Controllers/Api/V1/ResearchController.php",
         "frontend/src/pages/DashboardPage.vue"
       ],
       "test_paths": [
-        "tests/Feature/Api/CompleteApiEndpointAuditTest.php"
+        "tests/Feature/Api/CompleteApiEndpointAuditTest.php",
+        "tests/Feature/Api/MultiAccountSelectionTest.php",
+        "tests/Feature/PaperTrading/StrategyPipelineFunnelVerificationTest.php"
       ],
       "watch_paths": [
         "app",
@@ -1750,7 +1955,8 @@
       "last_verified_environment": null,
       "last_evidence_update": "2026-10-27",
       "notes": [
-        "Trace only: docs/verification/VECTOR_V26_I01_I09_PRODUCTION_EVIDENCE_REMEDIATION.md; this assurance row adds no runtime implementation denominator."
+        "Trace only: docs/verification/VECTOR_V26_I01_I09_PRODUCTION_EVIDENCE_REMEDIATION.md; this assurance row adds no runtime implementation denominator.",
+        "2026-10-27 evidence closure: Selector tests seed Bybit only. Separate 26-account census does not prove all 26 selectable or distinct aggregate/account economics. Procedure: Seed 13+13 accounts with distinct balances; request dashboard/statistics/risk for every account and exchange plus aggregate. Assert IDs, sums, foreign-ID rejection and no provisioning; exercise selectors in browser for V3."
       ],
       "assessed_commit": "d9a0aeb5d14233fc95e9e5cc55d8748814362f59",
       "roadmap_reference": "docs/roadmap/VECTOR_POST_REMEDIATION_IMPLEMENTATION_ROADMAP.md",
@@ -1806,7 +2012,7 @@
       "current_state": "BLOCKED",
       "assessment": "UNKNOWN",
       "blocking_issues": [
-        "Historical report status not independently revalidated at current HEAD."
+        "Local V1 incomplete: HTTP success smoke coverage lacks competing annotation rows and qualified newest-match assertions. Production V2 and explicit product acceptance pending."
       ],
       "source_paths": [
         "app/Http/Controllers/Api/V1/ResearchController.php"
@@ -1831,7 +2037,8 @@
       "last_verified_environment": null,
       "last_evidence_update": "2026-10-27",
       "notes": [
-        "Trace only: docs/verification/VECTOR_V26_I01_I09_PRODUCTION_EVIDENCE_REMEDIATION.md; this assurance row adds no runtime implementation denominator."
+        "Trace only: docs/verification/VECTOR_V26_I01_I09_PRODUCTION_EVIDENCE_REMEDIATION.md; this assurance row adds no runtime implementation denominator.",
+        "2026-10-27 evidence closure: HTTP success smoke coverage lacks competing annotation rows and qualified newest-match assertions. Procedure: Seed older/newer matching decisions and a newer foreign-account/foreign-exchange decision for one signal. Read annotations and assert newest matching row only, plus missing-match unavailable state."
       ],
       "assessed_commit": "d9a0aeb5d14233fc95e9e5cc55d8748814362f59",
       "roadmap_reference": "docs/roadmap/VECTOR_POST_REMEDIATION_IMPLEMENTATION_ROADMAP.md",
@@ -1887,13 +2094,15 @@
       "current_state": "BLOCKED",
       "assessment": "UNKNOWN",
       "blocking_issues": [
-        "Historical report status not independently revalidated at current HEAD."
+        "Local V1 incomplete: Open economics exclusion passes. P2 partial-population test targets a different service; no direct partial-exit negative for the Statistics page service. Production V2 and explicit product acceptance pending."
       ],
       "source_paths": [
         "app/PaperTrading/Application/PerformanceStatisticsService.php"
       ],
       "test_paths": [
-        "tests/Feature/PaperTrading/PerformanceStatisticsTest.php"
+        "tests/Feature/PaperTrading/PaperLifecycleTest.php",
+        "tests/Feature/PaperTrading/PerformanceStatisticsTest.php",
+        "tests/Feature/Research/P2RiskCapitalMetricsTest.php"
       ],
       "watch_paths": [
         "app",
@@ -1912,7 +2121,8 @@
       "last_verified_environment": null,
       "last_evidence_update": "2026-10-27",
       "notes": [
-        "Trace only: docs/verification/VECTOR_V26_I01_I09_PRODUCTION_EVIDENCE_REMEDIATION.md; this assurance row adds no runtime implementation denominator."
+        "Trace only: docs/verification/VECTOR_V26_I01_I09_PRODUCTION_EVIDENCE_REMEDIATION.md; this assurance row adds no runtime implementation denominator.",
+        "2026-10-27 evidence closure: Open economics exclusion passes. P2 partial-population test targets a different service; no direct partial-exit negative for the Statistics page service. Procedure: Exercise PerformanceStatisticsService and statistics API with OPEN, PARTIALLY_CLOSED, CLOSED_TP and CLOSED_SL, multiple partial executions per position. Assert only closed positions form winrate/PF/R denominators and one closed position is one trade."
       ],
       "assessed_commit": "d9a0aeb5d14233fc95e9e5cc55d8748814362f59",
       "roadmap_reference": "docs/roadmap/VECTOR_POST_REMEDIATION_IMPLEMENTATION_ROADMAP.md",
@@ -1946,7 +2156,26 @@
           "environment": "isolated_postgresql",
           "weight": 1,
           "max_age_days": 90,
-          "evidence": []
+          "evidence": [
+            {
+              "requirement_id": "VEC-P0-112",
+              "obligation_id": "VEC-P0-112-V1",
+              "type": "integration",
+              "result": "PASS",
+              "environment": "isolated_postgresql",
+              "fixture": "Fixtures and setup at the exact test source paths/lines below, unchanged from source SHA; no production dataset.",
+              "synthetic": true,
+              "git_sha": "c8d51156b2c72b03f009d10e6a634ff80cff77ff",
+              "date": "2026-10-27",
+              "execution_timestamp": "2026-10-27T18:58:43.309903+00:00",
+              "dependency_hash": "f55934a32cb549d43fef11d0fdb36ea9f42ba10678cfe90863ab4ac8e9450a07",
+              "reviewer": "Codex requirement-specific QA review",
+              "artifact": "docs/progress/evidence/phase0-20261027/VEC-P0-112-V1.json",
+              "artifact_sha256": "b19844b34c16467ad76cfde6025947b5449e7ecc11d86cb7a9c2eca4dffda59f",
+              "limitations": "Local synthetic verification only. No production/browser acceptance, market profitability, current deployed configuration or complete feature certification. Real concurrent candle races are distinct from sequential PAPER duplicate simulations.",
+              "rationale": "Closing-only history returns null PnL and incomplete in API service and calendar CSV; inception is a justified opening control; complete period reconciles commissions/funding."
+            }
+          ]
         },
         {
           "id": "VEC-P0-112-V2",
@@ -1968,7 +2197,7 @@
       "current_state": "BLOCKED",
       "assessment": "UNKNOWN",
       "blocking_issues": [
-        "Historical report status not independently revalidated at current HEAD."
+        "Local V1 admitted; Production V2 and explicit product acceptance pending."
       ],
       "source_paths": [
         "app/PaperTrading/Application/DailyPerformanceService.php"
@@ -1989,15 +2218,16 @@
         "tests",
         "tests/Feature/PaperTrading/DailyPerformanceTest.php"
       ],
-      "last_verified_commit": null,
-      "last_verified_environment": null,
+      "last_verified_commit": "c8d51156b2c72b03f009d10e6a634ff80cff77ff",
+      "last_verified_environment": "isolated_postgresql",
       "last_evidence_update": "2026-10-27",
       "notes": [
-        "Trace only: docs/verification/VECTOR_V26_I01_I09_PRODUCTION_EVIDENCE_REMEDIATION.md; this assurance row adds no runtime implementation denominator."
+        "Trace only: docs/verification/VECTOR_V26_I01_I09_PRODUCTION_EVIDENCE_REMEDIATION.md; this assurance row adds no runtime implementation denominator.",
+        "2026-10-27 evidence closure: Closing-only history returns null PnL and incomplete in API service and calendar CSV; inception is a justified opening control; complete period reconciles commissions/funding. Procedure: No additional local test needed. Compare deployed daily API/CSV to opening/closing snapshots, including a missing-opening day."
       ],
       "assessed_commit": "d9a0aeb5d14233fc95e9e5cc55d8748814362f59",
       "roadmap_reference": "docs/roadmap/VECTOR_POST_REMEDIATION_IMPLEMENTATION_ROADMAP.md",
-      "verification_assessment": "UNAVAILABLE",
+      "verification_assessment": "PARTIAL_LOCAL",
       "product_assessment": "NOT_ACCEPTED",
       "roadmap_section": "Phase 0"
     },
@@ -2027,7 +2257,26 @@
           "environment": "isolated_postgresql",
           "weight": 1,
           "max_age_days": 90,
-          "evidence": []
+          "evidence": [
+            {
+              "requirement_id": "VEC-P0-113",
+              "obligation_id": "VEC-P0-113-V1",
+              "type": "integration",
+              "result": "PASS",
+              "environment": "isolated_postgresql",
+              "fixture": "Fixtures and setup at the exact test source paths/lines below, unchanged from source SHA; no production dataset.",
+              "synthetic": true,
+              "git_sha": "c8d51156b2c72b03f009d10e6a634ff80cff77ff",
+              "date": "2026-10-27",
+              "execution_timestamp": "2026-10-27T18:58:43.309903+00:00",
+              "dependency_hash": "f55934a32cb549d43fef11d0fdb36ea9f42ba10678cfe90863ab4ac8e9450a07",
+              "reviewer": "Codex requirement-specific QA review",
+              "artifact": "docs/progress/evidence/phase0-20261027/VEC-P0-113-V1.json",
+              "artifact_sha256": "704fb46c38c744cb2b55e86554970e8ab625f9f46c19b7afb3d7980f3d013a31",
+              "limitations": "Local synthetic verification only. No production/browser acceptance, market profitability, current deployed configuration or complete feature certification. Real concurrent candle races are distinct from sequential PAPER duplicate simulations.",
+              "rationale": "Observed BUY/SKIP counts are asserted; all-empty children produce INSUFFICIENT_DATA parent; requested 7d changes expected slots to 672."
+            }
+          ]
         },
         {
           "id": "VEC-P0-113-V2",
@@ -2049,7 +2298,7 @@
       "current_state": "BLOCKED",
       "assessment": "UNKNOWN",
       "blocking_issues": [
-        "Historical report status not independently revalidated at current HEAD."
+        "Local V1 admitted; Production V2 and explicit product acceptance pending."
       ],
       "source_paths": [
         "app/Research/Application/StrategyHealthService.php"
@@ -2070,15 +2319,16 @@
         "tests",
         "tests/Unit/Research/StrategyHealthServiceTest.php"
       ],
-      "last_verified_commit": null,
-      "last_verified_environment": null,
+      "last_verified_commit": "c8d51156b2c72b03f009d10e6a634ff80cff77ff",
+      "last_verified_environment": "isolated_postgresql",
       "last_evidence_update": "2026-10-27",
       "notes": [
-        "Trace only: docs/verification/VECTOR_V26_I01_I09_PRODUCTION_EVIDENCE_REMEDIATION.md; this assurance row adds no runtime implementation denominator."
+        "Trace only: docs/verification/VECTOR_V26_I01_I09_PRODUCTION_EVIDENCE_REMEDIATION.md; this assurance row adds no runtime implementation denominator.",
+        "2026-10-27 evidence closure: Observed BUY/SKIP counts are asserted; all-empty children produce INSUFFICIENT_DATA parent; requested 7d changes expected slots to 672. Procedure: No additional local test needed for the tested contract. Compare real 24h/7d source observations and child/parent health; do not infer activity from HEALTHY alone."
       ],
       "assessed_commit": "d9a0aeb5d14233fc95e9e5cc55d8748814362f59",
       "roadmap_reference": "docs/roadmap/VECTOR_POST_REMEDIATION_IMPLEMENTATION_ROADMAP.md",
-      "verification_assessment": "UNAVAILABLE",
+      "verification_assessment": "PARTIAL_LOCAL",
       "product_assessment": "NOT_ACCEPTED",
       "roadmap_section": "Phase 0"
     },
@@ -2139,13 +2389,14 @@
       "current_state": "BLOCKED",
       "assessment": "UNKNOWN",
       "blocking_issues": [
-        "Historical report status not independently revalidated at current HEAD."
+        "Local V1 incomplete: Freshness service and API shapes tested separately; report-to-page stale/unknown shape regression is not asserted. Production V2 and explicit product acceptance pending. Browser V3 pending."
       ],
       "source_paths": [
         "app/Http/Controllers/Api/V1/AutonomousLearningController.php"
       ],
       "test_paths": [
-        "tests/Feature/Research/AutonomousLearningApiTest.php"
+        "tests/Feature/Research/AutonomousLearningApiTest.php",
+        "tests/Unit/Research/SystemFreshnessServiceTest.php"
       ],
       "watch_paths": [
         "app",
@@ -2164,7 +2415,8 @@
       "last_verified_environment": null,
       "last_evidence_update": "2026-10-27",
       "notes": [
-        "Trace only: docs/verification/VECTOR_V26_I01_I09_PRODUCTION_EVIDENCE_REMEDIATION.md; this assurance row adds no runtime implementation denominator."
+        "Trace only: docs/verification/VECTOR_V26_I01_I09_PRODUCTION_EVIDENCE_REMEDIATION.md; this assurance row adds no runtime implementation denominator.",
+        "2026-10-27 evidence closure: Freshness service and API shapes tested separately; report-to-page stale/unknown shape regression is not asserted. Procedure: Exercise the report endpoint with fresh, stale and missing underlying marks; mount its consumer and assert actual field names plus stale/unknown UI. Capture V3 DOM and API together."
       ],
       "assessed_commit": "d9a0aeb5d14233fc95e9e5cc55d8748814362f59",
       "roadmap_reference": "docs/roadmap/VECTOR_POST_REMEDIATION_IMPLEMENTATION_ROADMAP.md",
@@ -2220,7 +2472,7 @@
       "current_state": "BLOCKED",
       "assessment": "UNKNOWN",
       "blocking_issues": [
-        "Historical report status not independently revalidated at current HEAD."
+        "Local V1 incomplete: Lifecycle inclusion and aligned fixture correlation pass; no deliberately permuted trade-order/time alignment negative. Production V2 and explicit product acceptance pending."
       ],
       "source_paths": [
         "app/Research/Application/PortfolioCorrelationService.php"
@@ -2245,7 +2497,8 @@
       "last_verified_environment": null,
       "last_evidence_update": "2026-10-27",
       "notes": [
-        "Trace only: docs/verification/VECTOR_V26_I01_I09_PRODUCTION_EVIDENCE_REMEDIATION.md; this assurance row adds no runtime implementation denominator."
+        "Trace only: docs/verification/VECTOR_V26_I01_I09_PRODUCTION_EVIDENCE_REMEDIATION.md; this assurance row adds no runtime implementation denominator.",
+        "2026-10-27 evidence closure: Lifecycle inclusion and aligned fixture correlation pass; no deliberately permuted trade-order/time alignment negative. Procedure: Create time-overlapping and non-overlapping trades with permuted insertion order and missing intervals. Assert correlation uses common time observations and never pairs by row order."
       ],
       "assessed_commit": "d9a0aeb5d14233fc95e9e5cc55d8748814362f59",
       "roadmap_reference": "docs/roadmap/VECTOR_POST_REMEDIATION_IMPLEMENTATION_ROADMAP.md",
@@ -2301,7 +2554,7 @@
       "current_state": "BLOCKED",
       "assessment": "UNKNOWN",
       "blocking_issues": [
-        "Historical report status not independently revalidated at current HEAD."
+        "Local V1 incomplete: Degradation fixtures use Bybit only; P5 exchange comparisons do not directly test degradation isolation. Production V2 and explicit product acceptance pending."
       ],
       "source_paths": [
         "app/Research/Application/StrategyDegradationService.php"
@@ -2327,7 +2580,8 @@
       "last_verified_environment": null,
       "last_evidence_update": "2026-10-27",
       "notes": [
-        "Trace only: docs/verification/VECTOR_V26_I01_I09_PRODUCTION_EVIDENCE_REMEDIATION.md; this assurance row adds no runtime implementation denominator."
+        "Trace only: docs/verification/VECTOR_V26_I01_I09_PRODUCTION_EVIDENCE_REMEDIATION.md; this assurance row adds no runtime implementation denominator.",
+        "2026-10-27 evidence closure: Degradation fixtures use Bybit only; P5 exchange comparisons do not directly test degradation isolation. Procedure: Seed the same strategy on Bybit with gains and Binance with losses; evaluate degradation for each exchange and assert each sample/metric ignores the other; repeat with swapped insertion order."
       ],
       "assessed_commit": "d9a0aeb5d14233fc95e9e5cc55d8748814362f59",
       "roadmap_reference": "docs/roadmap/VECTOR_POST_REMEDIATION_IMPLEMENTATION_ROADMAP.md",
@@ -2383,7 +2637,7 @@
       "current_state": "BLOCKED",
       "assessment": "UNKNOWN",
       "blocking_issues": [
-        "Historical report status not independently revalidated at current HEAD."
+        "Local V1 incomplete: Point-in-time snapshot/label pass with Bybit only; missing cross-exchange contamination negative. Production V2 and explicit product acceptance pending."
       ],
       "source_paths": [
         "app/Research/Application/LearningFeatureStoreService.php"
@@ -2409,7 +2663,8 @@
       "last_verified_environment": null,
       "last_evidence_update": "2026-10-27",
       "notes": [
-        "Trace only: docs/verification/VECTOR_V26_I01_I09_PRODUCTION_EVIDENCE_REMEDIATION.md; this assurance row adds no runtime implementation denominator."
+        "Trace only: docs/verification/VECTOR_V26_I01_I09_PRODUCTION_EVIDENCE_REMEDIATION.md; this assurance row adds no runtime implementation denominator.",
+        "2026-10-27 evidence closure: Point-in-time snapshot/label pass with Bybit only; missing cross-exchange contamination negative. Procedure: Seed opposing Bybit/Binance candles and outcomes at identical times; build each feature snapshot and assert only its exchange supplies all features and labels."
       ],
       "assessed_commit": "d9a0aeb5d14233fc95e9e5cc55d8748814362f59",
       "roadmap_reference": "docs/roadmap/VECTOR_POST_REMEDIATION_IMPLEMENTATION_ROADMAP.md",
@@ -2465,7 +2720,7 @@
       "current_state": "BLOCKED",
       "assessment": "UNKNOWN",
       "blocking_issues": [
-        "Historical report status not independently revalidated at current HEAD."
+        "Local V1 incomplete: Training pipeline succeeds but does not drive insufficient purged samples through the fallback path. Production V2 and explicit product acceptance pending."
       ],
       "source_paths": [],
       "test_paths": [
@@ -2488,7 +2743,8 @@
       "last_verified_environment": null,
       "last_evidence_update": "2026-10-27",
       "notes": [
-        "Trace only: docs/verification/VECTOR_V26_I01_I09_PRODUCTION_EVIDENCE_REMEDIATION.md; this assurance row adds no runtime implementation denominator."
+        "Trace only: docs/verification/VECTOR_V26_I01_I09_PRODUCTION_EVIDENCE_REMEDIATION.md; this assurance row adds no runtime implementation denominator.",
+        "2026-10-27 evidence closure: Training pipeline succeeds but does not drive insufficient purged samples through the fallback path. Procedure: Construct overlapping labels whose purge removes most samples; train and assert insufficient-data failure instead of unpurged fallback. Verify no label with outcome_at after cutoff enters training."
       ],
       "assessed_commit": "d9a0aeb5d14233fc95e9e5cc55d8748814362f59",
       "roadmap_reference": "docs/roadmap/VECTOR_POST_REMEDIATION_IMPLEMENTATION_ROADMAP.md",
@@ -2553,12 +2809,13 @@
       "current_state": "BLOCKED",
       "assessment": "UNKNOWN",
       "blocking_issues": [
-        "Historical report status not independently revalidated at current HEAD."
+        "Local V1 incomplete: Service restrictions pass; settings API asserts raw capabilities but not the effective permission map under conflicting flags. Production V2 and explicit product acceptance pending. Browser V3 pending."
       ],
       "source_paths": [
         "app/Research/Application/AutonomyPermissionService.php"
       ],
       "test_paths": [
+        "tests/Feature/Research/AutonomousLearningApiTest.php",
         "tests/Feature/Research/AutonomyResearchTest.php",
         "tests/Unit/Research/AutonomyPermissionServiceTest.php"
       ],
@@ -2579,7 +2836,8 @@
       "last_verified_environment": null,
       "last_evidence_update": "2026-10-27",
       "notes": [
-        "Trace only: docs/verification/VECTOR_V26_I01_I09_PRODUCTION_EVIDENCE_REMEDIATION.md; this assurance row adds no runtime implementation denominator."
+        "Trace only: docs/verification/VECTOR_V26_I01_I09_PRODUCTION_EVIDENCE_REMEDIATION.md; this assurance row adds no runtime implementation denominator.",
+        "2026-10-27 evidence closure: Service restrictions pass; settings API asserts raw capabilities but not the effective permission map under conflicting flags. Procedure: Set raw permission true with global enable false or kill switch true in isolated fixtures; GET settings and assert effective permission false alongside the raw value and reason. Render in browser for V3."
       ],
       "assessed_commit": "d9a0aeb5d14233fc95e9e5cc55d8748814362f59",
       "roadmap_reference": "docs/roadmap/VECTOR_POST_REMEDIATION_IMPLEMENTATION_ROADMAP.md",
@@ -2644,7 +2902,7 @@
       "current_state": "BLOCKED",
       "assessment": "UNKNOWN",
       "blocking_issues": [
-        "Historical report status not independently revalidated at current HEAD."
+        "Local V1 incomplete: Each kill-switch has tests; no matrix toggles each authority independently and asserts both effective views agree. Production V2 and explicit product acceptance pending. Browser V3 pending."
       ],
       "source_paths": [
         "app/Research/Application/AutonomyPermissionService.php"
@@ -2670,7 +2928,8 @@
       "last_verified_environment": null,
       "last_evidence_update": "2026-10-27",
       "notes": [
-        "Trace only: docs/verification/VECTOR_V26_I01_I09_PRODUCTION_EVIDENCE_REMEDIATION.md; this assurance row adds no runtime implementation denominator."
+        "Trace only: docs/verification/VECTOR_V26_I01_I09_PRODUCTION_EVIDENCE_REMEDIATION.md; this assurance row adds no runtime implementation denominator.",
+        "2026-10-27 evidence closure: Each kill-switch has tests; no matrix toggles each authority independently and asserts both effective views agree. Procedure: Exercise four combinations of both switch stores; assert effective blocking in both APIs/services and display both authorities without writes on GET. Browser V3 requires rendered disabled controls."
       ],
       "assessed_commit": "d9a0aeb5d14233fc95e9e5cc55d8748814362f59",
       "roadmap_reference": "docs/roadmap/VECTOR_POST_REMEDIATION_IMPLEMENTATION_ROADMAP.md",
@@ -2726,13 +2985,14 @@
       "current_state": "BLOCKED",
       "assessment": "UNKNOWN",
       "blocking_issues": [
-        "Historical report status not independently revalidated at current HEAD."
+        "Local V1 incomplete: Static routing and real worker success pass; missing unsupported-version/offline-worker capability negative. Production V2 and explicit product acceptance pending."
       ],
       "source_paths": [
         "app/Research/Application/ResearchJobService.php"
       ],
       "test_paths": [
         "tests/Feature/Research/ResearchJobApiTest.php",
+        "tests/Integration/GoResearchWorkerIntegrationTest.php",
         "tests/Unit/Research/ResearchJobServiceTest.php"
       ],
       "watch_paths": [
@@ -2752,7 +3012,8 @@
       "last_verified_environment": null,
       "last_evidence_update": "2026-10-27",
       "notes": [
-        "Trace only: docs/verification/VECTOR_V26_I01_I09_PRODUCTION_EVIDENCE_REMEDIATION.md; this assurance row adds no runtime implementation denominator."
+        "Trace only: docs/verification/VECTOR_V26_I01_I09_PRODUCTION_EVIDENCE_REMEDIATION.md; this assurance row adds no runtime implementation denominator.",
+        "2026-10-27 evidence closure: Static routing and real worker success pass; missing unsupported-version/offline-worker capability negative. Procedure: Register supported, unsupported-version and expired-heartbeat workers; query capabilities and assert only actual compatible availability, with unavailable reasons for others."
       ],
       "assessed_commit": "d9a0aeb5d14233fc95e9e5cc55d8748814362f59",
       "roadmap_reference": "docs/roadmap/VECTOR_POST_REMEDIATION_IMPLEMENTATION_ROADMAP.md",
@@ -2817,7 +3078,7 @@
       "current_state": "BLOCKED",
       "assessment": "UNKNOWN",
       "blocking_issues": [
-        "Historical report status not independently revalidated at current HEAD."
+        "Local V1 incomplete: quote_integrity.test.js checks source contracts, not an executed HTTP failure reaching the page. Production V2 and explicit product acceptance pending. Browser V3 pending."
       ],
       "source_paths": [
         "frontend/src/services/quoteIntegrityApi.ts"
@@ -2842,7 +3103,8 @@
       "last_verified_environment": null,
       "last_evidence_update": "2026-10-27",
       "notes": [
-        "Trace only: docs/verification/VECTOR_V26_I01_I09_PRODUCTION_EVIDENCE_REMEDIATION.md; this assurance row adds no runtime implementation denominator."
+        "Trace only: docs/verification/VECTOR_V26_I01_I09_PRODUCTION_EVIDENCE_REMEDIATION.md; this assurance row adds no runtime implementation denominator.",
+        "2026-10-27 evidence closure: quote_integrity.test.js checks source contracts, not an executed HTTP failure reaching the page. Procedure: Mock rejected HTTP, timeout and malformed success envelope in the real quoteIntegrityApi consumer; render visible error and preserve last-good/stale distinction. Verify with local API and browser for V3."
       ],
       "assessed_commit": "d9a0aeb5d14233fc95e9e5cc55d8748814362f59",
       "roadmap_reference": "docs/roadmap/VECTOR_POST_REMEDIATION_IMPLEMENTATION_ROADMAP.md",
@@ -2907,12 +3169,14 @@
       "current_state": "BLOCKED",
       "assessment": "UNKNOWN",
       "blocking_issues": [
-        "Historical report status not independently revalidated at current HEAD."
+        "Local V1 incomplete: Some backend pagination and frontend source checks pass; no rendered navigation beyond first page on each affected page. Production V2 and explicit product acceptance pending. Browser V3 pending."
       ],
       "source_paths": [
         "frontend/src/pages/JournalPage.vue"
       ],
-      "test_paths": [],
+      "test_paths": [
+        "tests/Feature/PaperTrading/DailyPerformanceTest.php"
+      ],
       "watch_paths": [
         "app",
         "composer.lock",
@@ -2929,7 +3193,8 @@
       "last_verified_environment": null,
       "last_evidence_update": "2026-10-27",
       "notes": [
-        "Trace only: docs/verification/VECTOR_V26_I01_I09_PRODUCTION_EVIDENCE_REMEDIATION.md; this assurance row adds no runtime implementation denominator."
+        "Trace only: docs/verification/VECTOR_V26_I01_I09_PRODUCTION_EVIDENCE_REMEDIATION.md; this assurance row adds no runtime implementation denominator.",
+        "2026-10-27 evidence closure: Some backend pagination and frontend source checks pass; no rendered navigation beyond first page on each affected page. Procedure: Seed 25 distinct journal/history rows; request pages 1/2/3 with per_page=10 and assert 25 unique IDs, stable order and no loss. Navigate all three pages in the browser for V3."
       ],
       "assessed_commit": "d9a0aeb5d14233fc95e9e5cc55d8748814362f59",
       "roadmap_reference": "docs/roadmap/VECTOR_POST_REMEDIATION_IMPLEMENTATION_ROADMAP.md",
@@ -2985,7 +3250,7 @@
       "current_state": "BLOCKED",
       "assessment": "UNKNOWN",
       "blocking_issues": [
-        "Historical report status not independently revalidated at current HEAD."
+        "Local V1 incomplete: Latest/explicit generation, no-writes and missing-position controls pass; qualified account/exchange mismatch is not covered. Production V2 and explicit product acceptance pending."
       ],
       "source_paths": [
         "app/Http/Controllers/Api/V1/ProfitabilityResearchController.php"
@@ -3010,7 +3275,8 @@
       "last_verified_environment": null,
       "last_evidence_update": "2026-10-27",
       "notes": [
-        "Trace only: docs/verification/VECTOR_V26_I01_I09_PRODUCTION_EVIDENCE_REMEDIATION.md; this assurance row adds no runtime implementation denominator."
+        "Trace only: docs/verification/VECTOR_V26_I01_I09_PRODUCTION_EVIDENCE_REMEDIATION.md; this assurance row adds no runtime implementation denominator.",
+        "2026-10-27 evidence closure: Latest/explicit generation, no-writes and missing-position controls pass; qualified account/exchange mismatch is not covered. Procedure: Seed two accounts/exchanges and two generations for each position; request position trace with correct and foreign account/exchange filters. Assert zero foreign fills and only requested generation."
       ],
       "assessed_commit": "d9a0aeb5d14233fc95e9e5cc55d8748814362f59",
       "roadmap_reference": "docs/roadmap/VECTOR_POST_REMEDIATION_IMPLEMENTATION_ROADMAP.md",
@@ -3075,13 +3341,16 @@
       "current_state": "BLOCKED",
       "assessment": "UNKNOWN",
       "blocking_issues": [
-        "Historical report status not independently revalidated at current HEAD."
+        "Local V1 incomplete: Bounded queued attempts, kill-switch and rejection pass; completed run is manually supplied. No test executes EvaluateStrategyCandidateJob and proves durable linkage to the correct run. Production V2 and explicit product acceptance pending. Browser V3 pending."
       ],
       "source_paths": [
         "app/Research/Application/PromotionPolicyService.php",
-        "frontend/src/pages/ResearchLearningPage.vue"
+        "frontend/src/pages/ResearchLearningPage.vue",
+        "app/Research/Jobs/EvaluateStrategyCandidateJob.php"
       ],
       "test_paths": [
+        "tests/Feature/Research/AutonomousLearningPipelineTest.php",
+        "tests/Feature/Research/CandidateLabValidationLifecycleTest.php",
         "tests/Feature/Research/Gate6PromotionPolicyTest.php",
         "tests/Unit/Research/PromotionPolicyServiceTest.php"
       ],
@@ -3102,7 +3371,9 @@
       "last_verified_environment": null,
       "last_evidence_update": "2026-10-27",
       "notes": [
-        "Trace only: docs/verification/VECTOR_V26_I01_I09_PRODUCTION_EVIDENCE_REMEDIATION.md; this assurance row adds no runtime implementation denominator."
+        "Trace only: docs/verification/VECTOR_V26_I01_I09_PRODUCTION_EVIDENCE_REMEDIATION.md; this assurance row adds no runtime implementation denominator.",
+        "2026-10-27 evidence closure: Bounded queued attempts, kill-switch and rejection pass; completed run is manually supplied. No test executes EvaluateStrategyCandidateJob and proves durable linkage to the correct run. Procedure: Execute EvaluateStrategyCandidateJob on a bounded synthetic historical dataset with a competing unrelated run. Reload candidate and assert exact owned backtest_run_id, outcome, missing/failure state, retry bound and no promotion; render transitions for V3.",
+        "Traceability correction: CandidateLabValidationLifecycleTest covers scheduling/rejection; job source owns durable backtest linkage, not Gate6 tests alone."
       ],
       "assessed_commit": "d9a0aeb5d14233fc95e9e5cc55d8748814362f59",
       "roadmap_reference": "docs/roadmap/VECTOR_POST_REMEDIATION_IMPLEMENTATION_ROADMAP.md",
@@ -3158,7 +3429,7 @@
       "current_state": "BLOCKED",
       "assessment": "UNKNOWN",
       "blocking_issues": [
-        "Historical report status not independently revalidated at current HEAD."
+        "Local V1 incomplete: Rejection event persists after exception, but test does not assert append-only enforcement or concurrent retry behavior. Production V2 and explicit product acceptance pending."
       ],
       "source_paths": [
         "app/Research/Application/PromotionPolicyService.php"
@@ -3184,7 +3455,8 @@
       "last_verified_environment": null,
       "last_evidence_update": "2026-10-27",
       "notes": [
-        "Trace only: docs/verification/VECTOR_V26_I01_I09_PRODUCTION_EVIDENCE_REMEDIATION.md; this assurance row adds no runtime implementation denominator."
+        "Trace only: docs/verification/VECTOR_V26_I01_I09_PRODUCTION_EVIDENCE_REMEDIATION.md; this assurance row adds no runtime implementation denominator.",
+        "2026-10-27 evidence closure: Rejection event persists after exception, but test does not assert append-only enforcement or concurrent retry behavior. Procedure: Reject promotion, verify persisted event after rollback; attempt UPDATE/DELETE with application role and require denial. Race identical rejected requests on separate PostgreSQL connections and verify documented immutable audit semantics."
       ],
       "assessed_commit": "d9a0aeb5d14233fc95e9e5cc55d8748814362f59",
       "roadmap_reference": "docs/roadmap/VECTOR_POST_REMEDIATION_IMPLEMENTATION_ROADMAP.md",
@@ -3218,7 +3490,26 @@
           "environment": "isolated_postgresql",
           "weight": 1,
           "max_age_days": 90,
-          "evidence": []
+          "evidence": [
+            {
+              "requirement_id": "VEC-P0-127",
+              "obligation_id": "VEC-P0-127-V1",
+              "type": "integration",
+              "result": "PASS",
+              "environment": "isolated_postgresql",
+              "fixture": "Fixtures and setup at the exact test source paths/lines below, unchanged from source SHA; no production dataset.",
+              "synthetic": true,
+              "git_sha": "c8d51156b2c72b03f009d10e6a634ff80cff77ff",
+              "date": "2026-10-27",
+              "execution_timestamp": "2026-10-27T18:58:43.309903+00:00",
+              "dependency_hash": "f55934a32cb549d43fef11d0fdb36ea9f42ba10678cfe90863ab4ac8e9450a07",
+              "reviewer": "Codex requirement-specific QA review",
+              "artifact": "docs/progress/evidence/phase0-20261027/VEC-P0-127-V1.json",
+              "artifact_sha256": "ec60ff1f81a4135b3bc13e4d5478dcbcaf28ca1b14caa409f1d387be4e0d2551",
+              "limitations": "Local synthetic verification only. No production/browser acceptance, market profitability, current deployed configuration or complete feature certification. Real concurrent candle races are distinct from sequential PAPER duplicate simulations.",
+              "rationale": "Blocked drawdown SELL persists REJECTED state and PRE_RISK_ENTRY_BLOCKED journal, no RiskEngine row/fill; existing blocked-account positions still close and preserve accounting."
+            }
+          ]
         },
         {
           "id": "VEC-P0-127-V2",
@@ -3240,13 +3531,15 @@
       "current_state": "BLOCKED",
       "assessment": "UNKNOWN",
       "blocking_issues": [
-        "Historical report status not independently revalidated at current HEAD."
+        "Local V1 admitted; Production V2 and explicit product acceptance pending."
       ],
       "source_paths": [
         "app/PaperTrading/Application/PaperProcessingService.php"
       ],
       "test_paths": [
-        "tests/Feature/PaperTrading/CentralExecutionEligibilityTest.php"
+        "tests/Feature/PaperTrading/CentralExecutionEligibilityTest.php",
+        "tests/Feature/PaperTrading/PaperLifecycleTest.php",
+        "tests/Feature/Trading/TradingPipelineConcurrencyAndSafetyTest.php"
       ],
       "watch_paths": [
         "app",
@@ -3261,15 +3554,16 @@
         "tests",
         "tests/Feature/PaperTrading/CentralExecutionEligibilityTest.php"
       ],
-      "last_verified_commit": null,
-      "last_verified_environment": null,
+      "last_verified_commit": "c8d51156b2c72b03f009d10e6a634ff80cff77ff",
+      "last_verified_environment": "isolated_postgresql",
       "last_evidence_update": "2026-10-27",
       "notes": [
-        "Trace only: docs/verification/VECTOR_V26_I01_I09_PRODUCTION_EVIDENCE_REMEDIATION.md; this assurance row adds no runtime implementation denominator."
+        "Trace only: docs/verification/VECTOR_V26_I01_I09_PRODUCTION_EVIDENCE_REMEDIATION.md; this assurance row adds no runtime implementation denominator.",
+        "2026-10-27 evidence closure: Blocked drawdown SELL persists REJECTED state and PRE_RISK_ENTRY_BLOCKED journal, no RiskEngine row/fill; existing blocked-account positions still close and preserve accounting. Procedure: No additional local test needed for this obligation. Verify real blocked-account journal/state lineage and continued open-position servicing without reactivation."
       ],
       "assessed_commit": "d9a0aeb5d14233fc95e9e5cc55d8748814362f59",
       "roadmap_reference": "docs/roadmap/VECTOR_POST_REMEDIATION_IMPLEMENTATION_ROADMAP.md",
-      "verification_assessment": "UNAVAILABLE",
+      "verification_assessment": "PARTIAL_LOCAL",
       "product_assessment": "NOT_ACCEPTED",
       "roadmap_section": "Phase 0"
     },
@@ -3299,7 +3593,26 @@
           "environment": "isolated_postgresql",
           "weight": 1,
           "max_age_days": 90,
-          "evidence": []
+          "evidence": [
+            {
+              "requirement_id": "VEC-P0-201",
+              "obligation_id": "VEC-P0-201-V1",
+              "type": "integration",
+              "result": "PASS",
+              "environment": "isolated_postgresql",
+              "fixture": "Fixtures and setup at the exact test source paths/lines below, unchanged from source SHA; no production dataset.",
+              "synthetic": true,
+              "git_sha": "c8d51156b2c72b03f009d10e6a634ff80cff77ff",
+              "date": "2026-10-27",
+              "execution_timestamp": "2026-10-27T18:58:43.309903+00:00",
+              "dependency_hash": "f55934a32cb549d43fef11d0fdb36ea9f42ba10678cfe90863ab4ac8e9450a07",
+              "reviewer": "Codex requirement-specific QA review",
+              "artifact": "docs/progress/evidence/phase0-20261027/VEC-P0-201-V1.json",
+              "artifact_sha256": "c12d9d7a8183e5429a3a27db5bc9571572045a1b8273a2e5b6374cae4fa47758",
+              "limitations": "Local synthetic verification only. No production/browser acceptance, market profitability, current deployed configuration or complete feature certification. Real concurrent candle races are distinct from sequential PAPER duplicate simulations.",
+              "rationale": "Signals remain DISPATCHED before PAPER; completion acknowledges signals; injected unacknowledged upstream is repaired without redispatch of completed PAPER."
+            }
+          ]
         },
         {
           "id": "VEC-P0-201-V2",
@@ -3321,7 +3634,7 @@
       "current_state": "BLOCKED",
       "assessment": "UNKNOWN",
       "blocking_issues": [
-        "Historical report status not independently revalidated at current HEAD."
+        "Local V1 admitted; Production V2 and explicit product acceptance pending."
       ],
       "source_paths": [
         "app/Trading/Application/TradingPipelineEventService.php",
@@ -3343,15 +3656,16 @@
         "tests",
         "tests/Feature/Trading/TradingPipelineStageATest.php"
       ],
-      "last_verified_commit": null,
-      "last_verified_environment": null,
+      "last_verified_commit": "c8d51156b2c72b03f009d10e6a634ff80cff77ff",
+      "last_verified_environment": "isolated_postgresql",
       "last_evidence_update": "2026-10-27",
       "notes": [
-        "Trace only: docs/verification/VECTOR_V26_I01_I09_PRODUCTION_EVIDENCE_REMEDIATION.md; this assurance row adds no runtime implementation denominator."
+        "Trace only: docs/verification/VECTOR_V26_I01_I09_PRODUCTION_EVIDENCE_REMEDIATION.md; this assurance row adds no runtime implementation denominator.",
+        "2026-10-27 evidence closure: Signals remain DISPATCHED before PAPER; completion acknowledges signals; injected unacknowledged upstream is repaired without redispatch of completed PAPER. Procedure: No additional local regression needed. Q4 correlate signals and PAPER terminal status by exchange/symbol/close time."
       ],
       "assessed_commit": "d9a0aeb5d14233fc95e9e5cc55d8748814362f59",
       "roadmap_reference": "docs/roadmap/VECTOR_POST_REMEDIATION_IMPLEMENTATION_ROADMAP.md",
-      "verification_assessment": "UNAVAILABLE",
+      "verification_assessment": "PARTIAL_LOCAL",
       "product_assessment": "NOT_ACCEPTED",
       "roadmap_section": "Phase 0"
     },
@@ -3381,7 +3695,26 @@
           "environment": "isolated_postgresql",
           "weight": 1,
           "max_age_days": 90,
-          "evidence": []
+          "evidence": [
+            {
+              "requirement_id": "VEC-P0-202",
+              "obligation_id": "VEC-P0-202-V1",
+              "type": "integration",
+              "result": "PASS",
+              "environment": "isolated_postgresql",
+              "fixture": "Fixtures and setup at the exact test source paths/lines below, unchanged from source SHA; no production dataset.",
+              "synthetic": true,
+              "git_sha": "c8d51156b2c72b03f009d10e6a634ff80cff77ff",
+              "date": "2026-10-27",
+              "execution_timestamp": "2026-10-27T18:58:43.309903+00:00",
+              "dependency_hash": "f55934a32cb549d43fef11d0fdb36ea9f42ba10678cfe90863ab4ac8e9450a07",
+              "reviewer": "Codex requirement-specific QA review",
+              "artifact": "docs/progress/evidence/phase0-20261027/VEC-P0-202-V1.json",
+              "artifact_sha256": "3a4f085b1d3c47cb1ee3c3c005287614572789434338d67cf946c9fda04b22c8",
+              "limitations": "Local synthetic verification only. No production/browser acceptance, market profitability, current deployed configuration or complete feature certification. Real concurrent candle races are distinct from sequential PAPER duplicate simulations.",
+              "rationale": "Minimum-step half exit creates no zero fill and leaves position open; full SL closes; normal TP1/TP2 quantity control passes."
+            }
+          ]
         },
         {
           "id": "VEC-P0-202-V2",
@@ -3403,7 +3736,7 @@
       "current_state": "BLOCKED",
       "assessment": "UNKNOWN",
       "blocking_issues": [
-        "Historical report status not independently revalidated at current HEAD."
+        "Local V1 admitted; Production V2 and explicit product acceptance pending."
       ],
       "source_paths": [
         "app/PaperTrading/Application/PositionLifecycleService.php"
@@ -3424,15 +3757,16 @@
         "tests",
         "tests/Feature/PaperTrading/PositionLifecycleStageBTest.php"
       ],
-      "last_verified_commit": null,
-      "last_verified_environment": null,
+      "last_verified_commit": "c8d51156b2c72b03f009d10e6a634ff80cff77ff",
+      "last_verified_environment": "isolated_postgresql",
       "last_evidence_update": "2026-10-27",
       "notes": [
-        "Trace only: docs/verification/VECTOR_V26_I01_I09_PRODUCTION_EVIDENCE_REMEDIATION.md; this assurance row adds no runtime implementation denominator."
+        "Trace only: docs/verification/VECTOR_V26_I01_I09_PRODUCTION_EVIDENCE_REMEDIATION.md; this assurance row adds no runtime implementation denominator.",
+        "2026-10-27 evidence closure: Minimum-step half exit creates no zero fill and leaves position open; full SL closes; normal TP1/TP2 quantity control passes. Procedure: No additional local regression needed. Q3 inspect exact lot steps and zero-quantity execution count; lack of affected examples is unavailable operational evidence."
       ],
       "assessed_commit": "d9a0aeb5d14233fc95e9e5cc55d8748814362f59",
       "roadmap_reference": "docs/roadmap/VECTOR_POST_REMEDIATION_IMPLEMENTATION_ROADMAP.md",
-      "verification_assessment": "UNAVAILABLE",
+      "verification_assessment": "PARTIAL_LOCAL",
       "product_assessment": "NOT_ACCEPTED",
       "roadmap_section": "Phase 0"
     },
@@ -3462,7 +3796,26 @@
           "environment": "isolated_postgresql",
           "weight": 1,
           "max_age_days": 90,
-          "evidence": []
+          "evidence": [
+            {
+              "requirement_id": "VEC-P0-203",
+              "obligation_id": "VEC-P0-203-V1",
+              "type": "integration",
+              "result": "PASS",
+              "environment": "isolated_postgresql",
+              "fixture": "Fixtures and setup at the exact test source paths/lines below, unchanged from source SHA; no production dataset.",
+              "synthetic": true,
+              "git_sha": "c8d51156b2c72b03f009d10e6a634ff80cff77ff",
+              "date": "2026-10-27",
+              "execution_timestamp": "2026-10-27T18:58:43.309903+00:00",
+              "dependency_hash": "f55934a32cb549d43fef11d0fdb36ea9f42ba10678cfe90863ab4ac8e9450a07",
+              "reviewer": "Codex requirement-specific QA review",
+              "artifact": "docs/progress/evidence/phase0-20261027/VEC-P0-203-V1.json",
+              "artifact_sha256": "fe7eeced14cc13b16415ddb660556c1fbd75720046f83a42a5fefa4f8ccb9beb",
+              "limitations": "Local synthetic verification only. No production/browser acceptance, market profitability, current deployed configuration or complete feature certification. Real concurrent candle races are distinct from sequential PAPER duplicate simulations.",
+              "rationale": "Unknown schedule and 25-minute offset fail closed; certified 8h/dynamic 4h schedules and zero-settlement closed lifetime work; late observed settlement completes an exact held-quantity fixture."
+            }
+          ]
         },
         {
           "id": "VEC-P0-203-V2",
@@ -3484,13 +3837,14 @@
       "current_state": "BLOCKED",
       "assessment": "UNKNOWN",
       "blocking_issues": [
-        "Historical report status not independently revalidated at current HEAD."
+        "Local V1 admitted; Production V2 and explicit product acceptance pending."
       ],
       "source_paths": [
         "app/PaperTrading/Application/PaperProcessingService.php",
         "app/PaperTrading/Application/PositionLifecycleService.php"
       ],
       "test_paths": [
+        "tests/Feature/PaperTrading/FundingScheduleSafetyTest.php",
         "tests/Feature/PaperTrading/PositionLifecycleStageBTest.php"
       ],
       "watch_paths": [
@@ -3506,15 +3860,16 @@
         "tests",
         "tests/Feature/PaperTrading/PositionLifecycleStageBTest.php"
       ],
-      "last_verified_commit": null,
-      "last_verified_environment": null,
+      "last_verified_commit": "c8d51156b2c72b03f009d10e6a634ff80cff77ff",
+      "last_verified_environment": "isolated_postgresql",
       "last_evidence_update": "2026-10-27",
       "notes": [
-        "Trace only: docs/verification/VECTOR_V26_I01_I09_PRODUCTION_EVIDENCE_REMEDIATION.md; this assurance row adds no runtime implementation denominator."
+        "Trace only: docs/verification/VECTOR_V26_I01_I09_PRODUCTION_EVIDENCE_REMEDIATION.md; this assurance row adds no runtime implementation denominator.",
+        "2026-10-27 evidence closure: Unknown schedule and 25-minute offset fail closed; certified 8h/dynamic 4h schedules and zero-settlement closed lifetime work; late observed settlement completes an exact held-quantity fixture. Procedure: No additional local regression needed. Q3 and certified schedules must explain each production incomplete position; missing events/marks remain unknown."
       ],
       "assessed_commit": "d9a0aeb5d14233fc95e9e5cc55d8748814362f59",
       "roadmap_reference": "docs/roadmap/VECTOR_POST_REMEDIATION_IMPLEMENTATION_ROADMAP.md",
-      "verification_assessment": "UNAVAILABLE",
+      "verification_assessment": "PARTIAL_LOCAL",
       "product_assessment": "NOT_ACCEPTED",
       "roadmap_section": "Phase 0"
     },
@@ -3544,7 +3899,26 @@
           "environment": "isolated_postgresql",
           "weight": 1,
           "max_age_days": 90,
-          "evidence": []
+          "evidence": [
+            {
+              "requirement_id": "VEC-P0-204",
+              "obligation_id": "VEC-P0-204-V1",
+              "type": "integration",
+              "result": "PASS",
+              "environment": "isolated_postgresql",
+              "fixture": "Fixtures and setup at the exact test source paths/lines below, unchanged from source SHA; no production dataset.",
+              "synthetic": true,
+              "git_sha": "c8d51156b2c72b03f009d10e6a634ff80cff77ff",
+              "date": "2026-10-27",
+              "execution_timestamp": "2026-10-27T18:58:43.309903+00:00",
+              "dependency_hash": "f55934a32cb549d43fef11d0fdb36ea9f42ba10678cfe90863ab4ac8e9450a07",
+              "reviewer": "Codex requirement-specific QA review",
+              "artifact": "docs/progress/evidence/phase0-20261027/VEC-P0-204-V1.json",
+              "artifact_sha256": "e6ed970123faa570f2e97d6fa59b2e90a21df66665d4309b1db112caeb15d39d",
+              "limitations": "Local synthetic verification only. No production/browser acceptance, market profitability, current deployed configuration or complete feature certification. Real concurrent candle races are distinct from sequential PAPER duplicate simulations.",
+              "rationale": "Mixed batch reports PARTIAL with one failure/one processed; targeted account selection processes only one account and records counts."
+            }
+          ]
         },
         {
           "id": "VEC-P0-204-V2",
@@ -3566,7 +3940,7 @@
       "current_state": "BLOCKED",
       "assessment": "UNKNOWN",
       "blocking_issues": [
-        "Historical report status not independently revalidated at current HEAD."
+        "Local V1 admitted; Production V2 and explicit product acceptance pending."
       ],
       "source_paths": [
         "app/Trading/Application/TradingPipelineEventService.php",
@@ -3588,15 +3962,16 @@
         "tests",
         "tests/Feature/Trading/TradingPipelineStageATest.php"
       ],
-      "last_verified_commit": null,
-      "last_verified_environment": null,
+      "last_verified_commit": "c8d51156b2c72b03f009d10e6a634ff80cff77ff",
+      "last_verified_environment": "isolated_postgresql",
       "last_evidence_update": "2026-10-27",
       "notes": [
-        "Trace only: docs/verification/VECTOR_V26_I01_I09_PRODUCTION_EVIDENCE_REMEDIATION.md; this assurance row adds no runtime implementation denominator."
+        "Trace only: docs/verification/VECTOR_V26_I01_I09_PRODUCTION_EVIDENCE_REMEDIATION.md; this assurance row adds no runtime implementation denominator.",
+        "2026-10-27 evidence closure: Mixed batch reports PARTIAL with one failure/one processed; targeted account selection processes only one account and records counts. Procedure: No additional local regression needed for mixed-failure finding; broader all-failed/recovery matrix remains under P0-002. Q4 verify real partial-batch counters and logs."
       ],
       "assessed_commit": "d9a0aeb5d14233fc95e9e5cc55d8748814362f59",
       "roadmap_reference": "docs/roadmap/VECTOR_POST_REMEDIATION_IMPLEMENTATION_ROADMAP.md",
-      "verification_assessment": "UNAVAILABLE",
+      "verification_assessment": "PARTIAL_LOCAL",
       "product_assessment": "NOT_ACCEPTED",
       "roadmap_section": "Phase 0"
     },
@@ -3626,7 +4001,26 @@
           "environment": "isolated_postgresql",
           "weight": 1,
           "max_age_days": 90,
-          "evidence": []
+          "evidence": [
+            {
+              "requirement_id": "VEC-P0-205",
+              "obligation_id": "VEC-P0-205-V1",
+              "type": "integration",
+              "result": "PASS",
+              "environment": "isolated_postgresql",
+              "fixture": "Fixtures and setup at the exact test source paths/lines below, unchanged from source SHA; no production dataset.",
+              "synthetic": true,
+              "git_sha": "c8d51156b2c72b03f009d10e6a634ff80cff77ff",
+              "date": "2026-10-27",
+              "execution_timestamp": "2026-10-27T18:58:43.309903+00:00",
+              "dependency_hash": "f55934a32cb549d43fef11d0fdb36ea9f42ba10678cfe90863ab4ac8e9450a07",
+              "reviewer": "Codex requirement-specific QA review",
+              "artifact": "docs/progress/evidence/phase0-20261027/VEC-P0-205-V1.json",
+              "artifact_sha256": "bd0c7dbfe0ed5f8418cc152d751777d6ed222e625ccfa35734cab0da2f08a0e9",
+              "limitations": "Local synthetic verification only. No production/browser acceptance, market profitability, current deployed configuration or complete feature certification. Real concurrent candle races are distinct from sequential PAPER duplicate simulations.",
+              "rationale": "Binance gap job never dispatches Bybit SyncCandlesJob; Bybit control does; Binance candle conflict rolls back rather than overwriting observations."
+            }
+          ]
         },
         {
           "id": "VEC-P0-205-V2",
@@ -3648,13 +4042,14 @@
       "current_state": "BLOCKED",
       "assessment": "UNKNOWN",
       "blocking_issues": [
-        "Historical report status not independently revalidated at current HEAD."
+        "Local V1 admitted; Production V2 and explicit product acceptance pending."
       ],
       "source_paths": [
         "app/MarketData/Jobs/RecoverCandleGapsJob.php",
         "app/PaperTrading/Application/PaperProcessingService.php"
       ],
       "test_paths": [
+        "tests/Feature/Exchanges/BinanceImmutableMarketIngestionTest.php",
         "tests/Feature/PaperTrading/ExchangeIngestionAndValuationStageCTest.php"
       ],
       "watch_paths": [
@@ -3670,15 +4065,16 @@
         "tests",
         "tests/Feature/PaperTrading/ExchangeIngestionAndValuationStageCTest.php"
       ],
-      "last_verified_commit": null,
-      "last_verified_environment": null,
+      "last_verified_commit": "c8d51156b2c72b03f009d10e6a634ff80cff77ff",
+      "last_verified_environment": "isolated_postgresql",
       "last_evidence_update": "2026-10-27",
       "notes": [
-        "Trace only: docs/verification/VECTOR_V26_I01_I09_PRODUCTION_EVIDENCE_REMEDIATION.md; this assurance row adds no runtime implementation denominator."
+        "Trace only: docs/verification/VECTOR_V26_I01_I09_PRODUCTION_EVIDENCE_REMEDIATION.md; this assurance row adds no runtime implementation denominator.",
+        "2026-10-27 evidence closure: Binance gap job never dispatches Bybit SyncCandlesJob; Bybit control does; Binance candle conflict rolls back rather than overwriting observations. Procedure: No additional local regression needed for routing. Q6 and already-recorded recovery logs must show Binance-only retrieval; never trigger production recovery for this audit."
       ],
       "assessed_commit": "d9a0aeb5d14233fc95e9e5cc55d8748814362f59",
       "roadmap_reference": "docs/roadmap/VECTOR_POST_REMEDIATION_IMPLEMENTATION_ROADMAP.md",
-      "verification_assessment": "UNAVAILABLE",
+      "verification_assessment": "PARTIAL_LOCAL",
       "product_assessment": "NOT_ACCEPTED",
       "roadmap_section": "Phase 0"
     },
@@ -3708,7 +4104,26 @@
           "environment": "isolated_postgresql",
           "weight": 1,
           "max_age_days": 90,
-          "evidence": []
+          "evidence": [
+            {
+              "requirement_id": "VEC-P0-206",
+              "obligation_id": "VEC-P0-206-V1",
+              "type": "integration",
+              "result": "PASS",
+              "environment": "isolated_postgresql",
+              "fixture": "Fixtures and setup at the exact test source paths/lines below, unchanged from source SHA; no production dataset.",
+              "synthetic": true,
+              "git_sha": "c8d51156b2c72b03f009d10e6a634ff80cff77ff",
+              "date": "2026-10-27",
+              "execution_timestamp": "2026-10-27T18:58:43.309903+00:00",
+              "dependency_hash": "f55934a32cb549d43fef11d0fdb36ea9f42ba10678cfe90863ab4ac8e9450a07",
+              "reviewer": "Codex requirement-specific QA review",
+              "artifact": "docs/progress/evidence/phase0-20261027/VEC-P0-206-V1.json",
+              "artifact_sha256": "b74325c102d8f4f007f09e35abefdf186ca4b1e8898f90cc640ad28e2e3aaab9",
+              "limitations": "Local synthetic verification only. No production/browser acceptance, market profitability, current deployed configuration or complete feature certification. Real concurrent candle races are distinct from sequential PAPER duplicate simulations.",
+              "rationale": "Invalid Binance account provenance does not abort valid peer; event contains one failure and one processed account with PARTIAL status."
+            }
+          ]
         },
         {
           "id": "VEC-P0-206-V2",
@@ -3730,7 +4145,7 @@
       "current_state": "BLOCKED",
       "assessment": "UNKNOWN",
       "blocking_issues": [
-        "Historical report status not independently revalidated at current HEAD."
+        "Local V1 admitted; Production V2 and explicit product acceptance pending."
       ],
       "source_paths": [
         "app/Trading/Jobs/ProcessPaperPipelineJob.php"
@@ -3751,15 +4166,16 @@
         "tests",
         "tests/Feature/Trading/TradingPipelineStageATest.php"
       ],
-      "last_verified_commit": null,
-      "last_verified_environment": null,
+      "last_verified_commit": "c8d51156b2c72b03f009d10e6a634ff80cff77ff",
+      "last_verified_environment": "isolated_postgresql",
       "last_evidence_update": "2026-10-27",
       "notes": [
-        "Trace only: docs/verification/VECTOR_V26_I01_I09_PRODUCTION_EVIDENCE_REMEDIATION.md; this assurance row adds no runtime implementation denominator."
+        "Trace only: docs/verification/VECTOR_V26_I01_I09_PRODUCTION_EVIDENCE_REMEDIATION.md; this assurance row adds no runtime implementation denominator.",
+        "2026-10-27 evidence closure: Invalid Binance account provenance does not abort valid peer; event contains one failure and one processed account with PARTIAL status. Procedure: No additional local regression needed. Q4 plus existing account-specific failure logs must show surviving peers completed."
       ],
       "assessed_commit": "d9a0aeb5d14233fc95e9e5cc55d8748814362f59",
       "roadmap_reference": "docs/roadmap/VECTOR_POST_REMEDIATION_IMPLEMENTATION_ROADMAP.md",
-      "verification_assessment": "UNAVAILABLE",
+      "verification_assessment": "PARTIAL_LOCAL",
       "product_assessment": "NOT_ACCEPTED",
       "roadmap_section": "Phase 0"
     },
@@ -3789,7 +4205,26 @@
           "environment": "isolated_postgresql",
           "weight": 1,
           "max_age_days": 90,
-          "evidence": []
+          "evidence": [
+            {
+              "requirement_id": "VEC-P0-207",
+              "obligation_id": "VEC-P0-207-V1",
+              "type": "integration",
+              "result": "PASS",
+              "environment": "isolated_postgresql",
+              "fixture": "Fixtures and setup at the exact test source paths/lines below, unchanged from source SHA; no production dataset.",
+              "synthetic": true,
+              "git_sha": "c8d51156b2c72b03f009d10e6a634ff80cff77ff",
+              "date": "2026-10-27",
+              "execution_timestamp": "2026-10-27T18:58:43.309903+00:00",
+              "dependency_hash": "f55934a32cb549d43fef11d0fdb36ea9f42ba10678cfe90863ab4ac8e9450a07",
+              "reviewer": "Codex requirement-specific QA review",
+              "artifact": "docs/progress/evidence/phase0-20261027/VEC-P0-207-V1.json",
+              "artifact_sha256": "5f656ca115c163bd52af941e5e18f668466b24ee6af61ea10643b8a3902664cf",
+              "limitations": "Local synthetic verification only. No production/browser acceptance, market profitability, current deployed configuration or complete feature certification. Real concurrent candle races are distinct from sequential PAPER duplicate simulations.",
+              "rationale": "Late event uses held quantity after TP1, exact -0.03 fixture amount, preserves closed status/equity identity and settles once. Missing closed mark is never fabricated."
+            }
+          ]
         },
         {
           "id": "VEC-P0-207-V2",
@@ -3811,7 +4246,7 @@
       "current_state": "BLOCKED",
       "assessment": "UNKNOWN",
       "blocking_issues": [
-        "Historical report status not independently revalidated at current HEAD."
+        "Local V1 admitted; Production V2 and explicit product acceptance pending."
       ],
       "source_paths": [
         "app/Exchanges/Binance/BinanceFundingIngestion.php",
@@ -3835,15 +4270,16 @@
         "tests",
         "tests/Feature/PaperTrading/PositionLifecycleStageBTest.php"
       ],
-      "last_verified_commit": null,
-      "last_verified_environment": null,
+      "last_verified_commit": "c8d51156b2c72b03f009d10e6a634ff80cff77ff",
+      "last_verified_environment": "isolated_postgresql",
       "last_evidence_update": "2026-10-27",
       "notes": [
-        "Trace only: docs/verification/VECTOR_V26_I01_I09_PRODUCTION_EVIDENCE_REMEDIATION.md; this assurance row adds no runtime implementation denominator."
+        "Trace only: docs/verification/VECTOR_V26_I01_I09_PRODUCTION_EVIDENCE_REMEDIATION.md; this assurance row adds no runtime implementation denominator.",
+        "2026-10-27 evidence closure: Late event uses held quantity after TP1, exact -0.03 fixture amount, preserves closed status/equity identity and settles once. Missing closed mark is never fabricated. Procedure: No additional local regression needed. For five historical candidates obtain exact entry/exit timing, held quantity, event rate/mark and settlement records; report unresolved amounts, never synthesize them."
       ],
       "assessed_commit": "d9a0aeb5d14233fc95e9e5cc55d8748814362f59",
       "roadmap_reference": "docs/roadmap/VECTOR_POST_REMEDIATION_IMPLEMENTATION_ROADMAP.md",
-      "verification_assessment": "UNAVAILABLE",
+      "verification_assessment": "PARTIAL_LOCAL",
       "product_assessment": "NOT_ACCEPTED",
       "roadmap_section": "Phase 0"
     },
@@ -3873,7 +4309,26 @@
           "environment": "isolated_postgresql",
           "weight": 1,
           "max_age_days": 90,
-          "evidence": []
+          "evidence": [
+            {
+              "requirement_id": "VEC-P0-208",
+              "obligation_id": "VEC-P0-208-V1",
+              "type": "integration",
+              "result": "PASS",
+              "environment": "isolated_postgresql",
+              "fixture": "Fixtures and setup at the exact test source paths/lines below, unchanged from source SHA; no production dataset.",
+              "synthetic": true,
+              "git_sha": "c8d51156b2c72b03f009d10e6a634ff80cff77ff",
+              "date": "2026-10-27",
+              "execution_timestamp": "2026-10-27T18:58:43.309903+00:00",
+              "dependency_hash": "f55934a32cb549d43fef11d0fdb36ea9f42ba10678cfe90863ab4ac8e9450a07",
+              "reviewer": "Codex requirement-specific QA review",
+              "artifact": "docs/progress/evidence/phase0-20261027/VEC-P0-208-V1.json",
+              "artifact_sha256": "df277457ac45243a193042d1a9c8aaf75ed8dd763e316c14efcb429433697930",
+              "limitations": "Local synthetic verification only. No production/browser acceptance, market profitability, current deployed configuration or complete feature certification. Real concurrent candle races are distinct from sequential PAPER duplicate simulations.",
+              "rationale": "Fresh checkpoint with 25-minute-old position valuation remains STALE/incomplete with valued_through retained; no-open-position case is FLAT_VERIFIED."
+            }
+          ]
         },
         {
           "id": "VEC-P0-208-V2",
@@ -3895,7 +4350,7 @@
       "current_state": "BLOCKED",
       "assessment": "UNKNOWN",
       "blocking_issues": [
-        "Historical report status not independently revalidated at current HEAD."
+        "Local V1 admitted; Production V2 and explicit product acceptance pending."
       ],
       "source_paths": [
         "app/PaperTrading/Application/DailyPerformanceService.php",
@@ -3919,15 +4374,16 @@
         "tests",
         "tests/Feature/PaperTrading/ExchangeIngestionAndValuationStageCTest.php"
       ],
-      "last_verified_commit": null,
-      "last_verified_environment": null,
+      "last_verified_commit": "c8d51156b2c72b03f009d10e6a634ff80cff77ff",
+      "last_verified_environment": "isolated_postgresql",
       "last_evidence_update": "2026-10-27",
       "notes": [
-        "Trace only: docs/verification/VECTOR_V26_I01_I09_PRODUCTION_EVIDENCE_REMEDIATION.md; this assurance row adds no runtime implementation denominator."
+        "Trace only: docs/verification/VECTOR_V26_I01_I09_PRODUCTION_EVIDENCE_REMEDIATION.md; this assurance row adds no runtime implementation denominator.",
+        "2026-10-27 evidence closure: Fresh checkpoint with 25-minute-old position valuation remains STALE/incomplete with valued_through retained; no-open-position case is FLAT_VERIFIED. Procedure: No additional local regression needed. Compare real snapshot recorded_at to valued_through and last_processed_event_at; a fresh snapshot alone is not evidence."
       ],
       "assessed_commit": "d9a0aeb5d14233fc95e9e5cc55d8748814362f59",
       "roadmap_reference": "docs/roadmap/VECTOR_POST_REMEDIATION_IMPLEMENTATION_ROADMAP.md",
-      "verification_assessment": "UNAVAILABLE",
+      "verification_assessment": "PARTIAL_LOCAL",
       "product_assessment": "NOT_ACCEPTED",
       "roadmap_section": "Phase 0"
     },
@@ -3957,7 +4413,26 @@
           "environment": "isolated_postgresql",
           "weight": 1,
           "max_age_days": 90,
-          "evidence": []
+          "evidence": [
+            {
+              "requirement_id": "VEC-P0-209",
+              "obligation_id": "VEC-P0-209-V1",
+              "type": "integration",
+              "result": "PASS",
+              "environment": "isolated_postgresql",
+              "fixture": "Fixtures and setup at the exact test source paths/lines below, unchanged from source SHA; no production dataset.",
+              "synthetic": true,
+              "git_sha": "c8d51156b2c72b03f009d10e6a634ff80cff77ff",
+              "date": "2026-10-27",
+              "execution_timestamp": "2026-10-27T18:58:43.309903+00:00",
+              "dependency_hash": "f55934a32cb549d43fef11d0fdb36ea9f42ba10678cfe90863ab4ac8e9450a07",
+              "reviewer": "Codex requirement-specific QA review",
+              "artifact": "docs/progress/evidence/phase0-20261027/VEC-P0-209-V1.json",
+              "artifact_sha256": "8c9f0256435d88f177ab24fc962523e23a8656cd1de1ba1bfe0119126d543e82",
+              "limitations": "Local synthetic verification only. No production/browser acceptance, market profitability, current deployed configuration or complete feature certification. Real concurrent candle races are distinct from sequential PAPER duplicate simulations.",
+              "rationale": "5m candle is DISPATCHED before downstream processing and COMPLETED only after PAPER acknowledgment; mixed account outcomes remain PARTIAL."
+            }
+          ]
         },
         {
           "id": "VEC-P0-209-V2",
@@ -3979,7 +4454,7 @@
       "current_state": "BLOCKED",
       "assessment": "UNKNOWN",
       "blocking_issues": [
-        "Historical report status not independently revalidated at current HEAD."
+        "Local V1 admitted; Production V2 and explicit product acceptance pending."
       ],
       "source_paths": [
         "app/Trading/Application/TradingPipelineEventService.php",
@@ -4001,15 +4476,16 @@
         "tests",
         "tests/Feature/Trading/TradingPipelineStageATest.php"
       ],
-      "last_verified_commit": null,
-      "last_verified_environment": null,
+      "last_verified_commit": "c8d51156b2c72b03f009d10e6a634ff80cff77ff",
+      "last_verified_environment": "isolated_postgresql",
       "last_evidence_update": "2026-10-27",
       "notes": [
-        "Trace only: docs/verification/VECTOR_V26_I01_I09_PRODUCTION_EVIDENCE_REMEDIATION.md; this assurance row adds no runtime implementation denominator."
+        "Trace only: docs/verification/VECTOR_V26_I01_I09_PRODUCTION_EVIDENCE_REMEDIATION.md; this assurance row adds no runtime implementation denominator.",
+        "2026-10-27 evidence closure: 5m candle is DISPATCHED before downstream processing and COMPLETED only after PAPER acknowledgment; mixed account outcomes remain PARTIAL. Procedure: No additional local regression needed. Q4 verify no completed 5m parent precedes or contradicts its PAPER outcome."
       ],
       "assessed_commit": "d9a0aeb5d14233fc95e9e5cc55d8748814362f59",
       "roadmap_reference": "docs/roadmap/VECTOR_POST_REMEDIATION_IMPLEMENTATION_ROADMAP.md",
-      "verification_assessment": "UNAVAILABLE",
+      "verification_assessment": "PARTIAL_LOCAL",
       "product_assessment": "NOT_ACCEPTED",
       "roadmap_section": "Phase 0"
     },
