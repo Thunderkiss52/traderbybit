@@ -1,8 +1,8 @@
-# VECTOR Go Migration Registry V3
+# VECTOR Go Migration Registry V3.1
 
-**Status:** Proposed Scope & Migration Tracking Registry  
-**Baseline Reference:** [`VECTOR-SCOPE-20261027-v1`](file:///home/thunder/work/traderbybit/docs/progress/baselines/VECTOR-SCOPE-20261027-v1.json) (Frozen)  
-**Target Architecture:** [`VECTOR_GO_FIRST_ROADMAP_V3.md`](file:///home/thunder/work/traderbybit/docs/roadmap/VECTOR_GO_FIRST_ROADMAP_V3.md)  
+**Status:** Proposed Scope & Migration Tracking Registry
+**Baseline Reference:** [`VECTOR-SCOPE-20261027-v1`](file:///home/thunder/work/traderbybit/docs/progress/baselines/VECTOR-SCOPE-20261027-v1.json) (Frozen)
+**Target Architecture:** [`VECTOR_GO_FIRST_ROADMAP_V3.md`](file:///home/thunder/work/traderbybit/docs/roadmap/VECTOR_GO_FIRST_ROADMAP_V3.md) (Roadmap V3.1)
 
 ---
 
@@ -29,7 +29,7 @@ Every workload is assigned a Migration Value Gate (MVG) disposition based on emp
 |:---|:---|:---:|:---:|:---:|:---:|:---|:---:|
 | **MIG-01** | Scaled Financial Decimal (12-pl) | PHP `bcmul` / Postgres | Go `pkg/decimal` | Phase 1 | **APPROVED** | Zero-allocation bit-exact arithmetic | Randomized 1M math tests |
 | **MIG-02** | Fencing Token Generator | PHP / Redis locks | Go `pkg/fencing` | Phase 1 | **APPROVED** | Prevents split-brain worker execution | Distributed concurrency test |
-| **MIG-03** | Public Candle Ingestion Engine | PHP `BinanceCandleIngestion` | Go `internal/marketdata` | Phase 2 | **APPROVED** | Slashes 52ms P95 latency below 20ms | 500-candle bulk insert test |
+| **MIG-03** | Public Candle Ingestion Engine | PHP `BinanceCandleIngestion` | Go `internal/marketdata` | Phase 2 | **APPROVED** | Slashes 50ms P95 latency below 20ms | 500-candle bulk insert test |
 | **MIG-04** | Market WebSocket Streaming | PHP `market-ws` CLI | Go `internal/marketdata` | Phase 2 | **APPROVED** | Lock-free candle fanout, auto-reconnect | WS disconnect & burst test |
 | **MIG-05** | Technical Indicator Library | PHP `app/Indicators` | Go `pkg/indicators` | Phase 1/3 | **APPROVED** | Eliminates dual maintenance & rounding drift | Golden indicator array test |
 | **MIG-06** | 8 PRIMARY Strategy Families | PHP `app/Strategy/Research` | Go `internal/strategy` | Phase 3 | **APPROVED** | Single canonical strategy source | 10k candle decision parity |
@@ -41,6 +41,9 @@ Every workload is assigned a Migration Value Gate (MVG) disposition based on emp
 | **MIG-12** | Funding & Slippage Settlement | PHP `PositionLifecycleStageB` | Go `internal/paper` | Phase 5 | **APPROVED** | Certified 8h/4h funding calculations | Late funding settlement test |
 | **MIG-13** | Multi-Exchange Public Adapters | PHP `app/Exchanges` | Go `pkg/exchange` | Phase 6 | **APPROVED** | Unified normalization & discovery | Conformance test harness |
 | **MIG-14** | Performance Analytics Math | PHP `PerformanceStatistics` | Go `internal/analytics` | Phase 6 | **APPROVED** | Sub-100ms multi-account 90d metrics | Metric reconciliation test |
+| **MIG-15** | Strategy Extensibility SDK | PHP Registry | Go `pkg/strategy` | Phase 3 | **APPROVED** | Dynamic descriptor onboarding in 1 file | Stub strategy registration test |
+| **MIG-16** | Profitability Research Engine | PHP `ProfitabilityResearch` | Go `internal/research/profit` | Phase 4 | **APPROVED** | Sub-100ms slippage & cost attribution | Attribution reconciliation test |
+| **MIG-17** | Multi-Exchange Extensibility SDK| PHP Adapters | Go `pkg/exchange` | Phase 6 | **APPROVED** | Modular onboarding of new exchanges | Stub adapter conformance test |
 | **RET-01** | REST API & Sanctum Auth | PHP Laravel | PHP Laravel | Retained | **RETAINED** | Excellent, maintainable thin API | API contract tests |
 | **RET-02** | Candidate Lab Promotion Gate | PHP Laravel | PHP Laravel | Retained | **RETAINED** | Human operator approval workflow | Promotion policy tests |
 | **RET-03** | Operational Dashboard UI | Vue 3 / Quasar | Vue 3 / Quasar | Retained | **RETAINED** | High usability, zero trading keys | Frontend component tests |
