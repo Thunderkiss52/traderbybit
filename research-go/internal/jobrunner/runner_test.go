@@ -96,7 +96,7 @@ func (s *mockStmt) Exec(args []driver.Value) (driver.Result, error) {
 }
 
 func (s *mockStmt) Query(args []driver.Value) (driver.Rows, error) {
-	if strings.Contains(s.query, "RETURNING generation_token") {
+	if strings.Contains(s.query, "generation_token") {
 		return &mockRows{singleVal: int64(1)}, nil
 	}
 	// For LoadCandlesFromDB
@@ -147,6 +147,7 @@ func initMockDB() *sql.DB {
 func TestExecuteJob_RejectsUnsupportedKind(t *testing.T) {
 	db := initMockDB()
 	runner := NewRunner(db, "test-worker-1")
+	runner.generationToken = 1
 
 	req := &contracts.JobRequest{
 		JobID:   "job-model-train-123",

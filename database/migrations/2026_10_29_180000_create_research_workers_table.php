@@ -12,7 +12,6 @@ return new class extends Migration
     {
         Schema::create('research_workers', function (Blueprint $table) {
             $table->string('worker_id', 128)->primary();
-            $table->bigInteger('generation_token')->default(1);
             $table->string('engine', 32)->index(); // 'go', 'php', 'python'
             $table->string('version', 32)->default('1.0.0');
             $table->string('status', 32)->default('ready')->index(); // 'ready', 'busy', 'stopped', 'offline', 'unsupported_version'

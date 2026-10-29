@@ -46,11 +46,19 @@ func (r *Runner) GenerationToken() int64 {
 
 // ClaimNextJob claims an eligible job using FOR UPDATE SKIP LOCKED
 func (r *Runner) ClaimNextJob(ctx context.Context, leaseDuration time.Duration) (*contracts.JobRequest, int64, error) {
-	tx, err := r.db.BeginTx(ctx, &sql.TxOptions{Isolation: sql.LevelReadCommitted})
+	if r.generationToken <= 0 {
+		return nil, 0, errors.New("cannot claim job without a valid positive worker generation token")
+	}
+
+	tx, err := r.db.BeginTx(ctx, nil)
 	if err != nil {
 		return nil, 0, fmt.Errorf("failed to begin tx: %w", err)
 	}
 	defer tx.Rollback()
+
+	if err := r.verifyWorkerGenerationTx(ctx, tx); err != nil {
+		return nil, 0, err
+	}
 
 	query := `
 		SELECT id, job_id, schema_version, idempotency_key, kind, algorithm_version, code_revision,
@@ -155,15 +163,56 @@ func (r *Runner) ClaimNextJob(ctx context.Context, leaseDuration time.Duration) 
 	return req, newFencingToken, nil
 }
 
-// StartJob transitions CLAIMED to RUNNING
+// verifyWorkerGenerationTx acquires a FOR SHARE lock on the worker's record
+// to ensure the worker generation has not been replaced/superseded by another instance.
+func (r *Runner) verifyWorkerGenerationTx(ctx context.Context, tx *sql.Tx) error {
+	if r.generationToken <= 0 {
+		return errors.New("worker generation token is required and must be strictly positive")
+	}
+
+	var currentGen int64
+	query := `
+		SELECT generation_token
+		FROM research_workers
+		WHERE worker_id = $1
+		FOR SHARE
+	`
+	err := tx.QueryRowContext(ctx, query, r.workerID).Scan(&currentGen)
+	if err == sql.ErrNoRows {
+		return fmt.Errorf("worker %s not found in research_workers: %w", r.workerID, ErrStaleGeneration)
+	}
+	if err != nil {
+		return fmt.Errorf("failed to verify worker generation lock: %w", err)
+	}
+	if currentGen != r.generationToken {
+		return fmt.Errorf("current worker generation %d does not match active generation %d: %w", currentGen, r.generationToken, ErrStaleGeneration)
+	}
+	return nil
+}
+
+// StartJob transitions CLAIMED to RUNNING under transactional generation fencing
 func (r *Runner) StartJob(ctx context.Context, jobID string, fencingToken int64) error {
+	if r.generationToken <= 0 {
+		return errors.New("worker generation token is required and must be strictly positive")
+	}
+
+	tx, err := r.db.BeginTx(ctx, nil)
+	if err != nil {
+		return fmt.Errorf("failed to begin tx for start job: %w", err)
+	}
+	defer tx.Rollback()
+
+	if err := r.verifyWorkerGenerationTx(ctx, tx); err != nil {
+		return err
+	}
+
 	now := time.Now().UTC()
 	query := `
 		UPDATE research_jobs
 		SET status = 'RUNNING', started_at = $1, heartbeat_at = $1
 		WHERE job_id = $2 AND lease_owner = $3 AND fencing_token = $4 AND status = 'CLAIMED'
 	`
-	res, err := r.db.ExecContext(ctx, query, now, jobID, r.workerID, fencingToken)
+	res, err := tx.ExecContext(ctx, query, now, jobID, r.workerID, fencingToken)
 	if err != nil {
 		return err
 	}
@@ -171,11 +220,25 @@ func (r *Runner) StartJob(ctx context.Context, jobID string, fencingToken int64)
 	if rows == 0 {
 		return fmt.Errorf("job %s could not be started (lease or fencing token mismatch)", jobID)
 	}
-	return nil
+	return tx.Commit()
 }
 
-// Heartbeat refreshes the lease
+// Heartbeat refreshes the lease under transactional generation fencing
 func (r *Runner) Heartbeat(ctx context.Context, jobID string, fencingToken int64, progress int, msg string, ext time.Duration) error {
+	if r.generationToken <= 0 {
+		return errors.New("worker generation token is required and must be strictly positive")
+	}
+
+	tx, err := r.db.BeginTx(ctx, nil)
+	if err != nil {
+		return fmt.Errorf("failed to begin tx for heartbeat: %w", err)
+	}
+	defer tx.Rollback()
+
+	if err := r.verifyWorkerGenerationTx(ctx, tx); err != nil {
+		return err
+	}
+
 	now := time.Now().UTC()
 	expires := now.Add(ext)
 	query := `
@@ -183,12 +246,23 @@ func (r *Runner) Heartbeat(ctx context.Context, jobID string, fencingToken int64
 		SET heartbeat_at = $1, lease_expires_at = $2, progress = $3, progress_message = $4
 		WHERE job_id = $5 AND lease_owner = $6 AND fencing_token = $7 AND status IN ('CLAIMED', 'RUNNING')
 	`
-	_, err := r.db.ExecContext(ctx, query, now, expires, progress, msg, jobID, r.workerID, fencingToken)
-	return err
+	res, err := tx.ExecContext(ctx, query, now, expires, progress, msg, jobID, r.workerID, fencingToken)
+	if err != nil {
+		return err
+	}
+	rows, _ := res.RowsAffected()
+	if rows == 0 {
+		return fmt.Errorf("job %s heartbeat failed (lease or fencing token mismatch)", jobID)
+	}
+	return tx.Commit()
 }
 
-// CompleteJob commits results and marks job SUCCEEDED
+// CompleteJob commits results and marks job SUCCEEDED under transactional generation fencing
 func (r *Runner) CompleteJob(ctx context.Context, jobID string, fencingToken int64, result contracts.JobResult) error {
+	if r.generationToken <= 0 {
+		return errors.New("worker generation token is required and must be strictly positive")
+	}
+
 	resBytes, err := json.Marshal(result.Metrics)
 	if err != nil {
 		return err
@@ -203,6 +277,16 @@ func (r *Runner) CompleteJob(ctx context.Context, jobID string, fencingToken int
 		manifestHash = ""
 	}
 
+	tx, err := r.db.BeginTx(ctx, nil)
+	if err != nil {
+		return fmt.Errorf("failed to begin tx for complete job: %w", err)
+	}
+	defer tx.Rollback()
+
+	if err := r.verifyWorkerGenerationTx(ctx, tx); err != nil {
+		return err
+	}
+
 	now := time.Now().UTC()
 	query := `
 		UPDATE research_jobs
@@ -211,7 +295,7 @@ func (r *Runner) CompleteJob(ctx context.Context, jobID string, fencingToken int
 		    completed_at = $4, lease_owner = NULL, lease_expires_at = NULL
 		WHERE job_id = $5 AND lease_owner = $6 AND fencing_token = $7 AND status IN ('CLAIMED', 'RUNNING')
 	`
-	res, err := r.db.ExecContext(ctx, query, manifestHash, resBytes, statsBytes, now, jobID, r.workerID, fencingToken)
+	res, err := tx.ExecContext(ctx, query, manifestHash, resBytes, statsBytes, now, jobID, r.workerID, fencingToken)
 	if err != nil {
 		return err
 	}
@@ -219,17 +303,31 @@ func (r *Runner) CompleteJob(ctx context.Context, jobID string, fencingToken int
 	if rows == 0 {
 		return fmt.Errorf("job %s completion failed (fencing token expired or lost lease)", jobID)
 	}
-	return nil
+	return tx.Commit()
 }
 
-// FailJob records failure or re-queues
+// FailJob records failure or re-queues under transactional generation fencing
 func (r *Runner) FailJob(ctx context.Context, jobID string, fencingToken int64, failErr error) error {
-	now := time.Now().UTC()
+	if r.generationToken <= 0 {
+		return errors.New("worker generation token is required and must be strictly positive")
+	}
+
 	sanitized := failErr.Error()
 	if len(sanitized) > 2000 {
 		sanitized = sanitized[:2000]
 	}
 
+	tx, err := r.db.BeginTx(ctx, nil)
+	if err != nil {
+		return fmt.Errorf("failed to begin tx for fail job: %w", err)
+	}
+	defer tx.Rollback()
+
+	if err := r.verifyWorkerGenerationTx(ctx, tx); err != nil {
+		return err
+	}
+
+	now := time.Now().UTC()
 	query := `
 		UPDATE research_jobs
 		SET retry_count = retry_count + 1,
@@ -237,10 +335,17 @@ func (r *Runner) FailJob(ctx context.Context, jobID string, fencingToken int64, 
 		    status = CASE WHEN retry_count + 1 < max_retries THEN 'QUEUED' ELSE 'FAILED' END,
 		    completed_at = CASE WHEN retry_count + 1 >= max_retries THEN $2 ELSE NULL END,
 		    lease_owner = NULL, lease_expires_at = NULL
-		WHERE job_id = $3 AND lease_owner = $4 AND fencing_token = $5
+		WHERE job_id = $3 AND lease_owner = $4 AND fencing_token = $5 AND status IN ('CLAIMED', 'RUNNING')
 	`
-	_, err := r.db.ExecContext(ctx, query, sanitized, now, jobID, r.workerID, fencingToken)
-	return err
+	res, err := tx.ExecContext(ctx, query, sanitized, now, jobID, r.workerID, fencingToken)
+	if err != nil {
+		return err
+	}
+	rows, _ := res.RowsAffected()
+	if rows == 0 {
+		return fmt.Errorf("job %s failure recording failed (lease or fencing token mismatch)", jobID)
+	}
+	return tx.Commit()
 }
 
 // IsSupportedKind checks whether the job kind is implemented and supported by the worker
@@ -565,7 +670,9 @@ func (r *Runner) ExecuteJob(ctx context.Context, req *contracts.JobRequest, fenc
 
 	default:
 		unsupportedErr := fmt.Errorf("unsupported or unimplemented research job kind: %s", req.Kind)
-		_ = r.FailJob(ctx, req.JobID, fencingToken, unsupportedErr)
+		if fjErr := r.FailJob(ctx, req.JobID, fencingToken, unsupportedErr); fjErr != nil {
+			log.Printf("[jobrunner] FailJob returned error: %v", fjErr)
+		}
 		log.Printf("[jobrunner] Rejected job %s with unsupported kind %s: %v", req.JobID, req.Kind, unsupportedErr)
 		return unsupportedErr
 	}
