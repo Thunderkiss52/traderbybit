@@ -8,6 +8,7 @@ use App\Exchanges\Binance\BinancePaperSafety;
 use App\PaperTrading\Application\PaperProcessingService;
 use App\PaperTrading\Infrastructure\Persistence\PaperAccountRecord;
 use App\Trading\Application\TradingPipelineEventService;
+use App\Trading\Infrastructure\Persistence\TradingPipelineEventRecord;
 use DateTimeImmutable;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
@@ -15,6 +16,7 @@ use Illuminate\Foundation\Bus\Dispatchable;
 use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\Middleware\WithoutOverlapping;
 use Illuminate\Queue\SerializesModels;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Throwable;
 
@@ -51,6 +53,26 @@ final class ProcessPaperPipelineJob implements ShouldQueue
         if (! $pipelineService->isFresh($at)) {
             Log::info("ProcessPaperPipelineJob: {$this->exchange}:{$this->symbol} at {$this->atIso} rejected as STALE (exceeded 300s freshness window).");
 
+            $terminal = TradingPipelineEventRecord::query()->where('exchange', $this->exchange)
+                ->where('symbol', $this->symbol)->where('candle_close_at', $at)
+                ->where('stage', TradingPipelineEventRecord::STAGE_PAPER_PROCESSED)
+                ->whereIn('status', ['COMPLETED', 'PARTIAL', 'FAILED'])->first();
+            $pipelineService->acknowledgeUpstreamEvents($this->exchange, $this->symbol, $at, $terminal?->status ?? TradingPipelineEventRecord::STATUS_STALE);
+
+            return;
+        }
+
+        $eventKey = "{$this->exchange}:{$this->symbol}:{$at->format(DATE_ATOM)}:".TradingPipelineEventRecord::STAGE_PAPER_PROCESSED;
+        DB::table('trading_pipeline_events')->insertOrIgnore([
+            'event_key' => $eventKey, 'exchange' => $this->exchange, 'symbol' => $this->symbol,
+            'timeframe' => '5', 'stage' => TradingPipelineEventRecord::STAGE_PAPER_PROCESSED,
+            'candle_close_at' => $at, 'status' => TradingPipelineEventRecord::STATUS_PENDING,
+            'attempts' => 0, 'payload' => '{}', 'created_at' => now(), 'updated_at' => now(),
+        ]);
+        $batch = TradingPipelineEventRecord::query()->where('event_key', $eventKey)->firstOrFail();
+        if ($batch->status === TradingPipelineEventRecord::STATUS_COMPLETED) {
+            $pipelineService->acknowledgeUpstreamEvents($this->exchange, $this->symbol, $at, $batch->status);
+
             return;
         }
 
@@ -73,69 +95,54 @@ final class ProcessPaperPipelineJob implements ShouldQueue
         $accounts = $accountsQuery->get();
 
         $signalOnly = (array) config('research.forward_paper.signal_only_strategies', []);
-        $totalProcessed = 0;
-        $failures = [];
-        $processedAccounts = 0;
-        $eligibleAccounts = 0;
-
+        $accounts = $accounts->reject(fn ($account): bool => in_array($account->strategy_id, $signalOnly, true));
+        DB::transaction(function () use ($batch, $accounts): void {
+            $locked = TradingPipelineEventRecord::query()->lockForUpdate()->findOrFail($batch->id);
+            $data = (array) $locked->payload;
+            $eligible = array_values(array_unique([...($data['eligible_account_ids'] ?? []), ...$accounts->pluck('id')->all()]));
+            $locked->update(['payload' => array_merge($data, ['eligible_account_ids' => $eligible, 'eligible_accounts' => count($eligible)])]);
+        }, attempts: 3);
         foreach ($accounts as $account) {
-            if (in_array($account->strategy_id, $signalOnly, true)) {
-                continue;
-            }
-            $eligibleAccounts++;
-
-            if ($this->exchange === 'binance') {
-                try {
-                    BinancePaperSafety::assertProvenance($account);
-                    if ($account->status === 'ACTIVE' && $allowNewEntries) {
-                        BinancePaperSafety::assertExecutable($account);
-                    }
-                } catch (Throwable $e) {
-                    Log::warning("ProcessPaperPipelineJob account provenance/executable check failed: {$account->id} ({$account->strategy_id}): ".$e->getMessage(), [
-                        'account_id' => $account->id,
-                        'strategy_id' => $account->strategy_id,
-                        'exception' => $e::class,
-                    ]);
-                    $failures[] = [
-                        'account_id' => $account->id,
-                        'error' => $e->getMessage(),
-                    ];
-
-                    continue;
+            // Commit the account's effects and its acknowledgement together. A crash
+            // cannot leave a committed fill without a durable peer checkpoint.
+            DB::transaction(function () use ($batch, $account, $paperService, $allowNewEntries, $at): void {
+                $locked = TradingPipelineEventRecord::query()->lockForUpdate()->findOrFail($batch->id);
+                $data = (array) $locked->payload;
+                $done = (array) ($data['processed_account_ids'] ?? []);
+                if (in_array($account->id, $done, true)) {
+                    return;
                 }
-            }
+                $eligible = array_values(array_unique([...($data['eligible_account_ids'] ?? []), $account->id]));
+                $failures = array_values(array_filter($data['failures'] ?? [], fn (array $f): bool => $f['account_id'] !== $account->id));
+                try {
+                    $result = DB::transaction(function () use ($account, $paperService, $allowNewEntries, $at): array {
+                        if ($this->exchange === 'binance') {
+                            BinancePaperSafety::assertProvenance($account);
+                            if ($account->status === 'ACTIVE' && $allowNewEntries) {
+                                BinancePaperSafety::assertExecutable($account);
+                            }
+                        }
 
-            try {
-                $result = $paperService->process($account->id, $this->symbol, $at, $allowNewEntries, historical: false);
-                $totalProcessed += (int) ($result['events_processed'] ?? 0);
-                $processedAccounts++;
-            } catch (Throwable $e) {
-                Log::warning("ProcessPaperPipelineJob account processing error: {$account->id} ({$account->strategy_id}): ".$e->getMessage(), [
-                    'account_id' => $account->id,
-                    'strategy_id' => $account->strategy_id,
-                    'exception' => $e::class,
-                ]);
-                $failures[] = [
-                    'account_id' => $account->id,
-                    'error' => $e->getMessage(),
-                ];
-            }
+                        return $paperService->process($account->id, $this->symbol, $at, $allowNewEntries, historical: false);
+                    });
+                    $done[] = $account->id;
+                    $data['events_processed'] = ($data['events_processed'] ?? 0) + (int) ($result['events_processed'] ?? 0);
+                } catch (Throwable $e) {
+                    $failures[] = ['account_id' => $account->id, 'error' => $e->getMessage()];
+                    Log::warning('Paper pipeline account failed.', ['account_id' => $account->id, 'exception' => $e::class]);
+                }
+                $locked->update(['payload' => array_merge($data, [
+                    'eligible_account_ids' => $eligible, 'processed_account_ids' => $done,
+                    'failures' => $failures, 'eligible_accounts' => count($eligible),
+                    'processed_accounts' => count($done), 'failures_count' => count($failures),
+                ])]);
+            }, attempts: 3);
         }
 
-        if (! empty($failures)) {
-            Log::warning('ProcessPaperPipelineJob completed with individual account errors.', [
-                'failed_count' => count($failures),
-                'total_accounts' => $accounts->count(),
-                'eligible_accounts' => $eligibleAccounts,
-                'processed_accounts' => $processedAccounts,
-                'failures' => $failures,
-            ]);
-        }
-
-        $pipelineService->recordPaperProcessed($this->exchange, $this->symbol, $at, $totalProcessed, [
-            'failures_count' => count($failures),
-            'eligible_accounts' => $eligibleAccounts,
-            'processed_accounts' => $processedAccounts,
-        ]);
+        DB::transaction(function () use ($batch, $pipelineService, $at): void {
+            $locked = TradingPipelineEventRecord::query()->lockForUpdate()->findOrFail($batch->id);
+            $data = (array) $locked->payload;
+            $pipelineService->recordPaperProcessed($this->exchange, $this->symbol, $at, (int) ($data['events_processed'] ?? 0), $data);
+        }, attempts: 3);
     }
 }

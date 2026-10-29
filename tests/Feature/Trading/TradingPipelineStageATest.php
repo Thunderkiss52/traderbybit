@@ -171,6 +171,7 @@ final class TradingPipelineStageATest extends TestCase
         self::assertSame(TradingPipelineEventRecord::STATUS_PARTIAL, $paperEvent->status);
         $payload = is_string($paperEvent->payload) ? json_decode($paperEvent->payload, true) : (array) $paperEvent->payload;
         self::assertSame(1, $payload['failures_count']);
+        self::assertSame($acc2->id, $payload['failures'][0]['account_id']);
         self::assertSame(1, $payload['processed_accounts']);
     }
 
@@ -324,8 +325,78 @@ final class TradingPipelineStageATest extends TestCase
         self::assertNotNull($paperEvent2);
         self::assertSame(TradingPipelineEventRecord::STATUS_COMPLETED, $paperEvent2->status);
         $payload2 = is_string($paperEvent2->payload) ? json_decode($paperEvent2->payload, true) : (array) $paperEvent2->payload;
-        self::assertSame(1, $payload2['eligible_accounts']);
-        self::assertSame(1, $payload2['processed_accounts']);
+        self::assertSame(2, $payload2['eligible_accounts']);
+        self::assertSame(2, $payload2['processed_accounts']);
         self::assertSame(0, $payload2['failures_count']);
+    }
+
+    public function test_expired_paper_delivery_acknowledges_upstream_without_fills(): void
+    {
+        Queue::fake();
+        $this->freezeTime();
+        $service = app(TradingPipelineEventService::class);
+        $at = now()->subMinutes(6)->toDateTimeImmutable();
+        $upstream = $service->recordSignalsEvaluated('bybit', 'BTCUSDT', $at, 1);
+        (new ProcessPaperPipelineJob('bybit', 'BTCUSDT', $at->format(DATE_ATOM)))
+            ->handle($service, app(PaperProcessingService::class));
+        self::assertSame('STALE', $upstream->fresh()->status);
+        self::assertNotNull($upstream->fresh()->completed_at);
+        self::assertSame(0, DB::table('virtual_executions')->count());
+    }
+
+    public function test_recovery_dispatches_only_failed_account_identities_for_fresh_partial_batch(): void
+    {
+        Queue::fake();
+        $this->freezeTime();
+        $at = now()->subSeconds(40)->toDateTimeImmutable();
+        $service = app(TradingPipelineEventService::class);
+        $account = app(PaperAccountService::class)->default();
+        $event = $service->recordPaperProcessed('bybit', 'BTCUSDT', $at, 0, [
+            'failures_count' => 1, 'eligible_accounts' => 2, 'processed_accounts' => 1,
+            'failures' => [['account_id' => $account->id, 'error' => 'recoverable']],
+            'processed_account_ids' => ['successful-peer'],
+        ]);
+        $event->update(['created_at' => now()->subSeconds(25)]);
+        app(TradingPipelineRecoveryService::class)->recover();
+        Queue::assertPushed(ProcessPaperPipelineJob::class, fn ($job) => $job->onlyAccountIds === [$account->id]);
+    }
+
+    public function test_duplicate_delivery_preserves_completed_batch_and_never_replays_peer(): void
+    {
+        $this->freezeTime();
+        $account = app(PaperAccountService::class)->default();
+        $service = app(TradingPipelineEventService::class);
+        $at = now()->toDateTimeImmutable();
+        $job = new ProcessPaperPipelineJob('bybit', 'BTCUSDT', $at->format(DATE_ATOM));
+        $job->handle($service, app(PaperProcessingService::class));
+        $record = TradingPipelineEventRecord::query()->where('stage', 'PAPER_PROCESSED')->sole();
+        $before = $record->toArray();
+        $accountBefore = $account->refresh()->toArray();
+        $job->handle($service, app(PaperProcessingService::class));
+        self::assertSame($before, $record->refresh()->toArray());
+        self::assertSame($accountBefore, $account->refresh()->toArray());
+        self::assertSame(0, DB::table('virtual_executions')->count());
+    }
+
+    public function test_crash_checkpoint_recovers_only_unacknowledged_accounts(): void
+    {
+        Queue::fake();
+        $this->freezeTime();
+        $first = app(PaperAccountService::class)->default();
+        $second = app(PaperAccountService::class)->primaryAccount('trend_pullback');
+        $at = now()->subSeconds(40)->toDateTimeImmutable();
+        $record = app(TradingPipelineEventService::class)->recordPaperProcessed('bybit', 'BTCUSDT', $at, 0, [
+            'eligible_account_ids' => [$first->id, $second->id], 'processed_account_ids' => [$first->id],
+            'eligible_accounts' => 2, 'processed_accounts' => 1, 'failures' => [], 'failures_count' => 0,
+        ]);
+        $record->update(['status' => 'PENDING', 'created_at' => now()->subSeconds(25)]);
+        app(TradingPipelineRecoveryService::class)->recover();
+        Queue::assertPushed(ProcessPaperPipelineJob::class, fn ($job) => $job->onlyAccountIds === [$second->id]);
+        $before = $first->refresh()->toArray();
+        (new ProcessPaperPipelineJob('bybit', 'BTCUSDT', $at->format(DATE_ATOM)))
+            ->handle(app(TradingPipelineEventService::class), app(PaperProcessingService::class));
+        self::assertSame($before, $first->refresh()->toArray());
+        self::assertSame('COMPLETED', $record->refresh()->status);
+        self::assertSame(2, $record->payload['processed_accounts']);
     }
 }

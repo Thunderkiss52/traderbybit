@@ -80,10 +80,14 @@ final class TradingPipelineRecoveryService
 
         // 1. Process pending or uncompleted dispatched events older than 30s
         $events = TradingPipelineEventRecord::query()
-            ->whereIn('status', [
-                TradingPipelineEventRecord::STATUS_PENDING,
-                TradingPipelineEventRecord::STATUS_DISPATCHED,
-            ])
+            ->where(function ($query) use ($now, $freshnessWindow): void {
+                $query->whereIn('status', [TradingPipelineEventRecord::STATUS_PENDING, TradingPipelineEventRecord::STATUS_DISPATCHED])
+                    ->orWhere(function ($retry) use ($now, $freshnessWindow): void {
+                        $retry->where('stage', TradingPipelineEventRecord::STAGE_PAPER_PROCESSED)
+                            ->whereIn('status', [TradingPipelineEventRecord::STATUS_PARTIAL, TradingPipelineEventRecord::STATUS_FAILED])
+                            ->where('candle_close_at', '>=', $now->modify("-{$freshnessWindow} seconds"));
+                    });
+            })
             ->where('created_at', '<=', CarbonImmutable::now('UTC')->subSeconds(20))
             ->limit(50)
             ->get();
@@ -119,7 +123,11 @@ final class TradingPipelineRecoveryService
             }
 
             if (! $this->eventService->isFresh($closeAt, $now)) {
+                if (in_array($event->status, [TradingPipelineEventRecord::STATUS_PARTIAL, TradingPipelineEventRecord::STATUS_FAILED], true)) {
+                    continue; // Preserve historical failure evidence; never execute it late.
+                }
                 $event->update([
+                    'completed_at' => CarbonImmutable::now('UTC'),
                     'status' => TradingPipelineEventRecord::STATUS_STALE,
                     'last_error' => "Expired outside {$freshnessWindow}s freshness window during recovery scan.",
                 ]);
@@ -141,6 +149,14 @@ final class TradingPipelineRecoveryService
                         $event->timeframe,
                         $closeAt->format(DATE_ATOM)
                     )->onQueue($queue);
+                    $recovered++;
+                } elseif ($event->stage === TradingPipelineEventRecord::STAGE_PAPER_PROCESSED) {
+                    $data = (array) $event->payload;
+                    $failed = array_values(array_diff(array_unique([...array_column($data['failures'] ?? [], 'account_id'), ...($data['eligible_account_ids'] ?? [])]), $data['processed_account_ids'] ?? []));
+                    if ($failed === [] && $event->status !== TradingPipelineEventRecord::STATUS_PENDING) {
+                        continue; // Legacy aggregates cannot identify safe retry targets.
+                    }
+                    ProcessPaperPipelineJob::dispatch($event->exchange, $event->symbol, $closeIso, $failed ?: null)->onQueue($queue);
                     $recovered++;
                 } elseif ($event->stage === TradingPipelineEventRecord::STAGE_SIGNALS_EVALUATED) {
                     ProcessPaperPipelineJob::dispatch(

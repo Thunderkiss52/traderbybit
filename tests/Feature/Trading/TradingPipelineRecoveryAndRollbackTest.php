@@ -78,6 +78,7 @@ final class TradingPipelineRecoveryAndRollbackTest extends TestCase
 
     public function test_scheduled_job_skips_when_event_driven_pipeline_already_serviced_decision(): void
     {
+        Queue::fake();
         config(['trading.pipeline_mode' => 'EVENT_DRIVEN']);
 
         $nowTs = time();

@@ -65,7 +65,7 @@ final class ProcessAutonomousLearningJob implements ShouldQueue
         foreach ($symbols as $symbol) {
             // Check concept drift
             $drift = $predictor->detectConceptDrift($symbol, 'TP_BEFORE_SL');
-            if ($drift['drift_detected'] || $drift['recommendation'] === 'TRAIN_INITIAL') {
+            if ($autonomy->isAllowed('retrain_models') && ($drift['drift_detected'] || $drift['recommendation'] === 'TRAIN_INITIAL')) {
                 Log::info("[AutonomousLearning] Initiating model training for {$symbol} (trigger: {$drift['recommendation']}).");
                 $artifact = $predictor->trainModel('TP_BEFORE_SL', $symbol);
                 if ($artifact) {

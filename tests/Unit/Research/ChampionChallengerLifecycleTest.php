@@ -4,9 +4,12 @@ declare(strict_types=1);
 
 namespace Tests\Unit\Research;
 
+use App\Research\Application\AutonomyPermissionService;
 use App\Research\Application\LearningPredictorService;
+use App\Research\Domain\ResearchPromotionControlRecord;
 use App\Research\Infrastructure\Persistence\AutonomyApprovalEventRecord;
 use App\Research\Infrastructure\Persistence\LearningFeatureSnapshotRecord;
+use App\Research\Infrastructure\Persistence\LearningModelArtifactRecord;
 use Carbon\CarbonImmutable;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Str;
@@ -91,6 +94,34 @@ final class ChampionChallengerLifecycleTest extends TestCase
         $healthyDrift = $this->service->detectConceptDrift('BTCUSDT', 'TP_BEFORE_SL');
         $this->assertFalse($healthyDrift['drift_detected']);
         $this->assertSame('HEALTHY', $healthyDrift['recommendation']);
+    }
+
+    public function test_training_respects_permission_and_both_kill_switches(): void
+    {
+        $this->seedSnapshots('BTCUSDT', 20, positiveRate: 0.6);
+        $permissions = app(AutonomyPermissionService::class);
+        $permissions->updateSettings(['retrain_models' => false]);
+        $this->assertTrainingBlocked();
+        $permissions->updateSettings(['retrain_models' => true]);
+        $permissions->toggleKillSwitch(true);
+        $this->assertTrainingBlocked();
+        $permissions->toggleKillSwitch(false);
+        ResearchPromotionControlRecord::query()->create([
+            'id' => (string) Str::uuid(), 'action' => 'KILL_SWITCH_ACTIVATED',
+            'actor' => 'USER_OPERATOR', 'reason' => 'isolated regression', 'created_at' => now(),
+        ]);
+        $this->assertTrainingBlocked();
+    }
+
+    private function assertTrainingBlocked(): void
+    {
+        try {
+            $this->service->trainModel('TP_BEFORE_SL', 'BTCUSDT');
+            self::fail('Training must enforce effective permission at the service boundary.');
+        } catch (\DomainException $exception) {
+            self::assertSame('Model training is blocked by effective autonomy permissions.', $exception->getMessage());
+        }
+        self::assertSame(0, LearningModelArtifactRecord::query()->count());
     }
 
     private function seedSnapshots(string $symbol, int $count, float $positiveRate): void

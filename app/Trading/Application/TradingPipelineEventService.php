@@ -84,7 +84,7 @@ final class TradingPipelineEventService
                 ProcessClosedCandleEventJob::dispatch($record->id, $exchange, $symbol, $timeframe, $closeIso)
                     ->onQueue($queue);
 
-                $record->update([
+                TradingPipelineEventRecord::query()->whereKey($record->id)->where('status', TradingPipelineEventRecord::STATUS_PENDING)->update([
                     'status' => TradingPipelineEventRecord::STATUS_DISPATCHED,
                     'dispatched_at' => $now,
                 ]);
@@ -96,7 +96,7 @@ final class TradingPipelineEventService
             ]);
         }
 
-        return $record;
+        return $record?->refresh();
     }
 
     /**
@@ -143,13 +143,13 @@ final class TradingPipelineEventService
             ProcessPaperPipelineJob::dispatch($exchange, $symbol, $closeIso)
                 ->onQueue($queue);
 
-            $record->update([
+            TradingPipelineEventRecord::query()->whereKey($record->id)->where('status', TradingPipelineEventRecord::STATUS_PENDING)->update([
                 'status' => TradingPipelineEventRecord::STATUS_DISPATCHED,
                 'dispatched_at' => $now,
             ]);
         }
 
-        return $record;
+        return $record?->refresh();
     }
 
     /**
@@ -219,7 +219,7 @@ final class TradingPipelineEventService
         // Terminalize upstream SIGNALS_EVALUATED and CANDLE_CLOSED events for this cycle
         $this->acknowledgeUpstreamEvents($exchange, $symbol, $candleCloseAt, $status, $now);
 
-        return $record;
+        return $record?->refresh();
     }
 
     /**
@@ -242,7 +242,7 @@ final class TradingPipelineEventService
                 TradingPipelineEventRecord::STAGE_SIGNALS_EVALUATED,
                 TradingPipelineEventRecord::STAGE_CANDLE_CLOSED,
             ])
-            ->where('status', TradingPipelineEventRecord::STATUS_DISPATCHED)
+            ->whereIn('status', [TradingPipelineEventRecord::STATUS_PENDING, TradingPipelineEventRecord::STATUS_DISPATCHED, TradingPipelineEventRecord::STATUS_PARTIAL, TradingPipelineEventRecord::STATUS_FAILED])
             ->update([
                 'status' => $status,
                 'completed_at' => $now,

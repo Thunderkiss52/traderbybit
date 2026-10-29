@@ -19,12 +19,21 @@ class LearningPredictorService
         $this->autonomy = $autonomy ?? app(AutonomyPermissionService::class);
     }
 
+    private function assertTrainingAllowed(): void
+    {
+        if (! $this->autonomy->isAllowed('retrain_models', persist: false)) {
+            throw new \DomainException('Model training is blocked by effective autonomy permissions.');
+        }
+    }
+
     /**
      * Train and calibrate an outcome prediction model on matured labels.
      * Uses a purged temporal train/validation split and executes champion/challenger evaluation.
      */
     public function trainModel(string $targetEvent = 'TP_BEFORE_SL', string $symbol = 'BTCUSDT'): ?LearningModelArtifactRecord
     {
+        $this->assertTrainingAllowed();
+
         $snapshots = LearningFeatureSnapshotRecord::query()
             ->where('symbol', $symbol)
             ->where('label_status', 'MATURED')
@@ -222,6 +231,7 @@ class LearningPredictorService
         $brierSkillScore = $baselineBrier > 0.0 ? round(1.0 - ($valMetrics['brier_score'] / $baselineBrier), 4) : 0.0;
         $improvesBaseline = $brierReductionVsBaseline >= 0.0;
 
+        $this->assertTrainingAllowed(); // Recheck after computation, before any champion/artifact writes.
         $status = 'CANDIDATE';
         $promotionReason = null;
 
