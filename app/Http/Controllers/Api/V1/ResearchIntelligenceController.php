@@ -190,16 +190,34 @@ final class ResearchIntelligenceController extends Controller
         }
     }
 
-    public function recommendations(ResearchRecommendationService $service): ResearchResource|JsonResponse
+    public function recommendations(Request $request, ResearchRecommendationService $service): ResearchResource|JsonResponse
     {
         try {
-            $records = ResearchRecommendationRecord::query()
-                ->where('status', 'OPEN')
-                ->where('category', '!=', 'ALPHA_IMPROVEMENT')
-                ->latest('created_at')
-                ->get();
+            $query = ResearchRecommendationRecord::query();
 
-            return $this->ok($records);
+            $status = $request->string('status')->toString();
+            if ($status !== '') {
+                $query->where('status', $status);
+            } else {
+                $query->where('status', 'OPEN');
+            }
+
+            $category = $request->string('category')->toString();
+            if ($category !== '') {
+                $query->where('category', $category);
+            } else {
+                $query->where('category', '!=', 'ALPHA_IMPROVEMENT');
+            }
+
+            $strategyId = $request->string('strategy_id')->toString();
+            if ($strategyId !== '') {
+                $query->where('strategy_id', $strategyId);
+            }
+
+            $perPage = max(1, min(100, $request->integer('per_page', 10)));
+            $paginator = $query->orderByDesc('created_at')->orderByDesc('id')->paginate($perPage);
+
+            return $this->ok($paginator);
         } catch (Throwable $e) {
             Log::error('Research API operation failed.', ['operation' => __METHOD__, 'exception_type' => $e::class]);
 

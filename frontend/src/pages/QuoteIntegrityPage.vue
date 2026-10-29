@@ -117,7 +117,7 @@ onMounted(() => {
     </div>
 
     <!-- Visible Error & Stale Data Banner -->
-    <q-banner v-if="errorMessage" class="bg-negative text-white q-mb-md" rounded>
+    <q-banner v-if="errorMessage && !disabled" class="bg-negative text-white q-mb-md" rounded>
       <template #avatar>
         <q-icon name="error_outline" color="white" />
       </template>
@@ -126,6 +126,14 @@ onMounted(() => {
       <div v-if="isStale" class="text-caption text-warning q-mt-xs">
         Preserving last-known good state. Data shown below may be stale.
       </div>
+    </q-banner>
+
+    <q-banner v-else-if="disabled" class="bg-blue-grey-9 text-white q-mb-md" rounded>
+      <template #avatar>
+        <q-icon name="info" color="amber" />
+      </template>
+      <div class="text-weight-bold">Quote Integrity Monitor (QIM) Disabled</div>
+      <div>QIM module is intentionally inactive in the current deployment profile (FEATURE_DISABLED). Ingestion and paper trading remain unaffected.</div>
     </q-banner>
 
     <!-- Status & Mandatory Banners -->

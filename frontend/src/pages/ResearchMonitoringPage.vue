@@ -13,62 +13,119 @@ const correlations = ref<any>(null);
 const recommendations = ref<any[]>([]);
 const reportData = ref<any>(null);
 
+const recPagination = ref({
+  page: 1,
+  rowsPerPage: 10,
+  rowsNumber: 0,
+});
+
+let currentRequestSeq = 0;
+
+function formatPercent(val: any, fallback = '—'): string {
+  if (val === null || val === undefined || val === '') return fallback;
+  const num = Number(val);
+  return Number.isFinite(num) ? `${(num * 100).toFixed(1)}%` : fallback;
+}
+
+function formatDecimal(val: any, decimals = 2, fallback = '—'): string {
+  if (val === null || val === undefined || val === '') return fallback;
+  const num = Number(val);
+  return Number.isFinite(num) ? num.toFixed(decimals) : fallback;
+}
+
+function formatR(val: any, fallback = '—'): string {
+  if (val === null || val === undefined || val === '') return fallback;
+  const num = Number(val);
+  return Number.isFinite(num) ? `${num.toFixed(2)} R` : fallback;
+}
+
 async function refreshDegradation() {
+  const seq = ++currentRequestSeq;
   loading.value = true;
   error.value = '';
   try {
     const res = await api.get('/research/degradation', { params: { horizon: horizon.value } });
-    degradation.value = res.data.data.strategies || [];
+    if (seq !== currentRequestSeq) return;
+    degradation.value = res.data?.data?.strategies || [];
   } catch (err: any) {
+    if (seq !== currentRequestSeq) return;
     error.value = err.message || 'Failed to load degradation data';
   } finally {
-    loading.value = false;
+    if (seq === currentRequestSeq) loading.value = false;
   }
 }
 
 async function refreshCorrelations() {
+  const seq = ++currentRequestSeq;
   loading.value = true;
   error.value = '';
   try {
     const res = await api.get('/research/correlations', { params: { horizon: horizon.value } });
-    correlations.value = res.data.data;
+    if (seq !== currentRequestSeq) return;
+    correlations.value = res.data?.data ?? null;
   } catch (err: any) {
+    if (seq !== currentRequestSeq) return;
     error.value = err.message || 'Failed to load correlations';
   } finally {
-    loading.value = false;
+    if (seq === currentRequestSeq) loading.value = false;
   }
 }
 
-async function refreshRecommendations() {
+async function refreshRecommendations(page?: number) {
+  const seq = ++currentRequestSeq;
+  if (typeof page === 'number') {
+    recPagination.value.page = page;
+  }
   loading.value = true;
   error.value = '';
   try {
-    const res = await api.get('/research/recommendations');
-    recommendations.value = res.data.data || [];
+    const res = await api.get('/research/recommendations', {
+      params: {
+        page: recPagination.value.page,
+        per_page: recPagination.value.rowsPerPage,
+      },
+    });
+    if (seq !== currentRequestSeq) return;
+    const payload = res.data?.data;
+    if (payload && Array.isArray(payload.data)) {
+      recommendations.value = payload.data;
+      recPagination.value.rowsNumber = payload.total ?? payload.data.length;
+      recPagination.value.page = payload.current_page ?? recPagination.value.page;
+    } else if (Array.isArray(payload)) {
+      recommendations.value = payload;
+      recPagination.value.rowsNumber = payload.length;
+    } else {
+      recommendations.value = [];
+      recPagination.value.rowsNumber = 0;
+    }
   } catch (err: any) {
+    if (seq !== currentRequestSeq) return;
     error.value = err.message || 'Failed to load recommendations';
   } finally {
-    loading.value = false;
+    if (seq === currentRequestSeq) loading.value = false;
   }
 }
 
 async function refreshReport() {
+  const seq = ++currentRequestSeq;
   loading.value = true;
   error.value = '';
   try {
     const res = await api.get('/research/report', { params: { period: reportPeriod.value } });
-    reportData.value = res.data.data;
+    if (seq !== currentRequestSeq) return;
+    reportData.value = res.data?.data ?? null;
   } catch (err: any) {
+    if (seq !== currentRequestSeq) return;
     error.value = err.message || 'Failed to generate audit report';
   } finally {
-    loading.value = false;
+    if (seq === currentRequestSeq) loading.value = false;
   }
 }
 
 async function acceptRecommendation(id: string) {
   try {
     await api.post(`/research/recommendations/${id}/accept`);
-    await refreshRecommendations();
+    await refreshRecommendations(recPagination.value.page);
   } catch (err: any) {
     error.value = err.message || 'Failed to accept recommendation';
   }
@@ -77,7 +134,7 @@ async function acceptRecommendation(id: string) {
 async function dismissRecommendation(id: string) {
   try {
     await api.post(`/research/recommendations/${id}/dismiss`);
-    await refreshRecommendations();
+    await refreshRecommendations(recPagination.value.page);
   } catch (err: any) {
     error.value = err.message || 'Failed to dismiss recommendation';
   }
@@ -87,6 +144,7 @@ const capabilities = ref<any>(null);
 const jobs = ref<any[]>([]);
 
 async function refreshCompute() {
+  const seq = ++currentRequestSeq;
   loading.value = true;
   error.value = '';
   try {
@@ -94,12 +152,14 @@ async function refreshCompute() {
       api.get('/research/capabilities'),
       api.get('/research/jobs', { params: { per_page: 20 } }),
     ]);
-    capabilities.value = capRes.data.data;
-    jobs.value = jobsRes.data.data || [];
+    if (seq !== currentRequestSeq) return;
+    capabilities.value = capRes.data?.data ?? null;
+    jobs.value = jobsRes.data?.data?.data || jobsRes.data?.data || [];
   } catch (err: any) {
+    if (seq !== currentRequestSeq) return;
     error.value = err.message || 'Failed to load compute worker information';
   } finally {
-    loading.value = false;
+    if (seq === currentRequestSeq) loading.value = false;
   }
 }
 
@@ -252,9 +312,9 @@ onMounted(() => {
           </template>
           <template #body-cell-win_rate="props">
             <q-td :props="props">
-              <span v-if="props.row.win_rate !== null">
+              <span v-if="typeof props.row.win_rate === 'number' && Number.isFinite(props.row.win_rate)">
                 {{ (props.row.win_rate * 100).toFixed(1) }}%
-                <small class="text-grey">
+                <small class="text-grey" v-if="typeof props.row.win_rate_ci_lower === 'number' && typeof props.row.win_rate_ci_upper === 'number' && Number.isFinite(props.row.win_rate_ci_lower)">
                   [{{ (props.row.win_rate_ci_lower * 100).toFixed(0) }}%-{{ (props.row.win_rate_ci_upper * 100).toFixed(0) }}%]
                 </small>
               </span>
@@ -262,18 +322,18 @@ onMounted(() => {
             </q-td>
           </template>
           <template #body-cell-expectancy_r="props">
-            <q-td :props="props" :class="Number(props.value) > 0 ? 'text-positive' : (Number(props.value) < 0 ? 'text-negative' : '')">
-              {{ props.value !== null ? Number(props.value).toFixed(2) + ' R' : '—' }}
+            <q-td :props="props" :class="Number.isFinite(Number(props.value)) ? (Number(props.value) > 0 ? 'text-positive' : (Number(props.value) < 0 ? 'text-negative' : '')) : ''">
+              {{ formatR(props.value) }}
             </q-td>
           </template>
           <template #body-cell-profit_factor="props">
-            <q-td :props="props" :class="Number(props.value) >= 1.2 ? 'text-positive' : (Number(props.value) < 1.0 && props.value !== null ? 'text-negative' : '')">
-              {{ props.value !== null ? Number(props.value).toFixed(2) : '—' }}
+            <q-td :props="props" :class="Number.isFinite(Number(props.value)) ? (Number(props.value) >= 1.2 ? 'text-positive' : (Number(props.value) < 1.0 ? 'text-negative' : '')) : ''">
+              {{ formatDecimal(props.value, 2) }}
             </q-td>
           </template>
           <template #body-cell-max_drawdown="props">
-            <q-td :props="props" :class="Number(props.value) >= 15 ? 'text-negative text-bold' : ''">
-              {{ (typeof props.value === 'number' && isFinite(props.value)) ? props.value.toFixed(2) + '%' : (props.value === null || props.value === undefined ? '—' : (Number.isFinite(Number(props.value)) ? Number(props.value).toFixed(2) + '%' : '—')) }}
+            <q-td :props="props" :class="Number.isFinite(Number(props.value)) && Number(props.value) >= 15 ? 'text-negative text-bold' : ''">
+              {{ formatDecimal(props.value, 2) !== '—' ? formatDecimal(props.value, 2) + '%' : '—' }}
             </q-td>
           </template>
         </q-table>
@@ -288,8 +348,8 @@ onMounted(() => {
           <q-card flat bordered class="kpi-card">
             <q-card-section>
               <div class="text-caption text-grey">Concentration Index (HHI)</div>
-              <div class="text-h5 text-bold" :class="Number(correlations.concentration_score) > 0.5 ? 'text-warning' : 'text-positive'">
-                {{ Number(correlations.concentration_score).toFixed(3) }}
+              <div class="text-h5 text-bold" :class="Number.isFinite(Number(correlations.concentration_score)) && Number(correlations.concentration_score) > 0.5 ? 'text-warning' : 'text-positive'">
+                {{ correlations.insufficient_data || correlations.concentration_score === null || correlations.concentration_score === undefined || !Number.isFinite(Number(correlations.concentration_score)) ? '— (Insufficient Data)' : Number(correlations.concentration_score).toFixed(3) }}
               </div>
               <div class="text-caption text-grey-6">Normalized Herfindahl index (lower is diversified)</div>
             </q-card-section>
@@ -361,7 +421,7 @@ onMounted(() => {
               >
                 <q-badge
                   :color="
-                    val === 1.0
+                    Number(val) === 1.0
                       ? 'grey-8'
                       : Number(val) > 0.7
                       ? 'negative'
@@ -369,7 +429,7 @@ onMounted(() => {
                       ? 'positive'
                       : 'grey-9'
                   "
-                  :label="val !== null ? Number(val).toFixed(2) : '—'"
+                  :label="val !== null && val !== undefined && Number.isFinite(Number(val)) ? Number(val).toFixed(2) : '—'"
                 />
               </div>
             </div>
@@ -426,6 +486,16 @@ onMounted(() => {
               <q-btn unelevated label="Accept & Record" color="primary" @click="acceptRecommendation(rec.id)" />
             </q-card-actions>
           </q-card>
+        </div>
+        <div v-if="recPagination.rowsNumber > recPagination.rowsPerPage" class="col-12 flex flex-center q-mt-md">
+          <q-pagination
+            v-model="recPagination.page"
+            :max="Math.ceil(recPagination.rowsNumber / recPagination.rowsPerPage)"
+            :max-pages="7"
+            direction-links
+            boundary-links
+            @update:model-value="refreshRecommendations"
+          />
         </div>
       </div>
       <q-card v-else flat bordered class="q-pa-lg text-center text-grey">

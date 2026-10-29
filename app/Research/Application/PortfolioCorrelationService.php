@@ -110,7 +110,7 @@ final class PortfolioCorrelationService
 
         // 4. Herfindahl-Hirschman Index (HHI) Concentration Score
         $totalPositions = array_sum($byStrategy);
-        $concentrationScore = 0.0;
+        $concentrationScore = null;
 
         if ($totalPositions > 0) {
             $hhiSum = 0.0;
@@ -122,7 +122,7 @@ final class PortfolioCorrelationService
             $concentrationScore = round($hhiSum, 4);
         }
 
-        if ($concentrationScore > 0.60) {
+        if ($concentrationScore !== null && $concentrationScore > 0.60) {
             $alerts[] = "High portfolio concentration: single strategy dominates {$concentrationScore} of trade allocation";
         }
 

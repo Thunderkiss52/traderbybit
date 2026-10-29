@@ -45,9 +45,23 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Str;
+use Symfony\Component\HttpFoundation\Response;
 
 final class ResearchController extends Controller
 {
+    private function notFound(string $resource, string $id): JsonResponse
+    {
+        return response()->json([
+            'schema_version' => '1.0.0',
+            'research_mode' => true,
+            'error' => [
+                'code' => 'not_found',
+                'message' => "{$resource} {$id} not found",
+            ],
+        ], Response::HTTP_NOT_FOUND);
+    }
+
     private function ok(mixed $data): ResearchResource
     {
         return new ResearchResource($data);
@@ -718,9 +732,18 @@ final class ResearchController extends Controller
         return $this->ok($paginator);
     }
 
-    public function signal(string $id): ResearchResource
+    public function signal(string $id): ResearchResource|JsonResponse
     {
-        return $this->ok(SignalRecord::query()->findOrFail($id));
+        if (! Str::isUuid($id)) {
+            return $this->notFound('Signal', $id);
+        }
+
+        $signal = SignalRecord::query()->find($id);
+        if ($signal === null) {
+            return $this->notFound('Signal', $id);
+        }
+
+        return $this->ok($signal);
     }
 
     public function positions(Request $r): ResearchResource
@@ -769,9 +792,16 @@ final class ResearchController extends Controller
         return $this->ok($page);
     }
 
-    public function position(Request $request, string $id): ResearchResource
+    public function position(Request $request, string $id): ResearchResource|JsonResponse
     {
-        $p = VirtualPositionRecord::query()->findOrFail($id);
+        if (! Str::isUuid($id)) {
+            return $this->notFound('Position', $id);
+        }
+
+        $p = VirtualPositionRecord::query()->find($id);
+        if ($p === null) {
+            return $this->notFound('Position', $id);
+        }
 
         return $this->ok([
             'mode' => 'FORWARD_PAPER',
@@ -1083,9 +1113,16 @@ final class ResearchController extends Controller
             ['id', 'type', 'status', 'from_at', 'to_at', 'symbols', 'strategy_version', 'progress', 'created_at', 'completed_at']));
     }
 
-    public function backtest(Request $request, string $id): ResearchResource
+    public function backtest(Request $request, string $id): ResearchResource|JsonResponse
     {
-        $run = BacktestRunRecord::query()->findOrFail($id);
+        if (! Str::isUuid($id)) {
+            return $this->notFound('Backtest', $id);
+        }
+
+        $run = BacktestRunRecord::query()->find($id);
+        if ($run === null) {
+            return $this->notFound('Backtest', $id);
+        }
 
         return $this->ok([
             'run' => $run->only(['id', 'type', 'status', 'progress', 'strategy_version', 'from_at', 'to_at', 'metrics']),
@@ -1095,9 +1132,17 @@ final class ResearchController extends Controller
         ]);
     }
 
-    public function report(Request $request, string $id): ResearchResource
+    public function report(Request $request, string $id): ResearchResource|JsonResponse
     {
-        $run = BacktestRunRecord::query()->findOrFail($id);
+        if (! Str::isUuid($id)) {
+            return $this->notFound('Backtest', $id);
+        }
+
+        $run = BacktestRunRecord::query()->find($id);
+        if ($run === null) {
+            return $this->notFound('Backtest', $id);
+        }
+
         $trades = BacktestTradeRecord::query()->where('backtest_run_id', $id)
             ->latest('closed_at')->latest('id')->paginate($this->perPage($request),
                 ['id', 'symbol', 'side', 'quality_class', 'opened_at', 'closed_at', 'entry_price', 'exit_price', 'net_pnl', 'r_multiple', 'close_reason', 'ambiguous_execution', 'funding_complete']);
@@ -1114,18 +1159,33 @@ final class ResearchController extends Controller
         ]);
     }
 
-    public function backtestTrades(Request $request, string $id): ResearchResource
+    public function backtestTrades(Request $request, string $id): ResearchResource|JsonResponse
     {
-        BacktestRunRecord::query()->findOrFail($id, ['id']);
+        if (! Str::isUuid($id)) {
+            return $this->notFound('Backtest', $id);
+        }
+
+        $run = BacktestRunRecord::query()->find($id);
+        if ($run === null) {
+            return $this->notFound('Backtest', $id);
+        }
 
         return $this->ok(BacktestTradeRecord::query()->where('backtest_run_id', $id)
             ->latest('closed_at')->latest('id')->paginate($this->perPage($request),
                 ['id', 'symbol', 'side', 'quality_class', 'opened_at', 'closed_at', 'entry_price', 'exit_price', 'net_pnl', 'r_multiple', 'close_reason', 'ambiguous_execution', 'funding_complete']));
     }
 
-    public function backtestEquity(Request $request, string $id, BacktestCurveService $curves): ResearchResource
+    public function backtestEquity(Request $request, string $id, BacktestCurveService $curves): ResearchResource|JsonResponse
     {
-        $run = BacktestRunRecord::query()->findOrFail($id, ['id', 'status', 'updated_at']);
+        if (! Str::isUuid($id)) {
+            return $this->notFound('Backtest', $id);
+        }
+
+        $run = BacktestRunRecord::query()->find($id);
+        if ($run === null) {
+            return $this->notFound('Backtest', $id);
+        }
+
         $maximum = max(3, min(1000, $request->integer('max_points', 1000)));
         $calculate = fn (): array => $curves->get($id, $maximum);
         $curve = $run->status === 'COMPLETED'
@@ -1135,9 +1195,16 @@ final class ResearchController extends Controller
         return $this->ok($curve);
     }
 
-    public function backtestOptimizations(Request $request, string $id): ResearchResource
+    public function backtestOptimizations(Request $request, string $id): ResearchResource|JsonResponse
     {
-        BacktestRunRecord::query()->findOrFail($id, ['id']);
+        if (! Str::isUuid($id)) {
+            return $this->notFound('Backtest', $id);
+        }
+
+        $run = BacktestRunRecord::query()->find($id);
+        if ($run === null) {
+            return $this->notFound('Backtest', $id);
+        }
 
         return $this->ok(BacktestOptimizationRecord::query()->where('backtest_run_id', $id)
             ->latest('window_index')->latest('combination_index')->latest('id')

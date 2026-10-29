@@ -19,6 +19,13 @@ final class PortfolioCorrelationSnapshotRecord extends Model
 
     protected $guarded = [];
 
+    protected $appends = ['insufficient_data'];
+
+    public function getInsufficientDataAttribute(): bool
+    {
+        return $this->concentration_score === null;
+    }
+
     protected function casts(): array
     {
         return [
