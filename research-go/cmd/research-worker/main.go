@@ -203,6 +203,45 @@ func main() {
 	}()
 
 	runner := jobrunner.NewRunner(db, workerID)
+
+	workerVersion := "1.0.0"
+	supportedAlgorithms := []string{
+		"backtest",
+		"walk_forward",
+		"pattern_mine",
+		"replay",
+		"monte_carlo",
+		"feature_build",
+		"skip_outcomes",
+	}
+
+	// Register worker in PostgreSQL research_workers table
+	regCtx, regCancel := context.WithTimeout(context.Background(), 5*time.Second)
+	if err := runner.RegisterWorker(regCtx, workerVersion, supportedAlgorithms, hostname, os.Getpid()); err != nil {
+		log.Printf("[worker] Warning: Failed to register worker: %v", err)
+	} else {
+		log.Printf("[worker] Successfully registered %s (version=%s) in research registry", workerID, workerVersion)
+	}
+	regCancel()
+
+	// Periodic background heartbeat goroutine (every 10 seconds)
+	heartbeatTicker := time.NewTicker(10 * time.Second)
+	defer heartbeatTicker.Stop()
+	go func() {
+		for {
+			select {
+			case <-ctx.Done():
+				return
+			case <-heartbeatTicker.C:
+				hbCtx, hbCancel := context.WithTimeout(context.Background(), 3*time.Second)
+				if err := runner.SendHeartbeat(hbCtx, "ready"); err != nil {
+					log.Printf("[worker] Heartbeat warning: %v", err)
+				}
+				hbCancel()
+			}
+		}
+	}()
+
 	ticker := time.NewTicker(time.Duration(*pollSeconds) * time.Second)
 	defer ticker.Stop()
 
@@ -211,6 +250,11 @@ func main() {
 	for {
 		select {
 		case <-ctx.Done():
+			shutdownCtx, shutdownCancel := context.WithTimeout(context.Background(), 5*time.Second)
+			if err := runner.UnregisterWorker(shutdownCtx); err != nil {
+				log.Printf("[worker] Unregister error: %v", err)
+			}
+			shutdownCancel()
 			log.Println("[worker] Clean shutdown complete.")
 			return
 		case <-ticker.C:
@@ -231,8 +275,12 @@ func main() {
 				continue
 			}
 
-			if err := runner.ExecuteJob(ctx, req, token); err != nil {
-				log.Printf("[worker] Execution error for job %s: %v", req.JobID, err)
+			_ = runner.SendHeartbeat(ctx, "busy")
+			execErr := runner.ExecuteJob(ctx, req, token)
+			_ = runner.RecordJobCompletion(ctx, req.JobID, execErr == nil)
+
+			if execErr != nil {
+				log.Printf("[worker] Execution error for job %s: %v", req.JobID, execErr)
 			}
 
 			if *onceFlag {

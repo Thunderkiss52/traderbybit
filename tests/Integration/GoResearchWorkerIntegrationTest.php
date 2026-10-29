@@ -117,5 +117,31 @@ final class GoResearchWorkerIntegrationTest extends TestCase
         self::assertIsArray($refreshed->runtime_stats);
         self::assertGreaterThanOrEqual(0, $refreshed->runtime_stats['duration_ms']);
         self::assertSame(50, $refreshed->runtime_stats['rows_processed']);
+
+        // 5. Assert Go worker registered in PostgreSQL research_workers table with heartbeat and completion telemetry
+        $workerRow = DB::table('research_workers')
+            ->where('engine', 'go')
+            ->where('last_job_id', $job->job_id)
+            ->first();
+        self::assertNotNull($workerRow, 'Go worker should register in research_workers table and record executed job');
+        self::assertSame('go', $workerRow->engine);
+        self::assertSame('1.0.0', $workerRow->version);
+        self::assertGreaterThanOrEqual(1, $workerRow->total_jobs_completed);
+        self::assertNotNull($workerRow->heartbeat_at);
+        self::assertNotNull($workerRow->last_job_finished_at);
+
+        // 6. Assert ResearchJobService dynamically routes to live Go worker
+        $routing = $service->getCapabilityRouting();
+        self::assertArrayHasKey('capabilities', $routing);
+        self::assertArrayHasKey('go', $routing['capabilities']);
+        self::assertTrue($routing['capabilities']['go']['available']);
+        self::assertSame('ready', $routing['capabilities']['go']['status']);
+        self::assertNotEmpty($routing['capabilities']['go']['workers']);
+
+        $workerEntry = $routing['workers'][$workerRow->worker_id] ?? null;
+        self::assertNotNull($workerEntry);
+        self::assertTrue($workerEntry['available']);
+        self::assertTrue($workerEntry['is_heartbeat_fresh']);
+        self::assertSame('ready', $workerEntry['status']);
     }
 }

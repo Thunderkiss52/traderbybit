@@ -472,11 +472,36 @@ onMounted(() => {
             <q-card-section>
               <div class="row items-center justify-between">
                 <span class="text-caption text-grey">Go Research Worker</span>
-                <q-chip dense color="positive" text-color="white" size="sm">ACTIVE</q-chip>
+                <q-chip
+                  dense
+                  :color="
+                    capabilities.capabilities.go?.available
+                      ? 'positive'
+                      : capabilities.capabilities.go?.status === 'unsupported_version'
+                      ? 'warning'
+                      : 'negative'
+                  "
+                  text-color="white"
+                  size="sm"
+                >
+                  {{
+                    capabilities.capabilities.go?.available
+                      ? 'READY'
+                      : (capabilities.capabilities.go?.status || 'OFFLINE').toUpperCase()
+                  }}
+                </q-chip>
               </div>
               <div class="text-h6 text-bold q-mt-xs">{{ capabilities.capabilities.go?.engine }}</div>
               <div class="text-caption text-grey-6 q-mb-sm">High-throughput backtest & pattern mining</div>
-              <div class="text-caption">Concurrency: {{ capabilities.capabilities.go?.concurrency_cap }} | Memory: {{ capabilities.capabilities.go?.memory_cap_mb }}MB</div>
+              <div class="text-caption">
+                Concurrency: {{ capabilities.capabilities.go?.concurrency_cap }} | Memory: {{ capabilities.capabilities.go?.memory_cap_mb }}MB
+              </div>
+              <div class="text-caption text-grey-5 q-mt-xs" v-if="capabilities.capabilities.go?.workers?.length">
+                Active workers: {{ capabilities.capabilities.go?.workers?.length }}
+              </div>
+              <div class="text-caption text-negative q-mt-xs" v-else-if="capabilities.capabilities.go?.unavailable_reason">
+                {{ capabilities.capabilities.go?.unavailable_reason }}
+              </div>
             </q-card-section>
           </q-card>
         </div>

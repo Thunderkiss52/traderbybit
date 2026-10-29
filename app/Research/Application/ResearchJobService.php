@@ -347,24 +347,58 @@ final readonly class ResearchJobService
         string $engine,
         string $version,
         array $algorithms = [],
-        ?CarbonImmutable $heartbeatAt = null
+        ?CarbonImmutable $heartbeatAt = null,
+        ?string $hostname = null,
+        ?int $pid = null
     ): array {
         $now = CarbonImmutable::now('UTC');
         $heartbeat = $heartbeatAt ?? $now;
+        $engine = strtolower($engine);
+
         $worker = [
             'worker_id' => $workerId,
-            'engine' => strtolower($engine),
+            'engine' => $engine,
             'version' => $version,
-            'algorithms' => $algorithms,
+            'status' => 'ready',
+            'hostname' => $hostname,
+            'pid' => $pid,
+            'supported_algorithms' => $algorithms,
             'heartbeat_at' => $heartbeat->toIso8601String(),
+            'registered_at' => $now->toIso8601String(),
         ];
 
-        $ids = (array) cache()->get('research:worker_ids', []);
-        if (! in_array($workerId, $ids, true)) {
-            $ids[] = $workerId;
-            cache()->put('research:worker_ids', $ids, 3600);
+        try {
+            DB::table('research_workers')->upsert(
+                [
+                    'worker_id' => $workerId,
+                    'engine' => $engine,
+                    'version' => $version,
+                    'status' => 'ready',
+                    'hostname' => $hostname,
+                    'pid' => $pid,
+                    'supported_algorithms' => json_encode($algorithms),
+                    'heartbeat_at' => $heartbeat,
+                    'registered_at' => $now,
+                    'created_at' => $now,
+                    'updated_at' => $now,
+                ],
+                ['worker_id'],
+                ['engine', 'version', 'status', 'hostname', 'pid', 'supported_algorithms', 'heartbeat_at', 'updated_at']
+            );
+        } catch (Throwable $e) {
+            Log::warning('Failed to persist worker registration in research_workers table: '.$e->getMessage());
         }
-        cache()->put("research:worker:{$workerId}", $worker, 3600);
+
+        try {
+            $ids = (array) cache()->get('research:worker_ids', []);
+            if (! in_array($workerId, $ids, true)) {
+                $ids[] = $workerId;
+                cache()->put('research:worker_ids', $ids, 3600);
+            }
+            cache()->put("research:worker:{$workerId}", $worker, 3600);
+        } catch (Throwable $e) {
+            // Cache failure does not abort worker registration; database is authoritative
+        }
 
         return $worker;
     }
@@ -382,27 +416,73 @@ final readonly class ResearchJobService
                 ->pluck('count', 'status')
                 ->toArray();
 
-            $workerIds = (array) cache()->get('research:worker_ids', []);
+            $rawWorkers = [];
+            try {
+                $rows = DB::table('research_workers')->orderBy('registered_at', 'desc')->get();
+                foreach ($rows as $row) {
+                    $rawWorkers[$row->worker_id] = [
+                        'worker_id' => $row->worker_id,
+                        'engine' => strtolower((string) $row->engine),
+                        'version' => (string) $row->version,
+                        'status' => (string) $row->status,
+                        'hostname' => $row->hostname,
+                        'pid' => $row->pid,
+                        'supported_algorithms' => is_string($row->supported_algorithms)
+                            ? json_decode($row->supported_algorithms, true) ?: []
+                            : (array) ($row->supported_algorithms ?? []),
+                        'heartbeat_at' => CarbonImmutable::parse($row->heartbeat_at)->toIso8601String(),
+                        'registered_at' => $row->registered_at ? CarbonImmutable::parse($row->registered_at)->toIso8601String() : null,
+                        'last_job_id' => $row->last_job_id,
+                        'last_job_finished_at' => $row->last_job_finished_at ? CarbonImmutable::parse($row->last_job_finished_at)->toIso8601String() : null,
+                        'total_jobs_completed' => (int) ($row->total_jobs_completed ?? 0),
+                        'total_jobs_failed' => (int) ($row->total_jobs_failed ?? 0),
+                    ];
+                }
+            } catch (Throwable $e) {
+                Log::warning('Failed to query research_workers table: '.$e->getMessage());
+            }
+
+            // Merge cache workers if not already in rawWorkers (supports isolated unit test fixtures and mock caches)
+            try {
+                $workerIds = (array) cache()->get('research:worker_ids', []);
+                foreach ($workerIds as $wid) {
+                    if (! isset($rawWorkers[$wid])) {
+                        $w = cache()->get("research:worker:{$wid}");
+                        if (is_array($w)) {
+                            $rawWorkers[$wid] = $w;
+                        }
+                    }
+                }
+            } catch (Throwable $e) {
+                // Cache unavailable or Redis driver missing; database remains authoritative
+            }
+
             $registeredWorkers = [];
             $engineWorkers = [];
 
-            foreach ($workerIds as $wid) {
-                $w = cache()->get("research:worker:{$wid}");
-                if (! is_array($w)) {
-                    continue;
-                }
+            foreach ($rawWorkers as $wid => $w) {
                 $hb = CarbonImmutable::parse($w['heartbeat_at']);
+                $ageSeconds = max(0, $now->diffInSeconds($hb, false));
                 $isHeartbeatExpired = $hb->isBefore($now->subSeconds(120));
                 $isUnsupportedVersion = version_compare((string) $w['version'], '1.0.0', '<');
+                $rawStatus = strtolower((string) ($w['status'] ?? 'ready'));
 
                 if ($isHeartbeatExpired) {
                     $status = 'offline';
                     $available = false;
                     $reason = 'HEARTBEAT_EXPIRED';
+                } elseif ($rawStatus === 'stopped') {
+                    $status = 'stopped';
+                    $available = false;
+                    $reason = 'WORKER_STOPPED';
                 } elseif ($isUnsupportedVersion) {
                     $status = 'unsupported_version';
                     $available = false;
                     $reason = 'UNSUPPORTED_VERSION';
+                } elseif ($rawStatus === 'busy') {
+                    $status = 'busy';
+                    $available = true;
+                    $reason = null;
                 } else {
                     $status = 'ready';
                     $available = true;
@@ -413,6 +493,9 @@ final readonly class ResearchJobService
                     'status' => $status,
                     'available' => $available,
                     'unavailable_reason' => $reason,
+                    'heartbeat_age_seconds' => $ageSeconds,
+                    'is_heartbeat_fresh' => ! $isHeartbeatExpired,
+                    'can_accept_jobs' => ($available && $status === 'ready'),
                 ]);
 
                 $registeredWorkers[$wid] = $evaluated;
@@ -428,30 +511,35 @@ final readonly class ResearchJobService
                     'algorithms' => ['backtest', 'counterfactual', 'replay', 'calibration', 'learning'],
                     'concurrency_cap' => 2,
                     'deterministic' => true,
+                    'workers' => $engineWorkers['php'] ?? [],
                 ],
                 'go' => [
                     'engine' => 'Go Research Engine',
-                    'status' => 'ready',
-                    'available' => true,
+                    'status' => 'offline',
+                    'available' => false,
+                    'unavailable_reason' => 'NO_REGISTERED_WORKERS',
                     'role' => 'high_throughput_worker',
                     'algorithms' => ['backtest', 'walk_forward', 'pattern_mine', 'replay', 'monte_carlo'],
                     'concurrency_cap' => 1,
                     'deterministic' => true,
                     'memory_cap_mb' => 512,
                     'cpu_cap' => 1.0,
+                    'workers' => $engineWorkers['go'] ?? [],
                 ],
                 'python' => [
                     'engine' => 'Python ML Engine',
                     'status' => 'conditional_offline',
                     'available' => false,
+                    'unavailable_reason' => 'NO_REGISTERED_WORKERS',
                     'role' => 'model_training_only',
                     'algorithms' => ['model_train'],
                     'concurrency_cap' => 1,
                     'deterministic' => true,
+                    'workers' => $engineWorkers['python'] ?? [],
                 ],
             ];
 
-            foreach (['go', 'php', 'python'] as $eng) {
+            foreach (['go', 'python'] as $eng) {
                 if (! empty($engineWorkers[$eng])) {
                     $workers = $engineWorkers[$eng];
                     $hasReady = collect($workers)->contains(fn ($w) => $w['available'] === true);
@@ -462,10 +550,15 @@ final readonly class ResearchJobService
                         $capabilities[$eng]['unavailable_reason'] = null;
                     } else {
                         $unsupported = collect($workers)->firstWhere('status', 'unsupported_version');
+                        $stopped = collect($workers)->firstWhere('status', 'stopped');
                         if ($unsupported !== null) {
                             $capabilities[$eng]['status'] = 'unsupported_version';
                             $capabilities[$eng]['available'] = false;
                             $capabilities[$eng]['unavailable_reason'] = 'UNSUPPORTED_VERSION';
+                        } elseif ($stopped !== null) {
+                            $capabilities[$eng]['status'] = 'offline';
+                            $capabilities[$eng]['available'] = false;
+                            $capabilities[$eng]['unavailable_reason'] = 'WORKER_STOPPED';
                         } else {
                             $capabilities[$eng]['status'] = 'offline';
                             $capabilities[$eng]['available'] = false;
@@ -489,7 +582,12 @@ final readonly class ResearchJobService
                 ],
             ];
         } catch (Throwable $e) {
-            Log::error('Research capability routing failed.', ['exception_type' => $e::class]);
+            Log::error('Research capability routing failed.', [
+                'exception_type' => $e::class,
+                'message' => $e->getMessage(),
+                'file' => $e->getFile(),
+                'line' => $e->getLine(),
+            ]);
 
             return [
                 'capabilities' => [],

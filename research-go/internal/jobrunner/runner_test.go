@@ -159,3 +159,39 @@ func TestExecuteJob_RejectsUnsupportedKind(t *testing.T) {
 		t.Fatalf("expected failed reason to mention unsupported, got: %s", mockDrv.failedReason)
 	}
 }
+
+func TestWorkerLifecycleMethods(t *testing.T) {
+	db := initMockDB()
+	runner := NewRunner(db, "test-worker-alpha")
+	ctx := context.Background()
+
+	// 1. Test RegisterWorker
+	err := runner.RegisterWorker(ctx, "1.0.0", []string{"backtest", "walk_forward"}, "test-host", 12345)
+	if err != nil {
+		t.Fatalf("RegisterWorker failed: %v", err)
+	}
+
+	// 2. Test SendHeartbeat
+	err = runner.SendHeartbeat(ctx, "busy")
+	if err != nil {
+		t.Fatalf("SendHeartbeat failed: %v", err)
+	}
+
+	// 3. Test RecordJobCompletion (success)
+	err = runner.RecordJobCompletion(ctx, "test-job-123", true)
+	if err != nil {
+		t.Fatalf("RecordJobCompletion (success) failed: %v", err)
+	}
+
+	// 4. Test RecordJobCompletion (failure)
+	err = runner.RecordJobCompletion(ctx, "test-job-456", false)
+	if err != nil {
+		t.Fatalf("RecordJobCompletion (failure) failed: %v", err)
+	}
+
+	// 5. Test UnregisterWorker
+	err = runner.UnregisterWorker(ctx)
+	if err != nil {
+		t.Fatalf("UnregisterWorker failed: %v", err)
+	}
+}

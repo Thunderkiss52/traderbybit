@@ -581,3 +581,100 @@ func (r *Runner) ExecuteJob(ctx context.Context, req *contracts.JobRequest, fenc
 
 	return nil
 }
+
+// RegisterWorker registers or updates the worker node in research_workers table.
+func (r *Runner) RegisterWorker(ctx context.Context, version string, algorithms []string, hostname string, pid int) error {
+	algoJSON, err := json.Marshal(algorithms)
+	if err != nil {
+		algoJSON = []byte("[]")
+	}
+	now := time.Now().UTC()
+
+	query := `
+		INSERT INTO research_workers (
+			worker_id, engine, version, status, hostname, pid, supported_algorithms,
+			heartbeat_at, registered_at, created_at, updated_at
+		) VALUES (
+			$1, 'go', $2, 'ready', $3, $4, $5, $6, $6, $6, $6
+		)
+		ON CONFLICT (worker_id) DO UPDATE SET
+			engine = 'go',
+			version = EXCLUDED.version,
+			status = 'ready',
+			hostname = EXCLUDED.hostname,
+			pid = EXCLUDED.pid,
+			supported_algorithms = EXCLUDED.supported_algorithms,
+			heartbeat_at = EXCLUDED.heartbeat_at,
+			updated_at = EXCLUDED.updated_at
+	`
+	_, err = r.db.ExecContext(ctx, query, r.workerID, version, hostname, pid, string(algoJSON), now)
+	if err != nil {
+		return fmt.Errorf("failed to register worker %s: %w", r.workerID, err)
+	}
+	return nil
+}
+
+// SendHeartbeat updates heartbeat timestamp and status for the worker.
+func (r *Runner) SendHeartbeat(ctx context.Context, status string) error {
+	now := time.Now().UTC()
+	query := `
+		UPDATE research_workers
+		SET heartbeat_at = $1, status = $2, updated_at = $1
+		WHERE worker_id = $3
+	`
+	_, err := r.db.ExecContext(ctx, query, now, status, r.workerID)
+	if err != nil {
+		return fmt.Errorf("failed to send heartbeat for worker %s: %w", r.workerID, err)
+	}
+	return nil
+}
+
+// RecordJobCompletion records job completion metrics and sets status back to ready.
+func (r *Runner) RecordJobCompletion(ctx context.Context, jobID string, success bool) error {
+	now := time.Now().UTC()
+	var query string
+	if success {
+		query = `
+			UPDATE research_workers
+			SET status = 'ready',
+			    heartbeat_at = $1,
+			    last_job_id = $2,
+			    last_job_finished_at = $1,
+			    total_jobs_completed = total_jobs_completed + 1,
+			    updated_at = $1
+			WHERE worker_id = $3
+		`
+	} else {
+		query = `
+			UPDATE research_workers
+			SET status = 'ready',
+			    heartbeat_at = $1,
+			    last_job_id = $2,
+			    last_job_finished_at = $1,
+			    total_jobs_failed = total_jobs_failed + 1,
+			    updated_at = $1
+			WHERE worker_id = $3
+		`
+	}
+	_, err := r.db.ExecContext(ctx, query, now, jobID, r.workerID)
+	if err != nil {
+		return fmt.Errorf("failed to record job completion for worker %s: %w", r.workerID, err)
+	}
+	return nil
+}
+
+// UnregisterWorker sets worker status to stopped on graceful shutdown.
+func (r *Runner) UnregisterWorker(ctx context.Context) error {
+	now := time.Now().UTC()
+	query := `
+		UPDATE research_workers
+		SET status = 'stopped', heartbeat_at = $1, updated_at = $1
+		WHERE worker_id = $2
+	`
+	_, err := r.db.ExecContext(ctx, query, now, r.workerID)
+	if err != nil {
+		return fmt.Errorf("failed to unregister worker %s: %w", r.workerID, err)
+	}
+	return nil
+}
+

@@ -180,12 +180,24 @@ final class ResearchJobServiceTest extends TestCase
         $this->assertNull($fresh->lease_owner);
     }
 
-    public function test_capability_routing(): void
+    public function test_capability_routing_reflects_actual_worker_presence(): void
     {
+        // 1. Initial state with zero workers -> Go engine is offline, not falsely declared ready
         $routing = $this->service->getCapabilityRouting();
         $this->assertArrayHasKey('capabilities', $routing);
         $this->assertArrayHasKey('jobs', $routing);
-        $this->assertSame('ready', $routing['capabilities']['go']['status']);
+        $this->assertSame('offline', $routing['capabilities']['go']['status']);
+        $this->assertFalse($routing['capabilities']['go']['available']);
+        $this->assertSame('NO_REGISTERED_WORKERS', $routing['capabilities']['go']['unavailable_reason']);
+
+        // 2. Register active Go worker -> Go engine dynamically becomes ready and available
+        $this->service->registerWorker('go-worker-live-1', 'go', '1.0.0', ['backtest', 'walk_forward']);
+        $routingLive = $this->service->getCapabilityRouting();
+        $this->assertSame('ready', $routingLive['capabilities']['go']['status']);
+        $this->assertTrue($routingLive['capabilities']['go']['available']);
+        $this->assertNull($routingLive['capabilities']['go']['unavailable_reason']);
+        $this->assertCount(1, $routingLive['capabilities']['go']['workers']);
+        $this->assertSame('go-worker-live-1', $routingLive['capabilities']['go']['workers'][0]['worker_id']);
     }
 
     public function test_f21_worker_capability_map_reports_compatible_workers_and_unavailable_reasons(): void
@@ -210,16 +222,20 @@ final class ResearchJobServiceTest extends TestCase
         $this->assertSame('ready', $workers['go-worker-prod-1']['status']);
         $this->assertTrue($workers['go-worker-prod-1']['available']);
         $this->assertNull($workers['go-worker-prod-1']['unavailable_reason']);
+        $this->assertTrue($workers['go-worker-prod-1']['can_accept_jobs']);
+        $this->assertTrue($workers['go-worker-prod-1']['is_heartbeat_fresh']);
 
         // Assert unsupported-version worker is rejected with reason
         $this->assertSame('unsupported_version', $workers['go-worker-legacy']['status']);
         $this->assertFalse($workers['go-worker-legacy']['available']);
         $this->assertSame('UNSUPPORTED_VERSION', $workers['go-worker-legacy']['unavailable_reason']);
+        $this->assertFalse($workers['go-worker-legacy']['can_accept_jobs']);
 
         // Assert expired-heartbeat worker is offline with reason
         $this->assertSame('offline', $workers['python-worker-stale']['status']);
         $this->assertFalse($workers['python-worker-stale']['available']);
         $this->assertSame('HEARTBEAT_EXPIRED', $workers['python-worker-stale']['unavailable_reason']);
+        $this->assertFalse($workers['python-worker-stale']['is_heartbeat_fresh']);
 
         // Engine capabilities report dynamic availability
         $this->assertTrue($routing['capabilities']['go']['available']);
