@@ -187,3 +187,15 @@ retain complete output and SHA, and provide rows from Queries 13–16 plus indep
 validated funding schedules/marks. Do not run mutation-based checklist examples
 (including audit-export POSTs) under this read-only handoff. Browser/API obligations
 require separate, source-reviewed read-only evidence; absent evidence remains PENDING.
+
+## 2026-10-29 evidence closure package
+
+Use [`EVIDENCE_CLOSURE_20261029.md`](file:///home/thunder/work/traderbybit/docs/progress/evidence/phase0-production-acceptance/EVIDENCE_CLOSURE_20261029.md)
+for the bounded row-level closure run. It adds
+`scripts/diagnostics/phase0_evidence_closure.sql` without replacing this matrix
+or the original 16-query suite.
+
+The closure run is strictly read-only. It does not authorize the audit-export
+`POST` example above, any autonomy settings mutation, any funding repair, any
+pipeline replay, or any migration rollback. Those obligations remain PENDING
+until separately approved evidence is reviewed.
