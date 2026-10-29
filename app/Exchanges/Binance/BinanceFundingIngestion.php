@@ -46,6 +46,7 @@ final readonly class BinanceFundingIngestion
                 $identity = ['exchange' => 'binance', 'category' => 'linear', 'symbol' => $symbol, 'funding_at' => $at];
                 $insertedNow = MarketFundingEventRecord::query()->insertOrIgnore([[
                     ...$identity, 'rate' => $item['funding_rate'], 'mark_price' => $item['mark_price'],
+                    'mark_price_source' => 'BINANCE_FUNDING_HISTORY',
                     'created_at' => now(), 'updated_at' => now(),
                 ]]);
                 if ($insertedNow === 0) {
@@ -63,7 +64,7 @@ final readonly class BinanceFundingIngestion
             return [$inserted, $missing];
         });
 
-        if ($inserted > 0) {
+        if (count($received) > $missing) {
             try {
                 app(PositionLifecycleService::class)->reconcilePendingFunding('binance', $symbol);
             } catch (\Throwable $e) {

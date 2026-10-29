@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace App\MarketData\Application;
 
 use App\MarketData\Contracts\BybitMarketDataClient;
-use App\MarketData\Infrastructure\Persistence\CandleRecord;
+use App\MarketData\Contracts\FundingMarkPriceProvider;
 use App\PaperTrading\Application\PositionLifecycleService;
 use App\PaperTrading\Infrastructure\Persistence\MarketFundingEventRecord;
 use Brick\Math\BigDecimal;
@@ -28,7 +28,8 @@ final readonly class FundingHistorySynchronizer
         $rows = $this->marketData->fundingRates('linear', $symbol, $this->milliseconds($from), $this->milliseconds($through));
         $inserted = 0;
         $missingMarkPrice = 0;
-        $markPricesByDate = [];
+        $verified = 0;
+
         foreach ($rows as $row) {
             if (($row['symbol'] ?? null) !== $symbol || ! is_string($row['fundingRate'] ?? null)
                 || ! is_string($row['fundingRateTimestamp'] ?? null) || ! ctype_digit($row['fundingRateTimestamp'])) {
@@ -39,27 +40,33 @@ final readonly class FundingHistorySynchronizer
             if ($fundingAt > $through || $fundingAt < $from) {
                 continue;
             }
-            $expectedOpen = $fundingAt->modify('-5 minutes');
-            $date = $expectedOpen->format('Y-m-d');
-            $markPricesByDate[$date] ??= CandleRecord::query()->where([
-                'exchange' => 'bybit', 'category' => 'linear', 'symbol' => $symbol,
-                'interval' => '5', 'is_closed' => true,
-            ])->whereDate('open_time', $date)->limit(300)->get(['open_time', 'close'])
-                ->keyBy(fn (CandleRecord $candle): int => $candle->open_time->getTimestamp());
-            $mark = $markPricesByDate[$date]->get($expectedOpen->getTimestamp());
-            if ($mark === null || $mark->open_time->addMinutes(5)->getTimestamp() !== $fundingAt->getTimestamp()) {
+            $mark = $this->marketData instanceof FundingMarkPriceProvider
+                ? $this->marketData->fundingMarkPrice($symbol, $this->milliseconds($fundingAt))
+                : null;
+            if ($mark === null) {
                 $missingMarkPrice++;
 
                 continue;
             }
+            if (BigDecimal::of($mark)->isLessThanOrEqualTo(0)) {
+                throw new \DomainException('Funding mark must be positive.');
+            }
+            $identity = ['exchange' => 'bybit', 'category' => 'linear', 'symbol' => $symbol, 'funding_at' => $fundingAt];
             $inserted += MarketFundingEventRecord::query()->insertOrIgnore([[
                 'exchange' => 'bybit', 'category' => 'linear', 'symbol' => $symbol,
-                'funding_at' => $fundingAt, 'rate' => $row['fundingRate'], 'mark_price' => $mark->close,
+                'funding_at' => $fundingAt, 'rate' => $row['fundingRate'], 'mark_price' => $mark,
+                'mark_price_source' => 'BYBIT_MARK_KLINE_OPEN',
                 'created_at' => now(), 'updated_at' => now(),
             ]]);
+            $stored = MarketFundingEventRecord::query()->where($identity)->first();
+            if ($stored !== null && (! BigDecimal::of($stored->rate)->isEqualTo($row['fundingRate'])
+                || ! BigDecimal::of($stored->mark_price)->isEqualTo($mark))) {
+                throw new \DomainException('Immutable Bybit funding conflict; historical reconciliation requires operator review.');
+            }
+            $verified++;
         }
 
-        if ($inserted > 0) {
+        if ($verified > 0) {
             try {
                 app(PositionLifecycleService::class)->reconcilePendingFunding('bybit', $symbol, $from);
             } catch (\Throwable $e) {

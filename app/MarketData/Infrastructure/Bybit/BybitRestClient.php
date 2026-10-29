@@ -6,6 +6,7 @@ namespace App\MarketData\Infrastructure\Bybit;
 
 use App\MarketData\Contracts\Backoff;
 use App\MarketData\Contracts\BybitMarketDataClient;
+use App\MarketData\Contracts\FundingMarkPriceProvider;
 use App\MarketData\Contracts\HttpTransport;
 use App\MarketData\Contracts\InstrumentMetadataProvider;
 use App\MarketData\Contracts\Sleeper;
@@ -13,10 +14,11 @@ use App\MarketData\Domain\Candle;
 use App\MarketData\Domain\CandleQuery;
 use App\MarketData\Exceptions\BybitApiException;
 use App\MarketData\Exceptions\TransportException;
+use Brick\Math\BigDecimal;
 use Psr\Log\LoggerInterface;
 use Throwable;
 
-final readonly class BybitRestClient implements BybitMarketDataClient, InstrumentMetadataProvider
+final readonly class BybitRestClient implements BybitMarketDataClient, FundingMarkPriceProvider, InstrumentMetadataProvider
 {
     public function __construct(
         private HttpTransport $transport,
@@ -154,6 +156,41 @@ final readonly class BybitRestClient implements BybitMarketDataClient, Instrumen
         $this->requireIntegerLike($result, 'ts');
 
         return $result;
+    }
+
+    public function fundingMarkPrice(string $symbol, int $atMilliseconds): ?string
+    {
+        if ($atMilliseconds % 60000 !== 0) {
+            return null;
+        }
+        $payload = $this->request('/v5/market/mark-price-kline', [
+            'category' => 'linear', 'symbol' => $symbol, 'interval' => '1',
+            'start' => $atMilliseconds, 'end' => $atMilliseconds, 'limit' => 1,
+        ]);
+        $result = $this->requireArray($payload, 'result');
+        if ($this->requireString($result, 'symbol') !== $symbol || $this->requireString($result, 'category') !== 'linear') {
+            throw new BybitApiException('Funding mark identity mismatch.');
+        }
+        if ($this->requireIntegerLike($payload, 'time') < $atMilliseconds + 60000) {
+            return null; // Wait until the historical mark candle is closed.
+        }
+        foreach ($this->requireList($result, 'list') as $row) {
+            if (! is_array($row) || count($row) !== 5) {
+                throw new BybitApiException('Malformed funding mark candle.');
+            }
+            if ($this->integerLike($row[0], 'mark.startTime') !== $atMilliseconds) {
+                continue;
+            }
+            // OPEN is the boundary mark; CLOSE would include the next minute.
+            $mark = $this->decimal($row[1], 'mark.openPrice');
+            if (BigDecimal::of($mark)->isLessThanOrEqualTo(0)) {
+                throw new BybitApiException('Funding mark must be positive.');
+            }
+
+            return $mark;
+        }
+
+        return null;
     }
 
     public function fundingRates(string $category, string $symbol, ?int $fromMs = null, ?int $toMs = null): array

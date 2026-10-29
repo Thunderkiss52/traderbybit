@@ -54,6 +54,15 @@ final class FundingScheduleSafetyTest extends TestCase
         ]);
     }
 
+    public function test_boundaries_are_utc_even_when_caller_supplies_local_offset(): void
+    {
+        $boundaries = app(PositionLifecycleService::class)->expectedFundingBoundaries(
+            new DateTimeImmutable('2026-10-27T10:00:00+03:00'),
+            new DateTimeImmutable('2026-10-27T12:00:00+03:00'), 'bybit', 'BTCUSDT');
+        self::assertCount(1, $boundaries);
+        self::assertSame('2026-10-27T08:00:00+00:00', $boundaries[0]->format(DATE_ATOM));
+    }
+
     public function test_expected_funding_boundaries_returns_null_when_exchange_or_symbol_is_uncertified(): void
     {
         $lifecycle = app(PositionLifecycleService::class);

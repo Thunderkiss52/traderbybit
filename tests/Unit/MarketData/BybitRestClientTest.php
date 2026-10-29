@@ -19,6 +19,27 @@ use Psr\Log\NullLogger;
 
 final class BybitRestClientTest extends TestCase
 {
+    public function test_funding_mark_uses_exact_boundary_open_not_future_close(): void
+    {
+        $at = 1704067200000;
+        $transport = new SequenceTransport([$this->response([[(string) $at, '101', '150', '90', '140']], $at + 60000)]);
+        self::assertSame('101', $this->client($transport)->fundingMarkPrice('BTCUSDT', $at));
+        self::assertSame('/v5/market/mark-price-kline', $transport->paths[0]);
+        self::assertSame($at, $transport->queries[0]['start']);
+        self::assertSame($at, $transport->queries[0]['end']);
+    }
+
+    public function test_funding_mark_rejects_wrong_boundary_and_forming_candle(): void
+    {
+        $at = 1704067200000;
+        self::assertNull($this->client(new SequenceTransport([
+            $this->response([[(string) ($at - 60000), '101', '150', '90', '140']], $at + 60000),
+        ]))->fundingMarkPrice('BTCUSDT', $at));
+        self::assertNull($this->client(new SequenceTransport([
+            $this->response([[(string) $at, '101', '150', '90', '140']], $at + 59999),
+        ]))->fundingMarkPrice('BTCUSDT', $at));
+    }
+
     public function test_it_parses_sorts_utc_and_marks_only_closed_rest_candles(): void
     {
         $transport = new SequenceTransport([
@@ -165,11 +186,14 @@ final class SequenceTransport implements HttpTransport
     /** @var list<array<string, scalar>> */
     public array $queries = [];
 
+    public array $paths = [];
+
     /** @param list<TransportResponse|TransportException> $responses */
     public function __construct(private array $responses) {}
 
     public function get(string $path, array $query): TransportResponse
     {
+        $this->paths[] = $path;
         $this->queries[] = $query;
         $response = array_shift($this->responses);
         if ($response instanceof TransportException) {

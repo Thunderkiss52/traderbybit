@@ -242,7 +242,9 @@ final readonly class PositionLifecycleService
                 $realized = BigDecimal::of($account->realized_pnl)->plus($amount);
                 $portfolioUnrealized = $this->portfolioUnrealized($account->id);
                 $this->refreshAccountMetrics($account, $realized, $portfolioUnrealized);
-                $this->snapshot($account->refresh(), $event->funding_at->toDateTimeImmutable(), "funding:{$locked->id}:{$event->id}");
+                // Settlement economic time belongs to the funding ledger. This is
+                // current account equity observed when the adjustment was applied.
+                $this->snapshot($account->refresh(), now('UTC')->toDateTimeImmutable(), "funding:{$locked->id}:{$event->id}");
                 $this->journal->append($account->id, $locked->signal_id, $locked->id, 'FUNDING_APPLIED', $event->funding_at->toDateTimeImmutable(), [
                     'amount' => $amount,
                     'rate' => $event->rate,
@@ -522,6 +524,8 @@ final readonly class PositionLifecycleService
             return null; // INSUFFICIENT_DATA
         }
 
+        $from = $from->setTimezone(new \DateTimeZone('UTC'));
+        $to = $to->setTimezone(new \DateTimeZone('UTC'));
         $intervalHours = (int) ($intervalSeconds / 3600);
         if ($intervalHours < 1 || ($intervalSeconds % 3600) !== 0 || (24 % $intervalHours) !== 0) {
             return null; // Non-standard or uncertified interval
@@ -566,7 +570,7 @@ final readonly class PositionLifecycleService
                     PositionStatus::PartiallyClosed->value,
                 ])->orWhere('funding_complete', false);
             })
-            ->where('opened_at', '>=', $since)
+            ->where(fn ($query) => $query->whereNull('closed_at')->orWhere('closed_at', '>=', $since))
             ->orderBy('opened_at')
             ->get();
 

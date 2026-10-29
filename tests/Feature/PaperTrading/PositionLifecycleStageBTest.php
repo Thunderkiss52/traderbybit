@@ -182,8 +182,14 @@ final class PositionLifecycleStageBTest extends TestCase
         ]);
 
         // Reconcile pending funding
-        $appliedCount = $lifecycle->reconcilePendingFunding('bybit', 'BTCUSDT', new DateTimeImmutable('2026-10-26T00:00:00Z'));
+        $appliedCount = $lifecycle->reconcilePendingFunding('bybit', 'BTCUSDT', new DateTimeImmutable('2026-10-27T00:00:00Z'));
         self::assertSame(1, $appliedCount);
+
+        $fundingSnapshot = DB::table('equity_snapshots')->where('paper_account_id', $account->id)
+            ->where('source_event_key', 'funding:'.$closed->id.':'.$mfe->id)->first();
+        self::assertNotNull($fundingSnapshot);
+        self::assertGreaterThanOrEqual($closed->closed_at->getTimestamp(), (new DateTimeImmutable($fundingSnapshot->recorded_at))->getTimestamp(),
+            'A late funding adjustment must not insert current equity into a past performance timestamp.');
 
         // Check PositionFundingEventRecord
         $pfe = PositionFundingEventRecord::query()->where('position_id', $closed->id)->first();
@@ -208,7 +214,7 @@ final class PositionLifecycleStageBTest extends TestCase
         self::assertTrue(BigDecimal::of($accountFresh->current_equity)->isEqualTo($expectedEquity));
 
         // Re-run reconcilePendingFunding: strictly IDEMPOTENT (no new events applied)
-        $secondRunCount = $lifecycle->reconcilePendingFunding('bybit', 'BTCUSDT', new DateTimeImmutable('2026-10-26T00:00:00Z'));
+        $secondRunCount = $lifecycle->reconcilePendingFunding('bybit', 'BTCUSDT', new DateTimeImmutable('2026-10-27T00:00:00Z'));
         self::assertSame(0, $secondRunCount);
         self::assertSame(1, PositionFundingEventRecord::query()->where('position_id', $closed->id)->count());
     }

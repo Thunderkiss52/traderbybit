@@ -6,6 +6,7 @@ namespace Tests\Feature\MarketData;
 
 use App\MarketData\Application\FundingHistorySynchronizer;
 use App\MarketData\Contracts\BybitMarketDataClient;
+use App\MarketData\Contracts\FundingMarkPriceProvider;
 use App\MarketData\Domain\CandleQuery;
 use App\MarketData\Infrastructure\Persistence\CandleRecord;
 use App\PaperTrading\Infrastructure\Persistence\MarketFundingEventRecord;
@@ -17,7 +18,25 @@ final class FundingHistorySynchronizerTest extends TestCase
 {
     use RefreshDatabase;
 
-    public function test_closed_candle_mark_price_is_persisted_idempotently(): void
+    public function test_trade_candle_is_not_a_verified_settlement_mark(): void
+    {
+        CandleRecord::query()->create([
+            'exchange' => 'bybit', 'category' => 'linear', 'symbol' => 'BTCUSDT', 'interval' => '5',
+            'open_time' => '2026-10-15T07:55:00Z', 'open' => '100', 'high' => '102', 'low' => '99',
+            'close' => '101', 'volume' => '10', 'turnover' => '1000', 'is_closed' => true,
+        ]);
+        $client = $this->createStub(BybitMarketDataClient::class);
+        $client->method('fundingRates')->willReturn([[
+            'symbol' => 'BTCUSDT', 'fundingRate' => '0.0001',
+            'fundingRateTimestamp' => '1792051200000',
+        ]]);
+        $result = (new FundingHistorySynchronizer($client, ['initial_lookback_days' => 30]))
+            ->sync('BTCUSDT', new DateTimeImmutable('2026-10-15T08:01:00Z'));
+        self::assertSame(0, $result['inserted']);
+        self::assertSame(1, $result['missing_mark_price']);
+    }
+
+    public function test_boundary_mark_price_is_persisted_idempotently_without_trade_price_substitution(): void
     {
         CandleRecord::query()->create([
             'exchange' => 'bybit', 'category' => 'linear', 'symbol' => 'BTCUSDT', 'interval' => '5',
@@ -25,9 +44,14 @@ final class FundingHistorySynchronizerTest extends TestCase
             'close' => '101', 'volume' => '10', 'turnover' => '1000', 'is_closed' => true,
         ]);
         $timestamp = (string) ((new DateTimeImmutable('2026-10-15T08:00:00Z'))->getTimestamp() * 1000);
-        $client = new class($timestamp) implements BybitMarketDataClient
+        $client = new class($timestamp) implements BybitMarketDataClient, FundingMarkPriceProvider
         {
             public function __construct(private readonly string $timestamp) {}
+
+            public function fundingMarkPrice(string $symbol, int $atMilliseconds): ?string
+            {
+                return '103';
+            }
 
             public function candles(CandleQuery $query): array
             {
@@ -61,7 +85,8 @@ final class FundingHistorySynchronizerTest extends TestCase
         self::assertSame(1, $first['inserted'], json_encode($first, JSON_THROW_ON_ERROR));
         self::assertSame(0, $service->sync('BTCUSDT', $through)['inserted']);
         $event = MarketFundingEventRecord::query()->sole();
-        self::assertDecimalSame('101', $event->mark_price);
+        self::assertDecimalSame('103', $event->mark_price);
+        self::assertSame('BYBIT_MARK_KLINE_OPEN', $event->mark_price_source);
         self::assertDecimalSame('0.0001', $event->rate);
     }
 
