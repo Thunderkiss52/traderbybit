@@ -6,6 +6,7 @@ Scope baseline: `VECTOR-SCOPE-20261027-v1` (proposed weights). No comparable pri
 |---|---|---:|---:|---:|---|
 | [Initial, 2026-10-27](history/initial.json) | `d9a0aeb5d14233fc95e9e5cc55d8748814362f59` | 42.2882% | 0.0000% | 0.0000% | NO_COMPARABLE_SNAPSHOT |
 | [Phase 0 evidence, 2026-10-27](history/phase0-evidence-20261027.json) | `c8d51156b2c72b03f009d10e6a634ff80cff77ff` | 42.2882% | 4.1270% | 0.0000% | Same scope; verification +4.1270 points |
+| [Phase 0 integrity remediation, 2026-10-29](history/phase0-integrity-20261029.json) | `375d7ecc33873d21bde877f70f1e7313225c3384` | 0.0000% | 0.0000% | 0.0000% | Prior evidence stale/regenerated; local regressions add no product acceptance |
 
 97 requirements: 45/8/10/11/10/8/5 in Phases 0–6. F01–F27 and I01–I09 are individual assurance rows, excluded from duplicate runtime implementation credit. Phase 6 is documentation only and excluded from runtime A.
 
@@ -39,3 +40,23 @@ On 2026-10-28 at commit `a4b82ea04a3307cbbc29e966bcc0b250e0339caf`, Phase 0 loca
 - Scorecard metrics verified: Implementation 42.2882%, Verification 9.2857%, Product 0.0000% (51 CURRENT, 1 FAILED, 177 UNAVAILABLE).
 
 Concurrently, the canonical [VECTOR Go-First Architecture Roadmap V3](../roadmap/VECTOR_GO_FIRST_ROADMAP_V3.md) and [Go Migration Registry](VECTOR_GO_MIGRATION_REGISTRY_V3.md) were codified, establishing a 9-phase sequence and a Migration Value Gate to transition core market data, strategy evaluation, risk, and PAPER accounting to Golang while retaining Laravel as a thin control plane. Frozen baseline `VECTOR-SCOPE-20261027-v1` remains permanently preserved.
+
+
+## Phase 0 Financial Integrity Remediation
+
+On 2026-10-29 the local source at `375d7ecc33873d21bde877f70f1e7313225c3384`
+(based on deployed `5b674960adc8ff6591134537763dce7a5bb0bb3c`) corrected confirmed
+Phase 0 code defects: Binance bootstrap equity, Bybit funding marks and retry scope,
+pipeline terminalization/recovery, late-funding snapshot time, and the training
+permission boundary. The isolated suite passed 973 tests (972 pass, 1 opt-in live API
+skip, 9710 assertions); Pint, Python classifier/tracker tests, frontend tests,
+typecheck and build passed.
+
+Scores remain I=0.0000%, V=0.0000%, P=0.0000% because the registry correctly treats
+earlier evidence as stale and no production V2 obligations were verified. All 45
+Phase 0 production obligations remain PENDING. The 379 legacy Bybit positions remain
+unclassified until per-position and independently validated exchange evidence is
+provided; the four PARTIAL and 316 STALE rows require row-level production
+disposition. No historical financial data was repaired. See
+[remediation](evidence/phase0-production-acceptance/REMEDIATION_20261029.md) and
+[validation](evidence/phase0-production-acceptance/VALIDATION_20261029.md).
