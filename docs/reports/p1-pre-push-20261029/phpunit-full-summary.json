@@ -1,0 +1,51 @@
+{
+  "suites": [
+    {
+      "name": "/work/phpunit.xml",
+      "tests": "992",
+      "assertions": "10063",
+      "errors": "0",
+      "failures": "1",
+      "skipped": "1",
+      "time": "164.906269"
+    },
+    {
+      "name": "Unit",
+      "tests": "412",
+      "assertions": "2175",
+      "errors": "0",
+      "failures": "0",
+      "skipped": "0",
+      "time": "11.094192"
+    },
+    {
+      "name": "Feature",
+      "tests": "534",
+      "assertions": "7415",
+      "errors": "0",
+      "failures": "1",
+      "skipped": "0",
+      "time": "140.572609"
+    },
+    {
+      "name": "Integration",
+      "tests": "46",
+      "assertions": "473",
+      "errors": "0",
+      "failures": "0",
+      "skipped": "1",
+      "time": "13.239467"
+    }
+  ],
+  "skips": [
+    {
+      "name": "test_public_linear_market_endpoints_match_the_documented_contract",
+      "file": "/work/tests/Integration/BybitPublicApiIntegrationTest.php",
+      "line": "25",
+      "class": "Tests\\Integration\\BybitPublicApiIntegrationTest",
+      "classname": "Tests.Integration.BybitPublicApiIntegrationTest",
+      "assertions": "0",
+      "time": "0.000000"
+    }
+  ]
+}

@@ -1,12 +1,21 @@
 # VECTOR Forensic Investigation Report: Binance Historical Candle Integrity Discrepancy (2026-10-27T00:00:00Z)
 
-**Date of Report:** 2026-10-29  
-**System:** VECTOR Trading Research Platform  
-**Target Exchange:** Binance USD(S)-M Futures (`linear`)  
-**Target Instruments:** `BTCUSDT`, `ETHUSDT`  
-**Target Intervals:** `30m` (`interval = '30'`), `1h` (`interval = '60'`)  
-**Target Timestamp:** `2026-10-27T00:00:00.000Z` (Unix timestamp: `1793059200`)  
-**Status:** FORENSIC EVIDENCE VERIFIED — REMEDIATION SCRIPT PREPARED (Awaiting Operator Execution)
+**Date of Report:** 2026-10-29
+**System:** VECTOR Trading Research Platform
+**Target Exchange:** Binance USD(S)-M Futures (`linear`)
+**Target Instruments:** `BTCUSDT`, `ETHUSDT`
+**Target Intervals:** `30m` (`interval = '30'`), `1h` (`interval = '60'`)
+**Target Timestamp:** `2026-10-27T00:00:00.000Z` (Unix timestamp: `1793059200`)
+**Status:** HISTORICAL REPORT — VALUES NOT REVALIDATED IN THE FINAL PRE-PUSH GATE; REMEDIATION PENDING SEPARATE AUTHORIZATION
+
+**2026-10-29 verification qualification:** The [final pre-push gate](P1_PRE_PUSH_RELEASE_GATE_20261029.md)
+supersedes the unconditional conclusions below. No production database or Binance
+archive was queried during that gate. The listed historical values are prior
+report claims, not freshly verified observations. Matching open/low and lower
+volume do not prove when a candle was captured or establish clock skew as the
+cause. The 2-second local-clock grace does not demonstrate exchange-clock accuracy.
+Conflict durability and fail-closed behavior have reproducible local failure
+cases; the implementation cannot currently be treated as release accepted.
 
 ---
 
@@ -19,8 +28,9 @@ During production operations of release `671f72f`, the Laravel task scheduler re
 
 Despite these recurring errors, the Research Health API (`/api/v1/research/health/data-freshness`) reported `HEALTHY`, 0 execution failures, and no active alerts, while reporting a stale response timestamp.
 
-This investigation determined:
-1. **Root Cause of Historical Conflict:** An unclosed (forming) candle was erroneously committed as a closed immutable observation on `2026-10-27T00:00:00Z`.
+The earlier investigation reported the following explanations; historical capture
+timing still requires raw production/source evidence:
+1. **Historical Conflict Hypothesis:** An unclosed (forming) candle may have been committed as a closed immutable observation on `2026-10-27T00:00:00Z`.
 2. **Root Cause of Recurring Loop:** The 15-minute cron job scheduled higher-timeframe ingestion with an unbounded `limit = 250` without `startTime`. This queried 5+ days into the past, perpetually re-encountering the Oct 27 bar, throwing `DomainException`, rolling back the entire ingestion transaction, and preventing any new HTF candles from being recorded.
 3. **Root Cause of Health Misreporting:**
    - In-place mutation of mutable `Carbon` (`$now->subDay()`) caused `timestamp` and `checked_at` to report `now - 24 hours` instead of the current UTC time.
@@ -30,9 +40,11 @@ This investigation determined:
 
 ---
 
-## 2. Mathematical Forensic Proof: Premature Candle Closure
+## 2. Previously Reported Historical Comparison
 
-To prove whether the stored rows originated from exchange source corrections, interval misalignment, or premature candle closure, we compared the stored database rows with official historical klines fetched directly from Binance Public REST API (`fapi.binance.com/fapi/v1/klines`).
+The earlier report attributed the following values to stored database rows and
+Binance Public REST API (`fapi.binance.com/fapi/v1/klines`). This release gate did
+not revalidate those observations or establish their capture timestamps.
 
 ### A. BTCUSDT 30m (`open_time = 2026-10-27 00:00:00+00`)
 | Metric | Stored Database Row | Official Binance REST (`fapi.binance.com`) | Forensic Delta | Analysis |
@@ -74,8 +86,10 @@ To prove whether the stored rows originated from exchange source corrections, in
 | **Volume** | `21040.500` | `59814.527` | **-38774.027 (-64.8%)** |
 | **Turnover** | `48920150.00` | `139187033.96072` | **-90266883.96 (-64.8%)** |
 
-### Mathematical Conclusion:
-The exact equality of `open` and `low` combined with a ~65-70% deficit in `volume` and `turnover` provides irrefutable mathematical proof: **The stored candles were recorded approximately 8 to 10 minutes into the candle window and erroneously flagged as `is_closed = true`.**
+### Interpretation:
+Matching `open` and `low` with lower volume is consistent with an incomplete
+observation. It does not establish capture time, exclude source corrections, or
+prove premature closure. The previously claimed 8-to-10-minute timing is unverified.
 
 ---
 
@@ -84,10 +98,10 @@ The exact equality of `open` and `low` combined with a ~65-70% deficit in `volum
 1. **2000ms Grace Period on Closed Candles (`BinancePublicAdapter.php`):**
    An assertion now enforces that `$closeMs + 2000 <= (int) floor(microtime(true) * 1000)`. Forming candles within 2 seconds of close time can never be flagged as closed.
 2. **Durable Conflict Persistence & Non-Discarding Batch Ingestion (`BinanceCandleIngestion.php`):**
-   - Independent transaction persistence guarantees conflicts are never lost upon transaction rollback.
+   - Top-level ingestion rollback and successful quarantine preserve conflict evidence in nominal local controls. An enclosing transaction rollback and persistence failures can lose that evidence; see the final gate report.
    - `quarantineConflicts: true` allows the scheduler to quarantine conflicted bars into `market_candle_conflicts` while continuing to commit new, valid bars.
 3. **Bounded Incremental HTF Scheduling (`routes/console.php`):**
-   The 15-minute cron job now requests `limit = 10` with `quarantineConflicts: true`, eliminating the infinite loop back to Oct 27.
+   The 15-minute cron job now requests `limit = 10` with `quarantineConflicts: true`. This bounds routine overlap; it does not repair historical conflicts or prove recovery after an extended outage.
 4. **Scoped Fail-Closed Protection (`BinanceCandleWindow.php` & `BinancePaperReadiness.php`):**
    Binance paper trading is only blocked when an unresolved conflict falls inside the required 220-bar indicator warm-up window.
 5. **Freshness & Integrity Observability (`SystemFreshnessService.php` & `ResearchHealthPage.vue`):**

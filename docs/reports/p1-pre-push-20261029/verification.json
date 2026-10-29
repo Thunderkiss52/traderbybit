@@ -1,0 +1,33 @@
+{
+  "date": "2026-10-29",
+  "source_head": "24e5096588c1aca66a19761ca7ed207e73514066",
+  "verdict": "NOT_READY",
+  "scope": "P1 release gate; documentation changes only",
+  "scores_before": {
+    "implementation": 0.0,
+    "verification": 0.0,
+    "product": 0.0
+  },
+  "scores_after": {
+    "implementation": 0.0,
+    "verification": 0.0,
+    "product": 0.0
+  },
+  "freshness_before": {
+    "FAILED": 1,
+    "STALE": 51,
+    "UNAVAILABLE": 177
+  },
+  "freshness_after": {
+    "FAILED": 1,
+    "STALE": 51,
+    "UNAVAILABLE": 177
+  },
+  "runtime_source_modified": false,
+  "production_connected": false,
+  "production_mutated": false,
+  "push_performed": false,
+  "deployment_performed": false,
+  "historical_remediation_executed": false,
+  "econom_accessed": false
+}

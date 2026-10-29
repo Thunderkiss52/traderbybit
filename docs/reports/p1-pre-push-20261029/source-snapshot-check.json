@@ -1,0 +1,11 @@
+{
+  "source_head": "24e5096588c1aca66a19761ca7ed207e73514066",
+  "checked_files": 818,
+  "mismatches": [
+    "research-go/bin/research-worker"
+  ],
+  "built_artifact_exceptions": [
+    "research-go/bin/research-worker: deliberately rebuilt from reviewed source in temporary snapshot; checkout untouched"
+  ],
+  "runtime_and_test_source_mismatches": []
+}

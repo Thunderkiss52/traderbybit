@@ -1,0 +1,20 @@
+{
+  ".gitignore": "f971935e311dd1c0097af951525d35f10d06b43977a006e5b1f94d6b4d28e63c",
+  "app/Exchanges/Binance/BinanceCandleIngestion.php": "0ed17568595a4dfc646eba65a869146e18f68e6aaea583cb06f5e566c017651b",
+  "app/Exchanges/Binance/BinanceCandleWindow.php": "6bfded6fd5bc81e05f680573af429a4a18d433ab068d09b6476ed9922c51b9cc",
+  "app/Exchanges/Binance/BinancePaperReadiness.php": "efab6631f51c485837e583f93f7e9b1b0912ec8c7d1f43ede6e547eb5500e4a6",
+  "app/Exchanges/Binance/BinancePublicAdapter.php": "ba81c359a9278ba9b3ad836e39358b305d15096e96b7efa656658d7caf4b7c87",
+  "app/Exchanges/Binance/BinanceSourceIdentity.php": "a371f059afc0990e4276298f5bf01426ea0c0d30f9f3b38b44386be0ffa08170",
+  "app/Http/Controllers/Api/V1/ResearchHealthController.php": "e9444d84788ae1ef9ab4b24b2ea5532aaa6e6a9e7a408428a87a26578ad97fd0",
+  "app/MarketData/Application/MarketCandleConflictService.php": "f529a488ae196d1ec93ab9f21de5882aab72e036b52d3839ef001bff5edd4d7e",
+  "app/MarketData/Infrastructure/Persistence/MarketCandleConflictRecord.php": "d7d5d208e8bb04dd040f29f3cd671121c1e8318d71f15135578fbb8fd0fa657d",
+  "app/Research/Application/SystemFreshnessService.php": "072f214467d10c2c2d78e83c1077be1b99fb03a845820e2a87fb155e38a76a50",
+  "database/migrations/2026_10_29_220000_create_market_candle_conflicts_table.php": "f4e2d3a5c66696187babfef98b99825d8b77e4b37d4c21985764b6f2c561d5ad",
+  "docs/reports/BINANCE_20261027_CANDLE_FORENSIC_REPORT.md": "e06e2f850b0f69e8698d889a4829fe717646a61116d3c1340ec008fa2e0e077b",
+  "docs/reports/BINANCE_20261027_PROPOSED_REMEDIATION_PLAN.md": "d6e0bffa1ba8cd789cf6bba459a168d9d51304e7a2b09146fb4b44e65055ad05",
+  "frontend/src/pages/ResearchHealthPage.vue": "536649d8c916cec825edea9149462b703ea5a4f17ee9e79095b125e41f334b54",
+  "routes/console.php": "4999ee40b0a8d9c81b0cf10f50a6be9a5cdb8fc73c2e7b59717ba633d99a0ec0",
+  "scripts/diagnostics/remediate_binance_20261027_candles.sql": "5a0c59a1c6f7f9c91e21ab9fe6b38bc3637e728d71fe79d1198f7b91b43e242b",
+  "tests/Feature/Exchanges/BinanceCandleConflictQuarantineTest.php": "13bb7b5dc4bd4502320187970131f3357d429878fd64281bfd0e7b1a886268b9",
+  "tests/Unit/Research/SystemFreshnessServiceTest.php": "5b3323fd3edc5372ce98e117c36c097f4db462887758f8ae820d7475342ee8e0"
+}

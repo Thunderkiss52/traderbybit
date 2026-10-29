@@ -1,0 +1,87 @@
+[
+  {
+    "probe": "strict_top_level_rollback",
+    "observed": {
+      "error": "Conflicting immutable Binance close observation.",
+      "candles": 1,
+      "conflicts_seen_by_independent_connection": 1
+    }
+  },
+  {
+    "probe": "quarantine_top_level_control",
+    "observed": {
+      "0": {
+        "exchange_id": "binance",
+        "symbol": "BTCUSDT",
+        "interval": "30m",
+        "fetched": 3,
+        "new_closed_candles": 2,
+        "conflicts_count": 1,
+        "conflicts": [
+          {
+            "open_time": "2026-01-01T00:30:00.000Z",
+            "column": "close",
+            "error": "Conflicting immutable Binance close observation."
+          }
+        ],
+        "status": "PARTIAL_INGESTION_WITH_CONFLICTS",
+        "execution_status": "PAPER_EXECUTION_BLOCKED_UNTIL_VERIFIED"
+      },
+      "independent_conflicts": 1,
+      "window": "CANDLE_HISTORY_INTEGRITY_CONFLICT"
+    }
+  },
+  {
+    "probe": "recurrent_conflict_after_resolution",
+    "observed": {
+      "ingestion_status": "PARTIAL_INGESTION_WITH_CONFLICTS",
+      "persisted_status": "RESOLVED",
+      "window": "READY"
+    }
+  },
+  {
+    "probe": "conflict_persistence_failure",
+    "observed": {
+      "ingestion_status": "PARTIAL_INGESTION_WITH_CONFLICTS",
+      "new_closed_candles": 2,
+      "independent_conflicts": 0,
+      "window": "READY"
+    }
+  },
+  {
+    "probe": "missing_conflict_table",
+    "observed": {
+      "active": false,
+      "window": "READY"
+    }
+  },
+  {
+    "probe": "conflict_query_failure",
+    "observed": {
+      "active": false,
+      "window": "READY",
+      "count": 0
+    }
+  },
+  {
+    "probe": "scheduled_partial_ingestion",
+    "observed": {
+      "callback_status": "PARTIAL_INGESTION_WITH_CONFLICTS",
+      "scheduler_exit_code": 0,
+      "independent_conflicts": 1
+    }
+  },
+  {
+    "probe": "outer_transaction_before_rollback",
+    "observed": {
+      "same_connection_conflicts": 1,
+      "independent_conflicts": 0
+    }
+  },
+  {
+    "probe": "outer_transaction_after_rollback",
+    "observed": {
+      "independent_conflicts": 0
+    }
+  }
+]

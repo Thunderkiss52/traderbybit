@@ -8,6 +8,28 @@
 **Target Proposal Baseline:** `VECTOR-SCOPE-20261028-v3.3`
 **Execution Mode:** STRICTLY VIRTUAL PAPER TRADING ONLY. Zero real exchange trading; zero private trade credentials; zero order placement endpoints.
 
+### P1 Binance Candle Integrity release gate — 2026-10-29
+
+This release package is separate from roadmap Phase 1. Phase 0 remains **BLOCKED**;
+roadmap Phase 1 remains **NOT STARTED**. No production acceptance is granted.
+
+| Item | Source-qualified status |
+|---|---|
+| P1 implementation | **IMPLEMENTED** at `24e5096588c1aca66a19761ca7ed207e73514066` |
+| Nominal regression verification | **LOCAL VERIFIED**; exact fresh results and command evidence are recorded in the [pre-push gate report](../reports/P1_PRE_PUSH_RELEASE_GATE_20261029.md) |
+| Targeted P1 PHPUnit | **LOCAL VERIFIED** — 47 tests / 593 assertions, exit 0 |
+| Full PHPUnit | **LOCAL VERIFIED** — 991 passed / 1 intentional public-Bybit skip / 10,078 assertions, exit 0 |
+| Frontend tests and build | **LOCAL VERIFIED** — 64 tests passed; typecheck and production build passed, exit 0 |
+| Go race tests | **LOCAL VERIFIED** — `go test -race -count=1 ./...` passed, exit 0 |
+| Conflict durability and fail-closed behavior | **LOCAL VERIFICATION FAILED**; persistence/read failures, recurrence after resolution, and scheduled partial-result handling prevent release approval |
+| Historical correction | **PENDING SEPARATE OPERATOR AUTHORIZATION** for the four reported BTCUSDT/ETHUSDT 30m/1h bars at 2026-10-27T00:00:00Z; prepared SQL was not executed; current production values were not inspected |
+| Push and deployment | **PRODUCTION PENDING / NOT READY**; no push, workflow dispatch, deployment, or production writes authorized or performed |
+
+The pre-push gate report supersedes unconditional durability/root-cause claims in
+the earlier forensic report. Passing nominal suites does not establish safety of
+failure paths or close production obligations. Scope weights and acceptance
+criteria remain frozen; no scorecard credit is inferred from this release review.
+
 ---
 
 ## Executive Summary & Owner Directives

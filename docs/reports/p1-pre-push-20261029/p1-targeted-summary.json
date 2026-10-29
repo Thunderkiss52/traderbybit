@@ -1,0 +1,14 @@
+{
+  "suites": [
+    {
+      "name": "CLI Arguments",
+      "tests": "47",
+      "assertions": "593",
+      "errors": "0",
+      "failures": "0",
+      "skipped": "0",
+      "time": "21.958413"
+    }
+  ],
+  "skips": []
+}

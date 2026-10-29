@@ -1,0 +1,3 @@
+FROM traderbybit-php85-test:local
+RUN apk add --no-cache postgresql17-client
+LABEL io.traderbybit.task="p1-release-gate"

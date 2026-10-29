@@ -1,17 +1,25 @@
 # VECTOR Proposed Historical Remediation Plan: Binance Candles (2026-10-27T00:00:00Z)
 
-**Document Version:** 1.0.0  
-**Target Date:** 2026-10-29  
-**Target Environment:** Production PostgreSQL (Database: `traderbybit` / Container: `postgres-vector`)  
-**Approval Required:** Operator / Project Owner Authorization Required  
+**Document Version:** 1.0.0
+**Target Date:** 2026-10-29
+**Target Environment:** Production PostgreSQL (Database: `traderbybit` / Container: `postgres-vector`)
+**Approval Required:** Operator / Project Owner Authorization Required
 **Execution Script:** [`scripts/diagnostics/remediate_binance_20261027_candles.sql`](file:///home/thunder/work/traderbybit/scripts/diagnostics/remediate_binance_20261027_candles.sql)
+
+**Final-gate qualification (2026-10-29):** This is a prepared proposal, not an
+approved execution procedure. The production identity and historical values below
+were not revalidated in the [pre-push gate](P1_PRE_PUSH_RELEASE_GATE_20261029.md).
+The SQL ends with an unconditional `COMMIT`; its verification comment does not
+pause batch execution for operator inspection. Review transaction controls,
+expected row counts, backup contents, source provenance and rollback scope under
+separate operator authorization before any execution. The script was not run.
 
 ---
 
 ## 1. Safety Notice & Operational Policy
 
 > [!CAUTION]
-> **NO AUTOMATIC REMEDIATION IN RUNTIME OR DEPLOYMENT**  
+> **NO AUTOMATIC REMEDIATION IN RUNTIME OR DEPLOYMENT**
 > Per VECTOR Project Architecture rules:
 > - Application code, background workers, and automated migrations **MUST NEVER** overwrite historical financial records or immutable market candles automatically.
 > - Historical repair must occur via explicit, operator-supervised transactional execution.
