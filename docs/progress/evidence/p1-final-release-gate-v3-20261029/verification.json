@@ -1,0 +1,52 @@
+{
+  "verdict": "NOT READY",
+  "inspected_head": "43bd3d77c084e23e83b845f7fce476ec0cd60fbd",
+  "baseline": "671f72f11ba76a978dc1a6f29ae0ceeeb63e9322",
+  "branch": "main",
+  "initial_working_tree": "clean",
+  "runtime_changes_in_v3": false,
+  "blockers": [
+    "R1 no idempotent journal recovery/acknowledgement",
+    "R2 malformed pending scope reports VALID/READY",
+    "R3 ongoing strategy inputs bypass pending journal including after fresh process startup"
+  ],
+  "original_five_blockers": "independently verified fixed",
+  "full": {
+    "tests": 1009,
+    "assertions": 10267,
+    "errors": 0,
+    "failures": 0,
+    "skipped": 1,
+    "passed": 1008,
+    "exit_code": 0,
+    "skipped_cases": [
+      {
+        "class": "Tests\\Integration\\BybitPublicApiIntegrationTest",
+        "name": "test_public_linear_market_endpoints_match_the_documented_contract"
+      }
+    ]
+  },
+  "targeted": {
+    "tests": 66,
+    "assertions": 794,
+    "errors": 0,
+    "failures": 0,
+    "skipped": 0,
+    "passed": 66,
+    "exit_code": 0,
+    "skipped_cases": []
+  },
+  "pending_fixture_files": 7,
+  "pending_unique_payloads": 5,
+  "default_v3_runtime_pending": 0,
+  "preexisting_task_pending": 0,
+  "go_race": "reused dated evidence; raw hash verified; relevant paths unchanged",
+  "production_inspected": false,
+  "push": false,
+  "deploy": false,
+  "production_mutation": false,
+  "fixture_cleanup_is_recovery": false,
+  "interrupted_wrapper_exit": "unknown; not accepted; rerun full has exit 0",
+  "tracker_failed_attempt": "exit 2 without host Git metadata; corrected generate/strict exit 0",
+  "cleanup": "only labeled V3 container/network/image removed; pending fixture bytes retained in inventory"
+}

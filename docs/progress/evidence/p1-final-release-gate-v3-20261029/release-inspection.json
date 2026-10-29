@@ -1,0 +1,16 @@
+{
+  "baseline": "671f72f11ba76a978dc1a6f29ae0ceeeb63e9322",
+  "head": "43bd3d77c084e23e83b845f7fce476ec0cd60fbd",
+  "scope_totals": {
+    "files": 127,
+    "evidence_files": 98,
+    "decoded_evidence_files": 67
+  },
+  "unexpected_paths": [],
+  "secret_pattern_hits": [],
+  "automatic_remediation_references": "",
+  "automatic_remediation_search_exit": 1,
+  "deployment_file_changes": [],
+  "historical_sql_sha256": "5a0c59a1c6f7f9c91e21ab9fe6b38bc3637e728d71fe79d1198f7b91b43e242b",
+  "limitations": "Pattern/source inspection does not prove all conceivable secret formats; only documented synthetic testing credentials found in reviewed evidence."
+}

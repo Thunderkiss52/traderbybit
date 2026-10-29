@@ -1,0 +1,25 @@
+<?php
+declare(strict_types=1);
+require __DIR__.'/vendor/autoload.php';
+$app = require __DIR__.'/bootstrap/app.php';
+$app->make(Illuminate\Contracts\Console\Kernel::class)->bootstrap();
+if (!$app->environment('testing') || Illuminate\Support\Facades\DB::connection()->getDatabaseName() !== 'bybit_test') { throw new RuntimeException('Isolated test DB required.'); }
+$entry = json_decode(file_get_contents($argv[1]), true, flags: JSON_THROW_ON_ERROR);
+config(['market_data.conflict_journal_path' => dirname($argv[1])]);
+if ($argv[2] === 'barrier') {
+    file_put_contents($argv[3].'.'.$argv[4], 'ready');
+    $deadline = microtime(true) + 10;
+    while (!file_exists($argv[3])) {
+        if (microtime(true) > $deadline) { throw new RuntimeException('Replay barrier timed out.'); }
+        usleep(1000);
+    }
+}
+$result = $app->make(App\MarketData\Application\MarketCandleConflictService::class)->recordConflict(
+    $entry['exchange'], $entry['category'], $entry['symbol'], $entry['interval'], $entry['open_time'],
+    $entry['stored_values'], $entry['incoming_values'], $entry['conflict_column'], $entry['error_message'], $entry['source_provenance']
+);
+fwrite(STDOUT, json_encode(['persisted_count' => $result['occurrence_count']], JSON_THROW_ON_ERROR)."\n");
+if ($argv[2] === 'interrupt') {
+    file_put_contents($argv[3], 'committed');
+    while (true) { usleep(10000); }
+}

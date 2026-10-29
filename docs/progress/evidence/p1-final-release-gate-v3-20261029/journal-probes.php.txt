@@ -1,0 +1,56 @@
+<?php
+declare(strict_types=1);
+require __DIR__.'/vendor/autoload.php';
+$app = require __DIR__.'/bootstrap/app.php';
+$app->make(Illuminate\Contracts\Console\Kernel::class)->bootstrap();
+
+use App\MarketData\Application\MarketCandleConflictService;
+use App\MarketData\Infrastructure\Persistence\CandleConflictJournal;
+use App\MarketData\Domain\CandleIntegrityUnavailable;
+use App\Exchanges\Binance\BinanceCandleWindow;
+use Illuminate\Support\Facades\DB;
+use Symfony\Component\Process\Process;
+
+if (!$app->environment('testing') || DB::selectOne('select current_database() as db')->db !== 'bybit_test') { throw new RuntimeException('Isolated test DB required.'); }
+$dir = storage_path('framework/v3-journal-audit');
+config(['market_data.conflict_journal_path' => $dir]);
+$service = app(MarketCandleConflictService::class);
+$journal = app(CandleConflictJournal::class);
+$entry = ['exchange'=>'binance','category'=>'linear','symbol'=>'V3JOURNALUSDT','interval'=>'30','open_time'=>'2026-01-01T00:30:00Z',
+    'stored_values'=>['close'=>'102'], 'incoming_values'=>['close'=>'103'], 'conflict_column'=>'close', 'error_message'=>'Synthetic V3 conflict', 'source_provenance'=>'v3_isolated_probe'];
+$entry['payload_fingerprint'] = hash('sha256', json_encode(['exchange'=>$entry['exchange'],'category'=>$entry['category'],'symbol'=>$entry['symbol'],'interval'=>$entry['interval'],'open_time'=>$entry['open_time'],'incoming'=>$entry['incoming_values']], JSON_THROW_ON_ERROR));
+$emit = static function (string $name, array $observation): void { fwrite(STDOUT, json_encode(['probe'=>$name,'observation'=>$observation], JSON_THROW_ON_ERROR)."\n"); };
+$window = static fn () => BinanceCandleWindow::status(array_map(fn ($i) => 1767229200 - $i*1800, range(0,219)),1800,1767231000,220,app(MarketCandleConflictService::class),'binance','V3JOURNALUSDT','30');
+$count = static fn () => (int) (DB::table('market_candle_conflicts')->where('symbol','V3JOURNALUSDT')->value('occurrence_count') ?? 0);
+$replay = static function () use ($entry,$service): void { $service->recordConflict($entry['exchange'],$entry['category'],$entry['symbol'],$entry['interval'],$entry['open_time'],$entry['stored_values'],$entry['incoming_values'],$entry['conflict_column'],$entry['error_message'],$entry['source_provenance']); };
+$old = $journal->begin($entry);
+$emit('original_pending_evidence', ['pending'=>count(glob($dir.'/*.json')),'window'=>$window()]);
+DB::statement("ALTER TABLE market_candle_conflicts ADD CONSTRAINT v3_journal_failure CHECK (symbol <> 'V3JOURNALUSDT')");
+try { try { $replay(); throw new RuntimeException('Persistence failure not surfaced.'); } catch (CandleIntegrityUnavailable) { $emit('failed_operator_style_replay',['window'=>$window(),'db_count'=>$count(),'pending'=>count(glob($dir.'/*.json'))]); } }
+finally { DB::statement('ALTER TABLE market_candle_conflicts DROP CONSTRAINT v3_journal_failure'); }
+$replay();$once=$count();$replay();$twice=$count();
+$emit('duplicate_operator_style_replay', ['first_count'=>$once,'second_count'=>$twice,'original_still_pending'=>file_exists($old),'window'=>$window(),'native_recovery_entrypoint'=>'ABSENT','result'=>'FAIL: not idempotent recovery']);
+$marker = __DIR__.'/v3-interrupted-replay';
+$process = new Process([PHP_BINARY,__DIR__.'/v3-replay-worker.php',$old,'interrupt',$marker],__DIR__);$process->setTimeout(15);$process->start();
+$deadline=microtime(true)+10;
+while (!file_exists($marker) && $process->isRunning() && microtime(true)<$deadline) { usleep(1000); }
+if (!file_exists($marker)) { throw new RuntimeException('Interrupted replay fixture failed: '.$process->getErrorOutput()); }
+$process->stop(0);
+$emit('interrupted_operator_style_replay', ['committed_count'=>$count(),'original_still_pending'=>file_exists($old),'new_service_status'=>(new MarketCandleConflictService)->integrityStatus('binance','V3JOURNALUSDT','30'),'process_exit'=>$process->getExitCode(),'result'=>'FAIL: no interrupted recovery protocol']);
+$before=$count();$barrier=__DIR__.'/v3-concurrent-replay';$workers=[];
+for($i=0;$i<4;$i++){ $w=new Process([PHP_BINARY,__DIR__.'/v3-replay-worker.php',$old,'barrier',$barrier,(string)$i],__DIR__);$w->setTimeout(15);$w->start();$workers[]=$w; }
+$deadline=microtime(true)+10;
+while(count(glob($barrier.'.*'))<4 && microtime(true)<$deadline){ usleep(1000); }
+if(count(glob($barrier.'.*'))!==4){ throw new RuntimeException('Concurrent replay fixture failed.'); }
+file_put_contents($barrier,'go');
+foreach($workers as $w){$w->wait();if(!$w->isSuccessful()){throw new RuntimeException($w->getErrorOutput());}}
+$emit('concurrent_operator_style_replays', ['before'=>$before,'after'=>$count(),'conflict_rows'=>DB::table('market_candle_conflicts')->where('symbol','V3JOURNALUSDT')->count(),'pending'=>count(glob($dir.'/*.json')),'window'=>$window(),'result'=>'FAIL: duplicate recovery changes counts']);
+// Preserve genuine pending files before testing corruption in a separate fixture directory.
+$archive=__DIR__.'/v3-journal-pending';mkdir($archive,0700);
+foreach(glob($dir.'/*.json') as $f){copy($f,$archive.'/'.basename($f));}
+$badDir=$dir.'-malformed';mkdir($badDir,0700,true);config(['market_data.conflict_journal_path'=>$badDir]);
+$bad=$entry;$bad['symbol']=['V3JOURNALUSDT'];file_put_contents($badDir.'/malformed.json',json_encode($bad,JSON_THROW_ON_ERROR));
+DB::table('market_candle_conflicts')->where('symbol','V3JOURNALUSDT')->delete();
+$emit('journal_schema_corruption', ['pending'=>1,'invalid_symbol_type'=>gettype($bad['symbol']),'status'=>(new MarketCandleConflictService)->integrityStatus('binance','V3JOURNALUSDT','30'),'window'=>$window(),'result'=>$window()==='READY'?'FAIL: malformed pending evidence bypasses scoped gate':'PASS']);
+fwrite(STDOUT,"V3_JOURNAL_RELEASE_GATE=NOT_READY\n");
+exit(1);

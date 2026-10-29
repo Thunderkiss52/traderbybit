@@ -1,0 +1,48 @@
+{
+    "classification": "V3 synthetic pending fixtures and archived copies; not production or recovery success",
+    "default_runtime_pending": 0,
+    "entries": [
+        {
+            "fixture_path": "storage\/framework\/v3-journal-audit\/32d5372dd9f832caa2ab6b25e82d7659.json",
+            "sha256": "ba9b3b83378bdfcc2c87c4b05c816195ebce877da1666b740d76f83080cd52fa",
+            "bytes": 380,
+            "raw": "{\"exchange\":\"binance\",\"category\":\"linear\",\"symbol\":\"V3JOURNALUSDT\",\"interval\":\"30\",\"open_time\":\"2026-01-01T00:30:00Z\",\"stored_values\":{\"close\":\"102\"},\"incoming_values\":{\"close\":\"103\"},\"conflict_column\":\"close\",\"error_message\":\"Synthetic V3 conflict\",\"source_provenance\":\"v3_isolated_probe\",\"payload_fingerprint\":\"17fee5680ae711b89908a16d54703b6ca64168bcae197c720b95495fbe2e551b\"}\n"
+        },
+        {
+            "fixture_path": "storage\/framework\/v3-journal-audit\/7d024dd89cf3eab279a75445bf7d8822.json",
+            "sha256": "ec9c050803f655ed87abcc0ba274ca27e1fd0d7b19ed06b53a6b16348799d509",
+            "bytes": 510,
+            "raw": "{\"exchange\":\"binance\",\"category\":\"linear\",\"symbol\":\"V3JOURNALUSDT\",\"interval\":\"30\",\"open_time\":\"2026-01-01T00:30:00Z\",\"stored_values\":{\"close\":\"102\"},\"incoming_values\":{\"close\":\"103\"},\"conflict_column\":\"close\",\"error_message\":\"Synthetic V3 conflict\",\"source_provenance\":\"v3_isolated_probe\",\"payload_fingerprint\":\"17fee5680ae711b89908a16d54703b6ca64168bcae197c720b95495fbe2e551b\",\"first_seen_at\":\"2026-10-29T20:13:52+00:00\",\"last_seen_at\":\"2026-10-29T20:13:52+00:00\",\"occurrence_count\":1,\"status\":\"UNRESOLVED\"}\n"
+        },
+        {
+            "fixture_path": "storage\/framework\/v3-journal-audit-malformed\/malformed.json",
+            "sha256": "ecc3e2cf624522e4722ac1fa2f21da03a64a642450ad69db9b9addc5a1f1956f",
+            "bytes": 381,
+            "raw": "{\"exchange\":\"binance\",\"category\":\"linear\",\"symbol\":[\"V3JOURNALUSDT\"],\"interval\":\"30\",\"open_time\":\"2026-01-01T00:30:00Z\",\"stored_values\":{\"close\":\"102\"},\"incoming_values\":{\"close\":\"103\"},\"conflict_column\":\"close\",\"error_message\":\"Synthetic V3 conflict\",\"source_provenance\":\"v3_isolated_probe\",\"payload_fingerprint\":\"17fee5680ae711b89908a16d54703b6ca64168bcae197c720b95495fbe2e551b\"}"
+        },
+        {
+            "fixture_path": "storage\/framework\/v3-runtime-probe\/747d0d545f46a1b601d0f0627292218b.json",
+            "sha256": "f9e964024e7063e9d349accb44ac10ce572cabb5e19d0fdca97a8f9db3e76139",
+            "bytes": 280,
+            "raw": "{\"exchange\":\"binance\",\"category\":\"linear\",\"symbol\":\"V3PIPEUSDT\",\"interval\":\"30\",\"open_time\":\"2026-10-29T19:30:00+00:00\",\"stored_values\":{\"close\":\"60000\"},\"incoming_values\":{\"close\":\"60001\"},\"payload_fingerprint\":\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\"}\n"
+        },
+        {
+            "fixture_path": "v3-probe-archive\/d7b26429482266b16ceb39fa0f5f283d.json",
+            "sha256": "a6d8a33ca64fddb25c757b3aa130b3d5fa80191248d3e949f523a548abbeee72",
+            "bytes": 1035,
+            "raw": "{\"exchange\":\"binance\",\"category\":\"linear\",\"symbol\":\"BTCUSDT\",\"interval\":\"30\",\"open_time\":\"2026-01-01T00:30:00.000Z\",\"stored_values\":{\"open_time\":\"2026-01-01 00:30:00+00\",\"open\":\"100.000000000000\",\"high\":\"105.000000000000\",\"low\":\"99.000000000000\",\"close\":\"102.000000000000\",\"volume\":\"10.000000000000\",\"turnover\":\"1010.000000000000\",\"is_closed\":true},\"incoming_values\":{\"exchange\":\"binance\",\"category\":\"linear\",\"symbol\":\"BTCUSDT\",\"interval\":\"30\",\"open_time\":\"2026-01-01T00:30:00.000Z\",\"open\":\"100\",\"high\":\"105\",\"low\":\"99\",\"close\":\"103\",\"volume\":\"10\",\"turnover\":\"1010\",\"is_closed\":true,\"created_at\":\"2026-10-29 20:12:48.000000+00:00\",\"updated_at\":\"2026-10-29 20:12:48.000000+00:00\"},\"conflict_column\":\"close\",\"error_message\":\"Conflicting immutable Binance close observation.\",\"source_provenance\":\"binance_public_rest\",\"payload_fingerprint\":\"b987424edeba00a73698e2e48232870544b697666d6a916fcc5108d3384d286d\",\"first_seen_at\":\"2026-10-29T20:12:48+00:00\",\"last_seen_at\":\"2026-10-29T20:12:48+00:00\",\"occurrence_count\":1,\"status\":\"UNRESOLVED\"}\n"
+        },
+        {
+            "fixture_path": "v3-journal-pending\/32d5372dd9f832caa2ab6b25e82d7659.json",
+            "sha256": "ba9b3b83378bdfcc2c87c4b05c816195ebce877da1666b740d76f83080cd52fa",
+            "bytes": 380,
+            "raw": "{\"exchange\":\"binance\",\"category\":\"linear\",\"symbol\":\"V3JOURNALUSDT\",\"interval\":\"30\",\"open_time\":\"2026-01-01T00:30:00Z\",\"stored_values\":{\"close\":\"102\"},\"incoming_values\":{\"close\":\"103\"},\"conflict_column\":\"close\",\"error_message\":\"Synthetic V3 conflict\",\"source_provenance\":\"v3_isolated_probe\",\"payload_fingerprint\":\"17fee5680ae711b89908a16d54703b6ca64168bcae197c720b95495fbe2e551b\"}\n"
+        },
+        {
+            "fixture_path": "v3-journal-pending\/7d024dd89cf3eab279a75445bf7d8822.json",
+            "sha256": "ec9c050803f655ed87abcc0ba274ca27e1fd0d7b19ed06b53a6b16348799d509",
+            "bytes": 510,
+            "raw": "{\"exchange\":\"binance\",\"category\":\"linear\",\"symbol\":\"V3JOURNALUSDT\",\"interval\":\"30\",\"open_time\":\"2026-01-01T00:30:00Z\",\"stored_values\":{\"close\":\"102\"},\"incoming_values\":{\"close\":\"103\"},\"conflict_column\":\"close\",\"error_message\":\"Synthetic V3 conflict\",\"source_provenance\":\"v3_isolated_probe\",\"payload_fingerprint\":\"17fee5680ae711b89908a16d54703b6ca64168bcae197c720b95495fbe2e551b\",\"first_seen_at\":\"2026-10-29T20:13:52+00:00\",\"last_seen_at\":\"2026-10-29T20:13:52+00:00\",\"occurrence_count\":1,\"status\":\"UNRESOLVED\"}\n"
+        }
+    ]
+}

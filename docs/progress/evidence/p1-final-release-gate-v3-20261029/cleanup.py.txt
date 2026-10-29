@@ -1,0 +1,11 @@
+import pathlib,json,subprocess
+p=pathlib.Path(__file__).parent
+expected=json.loads((p/'isolated-resources.json').read_text())
+r=json.loads((p/'resources.json').read_text())
+def inspect(*args):return json.loads(subprocess.check_output(['docker',*args],text=True))[0]
+for data in [inspect('inspect',r['postgres'])['Config'],inspect('network','inspect',r['network']),inspect('image','inspect',r['image'])['Config']]:
+    assert data['Labels'].get('io.traderbybit.task')=='vector-release-v3-tsp9aoms'
+assert inspect('image','inspect',r['image'])['Id']==expected['image']['id']
+for cmd in [['docker','rm','-f','-v',r['postgres']],['docker','network','rm',r['network']],['docker','image','rm',r['image']]]:
+    subprocess.run(cmd,check=True)
+print('Only the three labeled V3 task resources removed. Shared base images and all unrelated resources left untouched.')

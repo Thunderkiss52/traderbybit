@@ -1,0 +1,112 @@
+{
+  "tests": 66,
+  "assertions": 794,
+  "errors": 0,
+  "failures": 0,
+  "skipped": 0,
+  "passed": 66,
+  "exit_code": 0,
+  "skipped_cases": [],
+  "classes": [
+    {
+      "name": "Tests\\Integration\\BinanceCandleConflictDurabilityTest",
+      "file": "/work/tests/Integration/BinanceCandleConflictDurabilityTest.php",
+      "tests": "13",
+      "assertions": "119",
+      "errors": "0",
+      "failures": "0",
+      "skipped": "0",
+      "time": "3.781741"
+    },
+    {
+      "name": "Tests\\Feature\\Exchanges\\BinanceHtfScheduleTest",
+      "file": "/work/tests/Feature/Exchanges/BinanceHtfScheduleTest.php",
+      "tests": "5",
+      "assertions": "87",
+      "errors": "0",
+      "failures": "0",
+      "skipped": "0",
+      "time": "6.023137"
+    },
+    {
+      "name": "Tests\\Integration\\BinanceCandleInsertionRaceTest",
+      "file": "/work/tests/Integration/BinanceCandleInsertionRaceTest.php",
+      "tests": "4",
+      "assertions": "76",
+      "errors": "0",
+      "failures": "0",
+      "skipped": "0",
+      "time": "0.314240"
+    },
+    {
+      "name": "Tests\\Feature\\Exchanges\\BinanceCandleConflictQuarantineTest",
+      "file": "/work/tests/Feature/Exchanges/BinanceCandleConflictQuarantineTest.php",
+      "tests": "3",
+      "assertions": "27",
+      "errors": "0",
+      "failures": "0",
+      "skipped": "0",
+      "time": "1.310727"
+    },
+    {
+      "name": "Tests\\Feature\\Exchanges\\BinanceBatchCandleIngestionTest",
+      "file": "/work/tests/Feature/Exchanges/BinanceBatchCandleIngestionTest.php",
+      "tests": "14",
+      "assertions": "204",
+      "errors": "0",
+      "failures": "0",
+      "skipped": "0",
+      "time": "0.882847"
+    },
+    {
+      "name": "Tests\\Feature\\Exchanges\\BinanceImmutableMarketIngestionTest",
+      "file": "/work/tests/Feature/Exchanges/BinanceImmutableMarketIngestionTest.php",
+      "tests": "2",
+      "assertions": "12",
+      "errors": "0",
+      "failures": "0",
+      "skipped": "0",
+      "time": "0.113140"
+    },
+    {
+      "name": "Tests\\Unit\\Research\\SystemFreshnessServiceTest",
+      "file": "/work/tests/Unit/Research/SystemFreshnessServiceTest.php",
+      "tests": "6",
+      "assertions": "181",
+      "errors": "0",
+      "failures": "0",
+      "skipped": "0",
+      "time": "0.431517"
+    },
+    {
+      "name": "Tests\\Feature\\Research\\ResearchHealthApiTest",
+      "file": "/work/tests/Feature/Research/ResearchHealthApiTest.php",
+      "tests": "3",
+      "assertions": "22",
+      "errors": "0",
+      "failures": "0",
+      "skipped": "0",
+      "time": "0.238636"
+    },
+    {
+      "name": "Tests\\Unit\\Exchanges\\BinanceCandleWindowTest",
+      "file": "/work/tests/Unit/Exchanges/BinanceCandleWindowTest.php",
+      "tests": "5",
+      "assertions": "10",
+      "errors": "0",
+      "failures": "0",
+      "skipped": "0",
+      "time": "0.001101"
+    },
+    {
+      "name": "Tests\\Feature\\Exchanges\\BinancePaperReadinessTest",
+      "file": "/work/tests/Feature/Exchanges/BinancePaperReadinessTest.php",
+      "tests": "11",
+      "assertions": "56",
+      "errors": "0",
+      "failures": "0",
+      "skipped": "0",
+      "time": "13.152558"
+    }
+  ]
+}

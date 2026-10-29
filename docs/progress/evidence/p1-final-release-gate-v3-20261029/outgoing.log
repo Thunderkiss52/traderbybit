@@ -1,0 +1,4 @@
+24e5096588c1aca66a19761ca7ed207e73514066 fix(binance): resolve candle integrity conflicts and harden monitoring
+40abcdce48bbb5033e7047daab81355083829cc9 docs(roadmap): record P1 binance candle integrity implementation and pending items
+7a26d93a39e09417423f4a2f58d6c68a74b7c884 fix(binance): persist candle conflicts independently and fail closed across ingestion and scheduling
+43bd3d77c084e23e83b845f7fce476ec0cd60fbd docs(roadmap): record verified P1 integrity blocker remediation and release evidence

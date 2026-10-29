@@ -1,0 +1,16 @@
+{
+  "race_test_source": "24e5096588c1aca66a19761ca7ed207e73514066",
+  "artifact": "docs/reports/p1-pre-push-20261029/go-race.log.gz",
+  "raw_sha256": "ef8bc37ca50eb455e9a714568742c8ce10892ae6bba4135047b8d13063a6b5f2",
+  "original_exit_code": 0,
+  "comparison_paths": [
+    "research-go",
+    "docker/go",
+    "compose.yaml",
+    ".github/workflows/deploy.yml",
+    "app/Research/Jobs",
+    "app/Research/Infrastructure",
+    "config/research.php"
+  ],
+  "changed_paths": []
+}

@@ -1,0 +1,178 @@
+{
+  "original": [
+    {
+      "probe": "strict_top_level_rollback",
+      "observed": {
+        "error": "Conflicting immutable Binance close observation.",
+        "candles": 1,
+        "conflicts_seen_by_independent_connection": 1
+      }
+    },
+    {
+      "probe": "quarantine_top_level_control",
+      "observed": {
+        "0": {
+          "exchange_id": "binance",
+          "symbol": "BTCUSDT",
+          "interval": "30m",
+          "fetched": 3,
+          "new_closed_candles": 2,
+          "conflicts_count": 1,
+          "conflicts": [
+            {
+              "open_time": "2026-01-01T00:30:00.000Z",
+              "column": "close",
+              "error": "Conflicting immutable Binance close observation."
+            }
+          ],
+          "status": "PARTIAL_INGESTION_WITH_CONFLICTS",
+          "execution_status": "PAPER_EXECUTION_BLOCKED_UNTIL_VERIFIED"
+        },
+        "independent_conflicts": 1,
+        "window": "CANDLE_HISTORY_INTEGRITY_CONFLICT"
+      }
+    },
+    {
+      "probe": "recurrent_conflict_after_resolution",
+      "observed": {
+        "ingestion_status": "PARTIAL_INGESTION_WITH_CONFLICTS",
+        "persisted_status": "UNRESOLVED",
+        "window": "CANDLE_HISTORY_INTEGRITY_CONFLICT"
+      }
+    },
+    {
+      "probe": "conflict_persistence_failure",
+      "observed": {
+        "ingestion_status": "INTEGRITY_UNAVAILABLE",
+        "new_closed_candles": 2,
+        "independent_conflicts": 0,
+        "window": "CANDLE_HISTORY_INTEGRITY_UNAVAILABLE"
+      }
+    },
+    {
+      "probe": "missing_conflict_table",
+      "observed": {
+        "active": "UNAVAILABLE",
+        "window": "CANDLE_HISTORY_INTEGRITY_UNAVAILABLE"
+      }
+    },
+    {
+      "probe": "conflict_query_failure",
+      "observed": {
+        "active": "UNAVAILABLE",
+        "window": "CANDLE_HISTORY_INTEGRITY_UNAVAILABLE",
+        "count": "UNAVAILABLE"
+      }
+    },
+    {
+      "probe": "scheduled_partial_ingestion",
+      "observed": {
+        "scheduler_exit_code": 2,
+        "failed_events": 1,
+        "independent_conflicts": 1
+      }
+    },
+    {
+      "probe": "outer_transaction_before_rollback",
+      "observed": {
+        "same_connection_conflicts": 1,
+        "independent_conflicts": 1
+      }
+    },
+    {
+      "probe": "outer_transaction_after_rollback",
+      "observed": {
+        "independent_conflicts": 1
+      }
+    }
+  ],
+  "journal": [
+    {
+      "probe": "original_pending_evidence",
+      "observation": {
+        "pending": 1,
+        "window": "CANDLE_HISTORY_INTEGRITY_UNAVAILABLE"
+      }
+    },
+    {
+      "probe": "failed_operator_style_replay",
+      "observation": {
+        "window": "CANDLE_HISTORY_INTEGRITY_UNAVAILABLE",
+        "db_count": 0,
+        "pending": 2
+      }
+    },
+    {
+      "probe": "duplicate_operator_style_replay",
+      "observation": {
+        "first_count": 1,
+        "second_count": 2,
+        "original_still_pending": true,
+        "window": "CANDLE_HISTORY_INTEGRITY_UNAVAILABLE",
+        "native_recovery_entrypoint": "ABSENT",
+        "result": "FAIL: not idempotent recovery"
+      }
+    },
+    {
+      "probe": "interrupted_operator_style_replay",
+      "observation": {
+        "committed_count": 3,
+        "original_still_pending": true,
+        "new_service_status": "UNAVAILABLE",
+        "process_exit": -1,
+        "result": "FAIL: no interrupted recovery protocol"
+      }
+    },
+    {
+      "probe": "concurrent_operator_style_replays",
+      "observation": {
+        "before": 3,
+        "after": 7,
+        "conflict_rows": 1,
+        "pending": 2,
+        "window": "CANDLE_HISTORY_INTEGRITY_UNAVAILABLE",
+        "result": "FAIL: duplicate recovery changes counts"
+      }
+    },
+    {
+      "probe": "journal_schema_corruption",
+      "observation": {
+        "pending": 1,
+        "invalid_symbol_type": "array",
+        "status": "VALID",
+        "window": "READY",
+        "result": "FAIL: malformed pending evidence bypasses scoped gate"
+      }
+    }
+  ],
+  "runtime": [
+    {
+      "probe": "strategy_input_with_pending_journal",
+      "window_gate": "CANDLE_HISTORY_INTEGRITY_UNAVAILABLE",
+      "input_validation_errors": [],
+      "warmup_ready": {
+        "trend": true,
+        "setup": true,
+        "entry": true,
+        "confirmation": true
+      },
+      "pending": 1,
+      "signals_created": false,
+      "paper_execution_attempted": false
+    },
+    {
+      "probe": "fresh_worker_strategy_input",
+      "window_gate": "CANDLE_HISTORY_INTEGRITY_UNAVAILABLE",
+      "input_validation_errors": [],
+      "warmup_ready": {
+        "trend": true,
+        "setup": true,
+        "entry": true,
+        "confirmation": true
+      },
+      "pending": 1,
+      "signals_created": false,
+      "paper_execution_attempted": false
+    }
+  ]
+}

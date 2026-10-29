@@ -1,0 +1,32 @@
+import subprocess,pathlib,json,hashlib,gzip
+p=pathlib.Path(__file__).parent
+repo=pathlib.Path('/home/thunder/work/traderbybit')
+baseline='671f72f11ba76a978dc1a6f29ae0ceeeb63e9322'
+head='43bd3d77c084e23e83b845f7fce476ec0cd60fbd'
+def git(*args):return subprocess.check_output(['git','-C',str(repo),*args],text=True)
+source={};mismatches=[]
+prefixes=('app/','bootstrap/','config/','database/','routes/','tests/','frontend/src/','research-go/','docker/','.github/','scripts/')
+for f in git('ls-tree','-r','--name-only',head).splitlines():
+    if f.startswith(prefixes) or f in ['composer.json','composer.lock','phpunit.xml','compose.yaml','frontend/package.json','frontend/package-lock.json','SKILL.md','AGENTS.md','.gitignore']:
+        expected=subprocess.check_output(['git','-C',str(repo),'show',head+':'+f])
+        observed=(p/'workspace'/f).read_bytes()
+        current=(repo/f).read_bytes()
+        # The tracked generated worker is deliberately rebuilt only in the test snapshot.
+        generated=f=='research-go/bin/research-worker'
+        if current!=expected or (observed!=expected and not generated):mismatches.append(f)
+        source[f]={'committed_sha256':hashlib.sha256(expected).hexdigest(),'checkout_sha256':hashlib.sha256(current).hexdigest(),'snapshot_sha256':hashlib.sha256(observed).hexdigest(),'rebuilt_snapshot_binary':generated}
+(p/'source-hashes.json').write_text(json.dumps(source,indent=2)+'\n')
+assert not mismatches,mismatches
+print(json.dumps({'inspected_head':head,'baseline':baseline,'runtime_files_checked':len(source),'mismatches':mismatches,'outgoing_commits':git('log','--reverse','--format=%H %s',baseline+'..'+head).splitlines(),'initial_diff_summary':git('diff','--shortstat',baseline,head).strip(),'current_docs_only_changes':git('diff','--name-only',head).splitlines()},indent=2))
+for folder in ['docs/reports/p1-pre-push-20261029','docs/progress/evidence/p1-candle-integrity-v2-20261029']:
+    checked=0
+    for line in (repo/folder/'SHA256SUMS').read_text().splitlines():
+        digest,name=line.split(maxsplit=1);name=name.lstrip('*')
+        assert hashlib.sha256((repo/folder/name).read_bytes()).hexdigest()==digest,name
+        checked+=1
+    print(json.dumps({'existing_manifest':folder,'verified_artifacts':checked}))
+old=gzip.decompress((repo/'docs/reports/p1-pre-push-20261029/go-race.log.gz').read_bytes())
+assert hashlib.sha256(old).hexdigest()=='ef8bc37ca50eb455e9a714568742c8ce10892ae6bba4135047b8d13063a6b5f2'
+paths=['research-go','docker/go','compose.yaml','.github/workflows/deploy.yml','app/Research/Jobs','app/Research/Infrastructure','config/research.php']
+assert git('diff','--name-only','24e5096',head,'--',*paths)==''
+print(json.dumps({'go_race_reuse':'verified original raw hash and unchanged source/concurrency paths','exit_code_in_original_record':0}))

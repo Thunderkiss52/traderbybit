@@ -1,5 +1,11 @@
 # P1 candle integrity blocker remediation V2
 
+**V3 qualification:** The [final release gate](P1_FINAL_RELEASE_GATE_V3_20261029.md)
+reproduced the five original fixes but found additional blocking journal recovery,
+pending-entry validation and ongoing strategy-input gaps at `43bd3d77c084e23e83b845f7fce476ec0cd60fbd`.
+Its **NOT READY** verdict supersedes the gate-readiness statement below. The V2
+results remain historical local evidence, not complete journal lifecycle acceptance.
+
 Initial verified HEAD: `40abcdce48bbb5033e7047daab81355083829cc9`, branch `main`,
 clean working tree. Implementation commit: `7a26d93a39e09417423f4a2f58d6c68a74b7c884`.
 Scope: the five blockers from the [previous gate](P1_PRE_PUSH_RELEASE_GATE_20261029.md).

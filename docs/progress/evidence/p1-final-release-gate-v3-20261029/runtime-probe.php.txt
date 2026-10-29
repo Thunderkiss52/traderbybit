@@ -1,0 +1,40 @@
+<?php
+declare(strict_types=1);
+require __DIR__.'/vendor/autoload.php';
+$app = require __DIR__.'/bootstrap/app.php';
+$app->make(Illuminate\Contracts\Console\Kernel::class)->bootstrap();
+
+use App\Exchanges\Binance\BinanceCandleWindow;
+use App\MarketData\Application\MarketCandleConflictService;
+use App\MarketData\Infrastructure\Persistence\CandleConflictJournal;
+use App\Strategy\Application\StrategyInputFactory;
+use Illuminate\Support\Facades\DB;
+use Symfony\Component\Process\Process;
+
+if (!$app->environment('testing') || DB::connection()->getDatabaseName()!=='bybit_test') { throw new RuntimeException('Isolated PostgreSQL required.'); }
+$restart=($argv[1]??'')==='restart';
+$dir=$restart?$argv[2]:storage_path('framework/v3-runtime-probe');
+$at=$restart?(int)$argv[3]:(intdiv(time(),900)*900);
+config(['market_data.conflict_journal_path'=>$dir]);
+$symbol='V3PIPEUSDT';
+if(!$restart){
+    foreach(['5','15','30','60'] as $interval){
+        $seconds=(int)$interval*60;$close=intdiv($at,$seconds)*$seconds;$rows=[];
+        for($i=0;$i<220;$i++){
+            $price=60000+$i*2;
+            $rows[]=['exchange'=>'binance','category'=>'linear','symbol'=>$symbol,'interval'=>$interval,'open_time'=>gmdate('Y-m-d H:i:s',$close-(220-$i)*$seconds),'open'=>(string)$price,'high'=>(string)($price+10),'low'=>(string)($price-10),'close'=>(string)$price,'volume'=>'150','turnover'=>'9000000','is_closed'=>true];
+        }
+        DB::table('market_candles')->insert($rows);
+    }
+    app(CandleConflictJournal::class)->begin(['exchange'=>'binance','category'=>'linear','symbol'=>$symbol,'interval'=>'30','open_time'=>gmdate('c',intdiv($at,1800)*1800-1800),'stored_values'=>['close'=>'60000'],'incoming_values'=>['close'=>'60001'],'payload_fingerprint'=>str_repeat('a',64)]);
+}
+$times=DB::table('market_candles')->where('exchange','binance')->where('symbol',$symbol)->where('interval','30')->orderByDesc('open_time')->pluck('open_time')->map(fn($v)=>strtotime($v))->all();
+$gate=BinanceCandleWindow::status($times,1800,$at,220,app(MarketCandleConflictService::class),'binance',$symbol,'30');
+$input=app(StrategyInputFactory::class)->make('binance','linear',$symbol,(new DateTimeImmutable)->setTimestamp($at));
+$ready=[];foreach(['trend','setup','entry','confirmation'] as $role){$ready[$role]=$input->{$role}->warmupReady;}
+fwrite(STDOUT,json_encode(['probe'=>$restart?'fresh_worker_strategy_input':'strategy_input_with_pending_journal','window_gate'=>$gate,'input_validation_errors'=>$input->validationErrors,'warmup_ready'=>$ready,'pending'=>count(glob($dir.'/*.json')),'signals_created'=>false,'paper_execution_attempted'=>false],JSON_THROW_ON_ERROR)."\n");
+if(!$restart){
+    $worker=new Process([PHP_BINARY,__FILE__,'restart',$dir,(string)$at],__DIR__);$worker->setTimeout(30);$worker->run();fwrite(STDOUT,$worker->getOutput());
+    if($worker->getExitCode()!==1){throw new RuntimeException('Fresh worker probe did not reproduce the gap: '.$worker->getErrorOutput());}
+}
+exit($gate==='CANDLE_HISTORY_INTEGRITY_UNAVAILABLE' && $input->validationErrors===[] && !in_array(false,$ready,true)?1:2);

@@ -1,0 +1,15 @@
+<?php
+declare(strict_types=1);
+require __DIR__.'/vendor/autoload.php';
+$app=require __DIR__.'/bootstrap/app.php';
+$app->make(Illuminate\Contracts\Console\Kernel::class)->bootstrap();
+use Illuminate\Support\Facades\DB;
+if(!$app->environment('testing') || DB::connection()->getDatabaseName()!=='bybit_test'){throw new RuntimeException('Isolated PostgreSQL required.');}
+$identity=DB::selectOne('SELECT current_database() AS database, version() AS version, pg_backend_pid() AS pid');
+$schema=DB::select("SELECT column_name,data_type,is_nullable FROM information_schema.columns WHERE table_schema='public' AND table_name='market_candle_conflicts' ORDER BY ordinal_position");
+$constraints=DB::select("SELECT conname,pg_get_constraintdef(oid) AS definition FROM pg_constraint WHERE conrelid='market_candle_conflicts'::regclass ORDER BY conname");
+fwrite(STDOUT,json_encode(['php'=>PHP_VERSION,'environment'=>$app->environment(),'identity'=>$identity,'schema'=>$schema,'constraints'=>$constraints],JSON_THROW_ON_ERROR|JSON_PRETTY_PRINT)."\n");
+$roots=['storage/app/candle-integrity','storage/framework/v3-original-probes','storage/framework/v3-journal-audit','storage/framework/v3-journal-audit-malformed','storage/framework/v3-runtime-probe','v3-probe-archive','v3-journal-pending'];
+$entries=[];
+foreach($roots as $root){foreach(glob(__DIR__.'/'.$root.'/*.json')?:[] as $path){$raw=file_get_contents($path);$entries[]=['fixture_path'=>substr($path,strlen(__DIR__)+1),'sha256'=>hash('sha256',$raw),'bytes'=>strlen($raw),'raw'=>$raw];}}
+file_put_contents(__DIR__.'/v3-journal-export.json',json_encode(['classification'=>'V3 synthetic pending fixtures and archived copies; not production or recovery success','default_runtime_pending'=>count(glob(storage_path('app/candle-integrity').'/*.json')?:[]),'entries'=>$entries],JSON_THROW_ON_ERROR|JSON_PRETTY_PRINT)."\n");

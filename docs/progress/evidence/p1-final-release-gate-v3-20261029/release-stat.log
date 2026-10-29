@@ -1,0 +1,128 @@
+ .gitignore                                         |    2 +
+ app/Exchanges/Binance/BinanceCandleIngestion.php   |   84 +-
+ app/Exchanges/Binance/BinanceCandleWindow.php      |   28 +-
+ app/Exchanges/Binance/BinancePaperActivation.php   |    3 +-
+ app/Exchanges/Binance/BinancePaperReadiness.php    |   27 +-
+ app/Exchanges/Binance/BinancePortabilityMatrix.php |    3 +-
+ app/Exchanges/Binance/BinancePublicAdapter.php     |    2 +-
+ app/Exchanges/Binance/BinanceSourceIdentity.php    |   32 +
+ .../Api/V1/ResearchHealthController.php            |    8 +-
+ .../Application/MarketCandleConflictService.php    |  240 ++
+ .../Domain/CandleIntegrityUnavailable.php          |   17 +
+ .../Persistence/CandleConflictJournal.php          |  100 +
+ .../Persistence/MarketCandleConflictRecord.php     |   27 +
+ .../Application/SystemFreshnessService.php         |  185 +-
+ config/market_data.php                             |    2 +
+ ...220000_create_market_candle_conflicts_table.php |   48 +
+ .../VECTOR_PROJECT_COMPLETION_SCORECARD.md         |    2 +-
+ docs/progress/current.json                         |    2 +-
+ .../Dockerfile.test.txt                            |    6 +
+ .../p1-candle-integrity-v2-20261029/SHA256SUMS     |   49 +
+ .../baseline.log.gz                                |  Bin 0 -> 2029 bytes
+ .../closure-tracker-validation.log.gz              |  Bin 0 -> 407 bytes
+ .../p1-candle-integrity-v2-20261029/commands.jsonl |   32 +
+ .../contract-targeted.log.gz                       |  Bin 0 -> 1915 bytes
+ .../durability-proof.json                          |   34 +
+ .../final-style.log.gz                             |  Bin 0 -> 78 bytes
+ .../final-syntax.log.gz                            |  Bin 0 -> 6992 bytes
+ .../final-tracker-generate.log.gz                  |  Bin 0 -> 407 bytes
+ .../final-tracker-strict.log.gz                    |  Bin 0 -> 409 bytes
+ .../final-tracker-validation.log.gz                |  Bin 0 -> 407 bytes
+ .../focused-recovery.log.gz                        |  Bin 0 -> 1588 bytes
+ .../format-contract.log.gz                         |  Bin 0 -> 180 bytes
+ .../format-final.log.gz                            |  Bin 0 -> 191 bytes
+ .../format-isolation.log.gz                        |  Bin 0 -> 149 bytes
+ .../p1-candle-integrity-v2-20261029/format.log.gz  |  Bin 0 -> 236 bytes
+ .../frontend-build.log.gz                          |  Bin 0 -> 1351 bytes
+ .../frontend-tests.log.gz                          |  Bin 0 -> 2984 bytes
+ .../full-final.log.gz                              |  Bin 0 -> 1412 bytes
+ .../full-summary.json                              |   22 +
+ .../full-verified.log.gz                           |  Bin 0 -> 4762 bytes
+ .../p1-candle-integrity-v2-20261029/full.log.gz    |  Bin 0 -> 5133 bytes
+ .../go-worker-build.log.gz                         |  Bin 0 -> 20 bytes
+ .../go-worker-diagnose.log.gz                      |  Bin 0 -> 96 bytes
+ .../isolated-cleanup.log.gz                        |  Bin 0 -> 201 bytes
+ .../iteration1.log.gz                              |  Bin 0 -> 962 bytes
+ .../iteration2.log.gz                              |  Bin 0 -> 1841 bytes
+ .../iteration3.log.gz                              |  Bin 0 -> 1526 bytes
+ .../network-isolation.log.gz                       |  Bin 0 -> 73 bytes
+ .../php-lint-final.log.gz                          |  Bin 0 -> 6992 bytes
+ .../php-lint.log.gz                                |  Bin 0 -> 6992 bytes
+ .../pint-final.log.gz                              |  Bin 0 -> 78 bytes
+ .../p1-candle-integrity-v2-20261029/pint.log.gz    |  Bin 0 -> 78 bytes
+ .../postgres-identity.log.gz                       |  Bin 0 -> 173 bytes
+ .../regression-recovery.log.gz                     |  Bin 0 -> 997 bytes
+ .../release-summary.json                           |   10 +
+ .../p1-candle-integrity-v2-20261029/runner.py.txt  |   20 +
+ .../p1-candle-integrity-v2-20261029/runtime.log.gz |  Bin 0 -> 86 bytes
+ .../scheduler-iteration.log.gz                     |  Bin 0 -> 993 bytes
+ .../snapshot-sync.py.txt                           |    6 +
+ .../source-hashes.json                             |   23 +
+ .../target-summary.json                            |   42 +
+ .../targeted-final.log.gz                          |  Bin 0 -> 1607 bytes
+ .../targets-verified.log.gz                        |  Bin 0 -> 1642 bytes
+ .../test-image.log.gz                              |  Bin 0 -> 493 bytes
+ .../tracker-generate.log.gz                        |  Bin 0 -> 409 bytes
+ .../tracker-strict.log.gz                          |  Bin 0 -> 409 bytes
+ .../tracker-tests.log.gz                           |  Bin 0 -> 509 bytes
+ .../verification.json                              |   95 +
+ .../history/p1-candle-integrity-v2-20261029.json   | 2597 ++++++++++++++++++++
+ .../BINANCE_20261027_CANDLE_FORENSIC_REPORT.md     |  111 +
+ .../BINANCE_20261027_PROPOSED_REMEDIATION_PLAN.md  |  108 +
+ docs/reports/P1_CANDLE_INTEGRITY_V2_20261029.md    |  143 ++
+ docs/reports/P1_PRE_PUSH_RELEASE_GATE_20261029.md  |  198 ++
+ .../p1-pre-push-20261029/Dockerfile.test.txt       |    3 +
+ docs/reports/p1-pre-push-20261029/SHA256SUMS       |   39 +
+ docs/reports/p1-pre-push-20261029/baseline.log.gz  |  Bin 0 -> 1737 bytes
+ .../canonical-tracker-strict.log.gz                |  Bin 0 -> 408 bytes
+ docs/reports/p1-pre-push-20261029/commands.jsonl   |   23 +
+ .../deployment-shell-syntax.log.gz                 |  Bin 0 -> 20 bytes
+ .../p1-pre-push-20261029/diff-check-initial.log.gz |  Bin 0 -> 536 bytes
+ docs/reports/p1-pre-push-20261029/diff-stat.log.gz |  Bin 0 -> 536 bytes
+ .../environment-verified.log.gz                    |  Bin 0 -> 259 bytes
+ .../p1-pre-push-20261029/frontend-build.log.gz     |  Bin 0 -> 1351 bytes
+ .../p1-pre-push-20261029/frontend-tests.log.gz     |  Bin 0 -> 2991 bytes
+ .../p1-pre-push-20261029/gate-probes.log.gz        |  Bin 0 -> 1565 bytes
+ .../p1-pre-push-20261029/gate-probes.php.txt       |   83 +
+ docs/reports/p1-pre-push-20261029/go-race.log.gz   |  Bin 0 -> 530 bytes
+ .../p1-pre-push-20261029/isolated-cleanup.log.gz   |  Bin 0 -> 199 bytes
+ .../p1-pre-push-20261029/isolated-resource.log.gz  |  Bin 0 -> 138 bytes
+ .../p1-pre-push-20261029/node-version.log.gz       |  Bin 0 -> 29 bytes
+ .../p1-pre-push-20261029/p1-targeted-summary.json  |   14 +
+ .../p1-pre-push-20261029/p1-targeted.log.gz        |  Bin 0 -> 2238 bytes
+ .../p1-pre-push-20261029/php-lint-pipefail.log.gz  |  Bin 0 -> 6929 bytes
+ .../phpunit-env-recovery.log.gz                    |  Bin 0 -> 202 bytes
+ .../p1-pre-push-20261029/phpunit-full-summary.json |   51 +
+ .../phpunit-full-verified-summary.json             |   51 +
+ .../phpunit-full-verified.log.gz                   |  Bin 0 -> 3949 bytes
+ .../p1-pre-push-20261029/phpunit-full.log.gz       |  Bin 0 -> 4099 bytes
+ docs/reports/p1-pre-push-20261029/pint.log.gz      |  Bin 0 -> 78 bytes
+ .../p1-pre-push-20261029/probe-observations.json   |   87 +
+ .../remediation-autowiring.log.gz                  |  Bin 0 -> 113 bytes
+ docs/reports/p1-pre-push-20261029/runner.py.txt    |   20 +
+ .../p1-pre-push-20261029/schema-identity.log.gz    |  Bin 0 -> 870 bytes
+ .../reports/p1-pre-push-20261029/source-files.json |   20 +
+ .../source-snapshot-check.json                     |   11 +
+ .../reports/p1-pre-push-20261029/test-image.log.gz |  Bin 0 -> 707 bytes
+ .../tracker-generate-complete.log.gz               |  Bin 0 -> 408 bytes
+ .../p1-pre-push-20261029/tracker-generate.log.gz   |  Bin 0 -> 91 bytes
+ .../tracker-strict-complete.log.gz                 |  Bin 0 -> 408 bytes
+ .../p1-pre-push-20261029/tracker-strict.log.gz     |  Bin 0 -> 91 bytes
+ .../p1-pre-push-20261029/tracker-tests.log.gz      |  Bin 0 -> 509 bytes
+ .../reports/p1-pre-push-20261029/verification.json |   33 +
+ .../p1-pre-push-20261029/worker-build.log.gz       |  Bin 0 -> 62 bytes
+ docs/roadmap/VECTOR_GO_FIRST_ROADMAP_V3.md         |   23 +
+ frontend/src/pages/ResearchHealthPage.vue          |   31 +-
+ routes/console.php                                 |   28 +-
+ .../remediate_binance_20261027_candles.sql         |  104 +
+ tests/Concerns/CleansCandleConflictEvidence.php    |   30 +
+ .../Exchanges/BinanceBatchCandleIngestionTest.php  |    3 +
+ .../BinanceCandleConflictQuarantineTest.php        |  178 ++
+ tests/Feature/Exchanges/BinanceHtfScheduleTest.php |  145 +-
+ .../BinanceImmutableMarketIngestionTest.php        |    3 +
+ tests/Fixtures/binance_scheduled_command.php       |   39 +
+ tests/Fixtures/candle_conflict_writer.php          |   27 +
+ .../BinanceCandleConflictDurabilityTest.php        |  298 +++
+ .../Integration/BinanceCandleInsertionRaceTest.php |    9 +
+ tests/Unit/Research/SystemFreshnessServiceTest.php |  259 ++
+ 127 files changed, 5807 insertions(+), 113 deletions(-)

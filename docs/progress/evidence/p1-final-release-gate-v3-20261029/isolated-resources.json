@@ -1,0 +1,31 @@
+{
+  "postgres": {
+    "name": "/vector-release-v3-tsp9aoms-pg",
+    "labels": {
+      "io.traderbybit.task": "vector-release-v3-tsp9aoms"
+    },
+    "ports": {
+      "5432/tcp": null
+    },
+    "tmpfs": {
+      "/var/lib/postgresql/data": ""
+    },
+    "state": "running"
+  },
+  "network": {
+    "name": "vector-release-v3-tsp9aoms-net",
+    "internal": true,
+    "labels": {
+      "io.traderbybit.task": "vector-release-v3-tsp9aoms"
+    }
+  },
+  "image": {
+    "id": "sha256:095e0219bad781cf8a5020d981e3e756bfbf6b28cf299fe26227edb3ca7dc2c1",
+    "tags": [
+      "vector-release-v3-tsp9aoms-test:local"
+    ],
+    "labels": {
+      "io.traderbybit.task": "vector-release-v3-tsp9aoms"
+    }
+  }
+}

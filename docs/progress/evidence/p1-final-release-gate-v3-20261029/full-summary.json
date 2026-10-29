@@ -1,0 +1,2077 @@
+{
+  "tests": 1009,
+  "assertions": 10267,
+  "errors": 0,
+  "failures": 0,
+  "skipped": 1,
+  "passed": 1008,
+  "exit_code": 0,
+  "skipped_cases": [
+    {
+      "class": "Tests\\Integration\\BybitPublicApiIntegrationTest",
+      "name": "test_public_linear_market_endpoints_match_the_documented_contract"
+    }
+  ],
+  "classes": [
+    {
+      "name": "Tests\\Unit\\Backtest\\ChronologicalSplitterTest",
+      "file": "/work/tests/Unit/Backtest/ChronologicalSplitterTest.php",
+      "tests": "3",
+      "assertions": "16",
+      "errors": "0",
+      "failures": "0",
+      "skipped": "0",
+      "time": "0.002455"
+    },
+    {
+      "name": "Tests\\Unit\\Backtest\\GridOptimizerTest",
+      "file": "/work/tests/Unit/Backtest/GridOptimizerTest.php",
+      "tests": "1",
+      "assertions": "2",
+      "errors": "0",
+      "failures": "0",
+      "skipped": "0",
+      "time": "0.011177"
+    },
+    {
+      "name": "Tests\\Unit\\Backtest\\PerformanceMetricCalculatorTest",
+      "file": "/work/tests/Unit/Backtest/PerformanceMetricCalculatorTest.php",
+      "tests": "2",
+      "assertions": "10",
+      "errors": "0",
+      "failures": "0",
+      "skipped": "0",
+      "time": "0.010759"
+    },
+    {
+      "name": "Tests\\Unit\\DeploymentStateValidationAndRecoveryTest",
+      "file": "/work/tests/Unit/DeploymentStateValidationAndRecoveryTest.php",
+      "tests": "12",
+      "assertions": "46",
+      "errors": "0",
+      "failures": "0",
+      "skipped": "0",
+      "time": "1.117531"
+    },
+    {
+      "name": "Tests\\Unit\\ExampleTest",
+      "file": "/work/tests/Unit/ExampleTest.php",
+      "tests": "1",
+      "assertions": "1",
+      "errors": "0",
+      "failures": "0",
+      "skipped": "0",
+      "time": "0.000213"
+    },
+    {
+      "name": "Tests\\Unit\\Exchanges\\BinanceCandleWindowTest",
+      "file": "/work/tests/Unit/Exchanges/BinanceCandleWindowTest.php",
+      "tests": "5",
+      "assertions": "10",
+      "errors": "0",
+      "failures": "0",
+      "skipped": "0",
+      "time": "0.001124"
+    },
+    {
+      "name": "Tests\\Unit\\Exchanges\\BinanceContextCaptureTest",
+      "file": "/work/tests/Unit/Exchanges/BinanceContextCaptureTest.php",
+      "tests": "1",
+      "assertions": "5",
+      "errors": "0",
+      "failures": "0",
+      "skipped": "0",
+      "time": "0.277503"
+    },
+    {
+      "name": "Tests\\Unit\\Exchanges\\BinanceOpenInterestWindowTest",
+      "file": "/work/tests/Unit/Exchanges/BinanceOpenInterestWindowTest.php",
+      "tests": "3",
+      "assertions": "14",
+      "errors": "0",
+      "failures": "0",
+      "skipped": "0",
+      "time": "0.020349"
+    },
+    {
+      "name": "Tests\\Unit\\Exchanges\\BinancePaperSafetyTest",
+      "file": "/work/tests/Unit/Exchanges/BinancePaperSafetyTest.php",
+      "tests": "2",
+      "assertions": "6",
+      "errors": "0",
+      "failures": "0",
+      "skipped": "0",
+      "time": "0.019281"
+    },
+    {
+      "name": "Tests\\Unit\\Exchanges\\BinancePublicAdapterTest",
+      "file": "/work/tests/Unit/Exchanges/BinancePublicAdapterTest.php",
+      "tests": "8",
+      "assertions": "31",
+      "errors": "0",
+      "failures": "0",
+      "skipped": "0",
+      "time": "0.045419"
+    },
+    {
+      "name": "Tests\\Unit\\Exchanges\\BinancePublicTransportTest",
+      "file": "/work/tests/Unit/Exchanges/BinancePublicTransportTest.php",
+      "tests": "7",
+      "assertions": "33",
+      "errors": "0",
+      "failures": "0",
+      "skipped": "0",
+      "time": "0.050643"
+    },
+    {
+      "name": "Tests\\Unit\\Exchanges\\BinanceSourceIdentityTest",
+      "file": "/work/tests/Unit/Exchanges/BinanceSourceIdentityTest.php",
+      "tests": "4",
+      "assertions": "5",
+      "errors": "0",
+      "failures": "0",
+      "skipped": "0",
+      "time": "0.001295"
+    },
+    {
+      "name": "Tests\\Unit\\Exchanges\\BinanceSymbolInventoryTest",
+      "file": "/work/tests/Unit/Exchanges/BinanceSymbolInventoryTest.php",
+      "tests": "1",
+      "assertions": "5",
+      "errors": "0",
+      "failures": "0",
+      "skipped": "0",
+      "time": "0.011372"
+    },
+    {
+      "name": "Tests\\Unit\\Indicators\\MovingMomentumIndicatorsTest",
+      "file": "/work/tests/Unit/Indicators/MovingMomentumIndicatorsTest.php",
+      "tests": "5",
+      "assertions": "9",
+      "errors": "0",
+      "failures": "0",
+      "skipped": "0",
+      "time": "0.004175"
+    },
+    {
+      "name": "Tests\\Unit\\Indicators\\VolatilityTrendIndicatorsTest",
+      "file": "/work/tests/Unit/Indicators/VolatilityTrendIndicatorsTest.php",
+      "tests": "3",
+      "assertions": "10",
+      "errors": "0",
+      "failures": "0",
+      "skipped": "0",
+      "time": "0.003441"
+    },
+    {
+      "name": "Tests\\Unit\\Indicators\\VolumeLevelsIndicatorsTest",
+      "file": "/work/tests/Unit/Indicators/VolumeLevelsIndicatorsTest.php",
+      "tests": "3",
+      "assertions": "9",
+      "errors": "0",
+      "failures": "0",
+      "skipped": "0",
+      "time": "0.002287"
+    },
+    {
+      "name": "Tests\\Unit\\Indicators\\WarmupPolicyTest",
+      "file": "/work/tests/Unit/Indicators/WarmupPolicyTest.php",
+      "tests": "1",
+      "assertions": "4",
+      "errors": "0",
+      "failures": "0",
+      "skipped": "0",
+      "time": "0.000616"
+    },
+    {
+      "name": "Tests\\Unit\\MarketData\\BybitRestClientTest",
+      "file": "/work/tests/Unit/MarketData/BybitRestClientTest.php",
+      "tests": "9",
+      "assertions": "22",
+      "errors": "0",
+      "failures": "0",
+      "skipped": "0",
+      "time": "0.004025"
+    },
+    {
+      "name": "Tests\\Unit\\MarketData\\GapDetectorTest",
+      "file": "/work/tests/Unit/MarketData/GapDetectorTest.php",
+      "tests": "2",
+      "assertions": "3",
+      "errors": "0",
+      "failures": "0",
+      "skipped": "0",
+      "time": "0.001072"
+    },
+    {
+      "name": "Tests\\Unit\\MarketData\\IntervalTest",
+      "file": "/work/tests/Unit/MarketData/IntervalTest.php",
+      "tests": "4",
+      "assertions": "24",
+      "errors": "0",
+      "failures": "0",
+      "skipped": "0",
+      "time": "0.000654"
+    },
+    {
+      "name": "Tests\\Unit\\MarketData\\WebSocketParserTest",
+      "file": "/work/tests/Unit/MarketData/WebSocketParserTest.php",
+      "tests": "4",
+      "assertions": "11",
+      "errors": "0",
+      "failures": "0",
+      "skipped": "0",
+      "time": "0.001749"
+    },
+    {
+      "name": "Tests\\Unit\\Middleware\\RequireResearchTokenTest",
+      "file": "/work/tests/Unit/Middleware/RequireResearchTokenTest.php",
+      "tests": "6",
+      "assertions": "16",
+      "errors": "0",
+      "failures": "0",
+      "skipped": "0",
+      "time": "0.048059"
+    },
+    {
+      "name": "Tests\\Unit\\PaperTrading\\ExchangePositionSizingTest",
+      "file": "/work/tests/Unit/PaperTrading/ExchangePositionSizingTest.php",
+      "tests": "2",
+      "assertions": "15",
+      "errors": "0",
+      "failures": "0",
+      "skipped": "0",
+      "time": "0.001565"
+    },
+    {
+      "name": "Tests\\Unit\\PaperTrading\\ExecutionEngineTest",
+      "file": "/work/tests/Unit/PaperTrading/ExecutionEngineTest.php",
+      "tests": "5",
+      "assertions": "13",
+      "errors": "0",
+      "failures": "0",
+      "skipped": "0",
+      "time": "0.003648"
+    },
+    {
+      "name": "Tests\\Unit\\PaperTrading\\RiskAndSizingTest",
+      "file": "/work/tests/Unit/PaperTrading/RiskAndSizingTest.php",
+      "tests": "28",
+      "assertions": "42",
+      "errors": "0",
+      "failures": "0",
+      "skipped": "0",
+      "time": "0.006660"
+    },
+    {
+      "name": "Tests\\Unit\\PatternDiscovery\\CandlestickPatternDetectorTest",
+      "file": "/work/tests/Unit/PatternDiscovery/CandlestickPatternDetectorTest.php",
+      "tests": "2",
+      "assertions": "8",
+      "errors": "0",
+      "failures": "0",
+      "skipped": "0",
+      "time": "0.001227"
+    },
+    {
+      "name": "Tests\\Unit\\PatternDiscovery\\MarketStructurePatternDetectorTest",
+      "file": "/work/tests/Unit/PatternDiscovery/MarketStructurePatternDetectorTest.php",
+      "tests": "2",
+      "assertions": "5",
+      "errors": "0",
+      "failures": "0",
+      "skipped": "0",
+      "time": "0.001608"
+    },
+    {
+      "name": "Tests\\Unit\\PatternDiscovery\\PatternDiscoveryTest",
+      "file": "/work/tests/Unit/PatternDiscovery/PatternDiscoveryTest.php",
+      "tests": "10",
+      "assertions": "26",
+      "errors": "0",
+      "failures": "0",
+      "skipped": "0",
+      "time": "0.006122"
+    },
+    {
+      "name": "Tests\\Unit\\QuoteIntegrity\\QimComparisonEngineTest",
+      "file": "/work/tests/Unit/QuoteIntegrity/QimComparisonEngineTest.php",
+      "tests": "8",
+      "assertions": "23",
+      "errors": "0",
+      "failures": "0",
+      "skipped": "0",
+      "time": "1.546749"
+    },
+    {
+      "name": "Tests\\Unit\\QuoteIntegrity\\QimGapRecorderTest",
+      "file": "/work/tests/Unit/QuoteIntegrity/QimGapRecorderTest.php",
+      "tests": "3",
+      "assertions": "15",
+      "errors": "0",
+      "failures": "0",
+      "skipped": "0",
+      "time": "0.098857"
+    },
+    {
+      "name": "Tests\\Unit\\QuoteIntegrity\\QimIncidentLifecycleTest",
+      "file": "/work/tests/Unit/QuoteIntegrity/QimIncidentLifecycleTest.php",
+      "tests": "4",
+      "assertions": "18",
+      "errors": "0",
+      "failures": "0",
+      "skipped": "0",
+      "time": "0.145333"
+    },
+    {
+      "name": "Tests\\Unit\\QuoteIntegrity\\QimMeasurementGuardTest",
+      "file": "/work/tests/Unit/QuoteIntegrity/QimMeasurementGuardTest.php",
+      "tests": "4",
+      "assertions": "12",
+      "errors": "0",
+      "failures": "0",
+      "skipped": "0",
+      "time": "0.127009"
+    },
+    {
+      "name": "Tests\\Unit\\QuoteIntegrity\\QimNonBlockingHooksTest",
+      "file": "/work/tests/Unit/QuoteIntegrity/QimNonBlockingHooksTest.php",
+      "tests": "3",
+      "assertions": "5",
+      "errors": "0",
+      "failures": "0",
+      "skipped": "0",
+      "time": "0.062566"
+    },
+    {
+      "name": "Tests\\Unit\\QuoteIntegrity\\QimObservationServiceTest",
+      "file": "/work/tests/Unit/QuoteIntegrity/QimObservationServiceTest.php",
+      "tests": "5",
+      "assertions": "22",
+      "errors": "0",
+      "failures": "0",
+      "skipped": "0",
+      "time": "0.168072"
+    },
+    {
+      "name": "Tests\\Unit\\Research\\Autonomy\\AutonomyControlTest",
+      "file": "/work/tests/Unit/Research/Autonomy/AutonomyControlTest.php",
+      "tests": "14",
+      "assertions": "146",
+      "errors": "0",
+      "failures": "0",
+      "skipped": "0",
+      "time": "0.005177"
+    },
+    {
+      "name": "Tests\\Unit\\Research\\Autonomy\\AutonomyDomainTest",
+      "file": "/work/tests/Unit/Research/Autonomy/AutonomyDomainTest.php",
+      "tests": "11",
+      "assertions": "215",
+      "errors": "0",
+      "failures": "0",
+      "skipped": "0",
+      "time": "0.003160"
+    },
+    {
+      "name": "Tests\\Unit\\Research\\Autonomy\\AutonomyPromotionTest",
+      "file": "/work/tests/Unit/Research/Autonomy/AutonomyPromotionTest.php",
+      "tests": "7",
+      "assertions": "26",
+      "errors": "0",
+      "failures": "0",
+      "skipped": "0",
+      "time": "0.002118"
+    },
+    {
+      "name": "Tests\\Unit\\Research\\AutonomyPermissionServiceTest",
+      "file": "/work/tests/Unit/Research/AutonomyPermissionServiceTest.php",
+      "tests": "2",
+      "assertions": "17",
+      "errors": "0",
+      "failures": "0",
+      "skipped": "0",
+      "time": "0.086046"
+    },
+    {
+      "name": "Tests\\Unit\\Research\\ChampionChallengerLifecycleTest",
+      "file": "/work/tests/Unit/Research/ChampionChallengerLifecycleTest.php",
+      "tests": "5",
+      "assertions": "26",
+      "errors": "0",
+      "failures": "0",
+      "skipped": "0",
+      "time": "0.366715"
+    },
+    {
+      "name": "Tests\\Unit\\Research\\Concentration\\ConcentrationAnalyzerTest",
+      "file": "/work/tests/Unit/Research/Concentration/ConcentrationAnalyzerTest.php",
+      "tests": "4",
+      "assertions": "22",
+      "errors": "0",
+      "failures": "0",
+      "skipped": "0",
+      "time": "0.026483"
+    },
+    {
+      "name": "Tests\\Unit\\Research\\Concentration\\EquityAlignmentTest",
+      "file": "/work/tests/Unit/Research/Concentration/EquityAlignmentTest.php",
+      "tests": "4",
+      "assertions": "13",
+      "errors": "0",
+      "failures": "0",
+      "skipped": "0",
+      "time": "0.025206"
+    },
+    {
+      "name": "Tests\\Unit\\Research\\Concentration\\OverlapClusterBuilderTest",
+      "file": "/work/tests/Unit/Research/Concentration/OverlapClusterBuilderTest.php",
+      "tests": "6",
+      "assertions": "21",
+      "errors": "0",
+      "failures": "0",
+      "skipped": "0",
+      "time": "0.032550"
+    },
+    {
+      "name": "Tests\\Unit\\Research\\CostMfe\\CostAttributionTest",
+      "file": "/work/tests/Unit/Research/CostMfe/CostAttributionTest.php",
+      "tests": "6",
+      "assertions": "34",
+      "errors": "0",
+      "failures": "0",
+      "skipped": "0",
+      "time": "0.036586"
+    },
+    {
+      "name": "Tests\\Unit\\Research\\CostMfe\\MfeMaeCalculatorTest",
+      "file": "/work/tests/Unit/Research/CostMfe/MfeMaeCalculatorTest.php",
+      "tests": "9",
+      "assertions": "42",
+      "errors": "0",
+      "failures": "0",
+      "skipped": "0",
+      "time": "0.054402"
+    },
+    {
+      "name": "Tests\\Unit\\Research\\CostMfe\\PreEntryMfeEstimatorTest",
+      "file": "/work/tests/Unit/Research/CostMfe/PreEntryMfeEstimatorTest.php",
+      "tests": "5",
+      "assertions": "27",
+      "errors": "0",
+      "failures": "0",
+      "skipped": "0",
+      "time": "0.029805"
+    },
+    {
+      "name": "Tests\\Unit\\Research\\CounterfactualAccurateRCalculationTest",
+      "file": "/work/tests/Unit/Research/CounterfactualAccurateRCalculationTest.php",
+      "tests": "3",
+      "assertions": "12",
+      "errors": "0",
+      "failures": "0",
+      "skipped": "0",
+      "time": "0.138977"
+    },
+    {
+      "name": "Tests\\Unit\\Research\\CounterfactualAnalyzerServiceTest",
+      "file": "/work/tests/Unit/Research/CounterfactualAnalyzerServiceTest.php",
+      "tests": "5",
+      "assertions": "23",
+      "errors": "0",
+      "failures": "0",
+      "skipped": "0",
+      "time": "0.249881"
+    },
+    {
+      "name": "Tests\\Unit\\Research\\CounterfactualLegacyQuarantineTest",
+      "file": "/work/tests/Unit/Research/CounterfactualLegacyQuarantineTest.php",
+      "tests": "5",
+      "assertions": "30",
+      "errors": "0",
+      "failures": "0",
+      "skipped": "0",
+      "time": "0.170030"
+    },
+    {
+      "name": "Tests\\Unit\\Research\\CounterfactualNoHindsightTest",
+      "file": "/work/tests/Unit/Research/CounterfactualNoHindsightTest.php",
+      "tests": "3",
+      "assertions": "14",
+      "errors": "0",
+      "failures": "0",
+      "skipped": "0",
+      "time": "0.132543"
+    },
+    {
+      "name": "Tests\\Unit\\Research\\Decision\\DecisionGateTest",
+      "file": "/work/tests/Unit/Research/Decision/DecisionGateTest.php",
+      "tests": "24",
+      "assertions": "48",
+      "errors": "0",
+      "failures": "0",
+      "skipped": "0",
+      "time": "0.012646"
+    },
+    {
+      "name": "Tests\\Unit\\Research\\Decision\\HypothesisPriorityTest",
+      "file": "/work/tests/Unit/Research/Decision/HypothesisPriorityTest.php",
+      "tests": "6",
+      "assertions": "21",
+      "errors": "0",
+      "failures": "0",
+      "skipped": "0",
+      "time": "0.002692"
+    },
+    {
+      "name": "Tests\\Unit\\Research\\DecisionReplayServiceTest",
+      "file": "/work/tests/Unit/Research/DecisionReplayServiceTest.php",
+      "tests": "1",
+      "assertions": "5",
+      "errors": "0",
+      "failures": "0",
+      "skipped": "0",
+      "time": "0.037267"
+    },
+    {
+      "name": "Tests\\Unit\\Research\\LearningFeatureStoreServiceTest",
+      "file": "/work/tests/Unit/Research/LearningFeatureStoreServiceTest.php",
+      "tests": "2",
+      "assertions": "22",
+      "errors": "0",
+      "failures": "0",
+      "skipped": "0",
+      "time": "0.120531"
+    },
+    {
+      "name": "Tests\\Unit\\Research\\LearningPredictorServiceTest",
+      "file": "/work/tests/Unit/Research/LearningPredictorServiceTest.php",
+      "tests": "1",
+      "assertions": "11",
+      "errors": "0",
+      "failures": "0",
+      "skipped": "0",
+      "time": "0.062624"
+    },
+    {
+      "name": "Tests\\Unit\\Research\\LedgerReconciliationServiceTest",
+      "file": "/work/tests/Unit/Research/LedgerReconciliationServiceTest.php",
+      "tests": "6",
+      "assertions": "27",
+      "errors": "0",
+      "failures": "0",
+      "skipped": "0",
+      "time": "0.428088"
+    },
+    {
+      "name": "Tests\\Unit\\Research\\LogisticRegressionTrainingTest",
+      "file": "/work/tests/Unit/Research/LogisticRegressionTrainingTest.php",
+      "tests": "2",
+      "assertions": "12",
+      "errors": "0",
+      "failures": "0",
+      "skipped": "0",
+      "time": "0.123568"
+    },
+    {
+      "name": "Tests\\Unit\\Research\\MetricRegistryTest",
+      "file": "/work/tests/Unit/Research/MetricRegistryTest.php",
+      "tests": "5",
+      "assertions": "80",
+      "errors": "0",
+      "failures": "0",
+      "skipped": "0",
+      "time": "0.025790"
+    },
+    {
+      "name": "Tests\\Unit\\Research\\ModelAdvisoryIntegrationTest",
+      "file": "/work/tests/Unit/Research/ModelAdvisoryIntegrationTest.php",
+      "tests": "3",
+      "assertions": "28",
+      "errors": "0",
+      "failures": "0",
+      "skipped": "0",
+      "time": "0.111153"
+    },
+    {
+      "name": "Tests\\Unit\\Research\\P1ArchiveEvaluationTest",
+      "file": "/work/tests/Unit/Research/P1ArchiveEvaluationTest.php",
+      "tests": "9",
+      "assertions": "35",
+      "errors": "0",
+      "failures": "0",
+      "skipped": "0",
+      "time": "0.859647"
+    },
+    {
+      "name": "Tests\\Unit\\Research\\PortfolioCorrelationServiceTest",
+      "file": "/work/tests/Unit/Research/PortfolioCorrelationServiceTest.php",
+      "tests": "3",
+      "assertions": "12",
+      "errors": "0",
+      "failures": "0",
+      "skipped": "0",
+      "time": "0.189707"
+    },
+    {
+      "name": "Tests\\Unit\\Research\\ProbabilityCalibrationServiceTest",
+      "file": "/work/tests/Unit/Research/ProbabilityCalibrationServiceTest.php",
+      "tests": "3",
+      "assertions": "41",
+      "errors": "0",
+      "failures": "0",
+      "skipped": "0",
+      "time": "0.111139"
+    },
+    {
+      "name": "Tests\\Unit\\Research\\PromotionPolicyFailClosedTest",
+      "file": "/work/tests/Unit/Research/PromotionPolicyFailClosedTest.php",
+      "tests": "5",
+      "assertions": "17",
+      "errors": "0",
+      "failures": "0",
+      "skipped": "0",
+      "time": "0.262349"
+    },
+    {
+      "name": "Tests\\Unit\\Research\\PromotionPolicyServiceTest",
+      "file": "/work/tests/Unit/Research/PromotionPolicyServiceTest.php",
+      "tests": "8",
+      "assertions": "24",
+      "errors": "0",
+      "failures": "0",
+      "skipped": "0",
+      "time": "0.367296"
+    },
+    {
+      "name": "Tests\\Unit\\Research\\ResearchJobServiceTest",
+      "file": "/work/tests/Unit/Research/ResearchJobServiceTest.php",
+      "tests": "10",
+      "assertions": "61",
+      "errors": "0",
+      "failures": "0",
+      "skipped": "0",
+      "time": "0.375705"
+    },
+    {
+      "name": "Tests\\Unit\\Research\\ResearchRecommendationServiceTest",
+      "file": "/work/tests/Unit/Research/ResearchRecommendationServiceTest.php",
+      "tests": "1",
+      "assertions": "5",
+      "errors": "0",
+      "failures": "0",
+      "skipped": "0",
+      "time": "0.049606"
+    },
+    {
+      "name": "Tests\\Unit\\Research\\ResearchReportServiceTest",
+      "file": "/work/tests/Unit/Research/ResearchReportServiceTest.php",
+      "tests": "1",
+      "assertions": "11",
+      "errors": "0",
+      "failures": "0",
+      "skipped": "0",
+      "time": "0.170768"
+    },
+    {
+      "name": "Tests\\Unit\\Research\\RiskCapitalMetricsServiceTest",
+      "file": "/work/tests/Unit/Research/RiskCapitalMetricsServiceTest.php",
+      "tests": "7",
+      "assertions": "23",
+      "errors": "0",
+      "failures": "0",
+      "skipped": "0",
+      "time": "0.042244"
+    },
+    {
+      "name": "Tests\\Unit\\Research\\ShadowExperimentServiceTest",
+      "file": "/work/tests/Unit/Research/ShadowExperimentServiceTest.php",
+      "tests": "1",
+      "assertions": "3",
+      "errors": "0",
+      "failures": "0",
+      "skipped": "0",
+      "time": "0.043242"
+    },
+    {
+      "name": "Tests\\Unit\\Research\\SlippageAllocationTest",
+      "file": "/work/tests/Unit/Research/SlippageAllocationTest.php",
+      "tests": "11",
+      "assertions": "68",
+      "errors": "0",
+      "failures": "0",
+      "skipped": "0",
+      "time": "0.064278"
+    },
+    {
+      "name": "Tests\\Unit\\Research\\SlippageAttributionServiceTest",
+      "file": "/work/tests/Unit/Research/SlippageAttributionServiceTest.php",
+      "tests": "6",
+      "assertions": "51",
+      "errors": "0",
+      "failures": "0",
+      "skipped": "0",
+      "time": "0.464487"
+    },
+    {
+      "name": "Tests\\Unit\\Research\\StrategyDegradationServiceTest",
+      "file": "/work/tests/Unit/Research/StrategyDegradationServiceTest.php",
+      "tests": "4",
+      "assertions": "16",
+      "errors": "0",
+      "failures": "0",
+      "skipped": "0",
+      "time": "0.235243"
+    },
+    {
+      "name": "Tests\\Unit\\Research\\StrategyEvolutionServiceTest",
+      "file": "/work/tests/Unit/Research/StrategyEvolutionServiceTest.php",
+      "tests": "2",
+      "assertions": "43",
+      "errors": "0",
+      "failures": "0",
+      "skipped": "0",
+      "time": "0.064816"
+    },
+    {
+      "name": "Tests\\Unit\\Research\\StrategyHealthServiceTest",
+      "file": "/work/tests/Unit/Research/StrategyHealthServiceTest.php",
+      "tests": "2",
+      "assertions": "16",
+      "errors": "0",
+      "failures": "0",
+      "skipped": "0",
+      "time": "0.310853"
+    },
+    {
+      "name": "Tests\\Unit\\Research\\SystemFreshnessServiceTest",
+      "file": "/work/tests/Unit/Research/SystemFreshnessServiceTest.php",
+      "tests": "6",
+      "assertions": "181",
+      "errors": "0",
+      "failures": "0",
+      "skipped": "0",
+      "time": "0.486411"
+    },
+    {
+      "name": "Tests\\Unit\\Strategy\\CandidateStrategiesTest",
+      "file": "/work/tests/Unit/Strategy/CandidateStrategiesTest.php",
+      "tests": "7",
+      "assertions": "34",
+      "errors": "0",
+      "failures": "0",
+      "skipped": "0",
+      "time": "0.056820"
+    },
+    {
+      "name": "Tests\\Unit\\Strategy\\MarketContextCollectorTest",
+      "file": "/work/tests/Unit/Strategy/MarketContextCollectorTest.php",
+      "tests": "1",
+      "assertions": "7",
+      "errors": "0",
+      "failures": "0",
+      "skipped": "0",
+      "time": "0.000801"
+    },
+    {
+      "name": "Tests\\Unit\\Strategy\\ResearchStrategiesTest",
+      "file": "/work/tests/Unit/Strategy/ResearchStrategiesTest.php",
+      "tests": "5",
+      "assertions": "23",
+      "errors": "0",
+      "failures": "0",
+      "skipped": "0",
+      "time": "0.004274"
+    },
+    {
+      "name": "Tests\\Unit\\Strategy\\SignalQualityPolicyTest",
+      "file": "/work/tests/Unit/Strategy/SignalQualityPolicyTest.php",
+      "tests": "5",
+      "assertions": "17",
+      "errors": "0",
+      "failures": "0",
+      "skipped": "0",
+      "time": "0.001685"
+    },
+    {
+      "name": "Tests\\Unit\\Strategy\\StrategyEngineTest",
+      "file": "/work/tests/Unit/Strategy/StrategyEngineTest.php",
+      "tests": "10",
+      "assertions": "44",
+      "errors": "0",
+      "failures": "0",
+      "skipped": "0",
+      "time": "0.013223"
+    },
+    {
+      "name": "Tests\\Unit\\Trading\\TradingQueueIsolationTest",
+      "file": "/work/tests/Unit/Trading/TradingQueueIsolationTest.php",
+      "tests": "3",
+      "assertions": "25",
+      "errors": "0",
+      "failures": "0",
+      "skipped": "0",
+      "time": "0.001068"
+    },
+    {
+      "name": "Tests\\Feature\\Api\\CompleteApiEndpointAuditTest",
+      "file": "/work/tests/Feature/Api/CompleteApiEndpointAuditTest.php",
+      "tests": "3",
+      "assertions": "50",
+      "errors": "0",
+      "failures": "0",
+      "skipped": "0",
+      "time": "0.837095"
+    },
+    {
+      "name": "Tests\\Feature\\Api\\MultiAccountSelectionTest",
+      "file": "/work/tests/Feature/Api/MultiAccountSelectionTest.php",
+      "tests": "6",
+      "assertions": "95",
+      "errors": "0",
+      "failures": "0",
+      "skipped": "0",
+      "time": "2.010803"
+    },
+    {
+      "name": "Tests\\Feature\\Api\\ReadOnlyGetEndpointsTest",
+      "file": "/work/tests/Feature/Api/ReadOnlyGetEndpointsTest.php",
+      "tests": "1",
+      "assertions": "2",
+      "errors": "0",
+      "failures": "0",
+      "skipped": "0",
+      "time": "1.696663"
+    },
+    {
+      "name": "Tests\\Feature\\Api\\ResearchApiTest",
+      "file": "/work/tests/Feature/Api/ResearchApiTest.php",
+      "tests": "19",
+      "assertions": "132",
+      "errors": "0",
+      "failures": "0",
+      "skipped": "0",
+      "time": "1.440166"
+    },
+    {
+      "name": "Tests\\Feature\\Audit\\AuditInvariantTest",
+      "file": "/work/tests/Feature/Audit/AuditInvariantTest.php",
+      "tests": "5",
+      "assertions": "26",
+      "errors": "0",
+      "failures": "0",
+      "skipped": "0",
+      "time": "0.350065"
+    },
+    {
+      "name": "Tests\\Feature\\AuditExportTest",
+      "file": "/work/tests/Feature/AuditExportTest.php",
+      "tests": "7",
+      "assertions": "671",
+      "errors": "0",
+      "failures": "0",
+      "skipped": "0",
+      "time": "1.547502"
+    },
+    {
+      "name": "Tests\\Feature\\Backtest\\BacktestCurveServiceTest",
+      "file": "/work/tests/Feature/Backtest/BacktestCurveServiceTest.php",
+      "tests": "1",
+      "assertions": "16",
+      "errors": "0",
+      "failures": "0",
+      "skipped": "0",
+      "time": "0.742254"
+    },
+    {
+      "name": "Tests\\Feature\\Backtest\\BacktestExchangeDispatchTest",
+      "file": "/work/tests/Feature/Backtest/BacktestExchangeDispatchTest.php",
+      "tests": "4",
+      "assertions": "13",
+      "errors": "0",
+      "failures": "0",
+      "skipped": "0",
+      "time": "0.029380"
+    },
+    {
+      "name": "Tests\\Feature\\Backtest\\BacktestRunServiceTest",
+      "file": "/work/tests/Feature/Backtest/BacktestRunServiceTest.php",
+      "tests": "4",
+      "assertions": "232",
+      "errors": "0",
+      "failures": "0",
+      "skipped": "0",
+      "time": "0.834253"
+    },
+    {
+      "name": "Tests\\Feature\\Backtest\\BacktestSimulationTest",
+      "file": "/work/tests/Feature/Backtest/BacktestSimulationTest.php",
+      "tests": "6",
+      "assertions": "34",
+      "errors": "0",
+      "failures": "0",
+      "skipped": "0",
+      "time": "0.266187"
+    },
+    {
+      "name": "Tests\\Feature\\Backtest\\DatasetInspectorTest",
+      "file": "/work/tests/Feature/Backtest/DatasetInspectorTest.php",
+      "tests": "3",
+      "assertions": "7",
+      "errors": "0",
+      "failures": "0",
+      "skipped": "0",
+      "time": "0.135985"
+    },
+    {
+      "name": "Tests\\Feature\\Backtest\\HistoricalStrategyParityTest",
+      "file": "/work/tests/Feature/Backtest/HistoricalStrategyParityTest.php",
+      "tests": "2",
+      "assertions": "361",
+      "errors": "0",
+      "failures": "0",
+      "skipped": "0",
+      "time": "35.957597"
+    },
+    {
+      "name": "Tests\\Feature\\ExampleTest",
+      "file": "/work/tests/Feature/ExampleTest.php",
+      "tests": "1",
+      "assertions": "1",
+      "errors": "0",
+      "failures": "0",
+      "skipped": "0",
+      "time": "0.020995"
+    },
+    {
+      "name": "Tests\\Feature\\Exchanges\\BinanceActivationCommandTest",
+      "file": "/work/tests/Feature/Exchanges/BinanceActivationCommandTest.php",
+      "tests": "4",
+      "assertions": "24",
+      "errors": "0",
+      "failures": "0",
+      "skipped": "0",
+      "time": "4.137891"
+    },
+    {
+      "name": "Tests\\Feature\\Exchanges\\BinanceBatchCandleIngestionTest",
+      "file": "/work/tests/Feature/Exchanges/BinanceBatchCandleIngestionTest.php",
+      "tests": "14",
+      "assertions": "204",
+      "errors": "0",
+      "failures": "0",
+      "skipped": "0",
+      "time": "1.067138"
+    },
+    {
+      "name": "Tests\\Feature\\Exchanges\\BinanceCandleConflictQuarantineTest",
+      "file": "/work/tests/Feature/Exchanges/BinanceCandleConflictQuarantineTest.php",
+      "tests": "3",
+      "assertions": "27",
+      "errors": "0",
+      "failures": "0",
+      "skipped": "0",
+      "time": "0.210466"
+    },
+    {
+      "name": "Tests\\Feature\\Exchanges\\BinanceDeploymentInitializationTest",
+      "file": "/work/tests/Feature/Exchanges/BinanceDeploymentInitializationTest.php",
+      "tests": "3",
+      "assertions": "88",
+      "errors": "0",
+      "failures": "0",
+      "skipped": "0",
+      "time": "1.173321"
+    },
+    {
+      "name": "Tests\\Feature\\Exchanges\\BinanceEmergencyDisableMaintenanceTest",
+      "file": "/work/tests/Feature/Exchanges/BinanceEmergencyDisableMaintenanceTest.php",
+      "tests": "2",
+      "assertions": "14",
+      "errors": "0",
+      "failures": "0",
+      "skipped": "0",
+      "time": "0.657210"
+    },
+    {
+      "name": "Tests\\Feature\\Exchanges\\BinanceGapRecoveryTest",
+      "file": "/work/tests/Feature/Exchanges/BinanceGapRecoveryTest.php",
+      "tests": "2",
+      "assertions": "12",
+      "errors": "0",
+      "failures": "0",
+      "skipped": "0",
+      "time": "0.142549"
+    },
+    {
+      "name": "Tests\\Feature\\Exchanges\\BinanceHtfScheduleTest",
+      "file": "/work/tests/Feature/Exchanges/BinanceHtfScheduleTest.php",
+      "tests": "5",
+      "assertions": "87",
+      "errors": "0",
+      "failures": "0",
+      "skipped": "0",
+      "time": "5.167637"
+    },
+    {
+      "name": "Tests\\Feature\\Exchanges\\BinanceImmutableMarketIngestionTest",
+      "file": "/work/tests/Feature/Exchanges/BinanceImmutableMarketIngestionTest.php",
+      "tests": "2",
+      "assertions": "12",
+      "errors": "0",
+      "failures": "0",
+      "skipped": "0",
+      "time": "0.141392"
+    },
+    {
+      "name": "Tests\\Feature\\Exchanges\\BinancePaperIsolationTest",
+      "file": "/work/tests/Feature/Exchanges/BinancePaperIsolationTest.php",
+      "tests": "8",
+      "assertions": "107",
+      "errors": "0",
+      "failures": "0",
+      "skipped": "0",
+      "time": "2.111658"
+    },
+    {
+      "name": "Tests\\Feature\\Exchanges\\BinancePaperReadinessTest",
+      "file": "/work/tests/Feature/Exchanges/BinancePaperReadinessTest.php",
+      "tests": "11",
+      "assertions": "56",
+      "errors": "0",
+      "failures": "0",
+      "skipped": "0",
+      "time": "12.359525"
+    },
+    {
+      "name": "Tests\\Feature\\Exchanges\\BinanceResearchCycleTest",
+      "file": "/work/tests/Feature/Exchanges/BinanceResearchCycleTest.php",
+      "tests": "8",
+      "assertions": "206",
+      "errors": "0",
+      "failures": "0",
+      "skipped": "0",
+      "time": "5.006961"
+    },
+    {
+      "name": "Tests\\Feature\\Exchanges\\BootstrapEquityIntegrityTest",
+      "file": "/work/tests/Feature/Exchanges/BootstrapEquityIntegrityTest.php",
+      "tests": "3",
+      "assertions": "69",
+      "errors": "0",
+      "failures": "0",
+      "skipped": "0",
+      "time": "0.573980"
+    },
+    {
+      "name": "Tests\\Feature\\Exchanges\\ExchangeRiskSizingTest",
+      "file": "/work/tests/Feature/Exchanges/ExchangeRiskSizingTest.php",
+      "tests": "2",
+      "assertions": "47",
+      "errors": "0",
+      "failures": "0",
+      "skipped": "0",
+      "time": "0.661469"
+    },
+    {
+      "name": "Tests\\Feature\\Exchanges\\MultiExchangeComparisonTest",
+      "file": "/work/tests/Feature/Exchanges/MultiExchangeComparisonTest.php",
+      "tests": "4",
+      "assertions": "48",
+      "errors": "0",
+      "failures": "0",
+      "skipped": "0",
+      "time": "0.179074"
+    },
+    {
+      "name": "Tests\\Feature\\Indicators\\IndicatorEngineTest",
+      "file": "/work/tests/Feature/Indicators/IndicatorEngineTest.php",
+      "tests": "4",
+      "assertions": "11",
+      "errors": "0",
+      "failures": "0",
+      "skipped": "0",
+      "time": "0.258552"
+    },
+    {
+      "name": "Tests\\Feature\\MarketData\\CandlePersistenceTest",
+      "file": "/work/tests/Feature/MarketData/CandlePersistenceTest.php",
+      "tests": "3",
+      "assertions": "7",
+      "errors": "0",
+      "failures": "0",
+      "skipped": "0",
+      "time": "0.199442"
+    },
+    {
+      "name": "Tests\\Feature\\MarketData\\CandleSynchronizerTest",
+      "file": "/work/tests/Feature/MarketData/CandleSynchronizerTest.php",
+      "tests": "2",
+      "assertions": "7",
+      "errors": "0",
+      "failures": "0",
+      "skipped": "0",
+      "time": "0.074980"
+    },
+    {
+      "name": "Tests\\Feature\\MarketData\\EnsureStrategyHistoryTest",
+      "file": "/work/tests/Feature/MarketData/EnsureStrategyHistoryTest.php",
+      "tests": "3",
+      "assertions": "5",
+      "errors": "0",
+      "failures": "0",
+      "skipped": "0",
+      "time": "0.147491"
+    },
+    {
+      "name": "Tests\\Feature\\MarketData\\FundingHistorySynchronizerTest",
+      "file": "/work/tests/Feature/MarketData/FundingHistorySynchronizerTest.php",
+      "tests": "3",
+      "assertions": "12",
+      "errors": "0",
+      "failures": "0",
+      "skipped": "0",
+      "time": "0.112974"
+    },
+    {
+      "name": "Tests\\Feature\\MarketData\\MarketCacheSerializationTest",
+      "file": "/work/tests/Feature/MarketData/MarketCacheSerializationTest.php",
+      "tests": "4",
+      "assertions": "35",
+      "errors": "0",
+      "failures": "0",
+      "skipped": "0",
+      "time": "0.228009"
+    },
+    {
+      "name": "Tests\\Feature\\MarketData\\MarketCommandsTest",
+      "file": "/work/tests/Feature/MarketData/MarketCommandsTest.php",
+      "tests": "1",
+      "assertions": "2",
+      "errors": "0",
+      "failures": "0",
+      "skipped": "0",
+      "time": "0.014031"
+    },
+    {
+      "name": "Tests\\Feature\\MarketData\\MarketExchangeIsolationTest",
+      "file": "/work/tests/Feature/MarketData/MarketExchangeIsolationTest.php",
+      "tests": "4",
+      "assertions": "123",
+      "errors": "0",
+      "failures": "0",
+      "skipped": "0",
+      "time": "1.031322"
+    },
+    {
+      "name": "Tests\\Feature\\MarketData\\MarketStreamSupervisorTest",
+      "file": "/work/tests/Feature/MarketData/MarketStreamSupervisorTest.php",
+      "tests": "1",
+      "assertions": "3",
+      "errors": "0",
+      "failures": "0",
+      "skipped": "0",
+      "time": "0.038835"
+    },
+    {
+      "name": "Tests\\Feature\\MarketData\\MarketTodayFilterTest",
+      "file": "/work/tests/Feature/MarketData/MarketTodayFilterTest.php",
+      "tests": "2",
+      "assertions": "20",
+      "errors": "0",
+      "failures": "0",
+      "skipped": "0",
+      "time": "0.141683"
+    },
+    {
+      "name": "Tests\\Feature\\MarketData\\OpenInterestHistorySynchronizerTest",
+      "file": "/work/tests/Feature/MarketData/OpenInterestHistorySynchronizerTest.php",
+      "tests": "2",
+      "assertions": "11",
+      "errors": "0",
+      "failures": "0",
+      "skipped": "0",
+      "time": "0.067166"
+    },
+    {
+      "name": "Tests\\Feature\\PaperTrading\\AccountSafetyRegressionTest",
+      "file": "/work/tests/Feature/PaperTrading/AccountSafetyRegressionTest.php",
+      "tests": "3",
+      "assertions": "12",
+      "errors": "0",
+      "failures": "0",
+      "skipped": "0",
+      "time": "0.129933"
+    },
+    {
+      "name": "Tests\\Feature\\PaperTrading\\AllThirteenStrategiesExecutionTest",
+      "file": "/work/tests/Feature/PaperTrading/AllThirteenStrategiesExecutionTest.php",
+      "tests": "6",
+      "assertions": "134",
+      "errors": "0",
+      "failures": "0",
+      "skipped": "0",
+      "time": "6.218533"
+    },
+    {
+      "name": "Tests\\Feature\\PaperTrading\\CentralExecutionEligibilityTest",
+      "file": "/work/tests/Feature/PaperTrading/CentralExecutionEligibilityTest.php",
+      "tests": "8",
+      "assertions": "38",
+      "errors": "0",
+      "failures": "0",
+      "skipped": "0",
+      "time": "0.424862"
+    },
+    {
+      "name": "Tests\\Feature\\PaperTrading\\DailyPerformanceTest",
+      "file": "/work/tests/Feature/PaperTrading/DailyPerformanceTest.php",
+      "tests": "8",
+      "assertions": "83",
+      "errors": "0",
+      "failures": "0",
+      "skipped": "0",
+      "time": "2.057419"
+    },
+    {
+      "name": "Tests\\Feature\\PaperTrading\\EquitySnapshotCrossExchangeIntegrityTest",
+      "file": "/work/tests/Feature/PaperTrading/EquitySnapshotCrossExchangeIntegrityTest.php",
+      "tests": "9",
+      "assertions": "311",
+      "errors": "0",
+      "failures": "0",
+      "skipped": "0",
+      "time": "3.100484"
+    },
+    {
+      "name": "Tests\\Feature\\PaperTrading\\ExchangeIngestionAndValuationStageCTest",
+      "file": "/work/tests/Feature/PaperTrading/ExchangeIngestionAndValuationStageCTest.php",
+      "tests": "4",
+      "assertions": "15",
+      "errors": "0",
+      "failures": "0",
+      "skipped": "0",
+      "time": "0.169360"
+    },
+    {
+      "name": "Tests\\Feature\\PaperTrading\\FundingScheduleSafetyTest",
+      "file": "/work/tests/Feature/PaperTrading/FundingScheduleSafetyTest.php",
+      "tests": "6",
+      "assertions": "16",
+      "errors": "0",
+      "failures": "0",
+      "skipped": "0",
+      "time": "0.240107"
+    },
+    {
+      "name": "Tests\\Feature\\PaperTrading\\PaperLifecycleTest",
+      "file": "/work/tests/Feature/PaperTrading/PaperLifecycleTest.php",
+      "tests": "20",
+      "assertions": "75",
+      "errors": "0",
+      "failures": "0",
+      "skipped": "0",
+      "time": "3.036423"
+    },
+    {
+      "name": "Tests\\Feature\\PaperTrading\\PaperReconcileFundingCommandTest",
+      "file": "/work/tests/Feature/PaperTrading/PaperReconcileFundingCommandTest.php",
+      "tests": "1",
+      "assertions": "17",
+      "errors": "0",
+      "failures": "0",
+      "skipped": "0",
+      "time": "0.135040"
+    },
+    {
+      "name": "Tests\\Feature\\PaperTrading\\PerformanceStatisticsTest",
+      "file": "/work/tests/Feature/PaperTrading/PerformanceStatisticsTest.php",
+      "tests": "4",
+      "assertions": "32",
+      "errors": "0",
+      "failures": "0",
+      "skipped": "0",
+      "time": "0.218309"
+    },
+    {
+      "name": "Tests\\Feature\\PaperTrading\\Phase0DiagnosticPackageTest",
+      "file": "/work/tests/Feature/PaperTrading/Phase0DiagnosticPackageTest.php",
+      "tests": "4",
+      "assertions": "114",
+      "errors": "0",
+      "failures": "0",
+      "skipped": "0",
+      "time": "0.571597"
+    },
+    {
+      "name": "Tests\\Feature\\PaperTrading\\PositionLifecycleStageBTest",
+      "file": "/work/tests/Feature/PaperTrading/PositionLifecycleStageBTest.php",
+      "tests": "5",
+      "assertions": "81",
+      "errors": "0",
+      "failures": "0",
+      "skipped": "0",
+      "time": "0.603507"
+    },
+    {
+      "name": "Tests\\Feature\\PaperTrading\\PrimaryAccountMigrationRehearsalTest",
+      "file": "/work/tests/Feature/PaperTrading/PrimaryAccountMigrationRehearsalTest.php",
+      "tests": "1",
+      "assertions": "89",
+      "errors": "0",
+      "failures": "0",
+      "skipped": "0",
+      "time": "0.117052"
+    },
+    {
+      "name": "Tests\\Feature\\PaperTrading\\PrimaryStrategyReadinessTest",
+      "file": "/work/tests/Feature/PaperTrading/PrimaryStrategyReadinessTest.php",
+      "tests": "3",
+      "assertions": "295",
+      "errors": "0",
+      "failures": "0",
+      "skipped": "0",
+      "time": "2.007554"
+    },
+    {
+      "name": "Tests\\Feature\\PaperTrading\\StatisticsPayloadSerializationRegressionTest",
+      "file": "/work/tests/Feature/PaperTrading/StatisticsPayloadSerializationRegressionTest.php",
+      "tests": "4",
+      "assertions": "128",
+      "errors": "0",
+      "failures": "0",
+      "skipped": "0",
+      "time": "0.467094"
+    },
+    {
+      "name": "Tests\\Feature\\PaperTrading\\StrategyPipelineFunnelVerificationTest",
+      "file": "/work/tests/Feature/PaperTrading/StrategyPipelineFunnelVerificationTest.php",
+      "tests": "5",
+      "assertions": "1077",
+      "errors": "0",
+      "failures": "0",
+      "skipped": "0",
+      "time": "0.697327"
+    },
+    {
+      "name": "Tests\\Feature\\PaperTrading\\TemporalIntegrityAndCausalityTest",
+      "file": "/work/tests/Feature/PaperTrading/TemporalIntegrityAndCausalityTest.php",
+      "tests": "8",
+      "assertions": "44",
+      "errors": "0",
+      "failures": "0",
+      "skipped": "0",
+      "time": "3.466685"
+    },
+    {
+      "name": "Tests\\Feature\\PaperTrading\\ThirteenPrimaryAccountsTest",
+      "file": "/work/tests/Feature/PaperTrading/ThirteenPrimaryAccountsTest.php",
+      "tests": "3",
+      "assertions": "131",
+      "errors": "0",
+      "failures": "0",
+      "skipped": "0",
+      "time": "0.185965"
+    },
+    {
+      "name": "Tests\\Feature\\PatternDiscovery\\PatternMatchServiceTest",
+      "file": "/work/tests/Feature/PatternDiscovery/PatternMatchServiceTest.php",
+      "tests": "1",
+      "assertions": "8",
+      "errors": "0",
+      "failures": "0",
+      "skipped": "0",
+      "time": "0.068589"
+    },
+    {
+      "name": "Tests\\Feature\\PatternDiscovery\\PatternOccurrenceOutcomeTest",
+      "file": "/work/tests/Feature/PatternDiscovery/PatternOccurrenceOutcomeTest.php",
+      "tests": "1",
+      "assertions": "9",
+      "errors": "0",
+      "failures": "0",
+      "skipped": "0",
+      "time": "0.064201"
+    },
+    {
+      "name": "Tests\\Feature\\QuoteIntegrity\\QimApiAuthTest",
+      "file": "/work/tests/Feature/QuoteIntegrity/QimApiAuthTest.php",
+      "tests": "4",
+      "assertions": "10",
+      "errors": "0",
+      "failures": "0",
+      "skipped": "0",
+      "time": "0.165941"
+    },
+    {
+      "name": "Tests\\Feature\\QuoteIntegrity\\QimApiStatusTest",
+      "file": "/work/tests/Feature/QuoteIntegrity/QimApiStatusTest.php",
+      "tests": "4",
+      "assertions": "52",
+      "errors": "0",
+      "failures": "0",
+      "skipped": "0",
+      "time": "0.159797"
+    },
+    {
+      "name": "Tests\\Feature\\QuoteIntegrity\\QimEvidenceImportTest",
+      "file": "/work/tests/Feature/QuoteIntegrity/QimEvidenceImportTest.php",
+      "tests": "4",
+      "assertions": "12",
+      "errors": "0",
+      "failures": "0",
+      "skipped": "0",
+      "time": "0.166342"
+    },
+    {
+      "name": "Tests\\Feature\\QuoteIntegrity\\QimFeatureFlagOffTest",
+      "file": "/work/tests/Feature/QuoteIntegrity/QimFeatureFlagOffTest.php",
+      "tests": "2",
+      "assertions": "22",
+      "errors": "0",
+      "failures": "0",
+      "skipped": "0",
+      "time": "0.072171"
+    },
+    {
+      "name": "Tests\\Feature\\Research\\AdaptiveTimeframeResearchTest",
+      "file": "/work/tests/Feature/Research/AdaptiveTimeframeResearchTest.php",
+      "tests": "2",
+      "assertions": "43",
+      "errors": "0",
+      "failures": "0",
+      "skipped": "0",
+      "time": "0.206462"
+    },
+    {
+      "name": "Tests\\Feature\\Research\\AutonomousLearningApiTest",
+      "file": "/work/tests/Feature/Research/AutonomousLearningApiTest.php",
+      "tests": "4",
+      "assertions": "52",
+      "errors": "0",
+      "failures": "0",
+      "skipped": "0",
+      "time": "0.563305"
+    },
+    {
+      "name": "Tests\\Feature\\Research\\AutonomousLearningPipelineTest",
+      "file": "/work/tests/Feature/Research/AutonomousLearningPipelineTest.php",
+      "tests": "3",
+      "assertions": "26",
+      "errors": "0",
+      "failures": "0",
+      "skipped": "0",
+      "time": "0.383035"
+    },
+    {
+      "name": "Tests\\Feature\\Research\\AutonomyResearchTest",
+      "file": "/work/tests/Feature/Research/AutonomyResearchTest.php",
+      "tests": "23",
+      "assertions": "146",
+      "errors": "0",
+      "failures": "0",
+      "skipped": "0",
+      "time": "2.206012"
+    },
+    {
+      "name": "Tests\\Feature\\Research\\CandidateExchangeTest",
+      "file": "/work/tests/Feature/Research/CandidateExchangeTest.php",
+      "tests": "4",
+      "assertions": "20",
+      "errors": "0",
+      "failures": "0",
+      "skipped": "0",
+      "time": "0.150653"
+    },
+    {
+      "name": "Tests\\Feature\\Research\\CandidateLabValidationLifecycleTest",
+      "file": "/work/tests/Feature/Research/CandidateLabValidationLifecycleTest.php",
+      "tests": "6",
+      "assertions": "65",
+      "errors": "0",
+      "failures": "0",
+      "skipped": "0",
+      "time": "0.303629"
+    },
+    {
+      "name": "Tests\\Feature\\Research\\ExitHorizonResearchTest",
+      "file": "/work/tests/Feature/Research/ExitHorizonResearchTest.php",
+      "tests": "2",
+      "assertions": "14",
+      "errors": "0",
+      "failures": "0",
+      "skipped": "0",
+      "time": "0.128045"
+    },
+    {
+      "name": "Tests\\Feature\\Research\\Gate6PromotionPolicyTest",
+      "file": "/work/tests/Feature/Research/Gate6PromotionPolicyTest.php",
+      "tests": "17",
+      "assertions": "80",
+      "errors": "0",
+      "failures": "0",
+      "skipped": "0",
+      "time": "0.575843"
+    },
+    {
+      "name": "Tests\\Feature\\Research\\IntelligenceReadOnlyTest",
+      "file": "/work/tests/Feature/Research/IntelligenceReadOnlyTest.php",
+      "tests": "7",
+      "assertions": "58",
+      "errors": "0",
+      "failures": "0",
+      "skipped": "0",
+      "time": "0.886989"
+    },
+    {
+      "name": "Tests\\Feature\\Research\\LearningPredictorRollbackTest",
+      "file": "/work/tests/Feature/Research/LearningPredictorRollbackTest.php",
+      "tests": "2",
+      "assertions": "12",
+      "errors": "0",
+      "failures": "0",
+      "skipped": "0",
+      "time": "0.065086"
+    },
+    {
+      "name": "Tests\\Feature\\Research\\LegacyActiveModelSafetyTest",
+      "file": "/work/tests/Feature/Research/LegacyActiveModelSafetyTest.php",
+      "tests": "10",
+      "assertions": "47",
+      "errors": "0",
+      "failures": "0",
+      "skipped": "0",
+      "time": "0.447611"
+    },
+    {
+      "name": "Tests\\Feature\\Research\\MetaLabelingResearchTest",
+      "file": "/work/tests/Feature/Research/MetaLabelingResearchTest.php",
+      "tests": "2",
+      "assertions": "23",
+      "errors": "0",
+      "failures": "0",
+      "skipped": "0",
+      "time": "0.011367"
+    },
+    {
+      "name": "Tests\\Feature\\Research\\ModelAdvisoryDecisionVetoTest",
+      "file": "/work/tests/Feature/Research/ModelAdvisoryDecisionVetoTest.php",
+      "tests": "2",
+      "assertions": "24",
+      "errors": "0",
+      "failures": "0",
+      "skipped": "0",
+      "time": "0.082245"
+    },
+    {
+      "name": "Tests\\Feature\\Research\\P2RiskCapitalMetricsTest",
+      "file": "/work/tests/Feature/Research/P2RiskCapitalMetricsTest.php",
+      "tests": "16",
+      "assertions": "68",
+      "errors": "0",
+      "failures": "0",
+      "skipped": "0",
+      "time": "1.488849"
+    },
+    {
+      "name": "Tests\\Feature\\Research\\P4CostMfeMaeApiTest",
+      "file": "/work/tests/Feature/Research/P4CostMfeMaeApiTest.php",
+      "tests": "3",
+      "assertions": "18",
+      "errors": "0",
+      "failures": "0",
+      "skipped": "0",
+      "time": "0.296727"
+    },
+    {
+      "name": "Tests\\Feature\\Research\\P4CostMfeMaeTest",
+      "file": "/work/tests/Feature/Research/P4CostMfeMaeTest.php",
+      "tests": "5",
+      "assertions": "33",
+      "errors": "0",
+      "failures": "0",
+      "skipped": "0",
+      "time": "0.663321"
+    },
+    {
+      "name": "Tests\\Feature\\Research\\P5ConcentrationApiTest",
+      "file": "/work/tests/Feature/Research/P5ConcentrationApiTest.php",
+      "tests": "3",
+      "assertions": "16",
+      "errors": "0",
+      "failures": "0",
+      "skipped": "0",
+      "time": "0.334551"
+    },
+    {
+      "name": "Tests\\Feature\\Research\\P5DependenceConcentrationTest",
+      "file": "/work/tests/Feature/Research/P5DependenceConcentrationTest.php",
+      "tests": "9",
+      "assertions": "46",
+      "errors": "0",
+      "failures": "0",
+      "skipped": "0",
+      "time": "0.829936"
+    },
+    {
+      "name": "Tests\\Feature\\Research\\P6DecisionGateApiTest",
+      "file": "/work/tests/Feature/Research/P6DecisionGateApiTest.php",
+      "tests": "4",
+      "assertions": "16",
+      "errors": "0",
+      "failures": "0",
+      "skipped": "0",
+      "time": "0.407029"
+    },
+    {
+      "name": "Tests\\Feature\\Research\\P6DecisionGateTest",
+      "file": "/work/tests/Feature/Research/P6DecisionGateTest.php",
+      "tests": "7",
+      "assertions": "27",
+      "errors": "0",
+      "failures": "0",
+      "skipped": "0",
+      "time": "0.414769"
+    },
+    {
+      "name": "Tests\\Feature\\Research\\ProfitabilityResearchApiTest",
+      "file": "/work/tests/Feature/Research/ProfitabilityResearchApiTest.php",
+      "tests": "11",
+      "assertions": "198",
+      "errors": "0",
+      "failures": "0",
+      "skipped": "0",
+      "time": "1.055627"
+    },
+    {
+      "name": "Tests\\Feature\\Research\\PromotedCandidateExecutionTest",
+      "file": "/work/tests/Feature/Research/PromotedCandidateExecutionTest.php",
+      "tests": "1",
+      "assertions": "12",
+      "errors": "0",
+      "failures": "0",
+      "skipped": "0",
+      "time": "0.084202"
+    },
+    {
+      "name": "Tests\\Feature\\Research\\ReconcileLedgerJobExecutionPathTest",
+      "file": "/work/tests/Feature/Research/ReconcileLedgerJobExecutionPathTest.php",
+      "tests": "5",
+      "assertions": "16",
+      "errors": "0",
+      "failures": "0",
+      "skipped": "0",
+      "time": "0.181459"
+    },
+    {
+      "name": "Tests\\Feature\\Research\\ResearchBenchmarkCommandTest",
+      "file": "/work/tests/Feature/Research/ResearchBenchmarkCommandTest.php",
+      "tests": "1",
+      "assertions": "4",
+      "errors": "0",
+      "failures": "0",
+      "skipped": "0",
+      "time": "0.045945"
+    },
+    {
+      "name": "Tests\\Feature\\Research\\ResearchHealthApiTest",
+      "file": "/work/tests/Feature/Research/ResearchHealthApiTest.php",
+      "tests": "3",
+      "assertions": "22",
+      "errors": "0",
+      "failures": "0",
+      "skipped": "0",
+      "time": "0.248268"
+    },
+    {
+      "name": "Tests\\Feature\\Research\\ResearchJobApiTest",
+      "file": "/work/tests/Feature/Research/ResearchJobApiTest.php",
+      "tests": "5",
+      "assertions": "38",
+      "errors": "0",
+      "failures": "0",
+      "skipped": "0",
+      "time": "0.170428"
+    },
+    {
+      "name": "Tests\\Feature\\Research\\ResearchUiRemediationTest",
+      "file": "/work/tests/Feature/Research/ResearchUiRemediationTest.php",
+      "tests": "2",
+      "assertions": "19",
+      "errors": "0",
+      "failures": "0",
+      "skipped": "0",
+      "time": "0.098415"
+    },
+    {
+      "name": "Tests\\Feature\\Research\\ScheduledResearchJobsTest",
+      "file": "/work/tests/Feature/Research/ScheduledResearchJobsTest.php",
+      "tests": "4",
+      "assertions": "12",
+      "errors": "0",
+      "failures": "0",
+      "skipped": "0",
+      "time": "0.154112"
+    },
+    {
+      "name": "Tests\\Feature\\Research\\SlippageAttributionApiTest",
+      "file": "/work/tests/Feature/Research/SlippageAttributionApiTest.php",
+      "tests": "4",
+      "assertions": "44",
+      "errors": "0",
+      "failures": "0",
+      "skipped": "0",
+      "time": "0.637078"
+    },
+    {
+      "name": "Tests\\Feature\\Research\\StageThreeApiTest",
+      "file": "/work/tests/Feature/Research/StageThreeApiTest.php",
+      "tests": "4",
+      "assertions": "34",
+      "errors": "0",
+      "failures": "0",
+      "skipped": "0",
+      "time": "0.340392"
+    },
+    {
+      "name": "Tests\\Feature\\Research\\StageTwoApiTest",
+      "file": "/work/tests/Feature/Research/StageTwoApiTest.php",
+      "tests": "4",
+      "assertions": "32",
+      "errors": "0",
+      "failures": "0",
+      "skipped": "0",
+      "time": "0.175904"
+    },
+    {
+      "name": "Tests\\Feature\\Security\\BrowserOriginProtectionTest",
+      "file": "/work/tests/Feature/Security/BrowserOriginProtectionTest.php",
+      "tests": "8",
+      "assertions": "13",
+      "errors": "0",
+      "failures": "0",
+      "skipped": "0",
+      "time": "0.397348"
+    },
+    {
+      "name": "Tests\\Feature\\Security\\RuntimeHardeningConfigTest",
+      "file": "/work/tests/Feature/Security/RuntimeHardeningConfigTest.php",
+      "tests": "3",
+      "assertions": "31",
+      "errors": "0",
+      "failures": "0",
+      "skipped": "0",
+      "time": "0.028040"
+    },
+    {
+      "name": "Tests\\Feature\\Strategy\\LevelProbabilityBootstrapLifecycleTest",
+      "file": "/work/tests/Feature/Strategy/LevelProbabilityBootstrapLifecycleTest.php",
+      "tests": "5",
+      "assertions": "43",
+      "errors": "0",
+      "failures": "0",
+      "skipped": "0",
+      "time": "0.293612"
+    },
+    {
+      "name": "Tests\\Feature\\Strategy\\LevelProbabilityTest",
+      "file": "/work/tests/Feature/Strategy/LevelProbabilityTest.php",
+      "tests": "1",
+      "assertions": "7",
+      "errors": "0",
+      "failures": "0",
+      "skipped": "0",
+      "time": "0.071393"
+    },
+    {
+      "name": "Tests\\Feature\\Strategy\\MarketScannerServiceTest",
+      "file": "/work/tests/Feature/Strategy/MarketScannerServiceTest.php",
+      "tests": "1",
+      "assertions": "9",
+      "errors": "0",
+      "failures": "0",
+      "skipped": "0",
+      "time": "3.339882"
+    },
+    {
+      "name": "Tests\\Feature\\Strategy\\PatternResearchApiTest",
+      "file": "/work/tests/Feature/Strategy/PatternResearchApiTest.php",
+      "tests": "5",
+      "assertions": "29",
+      "errors": "0",
+      "failures": "0",
+      "skipped": "0",
+      "time": "0.183330"
+    },
+    {
+      "name": "Tests\\Feature\\Strategy\\ResearchApiTest",
+      "file": "/work/tests/Feature/Strategy/ResearchApiTest.php",
+      "tests": "6",
+      "assertions": "60",
+      "errors": "0",
+      "failures": "0",
+      "skipped": "0",
+      "time": "0.414511"
+    },
+    {
+      "name": "Tests\\Feature\\Strategy\\ResearchBootstrapTest",
+      "file": "/work/tests/Feature/Strategy/ResearchBootstrapTest.php",
+      "tests": "3",
+      "assertions": "11",
+      "errors": "0",
+      "failures": "0",
+      "skipped": "0",
+      "time": "0.216939"
+    },
+    {
+      "name": "Tests\\Feature\\Strategy\\SignalGenerationTest",
+      "file": "/work/tests/Feature/Strategy/SignalGenerationTest.php",
+      "tests": "7",
+      "assertions": "97",
+      "errors": "0",
+      "failures": "0",
+      "skipped": "0",
+      "time": "8.523033"
+    },
+    {
+      "name": "Tests\\Feature\\Strategy\\SignalOnlyStrategyExecutionTest",
+      "file": "/work/tests/Feature/Strategy/SignalOnlyStrategyExecutionTest.php",
+      "tests": "2",
+      "assertions": "9",
+      "errors": "0",
+      "failures": "0",
+      "skipped": "0",
+      "time": "3.876160"
+    },
+    {
+      "name": "Tests\\Feature\\Strategy\\StrategyScheduleTest",
+      "file": "/work/tests/Feature/Strategy/StrategyScheduleTest.php",
+      "tests": "1",
+      "assertions": "10",
+      "errors": "0",
+      "failures": "0",
+      "skipped": "0",
+      "time": "0.006138"
+    },
+    {
+      "name": "Tests\\Feature\\Strategy\\SupportResistanceStrategiesTest",
+      "file": "/work/tests/Feature/Strategy/SupportResistanceStrategiesTest.php",
+      "tests": "6",
+      "assertions": "74",
+      "errors": "0",
+      "failures": "0",
+      "skipped": "0",
+      "time": "0.418891"
+    },
+    {
+      "name": "Tests\\Feature\\Trading\\EventDrivenTradingPipelineChainTest",
+      "file": "/work/tests/Feature/Trading/EventDrivenTradingPipelineChainTest.php",
+      "tests": "2",
+      "assertions": "27",
+      "errors": "0",
+      "failures": "0",
+      "skipped": "0",
+      "time": "3.243452"
+    },
+    {
+      "name": "Tests\\Feature\\Trading\\TradingPipelineConcurrencyAndSafetyTest",
+      "file": "/work/tests/Feature/Trading/TradingPipelineConcurrencyAndSafetyTest.php",
+      "tests": "5",
+      "assertions": "11",
+      "errors": "0",
+      "failures": "0",
+      "skipped": "0",
+      "time": "3.287349"
+    },
+    {
+      "name": "Tests\\Feature\\Trading\\TradingPipelineEventContractTest",
+      "file": "/work/tests/Feature/Trading/TradingPipelineEventContractTest.php",
+      "tests": "6",
+      "assertions": "26",
+      "errors": "0",
+      "failures": "0",
+      "skipped": "0",
+      "time": "0.198418"
+    },
+    {
+      "name": "Tests\\Feature\\Trading\\TradingPipelineForwardCausalityTest",
+      "file": "/work/tests/Feature/Trading/TradingPipelineForwardCausalityTest.php",
+      "tests": "6",
+      "assertions": "26",
+      "errors": "0",
+      "failures": "0",
+      "skipped": "0",
+      "time": "1.087979"
+    },
+    {
+      "name": "Tests\\Feature\\Trading\\TradingPipelineRecoveryAndRollbackTest",
+      "file": "/work/tests/Feature/Trading/TradingPipelineRecoveryAndRollbackTest.php",
+      "tests": "4",
+      "assertions": "18",
+      "errors": "0",
+      "failures": "0",
+      "skipped": "0",
+      "time": "0.148068"
+    },
+    {
+      "name": "Tests\\Feature\\Trading\\TradingPipelineStageATest",
+      "file": "/work/tests/Feature/Trading/TradingPipelineStageATest.php",
+      "tests": "12",
+      "assertions": "52",
+      "errors": "0",
+      "failures": "0",
+      "skipped": "0",
+      "time": "0.619881"
+    },
+    {
+      "name": "Tests\\Integration\\BinanceCandleConflictDurabilityTest",
+      "file": "/work/tests/Integration/BinanceCandleConflictDurabilityTest.php",
+      "tests": "13",
+      "assertions": "119",
+      "errors": "0",
+      "failures": "0",
+      "skipped": "0",
+      "time": "2.439540"
+    },
+    {
+      "name": "Tests\\Integration\\BinanceCandleInsertionRaceTest",
+      "file": "/work/tests/Integration/BinanceCandleInsertionRaceTest.php",
+      "tests": "4",
+      "assertions": "76",
+      "errors": "0",
+      "failures": "0",
+      "skipped": "0",
+      "time": "0.316341"
+    },
+    {
+      "name": "Tests\\Integration\\BybitPublicApiIntegrationTest",
+      "file": "/work/tests/Integration/BybitPublicApiIntegrationTest.php",
+      "tests": "1",
+      "assertions": "0",
+      "errors": "0",
+      "failures": "0",
+      "skipped": "1",
+      "time": "0.000000"
+    },
+    {
+      "name": "Tests\\Integration\\CounterfactualSlotIdempotencyPostgresIntegrationTest",
+      "file": "/work/tests/Integration/CounterfactualSlotIdempotencyPostgresIntegrationTest.php",
+      "tests": "5",
+      "assertions": "21",
+      "errors": "0",
+      "failures": "0",
+      "skipped": "0",
+      "time": "0.171407"
+    },
+    {
+      "name": "Tests\\Integration\\FinancialAccountingAndReconciliationPostgresIntegrationTest",
+      "file": "/work/tests/Integration/FinancialAccountingAndReconciliationPostgresIntegrationTest.php",
+      "tests": "3",
+      "assertions": "45",
+      "errors": "0",
+      "failures": "0",
+      "skipped": "0",
+      "time": "0.124874"
+    },
+    {
+      "name": "Tests\\Integration\\GoResearchWorkerIntegrationTest",
+      "file": "/work/tests/Integration/GoResearchWorkerIntegrationTest.php",
+      "tests": "2",
+      "assertions": "40",
+      "errors": "0",
+      "failures": "0",
+      "skipped": "0",
+      "time": "3.164831"
+    },
+    {
+      "name": "Tests\\Integration\\LedgerReconciliationPostgresIntegrationTest",
+      "file": "/work/tests/Integration/LedgerReconciliationPostgresIntegrationTest.php",
+      "tests": "3",
+      "assertions": "60",
+      "errors": "0",
+      "failures": "0",
+      "skipped": "0",
+      "time": "0.335822"
+    },
+    {
+      "name": "Tests\\Integration\\MlAuthorityAndProperScoringPostgresIntegrationTest",
+      "file": "/work/tests/Integration/MlAuthorityAndProperScoringPostgresIntegrationTest.php",
+      "tests": "4",
+      "assertions": "29",
+      "errors": "0",
+      "failures": "0",
+      "skipped": "0",
+      "time": "0.117361"
+    },
+    {
+      "name": "Tests\\Integration\\Phase0ReleaseMigrationsPostgresIntegrationTest",
+      "file": "/work/tests/Integration/Phase0ReleaseMigrationsPostgresIntegrationTest.php",
+      "tests": "3",
+      "assertions": "18",
+      "errors": "0",
+      "failures": "0",
+      "skipped": "0",
+      "time": "0.068605"
+    },
+    {
+      "name": "Tests\\Integration\\QuantPortfolioMetricsPostgresIntegrationTest",
+      "file": "/work/tests/Integration/QuantPortfolioMetricsPostgresIntegrationTest.php",
+      "tests": "5",
+      "assertions": "89",
+      "errors": "0",
+      "failures": "0",
+      "skipped": "0",
+      "time": "0.068360"
+    },
+    {
+      "name": "Tests\\Integration\\QuoteIntegrity\\QimImmutabilityTest",
+      "file": "/work/tests/Integration/QuoteIntegrity/QimImmutabilityTest.php",
+      "tests": "2",
+      "assertions": "11",
+      "errors": "0",
+      "failures": "0",
+      "skipped": "0",
+      "time": "0.073143"
+    },
+    {
+      "name": "Tests\\Integration\\ResearchWorkerConcurrencyPostgresIntegrationTest",
+      "file": "/work/tests/Integration/ResearchWorkerConcurrencyPostgresIntegrationTest.php",
+      "tests": "3",
+      "assertions": "25",
+      "errors": "0",
+      "failures": "0",
+      "skipped": "0",
+      "time": "0.295265"
+    },
+    {
+      "name": "Tests\\Integration\\SlippageAttributionPostgresIntegrationTest",
+      "file": "/work/tests/Integration/SlippageAttributionPostgresIntegrationTest.php",
+      "tests": "2",
+      "assertions": "6",
+      "errors": "0",
+      "failures": "0",
+      "skipped": "0",
+      "time": "0.100164"
+    },
+    {
+      "name": "Tests\\Integration\\SlotIntegrityAndRiskFunnelPostgresIntegrationTest",
+      "file": "/work/tests/Integration/SlotIntegrityAndRiskFunnelPostgresIntegrationTest.php",
+      "tests": "4",
+      "assertions": "33",
+      "errors": "0",
+      "failures": "0",
+      "skipped": "0",
+      "time": "0.105209"
+    },
+    {
+      "name": "Tests\\Integration\\StrategyObservationSlotMigrationPostgresIntegrationTest",
+      "file": "/work/tests/Integration/StrategyObservationSlotMigrationPostgresIntegrationTest.php",
+      "tests": "5",
+      "assertions": "20",
+      "errors": "0",
+      "failures": "0",
+      "skipped": "0",
+      "time": "0.138528"
+    }
+  ]
+}
