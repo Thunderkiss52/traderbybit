@@ -93,8 +93,37 @@ LEFT JOIN actual a
 ORDER BY e.exchange_id, x.strategy_id;
 
 -- 18. Bootstrap capital and opening-snapshot provenance per PRIMARY account.
--- Equal timestamps do not prove order; snapshot IDs are insertion sequences.
--- Zero and negative equity remain values requiring classification.
+-- NOTE: paper_accounts.id and paper_capital_events.id are random UUIDs with NO causal insertion order.
+-- Ordering causality is established STRICTLY via equity_snapshots.id (BIGINT / BIGSERIAL insertion sequence)
+-- joined to paper_capital_events via the explicit key relationship:
+--   equity_snapshots.source_event_key = 'owner-paper-capital:' || paper_capital_events.id::text
+-- If the insertion sequence or capital event linkage cannot be proven, status is INSUFFICIENT_BOOTSTRAP_EVIDENCE.
+WITH initial_snaps AS (
+    SELECT
+        paper_account_id,
+        min(id) AS initial_snapshot_id,
+        min(recorded_at) AS initial_snapshot_at
+    FROM equity_snapshots
+    WHERE source_event_key IN ('account:initial', 'account:initial:binance')
+    GROUP BY paper_account_id
+),
+funded_snaps AS (
+    SELECT
+        es.paper_account_id,
+        min(es.id) AS funded_snapshot_id,
+        min(es.recorded_at) AS funded_snapshot_at,
+        min(es.source_event_key) AS funded_snapshot_source,
+        min(pc.id::text) AS linked_capital_event_id,
+        min(pc.amount) AS approved_capital_amount,
+        min(pc.occurred_at) AS capital_occurred_at
+    FROM equity_snapshots es
+    JOIN paper_capital_events pc
+      ON pc.paper_account_id = es.paper_account_id
+     AND es.source_event_key = ('owner-paper-capital:' || pc.id::text)
+    WHERE pc.reason = 'OWNER_APPROVED_PAPER_ALLOCATION'
+      AND pc.amount > 0
+    GROUP BY es.paper_account_id
+)
 SELECT
     pa.exchange_id,
     pa.primary_strategy_id,
@@ -103,18 +132,26 @@ SELECT
     pa.starting_balance,
     pa.current_equity,
     pa.created_at AS account_created_at,
-    (SELECT count(*) FROM paper_capital_events pc
-      WHERE pc.paper_account_id = pa.id) AS capital_event_count,
-    (SELECT coalesce(sum(pc.amount), 0) FROM paper_capital_events pc
-      WHERE pc.paper_account_id = pa.id) AS approved_capital_total,
-    (SELECT es.id FROM equity_snapshots es
-      WHERE es.paper_account_id = pa.id
-        AND es.source_event_key IN ('account:initial', 'account:initial:binance')
-      ORDER BY es.recorded_at, es.id LIMIT 1) AS initial_snapshot_id,
-    (SELECT es.source_event_key FROM equity_snapshots es
-      WHERE es.paper_account_id = pa.id
-        AND es.source_event_key LIKE 'owner-paper-capital:%'
-      ORDER BY es.recorded_at, es.id LIMIT 1) AS first_capital_snapshot_source,
+    coalesce(fs.approved_capital_amount, 0) AS approved_capital_total,
+    init.initial_snapshot_id,
+    init.initial_snapshot_at,
+    fs.funded_snapshot_id,
+    fs.funded_snapshot_at,
+    fs.funded_snapshot_source,
+    fs.linked_capital_event_id,
+    CASE
+        WHEN pa.exchange_id = 'bybit' AND init.initial_snapshot_id IS NOT NULL
+            THEN 'BYBIT_CANONICAL_BOOTSTRAP'
+        WHEN init.initial_snapshot_id IS NULL AND fs.funded_snapshot_id IS NOT NULL
+            THEN 'DIRECT_FUNDED_NO_ZERO_BOOTSTRAP'
+        WHEN init.initial_snapshot_id IS NOT NULL AND fs.funded_snapshot_id IS NOT NULL
+             AND init.initial_snapshot_id < fs.funded_snapshot_id
+             AND init.initial_snapshot_at <= fs.capital_occurred_at
+            THEN 'BOOTSTRAP_SEQUENCE_PROVEN'
+        WHEN init.initial_snapshot_id IS NOT NULL AND fs.funded_snapshot_id IS NULL
+            THEN 'UNFUNDED_INITIAL_ONLY'
+        ELSE 'INSUFFICIENT_BOOTSTRAP_EVIDENCE'
+    END AS bootstrap_causality_status,
     (SELECT es.id FROM equity_snapshots es
       WHERE es.paper_account_id = pa.id
       ORDER BY es.recorded_at DESC, es.id DESC LIMIT 1) AS latest_snapshot_id,
@@ -139,6 +176,8 @@ SELECT
         AND es.recorded_at >= now() - INTERVAL '7 days'
         AND es.equity < 0) AS negative_equity_snapshots_7d
 FROM paper_accounts pa
+LEFT JOIN initial_snaps init ON init.paper_account_id = pa.id
+LEFT JOIN funded_snaps fs ON fs.paper_account_id = pa.id
 WHERE pa.is_primary = true
 ORDER BY pa.exchange_id, pa.primary_strategy_id;
 

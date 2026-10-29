@@ -88,4 +88,28 @@ final class Phase0DiagnosticPackageTest extends TestCase
         self::assertCount(45, $expected);
         self::assertSame($expected, $matches[1]);
     }
+
+    public function test_export_queries_execute_read_only_and_return_valid_json(): void
+    {
+        foreach (['phase0_export_funding_positions.sql', 'phase0_export_pipeline_anomalies.sql'] as $file) {
+            $sql = file_get_contents(base_path("scripts/diagnostics/{$file}"));
+            self::assertStringContainsString('BEGIN TRANSACTION READ ONLY;', $sql);
+            self::assertStringContainsString('ROLLBACK;', $sql);
+            $clean = preg_replace('/^--.*$|^\\\\.*$/m', '', $sql);
+            $queries = array_filter(array_map('trim', explode(';', $clean)));
+            foreach ($queries as $query) {
+                if (preg_match('/^(BEGIN|SET LOCAL|ROLLBACK)\b/', $query)) {
+                    continue;
+                }
+                self::assertMatchesRegularExpression('/^SELECT\b/', $query);
+                self::assertDoesNotMatchRegularExpression('/\b(INSERT|UPDATE|DELETE|ALTER|DROP|TRUNCATE)\b/i', $query);
+                $result = DB::selectOne($query);
+                self::assertNotNull($result);
+                $property = array_key_first((array) $result);
+                $json = ((array) $result)[$property];
+                $decoded = json_decode($json, true, flags: JSON_THROW_ON_ERROR);
+                self::assertIsArray($decoded);
+            }
+        }
+    }
 }
