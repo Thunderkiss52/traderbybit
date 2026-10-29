@@ -142,14 +142,15 @@ Extract complete row-level datasets as clean, valid JSON files without psql tabl
 
 ```bash
 # 1. Export unresolved closed positions (379 rows) for the offline funding classifier
-docker compose exec -T postgres psql -X -A -t -v ON_ERROR_STOP=1 \
+# NOTE: -q silences command status lines (BEGIN/SET/ROLLBACK) ensuring pure JSON output.
+docker compose exec -T postgres psql -X -q -A -t -v ON_ERROR_STOP=1 \
   -U "${POSTGRES_USER:-bybit_signals}" \
   -d "${POSTGRES_DB:-bybit_signals}" \
   < scripts/diagnostics/phase0_export_funding_positions.sql \
   > "$ARTIFACT_DIR/funding_positions.json"
 
 # 2. Export pipeline anomalies (STALE, PARTIAL, FAILED rows)
-docker compose exec -T postgres psql -X -A -t -v ON_ERROR_STOP=1 \
+docker compose exec -T postgres psql -X -q -A -t -v ON_ERROR_STOP=1 \
   -U "${POSTGRES_USER:-bybit_signals}" \
   -d "${POSTGRES_DB:-bybit_signals}" \
   < scripts/diagnostics/phase0_export_pipeline_anomalies.sql \
@@ -159,7 +160,20 @@ docker compose exec -T postgres psql -X -A -t -v ON_ERROR_STOP=1 \
 python3 -c "import json; json.load(open('$ARTIFACT_DIR/funding_positions.json')); json.load(open('$ARTIFACT_DIR/pipeline_anomalies.json')); print('EXPORTS_JSON_VALID=true')"
 ```
 
-### 3.5 Run offline funding classifier against independently validated evidence
+*(Direct container alternatives using `docker exec -i bybit-signals-postgres-1 psql -X -q -A -t -v ON_ERROR_STOP=1 -U bybit_signals -d bybit_signals < ... > ...`)*
+
+### 3.5 Run offline assessment tool across gathered evidence
+
+Execute the deterministic offline evaluation script to assess the 45 production obligations:
+
+```bash
+python3 scripts/diagnostics/assess_phase0_evidence.py \
+  "$ARTIFACT_DIR" \
+  --deployed-sha 9ba6970b4514c32149866e77500757a5784ddcf8 \
+  --output "$ARTIFACT_DIR/production_assessment.json"
+```
+
+### 3.6 Run offline funding classifier against independently validated evidence
 
 Provide `funding_positions.json` along with independently obtained, validated exchange funding data:
 
@@ -176,7 +190,7 @@ python3 scripts/diagnostics/classify_phase0_funding.py \
   > "$ARTIFACT_DIR/funding_classification_baseline.json"
 ```
 
-### 3.6 Capture read-only API health responses and validate HTTP status codes
+### 3.7 Capture read-only API health responses and validate HTTP status codes
 
 All listed GET endpoints are public research observability endpoints with rate limiting (`throttle:api`);
 none require authentication headers or expose secrets. Validate that HTTP status is strictly 200:
@@ -221,7 +235,7 @@ if [ -n "$REPLAY_ID" ] && [ "$REPLAY_ID" != "<ID_FROM_QUERY_25>" ]; then
 fi
 ```
 
-### 3.7 Capture container logs across all relevant VECTOR processing services
+### 3.8 Capture container logs across all relevant VECTOR processing services
 
 VECTOR background processing is distributed across multiple services. Collect logs across all active services:
 
@@ -305,12 +319,13 @@ Executed in the isolated local PostgreSQL test environment
 (`127.0.0.1:25432`, database `bybit_test`), not production:
 
 - `php artisan test tests/Feature/PaperTrading/Phase0DiagnosticPackageTest.php`
-  passed: 4 tests, 102 assertions.
-- `php artisan test tests/Feature/PaperTrading` passed: 102 tests, 2,676 assertions.
+  passed: 4 tests, 114 assertions.
+- `php artisan test tests/Feature/PaperTrading` passed: 102 tests, 2,688 assertions.
 - Full PHPUnit test suite passed: 974 tests, 973 passed, 1 skipped (opt-in Bybit live network test).
 - `./vendor/bin/pint --test` passed.
 - Python tests: `python3 scripts/tests/test_phase0_funding_classifier.py` passed (7 tests),
-  `python3 scripts/tests/test_vector_progress.py` passed (25 tests).
+  `python3 scripts/tests/test_vector_progress.py` passed (25 tests),
+  `python3 scripts/tests/test_assess_phase0_evidence.py` passed (1 test).
 - All diagnostic and export queries execute read-only without DML keywords, wrapped in transactions that roll back cleanly.
 
 Local diagnostic artifact checksums:
@@ -318,21 +333,15 @@ Local diagnostic artifact checksums:
 ```text
 b9a5fff38fbcb71de79be4e04aadf6cd6fd3c9c3c976648e0acaca3ea7f14b2b  scripts/diagnostics/phase0_production_acceptance.sql
 2ee305288f7a2569d5ac65175f6e318e5c86bc6c1bcefb376e98b72006761a8f  scripts/diagnostics/phase0_evidence_closure.sql
-6f973fc1cd91bb35ff4c83948a449c1116694fe5817869022d5bd47b38673e28  scripts/diagnostics/phase0_export_funding_positions.sql
-05a150d2a9921e16f7e1be05f80a4af5f2f0f185bdaa6c0df909c5106f5599de  scripts/diagnostics/phase0_export_pipeline_anomalies.sql
+fb45a311742c70e0ab88e446c4dbf99d876af73ef753c952c3fd65220b27ff56  scripts/diagnostics/phase0_export_funding_positions.sql
+5df65ff3a404793e5332728e837c6613d8ff2363522735934b48deb1868cf1e7  scripts/diagnostics/phase0_export_pipeline_anomalies.sql
+a77e848fe68c10504e40e793fafe40f2207f379121a744efd26ef62d155b4925  scripts/diagnostics/assess_phase0_evidence.py
+38b68c9b7ebfdf32103e51a01ba42c199e3e079f1a9e5392833bc6700dc980db  scripts/diagnostics/classify_phase0_funding.py
 ```
 
 Not performed and not claimed:
 
 - No production SQL or API call was executed.
 - No production funding schedule, mark price, deployment log or browser state was collected.
-- No obligation was promoted; all 45 V2 obligations remain PENDING.
-- No deployment, push or GitHub Actions run was performed.
-
-Not performed and not claimed:
-
-- No production SQL or API call was executed.
-- No production funding schedule, mark price, deployment log or browser state
-  was collected.
 - No obligation was promoted; all 45 V2 obligations remain PENDING.
 - No deployment, push or GitHub Actions run was performed.

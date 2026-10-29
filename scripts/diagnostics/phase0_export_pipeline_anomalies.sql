@@ -11,6 +11,7 @@
 -- =============================================================================
 
 \set ON_ERROR_STOP on
+\set QUIET on
 
 BEGIN TRANSACTION READ ONLY;
 SET LOCAL statement_timeout = '30s';

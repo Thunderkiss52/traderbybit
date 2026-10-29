@@ -95,6 +95,8 @@ final class Phase0DiagnosticPackageTest extends TestCase
             $sql = file_get_contents(base_path("scripts/diagnostics/{$file}"));
             self::assertStringContainsString('BEGIN TRANSACTION READ ONLY;', $sql);
             self::assertStringContainsString('ROLLBACK;', $sql);
+            self::assertStringContainsString('\set QUIET on', $sql);
+            self::assertStringContainsString('\set ON_ERROR_STOP on', $sql);
             $clean = preg_replace('/^--.*$|^\\\\.*$/m', '', $sql);
             $queries = array_filter(array_map('trim', explode(';', $clean)));
             foreach ($queries as $query) {
@@ -110,6 +112,23 @@ final class Phase0DiagnosticPackageTest extends TestCase
                 $decoded = json_decode($json, true, flags: JSON_THROW_ON_ERROR);
                 self::assertIsArray($decoded);
             }
+
+            // Verify raw psql invocation silences transaction status lines and outputs direct parseable JSON
+            $cmd = sprintf(
+                'PGPASSWORD=%s psql -h %s -p %s -U %s -d %s -X -A -t -v ON_ERROR_STOP=1 -f %s',
+                escapeshellarg(config('database.connections.pgsql.password')),
+                escapeshellarg(config('database.connections.pgsql.host')),
+                escapeshellarg((string) config('database.connections.pgsql.port')),
+                escapeshellarg(config('database.connections.pgsql.username')),
+                escapeshellarg(config('database.connections.pgsql.database')),
+                escapeshellarg(base_path("scripts/diagnostics/{$file}"))
+            );
+            $rawOutput = shell_exec($cmd);
+            self::assertNotNull($rawOutput);
+            self::assertStringNotContainsString('BEGIN', $rawOutput);
+            self::assertStringNotContainsString('ROLLBACK', $rawOutput);
+            $decodedDirect = json_decode(trim($rawOutput), true, flags: JSON_THROW_ON_ERROR);
+            self::assertIsArray($decodedDirect);
         }
     }
 }
