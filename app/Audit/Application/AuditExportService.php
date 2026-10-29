@@ -7,6 +7,7 @@ namespace App\Audit\Application;
 use App\Audit\Infrastructure\Persistence\AuditExportRecord;
 use App\Audit\Jobs\GenerateAuditExportJob;
 use App\PaperTrading\Application\DailyPerformanceService;
+use App\PaperTrading\Infrastructure\Persistence\EquitySnapshotRecord;
 use App\Strategy\Application\StrategyRegistry;
 use Brick\Math\BigDecimal;
 use Carbon\CarbonImmutable;
@@ -511,8 +512,8 @@ final class AuditExportService
         };
         $record($handle, ['', 'source_snapshot', 'BOUNDED_BEST_EFFORT', 'Not a repeatable-read transaction']);
         foreach (DB::table('paper_accounts')->select(['id', 'starting_balance', 'current_equity', 'realized_pnl', 'unrealized_pnl'])->cursor() as $account) {
-            $snapshots = DB::table('equity_snapshots')->where('paper_account_id', $account->id)
-                ->whereIn('source_event_key', ['account:initial', 'account:initial:binance'])->exists();
+            $snapshots = EquitySnapshotRecord::query()->where('paper_account_id', $account->id)
+                ->openingCapital()->exists();
             if (! $snapshots) {
                 $record($handle, [$account->id, 'initial_equity_snapshot', 'MISSING', 'Drawdown baseline may be incomplete']);
             }

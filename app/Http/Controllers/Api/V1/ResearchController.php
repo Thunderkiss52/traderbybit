@@ -895,7 +895,7 @@ final class ResearchController extends Controller
                     'winning_trades' => (int) ($record->winning_trades ?? 0),
                 ])->values()->all();
 
-            $equity = EquitySnapshotRecord::query()->where('paper_account_id', $a)
+            $equity = EquitySnapshotRecord::query()->performance()->where('paper_account_id', $a)
                 ->latest('recorded_at')->latest('id')->paginate(100, ['recorded_at', 'equity', 'drawdown_percent'], 'equity_page', $equityPage);
             $rMultiples = (clone $closed)->whereNotNull('r_multiple')->latest('closed_at')
                 ->paginate(10, ['id', 'r_multiple'], 'r_page', $rPage);

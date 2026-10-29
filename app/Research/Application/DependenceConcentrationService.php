@@ -502,10 +502,10 @@ final class DependenceConcentrationService
     ): array {
         $series = [];
         foreach ($accounts as $account) {
-            $query = EquitySnapshotRecord::query()
+            $query = EquitySnapshotRecord::query()->performance()
                 ->where('paper_account_id', $account->id)
                 ->where('recorded_at', '<=', $asOf)
-                ->orderBy('recorded_at');
+                ->orderBy('recorded_at')->orderBy('id');
             if ($windowStart !== null) {
                 $query->where('recorded_at', '>=', $windowStart);
             }

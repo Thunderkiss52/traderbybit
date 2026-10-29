@@ -72,12 +72,13 @@ final class BinancePaperCapital
                     'reason' => 'OWNER_APPROVED_PAPER_ALLOCATION', 'occurred_at' => $now,
                     'created_at' => $now, 'updated_at' => $now,
                 ]);
-                // The original account:initial snapshot remains zero and immutable.
+                // Any legacy unfunded snapshot remains immutable; capital is a separate event.
                 $account->update(['starting_balance' => $amount, 'current_equity' => $amount, 'peak_equity' => $amount]);
                 DB::table('equity_snapshots')->insertOrIgnore([
                     'paper_account_id' => $account->id, 'exchange_id' => 'binance',
                     'recorded_at' => $now, 'equity' => $amount, 'realized_pnl' => '0',
                     'unrealized_pnl' => '0', 'drawdown_percent' => '0',
+                    'valued_through' => $now, 'valuation_fresh' => true,
                     'source_event_key' => 'owner-paper-capital:'.$id, 'created_at' => $now, 'updated_at' => $now,
                 ]);
                 $allocated++;

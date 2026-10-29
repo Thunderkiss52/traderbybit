@@ -78,12 +78,8 @@ final class BinancePaperProvisioner
                     'strategy_parameters' => json_encode($parameters, JSON_THROW_ON_ERROR),
                     'exchange_id' => 'binance', 'created_at' => $now, 'updated_at' => $now,
                 ]);
-                DB::table('equity_snapshots')->insert([
-                    'paper_account_id' => $id, 'exchange_id' => 'binance',
-                    'recorded_at' => $now, 'equity' => '0', 'realized_pnl' => '0',
-                    'unrealized_pnl' => '0', 'drawdown_percent' => '0',
-                    'source_event_key' => 'account:initial:binance', 'created_at' => $now, 'updated_at' => $now,
-                ]);
+                // Provisioning is not funded trading performance. The approved capital
+                // allocation records the first performance snapshot atomically.
                 $created++;
             }
 

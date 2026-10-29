@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\PaperTrading\Jobs;
 
 use App\PaperTrading\Domain\PositionStatus;
+use Brick\Math\BigDecimal;
 use Carbon\CarbonImmutable;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
@@ -32,6 +33,16 @@ final class CapturePaperEquityJob implements ShouldQueue
             foreach ($accounts as $account) {
                 if (empty($account->exchange_id)) {
                     throw new \RuntimeException("Paper account {$account->id} is missing exchange_id.");
+                }
+
+                // An unfunded account is not trading performance. Capture starts only
+                // after approved capital or real activity exists, so bootstrap zeroes
+                // cannot later be read as a total loss.
+                $neverFunded = BigDecimal::of($account->starting_balance)->isZero()
+                    && ! DB::table('paper_capital_events')->where('paper_account_id', $account->id)->exists()
+                    && ! DB::table('virtual_positions')->where('paper_account_id', $account->id)->exists();
+                if ($neverFunded) {
+                    continue;
                 }
 
                 $openPositions = DB::table('virtual_positions')

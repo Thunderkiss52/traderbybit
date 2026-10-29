@@ -99,7 +99,7 @@ final class DailyPerformanceService
             $expression = 'date(recorded_at, ?)';
             $bindings = [$modifier];
         }
-        $base = EquitySnapshotRecord::query()->where('paper_account_id', $accountId)
+        $base = EquitySnapshotRecord::query()->performance()->where('paper_account_id', $accountId)
             ->selectRaw($expression.' AS local_date', $bindings)->groupBy('local_date');
         $total = DB::query()->fromSub(clone $base, 'snapshot_days')->count();
         $dates = (clone $base)->orderByDesc('local_date')->offset(($page - 1) * $perPage)->limit($perPage)->pluck('local_date')->map(fn ($date): string => (string) $date)->all();
@@ -290,6 +290,7 @@ final class DailyPerformanceService
             .'FROM boundaries b LEFT JOIN LATERAL ('
             .'SELECT es.id, es.recorded_at, es.equity, es.realized_pnl, es.unrealized_pnl, es.valued_through, es.valuation_fresh '
             .'FROM equity_snapshots es WHERE es.paper_account_id = ?::uuid AND es.recorded_at <= b.at '
+            .'AND '.EquitySnapshotRecord::performancePredicate('es').' '
             .'ORDER BY es.recorded_at DESC, es.id DESC LIMIT 1'
             .') s ON true';
         $rows = DB::select($sql, $bindings);
@@ -394,7 +395,7 @@ final class DailyPerformanceService
 
     private function lastSnapshot(string $accountId, DateTimeImmutable $at): ?EquitySnapshotRecord
     {
-        return EquitySnapshotRecord::query()->where('paper_account_id', $accountId)->where('recorded_at', '<=', $at)
+        return EquitySnapshotRecord::query()->performance()->where('paper_account_id', $accountId)->where('recorded_at', '<=', $at)
             ->latest('recorded_at')->latest('id')->first(['id', 'recorded_at', 'equity', 'realized_pnl', 'unrealized_pnl', 'valued_through', 'valuation_fresh']);
     }
 

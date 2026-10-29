@@ -929,7 +929,7 @@ final class RiskCapitalMetricsService
         ?CarbonImmutable $windowStart,
         ?CarbonImmutable $windowEnd
     ): array {
-        $query = EquitySnapshotRecord::query()
+        $query = EquitySnapshotRecord::query()->performance()
             ->where('paper_account_id', $account->id)
             ->where('recorded_at', '<=', $accountingScope === 'WINDOW_FLOW' && $windowEnd !== null ? $windowEnd : $asOf);
 
@@ -937,7 +937,7 @@ final class RiskCapitalMetricsService
             $query->where('recorded_at', '>=', $windowStart);
         }
 
-        $snapshots = $query->orderBy('recorded_at')->get();
+        $snapshots = $query->orderBy('recorded_at')->orderBy('id')->get();
         $intervals = [];
         $count = $snapshots->count();
         for ($i = 0; $i < $count - 1; $i++) {

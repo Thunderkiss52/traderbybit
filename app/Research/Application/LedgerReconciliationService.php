@@ -104,7 +104,7 @@ final class LedgerReconciliationService
         if ($globalIntegrity['orphan_execution_count'] > 0) {
             $incompleteReasons[] = 'global_orphan_executions_unattributable';
         }
-        if (! EquitySnapshotRecord::query()->where('paper_account_id', $accountId)->where('source_event_key', 'account:initial')->exists()) {
+        if (! EquitySnapshotRecord::query()->performance()->where('paper_account_id', $accountId)->openingCapital()->exists()) {
             $incompleteReasons[] = 'initial_equity_snapshot_unavailable';
         }
         $missingEntries = VirtualPositionRecord::query()->where('paper_account_id', $accountId)
@@ -290,16 +290,16 @@ final class LedgerReconciliationService
         }
 
         // Equity snapshots across window
-        $firstSnapshot = EquitySnapshotRecord::query()
+        $firstSnapshot = EquitySnapshotRecord::query()->performance()
             ->where('paper_account_id', $accountId)
             ->where('recorded_at', '>=', $start)
-            ->oldest('recorded_at')
+            ->oldest('recorded_at')->oldest('id')
             ->first();
 
-        $lastSnapshot = EquitySnapshotRecord::query()
+        $lastSnapshot = EquitySnapshotRecord::query()->performance()
             ->where('paper_account_id', $accountId)
             ->where('recorded_at', '<=', $end)
-            ->latest('recorded_at')
+            ->latest('recorded_at')->latest('id')
             ->first();
 
         $startEquity = $firstSnapshot ? BigDecimal::of($firstSnapshot->equity) : BigDecimal::of($account->starting_balance);

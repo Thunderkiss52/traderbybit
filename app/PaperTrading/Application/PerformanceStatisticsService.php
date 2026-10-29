@@ -118,7 +118,7 @@ final class PerformanceStatisticsService
         $accountForDrawdown = PaperAccountRecord::query()->findOrFail($accountId);
         $maximumDrawdown = $this->drawdown(
             $accountForDrawdown->starting_balance,
-            EquitySnapshotRecord::query()->where('paper_account_id', $accountId)
+            EquitySnapshotRecord::query()->performance()->where('paper_account_id', $accountId)
                 ->oldest('recorded_at')->oldest('id')->cursor(['equity', 'source_event_key']),
             $accountForDrawdown->current_equity
         );
@@ -177,7 +177,7 @@ final class PerformanceStatisticsService
                 $account->maximum_drawdown_percent,
                 $this->drawdown(
                     $account->starting_balance,
-                    EquitySnapshotRecord::query()->where('paper_account_id', $account->id)
+                    EquitySnapshotRecord::query()->performance()->where('paper_account_id', $account->id)
                         ->oldest('recorded_at')->oldest('id')->cursor(['equity', 'source_event_key']),
                     $account->current_equity
                 )
