@@ -8,7 +8,7 @@
 **Target Proposal Baseline:** `VECTOR-SCOPE-20261028-v3.3`
 **Execution Mode:** STRICTLY VIRTUAL PAPER TRADING ONLY. Zero real exchange trading; zero private trade credentials; zero order placement endpoints.
 
-### P1 Binance Candle Integrity release gate — 2026-10-29
+### P1 Binance Candle Integrity V2 local remediation — 2026-10-29
 
 This release package is separate from roadmap Phase 1. Phase 0 remains **BLOCKED**;
 roadmap Phase 1 remains **NOT STARTED**. No production acceptance is granted.
@@ -16,17 +16,18 @@ roadmap Phase 1 remains **NOT STARTED**. No production acceptance is granted.
 | Item | Source-qualified status |
 |---|---|
 | P1 implementation | **IMPLEMENTED** at `24e5096588c1aca66a19761ca7ed207e73514066` |
-| Nominal regression verification | **LOCAL VERIFIED**; exact fresh results and command evidence are recorded in the [pre-push gate report](../reports/P1_PRE_PUSH_RELEASE_GATE_20261029.md) |
-| Targeted P1 PHPUnit | **LOCAL VERIFIED** — 47 tests / 593 assertions, exit 0 |
-| Full PHPUnit | **LOCAL VERIFIED** — 991 passed / 1 intentional public-Bybit skip / 10,078 assertions, exit 0 |
+| V2 blocker fixes | **LOCAL VERIFIED** at `7a26d93a39e09417423f4a2f58d6c68a74b7c884`; see the [V2 report](../reports/P1_CANDLE_INTEGRITY_V2_20261029.md) and its independent PostgreSQL evidence |
+| Targeted P1 PHPUnit | **LOCAL VERIFIED** — 66 tests / 794 assertions, exit 0 |
+| Full PHPUnit | **LOCAL VERIFIED** — 1,008 passed / 1 intentional public-Bybit skip / 10,267 assertions, exit 0 |
 | Frontend tests and build | **LOCAL VERIFIED** — 64 tests passed; typecheck and production build passed, exit 0 |
-| Go race tests | **LOCAL VERIFIED** — `go test -race -count=1 ./...` passed, exit 0 |
-| Conflict durability and fail-closed behavior | **LOCAL VERIFICATION FAILED**; persistence/read failures, recurrence after resolution, and scheduled partial-result handling prevent release approval |
+| Go verification | Go source unchanged; race tests not rerun in V2. Both Go worker PHP integration tests passed in the full suite; the earlier gate retains its dated Go race evidence |
+| Conflict durability and fail-closed behavior | **LOCAL VERIFIED V2** — independent commits survive outer rollback; persistence/read failures block READY; atomic recurrence/concurrency and real scheduled failures covered |
 | Historical correction | **PENDING SEPARATE OPERATOR AUTHORIZATION** for the four reported BTCUSDT/ETHUSDT 30m/1h bars at 2026-10-27T00:00:00Z; prepared SQL was not executed; current production values were not inspected |
-| Push and deployment | **PRODUCTION PENDING / NOT READY**; no push, workflow dispatch, deployment, or production writes authorized or performed |
+| Push and deployment | **PRODUCTION PENDING** — **READY FOR FINAL PRE-PUSH GATE** only; no push, workflow dispatch, deployment, or production writes authorized or performed |
 
-The pre-push gate report supersedes unconditional durability/root-cause claims in
-the earlier forensic report. Passing nominal suites does not establish safety of
+The historical pre-push gate and V2 report qualify unconditional durability/root-cause
+claims in the earlier forensic report. V2 supersedes the five local blocker findings,
+without asserting a production historical root cause. Passing nominal suites does not establish safety of
 failure paths or close production obligations. Scope weights and acceptance
 criteria remain frozen; no scorecard credit is inferred from this release review.
 

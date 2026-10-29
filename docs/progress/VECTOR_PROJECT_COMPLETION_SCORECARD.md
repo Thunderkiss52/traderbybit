@@ -2,7 +2,7 @@
 
 **PROVISIONAL** — independently calculated scores; not product readiness.
 
-Source HEAD: `40abcdce48bbb5033e7047daab81355083829cc9`. Assessment source: `5b674960adc8ff6591134537763dce7a5bb0bb3c`.
+Source HEAD: `7a26d93a39e09417423f4a2f58d6c68a74b7c884`. Assessment source: `5b674960adc8ff6591134537763dce7a5bb0bb3c`.
 Assessment date: 2026-10-29; scope: `VECTOR-SCOPE-20261027-v1`.
 Registry hash: `53e5aec115d4ce8be5ec5bf397d57f134cf962c42de770d077aa6e510cb1656c`.
 

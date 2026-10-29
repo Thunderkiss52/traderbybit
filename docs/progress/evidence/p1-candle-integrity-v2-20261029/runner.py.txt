@@ -1,0 +1,20 @@
+import sys,os,pathlib,subprocess,json,datetime,hashlib
+p=pathlib.Path(__file__).parent
+res=json.loads((p/'resources.json').read_text())
+env={'APP_ENV':'testing','APP_DEBUG':'false','APP_KEY':'base64:MDEyMzQ1Njc4OWFiY2RlZjAxMjM0NTY3ODlhYmNkZWY=','DB_CONNECTION':'pgsql','DB_HOST':'127.0.0.1','DB_PORT':'5432','DB_DATABASE':'bybit_test','DB_USERNAME':'postgres','DB_PASSWORD':'testpass','DB_URL':'','TEST_DB_HOST':'127.0.0.1','TEST_DB_PORT':'5432','TEST_DB_DATABASE':'bybit_test','TEST_DB_USERNAME':'postgres','TEST_DB_PASSWORD':'testpass','RUN_DB':'bybit_test','CACHE_STORE':'array','SESSION_DRIVER':'array','QUEUE_CONNECTION':'sync','LOG_CHANNEL':'stderr','RUN_BYBIT_INTEGRATION':'0','GOFLAGS':'-buildvcs=false','GOTOOLCHAIN':'local','GOPATH':'/root/go','GOCACHE':'/tmp/go-cache'}
+name,mode,*args=sys.argv[1:]
+if mode=='php':
+ cmd=['docker','run','--rm','--label','io.traderbybit.task=p1-v2','--network','container:'+res['postgres'],'--user','0:0','--entrypoint','','-v',str(p/'workspace')+':/work','-v','/home/thunder/work/traderbybit/vendor:/work/vendor:ro','-v','/home/thunder/work/traderbybit/.git:/work/.git:ro','-w','/work']
+ for k,v in env.items():cmd+=['-e',k+'='+v]
+ cmd+=['vector-p1-v2-test:local']+args
+ cwd=p
+elif mode=='front':
+ cmd=args; cwd=p/'workspace/frontend'; os.environ['PATH']='/home/thunder/.nvm/versions/node/v22.23.4/bin:'+os.environ['PATH']
+else:cmd=args;cwd=p
+started=datetime.datetime.now(datetime.timezone.utc).isoformat()
+with (p/'logs'/f'{name}.log').open('wb') as log: code=subprocess.call(cmd,cwd=cwd,stdout=log,stderr=subprocess.STDOUT)
+data={'name':name,'command':cmd,'cwd':str(cwd),'started_at':started,'finished_at':datetime.datetime.now(datetime.timezone.utc).isoformat(),'exit_code':code,'sha256':hashlib.sha256((p/'logs'/f'{name}.log').read_bytes()).hexdigest(),'source_head':subprocess.check_output(['git','-C','/home/thunder/work/traderbybit','rev-parse','HEAD'],text=True).strip(),'working_tree':'candidate changes on initial HEAD'}
+(p/'logs'/f'{name}.json').write_text(json.dumps(data,indent=2)+'\n')
+print(json.dumps({k:data[k] for k in ['name','exit_code','sha256']}))
+print('\n'.join((p/'logs'/f'{name}.log').read_text(errors='replace').splitlines()[-22:]))
+sys.exit(code)

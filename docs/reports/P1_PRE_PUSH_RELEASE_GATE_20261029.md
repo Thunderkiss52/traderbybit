@@ -1,7 +1,11 @@
 # P1 Binance Candle Integrity — final local pre-push gate
 
 Date: 2026-10-29. Scope: verification of `24e5096588c1aca66a19761ca7ed207e73514066`;
-documentation changes only. Verdict: **NOT READY FOR OPERATOR PUSH**.
+documentation changes only. Historical verdict: **NOT READY FOR OPERATOR PUSH**.
+
+The five local blockers were subsequently fixed and regression-tested in the
+[V2 remediation report](P1_CANDLE_INTEGRITY_V2_20261029.md). This original gate and
+its raw evidence remain a record of the earlier implementation, not current V2 behavior.
 
 ## Repository and scope
 

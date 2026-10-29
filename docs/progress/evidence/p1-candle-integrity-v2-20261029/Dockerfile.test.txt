@@ -1,0 +1,6 @@
+FROM traderbybit-php85-test:local
+RUN apk add --no-cache postgresql17-client
+WORKDIR /tmp/modules
+COPY research-go/go.mod research-go/go.sum ./
+RUN go mod download
+LABEL io.traderbybit.task="p1-v2"

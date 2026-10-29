@@ -1,0 +1,42 @@
+{
+  "Tests\\Integration\\BinanceCandleConflictDurabilityTest": {
+    "tests": 13,
+    "assertions": 119
+  },
+  "Tests\\Feature\\Exchanges\\BinanceHtfScheduleTest": {
+    "tests": 5,
+    "assertions": 87
+  },
+  "Tests\\Integration\\BinanceCandleInsertionRaceTest": {
+    "tests": 4,
+    "assertions": 76
+  },
+  "Tests\\Feature\\Exchanges\\BinanceCandleConflictQuarantineTest": {
+    "tests": 3,
+    "assertions": 27
+  },
+  "Tests\\Feature\\Exchanges\\BinanceBatchCandleIngestionTest": {
+    "tests": 14,
+    "assertions": 204
+  },
+  "Tests\\Feature\\Exchanges\\BinanceImmutableMarketIngestionTest": {
+    "tests": 2,
+    "assertions": 12
+  },
+  "Tests\\Unit\\Research\\SystemFreshnessServiceTest": {
+    "tests": 6,
+    "assertions": 181
+  },
+  "Tests\\Feature\\Research\\ResearchHealthApiTest": {
+    "tests": 3,
+    "assertions": 22
+  },
+  "Tests\\Unit\\Exchanges\\BinanceCandleWindowTest": {
+    "tests": 5,
+    "assertions": 10
+  },
+  "Tests\\Feature\\Exchanges\\BinancePaperReadinessTest": {
+    "tests": 11,
+    "assertions": 56
+  }
+}

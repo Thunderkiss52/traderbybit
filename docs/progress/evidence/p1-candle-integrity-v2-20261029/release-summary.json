@@ -1,0 +1,10 @@
+{
+  "initial_head": "40abcdce48bbb5033e7047daab81355083829cc9",
+  "implementation_commit": "7a26d93a39e09417423f4a2f58d6c68a74b7c884",
+  "verdict": "READY_FOR_FINAL_PRE_PUSH_GATE",
+  "source_hashes_match_commit": true,
+  "production": "PENDING; no production access or mutations",
+  "go_source_changed": false,
+  "go_race_rerun": false,
+  "test_infrastructure_removed": true
+}

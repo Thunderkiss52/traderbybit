@@ -1,0 +1,22 @@
+{
+  "summary": {
+    "name": "/work/phpunit.xml",
+    "tests": "1009",
+    "assertions": "10267",
+    "errors": "0",
+    "failures": "0",
+    "skipped": "1",
+    "time": "160.804198"
+  },
+  "skipped": [
+    {
+      "name": "test_public_linear_market_endpoints_match_the_documented_contract",
+      "file": "/work/tests/Integration/BybitPublicApiIntegrationTest.php",
+      "line": "25",
+      "class": "Tests\\Integration\\BybitPublicApiIntegrationTest",
+      "classname": "Tests.Integration.BybitPublicApiIntegrationTest",
+      "assertions": "0",
+      "time": "0.000000"
+    }
+  ]
+}
