@@ -4,10 +4,12 @@ import (
 	"context"
 	"database/sql"
 	"database/sql/driver"
+	"errors"
 	"io"
 	"strings"
 	"sync"
 	"testing"
+	"time"
 
 	"github.com/traderbybit/research-go/internal/contracts"
 )
@@ -46,9 +48,20 @@ func TestIsSupportedKind(t *testing.T) {
 
 // Mock database driver to test ExecuteJob failure with unsupported kind
 type mockDriver struct {
-	mu           sync.Mutex
-	failedJobID  string
-	failedReason string
+	mu               sync.Mutex
+	failedJobID      string
+	failedReason     string
+	overrideGenToken int64
+	queryErr         error
+}
+
+func (m *mockDriver) reset() {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	m.failedJobID = ""
+	m.failedReason = ""
+	m.overrideGenToken = 0
+	m.queryErr = nil
 }
 
 func (m *mockDriver) Open(name string) (driver.Conn, error) {
@@ -96,8 +109,19 @@ func (s *mockStmt) Exec(args []driver.Value) (driver.Result, error) {
 }
 
 func (s *mockStmt) Query(args []driver.Value) (driver.Rows, error) {
+	s.conn.driver.mu.Lock()
+	qErr := s.conn.driver.queryErr
+	genToken := s.conn.driver.overrideGenToken
+	s.conn.driver.mu.Unlock()
+
+	if qErr != nil {
+		return nil, qErr
+	}
 	if strings.Contains(s.query, "generation_token") {
-		return &mockRows{singleVal: int64(1)}, nil
+		if genToken == 0 {
+			genToken = 1
+		}
+		return &mockRows{singleVal: genToken}, nil
 	}
 	// For LoadCandlesFromDB
 	return &mockRows{}, nil
@@ -209,5 +233,96 @@ func TestWorkerLifecycleMethods(t *testing.T) {
 	err = runner.UnregisterWorker(ctx)
 	if err != nil {
 		t.Fatalf("UnregisterWorker failed: %v", err)
+	}
+}
+
+func TestVerifyWorkerGeneration_UninitializedRejectsMutations(t *testing.T) {
+	db := initMockDB()
+	runner := NewRunner(db, "test-worker-zero")
+	ctx := context.Background()
+
+	// 1. ClaimNextJob
+	_, _, err := runner.ClaimNextJob(ctx, 60*time.Second)
+	if err == nil || !strings.Contains(err.Error(), "cannot claim job without a valid positive worker generation token") {
+		t.Fatalf("expected uninitialized generation token error from ClaimNextJob, got: %v", err)
+	}
+
+	// 2. StartJob
+	err = runner.StartJob(ctx, "job-uninit-1", 1)
+	if err == nil || !strings.Contains(err.Error(), "worker generation token is required and must be strictly positive") {
+		t.Fatalf("expected uninitialized generation token error from StartJob, got: %v", err)
+	}
+
+	// 3. CompleteJob
+	err = runner.CompleteJob(ctx, "job-uninit-1", 1, contracts.JobResult{Status: "SUCCEEDED", ManifestSHA256: "manifest"})
+	if err == nil || !strings.Contains(err.Error(), "worker generation token is required and must be strictly positive") {
+		t.Fatalf("expected uninitialized generation token error from CompleteJob, got: %v", err)
+	}
+
+	// 4. FailJob
+	err = runner.FailJob(ctx, "job-uninit-1", 1, errors.New("err"))
+	if err == nil || !strings.Contains(err.Error(), "worker generation token is required and must be strictly positive") {
+		t.Fatalf("expected uninitialized generation token error from FailJob, got: %v", err)
+	}
+
+	// 5. Heartbeat
+	err = runner.Heartbeat(ctx, "job-uninit-1", 1, 50, "running", 60*time.Second)
+	if err == nil || !strings.Contains(err.Error(), "worker generation token is required and must be strictly positive") {
+		t.Fatalf("expected uninitialized generation token error from Heartbeat, got: %v", err)
+	}
+}
+
+func TestVerifyWorkerGeneration_SupersededMismatchRejectsMutations(t *testing.T) {
+	db := initMockDB()
+	mockDrv.reset()
+	mockDrv.mu.Lock()
+	mockDrv.overrideGenToken = 2 // DB has generation 2
+	mockDrv.mu.Unlock()
+	defer mockDrv.reset()
+
+	runner := NewRunner(db, "test-worker-stale")
+	runner.generationToken = 1 // Worker process is still on generation 1
+	ctx := context.Background()
+
+	// 1. StartJob fails with ErrStaleGeneration
+	err := runner.StartJob(ctx, "job-stale-1", 1)
+	if !errors.Is(err, ErrStaleGeneration) {
+		t.Fatalf("expected ErrStaleGeneration from StartJob, got: %v", err)
+	}
+
+	// 2. CompleteJob fails with ErrStaleGeneration
+	err = runner.CompleteJob(ctx, "job-stale-1", 1, contracts.JobResult{Status: "SUCCEEDED", ManifestSHA256: "manifest"})
+	if !errors.Is(err, ErrStaleGeneration) {
+		t.Fatalf("expected ErrStaleGeneration from CompleteJob, got: %v", err)
+	}
+
+	// 3. FailJob fails with ErrStaleGeneration
+	err = runner.FailJob(ctx, "job-stale-1", 1, errors.New("err"))
+	if !errors.Is(err, ErrStaleGeneration) {
+		t.Fatalf("expected ErrStaleGeneration from FailJob, got: %v", err)
+	}
+
+	// 4. Heartbeat fails with ErrStaleGeneration
+	err = runner.Heartbeat(ctx, "job-stale-1", 1, 50, "running", 60*time.Second)
+	if !errors.Is(err, ErrStaleGeneration) {
+		t.Fatalf("expected ErrStaleGeneration from Heartbeat, got: %v", err)
+	}
+}
+
+func TestVerifyWorkerGeneration_DBErrorPropagates(t *testing.T) {
+	db := initMockDB()
+	mockDrv.reset()
+	mockDrv.mu.Lock()
+	mockDrv.queryErr = errors.New("simulated database network failure")
+	mockDrv.mu.Unlock()
+	defer mockDrv.reset()
+
+	runner := NewRunner(db, "test-worker-dberr")
+	runner.generationToken = 1
+	ctx := context.Background()
+
+	err := runner.StartJob(ctx, "job-dberr-1", 1)
+	if err == nil || !strings.Contains(err.Error(), "simulated database network failure") {
+		t.Fatalf("expected database network failure to propagate, got: %v", err)
 	}
 }

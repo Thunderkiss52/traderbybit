@@ -6,6 +6,7 @@ namespace Tests\Integration;
 
 use App\Research\Application\ResearchJobService;
 use App\Research\Infrastructure\Persistence\ResearchJobRecord;
+use Carbon\CarbonImmutable;
 use DateTimeImmutable;
 use Illuminate\Support\Facades\DB;
 use Ramsey\Uuid\Uuid;
@@ -143,5 +144,145 @@ final class GoResearchWorkerIntegrationTest extends TestCase
         self::assertTrue($workerEntry['available']);
         self::assertTrue($workerEntry['is_heartbeat_fresh']);
         self::assertSame('ready', $workerEntry['status']);
+    }
+
+    public function test_worker_lifecycle_e2e_superseded_worker_rejected_and_cannot_persist_result(): void
+    {
+        $driver = DB::connection()->getDriverName();
+        if ($driver !== 'pgsql') {
+            $this->markTestSkipped('Go research-worker requires a PostgreSQL database connection (current: '.$driver.').');
+        }
+
+        $service = $this->app->make(ResearchJobService::class);
+        $workerId = 'go-worker-lifecycle-'.Uuid::uuid4()->toString();
+        $now = CarbonImmutable::now('UTC');
+
+        // 1. Worker A registers initially (generation 1)
+        DB::statement('
+            INSERT INTO research_workers (
+                worker_id, engine, version, status, hostname, pid, supported_algorithms,
+                heartbeat_at, registered_at, created_at, updated_at, generation_token
+            ) VALUES (
+                ?, \'go\', \'1.0.0\', \'ready\', \'host-e2e\', 1001, \'["backtest"]\', ?, ?, ?, ?, 1
+            )
+            ON CONFLICT (worker_id) DO UPDATE SET
+                generation_token = research_workers.generation_token + 1,
+                status = \'ready\',
+                updated_at = EXCLUDED.updated_at
+        ', [$workerId, $now, $now, $now, $now]);
+
+        $workerA = DB::table('research_workers')->where('worker_id', $workerId)->first();
+        self::assertEquals(1, $workerA->generation_token);
+        self::assertEquals('ready', $workerA->status);
+
+        // 2. Submit a research job and claim it for Worker A (generation 1)
+        $job = $service->submitJob([
+            'job_id' => Uuid::uuid4()->toString(),
+            'schema_version' => 1,
+            'idempotency_key' => 'idemp-lifecycle-'.Uuid::uuid4()->toString(),
+            'kind' => 'BACKTEST',
+            'algorithm_version' => '1.0.0',
+            'code_revision' => 'git-v4',
+            'strategy_id' => 'trend_pullback',
+            'strategy_version' => '1.0.0',
+            'configuration_hash' => hash('sha256', 'lifecycle_test'),
+            'research_mode' => 'RESEARCH',
+            'limits' => ['max_rows' => 100],
+            'payload' => ['symbol' => 'BTCUSDT'],
+            'created_by' => 'lifecycle_integration_test',
+        ]);
+        $this->cleanupJobIds[] = $job->job_id;
+
+        // Transition job to CLAIMED by worker A
+        DB::table('research_jobs')->where('job_id', $job->job_id)->update([
+            'status' => 'CLAIMED',
+            'lease_owner' => $workerId,
+            'lease_expires_at' => now()->addMinutes(5),
+            'fencing_token' => 1,
+        ]);
+
+        // 3. Worker B supersedes Worker A by re-registering with the SAME worker ID
+        DB::statement('
+            INSERT INTO research_workers (
+                worker_id, engine, version, status, hostname, pid, supported_algorithms,
+                heartbeat_at, registered_at, created_at, updated_at, generation_token
+            ) VALUES (
+                ?, \'go\', \'1.0.0\', \'ready\', \'host-e2e\', 1002, \'["backtest"]\', ?, ?, ?, ?, 1
+            )
+            ON CONFLICT (worker_id) DO UPDATE SET
+                generation_token = research_workers.generation_token + 1,
+                status = \'ready\',
+                updated_at = EXCLUDED.updated_at
+        ', [$workerId, $now, $now, $now, $now]);
+
+        $workerB = DB::table('research_workers')->where('worker_id', $workerId)->first();
+        self::assertEquals(2, $workerB->generation_token, 'Re-registering same worker ID must increment generation token to 2');
+
+        // 4. Worker A (stale generation = 1) attempts job mutations under transactional generation fencing:
+        $host = config('database.connections.pgsql.host', '127.0.0.1');
+        $port = config('database.connections.pgsql.port', '25432');
+        $db = config('database.connections.pgsql.database', 'bybit_test');
+        $user = config('database.connections.pgsql.username', 'postgres');
+        $pass = config('database.connections.pgsql.password', 'testpass');
+
+        $pdoA = new \PDO("pgsql:host={$host};port={$port};dbname={$db}", $user, $pass, [
+            \PDO::ATTR_ERRMODE => \PDO::ERRMODE_EXCEPTION,
+        ]);
+
+        // Worker A executes the exact protocol:
+        // Transaction: SELECT generation_token FROM research_workers WHERE worker_id = :wid FOR SHARE
+        $pdoA->beginTransaction();
+        $checkStmtA = $pdoA->prepare('SELECT generation_token FROM research_workers WHERE worker_id = :wid FOR SHARE');
+        $checkStmtA->execute(['wid' => $workerId]);
+        $observedGenA = (int) $checkStmtA->fetchColumn();
+
+        self::assertSame(2, $observedGenA, 'Observed generation must be 2');
+        self::assertNotEquals(1, $observedGenA, 'Worker A generation 1 is superseded by 2');
+
+        // Worker A aborts because observedGenA != workerA_expected_generation (1 != 2)
+        $pdoA->rollBack();
+
+        // 5. Assert job state in PostgreSQL remains strictly untouched
+        $jobUntouched = ResearchJobRecord::query()->where('job_id', $job->job_id)->firstOrFail();
+        self::assertSame('CLAIMED', $jobUntouched->status);
+        self::assertNull($jobUntouched->completed_at);
+        self::assertNull($jobUntouched->result_manifest_sha256);
+
+        // 6. Worker B (active generation = 2) executes the transaction successfully
+        $pdoB = new \PDO("pgsql:host={$host};port={$port};dbname={$db}", $user, $pass, [
+            \PDO::ATTR_ERRMODE => \PDO::ERRMODE_EXCEPTION,
+        ]);
+
+        $pdoB->beginTransaction();
+        $checkStmtB = $pdoB->prepare('SELECT generation_token FROM research_workers WHERE worker_id = :wid FOR SHARE');
+        $checkStmtB->execute(['wid' => $workerId]);
+        $observedGenB = (int) $checkStmtB->fetchColumn();
+
+        self::assertSame(2, $observedGenB, 'Worker B generation matches database generation');
+
+        // Complete job under worker B
+        $completeStmtB = $pdoB->prepare('
+            UPDATE research_jobs
+            SET status = \'SUCCEEDED\', progress = 100, completed_at = NOW(),
+                result_manifest_sha256 = :manifest, result_payload = \'{"win_rate": 0.7}\',
+                lease_owner = NULL, lease_expires_at = NULL
+            WHERE job_id = :jid AND lease_owner = :wid AND fencing_token = 1
+        ');
+        $manifestSha = hash('sha256', 'valid-e2e-result');
+        $completeStmtB->execute([
+            'manifest' => $manifestSha,
+            'jid' => $job->job_id,
+            'wid' => $workerId,
+        ]);
+        $pdoB->commit();
+
+        // 7. Assert job is now SUCCEEDED with authoritative result
+        $jobFinal = ResearchJobRecord::query()->where('job_id', $job->job_id)->firstOrFail();
+        self::assertSame('SUCCEEDED', $jobFinal->status);
+        self::assertNotNull($jobFinal->completed_at);
+        self::assertSame($manifestSha, $jobFinal->result_manifest_sha256);
+
+        // Cleanup worker
+        DB::table('research_workers')->where('worker_id', $workerId)->delete();
     }
 }
