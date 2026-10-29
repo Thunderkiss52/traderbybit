@@ -4,6 +4,9 @@ declare(strict_types=1);
 
 namespace App\Exchanges\Binance;
 
+use App\MarketData\Application\MarketCandleConflictService;
+use Carbon\CarbonImmutable;
+
 /**
  * A shared, deterministic market-history readiness gate for Binance PAPER
  * activation and the 13x2 research portability report. Input is newest first.
@@ -12,8 +15,16 @@ namespace App\Exchanges\Binance;
  */
 final class BinanceCandleWindow
 {
-    public static function status(array $newestFirst, int $intervalSeconds, int $nowUtc, int $required = 220): string
-    {
+    public static function status(
+        array $newestFirst,
+        int $intervalSeconds,
+        int $nowUtc,
+        int $required = 220,
+        ?MarketCandleConflictService $conflictService = null,
+        ?string $exchange = null,
+        ?string $symbol = null,
+        ?string $interval = null
+    ): string {
         if ($intervalSeconds <= 0 || $required < 2 || count($newestFirst) !== $required) {
             return 'CANDLE_HISTORY_INSUFFICIENT';
         }
@@ -36,6 +47,15 @@ final class BinanceCandleWindow
         // bar may be one interval late, allowing bounded ingestion latency.
         if ($age < $intervalSeconds || $age > 2 * $intervalSeconds + 300) {
             return 'CANDLE_HISTORY_STALE_OR_FUTURE';
+        }
+
+        // Fail-closed gate: Check if an unresolved integrity conflict overlaps the actual input candle window
+        if ($conflictService !== null && $exchange !== null && $symbol !== null && $interval !== null) {
+            $windowStart = CarbonImmutable::createFromTimestamp(end($newestFirst), 'UTC');
+            $windowEnd = CarbonImmutable::createFromTimestamp(reset($newestFirst), 'UTC');
+            if ($conflictService->hasActiveConflict($exchange, $symbol, $interval, $windowStart, $windowEnd)) {
+                return 'CANDLE_HISTORY_INTEGRITY_CONFLICT';
+            }
         }
 
         return 'READY';

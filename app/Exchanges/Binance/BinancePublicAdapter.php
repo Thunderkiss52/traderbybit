@@ -266,7 +266,7 @@ final class BinancePublicAdapter implements ExchangeAdapter
                 'open_time_utc' => self::utc($openMs), 'close_time_utc' => self::utc($closeMs),
                 'open' => $open, 'high' => $high, 'low' => $low, 'close' => $close,
                 'volume' => $volume, 'turnover' => $turnover,
-                'is_closed' => $closeMs < (int) floor(microtime(true) * 1000),
+                'is_closed' => ($closeMs + (int) config('exchanges.binance.closed_grace_ms', 2000)) <= (int) floor(microtime(true) * 1000),
                 'raw_source_hash' => hash('sha256', json_encode($row, JSON_THROW_ON_ERROR)),
             ];
         }

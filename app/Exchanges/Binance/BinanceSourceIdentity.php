@@ -25,6 +25,38 @@ final class BinanceSourceIdentity
         }
     }
 
+    /**
+     * Inspect for candle conflicts without throwing. Returns conflict details or null if identical.
+     *
+     * @param  array<string, mixed>  $incoming
+     * @return array{column: string, stored: mixed, incoming: mixed, error: string}|null
+     */
+    public static function findCandleConflict(object $stored, array $incoming): ?array
+    {
+        foreach (self::CANDLE_COLUMNS as $column) {
+            try {
+                self::sameDecimal($stored->{$column}, $incoming[$column] ?? null, $column);
+            } catch (DomainException $e) {
+                return [
+                    'column' => $column,
+                    'stored' => $stored->{$column},
+                    'incoming' => $incoming[$column] ?? null,
+                    'error' => $e->getMessage(),
+                ];
+            }
+        }
+        if (! (bool) $stored->is_closed) {
+            return [
+                'column' => 'is_closed',
+                'stored' => false,
+                'incoming' => $incoming['is_closed'] ?? null,
+                'error' => 'Conflicting existing Binance candle closed state.',
+            ];
+        }
+
+        return null;
+    }
+
     public static function assertSameFunding(object $stored, array $incoming): void
     {
         self::sameDecimal($stored->rate, $incoming['rate'], 'funding rate');

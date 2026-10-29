@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Exchanges\Binance;
 
+use App\MarketData\Application\MarketCandleConflictService;
 use App\MarketData\Infrastructure\Persistence\CandleRecord;
 use App\PaperTrading\Infrastructure\Persistence\MarketFundingEventRecord;
 use App\PaperTrading\Infrastructure\Persistence\PaperAccountRecord;
@@ -14,11 +15,16 @@ use Illuminate\Support\Facades\DB;
 use Throwable;
 
 /** Read-only readiness inspection for Binance PAPER cohort and operational gates. */
-final readonly class BinancePaperReadiness
+final class BinancePaperReadiness
 {
+    private MarketCandleConflictService $conflictService;
+
     public function __construct(
-        private ExchangePaperReconciliation $reconciliation,
-    ) {}
+        private readonly ExchangePaperReconciliation $reconciliation,
+        ?MarketCandleConflictService $conflictService = null,
+    ) {
+        $this->conflictService = $conflictService ?? app(MarketCandleConflictService::class);
+    }
 
     public function inspect(bool $requireExecutionApproval = false): array
     {
@@ -162,13 +168,24 @@ final readonly class BinancePaperReadiness
                     ->get(['open_time']);
 
                 $timestamps = $candles->map(fn ($c): int => $c->open_time->getTimestamp())->all();
-                $status = BinanceCandleWindow::status($timestamps, (int) $interval * 60, $nowSeconds);
+                $status = BinanceCandleWindow::status(
+                    $timestamps,
+                    (int) $interval * 60,
+                    $nowSeconds,
+                    220,
+                    $this->conflictService,
+                    'binance',
+                    $symbol,
+                    $interval
+                );
                 $count = $candles->count();
 
                 $isReady = ($count === 220 && $status === 'READY');
                 if (! $isReady) {
                     $allCandlesReady = false;
-                    $blockers[] = "Binance candle window not ready for {$symbol}:{$interval} (status: {$status}, bars: {$count}/220)";
+                    $blockers[] = $status === 'CANDLE_HISTORY_INTEGRITY_CONFLICT'
+                        ? "Binance candle window has active integrity conflict for {$symbol}:{$interval} (status: {$status})"
+                        : "Binance candle window not ready for {$symbol}:{$interval} (status: {$status}, bars: {$count}/220)";
                 }
 
                 $candleReport[$symbol][$interval] = [

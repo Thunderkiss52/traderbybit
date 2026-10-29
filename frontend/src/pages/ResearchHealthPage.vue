@@ -111,9 +111,20 @@ onMounted(() => {
     </div>
 
     <!-- Active Alerts if any -->
+    <div v-if="freshness?.conflicts?.length" class="q-mb-md">
+      <q-banner class="bg-negative text-white q-mb-xs">
+        <template #avatar><q-icon name="report_problem" color="white" /></template>
+        <div class="text-subtitle2">Unresolved Market Candle Integrity Conflicts ({{ freshness.unresolved_conflicts_count || freshness.conflicts.length }})</div>
+        <div v-for="c in freshness.conflicts" :key="c.id" class="text-caption q-mt-xs">
+          <strong>{{ c.exchange?.toUpperCase() }} {{ c.symbol }} {{ c.interval }}m @ {{ c.open_time }}:</strong>
+          {{ c.error_message }} (Seen: {{ c.occurrence_count }}x, First: {{ c.first_seen_at }}, Last: {{ c.last_seen_at }})
+        </div>
+      </q-banner>
+    </div>
+
     <div v-if="freshness?.alerts?.length" class="q-mb-md">
-      <q-banner v-for="(alert, idx) in freshness.alerts" :key="idx" class="bg-warning text-dark q-mb-xs">
-        <template #avatar><q-icon name="warning" color="dark" /></template>
+      <q-banner v-for="(alert, idx) in freshness.alerts" :key="idx" :class="alert.severity === 'ERROR' ? 'bg-negative text-white q-mb-xs' : 'bg-warning text-dark q-mb-xs'">
+        <template #avatar><q-icon :name="alert.severity === 'ERROR' ? 'error' : 'warning'" :color="alert.severity === 'ERROR' ? 'white' : 'dark'" /></template>
         <strong>{{ alert.code }}:</strong> {{ alert.message }}
       </q-banner>
     </div>
@@ -178,18 +189,19 @@ onMounted(() => {
         <h2>Market Ingestion & Candle Freshness</h2>
         <span class="text-caption text-grey">Alerts on >= 2 consecutive missing intervals</span>
       </div>
-      <q-table flat bordered :rows="freshness?.candle_freshness || []" row-key="symbol" :columns="[
+      <q-table flat bordered :rows="freshness?.candle_freshness || []" :row-key="(r: any) => `${r.exchange || 'all'}:${r.symbol}:${r.interval}`" :columns="[
+        { name: 'exchange', label: 'Exchange', field: 'exchange', align: 'left' },
         { name: 'symbol', label: 'Symbol', field: 'symbol', align: 'left' },
-        { name: 'interval', label: 'Interval', field: 'interval', align: 'left' },
+        { name: 'interval', label: 'Interval', field: (r: any) => `${r.interval}m`, align: 'left' },
         { name: 'last_closed', label: 'Last Closed Open Time (UTC)', field: 'last_closed_open_time' },
         { name: 'expected_close', label: 'Expected Close (UTC)', field: 'expected_close_time' },
         { name: 'lag', label: 'Lag (s)', field: 'lag_seconds' },
-        { name: 'status', label: 'State', field: (r: any) => r.is_stale ? 'STALE' : 'FRESH' },
+        { name: 'status', label: 'State', field: (r: any) => r.status || (r.is_stale ? 'STALE' : 'FRESH'), align: 'center' },
       ]" :pagination="{ rowsPerPage: 10 }">
         <template #body-cell-status="props">
           <q-td :props="props">
-            <q-badge :color="props.row.is_stale ? 'warning' : 'positive'">
-              {{ props.row.is_stale ? 'STALE' : 'FRESH' }}
+            <q-badge :color="props.row.status === 'CONFLICTED' ? 'negative' : (props.row.status === 'STALE' ? 'warning' : (props.row.status === 'MISSING' ? 'deep-orange' : 'positive'))">
+              {{ props.row.status || (props.row.is_stale ? 'STALE' : 'FRESH') }}
             </q-badge>
           </q-td>
         </template>

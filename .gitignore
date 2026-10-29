@@ -22,6 +22,7 @@ frontend/dist/
 
 # PHPUnit
 .phpunit.result.cache
+.opencode/
 
 # Binaries
 /bin/
@@ -49,6 +50,7 @@ storage/latency_benchmark.json
 !/docs/
 /docs/*
 !/docs/progress/
+!/docs/reports/
 /VECTOR_PROFIT_1_Revision_2_1_Full_Spec.md
 /IMPLEMENTATION_REPORT.md
 /CHANGED_FILES.txt

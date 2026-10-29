@@ -97,10 +97,14 @@ final class ResearchHealthController extends Controller
         }
     }
 
-    public function dataFreshness(SystemFreshnessService $freshness): ResearchResource|JsonResponse
+    public function dataFreshness(Request $request, SystemFreshnessService $freshness): ResearchResource|JsonResponse
     {
         try {
-            return $this->ok($freshness->check());
+            $exchange = $request->query('exchange');
+            $exchange = is_string($exchange) && in_array($exchange, ['bybit', 'binance'], true) ? $exchange : null;
+            $alertOnMissing = $request->boolean('alert_on_missing', false);
+
+            return $this->ok($freshness->check($exchange, $alertOnMissing));
         } catch (Throwable $e) {
             Log::error('Research API operation failed.', ['operation' => __METHOD__, 'exception_type' => $e::class]);
 

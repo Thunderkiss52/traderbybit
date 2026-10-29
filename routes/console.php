@@ -59,14 +59,33 @@ Artisan::command('binance:initialize-paper {--capital=10000} {--reference=OWNER-
 })->purpose('Idempotently provision, configure and fund 13 canonical Binance paper accounts (status remains BLOCKED)');
 
 // Opt-in only: no automatic Binance trading or production schedule is added.
-Artisan::command('binance:ingest-candles {symbol=BTCUSDT} {interval=5m} {--limit=100}', function (BinanceCandleIngestion $ingestion): void {
+Artisan::command('binance:ingest-candles {symbol=BTCUSDT} {interval=5m} {--limit=100} {--quarantine}', function (BinanceCandleIngestion $ingestion): void {
     $report = $ingestion->ingest(
         strtoupper((string) $this->argument('symbol')),
         (string) $this->argument('interval'),
         (int) $this->option('limit'),
+        (bool) $this->option('quarantine'),
     );
     $this->line(json_encode($report, JSON_THROW_ON_ERROR));
 })->purpose('Ingest public, closed Binance candles for research only; no paper execution');
+
+Artisan::command('binance:ingest-htf {symbol=BTCUSDT} {interval=30m} {--limit=10} {--quarantine}', function (BinanceCandleIngestion $ingestion): int {
+    try {
+        $report = $ingestion->ingest(
+            strtoupper((string) $this->argument('symbol')),
+            (string) $this->argument('interval'),
+            (int) $this->option('limit'),
+            (bool) $this->option('quarantine')
+        );
+        $this->line(json_encode($report, JSON_PRETTY_PRINT | JSON_THROW_ON_ERROR));
+
+        return isset($report['status']) && $report['status'] === 'PARTIAL_INGESTION_WITH_CONFLICTS' ? 2 : 0;
+    } catch (Throwable $e) {
+        $this->error('Binance HTF ingestion failed: '.$e->getMessage());
+
+        return 1;
+    }
+})->purpose('Explicitly ingest Binance higher-timeframe candles with conflict quarantine options');
 
 // Explicit paper research commands. No scheduler is enabled, no real orders.
 Artisan::command('binance:capture-context {symbol=BTCUSDT}', function (BinanceContextCapture $capture): void {
@@ -233,7 +252,7 @@ if ((bool) config('exchanges.binance.research_cycle_enabled', false)) {
             ->cron('1,6,11,16,21,26,31,36,41,46,51,56 * * * *')
             ->name("binance:5m:{$symbol}")->withoutOverlapping();
         foreach (['15m', '30m', '1h', '4h'] as $interval) {
-            Schedule::call(fn () => app(BinanceCandleIngestion::class)->ingest($symbol, $interval, 250))
+            Schedule::call(fn () => app(BinanceCandleIngestion::class)->ingest($symbol, $interval, 10, quarantineConflicts: true))
                 ->cron('1,16,31,46 * * * *')->name("binance:htf:{$symbol}:{$interval}")->withoutOverlapping();
         }
         Schedule::call(fn () => app(BinanceFundingIngestion::class)->ingest($symbol))
