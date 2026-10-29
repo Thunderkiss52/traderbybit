@@ -3,6 +3,8 @@
 declare(strict_types=1);
 
 return [
+    // Shared app_storage volume: pending evidence blocks only its affected candle window.
+    'conflict_journal_path' => storage_path('app/candle-integrity'),
     'exchange' => 'bybit',
     'category' => 'linear',
     'symbols' => ['BTCUSDT', 'ETHUSDT'],

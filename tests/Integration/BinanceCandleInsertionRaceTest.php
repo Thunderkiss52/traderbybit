@@ -11,10 +11,19 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Http;
 use PHPUnit\Framework\Attributes\DataProvider;
 use Symfony\Component\Process\Process;
+use Tests\Concerns\CleansCandleConflictEvidence;
 use Tests\TestCase;
 
 final class BinanceCandleInsertionRaceTest extends TestCase
 {
+    use CleansCandleConflictEvidence;
+
+    protected function setUp(): void
+    {
+        parent::setUp();
+        $this->registerConflictCleanup();
+    }
+
     #[DataProvider('races')]
     public function test_concurrent_insert_reloads_every_identity_and_preserves_winning_rows(bool $conflict, bool $allLost): void
     {

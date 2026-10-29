@@ -5,11 +5,11 @@ declare(strict_types=1);
 namespace App\Exchanges\Binance;
 
 use App\MarketData\Application\MarketCandleConflictService;
+use App\MarketData\Domain\CandleIntegrityUnavailable;
 use DomainException;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use InvalidArgumentException;
-use Throwable;
 
 /** Explicit, bounded Binance ingestion. Never generates trading signals or paper fills. */
 final readonly class BinanceCandleIngestion
@@ -36,132 +36,79 @@ final readonly class BinanceCandleIngestion
         $scope = ['exchange' => 'binance', 'category' => 'linear', 'symbol' => $symbol, 'interval' => $map[$interval]];
 
         $conflictsToRecord = [];
+        $integrityFailure = null;
 
-        try {
-            $inserted = DB::transaction(function () use ($rows, $symbol, $interval, $scope, $quarantineConflicts, &$conflictsToRecord): int {
-                $batch = [];
-                $now = gmdate('Y-m-d H:i:s.uP');
-                foreach ($rows as $candle) {
-                    if ($candle['exchange_id'] !== 'binance' || $candle['symbol'] !== $symbol || $candle['interval'] !== $interval) {
-                        throw new DomainException('Binance candle source mismatch.');
-                    }
-                    // Do not accept or store the open/unconfirmed candle.
-                    if (! $candle['is_closed']) {
-                        continue;
-                    }
-                    BinanceSourceIdentity::assertPersistable([
-                        'open' => $candle['open'], 'high' => $candle['high'], 'low' => $candle['low'],
-                        'close' => $candle['close'], 'volume' => $candle['volume'], 'turnover' => $candle['turnover'],
-                    ]);
-                    $openTimeStr = $candle['open_time_utc'];
-                    $batch[strtotime($openTimeStr)] = [
-                        ...$scope, 'open_time' => $openTimeStr,
-                        'open' => $candle['open'], 'high' => $candle['high'], 'low' => $candle['low'],
-                        'close' => $candle['close'], 'volume' => $candle['volume'], 'turnover' => $candle['turnover'],
-                        'is_closed' => true, 'created_at' => $now, 'updated_at' => $now,
-                    ];
+        $inserted = DB::transaction(function () use ($rows, $symbol, $interval, $scope, $quarantineConflicts, &$conflictsToRecord, &$integrityFailure): int {
+            $batch = [];
+            $now = gmdate('Y-m-d H:i:s.uP');
+            foreach ($rows as $candle) {
+                if ($candle['exchange_id'] !== 'binance' || $candle['symbol'] !== $symbol || $candle['interval'] !== $interval) {
+                    throw new DomainException('Binance candle source mismatch.');
                 }
-
-                $inserted = 0;
-                // Bound query parameters even if a source returns more than the requested limit.
-                foreach (array_chunk($batch, 500, preserve_keys: true) as $chunk) {
-                    $existing = $this->storedCandles($scope, $chunk);
-                    $missing = [];
-                    foreach ($chunk as $key => $candle) {
-                        if (isset($existing[$key])) {
-                            if ($quarantineConflicts) {
-                                $conflict = BinanceSourceIdentity::findCandleConflict($existing[$key], $candle);
-                                if ($conflict !== null) {
-                                    $conflictsToRecord[] = [
-                                        'candle' => $candle,
-                                        'stored' => (array) $existing[$key],
-                                        'conflict' => $conflict,
-                                    ];
-
-                                    continue;
-                                }
-                            } else {
-                                $this->assertSameCandle($existing[$key], $candle);
-                            }
-                        } else {
-                            $missing[$key] = $candle;
-                        }
-                    }
-                    if ($missing === []) {
-                        continue;
-                    }
-
-                    $insertedNow = $this->insertCandlesUnnest(array_values($missing));
-                    if ($insertedNow !== count($missing)) {
-                        // A concurrent writer can win after the initial read. A separate
-                        // statement sees its committed rows under PostgreSQL READ COMMITTED.
-                        // Validate the entire attempted set: affected-row count cannot
-                        // identify which identities lost the race. Never update history.
-                        $reloaded = $this->storedCandles($scope, $missing);
-                        foreach ($missing as $key => $candle) {
-                            if (! isset($reloaded[$key])) {
-                                throw new DomainException('Binance candle insertion was ignored without matching identity.');
-                            }
-                            if ($quarantineConflicts) {
-                                $conflict = BinanceSourceIdentity::findCandleConflict($reloaded[$key], $candle);
-                                if ($conflict !== null) {
-                                    $conflictsToRecord[] = [
-                                        'candle' => $candle,
-                                        'stored' => (array) $reloaded[$key],
-                                        'conflict' => $conflict,
-                                    ];
-                                }
-                            } else {
-                                $this->assertSameCandle($reloaded[$key], $candle);
-                            }
-                        }
-                    }
-                    $inserted += $insertedNow;
+                // Do not accept or store the open/unconfirmed candle.
+                if (! $candle['is_closed']) {
+                    continue;
                 }
-
-                return $inserted;
-            });
-        } catch (DomainException $exception) {
-            // Guarantee durable conflict evidence: ingestion transaction rolled back.
-            // Persist the conflict record in a separate transaction outside the rollback.
-            $this->recordBatchConflictOnRollback($scope, $rows, $exception);
-            throw $exception;
-        }
-
-        // Quarantined conflicts are recorded durably after successful transaction commit of valid rows.
-        if ($quarantineConflicts && ! empty($conflictsToRecord)) {
-            foreach ($conflictsToRecord as $item) {
-                $candle = $item['candle'];
-                $stored = $item['stored'];
-                $conflict = $item['conflict'];
-                $this->conflictService->recordConflict(
-                    $scope['exchange'],
-                    $scope['category'],
-                    $scope['symbol'],
-                    $scope['interval'],
-                    $candle['open_time'],
-                    $stored,
-                    $candle,
-                    $conflict['column'],
-                    $conflict['error'],
-                    'binance_public_rest'
-                );
-                Log::warning('Binance immutable candle quarantined', [
-                    'exchange' => $scope['exchange'],
-                    'symbol' => $scope['symbol'],
-                    'interval' => $scope['interval'],
-                    'open_time_utc' => $candle['open_time'],
-                    'conflict_column' => $conflict['column'],
-                    'error' => $conflict['error'],
+                BinanceSourceIdentity::assertPersistable([
+                    'open' => $candle['open'], 'high' => $candle['high'], 'low' => $candle['low'],
+                    'close' => $candle['close'], 'volume' => $candle['volume'], 'turnover' => $candle['turnover'],
                 ]);
+                $openTimeStr = $candle['open_time_utc'];
+                $batch[strtotime($openTimeStr)] = [
+                    ...$scope, 'open_time' => $openTimeStr,
+                    'open' => $candle['open'], 'high' => $candle['high'], 'low' => $candle['low'],
+                    'close' => $candle['close'], 'volume' => $candle['volume'], 'turnover' => $candle['turnover'],
+                    'is_closed' => true, 'created_at' => $now, 'updated_at' => $now,
+                ];
             }
-        }
+
+            $inserted = 0;
+            // Bound query parameters even if a source returns more than the requested limit.
+            foreach (array_chunk($batch, 500, preserve_keys: true) as $chunk) {
+                $existing = $this->storedCandles($scope, $chunk);
+                $missing = [];
+                foreach ($chunk as $key => $candle) {
+                    if (isset($existing[$key])) {
+                        $conflict = $this->observeConflict($existing[$key], $candle, $quarantineConflicts, $integrityFailure);
+                        if ($conflict !== null) {
+                            $conflictsToRecord[] = ['candle' => $candle, 'conflict' => $conflict];
+                        }
+                    } else {
+                        $missing[$key] = $candle;
+                    }
+                }
+                if ($missing === []) {
+                    continue;
+                }
+
+                $insertedNow = $this->insertCandlesUnnest(array_values($missing));
+                if ($insertedNow !== count($missing)) {
+                    // A concurrent writer can win after the initial read. A separate
+                    // statement sees its committed rows under PostgreSQL READ COMMITTED.
+                    // Validate the entire attempted set: affected-row count cannot
+                    // identify which identities lost the race. Never update history.
+                    $reloaded = $this->storedCandles($scope, $missing);
+                    foreach ($missing as $key => $candle) {
+                        if (! isset($reloaded[$key])) {
+                            throw new DomainException('Binance candle insertion was ignored without matching identity.');
+                        }
+                        $conflict = $this->observeConflict($reloaded[$key], $candle, $quarantineConflicts, $integrityFailure);
+                        if ($conflict !== null) {
+                            $conflictsToRecord[] = ['candle' => $candle, 'conflict' => $conflict];
+                        }
+                    }
+                }
+                $inserted += $insertedNow;
+            }
+
+            return $inserted;
+        });
 
         // Existing rows are immutable; retries verify that bytes did not
         // change economically. Conflicting exchange replays fail closed.
         $hasConflicts = ! empty($conflictsToRecord);
 
-        return [
+        $report = [
             'exchange_id' => 'binance',
             'symbol' => $symbol,
             'interval' => $interval,
@@ -173,9 +120,15 @@ final readonly class BinanceCandleIngestion
                 'column' => $c['conflict']['column'],
                 'error' => $c['conflict']['error'],
             ], $conflictsToRecord),
-            'status' => $hasConflicts ? 'PARTIAL_INGESTION_WITH_CONFLICTS' : 'SUCCESS',
+            'status' => $integrityFailure !== null ? 'INTEGRITY_UNAVAILABLE' : ($hasConflicts ? 'PARTIAL_INGESTION_WITH_CONFLICTS' : 'SUCCESS'),
             'execution_status' => 'PAPER_EXECUTION_BLOCKED_UNTIL_VERIFIED',
         ];
+        if ($integrityFailure !== null) {
+            // Quarantine retains unrelated valid rows, but never acknowledges a failed integrity write.
+            throw new CandleIntegrityUnavailable('CANDLE_INTEGRITY_UNAVAILABLE: quarantine evidence not acknowledged.', previous: $integrityFailure, ingestionReport: $report);
+        }
+
+        return $report;
     }
 
     /**
@@ -264,60 +217,34 @@ final readonly class BinanceCandleIngestion
         }
     }
 
-    /**
-     * Persist durable conflict evidence after an ingestion transaction rollback.
-     */
-    private function recordBatchConflictOnRollback(array $scope, array $rows, DomainException $exception): void
+    private function observeConflict(object $stored, array $incoming, bool $quarantine, ?CandleIntegrityUnavailable &$failure): ?array
     {
-        $wasLogging = DB::logging();
-        if ($wasLogging) {
-            DB::disableQueryLog();
+        $conflict = BinanceSourceIdentity::findCandleConflict($stored, $incoming);
+        if ($conflict === null) {
+            return null;
         }
         try {
-            $times = [];
-            $incomingByTime = [];
-            foreach ($rows as $row) {
-                if (! empty($row['is_closed']) && isset($row['open_time_utc'])) {
-                    $times[] = $row['open_time_utc'];
-                    $incomingByTime[strtotime((string) $row['open_time_utc'])] = $row;
-                }
+            $this->conflictService->recordConflict(
+                $incoming['exchange'], $incoming['category'], $incoming['symbol'], $incoming['interval'],
+                $incoming['open_time'], (array) $stored, $incoming, $conflict['column'], $conflict['error']
+            );
+        } catch (CandleIntegrityUnavailable $e) {
+            if (! $quarantine) {
+                throw $e;
             }
-            if ($times === []) {
-                return;
-            }
+            $failure ??= $e;
 
-            $existing = DB::table('market_candles')->where($scope)
-                ->whereIn('open_time', $times)
-                ->get(['open_time', 'open', 'high', 'low', 'close', 'volume', 'turnover', 'is_closed'])
-                ->keyBy(static fn (object $row): int => strtotime((string) $row->open_time))
-                ->all();
-
-            foreach ($incomingByTime as $timeKey => $candle) {
-                if (isset($existing[$timeKey])) {
-                    $stored = $existing[$timeKey];
-                    $conflict = BinanceSourceIdentity::findCandleConflict($stored, $candle);
-                    if ($conflict !== null) {
-                        $this->conflictService->recordConflict(
-                            $scope['exchange'],
-                            $scope['category'],
-                            $scope['symbol'],
-                            $scope['interval'],
-                            $candle['open_time_utc'],
-                            (array) $stored,
-                            $candle,
-                            $conflict['column'],
-                            $conflict['error'],
-                            'binance_public_rest'
-                        );
-                    }
-                }
-            }
-        } catch (Throwable $e) {
-            Log::warning('Failed to record batch conflict on rollback: '.$e->getMessage());
-        } finally {
-            if ($wasLogging) {
-                DB::enableQueryLog();
-            }
+            return $conflict;
         }
+        if (! $quarantine) {
+            $this->assertSameCandle($stored, $incoming);
+        }
+        Log::warning('Binance immutable candle quarantined', [
+            'exchange' => $incoming['exchange'], 'symbol' => $incoming['symbol'],
+            'interval' => $incoming['interval'], 'open_time_utc' => $incoming['open_time'],
+            'conflict_column' => $conflict['column'],
+        ]);
+
+        return $conflict;
     }
 }

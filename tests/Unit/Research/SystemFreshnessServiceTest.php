@@ -13,16 +13,24 @@ use Carbon\Carbon;
 use Carbon\CarbonImmutable;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Str;
+use Tests\Concerns\CleansCandleConflictEvidence;
 use Tests\TestCase;
 
 final class SystemFreshnessServiceTest extends TestCase
 {
+    use CleansCandleConflictEvidence;
     use RefreshDatabase;
 
     protected function tearDown(): void
     {
         Carbon::setTestNow();
         parent::tearDown();
+    }
+
+    protected function setUp(): void
+    {
+        parent::setUp();
+        $this->registerConflictCleanup();
     }
 
     public function test_freshness_check_detects_lag_and_generates_alerts(): void

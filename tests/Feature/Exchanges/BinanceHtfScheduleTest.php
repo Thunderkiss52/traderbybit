@@ -4,56 +4,131 @@ declare(strict_types=1);
 
 namespace Tests\Feature\Exchanges;
 
-use Illuminate\Foundation\Testing\RefreshDatabase;
+use App\MarketData\Application\MarketCandleConflictService;
+use Illuminate\Console\Events\ScheduledTaskFailed;
+use Illuminate\Console\Scheduling\CallbackEvent;
+use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\Schedule;
-use RuntimeException;
+use PHPUnit\Framework\Attributes\DataProvider;
+use Tests\Concerns\CleansCandleConflictEvidence;
 use Tests\TestCase;
 
 final class BinanceHtfScheduleTest extends TestCase
 {
-    use RefreshDatabase;
+    use CleansCandleConflictEvidence;
 
-    public function test_failing_fifteen_minute_scope_does_not_prevent_other_scheduled_intervals(): void
+    protected function setUp(): void
     {
-        Http::preventStrayRequests();
-        Http::fake(['https://fapi.binance.com/fapi/v1/klines*' => function ($request) {
-            if ($request['symbol'] === 'BTCUSDT' && $request['interval'] === '15m') {
-                return Http::response(['malformed' => true]);
-            }
-            $duration = ['5m' => 300000, '15m' => 900000, '30m' => 1800000, '1h' => 3600000, '4h' => 14400000][$request['interval']];
-            $open = 1767225600000;
+        parent::setUp();
+        $this->ensurePostgresTestDatabaseReady('market_candle_conflicts');
+        $this->registerConflictCleanup();
+        $this->beforeApplicationDestroyed(function (): void {
+            DB::table('market_candles')->where('exchange', 'binance')->whereIn('symbol', ['BTCUSDT', 'ETHUSDT'])->delete();
+            putenv('CANDLE_TEST_CASE');
+            putenv('CANDLE_TEST_JOURNAL');
+        });
+    }
 
-            return Http::response([[$open, '100', '105', '99', '102', '10', $open + $duration - 1, '1010']]);
-        }]);
-        $events = collect(Schedule::events())->filter(fn ($event): bool => str_starts_with($event->getSummaryForDisplay(), 'binance:htf:') || str_starts_with($event->getSummaryForDisplay(), 'binance:5m:'));
-        self::assertCount(10, $events);
-        self::assertCount(10, $events->map(fn ($event): string => $event->mutexName())->unique());
+    #[DataProvider('outcomes')]
+    public function test_real_scheduler_reports_command_failures_and_preserves_logging_and_mutex(string $scenario, int $exit): void
+    {
+        $events = collect(Schedule::events());
+        $htf = $events->filter(fn ($e) => str_starts_with($e->description ?? '', 'binance:htf:'));
+        self::assertCount(8, $htf);
+        self::assertCount(8, $htf->map(fn ($e) => $e->mutexName())->unique());
+        $target = $htf->first(fn ($e) => $e->description === 'binance:htf:BTCUSDT:30m');
+        self::assertNotInstanceOf(CallbackEvent::class, $target);
+        self::assertStringContainsString('binance:ingest-htf', $target->command);
+        self::assertStringContainsString('--limit=10', str_replace("'", '', $target->command));
+        self::assertStringContainsString('--quarantine', $target->command);
+        self::assertTrue($target->withoutOverlapping);
+        self::assertSame('1,16,31,46 * * * *', $target->expression);
+        foreach ($events as $event) {
+            if ($event !== $target) {
+                $event->skip(fn () => true);
+            }
+        }
+        $target->cron('* * * * *');
+        // Only the child's HTTP boundary is faked; scheduler events and Artisan are real.
+        $target->command = str_replace('artisan', 'tests/Fixtures/binance_scheduled_command.php', $target->command);
+        $output = storage_path('logs/test-schedule-'.bin2hex(random_bytes(6)).'.log');
+        $target->appendOutputTo($output);
+        $target->command = 'CANDLE_TEST_CASE='.escapeshellarg($scenario).' CANDLE_TEST_JOURNAL='.escapeshellarg(config('market_data.conflict_journal_path')).' '.$target->command;
+        if (in_array($scenario, ['partial', 'persistence'], true)) {
+            DB::table('market_candles')->insert(['exchange' => 'binance', 'category' => 'linear', 'symbol' => 'BTCUSDT', 'interval' => '30', 'open_time' => '2026-01-01T00:30:00Z', 'open' => '100', 'high' => '105', 'low' => '99', 'close' => '102', 'volume' => '10', 'turnover' => '1010', 'is_closed' => true]);
+        }
         $failures = [];
-        foreach ($events as $event) {
-            try {
-                $event->run(app());
-            } catch (RuntimeException $exception) {
-                $failures[] = $event->getSummaryForDisplay();
-            }
+        Event::listen(ScheduledTaskFailed::class, function ($e) use (&$failures): void {
+            $failures[] = $e;
+        });
+        if ($scenario === 'persistence') {
+            DB::statement("ALTER TABLE market_candle_conflicts ADD CONSTRAINT test_schedule_reject CHECK (symbol <> 'BTCUSDT')");
         }
-        self::assertSame(['binance:htf:BTCUSDT:15m'], $failures);
-        self::assertSame(9, DB::table('market_candles')->where('exchange', 'binance')->count());
-        foreach (['BTCUSDT', 'ETHUSDT'] as $symbol) {
-            foreach (['5', '15', '30', '60', '240'] as $interval) {
-                $expected = $symbol === 'BTCUSDT' && $interval === '15' ? 0 : 1;
-                self::assertSame($expected, DB::table('market_candles')->where(['exchange' => 'binance', 'symbol' => $symbol, 'interval' => $interval])->count());
+        try {
+            Artisan::call('schedule:run', ['--no-ansi' => true]);
+            self::assertSame($exit, $target->exitCode);
+            self::assertCount($exit === 0 ? 0 : 1, $failures);
+            if ($exit !== 0) {
+                self::assertStringContainsString('exit code ['.$exit.']', $failures[0]->exception->getMessage());
             }
-        }
-        foreach ($events as $event) {
-            try {
-                $event->run(app());
-            } catch (RuntimeException) {
-                // The same bad scope remains failed; successful scopes replay identically.
+            self::assertFileExists($output);
+            $log = file_get_contents($output);
+            self::assertStringContainsString(match ($scenario) {
+                'success' => 'SUCCESS', 'partial' => 'PARTIAL_INGESTION_WITH_CONFLICTS',
+                'persistence' => 'CANDLE_INTEGRITY_UNAVAILABLE', default => 'failed',
+            }, $log);
+            if ($scenario === 'persistence') {
+                self::assertStringContainsString('"new_closed_candles":2', $log);
+                self::assertSame(3, DB::table('market_candles')->where('exchange', 'binance')->where('symbol', 'BTCUSDT')->count());
+                self::assertSame('UNAVAILABLE', app(MarketCandleConflictService::class)->integrityStatus('binance', 'BTCUSDT', '30'));
             }
+            self::assertFalse($target->mutex->exists($target));
+            self::assertTrue($target->mutex->create($target));
+            $before = file_get_contents($output);
+            $target->run(app());
+            self::assertSame($before, file_get_contents($output));
+            $target->mutex->forget($target);
+        } finally {
+            if ($scenario === 'persistence') {
+                DB::statement('ALTER TABLE market_candle_conflicts DROP CONSTRAINT test_schedule_reject');
+            }
+            @unlink($output);
         }
-        self::assertSame(9, DB::table('market_candles')->count());
+        self::assertSame(0, DB::table('signals')->count());
+        self::assertSame(0, DB::table('virtual_positions')->count());
+    }
+
+    public static function outcomes(): array
+    {
+        return [['success', 0], ['partial', 2], ['failed', 1], ['persistence', 3]];
+    }
+
+    public function test_one_failed_htf_scope_does_not_prevent_other_scheduled_intervals(): void
+    {
+        $targets = [];
+        foreach (Schedule::events() as $event) {
+            if (! str_starts_with($event->description ?? '', 'binance:htf:')) {
+                $event->skip(fn () => true);
+
+                continue;
+            }
+            $event->cron('* * * * *');
+            $event->command = 'CANDLE_TEST_CASE=failed_scope CANDLE_TEST_JOURNAL='.escapeshellarg(config('market_data.conflict_journal_path')).' '.str_replace('artisan', 'tests/Fixtures/binance_scheduled_command.php', $event->command);
+            $targets[] = $event;
+        }
+        $failures = [];
+        Event::listen(ScheduledTaskFailed::class, function ($event) use (&$failures): void {
+            $failures[] = $event;
+        });
+        Artisan::call('schedule:run', ['--no-ansi' => true]);
+        self::assertCount(1, $failures);
+        self::assertSame('binance:htf:BTCUSDT:15m', $failures[0]->task->description);
+        foreach ($targets as $event) {
+            self::assertSame($event->description === 'binance:htf:BTCUSDT:15m' ? 1 : 0, $event->exitCode);
+        }
+        self::assertSame(21, DB::table('market_candles')->where('exchange', 'binance')->count());
         self::assertSame(0, DB::table('signals')->count());
         self::assertSame(0, DB::table('virtual_positions')->count());
     }

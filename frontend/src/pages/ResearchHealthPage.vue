@@ -85,7 +85,7 @@ onMounted(() => {
           }">
             {{ overview?.system_status || 'UNKNOWN' }}
           </div>
-          <div class="text-caption q-mt-xs">DB Latency: {{ freshness?.database?.latency_ms }} ms · Execution Failures (24h): {{ freshness?.execution_failures_24h || 0 }}</div>
+          <div class="text-caption q-mt-xs">DB Latency: {{ freshness?.database?.latency_ms }} ms · Execution Failures (24h): {{ freshness?.execution_failures_24h ?? 'N/A' }}</div>
         </div>
       </div>
       <div class="col-12 col-md-4">
@@ -110,6 +110,9 @@ onMounted(() => {
       </div>
     </div>
 
+    <q-banner v-if="freshness?.integrity_status === 'UNAVAILABLE'" class="bg-negative text-white q-mb-md">
+      Market candle integrity is unavailable. Data cannot be certified ready.
+    </q-banner>
     <!-- Active Alerts if any -->
     <div v-if="freshness?.conflicts?.length" class="q-mb-md">
       <q-banner class="bg-negative text-white q-mb-xs">
@@ -196,12 +199,12 @@ onMounted(() => {
         { name: 'last_closed', label: 'Last Closed Open Time (UTC)', field: 'last_closed_open_time' },
         { name: 'expected_close', label: 'Expected Close (UTC)', field: 'expected_close_time' },
         { name: 'lag', label: 'Lag (s)', field: 'lag_seconds' },
-        { name: 'status', label: 'State', field: (r: any) => r.status || (r.is_stale ? 'STALE' : 'FRESH'), align: 'center' },
+        { name: 'status', label: 'State', field: (r: any) => r.status || 'UNKNOWN', align: 'center' },
       ]" :pagination="{ rowsPerPage: 10 }">
         <template #body-cell-status="props">
           <q-td :props="props">
-            <q-badge :color="props.row.status === 'CONFLICTED' ? 'negative' : (props.row.status === 'STALE' ? 'warning' : (props.row.status === 'MISSING' ? 'deep-orange' : 'positive'))">
-              {{ props.row.status || (props.row.is_stale ? 'STALE' : 'FRESH') }}
+            <q-badge :color="['CONFLICTED', 'UNAVAILABLE'].includes(props.row.status) ? 'negative' : (props.row.status === 'STALE' ? 'warning' : (props.row.status === 'MISSING' ? 'deep-orange' : 'positive'))">
+              {{ props.row.status || 'UNKNOWN' }}
             </q-badge>
           </q-td>
         </template>

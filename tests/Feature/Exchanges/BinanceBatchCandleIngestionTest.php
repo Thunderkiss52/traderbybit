@@ -11,10 +11,12 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 use PHPUnit\Framework\Attributes\DataProvider;
+use Tests\Concerns\CleansCandleConflictEvidence;
 use Tests\TestCase;
 
 final class BinanceBatchCandleIngestionTest extends TestCase
 {
+    use CleansCandleConflictEvidence;
     use RefreshDatabase;
 
     private array $responseRows = [];
@@ -22,6 +24,7 @@ final class BinanceBatchCandleIngestionTest extends TestCase
     protected function setUp(): void
     {
         parent::setUp();
+        $this->registerConflictCleanup();
         config()->set('market_data.symbols', ['BTCUSDT', 'ETHUSDT']);
         Http::preventStrayRequests();
         Http::fake(['https://fapi.binance.com/fapi/v1/klines*' => fn () => Http::response($this->responseRows)]);

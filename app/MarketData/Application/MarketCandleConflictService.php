@@ -4,19 +4,20 @@ declare(strict_types=1);
 
 namespace App\MarketData\Application;
 
+use App\MarketData\Domain\CandleIntegrityUnavailable;
+use App\MarketData\Infrastructure\Persistence\CandleConflictJournal;
 use App\MarketData\Infrastructure\Persistence\MarketCandleConflictRecord;
 use Carbon\CarbonImmutable;
 use DateTimeInterface;
+use Illuminate\Database\Connectors\ConnectionFactory;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Log;
-use Illuminate\Support\Facades\Schema;
 use Throwable;
 
 final class MarketCandleConflictService
 {
     /**
      * Durably and idempotently record a candle observation conflict.
-     * Guaranteed to persist even if caller transaction rolls back.
+     * Commits on a new primary connection; a pending shared journal blocks failed writes.
      *
      * @param  array<string, mixed>  $storedValues
      * @param  array<string, mixed>  $incomingValues
@@ -63,65 +64,66 @@ final class MarketCandleConflictService
             'status' => 'UNRESOLVED',
         ];
 
+        $journal = app(CandleConflictJournal::class);
+        $pending = null;
+        $journalFailure = null;
         try {
-            if (Schema::hasTable('market_candle_conflicts')) {
-                // Execute in an independent transaction to guarantee durability
-                DB::transaction(function () use ($exchange, $category, $symbol, $interval, $openTimeUtc, $storedValues, $incomingValues, $conflictColumn, $errorMessage, $sourceProvenance, $fingerprint, $now) {
-                    $existing = DB::table('market_candle_conflicts')
-                        ->where([
-                            'exchange' => $exchange,
-                            'category' => $category,
-                            'symbol' => $symbol,
-                            'interval' => $interval,
-                            'open_time' => $openTimeUtc,
-                        ])
-                        ->first();
+            $pending = $journal->begin($conflictData);
+        } catch (Throwable $e) {
+            $journalFailure = $e;
+        }
+        $connection = null;
+        $connectTimeout = getenv('PGCONNECT_TIMEOUT');
+        try {
+            // Clone the resolved WRITE configuration, including SSL, schema and socket settings.
+            // ConnectionFactory creates a genuinely new PDO, outside any caller transaction.
+            $config = DB::connection()->getConfig();
+            if (($config['driver'] ?? null) !== 'pgsql') {
+                throw new CandleIntegrityUnavailable('PostgreSQL integrity storage required.');
+            }
+            unset($config['read'], $config['write'], $config['url']);
+            putenv('PGCONNECT_TIMEOUT=3');
+            $connection = app(ConnectionFactory::class)->make($config, 'candle_integrity_writer');
+            $persisted = $connection->transaction(function () use ($connection, $conflictData, $now): array {
+                $connection->statement("SET LOCAL lock_timeout = '1000ms'");
+                $connection->statement("SET LOCAL statement_timeout = '3000ms'");
+                $values = $conflictData;
+                $values['stored_values'] = json_encode($values['stored_values'], JSON_THROW_ON_ERROR);
+                $values['incoming_values'] = json_encode($values['incoming_values'], JSON_THROW_ON_ERROR);
+                $values['created_at'] = $now;
+                $values['updated_at'] = $now;
+                $values['resolved_at'] = null;
+                // One PostgreSQL statement serializes concurrent insert/reopen/count updates.
+                // First stored values, first_seen_at and prior resolution notes remain intact.
+                $connection->table('market_candle_conflicts')->upsert([$values],
+                    ['exchange', 'category', 'symbol', 'interval', 'open_time'], [
+                        'incoming_values', 'conflict_column', 'error_message', 'payload_fingerprint',
+                        'last_seen_at', 'updated_at', 'status', 'resolved_at',
+                        'occurrence_count' => $connection->raw('market_candle_conflicts.occurrence_count + 1'),
+                    ]);
+                $identity = array_intersect_key($values, array_flip(['exchange', 'category', 'symbol', 'interval', 'open_time']));
 
-                    if ($existing) {
-                        DB::table('market_candle_conflicts')
-                            ->where('id', $existing->id)
-                            ->update([
-                                'incoming_values' => json_encode($incomingValues, JSON_THROW_ON_ERROR),
-                                'conflict_column' => $conflictColumn,
-                                'error_message' => $errorMessage,
-                                'payload_fingerprint' => $fingerprint,
-                                'last_seen_at' => $now,
-                                'occurrence_count' => DB::raw('occurrence_count + 1'),
-                                'updated_at' => $now,
-                            ]);
-                    } else {
-                        DB::table('market_candle_conflicts')->insert([
-                            'exchange' => $exchange,
-                            'category' => $category,
-                            'symbol' => $symbol,
-                            'interval' => $interval,
-                            'open_time' => $openTimeUtc,
-                            'stored_values' => json_encode($storedValues, JSON_THROW_ON_ERROR),
-                            'incoming_values' => json_encode($incomingValues, JSON_THROW_ON_ERROR),
-                            'conflict_column' => $conflictColumn,
-                            'error_message' => $errorMessage,
-                            'source_provenance' => $sourceProvenance,
-                            'payload_fingerprint' => $fingerprint,
-                            'first_seen_at' => $now,
-                            'last_seen_at' => $now,
-                            'occurrence_count' => 1,
-                            'status' => 'UNRESOLVED',
-                            'created_at' => $now,
-                            'updated_at' => $now,
-                        ]);
-                    }
-                });
+                return (array) $connection->table('market_candle_conflicts')->where($identity)->first();
+            }, attempts: 1);
+            if ($pending !== null) {
+                $journal->complete($pending);
+            }
+            if ($journalFailure !== null) {
+                throw new CandleIntegrityUnavailable('Shared journal unavailable; database evidence was committed.', previous: $journalFailure);
             }
         } catch (Throwable $e) {
-            Log::warning('Failed to persist candle conflict record to database: '.$e->getMessage(), [
-                'exchange' => $exchange,
-                'symbol' => $symbol,
-                'interval' => $interval,
-                'open_time' => $openTimeUtc,
-            ]);
+            // The write-ahead file remains on shared app_storage and blocks readiness.
+            throw new CandleIntegrityUnavailable('CANDLE_INTEGRITY_UNAVAILABLE: conflict persistence not acknowledged.', previous: $e);
+        } finally {
+            $connection?->disconnect();
+            $connectTimeout === false ? putenv('PGCONNECT_TIMEOUT') : putenv('PGCONNECT_TIMEOUT='.$connectTimeout);
         }
 
-        return $conflictData;
+        foreach (['stored_values', 'incoming_values'] as $column) {
+            $persisted[$column] = json_decode($persisted[$column], true, flags: JSON_THROW_ON_ERROR);
+        }
+
+        return $persisted;
     }
 
     /**
@@ -135,11 +137,9 @@ final class MarketCandleConflictService
         ?DateTimeInterface $windowEnd = null
     ): bool {
         try {
-            if (! Schema::hasTable('market_candle_conflicts')) {
-                return false;
-            }
+            app(CandleConflictJournal::class)->assertClear($exchange, $symbol, $interval, $windowStart, $windowEnd);
 
-            $query = MarketCandleConflictRecord::query()
+            $query = MarketCandleConflictRecord::query()->useWritePdo()
                 ->where('exchange', $exchange)
                 ->where('symbol', $symbol)
                 ->where('interval', $interval)
@@ -152,9 +152,21 @@ final class MarketCandleConflictService
                 $query->where('open_time', '<=', $windowEnd);
             }
 
-            return $query->exists();
-        } catch (Throwable) {
-            return false;
+            $found = $query->exists();
+            app(CandleConflictJournal::class)->assertClear($exchange, $symbol, $interval, $windowStart, $windowEnd);
+
+            return $found;
+        } catch (Throwable $e) {
+            throw new CandleIntegrityUnavailable('CANDLE_INTEGRITY_UNAVAILABLE: conflict lookup failed.', previous: $e);
+        }
+    }
+
+    public function integrityStatus(string $exchange, string $symbol, string $interval, ?DateTimeInterface $windowStart = null, ?DateTimeInterface $windowEnd = null): string
+    {
+        try {
+            return $this->hasActiveConflict($exchange, $symbol, $interval, $windowStart, $windowEnd) ? 'CONFLICTED' : 'VALID';
+        } catch (CandleIntegrityUnavailable) {
+            return 'UNAVAILABLE';
         }
     }
 
@@ -166,11 +178,9 @@ final class MarketCandleConflictService
     public function unresolvedConflicts(?string $exchange = null, ?string $symbol = null, ?string $interval = null): array
     {
         try {
-            if (! Schema::hasTable('market_candle_conflicts')) {
-                return [];
-            }
+            app(CandleConflictJournal::class)->assertClear($exchange, $symbol, $interval);
 
-            $query = MarketCandleConflictRecord::query()->where('status', 'UNRESOLVED');
+            $query = MarketCandleConflictRecord::query()->useWritePdo()->where('status', 'UNRESOLVED');
             if ($exchange !== null) {
                 $query->where('exchange', $exchange);
             }
@@ -181,7 +191,7 @@ final class MarketCandleConflictService
                 $query->where('interval', $interval);
             }
 
-            return $query->orderByDesc('open_time')->get()->map(fn ($r) => [
+            $result = $query->orderByDesc('open_time')->get()->map(fn ($r) => [
                 'id' => $r->id,
                 'exchange' => $r->exchange,
                 'category' => $r->category,
@@ -198,8 +208,11 @@ final class MarketCandleConflictService
                 'occurrence_count' => $r->occurrence_count,
                 'status' => $r->status,
             ])->all();
-        } catch (Throwable) {
-            return [];
+            app(CandleConflictJournal::class)->assertClear($exchange, $symbol, $interval);
+
+            return $result;
+        } catch (Throwable $e) {
+            throw new CandleIntegrityUnavailable('CANDLE_INTEGRITY_UNAVAILABLE: conflict lookup failed.', previous: $e);
         }
     }
 
@@ -209,18 +222,19 @@ final class MarketCandleConflictService
     public function countUnresolved(?string $exchange = null): int
     {
         try {
-            if (! Schema::hasTable('market_candle_conflicts')) {
-                return 0;
-            }
+            app(CandleConflictJournal::class)->assertClear($exchange);
 
-            $query = MarketCandleConflictRecord::query()->where('status', 'UNRESOLVED');
+            $query = MarketCandleConflictRecord::query()->useWritePdo()->where('status', 'UNRESOLVED');
             if ($exchange !== null) {
                 $query->where('exchange', $exchange);
             }
 
-            return $query->count();
-        } catch (Throwable) {
-            return 0;
+            $count = $query->count();
+            app(CandleConflictJournal::class)->assertClear($exchange);
+
+            return $count;
+        } catch (Throwable $e) {
+            throw new CandleIntegrityUnavailable('CANDLE_INTEGRITY_UNAVAILABLE: conflict lookup failed.', previous: $e);
         }
     }
 }

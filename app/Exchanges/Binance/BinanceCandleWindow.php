@@ -53,7 +53,11 @@ final class BinanceCandleWindow
         if ($conflictService !== null && $exchange !== null && $symbol !== null && $interval !== null) {
             $windowStart = CarbonImmutable::createFromTimestamp(end($newestFirst), 'UTC');
             $windowEnd = CarbonImmutable::createFromTimestamp(reset($newestFirst), 'UTC');
-            if ($conflictService->hasActiveConflict($exchange, $symbol, $interval, $windowStart, $windowEnd)) {
+            $integrity = $conflictService->integrityStatus($exchange, $symbol, $interval, $windowStart, $windowEnd);
+            if ($integrity === 'UNAVAILABLE') {
+                return 'CANDLE_HISTORY_INTEGRITY_UNAVAILABLE';
+            }
+            if ($integrity === 'CONFLICTED') {
                 return 'CANDLE_HISTORY_INTEGRITY_CONFLICT';
             }
         }

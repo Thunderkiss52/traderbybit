@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Research\Application;
 
 use App\MarketData\Application\MarketCandleConflictService;
+use App\MarketData\Domain\CandleIntegrityUnavailable;
 use App\MarketData\Infrastructure\Persistence\CandleRecord;
 use App\PaperTrading\Infrastructure\Persistence\JournalEventRecord;
 use Carbon\CarbonImmutable;
@@ -33,6 +34,7 @@ final class SystemFreshnessService
         $candleHealth = [];
         $alerts = [];
         $hasConflicts = false;
+        $integrityUnavailable = false;
         $hasMissingOrStale = false;
 
         $symbols = (array) config('ui.symbols', ['BTCUSDT', 'ETHUSDT']);
@@ -42,13 +44,20 @@ final class SystemFreshnessService
         foreach ($exchanges as $exchange) {
             foreach ($symbols as $symbol) {
                 foreach ($intervals as $interval) {
-                    $latest = CandleRecord::query()
-                        ->where('exchange', $exchange)
-                        ->where('symbol', $symbol)
-                        ->where('interval', $interval)
-                        ->where('is_closed', true)
-                        ->latest('open_time')
-                        ->first(['open_time', 'updated_at']);
+                    $candleReadFailed = false;
+                    try {
+                        $latest = CandleRecord::query()
+                            ->where('exchange', $exchange)
+                            ->where('symbol', $symbol)
+                            ->where('interval', $interval)
+                            ->where('is_closed', true)
+                            ->latest('open_time')
+                            ->first(['open_time', 'updated_at']);
+
+                    } catch (\Throwable) {
+                        $latest = null;
+                        $candleReadFailed = true;
+                    }
 
                     $intervalMinutes = (int) $interval;
                     $expectedClose = null;
@@ -63,9 +72,18 @@ final class SystemFreshnessService
                         $isStale = $lagSeconds > $missingThresholdSeconds;
                     }
 
-                    $hasConflict = $this->conflictService->hasActiveConflict($exchange, $symbol, $interval);
+                    $integrity = $candleReadFailed ? 'UNAVAILABLE' : $this->conflictService->integrityStatus($exchange, $symbol, $interval);
+                    $hasConflict = $integrity === 'UNAVAILABLE' ? null : $integrity === 'CONFLICTED';
 
-                    if ($hasConflict) {
+                    if ($integrity === 'UNAVAILABLE') {
+                        $status = 'UNAVAILABLE';
+                        $integrityUnavailable = true;
+                        $alerts[] = [
+                            'code' => 'CANDLE_INTEGRITY_UNAVAILABLE', 'severity' => 'ERROR',
+                            'exchange' => $exchange, 'symbol' => $symbol, 'interval' => $interval,
+                            'message' => "Candle integrity unavailable for {$exchange} {$symbol} {$interval}m.",
+                        ];
+                    } elseif ($hasConflict) {
                         $status = 'CONFLICTED';
                         $hasConflicts = true;
                         $alerts[] = [
@@ -115,6 +133,7 @@ final class SystemFreshnessService
                         'lag_seconds' => $lagSeconds,
                         'is_stale' => $isStale,
                         'has_conflict' => $hasConflict,
+                        'integrity_status' => $integrity,
                     ];
                 }
             }
@@ -157,14 +176,28 @@ final class SystemFreshnessService
         // Execution failures in last 24h: window is exactly [now - 24h, now]
         // Uses CarbonImmutable to prevent in-place mutation of the current timestamp.
         $since24h = $now->subHours(24);
-        $executionFailures24h = JournalEventRecord::query()
-            ->where('event_type', 'EXECUTION_FAILED')
-            ->where('occurred_at', '>=', $since24h)
-            ->where('occurred_at', '<=', $now)
-            ->count();
+        try {
+            $executionFailures24h = JournalEventRecord::query()
+                ->where('event_type', 'EXECUTION_FAILED')
+                ->where('occurred_at', '>=', $since24h)
+                ->where('occurred_at', '<=', $now)
+                ->count();
+
+        } catch (\Throwable) {
+            $executionFailures24h = null;
+            $integrityUnavailable = true;
+        }
+        try {
+            $conflicts = $this->conflictService->unresolvedConflicts($exchangeFilter);
+            $conflictsCount = $this->conflictService->countUnresolved($exchangeFilter);
+        } catch (CandleIntegrityUnavailable) {
+            $conflicts = null;
+            $conflictsCount = null;
+            $integrityUnavailable = true;
+        }
 
         $overallStatus = ($hasMissingOrStale || $dbStatus !== 'HEALTHY' || ! $queuesAvailable) ? 'WARNING' : 'HEALTHY';
-        if ($hasConflicts || $executionFailures24h > 5) {
+        if ($hasConflicts || $integrityUnavailable || $executionFailures24h > 5) {
             $overallStatus = 'CRITICAL';
         }
 
@@ -180,8 +213,9 @@ final class SystemFreshnessService
             'queues' => $queueHealth,
             'execution_failures_24h' => $executionFailures24h,
             'alerts' => $alerts,
-            'conflicts' => $this->conflictService->unresolvedConflicts($exchangeFilter),
-            'unresolved_conflicts_count' => $this->conflictService->countUnresolved($exchangeFilter),
+            'integrity_status' => $integrityUnavailable ? 'UNAVAILABLE' : ($hasConflicts ? 'CONFLICTED' : 'VALID'),
+            'conflicts' => $conflicts,
+            'unresolved_conflicts_count' => $conflictsCount,
         ];
     }
 }

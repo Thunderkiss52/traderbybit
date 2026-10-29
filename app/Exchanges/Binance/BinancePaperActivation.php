@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Exchanges\Binance;
 
+use App\MarketData\Application\MarketCandleConflictService;
 use App\MarketData\Infrastructure\Persistence\CandleRecord;
 use App\PaperTrading\Infrastructure\Persistence\MarketFundingEventRecord;
 use App\PaperTrading\Infrastructure\Persistence\PaperAccountRecord;
@@ -40,7 +41,7 @@ final class BinancePaperActivation
                     ->where('symbol', $symbol)->where('interval', $interval)->where('is_closed', true)
                     ->orderByDesc('open_time')->limit(220)->get(['open_time']);
                 $timestamps = $candles->map(fn ($c): int => $c->open_time->getTimestamp())->all();
-                $readiness = BinanceCandleWindow::status($timestamps, (int) $interval * 60, $nowSeconds);
+                $readiness = BinanceCandleWindow::status($timestamps, (int) $interval * 60, $nowSeconds, 220, app(MarketCandleConflictService::class), 'binance', $symbol, $interval);
                 if ($readiness !== 'READY') {
                     throw new DomainException("Binance activation rejected {$symbol}:{$interval} ({$readiness}). Required: 220 contiguous closed candles. Run 'php artisan binance:ingest-research {$symbol}' to backfill.");
                 }

@@ -1,0 +1,95 @@
+{
+  "initial_head": "40abcdce48bbb5033e7047daab81355083829cc9",
+  "source_provenance": "initial HEAD plus verified candidate working tree; source hashes match isolated tested snapshot",
+  "source_files_compared": 680,
+  "source_tree_sha256": "9fa19aa76cf3a47bf30a0031dc9bfd1dcc61b0efd56c0d543a636798170106a3",
+  "checks": {
+    "targets-verified": {
+      "exit_code": 0,
+      "sha256": "b8becbc3b90a9ef01d30dd922c4557075f81f34eb1069b685394c9e1067eafce",
+      "started_at": "2026-10-29T19:55:59.494886+00:00",
+      "finished_at": "2026-10-29T19:56:23.418550+00:00",
+      "junit": {
+        "name": "CLI Arguments",
+        "tests": "66",
+        "assertions": "794",
+        "errors": "0",
+        "failures": "0",
+        "skipped": "0",
+        "time": "23.339644"
+      },
+      "skipped_tests": []
+    },
+    "full-verified": {
+      "exit_code": 0,
+      "sha256": "57bce04ad657eadb4e5ea720a562d98bea175f9f2d0dfa8d9b5cec504fc350a1",
+      "started_at": "2026-10-29T19:57:06.173656+00:00",
+      "finished_at": "2026-10-29T19:59:48.112049+00:00",
+      "junit": {
+        "name": "/work/phpunit.xml",
+        "tests": "1009",
+        "assertions": "10267",
+        "errors": "0",
+        "failures": "0",
+        "skipped": "1",
+        "time": "160.804198"
+      },
+      "skipped_tests": [
+        "Tests\\Integration\\BybitPublicApiIntegrationTest::test_public_linear_market_endpoints_match_the_documented_contract"
+      ]
+    },
+    "final-style": {
+      "exit_code": 0,
+      "sha256": "98e097ceda819e157302867208c520e70aa2b330a8ea5c89a521fd877eff2ef2",
+      "started_at": "2026-10-29T19:57:07.342388+00:00",
+      "finished_at": "2026-10-29T19:57:29.191886+00:00"
+    },
+    "final-syntax": {
+      "exit_code": 0,
+      "sha256": "a7d46557e06cfa3e0412b6d62cfb026110411faa9aba40327baf8e5987bd98d1",
+      "started_at": "2026-10-29T19:57:29.224864+00:00",
+      "finished_at": "2026-10-29T19:57:49.489490+00:00"
+    },
+    "frontend-tests": {
+      "exit_code": 0,
+      "sha256": "021a163ff96284ebf8f95162ab576506ab4197df63491771606e30986989a58b",
+      "started_at": "2026-10-29T19:48:41.568703+00:00",
+      "finished_at": "2026-10-29T19:48:42.394353+00:00"
+    },
+    "frontend-build": {
+      "exit_code": 0,
+      "sha256": "d4e5a5466e9e54d97f4027d50eedf61992a00d8a0e76df896d99e8dd970af2c3",
+      "started_at": "2026-10-29T19:48:42.428072+00:00",
+      "finished_at": "2026-10-29T19:48:55.539268+00:00"
+    },
+    "tracker-tests": {
+      "exit_code": 0,
+      "sha256": "74af84bb74a0713c6ae1ed65ac5df0d76ec9708967aea00978f136556836e1b4",
+      "started_at": "2026-10-29T19:50:17.505225+00:00",
+      "finished_at": "2026-10-29T19:50:18.283838+00:00"
+    },
+    "final-tracker-strict": {
+      "exit_code": 0,
+      "sha256": "a65c78f31df6115bc4348987d1f5a41251449b854d36e16c169280d54c6c19a4",
+      "started_at": "2026-10-29T19:57:57.770404+00:00",
+      "finished_at": "2026-10-29T19:58:00.736328+00:00"
+    }
+  },
+  "five_blockers": "LOCAL_VERIFIED",
+  "verdict": "READY_FOR_FINAL_PRE_PUSH_GATE",
+  "scores_before": {
+    "implementation": 0.0,
+    "verification": 0.0,
+    "product": 0.0
+  },
+  "scores_after": {
+    "implementation": 0.0,
+    "verification": 0.0,
+    "product": 0.0
+  },
+  "production": "PENDING; no connection or mutation",
+  "push": false,
+  "deployment": false,
+  "historical_remediation": false,
+  "econom_accessed": false
+}

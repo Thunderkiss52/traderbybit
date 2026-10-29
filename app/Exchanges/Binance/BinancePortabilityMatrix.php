@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Exchanges\Binance;
 
+use App\MarketData\Application\MarketCandleConflictService;
 use App\MarketData\Infrastructure\Persistence\CandleRecord;
 
 /** M6 readiness inventory: historical count alone cannot establish data quality. */
@@ -26,7 +27,7 @@ final class BinancePortabilityMatrix
                         ->where('symbol', $symbol)->where('interval', $interval)->where('is_closed', true)
                         ->orderByDesc('open_time')->limit(220)->get(['open_time']);
                     $timestamps = $candles->map(fn ($c): int => $c->open_time->getTimestamp())->all();
-                    $history[$exchange][$symbol][$interval] = BinanceCandleWindow::status($timestamps, (int) $interval * 60, $now);
+                    $history[$exchange][$symbol][$interval] = BinanceCandleWindow::status($timestamps, (int) $interval * 60, $now, 220, app(MarketCandleConflictService::class), $exchange, $symbol, $interval);
                 }
             }
         }

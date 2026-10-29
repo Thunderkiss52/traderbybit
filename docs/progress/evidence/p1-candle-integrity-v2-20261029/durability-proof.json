@@ -1,0 +1,34 @@
+[
+  {
+    "durability": "VERIFIED",
+    "main_pid": 2803,
+    "observer_pid": 2804,
+    "outer_rollback": false,
+    "quarantine": false,
+    "committed_conflicts": 1
+  },
+  {
+    "durability": "VERIFIED",
+    "main_pid": 2807,
+    "observer_pid": 2808,
+    "outer_rollback": false,
+    "quarantine": true,
+    "committed_conflicts": 1
+  },
+  {
+    "durability": "VERIFIED",
+    "main_pid": 2811,
+    "observer_pid": 2812,
+    "outer_rollback": true,
+    "quarantine": false,
+    "committed_conflicts": 1
+  },
+  {
+    "durability": "VERIFIED",
+    "main_pid": 2815,
+    "observer_pid": 2816,
+    "outer_rollback": true,
+    "quarantine": true,
+    "committed_conflicts": 1
+  }
+]

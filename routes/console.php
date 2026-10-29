@@ -12,6 +12,7 @@ use App\Exchanges\Binance\BinancePaperReadiness;
 use App\Exchanges\Binance\BinancePortabilityMatrix;
 use App\Exchanges\Binance\BinanceResearchCycle;
 use App\Exchanges\Binance\ExchangePaperReconciliation;
+use App\MarketData\Domain\CandleIntegrityUnavailable;
 use App\MarketData\Jobs\CheckMarketDataFreshnessJob;
 use App\MarketData\Jobs\EnsureStrategyHistoryJob;
 use App\MarketData\Jobs\RecoverCandleGapsJob;
@@ -81,9 +82,12 @@ Artisan::command('binance:ingest-htf {symbol=BTCUSDT} {interval=30m} {--limit=10
 
         return isset($report['status']) && $report['status'] === 'PARTIAL_INGESTION_WITH_CONFLICTS' ? 2 : 0;
     } catch (Throwable $e) {
+        if ($e instanceof CandleIntegrityUnavailable && $e->ingestionReport !== null) {
+            $this->line(json_encode($e->ingestionReport, JSON_THROW_ON_ERROR));
+        }
         $this->error('Binance HTF ingestion failed: '.$e->getMessage());
 
-        return 1;
+        return $e instanceof CandleIntegrityUnavailable ? 3 : 1;
     }
 })->purpose('Explicitly ingest Binance higher-timeframe candles with conflict quarantine options');
 
@@ -252,7 +256,8 @@ if ((bool) config('exchanges.binance.research_cycle_enabled', false)) {
             ->cron('1,6,11,16,21,26,31,36,41,46,51,56 * * * *')
             ->name("binance:5m:{$symbol}")->withoutOverlapping();
         foreach (['15m', '30m', '1h', '4h'] as $interval) {
-            Schedule::call(fn () => app(BinanceCandleIngestion::class)->ingest($symbol, $interval, 10, quarantineConflicts: true))
+            Schedule::command('binance:ingest-htf', [$symbol, $interval, '--limit' => 10, '--quarantine'])
+                ->appendOutputTo(storage_path('logs/binance-htf-ingestion.log'))
                 ->cron('1,16,31,46 * * * *')->name("binance:htf:{$symbol}:{$interval}")->withoutOverlapping();
         }
         Schedule::call(fn () => app(BinanceFundingIngestion::class)->ingest($symbol))

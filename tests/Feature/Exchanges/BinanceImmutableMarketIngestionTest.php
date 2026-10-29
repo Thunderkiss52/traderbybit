@@ -10,15 +10,18 @@ use DomainException;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Http;
+use Tests\Concerns\CleansCandleConflictEvidence;
 use Tests\TestCase;
 
 final class BinanceImmutableMarketIngestionTest extends TestCase
 {
+    use CleansCandleConflictEvidence;
     use RefreshDatabase;
 
     protected function setUp(): void
     {
         parent::setUp();
+        $this->registerConflictCleanup();
         Http::preventStrayRequests();
     }
 

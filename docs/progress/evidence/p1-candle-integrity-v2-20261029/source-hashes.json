@@ -1,0 +1,23 @@
+{
+  "app/MarketData/Domain/CandleIntegrityUnavailable.php": "6952717210b9b065196ee17f325df9b2ddbc92a3589bdece112c65dcf3ffa8a5",
+  "app/MarketData/Infrastructure/Persistence/CandleConflictJournal.php": "1719bcd879f539f171fe55b6fd24e5b17e1f30989b0469a10743f87fba0dad2e",
+  "tests/Concerns/CleansCandleConflictEvidence.php": "e45fc9fd9913f2ea3a7b915abf2b5e13ba60626bbc7f455451e2041ccf70b71d",
+  "tests/Fixtures/binance_scheduled_command.php": "214d3caa578c053e50b86a1a7e2d84d6bfaeb5dd52838c6dcb8167c15115ac98",
+  "tests/Fixtures/candle_conflict_writer.php": "1d06a22503e9e03b743d9a3ce59d51deaea3b92226f806bdb02dece822e7d3a4",
+  "tests/Integration/BinanceCandleConflictDurabilityTest.php": "cb4782e1dfb11c78ab1b96f93c02145078c640732a6a7bb5df86b25da7aedfce",
+  "app/Exchanges/Binance/BinanceCandleIngestion.php": "4bbb0bf26be6164b008d07b836d75a93b75c56847ddfdec2bac23628d335c930",
+  "app/Exchanges/Binance/BinanceCandleWindow.php": "47a78e6aced19e9fd051863824c28f2e66361dc71acc857a22afa88f01644830",
+  "app/Exchanges/Binance/BinancePaperActivation.php": "ba1411482eefa2b30bc01e0f7656f28cb681625f9880486c751c8971faf626f8",
+  "app/Exchanges/Binance/BinancePortabilityMatrix.php": "e6970f42ea19743b39e224ac93866eab938baad026d1c6fb06f3c10435e9e64b",
+  "app/MarketData/Application/MarketCandleConflictService.php": "c7bbd95acef4d842ef205d5af15c12816357ab5410347c3c4ea99df6b18db0f9",
+  "app/Research/Application/SystemFreshnessService.php": "cf4662a3c88a29bad621f5d384a9f2d4ab4a7f5417371f3de2699771949f47b9",
+  "config/market_data.php": "d90ccab4f60557c5a18a6db41fe72235020164c8f3d86bd25450096be1820253",
+  "frontend/src/pages/ResearchHealthPage.vue": "5b335625b0fa23aec1934591a4f9132d3eaf562ad3ebe38f51ac18ec425da218",
+  "routes/console.php": "d8941ec1a7283012edcc83f6030da8bf7b48e9585b7c73c846408d1390d5ed65",
+  "tests/Feature/Exchanges/BinanceBatchCandleIngestionTest.php": "8813e0d6ec854cdb41bec6437da0c63f6a347012cf2f8e3b97767c48fcfdff4b",
+  "tests/Feature/Exchanges/BinanceCandleConflictQuarantineTest.php": "502bba78de7e502f95f70fd91f4027dd58127ca0c78aa05db70d50fda1e7612d",
+  "tests/Feature/Exchanges/BinanceHtfScheduleTest.php": "89cb1bd424394bd4c08c6a151ab6b7c670e1d8dbd320aa56e1be4d83d5792eb4",
+  "tests/Feature/Exchanges/BinanceImmutableMarketIngestionTest.php": "f6717e91ef9421fb05898b94bab384e9e8c93d0c6f398b113b21085e22b206af",
+  "tests/Integration/BinanceCandleInsertionRaceTest.php": "bb68c76fa09c4031ef7d0438f6acdbb5fcfd9d5514d8e9bb2db299ed01e3cbff",
+  "tests/Unit/Research/SystemFreshnessServiceTest.php": "24d34fc13b7afbcbd8582aeea9f93e28efa398679b40eaac18bd766218398722"
+}
