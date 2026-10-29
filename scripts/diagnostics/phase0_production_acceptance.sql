@@ -21,13 +21,14 @@ SET LOCAL idle_in_transaction_session_timeout = '60s';
 SELECT
     exchange_id,
     mode,
+    count(DISTINCT primary_strategy_id) as distinct_strategies,
     count(*) as total_accounts,
     sum(starting_balance) as total_starting_balance,
     sum(current_equity) as total_current_equity,
     min(current_equity) as min_equity,
     max(current_equity) as max_equity
 FROM paper_accounts
-WHERE mode = 'STRATEGY_FORWARD_PAPER'
+WHERE is_primary = true
 GROUP BY exchange_id, mode
 ORDER BY exchange_id;
 
@@ -92,7 +93,7 @@ SELECT
     (gross_pnl - fees + funding) as calculated_net_pnl,
     abs(net_pnl - (gross_pnl - fees + funding)) as discrepancy
 FROM virtual_positions
-WHERE status IN ('CLOSED_TP', 'CLOSED_SL', 'CLOSED_EXPIRED')
+WHERE closed_at IS NOT NULL
   AND abs(net_pnl - (gross_pnl - fees + funding)) > 0.0001
 LIMIT 10;
 
@@ -154,11 +155,12 @@ SELECT
     id as account_id,
     exchange_id,
     strategy_id,
+    status,
     current_equity,
     peak_equity,
     current_drawdown_percent,
-    (current_drawdown_percent >= 5.0) as is_entry_blocked,
-    (current_drawdown_percent >= 10.0) as is_system_halted
+    (current_drawdown_percent >= 5.0) as entry_block_required,
+    (current_drawdown_percent >= 10.0) as halt_required
 FROM paper_accounts
 WHERE current_drawdown_percent >= 5.0
 ORDER BY current_drawdown_percent DESC
@@ -180,17 +182,19 @@ LIMIT 10;
 
 -- 10. Position Lifecycle Status and Funding Completeness (VEC-P0-003-V2, VEC-P0-201-V2, VEC-P0-203-V2, VEC-P0-207-V2)
 SELECT
+    exchange_id,
     status,
     funding_complete,
     count(*) as position_count,
     min(opened_at) as earliest_opened,
     max(updated_at) as latest_update
 FROM virtual_positions
-GROUP BY status, funding_complete
-ORDER BY status, funding_complete;
+GROUP BY exchange_id, status, funding_complete
+ORDER BY exchange_id, status, funding_complete;
 
 -- 11. Pipeline Recovery & Terminalization Events (VEC-P0-002-V2, VEC-P0-204-V2, VEC-P0-209-V2)
 SELECT
+    exchange,
     stage,
     status,
     count(*) as event_count,
@@ -199,8 +203,8 @@ SELECT
     max(created_at) as latest_event_at
 FROM trading_pipeline_events
 WHERE created_at >= NOW() - INTERVAL '7 days'
-GROUP BY stage, status
-ORDER BY stage, status;
+GROUP BY exchange, stage, status
+ORDER BY exchange, stage, status;
 
 -- 12. Equity Snapshots Integrity & Provenance (VEC-P0-112-V2, VEC-P0-208-V2)
 -- Verifies equity snapshots are recorded per account without null equity values.
@@ -209,9 +213,57 @@ SELECT
     count(DISTINCT paper_account_id) as distinct_accounts,
     min(equity) as min_equity,
     max(drawdown_percent) as max_drawdown_pct,
-    count(*) FILTER (WHERE equity IS NULL OR equity <= 0) as invalid_equity_count
+    count(*) FILTER (WHERE equity IS NULL) as missing_equity_count,
+    count(*) FILTER (WHERE equity = 0) as zero_equity_requires_classification,
+    count(*) FILTER (WHERE equity < 0) as negative_equity_requires_classification
 FROM equity_snapshots
 WHERE recorded_at >= NOW() - INTERVAL '7 days';
+
+-- 13. Exact PRIMARY identities: modes are descriptive, never a census filter.
+SELECT id, exchange_id, primary_strategy_id, strategy_id, mode, status,
+       starting_balance, current_equity, created_at
+FROM paper_accounts WHERE is_primary = true
+ORDER BY exchange_id, primary_strategy_id, id;
+
+-- 14. Bootstrap provenance and insertion sequence (bigserial, NOT UUID ordering).
+-- Read the raw rows; timestamps alone do not establish creation order.
+SELECT es.id, es.paper_account_id, es.exchange_id, es.recorded_at,
+       es.equity, es.realized_pnl, es.unrealized_pnl, es.source_event_key,
+       pc.id AS capital_event_id, pc.amount AS approved_capital, pc.occurred_at
+FROM equity_snapshots es
+LEFT JOIN paper_capital_events pc ON pc.paper_account_id = es.paper_account_id
+WHERE es.source_event_key IN ('account:initial', 'account:initial:binance')
+   OR es.source_event_key LIKE 'owner-paper-capital:%'
+   OR (es.exchange_id = 'binance' AND es.equity = 0)
+ORDER BY es.paper_account_id, es.recorded_at, es.id;
+
+-- 15. Preserve and inspect anomalous terminal evidence, never replay it.
+SELECT id, event_key, exchange, symbol, timeframe, stage, status, candle_close_at,
+       created_at, completed_at, attempts, last_error, payload
+FROM trading_pipeline_events
+WHERE status IN ('STALE', 'PARTIAL', 'FAILED')
+ORDER BY candle_close_at, id;
+
+-- 16. Per-position funding evidence for offline independent classification.
+-- A matching local identity does NOT prove exchange coverage or historical marks.
+-- JSON access remains compatible with pre-remediation schema (source absent => NULL).
+SELECT p.id, p.paper_account_id, p.exchange_id, p.symbol, p.side,
+       p.opened_at, p.closed_at, p.initial_quantity, p.funding_complete,
+       p.gross_pnl, p.fees, p.funding, p.net_pnl,
+       p.net_pnl - (p.gross_pnl - p.fees + p.funding) AS net_identity_difference,
+       COALESCE((SELECT sum(f.amount) FROM position_funding_events f WHERE f.position_id = p.id), 0) AS settled_funding,
+       (SELECT jsonb_agg(jsonb_build_object('at', m.funding_at, 'rate', m.rate, 'mark', m.mark_price,
+                  'source', to_jsonb(m)->>'mark_price_source', 'market_event_id', m.id) ORDER BY m.funding_at)
+        FROM market_funding_events m WHERE m.exchange = p.exchange_id AND m.category = 'linear'
+          AND m.symbol = p.symbol AND m.funding_at > p.opened_at AND m.funding_at <= p.closed_at) AS market_events,
+       (SELECT jsonb_agg(jsonb_build_object('at', e.market_event_at, 'type', e.type, 'quantity', e.quantity)
+                        ORDER BY e.market_event_at, e.id)
+        FROM virtual_executions e WHERE e.position_id = p.id) AS executions,
+       (SELECT jsonb_agg(to_jsonb(f) ORDER BY f.funding_at, f.id)
+        FROM position_funding_events f WHERE f.position_id = p.id) AS settlements
+FROM virtual_positions p
+WHERE p.closed_at IS NOT NULL AND p.funding_complete = false
+ORDER BY p.exchange_id, p.opened_at, p.id;
 
 -- Conclude diagnostic run with explicit ROLLBACK to guarantee zero database mutations
 ROLLBACK;

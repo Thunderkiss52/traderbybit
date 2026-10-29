@@ -2,7 +2,7 @@
   "registry_version": 1,
   "scope_baseline": "VECTOR-SCOPE-20261027-v1",
   "baseline_file": "docs/progress/baselines/VECTOR-SCOPE-20261027-v1.json",
-  "assessment_head": "d9a0aeb5d14233fc95e9e5cc55d8748814362f59",
+  "assessment_head": "5b674960adc8ff6591134537763dce7a5bb0bb3c",
   "weight_policy": {
     "implementation": {
       "0": 25,
@@ -247,14 +247,15 @@
       ],
       "last_verified_commit": "e393304d14b07890870e560c07516eccfc033254",
       "last_verified_environment": "isolated_postgresql",
-      "last_evidence_update": "2026-10-28",
+      "last_evidence_update": "2026-10-29",
       "notes": [
         "No credit inferred from old pass counts. Runtime source atom credit does not prove integrated target behavior.",
         "2026-10-27 evidence closure: Fresh synthetic census is exactly 13+13; initialization/repeat preserves seeded Bybit and active Binance history; foreign exchange and missing-account controls fail; all strategy pairs remain isolated. Procedure: No additional local test needed for this obligation. Q1 must independently establish the real 26-account census and history continuity.",
         "Source metadata correction: config alone declares IDs; account service and initializer implement exchange provisioning. Implementation credit unchanged.",
         "stage-a: Fresh synthetic census is exactly 13+13; initialization/repeat preserves seeded Bybit and active Binance history; foreign exchange and missing-account controls fail; all strategy pairs remain isolated.",
         "stage-bcd: Fresh synthetic census is exactly 13+13; initialization/repeat preserves seeded Bybit and active Binance history; foreign exchange and missing-account controls fail; all strategy pairs remain isolated.",
-        "Phase 0 Final Closure: Fresh synthetic census is exactly 13+13; initialization/repeat preserves seeded Bybit and active Binance history; foreign exchange and missing-account controls fail; all strategy pairs remain isolated."
+        "Phase 0 Final Closure: Fresh synthetic census is exactly 13+13; initialization/repeat preserves seeded Bybit and active Binance history; foreign exchange and missing-account controls fail; all strategy pairs remain isolated.",
+        "2026-10-29 Phase 0 integrity remediation: see docs/progress/evidence/phase0-production-acceptance/REMEDIATION_20261029.md and VALIDATION_20261029.md. New local regressions do not certify the entire frozen obligation. All production V2 and product acceptance remain pending; no scores admitted from aggregate production counts."
       ],
       "assessed_commit": "d9a0aeb5d14233fc95e9e5cc55d8748814362f59",
       "roadmap_reference": "docs/roadmap/VECTOR_POST_REMEDIATION_IMPLEMENTATION_ROADMAP.md",
@@ -393,12 +394,13 @@
       ],
       "last_verified_commit": "e393304d14b07890870e560c07516eccfc033254",
       "last_verified_environment": "isolated_postgresql",
-      "last_evidence_update": "2026-10-28",
+      "last_evidence_update": "2026-10-29",
       "notes": [
         "No credit inferred from old pass counts. Runtime source atom credit does not prove integrated target behavior.",
         "2026-10-27 evidence closure: Completion, PARTIAL, stale recovery and targeted selection pass; no assertion directly exercises all-accounts-failed -> FAILED or recovery retry of failed accounts after a mixed batch without repeating successes. The frozen obligation says every transition. Procedure: Add an isolated PostgreSQL test with two accounts, one failure then targeted recovery; assert the successful account ledger is byte-identical and the failed account executes once. Add all-failed -> FAILED and upstream terminal-state assertions; rerun tests/Feature/Trading.",
         "stage-bcd: When all accounts fail in paper processing, recordPaperProcessed transitions to STATUS_FAILED and terminalizes upstream SIGNALS_EVALUATED and CANDLE_CLOSED to STATUS_FAILED with completed_at populated. Targeted recovery retry for failed accounts succeeds without repeating executions or mutating ledger state on previously succeeded accounts.",
-        "Phase 0 Final Closure: When all accounts fail in paper processing, recordPaperProcessed transitions to STATUS_FAILED and terminalizes upstream SIGNALS_EVALUATED and CANDLE_CLOSED to STATUS_FAILED with completed_at populated. Targeted recovery retry for failed accounts succeeds without repeating executions or mutating ledger state on previously succeeded accounts."
+        "Phase 0 Final Closure: When all accounts fail in paper processing, recordPaperProcessed transitions to STATUS_FAILED and terminalizes upstream SIGNALS_EVALUATED and CANDLE_CLOSED to STATUS_FAILED with completed_at populated. Targeted recovery retry for failed accounts succeeds without repeating executions or mutating ledger state on previously succeeded accounts.",
+        "2026-10-29 Phase 0 integrity remediation: see docs/progress/evidence/phase0-production-acceptance/REMEDIATION_20261029.md and VALIDATION_20261029.md. New local regressions do not certify the entire frozen obligation. All production V2 and product acceptance remain pending; no scores admitted from aggregate production counts."
       ],
       "assessed_commit": "d9a0aeb5d14233fc95e9e5cc55d8748814362f59",
       "roadmap_reference": "docs/roadmap/VECTOR_POST_REMEDIATION_IMPLEMENTATION_ROADMAP.md",
@@ -499,11 +501,12 @@
       ],
       "last_verified_commit": null,
       "last_verified_environment": null,
-      "last_evidence_update": "2026-10-27",
+      "last_evidence_update": "2026-10-29",
       "notes": [
         "No credit inferred from old pass counts. Runtime source atom credit does not prove integrated target behavior.",
         "2026-10-27 evidence closure: Exact synthetic fee/funding identities and negative controls pass. The atomic criterion also asks for reconciliation of the current account population, unavailable here. Procedure: Retain the named fixture results; obtain Q1/Q3 plus certified historical schedules and independently recalculate the current population, including all five previously reported late-funding candidates. No repair command.",
-        "Phase 0 Final Closure: VEC-P0-003-V1 remains UNAVAILABLE pending operator-authorized live account population reconciliation."
+        "Phase 0 Final Closure: VEC-P0-003-V1 remains UNAVAILABLE pending operator-authorized live account population reconciliation.",
+        "2026-10-29 Phase 0 integrity remediation: see docs/progress/evidence/phase0-production-acceptance/REMEDIATION_20261029.md and VALIDATION_20261029.md. New local regressions do not certify the entire frozen obligation. All production V2 and product acceptance remain pending; no scores admitted from aggregate production counts."
       ],
       "assessed_commit": "d9a0aeb5d14233fc95e9e5cc55d8748814362f59",
       "roadmap_reference": "docs/roadmap/VECTOR_POST_REMEDIATION_IMPLEMENTATION_ROADMAP.md",
@@ -673,13 +676,14 @@
       ],
       "last_verified_commit": "e393304d14b07890870e560c07516eccfc033254",
       "last_verified_environment": "isolated_postgresql",
-      "last_evidence_update": "2026-10-28",
+      "last_evidence_update": "2026-10-29",
       "notes": [
         "No credit inferred from old pass counts. Runtime source atom credit does not prove integrated target behavior.",
         "2026-10-27 evidence closure: 5%/10%, cooldown, correlation, sizing and blocked-position servicing pass. Reviewed RiskAndSizingTest lacks direct RiskEngine zero-equity, class-limit and portfolio-notional boundary assertions required by the second atomic criterion. Procedure: Extend riskFailures with equity=0, negative free capital, risk above each A/B/C limit and notional above portfolio cap; assert allowed immediately below and denied at applicable boundaries. Run RiskAndSizingTest plus AccountSafetyRegressionTest on isolated PostgreSQL; never relax config.",
         "stage-a: Direct positive and negative risk boundaries cover equity, class A/B/C, total risk, notional, position count, correlation, cooldown and 5%/10% protection; isolated account safety and servicing regressions pass. Operational concurrency acceptance remains pending.",
         "stage-bcd: Direct positive and negative risk boundaries cover equity, class A/B/C, total risk, notional, position count, correlation, cooldown and 5%/10% protection; isolated account safety and servicing regressions pass. Operational concurrency acceptance remains pending.",
-        "Phase 0 Final Closure: Direct positive and negative risk boundaries cover equity, class A/B/C, total risk, notional, position count, correlation, cooldown and 5%/10% protection; isolated account safety and servicing regressions pass. Operational concurrency acceptance remains pending."
+        "Phase 0 Final Closure: Direct positive and negative risk boundaries cover equity, class A/B/C, total risk, notional, position count, correlation, cooldown and 5%/10% protection; isolated account safety and servicing regressions pass. Operational concurrency acceptance remains pending.",
+        "2026-10-29 Phase 0 integrity remediation: see docs/progress/evidence/phase0-production-acceptance/REMEDIATION_20261029.md and VALIDATION_20261029.md. New local regressions do not certify the entire frozen obligation. All production V2 and product acceptance remain pending; no scores admitted from aggregate production counts."
       ],
       "assessed_commit": "d9a0aeb5d14233fc95e9e5cc55d8748814362f59",
       "roadmap_reference": "docs/roadmap/VECTOR_POST_REMEDIATION_IMPLEMENTATION_ROADMAP.md",
@@ -1348,11 +1352,12 @@
       ],
       "last_verified_commit": null,
       "last_verified_environment": null,
-      "last_evidence_update": "2026-10-27",
+      "last_evidence_update": "2026-10-29",
       "notes": [
         "No credit inferred from old pass counts. Runtime source atom credit does not prove integrated target behavior.",
         "2026-10-27 evidence closure: Both atomic criteria require operator-authorized current-release evidence and independent acceptance. None was collected. Procedure: Collect the production packets below, map each acceptance ID, obtain explicit responsible-actor acceptance and retain authorization. Local fixtures cannot satisfy this obligation.",
-        "Phase 0 Final Closure: VEC-P0-008-V1 remains UNAVAILABLE pending operator sign-off and production authorization gate."
+        "Phase 0 Final Closure: VEC-P0-008-V1 remains UNAVAILABLE pending operator sign-off and production authorization gate.",
+        "2026-10-29 Phase 0 integrity remediation: see docs/progress/evidence/phase0-production-acceptance/REMEDIATION_20261029.md and VALIDATION_20261029.md. New local regressions do not certify the entire frozen obligation. All production V2 and product acceptance remain pending; no scores admitted from aggregate production counts."
       ],
       "assessed_commit": "d9a0aeb5d14233fc95e9e5cc55d8748814362f59",
       "roadmap_reference": "docs/roadmap/VECTOR_POST_REMEDIATION_IMPLEMENTATION_ROADMAP.md",
@@ -2610,11 +2615,12 @@
       ],
       "last_verified_commit": "e393304d14b07890870e560c07516eccfc033254",
       "last_verified_environment": "isolated_postgresql",
-      "last_evidence_update": "2026-10-28",
+      "last_evidence_update": "2026-10-29",
       "notes": [
         "Trace only: docs/verification/VECTOR_V26_I01_I09_PRODUCTION_EVIDENCE_REMEDIATION.md; this assurance row adds no runtime implementation denominator.",
         "2026-10-27 evidence closure: Selector tests seed Bybit only. Separate 26-account census does not prove all 26 selectable or distinct aggregate/account economics. Procedure: Seed 13+13 accounts with distinct balances; request dashboard/statistics/risk for every account and exchange plus aggregate. Assert IDs, sums, foreign-ID rejection and no provisioning; exercise selectors in browser for V3.",
-        "Phase 0 Final Closure: All 26 independent paper accounts are selectable through API, display distinct balances, and foreign account IDs are strictly rejected."
+        "Phase 0 Final Closure: All 26 independent paper accounts are selectable through API, display distinct balances, and foreign account IDs are strictly rejected.",
+        "2026-10-29 Phase 0 integrity remediation: see docs/progress/evidence/phase0-production-acceptance/REMEDIATION_20261029.md and VALIDATION_20261029.md. New local regressions do not certify the entire frozen obligation. All production V2 and product acceptance remain pending; no scores admitted from aggregate production counts."
       ],
       "assessed_commit": "d9a0aeb5d14233fc95e9e5cc55d8748814362f59",
       "roadmap_reference": "docs/roadmap/VECTOR_POST_REMEDIATION_IMPLEMENTATION_ROADMAP.md",
@@ -3030,13 +3036,14 @@
       ],
       "last_verified_commit": "e393304d14b07890870e560c07516eccfc033254",
       "last_verified_environment": "isolated_postgresql",
-      "last_evidence_update": "2026-10-28",
+      "last_evidence_update": "2026-10-29",
       "notes": [
         "Trace only: docs/verification/VECTOR_V26_I01_I09_PRODUCTION_EVIDENCE_REMEDIATION.md; this assurance row adds no runtime implementation denominator.",
         "2026-10-27 evidence closure: Closing-only history returns null PnL and incomplete in API service and calendar CSV; inception is a justified opening control; complete period reconciles commissions/funding. Procedure: No additional local test needed. Compare deployed daily API/CSV to opening/closing snapshots, including a missing-opening day.",
         "stage-a: Closing-only history returns null PnL and incomplete in API service and calendar CSV; inception is a justified opening control; complete period reconciles commissions/funding.",
         "stage-bcd: Closing-only history returns null PnL and incomplete in API service and calendar CSV; inception is a justified opening control; complete period reconciles commissions/funding.",
-        "Phase 0 Final Closure: Closing-only history returns null PnL and incomplete in API service and calendar CSV; inception is a justified opening control; complete period reconciles commissions/funding."
+        "Phase 0 Final Closure: Closing-only history returns null PnL and incomplete in API service and calendar CSV; inception is a justified opening control; complete period reconciles commissions/funding.",
+        "2026-10-29 Phase 0 integrity remediation: see docs/progress/evidence/phase0-production-acceptance/REMEDIATION_20261029.md and VALIDATION_20261029.md. New local regressions do not certify the entire frozen obligation. All production V2 and product acceptance remain pending; no scores admitted from aggregate production counts."
       ],
       "assessed_commit": "d9a0aeb5d14233fc95e9e5cc55d8748814362f59",
       "roadmap_reference": "docs/roadmap/VECTOR_POST_REMEDIATION_IMPLEMENTATION_ROADMAP.md",
@@ -3861,11 +3868,12 @@
       ],
       "last_verified_commit": "e393304d14b07890870e560c07516eccfc033254",
       "last_verified_environment": "isolated_postgresql",
-      "last_evidence_update": "2026-10-28",
+      "last_evidence_update": "2026-10-29",
       "notes": [
         "Trace only: docs/verification/VECTOR_V26_I01_I09_PRODUCTION_EVIDENCE_REMEDIATION.md; this assurance row adds no runtime implementation denominator.",
         "2026-10-27 evidence closure: Service restrictions pass; settings API asserts raw capabilities but not the effective permission map under conflicting flags. Procedure: Set raw permission true with global enable false or kill switch true in isolated fixtures; GET settings and assert effective permission false alongside the raw value and reason. Render in browser for V3.",
-        "Phase 0 Final Closure: Autonomy overview and settings report raw capability flags alongside effective computed permissions with explicit blocker reasons."
+        "Phase 0 Final Closure: Autonomy overview and settings report raw capability flags alongside effective computed permissions with explicit blocker reasons.",
+        "2026-10-29 Phase 0 integrity remediation: see docs/progress/evidence/phase0-production-acceptance/REMEDIATION_20261029.md and VALIDATION_20261029.md. New local regressions do not certify the entire frozen obligation. All production V2 and product acceptance remain pending; no scores admitted from aggregate production counts."
       ],
       "assessed_commit": "d9a0aeb5d14233fc95e9e5cc55d8748814362f59",
       "roadmap_reference": "docs/roadmap/VECTOR_POST_REMEDIATION_IMPLEMENTATION_ROADMAP.md",
@@ -3992,11 +4000,12 @@
       ],
       "last_verified_commit": "e393304d14b07890870e560c07516eccfc033254",
       "last_verified_environment": "isolated_postgresql",
-      "last_evidence_update": "2026-10-28",
+      "last_evidence_update": "2026-10-29",
       "notes": [
         "Trace only: docs/verification/VECTOR_V26_I01_I09_PRODUCTION_EVIDENCE_REMEDIATION.md; this assurance row adds no runtime implementation denominator.",
         "2026-10-27 evidence closure: Each kill-switch has tests; no matrix toggles each authority independently and asserts both effective views agree. Procedure: Exercise four combinations of both switch stores; assert effective blocking in both APIs/services and display both authorities without writes on GET. Browser V3 requires rendered disabled controls.",
-        "Phase 0 Final Closure: Dual kill-switch 4-state matrix synchronizes permission service and research service authorities, strictly read-only on GET."
+        "Phase 0 Final Closure: Dual kill-switch 4-state matrix synchronizes permission service and research service authorities, strictly read-only on GET.",
+        "2026-10-29 Phase 0 integrity remediation: see docs/progress/evidence/phase0-production-acceptance/REMEDIATION_20261029.md and VALIDATION_20261029.md. New local regressions do not certify the entire frozen obligation. All production V2 and product acceptance remain pending; no scores admitted from aggregate production counts."
       ],
       "assessed_commit": "d9a0aeb5d14233fc95e9e5cc55d8748814362f59",
       "roadmap_reference": "docs/roadmap/VECTOR_POST_REMEDIATION_IMPLEMENTATION_ROADMAP.md",
@@ -4855,13 +4864,14 @@
       ],
       "last_verified_commit": "e393304d14b07890870e560c07516eccfc033254",
       "last_verified_environment": "isolated_postgresql",
-      "last_evidence_update": "2026-10-28",
+      "last_evidence_update": "2026-10-29",
       "notes": [
         "Trace only: docs/verification/VECTOR_V26_I01_I09_PRODUCTION_EVIDENCE_REMEDIATION.md; this assurance row adds no runtime implementation denominator.",
         "2026-10-27 evidence closure: Blocked drawdown SELL persists REJECTED state and PRE_RISK_ENTRY_BLOCKED journal, no RiskEngine row/fill; existing blocked-account positions still close and preserve accounting. Procedure: No additional local test needed for this obligation. Verify real blocked-account journal/state lineage and continued open-position servicing without reactivation.",
         "stage-a: Blocked drawdown SELL persists REJECTED state and PRE_RISK_ENTRY_BLOCKED journal, no RiskEngine row/fill; existing blocked-account positions still close and preserve accounting.",
         "stage-bcd: Blocked drawdown SELL persists REJECTED state and PRE_RISK_ENTRY_BLOCKED journal, no RiskEngine row/fill; existing blocked-account positions still close and preserve accounting.",
-        "Phase 0 Final Closure: Blocked drawdown SELL persists REJECTED state and PRE_RISK_ENTRY_BLOCKED journal, no RiskEngine row/fill; existing blocked-account positions still close and preserve accounting."
+        "Phase 0 Final Closure: Blocked drawdown SELL persists REJECTED state and PRE_RISK_ENTRY_BLOCKED journal, no RiskEngine row/fill; existing blocked-account positions still close and preserve accounting.",
+        "2026-10-29 Phase 0 integrity remediation: see docs/progress/evidence/phase0-production-acceptance/REMEDIATION_20261029.md and VALIDATION_20261029.md. New local regressions do not certify the entire frozen obligation. All production V2 and product acceptance remain pending; no scores admitted from aggregate production counts."
       ],
       "assessed_commit": "d9a0aeb5d14233fc95e9e5cc55d8748814362f59",
       "roadmap_reference": "docs/roadmap/VECTOR_POST_REMEDIATION_IMPLEMENTATION_ROADMAP.md",
@@ -5014,13 +5024,14 @@
       ],
       "last_verified_commit": "e393304d14b07890870e560c07516eccfc033254",
       "last_verified_environment": "isolated_postgresql",
-      "last_evidence_update": "2026-10-28",
+      "last_evidence_update": "2026-10-29",
       "notes": [
         "Trace only: docs/verification/VECTOR_V26_I01_I09_PRODUCTION_EVIDENCE_REMEDIATION.md; this assurance row adds no runtime implementation denominator.",
         "2026-10-27 evidence closure: Signals remain DISPATCHED before PAPER; completion acknowledges signals; injected unacknowledged upstream is repaired without redispatch of completed PAPER. Procedure: No additional local regression needed. Q4 correlate signals and PAPER terminal status by exchange/symbol/close time.",
         "stage-a: Signals remain DISPATCHED before PAPER; completion acknowledges signals; injected unacknowledged upstream is repaired without redispatch of completed PAPER.",
         "stage-bcd: Signals remain DISPATCHED before PAPER; completion acknowledges signals; injected unacknowledged upstream is repaired without redispatch of completed PAPER.",
-        "Phase 0 Final Closure: Signals remain DISPATCHED before PAPER; completion acknowledges signals; injected unacknowledged upstream is repaired without redispatch of completed PAPER."
+        "Phase 0 Final Closure: Signals remain DISPATCHED before PAPER; completion acknowledges signals; injected unacknowledged upstream is repaired without redispatch of completed PAPER.",
+        "2026-10-29 Phase 0 integrity remediation: see docs/progress/evidence/phase0-production-acceptance/REMEDIATION_20261029.md and VALIDATION_20261029.md. New local regressions do not certify the entire frozen obligation. All production V2 and product acceptance remain pending; no scores admitted from aggregate production counts."
       ],
       "assessed_commit": "d9a0aeb5d14233fc95e9e5cc55d8748814362f59",
       "roadmap_reference": "docs/roadmap/VECTOR_POST_REMEDIATION_IMPLEMENTATION_ROADMAP.md",
@@ -5332,13 +5343,14 @@
       ],
       "last_verified_commit": "e393304d14b07890870e560c07516eccfc033254",
       "last_verified_environment": "isolated_postgresql",
-      "last_evidence_update": "2026-10-28",
+      "last_evidence_update": "2026-10-29",
       "notes": [
         "Trace only: docs/verification/VECTOR_V26_I01_I09_PRODUCTION_EVIDENCE_REMEDIATION.md; this assurance row adds no runtime implementation denominator.",
         "2026-10-27 evidence closure: Unknown schedule and 25-minute offset fail closed; certified 8h/dynamic 4h schedules and zero-settlement closed lifetime work; late observed settlement completes an exact held-quantity fixture. Procedure: No additional local regression needed. Q3 and certified schedules must explain each production incomplete position; missing events/marks remain unknown.",
         "stage-a: Unknown schedule and 25-minute offset fail closed; certified 8h/dynamic 4h schedules and zero-settlement closed lifetime work; late observed settlement completes an exact held-quantity fixture.",
         "stage-bcd: Unknown schedule and 25-minute offset fail closed; certified 8h/dynamic 4h schedules and zero-settlement closed lifetime work; late observed settlement completes an exact held-quantity fixture.",
-        "Phase 0 Final Closure: Unknown schedule and 25-minute offset fail closed; certified 8h/dynamic 4h schedules and zero-settlement closed lifetime work; late observed settlement completes an exact held-quantity fixture."
+        "Phase 0 Final Closure: Unknown schedule and 25-minute offset fail closed; certified 8h/dynamic 4h schedules and zero-settlement closed lifetime work; late observed settlement completes an exact held-quantity fixture.",
+        "2026-10-29 Phase 0 integrity remediation: see docs/progress/evidence/phase0-production-acceptance/REMEDIATION_20261029.md and VALIDATION_20261029.md. New local regressions do not certify the entire frozen obligation. All production V2 and product acceptance remain pending; no scores admitted from aggregate production counts."
       ],
       "assessed_commit": "d9a0aeb5d14233fc95e9e5cc55d8748814362f59",
       "roadmap_reference": "docs/roadmap/VECTOR_POST_REMEDIATION_IMPLEMENTATION_ROADMAP.md",
@@ -5491,13 +5503,14 @@
       ],
       "last_verified_commit": "e393304d14b07890870e560c07516eccfc033254",
       "last_verified_environment": "isolated_postgresql",
-      "last_evidence_update": "2026-10-28",
+      "last_evidence_update": "2026-10-29",
       "notes": [
         "Trace only: docs/verification/VECTOR_V26_I01_I09_PRODUCTION_EVIDENCE_REMEDIATION.md; this assurance row adds no runtime implementation denominator.",
         "2026-10-27 evidence closure: Mixed batch reports PARTIAL with one failure/one processed; targeted account selection processes only one account and records counts. Procedure: No additional local regression needed for mixed-failure finding; broader all-failed/recovery matrix remains under P0-002. Q4 verify real partial-batch counters and logs.",
         "stage-a: Mixed batch reports PARTIAL with one failure/one processed; targeted account selection processes only one account and records counts.",
         "stage-bcd: Mixed batch reports PARTIAL with one failure/one processed; targeted account selection processes only one account and records counts.",
-        "Phase 0 Final Closure: Mixed batch reports PARTIAL with one failure/one processed; targeted account selection processes only one account and records counts."
+        "Phase 0 Final Closure: Mixed batch reports PARTIAL with one failure/one processed; targeted account selection processes only one account and records counts.",
+        "2026-10-29 Phase 0 integrity remediation: see docs/progress/evidence/phase0-production-acceptance/REMEDIATION_20261029.md and VALIDATION_20261029.md. New local regressions do not certify the entire frozen obligation. All production V2 and product acceptance remain pending; no scores admitted from aggregate production counts."
       ],
       "assessed_commit": "d9a0aeb5d14233fc95e9e5cc55d8748814362f59",
       "roadmap_reference": "docs/roadmap/VECTOR_POST_REMEDIATION_IMPLEMENTATION_ROADMAP.md",
@@ -5970,13 +5983,14 @@
       ],
       "last_verified_commit": "e393304d14b07890870e560c07516eccfc033254",
       "last_verified_environment": "isolated_postgresql",
-      "last_evidence_update": "2026-10-28",
+      "last_evidence_update": "2026-10-29",
       "notes": [
         "Trace only: docs/verification/VECTOR_V26_I01_I09_PRODUCTION_EVIDENCE_REMEDIATION.md; this assurance row adds no runtime implementation denominator.",
         "2026-10-27 evidence closure: Late event uses held quantity after TP1, exact -0.03 fixture amount, preserves closed status/equity identity and settles once. Missing closed mark is never fabricated. Procedure: No additional local regression needed. For five historical candidates obtain exact entry/exit timing, held quantity, event rate/mark and settlement records; report unresolved amounts, never synthesize them.",
         "stage-a: Late event uses held quantity after TP1, exact -0.03 fixture amount, preserves closed status/equity identity and settles once. Missing closed mark is never fabricated.",
         "stage-bcd: Late event uses held quantity after TP1, exact -0.03 fixture amount, preserves closed status/equity identity and settles once. Missing closed mark is never fabricated.",
-        "Phase 0 Final Closure: Late event uses held quantity after TP1, exact -0.03 fixture amount, preserves closed status/equity identity and settles once. Missing closed mark is never fabricated."
+        "Phase 0 Final Closure: Late event uses held quantity after TP1, exact -0.03 fixture amount, preserves closed status/equity identity and settles once. Missing closed mark is never fabricated.",
+        "2026-10-29 Phase 0 integrity remediation: see docs/progress/evidence/phase0-production-acceptance/REMEDIATION_20261029.md and VALIDATION_20261029.md. New local regressions do not certify the entire frozen obligation. All production V2 and product acceptance remain pending; no scores admitted from aggregate production counts."
       ],
       "assessed_commit": "d9a0aeb5d14233fc95e9e5cc55d8748814362f59",
       "roadmap_reference": "docs/roadmap/VECTOR_POST_REMEDIATION_IMPLEMENTATION_ROADMAP.md",
@@ -6131,13 +6145,14 @@
       ],
       "last_verified_commit": "e393304d14b07890870e560c07516eccfc033254",
       "last_verified_environment": "isolated_postgresql",
-      "last_evidence_update": "2026-10-28",
+      "last_evidence_update": "2026-10-29",
       "notes": [
         "Trace only: docs/verification/VECTOR_V26_I01_I09_PRODUCTION_EVIDENCE_REMEDIATION.md; this assurance row adds no runtime implementation denominator.",
         "2026-10-27 evidence closure: Fresh checkpoint with 25-minute-old position valuation remains STALE/incomplete with valued_through retained; no-open-position case is FLAT_VERIFIED. Procedure: No additional local regression needed. Compare real snapshot recorded_at to valued_through and last_processed_event_at; a fresh snapshot alone is not evidence.",
         "stage-a: Fresh checkpoint with 25-minute-old position valuation remains STALE/incomplete with valued_through retained; no-open-position case is FLAT_VERIFIED.",
         "stage-bcd: Fresh checkpoint with 25-minute-old position valuation remains STALE/incomplete with valued_through retained; no-open-position case is FLAT_VERIFIED.",
-        "Phase 0 Final Closure: Fresh checkpoint with 25-minute-old position valuation remains STALE/incomplete with valued_through retained; no-open-position case is FLAT_VERIFIED."
+        "Phase 0 Final Closure: Fresh checkpoint with 25-minute-old position valuation remains STALE/incomplete with valued_through retained; no-open-position case is FLAT_VERIFIED.",
+        "2026-10-29 Phase 0 integrity remediation: see docs/progress/evidence/phase0-production-acceptance/REMEDIATION_20261029.md and VALIDATION_20261029.md. New local regressions do not certify the entire frozen obligation. All production V2 and product acceptance remain pending; no scores admitted from aggregate production counts."
       ],
       "assessed_commit": "d9a0aeb5d14233fc95e9e5cc55d8748814362f59",
       "roadmap_reference": "docs/roadmap/VECTOR_POST_REMEDIATION_IMPLEMENTATION_ROADMAP.md",
@@ -6290,13 +6305,14 @@
       ],
       "last_verified_commit": "e393304d14b07890870e560c07516eccfc033254",
       "last_verified_environment": "isolated_postgresql",
-      "last_evidence_update": "2026-10-28",
+      "last_evidence_update": "2026-10-29",
       "notes": [
         "Trace only: docs/verification/VECTOR_V26_I01_I09_PRODUCTION_EVIDENCE_REMEDIATION.md; this assurance row adds no runtime implementation denominator.",
         "2026-10-27 evidence closure: 5m candle is DISPATCHED before downstream processing and COMPLETED only after PAPER acknowledgment; mixed account outcomes remain PARTIAL. Procedure: No additional local regression needed. Q4 verify no completed 5m parent precedes or contradicts its PAPER outcome.",
         "stage-a: 5m candle is DISPATCHED before downstream processing and COMPLETED only after PAPER acknowledgment; mixed account outcomes remain PARTIAL.",
         "stage-bcd: 5m candle is DISPATCHED before downstream processing and COMPLETED only after PAPER acknowledgment; mixed account outcomes remain PARTIAL.",
-        "Phase 0 Final Closure: 5m candle is DISPATCHED before downstream processing and COMPLETED only after PAPER acknowledgment; mixed account outcomes remain PARTIAL."
+        "Phase 0 Final Closure: 5m candle is DISPATCHED before downstream processing and COMPLETED only after PAPER acknowledgment; mixed account outcomes remain PARTIAL.",
+        "2026-10-29 Phase 0 integrity remediation: see docs/progress/evidence/phase0-production-acceptance/REMEDIATION_20261029.md and VALIDATION_20261029.md. New local regressions do not certify the entire frozen obligation. All production V2 and product acceptance remain pending; no scores admitted from aggregate production counts."
       ],
       "assessed_commit": "d9a0aeb5d14233fc95e9e5cc55d8748814362f59",
       "roadmap_reference": "docs/roadmap/VECTOR_POST_REMEDIATION_IMPLEMENTATION_ROADMAP.md",

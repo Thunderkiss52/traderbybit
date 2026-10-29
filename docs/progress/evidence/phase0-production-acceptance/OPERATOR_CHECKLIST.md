@@ -46,7 +46,7 @@ Every obligation below corresponds 1:1 to an authoritative requirement in `docs/
 
 | Req ID | Obligation ID | Requirement Title | Evidence Source | Expected Verification Predicate | Coverage Window | Evaluation Rule (PASS / FAIL / PENDING) | Status |
 | :--- | :--- | :--- | :--- | :--- | :--- | :--- | :---: |
-| **VEC-P0-001** | `VEC-P0-001-V2` | 26 independent PAPER account topology | SQL Query 1 | Exactly 13 Bybit + 13 Binance accounts in `STRATEGY_FORWARD_PAPER`; starting balance > 0; independent equity | Current live state | PASS if total_accounts=26 (13 Bybit, 13 Binance) with positive balances; FAIL otherwise | **PENDING** |
+| **VEC-P0-001** | `VEC-P0-001-V2` | 26 independent PAPER account topology | SQL Query 1 & Query 13 | Exactly 13 Bybit + 13 Binance PRIMARY strategy identities; include legacy Bybit baseline `FORWARD_PAPER`; independent histories and approved capital | Current live state | PASS only if 26 distinct expected exchange/strategy pairs and history continuity verified; zero current equity alone is not a census failure | **PENDING** |
 | **VEC-P0-002** | `VEC-P0-002-V2` | PAPER pipeline terminalization and recovery | SQL Query 2 & Query 11 | 0 cross-exchange leaks; pipeline terminalization events recorded without stuck stages | Last 7 days | PASS if mismatch_count=0 and pipeline terminalizes cleanly; FAIL if leaks exist | **PENDING** |
 | **VEC-P0-003** | `VEC-P0-003-V2` | Financial ledger and funding completeness | SQL Query 4 & Query 10 | Realized Net PnL discrepancy <= 0.0001; closed positions have funding_complete=true | All closed positions | PASS if discrepancy=0 and funding resolved; FAIL if financial identities diverge | **PENDING** |
 | **VEC-P0-004** | `VEC-P0-004-V2` | Risk gates and account isolation | SQL Query 2 & Query 9 | 0 cross-exchange leaks; accounts with drawdown >= 5% have entry blocked; existing positions serviced | Current live state | PASS if cross-exchange leaks=0 and drawdown limits enforced; FAIL otherwise | **PENDING** |
@@ -66,7 +66,7 @@ Every obligation below corresponds 1:1 to an authoritative requirement in `docs/
 | **VEC-P0-109** | `VEC-P0-109-V2` | F09 — Frontend Single-Account Display Default Blinds Multi-Account System | SQL Query 1 & UI Inspection | All 26 accounts selectable with exchange-qualified identity and distinct values | Current live state | PASS if all 26 accounts distinct and selectable in UI/API; FAIL otherwise | **PENDING** |
 | **VEC-P0-110** | `VEC-P0-110-V2` | F10 — Signal Annotation Query Reversal and Account Scope Defect | API `GET /api/v1/signals` | Signal annotation selects latest matching record within requested account scope | Last 24 hours | PASS if signal annotations respect chronological order and scope; FAIL otherwise | **PENDING** |
 | **VEC-P0-111** | `VEC-P0-111-V2` | F11 — Statistics Page Lifecycle Population Mixing | SQL Query 10 & API statistics | Closed-trade metrics do not mix open/partial positions or count partial exits as trades | All closed trades | PASS if closed trade population strictly excludes open positions; FAIL otherwise | **PENDING** |
-| **VEC-P0-112** | `VEC-P0-112-V2` | F12 — Daily Performance Marks Missing Opening as Complete | SQL Query 12 & API `GET /api/v1/paper/daily-performance` | Daily performance without verified opening equity marked incomplete, not certified | Last 7 days | PASS if zero invalid equity records certified; FAIL if unverified certified | **PENDING** |
+| **VEC-P0-112** | `VEC-P0-112-V2` | F12 — Daily Performance Marks Missing Opening as Complete | SQL Query 12 & Query 14 & API `GET /api/v1/paper/daily-performance` | Daily performance without verified opening equity marked incomplete, not certified | Last 7 days | PASS if opening and closing provenance verified, with pre-capital states separated; zero equity can be legitimate | **PENDING** |
 | **VEC-P0-113** | `VEC-P0-113-V2` | F13 — Research Health Funnel False Healthy Parent Status and Hardcoded Lookback | API `GET /api/v1/research/health/strategy-funnel` | Research health propagates insufficient child evidence; lookback derived dynamically | Real-time query | PASS if child errors propagate to parent status; FAIL if false healthy reported | **PENDING** |
 | **VEC-P0-114** | `VEC-P0-114-V2` | F14 — Research Report Freshness Shape Mismatches | API `GET /api/v1/research/health/data-freshness` | Report freshness fields conform to actual service shape and expose stale/unknown state | Real-time query | PASS if JSON schema matches consumer contract; FAIL if fields missing | **PENDING** |
 | **VEC-P0-115** | `VEC-P0-115-V2` | F15 — Portfolio Correlation Invalid Status Check and Trade-Order Pairing | API `GET /api/v1/research/profitability/concentration-dependence` | Correlation aligns valid lifecycle populations in time, not query order pairing | Last 30 days | PASS if correlation time-alignment is chronological; FAIL if paired by row ID | **PENDING** |
@@ -153,3 +153,37 @@ curl -fsS http://127.0.0.1:18080/api/v1/quote-integrity/status   | jq . > docs/p
    ```bash
    python3 scripts/vector_progress.py --phase 0 --generate
    ```
+
+
+## 2026-10-29 integrity investigation addendum
+
+SQL exit 0 establishes query execution only. Every V2 remains PENDING until its
+individual predicate is reviewed on the release under acceptance. Supplied October
+25–28 aggregates are historical evidence, not current verification of this patch.
+Queries 13–16 supplement the original matrix; they do not replace non-SQL evidence.
+
+- Census: enumerate `is_primary` and exact exchange/strategy pairs. The canonical
+  Bybit baseline intentionally uses `FORWARD_PAPER`; no account migration is required.
+- Snapshots: inspect IDs, source keys and capital-event linkage. Snapshot IDs are
+  insertion sequences; equal timestamps alone cannot establish order. Zero equity
+  is a value requiring classification, not automatically corrupt data.
+- Funding: export Query 16 and independently obtain the historical exchange schedule,
+  rates and boundary marks. Null mark provenance means legacy/unverified. Run the
+  offline classifier described in `REMEDIATION_20261029.md`; no Artisan reconciliation,
+  backfill, account reset or automatic `funding_complete` update is authorized.
+- Pipeline: inspect each Query 15 row and matching downstream event. STALE excludes
+  late fills; PARTIAL requires failed-account identities. Missing legacy identities
+  are missing evidence, not permission to replay all peers. Preserve the original rows.
+- Risk: Query 9 reports threshold requirements and stored status; it does not prove
+  that a fill was rejected or that open positions were serviced. Match decision and
+  execution times to account equity history and processing logs.
+- Autonomy: the stored capability alone is not an effective promotion permission.
+  Check both kill-switch authorities, configuration, and approval audit. Research
+  eligibility, prediction-model champion selection, isolated candidate promotion,
+  and PRIMARY replacement are distinct mechanisms.
+
+Minimum next round: run the revised read-only SQL against the owner-selected release,
+retain complete output and SHA, and provide rows from Queries 13–16 plus independently
+validated funding schedules/marks. Do not run mutation-based checklist examples
+(including audit-export POSTs) under this read-only handoff. Browser/API obligations
+require separate, source-reviewed read-only evidence; absent evidence remains PENDING.

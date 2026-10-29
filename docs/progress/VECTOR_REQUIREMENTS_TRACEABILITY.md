@@ -1,6 +1,6 @@
 # VECTOR Requirements Traceability
 
-Scope `VECTOR-SCOPE-20261027-v1`; source `d9a0aeb5d14233fc95e9e5cc55d8748814362f59`.
+Scope `VECTOR-SCOPE-20261027-v1`; source `5b674960adc8ff6591134537763dce7a5bb0bb3c`.
 
 F/I entries are assurance obligations, not duplicate runtime delivery credit. JSON contains atomic criteria and evidence records.
 
