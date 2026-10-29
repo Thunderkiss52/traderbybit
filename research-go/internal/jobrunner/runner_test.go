@@ -96,20 +96,35 @@ func (s *mockStmt) Exec(args []driver.Value) (driver.Result, error) {
 }
 
 func (s *mockStmt) Query(args []driver.Value) (driver.Rows, error) {
+	if strings.Contains(s.query, "RETURNING generation_token") {
+		return &mockRows{singleVal: int64(1)}, nil
+	}
 	// For LoadCandlesFromDB
 	return &mockRows{}, nil
 }
 
 type mockRows struct {
-	read bool
+	read      bool
+	singleVal any
 }
 
 func (r *mockRows) Columns() []string {
+	if r.singleVal != nil {
+		return []string{"generation_token"}
+	}
 	return []string{"id", "open_time", "open", "high", "low", "close", "volume", "turnover"}
 }
 
 func (r *mockRows) Close() error { return nil }
 func (r *mockRows) Next(dest []driver.Value) error {
+	if r.singleVal != nil {
+		if r.read {
+			return io.EOF
+		}
+		r.read = true
+		dest[0] = r.singleVal
+		return nil
+	}
 	return io.EOF
 }
 

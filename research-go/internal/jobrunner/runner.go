@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"log"
 	"math"
@@ -22,16 +23,25 @@ import (
 	"github.com/traderbybit/research-go/internal/walkforward"
 )
 
+var ErrStaleGeneration = errors.New("stale worker generation token")
+
 type Runner struct {
-	db       *sql.DB
-	workerID string
+	db              *sql.DB
+	workerID        string
+	generationToken int64
 }
 
 func NewRunner(db *sql.DB, workerID string) *Runner {
 	return &Runner{
-		db:       db,
-		workerID: workerID,
+		db:              db,
+		workerID:        workerID,
+		generationToken: 0,
 	}
+}
+
+// GenerationToken returns the registered generation fencing token.
+func (r *Runner) GenerationToken() int64 {
+	return r.generationToken
 }
 
 // ClaimNextJob claims an eligible job using FOR UPDATE SKIP LOCKED
@@ -583,6 +593,7 @@ func (r *Runner) ExecuteJob(ctx context.Context, req *contracts.JobRequest, fenc
 }
 
 // RegisterWorker registers or updates the worker node in research_workers table.
+// Returns the registered generation fencing token.
 func (r *Runner) RegisterWorker(ctx context.Context, version string, algorithms []string, hostname string, pid int) error {
 	algoJSON, err := json.Marshal(algorithms)
 	if err != nil {
@@ -593,11 +604,12 @@ func (r *Runner) RegisterWorker(ctx context.Context, version string, algorithms 
 	query := `
 		INSERT INTO research_workers (
 			worker_id, engine, version, status, hostname, pid, supported_algorithms,
-			heartbeat_at, registered_at, created_at, updated_at
+			heartbeat_at, registered_at, created_at, updated_at, generation_token
 		) VALUES (
-			$1, 'go', $2, 'ready', $3, $4, $5, $6, $6, $6, $6
+			$1, 'go', $2, 'ready', $3, $4, $5, $6, $6, $6, $6, 1
 		)
 		ON CONFLICT (worker_id) DO UPDATE SET
+			generation_token = research_workers.generation_token + 1,
 			engine = 'go',
 			version = EXCLUDED.version,
 			status = 'ready',
@@ -606,30 +618,40 @@ func (r *Runner) RegisterWorker(ctx context.Context, version string, algorithms 
 			supported_algorithms = EXCLUDED.supported_algorithms,
 			heartbeat_at = EXCLUDED.heartbeat_at,
 			updated_at = EXCLUDED.updated_at
+		RETURNING generation_token;
 	`
-	_, err = r.db.ExecContext(ctx, query, r.workerID, version, hostname, pid, string(algoJSON), now)
+	var genToken int64
+	err = r.db.QueryRowContext(ctx, query, r.workerID, version, hostname, pid, string(algoJSON), now).Scan(&genToken)
 	if err != nil {
 		return fmt.Errorf("failed to register worker %s: %w", r.workerID, err)
 	}
+	r.generationToken = genToken
 	return nil
 }
 
-// SendHeartbeat updates heartbeat timestamp and status for the worker.
+// SendHeartbeat updates heartbeat timestamp and status for the worker under generation fencing.
 func (r *Runner) SendHeartbeat(ctx context.Context, status string) error {
 	now := time.Now().UTC()
 	query := `
 		UPDATE research_workers
 		SET heartbeat_at = $1, status = $2, updated_at = $1
-		WHERE worker_id = $3
+		WHERE worker_id = $3 AND generation_token = $4
 	`
-	_, err := r.db.ExecContext(ctx, query, now, status, r.workerID)
+	res, err := r.db.ExecContext(ctx, query, now, status, r.workerID, r.generationToken)
 	if err != nil {
 		return fmt.Errorf("failed to send heartbeat for worker %s: %w", r.workerID, err)
+	}
+	rows, err := res.RowsAffected()
+	if err != nil {
+		return fmt.Errorf("failed to inspect affected rows on heartbeat: %w", err)
+	}
+	if rows == 0 {
+		return ErrStaleGeneration
 	}
 	return nil
 }
 
-// RecordJobCompletion records job completion metrics and sets status back to ready.
+// RecordJobCompletion records job completion metrics and sets status back to ready under generation fencing.
 func (r *Runner) RecordJobCompletion(ctx context.Context, jobID string, success bool) error {
 	now := time.Now().UTC()
 	var query string
@@ -642,7 +664,7 @@ func (r *Runner) RecordJobCompletion(ctx context.Context, jobID string, success 
 			    last_job_finished_at = $1,
 			    total_jobs_completed = total_jobs_completed + 1,
 			    updated_at = $1
-			WHERE worker_id = $3
+			WHERE worker_id = $3 AND generation_token = $4
 		`
 	} else {
 		query = `
@@ -653,28 +675,41 @@ func (r *Runner) RecordJobCompletion(ctx context.Context, jobID string, success 
 			    last_job_finished_at = $1,
 			    total_jobs_failed = total_jobs_failed + 1,
 			    updated_at = $1
-			WHERE worker_id = $3
+			WHERE worker_id = $3 AND generation_token = $4
 		`
 	}
-	_, err := r.db.ExecContext(ctx, query, now, jobID, r.workerID)
+	res, err := r.db.ExecContext(ctx, query, now, jobID, r.workerID, r.generationToken)
 	if err != nil {
 		return fmt.Errorf("failed to record job completion for worker %s: %w", r.workerID, err)
+	}
+	rows, err := res.RowsAffected()
+	if err != nil {
+		return fmt.Errorf("failed to inspect affected rows on job completion: %w", err)
+	}
+	if rows == 0 {
+		return ErrStaleGeneration
 	}
 	return nil
 }
 
-// UnregisterWorker sets worker status to stopped on graceful shutdown.
+// UnregisterWorker sets worker status to stopped on graceful shutdown under generation fencing.
 func (r *Runner) UnregisterWorker(ctx context.Context) error {
 	now := time.Now().UTC()
 	query := `
 		UPDATE research_workers
 		SET status = 'stopped', heartbeat_at = $1, updated_at = $1
-		WHERE worker_id = $2
+		WHERE worker_id = $2 AND generation_token = $3
 	`
-	_, err := r.db.ExecContext(ctx, query, now, r.workerID)
+	res, err := r.db.ExecContext(ctx, query, now, r.workerID, r.generationToken)
 	if err != nil {
 		return fmt.Errorf("failed to unregister worker %s: %w", r.workerID, err)
 	}
+	rows, err := res.RowsAffected()
+	if err != nil {
+		return fmt.Errorf("failed to inspect affected rows on unregister: %w", err)
+	}
+	if rows == 0 {
+		return ErrStaleGeneration
+	}
 	return nil
 }
-

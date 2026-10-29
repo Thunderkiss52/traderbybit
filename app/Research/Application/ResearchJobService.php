@@ -436,6 +436,7 @@ final readonly class ResearchJobService
                         'last_job_finished_at' => $row->last_job_finished_at ? CarbonImmutable::parse($row->last_job_finished_at)->toIso8601String() : null,
                         'total_jobs_completed' => (int) ($row->total_jobs_completed ?? 0),
                         'total_jobs_failed' => (int) ($row->total_jobs_failed ?? 0),
+                        'generation_token' => (int) ($row->generation_token ?? 1),
                     ];
                 }
             } catch (Throwable $e) {

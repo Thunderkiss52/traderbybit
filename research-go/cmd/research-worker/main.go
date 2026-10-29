@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"database/sql"
+	"errors"
 	"flag"
 	"fmt"
 	"log"
@@ -179,9 +180,26 @@ func main() {
 	workerID := fmt.Sprintf("go-research-worker-%s-%d", hostname, os.Getpid())
 	log.Printf("[worker] Initializing %s connecting to %s:%s db=%s", workerID, dbHost, dbPort, dbName)
 
-	db, err := sql.Open("postgres", connStr)
+	var db *sql.DB
+	var err error
+	backoff := 500 * time.Millisecond
+	for attempt := 1; attempt <= 5; attempt++ {
+		db, err = sql.Open("postgres", connStr)
+		if err == nil {
+			pingCtx, pingCancel := context.WithTimeout(context.Background(), 3*time.Second)
+			err = db.PingContext(pingCtx)
+			pingCancel()
+			if err == nil {
+				break
+			}
+			_ = db.Close()
+		}
+		log.Printf("[worker] Database connection attempt %d/5 failed: %v. Retrying in %v...", attempt, err, backoff)
+		time.Sleep(backoff)
+		backoff *= 2
+	}
 	if err != nil {
-		log.Fatalf("[worker] Failed to connect to database: %v", err)
+		log.Fatalf("[worker] Failed to connect to database after 5 attempts: %v", err)
 	}
 	defer db.Close()
 
@@ -215,12 +233,13 @@ func main() {
 		"skip_outcomes",
 	}
 
-	// Register worker in PostgreSQL research_workers table
-	regCtx, regCancel := context.WithTimeout(context.Background(), 5*time.Second)
+	// Register worker in PostgreSQL research_workers table with generation token
+	regCtx, regCancel := context.WithTimeout(context.Background(), 10*time.Second)
 	if err := runner.RegisterWorker(regCtx, workerVersion, supportedAlgorithms, hostname, os.Getpid()); err != nil {
 		log.Printf("[worker] Warning: Failed to register worker: %v", err)
 	} else {
-		log.Printf("[worker] Successfully registered %s (version=%s) in research registry", workerID, workerVersion)
+		log.Printf("[worker] Successfully registered %s (version=%s, generation=%d) in research registry",
+			workerID, workerVersion, runner.GenerationToken())
 	}
 	regCancel()
 
@@ -234,10 +253,16 @@ func main() {
 				return
 			case <-heartbeatTicker.C:
 				hbCtx, hbCancel := context.WithTimeout(context.Background(), 3*time.Second)
-				if err := runner.SendHeartbeat(hbCtx, "ready"); err != nil {
+				err := runner.SendHeartbeat(hbCtx, "ready")
+				hbCancel()
+				if err != nil {
+					if errors.Is(err, jobrunner.ErrStaleGeneration) {
+						log.Printf("[worker] FATAL: Stale worker generation detected for %s (superseded by newer worker). Terminating process immediately.", workerID)
+						cancel()
+						return
+					}
 					log.Printf("[worker] Heartbeat warning: %v", err)
 				}
-				hbCancel()
 			}
 		}
 	}()
@@ -275,9 +300,19 @@ func main() {
 				continue
 			}
 
-			_ = runner.SendHeartbeat(ctx, "busy")
+			if hbErr := runner.SendHeartbeat(ctx, "busy"); errors.Is(hbErr, jobrunner.ErrStaleGeneration) {
+				log.Printf("[worker] Stale generation detected when marking busy; abandoning job and terminating.")
+				cancel()
+				return
+			}
+
 			execErr := runner.ExecuteJob(ctx, req, token)
-			_ = runner.RecordJobCompletion(ctx, req.JobID, execErr == nil)
+
+			if recErr := runner.RecordJobCompletion(ctx, req.JobID, execErr == nil); errors.Is(recErr, jobrunner.ErrStaleGeneration) {
+				log.Printf("[worker] Stale generation detected when recording completion; terminating.")
+				cancel()
+				return
+			}
 
 			if execErr != nil {
 				log.Printf("[worker] Execution error for job %s: %v", req.JobID, execErr)
