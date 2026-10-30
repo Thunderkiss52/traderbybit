@@ -36,58 +36,62 @@ final class BinanceDeploymentInitializer
         }
 
         try {
-            // Preflight 1: Schema check
-            $schema = DB::getSchemaBuilder();
-            if (! $schema->hasTable('paper_accounts') || ! $schema->hasColumn('paper_accounts', 'exchange_id')) {
-                throw new RuntimeException('Exchange-scoped schema migration required before initialization.');
-            }
+            // Provisioning, capital allocation, snapshot repair and M9 must commit together.
+            // An application rollback cannot undo earlier committed PAPER records.
+            return DB::transaction(function () use ($amount, $approvalReference): array {
+                // Preflight 1: Schema check
+                $schema = DB::getSchemaBuilder();
+                if (! $schema->hasTable('paper_accounts') || ! $schema->hasColumn('paper_accounts', 'exchange_id')) {
+                    throw new RuntimeException('Exchange-scoped schema migration required before initialization.');
+                }
 
-            // Preflight 2: Verify all 13 canonical Bybit accounts exist
-            $bybitAccounts = DB::table('paper_accounts')->where('exchange_id', 'bybit')->where('is_primary', true)->get();
-            if ($bybitAccounts->count() !== 13) {
-                // Populate/ensure Bybit primary accounts
-                $this->accounts->allPrimaryAccounts('bybit');
+                // Preflight 2: Verify all 13 canonical Bybit accounts exist
                 $bybitAccounts = DB::table('paper_accounts')->where('exchange_id', 'bybit')->where('is_primary', true)->get();
                 if ($bybitAccounts->count() !== 13) {
-                    throw new RuntimeException('Bybit 13 canonical primary accounts population is incomplete.');
+                    // Populate/ensure Bybit primary accounts
+                    $this->accounts->allPrimaryAccounts('bybit');
+                    $bybitAccounts = DB::table('paper_accounts')->where('exchange_id', 'bybit')->where('is_primary', true)->get();
+                    if ($bybitAccounts->count() !== 13) {
+                        throw new RuntimeException('Bybit 13 canonical primary accounts population is incomplete.');
+                    }
                 }
-            }
 
-            // Capture Bybit financial state checksum before provisioning
-            $bybitChecksumBefore = $this->checksumBybitState();
+                // Capture Bybit financial state checksum before provisioning
+                $bybitChecksumBefore = $this->checksumBybitState();
 
-            // Step 1: Provision 13 Binance canonical accounts (idempotent, accounts are BLOCKED)
-            config(['exchanges.binance_paper_provisioning_approved' => true]);
-            $provisionResult = $this->provisioner->provision();
+                // Step 1: Provision 13 Binance canonical accounts (idempotent, accounts are BLOCKED)
+                config(['exchanges.binance_paper_provisioning_approved' => true]);
+                $provisionResult = $this->provisioner->provision();
 
-            // Step 2: Allocate owner-approved paper capital (idempotent, accounts remain BLOCKED)
-            $capitalResult = $this->capital->allocate($amount, $approvalReference);
+                // Step 2: Allocate owner-approved paper capital (idempotent, accounts remain BLOCKED)
+                $capitalResult = $this->capital->allocate($amount, $approvalReference);
 
-            // Step 3: Verify Bybit financial state was completely untouched
-            $bybitChecksumAfter = $this->checksumBybitState();
-            if ($bybitChecksumBefore !== $bybitChecksumAfter) {
-                throw new RuntimeException('Bybit financial state integrity violation during Binance initialization.');
-            }
+                // Step 3: Verify Bybit financial state was completely untouched
+                $bybitChecksumAfter = $this->checksumBybitState();
+                if ($bybitChecksumBefore !== $bybitChecksumAfter) {
+                    throw new RuntimeException('Bybit financial state integrity violation during Binance initialization.');
+                }
 
-            // Step 3.5: Ensure existing Binance checkpoints are consistent before reconciliation
-            $repairService = $this->snapshotRepair ?? app(EquitySnapshotRepairService::class);
-            $repairResult = $repairService->repair(apply: true);
+                // Step 3.5: Ensure existing Binance checkpoints are consistent before reconciliation
+                $repairService = $this->snapshotRepair ?? app(EquitySnapshotRepairService::class);
+                $repairResult = $repairService->repair(apply: true);
 
-            // Step 4: Run full M9 26-account reconciliation
-            $reconcileReport = $this->reconciliation->inspect();
-            if ($reconcileReport['status'] !== 'LEDGER_PASS_ONLY') {
-                throw new RuntimeException('M9 26-account reconciliation failed: '.json_encode($reconcileReport['issues'], JSON_THROW_ON_ERROR));
-            }
+                // Step 4: Run full M9 26-account reconciliation
+                $reconcileReport = $this->reconciliation->inspect();
+                if ($reconcileReport['status'] !== 'LEDGER_PASS_ONLY') {
+                    throw new RuntimeException('M9 26-account reconciliation failed: '.json_encode($reconcileReport['issues'], JSON_THROW_ON_ERROR));
+                }
 
-            return [
-                'status' => 'INITIALIZED_SUCCESSFULLY',
-                'provisioned' => $provisionResult,
-                'capital' => $capitalResult,
-                'snapshot_repair' => $repairResult,
-                'reconciliation' => $reconcileReport,
-                'bybit_history_preserved' => true,
-                'canonical_accounts_count' => 26,
-            ];
+                return [
+                    'status' => 'INITIALIZED_SUCCESSFULLY',
+                    'provisioned' => $provisionResult,
+                    'capital' => $capitalResult,
+                    'snapshot_repair' => $repairResult,
+                    'reconciliation' => $reconcileReport,
+                    'bybit_history_preserved' => true,
+                    'canonical_accounts_count' => 26,
+                ];
+            }, attempts: 1);
         } finally {
             $lock->release();
         }

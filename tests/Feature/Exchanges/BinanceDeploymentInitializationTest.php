@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Tests\Feature\Exchanges;
 
 use App\Exchanges\Binance\BinanceDeploymentInitializer;
+use App\Exchanges\Binance\ExchangePaperReconciliation;
 use App\PaperTrading\Application\PaperAccountService;
 use App\PaperTrading\Infrastructure\Persistence\JournalEventRecord;
 use App\PaperTrading\Infrastructure\Persistence\PaperAccountRecord;
@@ -150,6 +151,14 @@ final class BinanceDeploymentInitializationTest extends TestCase
         $bybitAfter = DB::table('paper_accounts')->where('exchange_id', 'bybit')->orderBy('id')->get();
         self::assertEquals($bybitBefore, $bybitAfter);
 
+        // Closed positions do not contribute to account unrealized PnL, but a
+        // nonzero closed mark remains an explicit integrity failure.
+        DB::table('virtual_positions')->where('id', $positionId)->update(['status' => 'CLOSED_TP', 'unrealized_pnl' => '3']);
+        $closedIssues = app(ExchangePaperReconciliation::class)->inspect()['issues'];
+        self::assertContains('CLOSED_POSITION_UNREALIZED_NONZERO', array_column($closedIssues, 'code'));
+        self::assertNotContains('UNREALIZED_MISMATCH', array_column($closedIssues, 'code'));
+        DB::table('virtual_positions')->where('id', $positionId)->update(['status' => 'OPEN', 'unrealized_pnl' => '0']);
+
         // Assert exactly 26 canonical accounts (13 Bybit, 13 Binance)
         self::assertSame(13, DB::table('paper_accounts')->where('exchange_id', 'bybit')->where('is_primary', true)->count());
         self::assertSame(13, DB::table('paper_accounts')->where('exchange_id', 'binance')->where('is_primary', true)->count());
@@ -173,6 +182,27 @@ final class BinanceDeploymentInitializationTest extends TestCase
 
         // 4. Test Artisan command
         $this->artisan('binance:initialize-paper', ['--force' => true])->assertSuccessful();
+    }
+
+    public function test_m9_failure_rolls_back_binance_provisioning_capital_and_snapshots(): void
+    {
+        $accounts = app(PaperAccountService::class)->allPrimaryAccounts('bybit');
+        $affected = $accounts->firstWhere('primary_strategy_id', 'support_resistance_bounce');
+        $affected->update(['unrealized_pnl' => '1', 'current_equity' => '10001']);
+        $beforeAccounts = DB::table('paper_accounts')->orderBy('id')->get();
+        $beforeSnapshots = DB::table('equity_snapshots')->orderBy('id')->get();
+
+        try {
+            app(BinanceDeploymentInitializer::class)->initialize('10000', 'OWNER-VECTOR-20261023');
+            self::fail('M9 accepted a mismatched Bybit account.');
+        } catch (\RuntimeException $e) {
+            self::assertStringContainsString('UNREALIZED_MISMATCH', $e->getMessage());
+        }
+
+        self::assertEquals($beforeAccounts, DB::table('paper_accounts')->orderBy('id')->get());
+        self::assertEquals($beforeSnapshots, DB::table('equity_snapshots')->orderBy('id')->get());
+        self::assertSame(0, DB::table('paper_capital_events')->where('exchange_id', 'binance')->count());
+        self::assertSame(0, DB::table('paper_accounts')->where('exchange_id', 'binance')->count());
     }
 
     public function test_deployment_initialization_is_idempotent_after_binance_activation_and_trading_history(): void

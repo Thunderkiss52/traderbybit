@@ -106,7 +106,12 @@ final class ExchangePaperReconciliation
                     $gross = $gross->plus((string) $position->gross_pnl);
                     $fees = $fees->plus((string) $position->fees);
                     $funding = $funding->plus((string) $position->funding);
-                    $unrealized = $unrealized->plus((string) $position->unrealized_pnl);
+                    if (in_array($position->status, ['OPEN', 'PARTIALLY_CLOSED'], true)) {
+                        $unrealized = $unrealized->plus((string) $position->unrealized_pnl);
+                    } elseif (! BigDecimal::of((string) $position->unrealized_pnl)->isZero()) {
+                        $issues[] = ['exchange_id' => $exchange, 'strategy_id' => $strategy,
+                            'code' => 'CLOSED_POSITION_UNREALIZED_NONZERO', 'position_id' => $position->id];
+                    }
                     $executions = DB::table('virtual_executions')->where('position_id', $position->id)->get();
                     $recordedFees = BigDecimal::zero();
                     $entryQuantity = BigDecimal::zero();
