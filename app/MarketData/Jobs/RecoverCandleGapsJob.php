@@ -43,12 +43,13 @@ final class RecoverCandleGapsJob implements ShouldQueue
         $symbols = $this->symbol !== null ? [$this->symbol] : (array) config('market_data.symbols', ['BTCUSDT', 'ETHUSDT']);
 
         if ($targetExchange === 'binance') {
-            $ingestion = app(BinanceCandleIngestion::class);
+            $backfill = app(BinanceCandleBackfillService::class);
+            $intervals = ['5m', '15m', '30m', '1h', '4h'];
             $failures = [];
             foreach ($symbols as $symbol) {
-                foreach (['5m', '15m'] as $interval) {
+                foreach ($intervals as $interval) {
                     try {
-                        $ingestion->ingest((string) $symbol, $interval, 100);
+                        $backfill->backfill($symbol, $interval);
                     } catch (Throwable $e) {
                         $failures[] = $symbol.':'.$interval;
                         Log::warning('Binance candle gap recovery failed', [
@@ -59,7 +60,6 @@ final class RecoverCandleGapsJob implements ShouldQueue
                 }
             }
             if ($failures !== []) {
-                // Successful scopes stay committed; retry verifies their immutable rows.
                 throw new RuntimeException('Binance candle gap recovery incomplete: '.implode(', ', $failures));
             }
 

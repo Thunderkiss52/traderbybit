@@ -13,6 +13,7 @@ use App\PatternDiscovery\Infrastructure\Persistence\CandlestickPatternOccurrence
 use App\Research\Application\ModelAdvisoryService;
 use App\Research\Infrastructure\Persistence\LearningCandidateStrategyRecord;
 use App\Strategy\Contracts\SignalRepository;
+use App\Strategy\Exceptions\StrategyObservationActiveException;
 use App\Strategy\Domain\SignalDecision;
 use App\Strategy\Domain\StrategyInput;
 use App\Strategy\Infrastructure\Persistence\StrategyObservationRecord;
@@ -44,7 +45,7 @@ final readonly class StrategyObservationService
             ?? throw new RuntimeException("No closed 15m candle is available for {$symbol}.");
         $lock = $this->cache->lock("strategy-observations:{$exchange}:{$category}:{$symbol}:{$at->format('U.u')}", 120);
         if (! $lock->get()) {
-            throw new RuntimeException("Strategy observation is already running for {$symbol} at {$at->format(DATE_ATOM)}.");
+            throw StrategyObservationActiveException::forSlot("{$exchange}:{$category}:{$symbol}", $at);
         }
 
         try {

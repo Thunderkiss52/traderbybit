@@ -122,7 +122,12 @@ final class ProcessClosedCandleEventJob implements ShouldQueue
             $scanResult = $scanner->scanSymbol($this->symbol, $closeAt, 'bybit', 'linear');
             $signalsCount = (int) ($scanResult['evaluations_count'] ?? 0);
         } elseif ($this->exchange === 'binance') {
-            $observations = app(StrategyObservationService::class)->observe($this->symbol, $closeAt, 'binance', 'linear');
+            try {
+                $observations = app(StrategyObservationService::class)->observe($this->symbol, $closeAt, 'binance', 'linear');
+            } catch (App\Strategy\Exceptions\StrategyObservationActiveException $e) {
+                // Benign observation conflict: treat as no new signals for this candle.
+                $observations = [];
+            }
             $signalsCount = count($observations);
         }
 

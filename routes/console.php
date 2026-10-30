@@ -2,6 +2,7 @@
 
 use App\Audit\Application\AuditExportService;
 use App\Exchanges\Binance\BinanceCandleIngestion;
+use App\Exchanges\Binance\BinanceCandleBackfillService;
 use App\Exchanges\Binance\BinanceContextCapture;
 use App\Exchanges\Binance\BinanceDeploymentInitializer;
 use App\Exchanges\Binance\BinanceFundingIngestion;
@@ -105,6 +106,37 @@ Artisan::command('binance:ingest-research {symbol=BTCUSDT}', function (BinanceCa
     $this->line(json_encode($reports, JSON_THROW_ON_ERROR));
 })->purpose('Ingest closed multi-timeframe Binance research candles; no execution');
 
+
+Artisan::command('binance:backfill-candles {symbol=BTCUSDT} {interval=30m} {--days=14} {--from=} {--to=} {--apply : Apply mutations; default is dry-run}', function (BinanceCandleBackfillService $backfill, \App\Exchanges\Binance\BinancePaperReadiness $readiness): int {
+    if (! (bool) config('exchanges.binance.research_cycle_enabled', true)) {
+        $this->error('Binance research cycle is disabled by configuration.');
+
+        return 1;
+    }
+    $symbol = (string) $this->argument('symbol');
+    $interval = (string) $this->argument('interval');
+    $days = (int) $this->argument('days');
+    $fromArg = $this->option('from');
+    $toArg = $this->option('to');
+    $apply = (bool) $this->option('apply');
+
+    $nowMs = (int) floor(microtime(true) * 1000);
+    $fromMs = $fromArg !== null ? (int) $fromArg : max(0, $nowMs - $days * 86_400_000);
+    $toMs = $toArg !== null ? (int) $toArg : $nowMs;
+    if ($fromMs >= $toMs) {
+        $this->error('Candle range start must precede end.');
+
+        return 1;
+    }
+    if (! $apply) {
+        $this->comment("DRY-RUN: would backfill {$symbol} {$interval} from {$fromMs} to {$toMs}. Pass --apply to write.");
+    }
+
+    $report = $backfill->backfill($symbol, $interval, $fromMs, $toMs);
+    $this->line(json_encode($report, JSON_PRETTY_PRINT | JSON_THROW_ON_ERROR));
+
+    return $report['status'] === 'QUARANTINED' ? 1 : 0;
+})->purpose('Backfill historical Binance candles for research (data-only, no execution).');
 Artisan::command('binance:ingest-funding {symbol=BTCUSDT}', function (BinanceFundingIngestion $ingestion): void {
     $this->line(json_encode($ingestion->ingest(strtoupper((string) $this->argument('symbol'))), JSON_THROW_ON_ERROR));
 })->purpose('Ingest verified public Binance funding settlements with source mark price');
@@ -198,6 +230,8 @@ Artisan::command('inspire', function () {
 })->purpose('Display an inspiring quote');
 
 Schedule::job(new RecoverCandleGapsJob)->everyFiveMinutes()->withoutOverlapping();
+Schedule::job(new RecoverCandleGapsJob('binance'))->everyFiveMinutes()->name('binance:market-gap-recovery')->withoutOverlapping();
+
 Schedule::job(new CheckMarketDataFreshnessJob)->everyMinute()->withoutOverlapping();
 // Bootstrap and maintain 220 contiguous closed candles on each strategy timeframe.
 Schedule::job(new EnsureStrategyHistoryJob)->everyFifteenMinutes()->name('market:ensure-strategy-history')->withoutOverlapping();
