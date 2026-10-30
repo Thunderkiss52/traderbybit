@@ -242,7 +242,11 @@ Every authoritative attestation record must contain the following 16 canonical f
 - **Tamper-Evident Audit Logging (Alternative):** If PGP keys are not available in the operational environment, the attestation must be logged in an append-only audit ledger with SHA-256 artifact checksums and verified timestamps.
 - **No Fabricated Signatures:** Never invent signatures, insert placeholder key IDs, or claim cryptographic verification when no signature was generated.
 
-### 4.4 Canonical JSON Schema Template (`vector.attestation.phase0.v1`)
+### 4.4 Canonical JSON Schema Template (`vector.attestation.phase0.v1`) — [SPECIFICATION TEMPLATE ONLY — UNEXECUTED]
+
+> [!IMPORTANT]
+> **Preserved Phase 0 Status & Prohibition on Manufactured Acceptance:**
+> The following JSON structure represents the authoritative contract template for human operator execution. It is **NOT an executed attestation**. No production attestation has been executed for the current release, all 45 Production V2 obligations remain strictly **PENDING**, Phase 0 remains strictly **BLOCKED**, and Phase 1 remains **NOT STARTED**. Neither coding agents nor CI systems may manufacture an operator attestation or declare obligations accepted without genuine, operator-collected production evidence.
 
 ```json
 {

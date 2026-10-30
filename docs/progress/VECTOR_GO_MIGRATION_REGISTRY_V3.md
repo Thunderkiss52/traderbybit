@@ -15,7 +15,7 @@ To preserve the absolute auditability and mathematical integrity of the platform
 2. **Verification %:** Measures what fraction of functional obligations have authentic execution evidence recorded in the Scorecard.
 3. **Product %:** Measures explicit human operator sign-off and production readiness.
 4. **Go Migration %:** Measures the operational maturity of migrating core computational, trading, risk, and financial workloads to Go across six distinct states:
-   - `APPROVED`: Architectural scope, design contracts, and acceptance criteria approved; runtime implementation not started (0% Migration Credit).
+   - `APPROVED`: Architectural scope, design contracts, and acceptance criteria approved by the architecture board; runtime implementation not started (0% Migration Credit). **`APPROVED` strictly does NOT imply, and must never be conflated with, `GO_IMPLEMENTED`, `GO_SHADOW`, or `GO_AUTH`.**
    - `PHP_AUTH`: PHP is the active authoritative implementation (0% Migration Credit).
    - `GO_IMPLEMENTED`: Go code implemented, tested, and passing unit/benchmark tests, but not yet verified in operational parallel shadow mode (25% Migration Credit).
    - `GO_SHADOW`: Go implementation exists, runs concurrently in parallel shadow mode, and is verified by differential parity tests without write authority (50% Migration Credit).
@@ -26,7 +26,7 @@ To preserve the absolute auditability and mathematical integrity of the platform
    Whenever a migration package's implementation maturity or ownership changes, this authoritative migration registry **MUST be updated in the exact same Git commit** as the relevant code implementation change.
    - Documentation-only amendments do not constitute implementation progress and must never alter maturity states.
    - No automatic promotion of maturity status based on test counts alone.
-   - Evidence recorded in the registry must correspond to the exact commit SHA where verification passed.
+   - Same-commit source and registry consistency is enforced via Git history and CI verification (`scripts/verify_migration_registry.py`). A commit is **not** required to contain its own SHA within the commit payload; instead, CI inspects `git log` and the commit changeset to verify that any code changes transitioning package maturity include the corresponding registry update in that exact same commit.
 
 6. **Scope vs Verification Distinction:**
    `APPROVED ARCHITECTURAL SCOPE != IMPLEMENTED RUNTIME CAPABILITY`. Planned migration packages (`MIG-18` through `MIG-29`) represent approved planned architecture milestones, not completed implementations. During this documentation amendment, all packages retain their uninflated baseline maturity states. Phase 0 status remains strictly **BLOCKED**; Phase 1 remains **NOT STARTED**.
@@ -40,7 +40,7 @@ To preserve the absolute auditability and mathematical integrity of the platform
    - `Actual Implementation Maturity`: One of the six defined maturity states.
    - `Supporting Source Paths`: Verified repository files and packages.
    - `Verification Evidence`: File hashes, benchmark logs, and test run references.
-   - `Git Commit SHA`: Verifiable commit hash where current state was achieved.
+   - `Promotion Git Ref / Baseline Commit`: Historical Git ref or baseline SHA where current maturity was verified (for already-promoted components), without requiring in-flight commits to self-reference their own SHA.
    - `Acceptance Status`: `PENDING`, `LOCAL_VERIFIED`, `ACCEPTED`, `BLOCKED`.
    - `Unresolved Blockers`: Active impediments preventing promotion.
    - `Next Promotion Gate`: Objective criteria required for next maturity transition.
@@ -144,8 +144,9 @@ To enforce the atomic synchronization rule automatically in CI workflows:
 
 1. **Script Contract:** `scripts/verify_migration_registry.py --check-drift`
 2. **Verification Predicates:**
+   - Evaluates the commit changeset via `git log` and diff history without requiring a commit to contain its own SHA.
    - Detects all commits modifying paths matching `pkg/` or `internal/` or `app/Strategy/` or `app/Indicators/`.
-   - Confirms that any commit transitioning a package maturity state includes corresponding updates to `docs/progress/VECTOR_GO_MIGRATION_REGISTRY_V3.md`.
+   - Confirms that any commit transitioning a package maturity state includes corresponding updates to `docs/progress/VECTOR_GO_MIGRATION_REGISTRY_V3.md` in that exact same commit.
    - Verifies that packages marked `GO_IMPLEMENTED`, `GO_SHADOW`, or `GO_AUTH` have existing, compilable Go source files in their declared `Supporting Source Paths`.
    - Asserts that no documentation-only commit inflates migration maturity metrics.
 3. **Failure Policy:** Fails with exit code 1 if drift or unverified maturity claims are detected.

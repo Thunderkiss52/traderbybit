@@ -388,18 +388,36 @@ Every phase follows a standardized 18-point execution contract.
 5. **Go Packages / Services:**
    - `pkg/decimal`: Scaled fixed-point decimal type (`ScaledDecimal`) compatible with PostgreSQL `NUMERIC(24,12)`.
    - `pkg/types`: Universal domain primitives (`ExchangeID`, `Symbol`, `Timeframe`, `Side`, `OrderState`, `AccountID`, `StrategyID`).
-6. **Decimal Specification & Range Requirements:**
+6. **PostgreSQL NUMERIC(24,12) Semantics & Arithmetic Specification:**
    - **Scale and Precision:** Exactly 12 decimal places of fractional scale ($10^{-12}$) and 24 total digits of precision (12 digits integer part, 12 digits fractional part).
-   - **Supported Range:** $[-999,999,999,999.999999999999, +999,999,999,999.999999999999]$.
-   - **Integer Capacity & Overflow Prevention:** A signed 64-bit integer (`int64` max $\approx 9.22 \times 10^{18}$) scaled by $10^{12}$ supports only up to $\approx \pm 9,223,372.036854775807$ ($\approx \pm 9.22 \times 10^6$ units), failing to cover the full PostgreSQL `NUMERIC(24,12)` domain ($\pm 10^{12}$ units, requiring $\approx 10^{24}$ capacity). The Go implementation **MUST** explicitly use either 128-bit integer capacity (via `math/big.Int` or two `uint64` / custom 128-bit representation) or enforce documented, strictly bounded numerical range limits with explicit error returns on overflow. Never silently overflow, wrap around, or lose decimal precision.
+   - **Supported Domain Range:** Exact closed interval $[-999,999,999,999.999999999999, +999,999,999,999.999999999999]$.
+   - **Internal Representation & Integer Capacity:**
+     - A signed 64-bit integer (`int64` maximum $\approx 9.22 \times 10^{18}$) scaled by $10^{12}$ can represent only up to $\approx \pm 9,223,372.036854775807$ ($\approx \pm 9.22 \times 10^6$ integer units). This is fundamentally incapable of representing the full PostgreSQL `NUMERIC(24,12)` domain ($\pm 10^{12}$ integer units, requiring $\approx 10^{24}$ capacity).
+     - The Go implementation **MUST** explicitly use either 128-bit integer capacity (via `math/big.Int` or two `uint64` / custom 128-bit fixed-point representation) or enforce documented, strictly bounded numerical range limits with explicit error returns on overflow.
+     - Never silently overflow, wrap around, or lose decimal precision.
    - **Zero Binary Float:** Binary floating point (`float32`, `float64`) is strictly prohibited for authoritative financial representations and calculations.
-   - **Supported Arithmetic:** Addition (`Add`), Subtraction (`Sub`), Multiplication (`Mul`), Division (`Div`), Comparisons (`Cmp`, `Equal`, `LessThan`, `GreaterThan`, `LessThanOrEqual`, `GreaterThanOrEqual`), Absolute Value (`Abs`), and Negation (`Neg`).
-   - **Rounding Semantics:** Financial RoundHalfUp (and Banker's RoundHalfEven where required by specific accounting identity), explicit truncation rules, and intermediate precision rules (minimum 24 to 36 intermediate decimal places before final rounding to scale 12).
-   - **Overflow & Underflow Behavior:** Explicit error returns (`ErrOverflow`, `ErrDivisionByZero`) or panic on unhandled overflow; zero bitwise truncation or modular wraparound.
-   - **Serialization & Deserialization:** Deterministic JSON string marshaling/unmarshaling, text formatting (`String()`), binary encoding, and database driver interfaces (`database/sql/driver.Valuer` and `sql.Scanner`).
-   - **Negative Values & Zero Canonicalization:** Negative zero (`-0`) is strictly normalized to positive `0`.
-   - **Semantics Distinction:** Explicitly distinguish `NULL` (uninitialized/absent), `ZERO` (value $0.000000000000$), and `UNAVAILABLE` (stale/uncomputable).
-   - **Consistency with PHP/Laravel:** Identical calculation results to PHP's `brick/math` (`BigDecimal`) and `bcmath` configured to scale 12.
+   - **Intermediate Precision Semantics:**
+     - *Addition & Subtraction ($x \pm y$):* Exact intermediate calculation with scale $\max(\text{scale}_1, \text{scale}_2) = 12$. Zero rounding occurs during addition or subtraction.
+     - *Multiplication ($x \times y$):* Evaluated at the full scale sum ($\text{scale}_1 + \text{scale}_2 = 24$) with zero loss of intermediate precision, and subsequently rounded to the target scale 12 using `Round Half Away From Zero`.
+     - *Division ($x / y$):* The intermediate quotient is computed with at least $\text{target\_scale} + 16$ guard digits (minimum 28 to 36 decimal places) before applying final rounding to the target scale 12, exactly mirroring PostgreSQL numeric division mechanics.
+   - **Rounding Mode Semantics:**
+     - Canonical rounding mode is PostgreSQL-standard **`Round Half Away From Zero`** (symmetric half-up), matching SQL `ROUND(numeric, integer)`.
+     - Half-way cases ($\ge 5$ at the 13th fractional digit) round strictly away from zero: $+0.0000000000005 \rightarrow +0.000000000001$; $-0.0000000000005 \rightarrow -0.000000000001$.
+     - Fractional values $< 5$ at the 13th fractional digit truncate towards zero: $+0.00000000000049 \rightarrow 0.000000000000$.
+   - **Overflow & Underflow Behavior:**
+     - Any operation whose result magnitude exceeds $999,999,999,999.999999999999$ must return an explicit `ErrNumericOverflow` (matching PostgreSQL `ERROR: numeric field overflow`). Silent truncation, modular bitwise wraparound, or loss of significant digits is strictly prohibited.
+     - Underflow below $10^{-12}$ rounds to zero in accordance with the documented rounding mode without raising an error.
+     - Division by zero returns an explicit `ErrDivisionByZero` (matching PostgreSQL `ERROR: division by zero`).
+   - **Canonical Representation & Negative Zero:**
+     - In PostgreSQL `NUMERIC`, negative zero does not exist. Any intermediate calculation or result evaluating to zero must have the canonical representation `0` (never `-0` or `-0.000000000000`).
+   - **Three-State Domain Semantics:**
+     - Explicitly distinguish `NULL` (database SQL null / absence of value), `ZERO` (value $0.000000000000$), and `UNAVAILABLE` (stale market data or failed calculation). Zero is never coerced to null, and null is never coerced to zero.
+   - **Consistency with PHP/Laravel:**
+     - Identical calculation results to PHP's `brick/math` (`BigDecimal`) and `bcmath` configured to scale 12.
+   - **Supported Arithmetic Methods:**
+     - Addition (`Add`), Subtraction (`Sub`), Multiplication (`Mul`), Division (`Div`), Comparisons (`Cmp`, `Equal`, `LessThan`, `GreaterThan`, `LessThanOrEqual`, `GreaterThanOrEqual`), Absolute Value (`Abs`), and Negation (`Neg`).
+   - **Serialization & Deserialization:**
+     - Deterministic JSON string marshaling/unmarshaling, text formatting (`String()`), binary encoding, and database driver interfaces (`database/sql/driver.Valuer` and `sql.Scanner`).
 7. **Interfaces & Versioned Contracts:** `Decimal` value object interface; `database/sql/driver.Valuer` and `sql.Scanner`.
 8. **Dependencies:** Requires formal Phase 0 Operator Attestation. Prerequisite for Phase 1.1.
 9. **Implementation Work Packages:**
@@ -1359,16 +1377,16 @@ To maintain audit integrity and prevent aspirational reporting:
    - Whenever a migration package's implementation or ownership maturity changes, the authoritative migration registry (`docs/progress/VECTOR_GO_MIGRATION_REGISTRY_V3.md`) **MUST be updated in the exact same Git commit** as the relevant code implementation change.
    - Documentation-only amendments do not constitute implementation progress and must never alter maturity states.
    - No automatic promotion of maturity status based on test counts alone.
-   - Evidence recorded in the registry must correspond to the exact commit SHA where verification passed.
-4. **Six Defined Package Maturity States:**
-   - `APPROVED`: Architectural scope and acceptance criteria approved; runtime implementation not started.
-   - `PHP_AUTH`: Existing PHP implementation is the sole authoritative writer.
-   - `GO_IMPLEMENTED`: Go code implemented, tested, and passing unit/benchmark tests, but not yet verified in operational parallel shadow mode.
-   - `GO_SHADOW`: Go implementation running concurrently in parallel shadow mode; verified by `cmd/vector-reconcile` diff harness without write authority.
-   - `GO_AUTH`: Go promoted to sole authoritative single writer under database fencing; PHP financial write permissions revoked.
-   - `PHP_RETIRED`: Duplicate legacy PHP computational logic cleanly decommissioned and removed from repository.
+   - Same-commit source and registry consistency is enforced via Git history and CI verification (`scripts/verify_migration_registry.py`). A commit is **not** required to contain its own SHA within the commit payload; instead, CI inspects `git log` and the commit changeset to verify that any code changes transitioning package maturity include the corresponding registry update in that exact same commit.
+4. **Six Defined Package Maturity States (Separation of Approval from Runtime):**
+   - `APPROVED` (0% Migration Credit): Architectural scope, design specifications, and acceptance criteria approved by the owner/board. Runtime implementation not started. **`APPROVED` strictly does NOT imply, and must never be conflated with, `GO_IMPLEMENTED`, `GO_SHADOW`, or `GO_AUTH`.** All packages `MIG-18` through `MIG-29` currently remain strictly in this state until actual runtime code and test suites are merged.
+   - `PHP_AUTH` (0% Migration Credit): Existing PHP implementation is the sole active authoritative writer.
+   - `GO_IMPLEMENTED` (25% Migration Credit): Go code implemented, compiled, and passing unit/benchmark tests, but not yet verified in operational parallel shadow mode.
+   - `GO_SHADOW` (50% Migration Credit): Go implementation running concurrently in parallel shadow mode; verified by `cmd/vector-reconcile` diff harness without write authority.
+   - `GO_AUTH` (100% Migration Credit): Go promoted to sole authoritative single writer under database fencing triggers; PHP financial write permissions revoked.
+   - `PHP_RETIRED` (Clean Sunset): Duplicate legacy PHP computational logic cleanly decommissioned and removed from repository.
 5. **Lightweight Automated Drift Check Specification:**
-   - Future verification tooling (`scripts/verify_migration_registry.py`) will check consistency between Git commits, declared package maturity, and corresponding source path existence.
+   - Future verification tooling (`scripts/verify_migration_registry.py --check-drift`) inspects commit changesets in CI: if source paths matching `pkg/` or `internal/` or `app/Strategy/` transition a package maturity state, it asserts that `docs/progress/VECTOR_GO_MIGRATION_REGISTRY_V3.md` is modified in that exact same commit, without requiring circular self-SHA references.
 6. **Scope vs Verification Distinction:** `APPROVED ARCHITECTURAL SCOPE != IMPLEMENTED RUNTIME CAPABILITY`. Packages `MIG-18` through `MIG-29` represent approved planned milestones, not completed implementations.
 7. **Four Independent Progress Dimensions:** Functional Implementation %, Verification %, Product %, and Go Migration %.
 
