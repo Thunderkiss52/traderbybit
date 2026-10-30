@@ -1,11 +1,11 @@
-# VECTOR Go-First Architecture Roadmap V3.3: Research Data Import & Dataset Manager
+# VECTOR Go-First Architecture Roadmap V3.4: Incremental Delivery & Engineering Governance
 
-**Document Version:** V3.3 (Authoritative Engineering Specification)
-**Document Status:** Canonical Approved Technical Roadmap & Architecture Plan — READY_FOR_OWNER_APPROVAL (Frozen for Phase 0 Production Acceptance)
+**Document Version:** V3.4 (Authoritative Engineering Specification)
+**Document Status:** Canonical Approved Technical Roadmap & Architecture Plan — AMENDED TO V3.4 (Incremental Delivery & Engineering Governance)
 **Governing Standards:** [`AGENTS.md`](file:///home/thunder/work/traderbybit/AGENTS.md) and [`SKILL.md`](file:///home/thunder/work/traderbybit/SKILL.md)
-**Source Baseline SHA:** `5a8fcd62660e5dc7a28e5a7ce6bcae4fb14ffb35` (Roadmap V3.3 Baseline)
+**Source Baseline SHA:** `aeffb318a2462aa92ae9d7fca9ae00ac064d2776` (Roadmap V3.4 Baseline)
 **Historical Scope Baseline:** `VECTOR-SCOPE-20261027-v1` (Frozen, 97 Requirements, 229 Obligations)
-**Target Proposal Baseline:** `VECTOR-SCOPE-20261028-v3.3`
+**Target Proposal Baseline:** `VECTOR-SCOPE-20261028-v3.4`
 **Execution Mode:** STRICTLY VIRTUAL PAPER TRADING ONLY. Zero real exchange trading; zero private trade credentials; zero order placement endpoints.
 
 ### P1 production deployment attempt — 2026-10-30
@@ -82,6 +82,42 @@ The owner and architecture board have codified the primary architectural traject
 10. **Dual Certification — Correctness vs Profitability:** Technical correctness (flawless execution, zero lookahead, deterministic calculations, accounting reconciliation) is strictly separated from economic profitability (net R-multiples, slippage drag, fee decay, drawdown, and statistical stability). An operationally sound strategy may be unprofitable; a backtest-profitable strategy may be statistically fragile. Neither condition is ever obscured.
 11. **Single Authoritative Writer:** To guarantee absolute financial integrity across all independent PAPER accounts, at any given millisecond exactly **ONE** engine is the authoritative writer for any given financial or ledger entity. Dual-writing is strictly prohibited. Fencing tokens and monotonic epochs enforce this invariant in PostgreSQL.
 12. **Strict Safety Invariants:** Virtual PAPER mode only; zero real exchange orders; zero trade credentials; preserved 5% entry-block and 10% halt risk thresholds; preserved independent account isolation; zero historical financial record mutation; ECONOM resources strictly untouched.
+
+---
+
+## Roadmap V3.4 Change Log: Six Approved Governance & Delivery Improvements
+
+This amendment formalizes six owner-approved improvements designed to prevent over-engineering, reduce delivery risk, guarantee financial correctness, introduce verifiable operator attestation, and maintain strict alignment between approved scope and runtime capabilities:
+
+1. **Phase 1 Incremental Delivery (Phases 1.0, 1.1, 1.2):**
+   - Deconstructed the monolithic Phase 1 into three sequential, independently verifiable increments:
+     - **Phase 1.0 (Financial Decimal & Core Types):** Scope restricted strictly to `pkg/decimal` and `pkg/types`. High-precision, deterministic fixed-point arithmetic compatible with PostgreSQL `NUMERIC(24,12)`. Explicit range enforcement avoiding signed 64-bit overflow (`int64` scaled by $10^{12}$ covers only $\pm 9.22 \times 10^6$ units, failing `NUMERIC(24,12)` which requires $\pm 10^{12}$ units; implementation mandates 128-bit capacity or strict bounds checking). Requires 1,000,000 randomized arithmetic parity tests against PostgreSQL. Binary floating point is strictly forbidden. Zero authority over PAPER financial writes.
+     - **Phase 1.1 (Protocol & Fencing Contracts):** Scope restricted to `pkg/protocol` and `pkg/fencing`. Versioned PHP/Go IPC contracts, backward-compatible envelopes, deterministic serialization, monotonic fencing tokens, stale-worker rejection, duplicate-command handling, and cross-process concurrency verification.
+     - **Phase 1.2 (Dataset Foundation Contracts):** Scope restricted to `pkg/dataset` foundational types, manifests, provenance, and validation contracts. File parsing, storage, and UI remain deferred to Phase 2.
+   - **Global Prerequisite Preserved:** Formal Phase 0 Operator Attestation is mandatory before Phase 1 implementation begins.
+
+2. **Formal Phase 0 Operator Attestation Contract:**
+   - Replaced informal operator approval with a tamper-evident, evidence-backed attestation protocol.
+   - Codified the 16-field Attestation Contract schema (environment, deployed SHA, container digests, timestamp, operator identity, gate evaluations, SQL diagnostics, ledger reconciliation, account census, exception ledger, and signature block).
+   - Mandated strict gate behavior: missing evidence = `NOT VERIFIED`, no informal overrides, no cross-SHA evidence reuse, and no automatic application-generated acceptance. Attestation records an evidence-based decision and does not transfer unverified legal liability.
+
+3. **Declarative Builders MVP Scope:**
+   - Constrained initial builder implementations to verifiable minimal viable products:
+     - **Declarative Strategy MVP (Phase 3 / MIG-18):** Three existing indicators from SDK (`EMA`, `RSI`, `ATR`), two comparison operators (`GREATER_THAN`, `LESS_THAN`), boolean composition (`AND`, `OR`), static typed parameters, strict JSON schema validation, zero dynamic code evaluation (`eval`), and bit-exact parity against native Go strategy implementations.
+     - **Declarative Exchange MVP (Phase 6 / MIG-20):** Minimal CSV/JSON mapping contract (identity, category, symbol, timestamps, OHLCV) operating strictly in isolated research/import scope; strictly barred from activating live PAPER accounts.
+
+4. **Atomic Migration Registry Updates:**
+   - Established the mandatory synchronization rule for `MIG-01` through `MIG-29` and all future packages: any transition in package maturity (`APPROVED`, `PHP_AUTH`, `GO_IMPLEMENTED`, `GO_SHADOW`, `GO_AUTH`, `PHP_RETIRED`) must be committed atomically in the same Git commit as the underlying code change.
+   - Added lightweight automated drift-check specifications.
+   - Preserved all existing requirement IDs and uninflated maturity states during documentation revisions.
+
+5. **Shadow Reconciliation & Divergence Diagnostics (Phase 5 / Phase 7):**
+   - Defined the canonical 15-point comparison dimensions (Exchange, Account, Strategy, Instrument, Event sequence, State transition, Quantity, Gross PnL, Fees, Funding, Realized PnL, Unrealized PnL, Equity, Decimal rounding, Source marks).
+   - Specified a deterministic, read-only diagnostic diff tool (`cmd/vector-reconcile`) that identifies the first divergent event, displays calculations side-by-side, and reproduces divergence offline.
+   - Preserved the > 0.0001 USDT alert threshold, mandated 14-day validation timer restart on material unexplained divergence, and enforced the single-authoritative-writer invariant.
+
+6. **Go Supply Chain Security Gate (Phases 1–8):**
+   - Established a mandatory Go dependency governance section starting in Phase 1: maintainer verification, vulnerability scans (`govulncheck`), license compliance, exact version pinning in `go.mod`, immutable `go.sum` validation, dependency inventory/SBOM, transitive dependency audits, standard library preference, and zero automatic upgrades.
 
 ---
 
@@ -303,68 +339,159 @@ Every phase follows a standardized 18-point execution contract.
 ### Phase 0 — Existing System Acceptance & Baseline Remediation
 
 1. **Business Objective:** Complete production operational acceptance, diagnose production market data anomalies, and verify baseline integrity across all 26 PAPER accounts without altering frozen requirements.
-2. **Technical Scope:** Execute production verification queries via operator checklist; diagnose Binance immutable candle conflicts; establish verified performance baselines; maintain Phase 0 gate integrity.
-3. **Existing Components to Reuse:** Full test suite (922 tests, 8,202 assertions), Playwright browser suite (`scripts/verify-browser-phase0.py`), SQL diagnostics (`scripts/diagnostics/phase0_production_acceptance.sql`), operator checklist (`docs/progress/evidence/phase0-production-acceptance/OPERATOR_CHECKLIST.md`).
+2. **Technical Scope:** Execute production verification queries via operator checklist; diagnose Binance immutable candle conflicts; establish verified performance baselines; execute formal evidence-backed Operator Attestation protocol; maintain Phase 0 gate integrity.
+3. **Existing Components to Reuse:** Full test suite (922 tests, 8,202 assertions), Playwright browser suite (`scripts/verify-browser-phase0.py`), SQL diagnostics (`scripts/diagnostics/phase0_production_acceptance.sql`, `scripts/diagnostics/phase0_evidence_closure.sql`), operator checklist (`docs/progress/evidence/phase0-production-acceptance/OPERATOR_CHECKLIST.md`).
 4. **Components to Migrate / Replace:** None. Phase 0 is strict stabilization and verification of the existing baseline.
 5. **Go Packages / Services:** Performance benchmarking utilities (`research-bench`) to profile batch ingestion.
-6. **Interfaces & Versioned Contracts:** Canonical envelope (`data`, `error`, `meta`), QIM health endpoints, dual kill-switch state machine.
+6. **Interfaces & Versioned Contracts:** Canonical envelope (`data`, `error`, `meta`), QIM health endpoints, dual kill-switch state machine, and the Formal Operator Attestation Contract (`vector.attestation.phase0.v1`).
 7. **State and Event Ownership:** PostgreSQL 17 system of record; Laravel owns all authoritative writes.
-8. **Dependencies:** Prerequisite for Phase 1.
+8. **Dependencies:** Prerequisite for Phase 1. Phase 1 implementation remains strictly blocked until formal Phase 0 Operator Attestation is completed.
 9. **Implementation Work Packages:**
    - Package 0.1: Operator execution of production SQL diagnostic suite (`OPERATOR_CHECKLIST.md`).
    - Package 0.2: Structured log capture of Binance immutable candle conflicts to verify clock skew hypothesis.
    - Package 0.3: Scorecard freshness synchronization upon production evidence receipt.
+   - Package 0.4: Formal Operator Attestation protocol execution, cryptographic/tamper-evident signing, and evidence archival.
 10. **Exact Acceptance Criteria:**
-    - All 45 Production V2 obligations verified via operator execution of `phase0_production_acceptance.sql`.
+    - Formal Phase 0 Operator Attestation signed and verified against the canonical 16-field schema (`OPERATOR_CHECKLIST.md` Section 4). Missing evidence strictly yields `NOT VERIFIED`.
+    - All 45 Production V2 obligations verified via operator execution of `phase0_production_acceptance.sql` on the exact deployed Git SHA.
     - Zero cross-exchange position leaks across all 26 accounts.
     - Zero double-entry discrepancies (`abs(net_pnl - (gross_pnl - fees + funding)) <= 0.0001`).
     - Binance immutable observation conflict diagnosed with captured production telemetry.
     - Binance 500-candle ingestion evaluated honestly against frozen < 50.0 ms SLA.
+    - Any unresolved exception recorded with explicit scope, rationale, and operator decision in the attestation record.
 11. **Test Requirements:** 922 backend PHP tests passing, 64 frontend tests passing, 9 browser tests passing, Pint compliant.
 12. **Performance & Resource Budgets:** PHP-FPM <= 512 MiB, PostgreSQL <= 1 GiB RSS, Redis <= 256 MiB.
 13. **Shadow Execution & Rollback:** Immediate rollback to commit `a4b82ea` if operational regressions occur.
 14. **Security & Data Integrity:** Strictly virtual PAPER mode across 26 accounts; zero live orders; ECONOM resources untouched.
 15. **Git Commit Boundaries:** Local evidence admission and scorecard refresh commits.
 16. **Evidence & Scorecard Mappings:** `VEC-P0-001` through `VEC-P0-209` (45 requirements, 99 obligations).
-17. **Explicit Out-of-Scope Items:** No live trading, no real order placement, no database schema breaking changes, no manual production deployments.
-18. **Operator Approval Requirements:** Operator must execute checklist queries on the VPS and provide authentic execution logs.
+17. **Explicit Out-of-Scope Items:** No live trading, no real order placement, no database schema breaking changes, no manual production deployments, no automated application self-attestation.
+18. **Operator Approval Requirements:** Formal Operator Attestation signed by authorized human operator referencing exact release SHA and immutable evidence checksums. Deployment alone does not constitute acceptance.
 
 ---
 
 ### Phase 1 — Go Core Foundation, Dynamic Identity & Versioned Contracts
 
-1. **Business Objective:** Build shared Go foundational packages, high-precision financial arithmetic, dynamic domain identity contracts supporting dynamic strategy/exchange topologies, and versioned dataset identity contracts.
-2. **Technical Scope:** Universal domain primitives, 12-decimal-place scaled arithmetic, versioned Redis Stream envelopes, monotonic fencing token generation, dynamic identifier schemas, and dataset manifest types (`pkg/dataset`).
-3. **Existing Components to Reuse:** `research-go/internal/decimal/`, `research-go/internal/contracts/job.go`, Redis 7.4.
-4. **Components to Migrate / Replace:** Duplicate DTO definitions, status enum constants, serialization helpers.
+**Global Phase 1 Invariants & Incremental Delivery Policy:**
+- **Global Prerequisite:** Phase 0 formal Operator Attestation must be completed and accepted before any Phase 1 implementation begins.
+- **Incremental Structure:** Phase 1 is deconstructed into three sequential, independently verifiable increments: **Phase 1.0**, **Phase 1.1**, and **Phase 1.2**.
+- **Financial Writing Boundary:** No authority over PAPER financial writes or live balances is transferred to Go during any increment of Phase 1. PHP/Laravel remains the sole authoritative writer.
+
+---
+
+#### Phase 1.0 — Financial Decimal & Core Types (`pkg/decimal`, `pkg/types`)
+
+1. **Business Objective:** Build deterministic, high-precision fixed-point decimal arithmetic and universal domain identity primitives in Go, providing bit-exact arithmetic parity with PostgreSQL `NUMERIC(24,12)` and PHP `brick/math` without any binary floating-point inaccuracy.
+2. **Technical Scope:** Scope is strictly restricted to `pkg/decimal` and `pkg/types`. No IPC protocol, fencing mechanisms, dataset importer, strategy runtime, or unrelated infrastructure is permitted in this increment.
+3. **Existing Components to Reuse:** `research-go/internal/decimal/`, `research-go/internal/contracts/job.go`, PHP `app/Support/helpers.php` (decimal rounding rules).
+4. **Components to Migrate / Replace:** Duplicate DTO definitions, untyped strings for financial values, binary float calculations in research workers.
 5. **Go Packages / Services:**
-   - `pkg/types`: Universal domain primitives (`ExchangeID`, `Symbol`, `Timeframe`, `Side`, `OrderState`, `AccountID`, `StrategyID`, `DatasetID`).
-   - `pkg/decimal`: 12-decimal-place scaled fixed-point math (`ScaledDecimal`) guaranteeing bit-exact arithmetic with PostgreSQL `NUMERIC(24,12)`.
-   - `pkg/protocol`: Versioned message envelopes (`v3.3.0`) with schema validation and cryptographic digests.
-   - `pkg/fencing`: Monotonic epoch-based fencing token generator.
-   - `pkg/dataset`: Canonical dataset manifest structures, source provider enums, and SHA-256 verification types (`MIG-24`).
-6. **Interfaces & Versioned Contracts:** Versioned Redis Stream message envelope: `{"v": "3.3.0", "epoch": 1042, "type": "EVENT_NAME", "payload": {...}}`.
-7. **State and Event Ownership:** Redis stream namespace reservation (`vector:stream:*`); zero PostgreSQL schema mutations.
-8. **Dependencies:** Requires formal Phase 0 sign-off; prerequisite for all subsequent Go components.
+   - `pkg/decimal`: Scaled fixed-point decimal type (`ScaledDecimal`) compatible with PostgreSQL `NUMERIC(24,12)`.
+   - `pkg/types`: Universal domain primitives (`ExchangeID`, `Symbol`, `Timeframe`, `Side`, `OrderState`, `AccountID`, `StrategyID`).
+6. **Decimal Specification & Range Requirements:**
+   - **Scale and Precision:** Exactly 12 decimal places of fractional scale ($10^{-12}$) and 24 total digits of precision (12 digits integer part, 12 digits fractional part).
+   - **Supported Range:** $[-999,999,999,999.999999999999, +999,999,999,999.999999999999]$.
+   - **Integer Capacity & Overflow Prevention:** A signed 64-bit integer (`int64` max $\approx 9.22 \times 10^{18}$) scaled by $10^{12}$ supports only up to $\approx \pm 9,223,372.036854775807$ ($\approx \pm 9.22 \times 10^6$ units), failing to cover the full PostgreSQL `NUMERIC(24,12)` domain ($\pm 10^{12}$ units, requiring $\approx 10^{24}$ capacity). The Go implementation **MUST** explicitly use either 128-bit integer capacity (via `math/big.Int` or two `uint64` / custom 128-bit representation) or enforce documented, strictly bounded numerical range limits with explicit error returns on overflow. Never silently overflow, wrap around, or lose decimal precision.
+   - **Zero Binary Float:** Binary floating point (`float32`, `float64`) is strictly prohibited for authoritative financial representations and calculations.
+   - **Supported Arithmetic:** Addition (`Add`), Subtraction (`Sub`), Multiplication (`Mul`), Division (`Div`), Comparisons (`Cmp`, `Equal`, `LessThan`, `GreaterThan`, `LessThanOrEqual`, `GreaterThanOrEqual`), Absolute Value (`Abs`), and Negation (`Neg`).
+   - **Rounding Semantics:** Financial RoundHalfUp (and Banker's RoundHalfEven where required by specific accounting identity), explicit truncation rules, and intermediate precision rules (minimum 24 to 36 intermediate decimal places before final rounding to scale 12).
+   - **Overflow & Underflow Behavior:** Explicit error returns (`ErrOverflow`, `ErrDivisionByZero`) or panic on unhandled overflow; zero bitwise truncation or modular wraparound.
+   - **Serialization & Deserialization:** Deterministic JSON string marshaling/unmarshaling, text formatting (`String()`), binary encoding, and database driver interfaces (`database/sql/driver.Valuer` and `sql.Scanner`).
+   - **Negative Values & Zero Canonicalization:** Negative zero (`-0`) is strictly normalized to positive `0`.
+   - **Semantics Distinction:** Explicitly distinguish `NULL` (uninitialized/absent), `ZERO` (value $0.000000000000$), and `UNAVAILABLE` (stale/uncomputable).
+   - **Consistency with PHP/Laravel:** Identical calculation results to PHP's `brick/math` (`BigDecimal`) and `bcmath` configured to scale 12.
+7. **Interfaces & Versioned Contracts:** `Decimal` value object interface; `database/sql/driver.Valuer` and `sql.Scanner`.
+8. **Dependencies:** Requires formal Phase 0 Operator Attestation. Prerequisite for Phase 1.1.
 9. **Implementation Work Packages:**
-   - Package 1.1: Scaled fixed-point arithmetic package (`pkg/decimal`) with 12 decimal places.
-   - Package 1.2: Domain identity types (`pkg/types`) decoupled from hardcoded strategy/exchange counts.
-   - Package 1.3: Versioned protocol envelope parser and serializer (`pkg/protocol`).
-   - Package 1.4: Monotonic epoch fencing generator (`pkg/fencing`).
-   - Package 1.5: Historical dataset manifest schema and provenance types (`pkg/dataset`, `MIG-24`).
+   - Package 1.0.1: `pkg/decimal` fixed-point arithmetic engine with 128-bit capacity and overflow protection.
+   - Package 1.0.2: Rounding, formatting, serialization, and SQL driver interfaces.
+   - Package 1.0.3: `pkg/types` universal domain identifier primitives.
+   - Package 1.0.4: Deterministic 1,000,000-operation parity test suite and PostgreSQL batched verification harness.
 10. **Exact Acceptance Criteria:**
-    - `ScaledDecimal` passes 1,000,000 randomized arithmetic operations against PostgreSQL `NUMERIC` without 1 ULP discrepancy.
+    - Zero unexplained arithmetic discrepancies across 1,000,000 deterministic test operations compared against PostgreSQL `NUMERIC(24,12)` reference calculations (executed via batched queries).
+    - Zero silent precision loss or wraparound under boundary values ($\pm 999,999,999,999.999999999999$, $\pm 0.000000000001$, epsilon, division near zero).
+    - All boundary, negative, overflow, and serialization test cases pass.
+    - Numerical range limitations are explicit, documented, and enforced by code.
+    - Parity with PHP `brick/math` verified on golden financial test vectors.
+    - Zero authority over PAPER financial writes transferred to Go.
+11. **Test Requirements:** 1,000,000-case parity harness with batched PostgreSQL reference evaluation; reproducible random seed (`0xDEADBEEF`); preserved golden fixtures; property-based tests (`testing/quick`); Go race detector.
+12. **Performance & Resource Budgets:** Hot-path addition/subtraction throughput > 10,000,000 ops/sec; multiplication/division > 2,000,000 ops/sec; zero heap allocations on hot-path stack operations.
+13. **Shadow Execution & Rollback:** Unit-level differential testing against PHP and PostgreSQL. Git revert on regression.
+14. **Security & Data Integrity:** Strict bounds checking; no reflection in arithmetic paths; compile-time interface verification.
+15. **Git Commit Boundaries:** `pkg/decimal` and `pkg/types` implementation and parity test fixtures committed atomically.
+16. **Evidence & Scorecard Mappings:** Foundation for `VEC-P1-001` through `VEC-P1-008` and `MIG-01`.
+17. **Explicit Out-of-Scope Items:** No IPC protocol, no Redis streams, no fencing tokens, no dataset importer, no strategy logic, no database writes.
+18. **Operator Approval Requirements:** Engineering review of the 1,000,000-case parity verification evidence.
+
+---
+
+#### Phase 1.1 — Protocol & Fencing Contracts (`pkg/protocol`, `pkg/fencing`)
+
+1. **Business Objective:** Establish versioned, backward-compatible inter-process communication contracts between PHP and Go, and implement monotonic fencing token mechanisms preventing dual-writer race conditions.
+2. **Technical Scope:** Scope restricted strictly to `pkg/protocol` and `pkg/fencing`.
+3. **Existing Components to Reuse:** `research-go/internal/contracts/job.go`, Redis 7.4.
+4. **Components to Migrate / Replace:** Ad-hoc JSON payloads across process boundaries.
+5. **Go Packages / Services:**
+   - `pkg/protocol`: Versioned message envelopes (`v3.4.0`) with deterministic JSON serialization, schema validation, and SHA-256 payload digests.
+   - `pkg/fencing`: Monotonic epoch-based fencing token generator and validator.
+6. **Interfaces & Versioned Contracts:**
+   - Canonical envelope schema: `{"v": "3.4.0", "epoch": 1042, "type": "EVENT_NAME", "idempotency_key": "uuid", "timestamp_utc": "ISO8601", "payload": {...}}`.
+   - Stale-worker rejection protocol: any command bearing `epoch < current_fence_epoch` is rejected with `ErrStaleEpoch`.
+   - Duplicate-command handling: idempotency key deduplication with TTL.
+7. **State and Event Ownership:** Redis stream namespace reservation (`vector:stream:*`); zero PostgreSQL schema mutations.
+8. **Dependencies:** Requires Phase 1.0 accepted. Prerequisite for Phase 1.2 and Phase 2.
+9. **Implementation Work Packages:**
+   - Package 1.1.1: `pkg/protocol` versioned envelope parser, serializer, and validator.
+   - Package 1.1.2: `pkg/fencing` epoch generator, verification primitives, and concurrent fencing test harness.
+   - Package 1.1.3: Cross-process PHP/Go contract compatibility test suite.
+10. **Exact Acceptance Criteria:**
     - IPC serialization benchmark PROPOSED < 5 microseconds per envelope.
-    - Core domain types accept arbitrary valid strings for strategy, exchange, and dataset IDs without code changes.
-    - Dataset manifest schema serializes and validates bit-exact JSON matching the canonical specification.
-11. **Test Requirements:** Property-based testing (`testing/quick`), fuzzing of JSON/protocol decoders, Go race detector (`go test -race`).
-12. **Performance & Resource Budgets:** Static binary size < 25 MB; zero heap allocations on hot-path decimal math; worker memory ceiling 64 MiB.
-13. **Shadow Execution & Rollback:** Dual-parsing of contracts in PHP and Go unit tests; git revert rollback.
-14. **Security & Data Integrity:** Strict compilation boundary; no reflection in hot paths; compile-time interface verification.
-15. **Git Commit Boundaries:** Foundational packages and property test suite.
-16. **Evidence & Scorecard Mappings:** Foundation for `VEC-P1-001` through `VEC-P1-008` and `MIG-24`.
-17. **Explicit Out-of-Scope Items:** No database writes, no live networking, no strategy logic.
-18. **Operator Approval Requirements:** Architecture review of binary protocol and dataset manifest schemas.
+    - Contract compatibility tests pass: PHP serializer output decoded bit-exact by Go parser, and vice versa.
+    - Fencing generator rejects stale worker tokens under simulated concurrency with 100% reliability.
+    - Duplicate commands with identical idempotency keys are handled idempotently without re-execution.
+    - Zero authority over PAPER financial writes transferred to Go.
+11. **Test Requirements:** Fuzzing of protocol envelope decoders (`go-fuzz`); concurrent fencing race tests; PHP/Go roundtrip contract tests; Go race detector (`go test -race`).
+12. **Performance & Resource Budgets:** Envelope serialization < 5 µs; memory allocations < 512 bytes per message.
+13. **Shadow Execution & Rollback:** Dual-parsing of contracts in PHP and Go; git revert rollback.
+14. **Security & Data Integrity:** Schema validation rejects unknown fields; payload digests prevent tampering; zero execution of arbitrary commands.
+15. **Git Commit Boundaries:** `pkg/protocol` and `pkg/fencing` packages with roundtrip contract fixtures.
+16. **Evidence & Scorecard Mappings:** Maps to `MIG-02`.
+17. **Explicit Out-of-Scope Items:** No live trading, no database triggers, no strategy logic.
+18. **Operator Approval Requirements:** Lead architecture review of IPC protocol and fencing contracts.
+
+---
+
+#### Phase 1.2 — Dataset Foundation Contracts (`pkg/dataset`)
+
+1. **Business Objective:** Define foundational data types, canonical manifest structures, cryptographic checksum schemas, and validation contracts for historical research datasets without implementing file parsers or UI.
+2. **Technical Scope:** Scope restricted strictly to foundational contracts in `pkg/dataset`. Full CSV/JSON/Parquet streaming importer, storage engine, and UI remain deferred to Phase 2 (`MIG-25`, `MIG-26`, `MIG-28`).
+3. **Existing Components to Reuse:** Section 9 Dataset Specification of Roadmap V3.3.
+4. **Components to Migrate / Replace:** None. Foundational contract for future dataset capabilities.
+5. **Go Packages / Services:**
+   - `pkg/dataset`: Canonical dataset manifest structures, source exchange enums, provenance status types, and SHA-256 verification schemas (`MIG-24`).
+6. **Interfaces & Versioned Contracts:** Canonical `DatasetManifest` Go struct matching schema `vector.dataset.manifest.v1`:
+   - Fields: `dataset_id`, `dataset_version`, `source_exchange_id`, `market_type`, `symbols`, `timeframes`, `start_time_utc`, `end_time_utc`, `row_count`, `canonical_checksum_sha256`, `provenance_status`, `created_at_utc`.
+7. **State and Event Ownership:** Manifest DTO contracts only; zero database schema mutations.
+8. **Dependencies:** Requires Phase 1.0 and Phase 1.1 accepted. Prerequisite for Phase 2 dataset ingestion.
+9. **Implementation Work Packages:**
+   - Package 1.2.1: `pkg/dataset` manifest models, validation logic, and canonical JSON serialization.
+   - Package 1.2.2: Provenance verification types and checksum generator contracts.
+   - Package 1.2.3: Contract validation and schema roundtrip test suite.
+10. **Exact Acceptance Criteria:**
+    - `DatasetManifest` serializes and validates bit-exact JSON matching the canonical specification.
+    - Checksum generator calculates reproducible SHA-256 hashes across varying line endings and platforms.
+    - Invalid manifest attributes (unsupported market types, inverted time windows, invalid checksum formats) fail validation with structured error codes.
+    - Zero authority over PAPER financial writes or live market data.
+11. **Test Requirements:** JSON schema roundtrip tests; manifest validation negative test suite; hash reproducibility tests across architectures.
+12. **Performance & Resource Budgets:** Manifest validation < 1 ms; zero external network calls.
+13. **Shadow Execution & Rollback:** Git revert rollback.
+14. **Security & Data Integrity:** Strict field validation; path traversal protections in dataset ID naming.
+15. **Git Commit Boundaries:** `pkg/dataset` foundational package and contract test fixtures.
+16. **Evidence & Scorecard Mappings:** Maps to `MIG-24`.
+17. **Explicit Out-of-Scope Items:** No file parsing (CSV/Parquet), no decompression, no database table creation, no Vue UI.
+18. **Operator Approval Requirements:** Review of dataset manifest canonical schema.
+
+---
 
 ---
 
@@ -414,38 +541,46 @@ Every phase follows a standardized 18-point execution contract.
 
 ### Phase 3 — Extensible Go Strategy SDK & Declarative Strategy Builder
 
-1. **Business Objective:** Implement all 13 PRIMARY strategy families in Go with bit-exact parity against PHP golden fixtures, while providing both an extensible Go SDK and a Declarative Strategy Builder (JSON/CSV configuration & UI) allowing new strategies to evaluate identically across live market streams and imported historical datasets.
-2. **Technical Scope:** Strategy SDK interfaces (`StrategyDescriptor`, `StrategyInstance`, `StrategyRegistry`), native Go implementations of all 13 PRIMARY families, Declarative Rule Evaluation Engine (`pkg/strategy/declarative`), Visual Strategy Builder UI contracts, concurrent real-time evaluation engine, and differential testing harness.
-3. **Existing Components to Reuse:** 5 Go candidate families in `research-go/internal/candidates/`, parameters in `config/strategy.php`.
+1. **Business Objective:** Implement all 13 PRIMARY strategy families in Go with bit-exact parity against PHP golden fixtures, while providing both an extensible Go SDK and a Declarative Strategy Builder MVP (JSON/CSV configuration & UI) allowing new strategies to evaluate identically across live market streams and imported historical datasets without dynamic code execution.
+2. **Technical Scope:** Strategy SDK interfaces (`StrategyDescriptor`, `StrategyInstance`, `StrategyRegistry`), native Go implementations of all 13 PRIMARY families, Declarative Strategy MVP Engine (`pkg/strategy/declarative`), Visual Strategy Builder UI contracts, concurrent real-time evaluation engine, and differential testing harness.
+3. **Existing Components to Reuse:** 5 Go candidate families in `research-go/internal/candidates/`, parameters in `config/strategy.php`, existing indicator calculators (`EmaCalculator.php`, `RsiCalculator.php`, `AtrCalculator.php`).
 4. **Components to Migrate / Replace:** Remaining 8 PHP strategy families (`BaselineStrategy`, `TrendPullbackStrategy`, `BollingerMeanReversionStrategy`, `DonchianBreakoutStrategy`, `RegimeSwitchingStrategy`, `MomentumStrategy`, `SupportResistanceBounceStrategy`, `SupportResistanceBreakoutStrategy`).
 5. **Go Packages / Services:**
    - `pkg/strategy`: Universal Go Strategy SDK (`StrategyDescriptor`, `StrategyInstance`, `Evaluate(input)`).
-   - `pkg/strategy/declarative`: Bounded declarative rule evaluation engine parsing JSON/CSV rule specifications.
+   - `pkg/strategy/declarative`: Bounded declarative rule evaluation engine parsing versioned JSON/CSV rule specifications.
    - `internal/strategy/primary`: All 13 PRIMARY strategy families implemented natively in Go.
    - `internal/strategy/runtime`: Concurrent strategy evaluation engine triggered by candle events or dataset iteration.
-6. **Interfaces & Versioned Contracts:** `StrategyDecision` struct matching canonical JSON schema (BUY, SELL, SKIP with deterministic reason codes, price targets, ATR stop-loss).
-7. **State and Event Ownership:** Go publishes `SignalGeneratedEvent` to Redis Stream; Laravel reads signals for UI/API display.
-8. **Dependencies:** Requires Phase 2 candle stream / dataset loader; prerequisite for Phase 4 evolution and Phase 5 paper execution.
-9. **Implementation Work Packages:**
-   - Package 3.1: Strategy SDK interface specifications and registration engine.
-   - Package 3.2: Implementation of the 8 remaining PRIMARY families in Go.
-   - Package 3.3: Golden fixture test generator extracting 10,000 historical decisions from PHP.
-   - Package 3.4: Declarative Strategy Rules Engine (`MIG-18`) and schema validator.
-   - Package 3.5: Visual Strategy Builder UI contract and API endpoint in Laravel (`MIG-19`).
-   - Package 3.6: Extensibility validation using a declarative test strategy (`declarative_rsi_macd_test`).
-10. **Exact Acceptance Criteria:**
+6. **Declarative Strategy MVP Specification:**
+   - **Supported Indicators (Exactly Three):** `EMA` (Exponential Moving Average), `RSI` (Relative Strength Index), and `ATR` (Average True Range), directly sourced from existing SDK implementations.
+   - **Comparison Operators (Exactly Two):** `GREATER_THAN` (`GT`) and `LESS_THAN` (`LT`).
+   - **Boolean Composition:** `AND` and `OR` logical operators.
+   - **Parameters:** Strictly typed static parameters (periods, thresholds, price sources: `close`, `open`, `high`, `low`).
+   - **Missing Data & Warm-Up:** Explicit handling of insufficient historical bars or null values emitting deterministic `SKIP` with reason code (`INSUFFICIENT_HISTORY`, `NULL_INDICATOR`).
+   - **Schema & Validation:** Versioned JSON schema (`declarative-strategy-v1.schema.json`). Rejects invalid syntax, unsupported indicators, or unknown fields at load time.
+   - **Safety Boundary:** Strictly pure functional evaluation. No arbitrary executable expressions, no dynamic code evaluation (`eval`), no reflection, and no implicit financial authority.
+7. **Interfaces & Versioned Contracts:** `StrategyDecision` struct matching canonical JSON schema (BUY, SELL, SKIP with deterministic reason codes, price targets, ATR stop-loss).
+8. **State and Event Ownership:** Go publishes `SignalGeneratedEvent` to Redis Stream; Laravel reads signals for UI/API display.
+9. **Dependencies:** Requires Phase 2 candle stream / dataset loader; prerequisite for Phase 4 evolution and Phase 5 paper execution.
+10. **Implementation Work Packages:**
+    - Package 3.1: Strategy SDK interface specifications and registration engine.
+    - Package 3.2: Implementation of the 8 remaining PRIMARY families in Go.
+    - Package 3.3: Golden fixture test generator extracting 10,000 historical decisions from PHP.
+    - Package 3.4: Declarative Strategy Rules Engine MVP (`MIG-18` MVP) and schema validator.
+    - Package 3.5: Visual Strategy Builder UI contract and API endpoint in Laravel (`MIG-19` MVP).
+    - Package 3.6: Extensibility validation using a declarative test strategy (`declarative_ema_rsi_atr_test`).
+11. **Exact Acceptance Criteria:**
     - All 13 PRIMARY families implemented in Go; 100% bit-exact decision equivalence across 10,000 historical golden candle fixtures compared against PHP golden output.
+    - Declarative Strategy MVP evaluates with exact behavior parity against equivalent native Go strategy logic.
+    - Deterministic repeated evaluations under identical input candles produce identical signal digests.
+    - Configurations with unsupported indicators, syntax errors, or lookahead references fail closed with structured error codes (`REQUIRES_CUSTOM_STRATEGY`, `INVALID_RULE_CONFIG`).
     - Concurrent evaluation of all 13 families PROPOSED P95 < 5.0 ms per closed candle.
-    - Declarative test strategy defined via JSON/CSV is evaluated identically by backtest and forward runtimes without generating custom Go code.
-    - Unsupported strategy logic fails closed with `REQUIRES_CUSTOM_STRATEGY`.
-11. **Test Requirements:** Differential testing comparing Go output against PHP output byte-for-byte; declarative rule mutation tests; boundary condition verification.
-12. **Performance & Resource Budgets:** All 13 strategies evaluated concurrently in PROPOSED < 10 ms; memory allocation < 1 MiB per evaluation.
-13. **Shadow Execution & Rollback:** Go runs in shadow mode emitting signals to shadow stream; diffs logged; Laravel forward scanner continues driving paper orders until Phase 5.
-14. **Security & Data Integrity:** Pure function evaluation; zero I/O, network calls, or arbitrary script execution in strategy logic; deterministic RNG seeded by candle hash.
-15. **Git Commit Boundaries:** Go strategy implementations committed family by family with corresponding golden fixtures.
-16. **Evidence & Scorecard Mappings:** Maps to `VEC-P1-001` through `VEC-P1-008` and `MIG-18`, `MIG-19`.
-17. **Explicit Out-of-Scope Items:** No automatic live account creation, no runtime shell or code execution.
-18. **Operator Approval Requirements:** Sign-off on 100% parity verification results.
+12. **Test Requirements:** Differential testing comparing Go output against PHP output byte-for-byte; declarative rule mutation tests; boundary condition verification.
+13. **Performance & Resource Budgets:** All 13 strategies evaluated concurrently in PROPOSED < 10 ms; memory allocation < 1 MiB per evaluation.
+14. **Shadow Execution & Rollback:** Go runs in shadow mode emitting signals to shadow stream; diffs logged; Laravel forward scanner continues driving paper orders until Phase 5.
+15. **Security & Data Integrity:** Pure function evaluation; zero I/O, network calls, or arbitrary script execution in strategy logic; deterministic RNG seeded by candle hash.
+16. **Git Commit Boundaries:** Go strategy implementations committed family by family with corresponding golden fixtures.
+17. **Evidence & Scorecard Mappings:** Maps to `VEC-P1-001` through `VEC-P1-008` and `MIG-18`, `MIG-19`.
+18. **Operator Approval Requirements:** Sign-off on 100% parity verification results and Declarative MVP parity report.
 
 ---
 
@@ -489,8 +624,8 @@ Every phase follows a standardized 18-point execution contract.
 
 ### Phase 5 — Extensible Go RiskEngine, PAPER Engine & Financial Accounting (Shadow Validation)
 
-1. **Business Objective:** Implement the complete portfolio risk engine, order lifecycle state machine, and double-entry accounting in Go; support dynamic multi-account topologies ($N$ Strategies $\times$ $M$ Exchanges); run in shadow mode while PHP remains authoritative; guarantee that imported historical datasets can NEVER write to paper trading accounts or ledgers.
-2. **Technical Scope:** Dynamic account mapping, deterministic position state machine, 5%/10% drawdown enforcement, double-entry financial ledger, taker fee and funding settlement, and shadow reconciliation.
+1. **Business Objective:** Implement the complete portfolio risk engine, order lifecycle state machine, and double-entry accounting in Go; support dynamic multi-account topologies ($N$ Strategies $\times$ $M$ Exchanges); run in shadow mode while PHP remains authoritative; guarantee that imported historical datasets can NEVER write to paper trading accounts or ledgers; verify parallel operations via a deterministic reconciliation diff tool.
+2. **Technical Scope:** Dynamic account mapping, deterministic position state machine, 5%/10% drawdown enforcement, double-entry financial ledger, taker fee and funding settlement, shadow reconciliation across 15 canonical dimensions, deterministic divergence diff tooling (`cmd/vector-reconcile`), and offline reproduction.
 3. **Existing Components to Reuse:** PostgreSQL financial schemas (`paper_positions`, `paper_executions`, `paper_account_ledgers`), risk parameters in `config/paper.php`.
 4. **Components to Migrate / Replace:** `PositionLifecycleService.php`, `RiskEngine.php`, `PaperProcessingService.php`, `DailyPerformanceService.php`.
 5. **Go Packages / Services:**
@@ -498,36 +633,65 @@ Every phase follows a standardized 18-point execution contract.
    - `internal/paper/lifecycle`: Order state machine (Pending -> Open -> TP1/TP2 -> Closed), trailing stops, timeout liquidation.
    - `internal/paper/accounting`: Double-entry transaction ledger engine ($\text{Equity} = \text{Balance} + \text{Unrealized PnL}$).
    - `internal/paper/settlement`: Certified 8h/4h funding rate fee calculations, taker commission deductions, slippage modeling.
-6. **Interfaces & Versioned Contracts:** `RiskEvaluator`, `OrderExecutor`, `LedgerService`; transactional event signatures.
-7. **State and Event Ownership:** **Strict Shadow Mode.** PHP remains the sole authoritative writer to `paper_accounts`, `paper_positions`, `paper_executions`, `paper_account_ledgers`. Go writes shadow records to isolated staging tables (`shadow_paper_*`) and emits reconciliation reports.
-8. **Dependencies:** Requires Phase 3 strategy signals and Phase 2 real-time candle marks; prerequisite for Phase 7 cutover.
-9. **Implementation Work Packages:**
-   - Package 5.1: Scalable multi-account portfolio risk engine supporting dynamic account topologies.
-   - Package 5.2: Order lifecycle state machine with partial closes and deterministic SL/TP priority.
-   - Package 5.3: Bit-exact double-entry accounting engine in Go (`pkg/decimal`).
-   - Package 5.4: Shadow execution harness and automated ledger diff reconciliation reporter.
-   - Package 5.5: Blocked strategy diagnostic service recording structured blocker evidence.
-10. **Exact Acceptance Criteria:**
+   - `cmd/vector-reconcile`: Read-only deterministic reconciliation diff and divergence diagnostic tool.
+6. **Shadow Reconciliation & Divergence Protocol:**
+   - **Canonical 15-Point Comparison Dimensions:**
+     1. Exchange identity.
+     2. Account ID.
+     3. Strategy ID.
+     4. Instrument (Symbol).
+     5. Event identity and sequence order.
+     6. Position state transition (e.g. `PENDING -> OPEN -> TP1 -> CLOSED`).
+     7. Quantity (contract lots and remaining open size).
+     8. Gross PnL.
+     9. Fees (taker / maker).
+     10. Funding settlements.
+     11. Realized PnL.
+     12. Unrealized PnL (mark price valuation).
+     13. Equity ($\text{Balance} + \text{Unrealized PnL}$).
+     14. Decimal rounding decisions (intermediate precision, truncation, half-up steps).
+     15. Applicable source market observations (closed candle marks, funding rates).
+   - **Reconciliation Diff Tool (`cmd/vector-reconcile`):**
+     - Compares PHP authoritative events against Go shadow events across aligned observation windows.
+     - Identifies the chronologically FIRST divergent event.
+     - Displays side-by-side calculations, input values, formulas, and decimal scales.
+     - Classifies root causes into structured categories: Data Mismatch, Timing Mismatch, Precision Mismatch, Missing Event, Duplicate Event, or State-Machine Divergence.
+     - Exports machine-readable diffs (`reconciliation_diff_<timestamp>.json`) and human-readable operator reports.
+     - Reproduces divergence offline using captured immutable event fixtures.
+     - Strictly read-only: CANNOT mutate the authoritative PAPER ledger.
+7. **Interfaces & Versioned Contracts:** `RiskEvaluator`, `OrderExecutor`, `LedgerService`; transactional event signatures.
+8. **State and Event Ownership:** **Strict Shadow Mode.** PHP remains the sole authoritative writer to `paper_accounts`, `paper_positions`, `paper_executions`, `paper_account_ledgers`. Go writes shadow records to isolated staging tables (`shadow_paper_*`) and emits reconciliation reports. Single authoritative writer invariant strictly preserved.
+9. **Dependencies:** Requires Phase 3 strategy signals and Phase 2 real-time candle marks; prerequisite for Phase 7 cutover.
+10. **Implementation Work Packages:**
+    - Package 5.1: Scalable multi-account portfolio risk engine supporting dynamic account topologies.
+    - Package 5.2: Order lifecycle state machine with partial closes and deterministic SL/TP priority.
+    - Package 5.3: Bit-exact double-entry accounting engine in Go (`pkg/decimal`).
+    - Package 5.4: Shadow execution harness, automated ledger diff reporter, and `cmd/vector-reconcile` diagnostic tool.
+    - Package 5.5: Blocked strategy diagnostic service recording structured blocker evidence.
+11. **Exact Acceptance Criteria:**
     - Dynamic account scaling tested with up to 80 accounts with zero cross-contamination.
     - Zero ledger discrepancies across 100,000 synthetic lifecycle events.
-    - Shadow execution runs for 14 continuous days without financial divergence from PHP live ledger.
+    - Shadow execution runs for **14 continuous days** without financial divergence from PHP live ledger.
+    - **Alert Threshold:** Any divergence $> 0.0001\text{ USDT}$ immediately raises a high-priority alert; financial accounting identities require exact equality ($0.000000000000$).
+    - **Investigation Mandate:** A one-cent ($0.01\text{ USDT}$) mismatch must be fully investigated and cannot be waived merely because it appears financially small.
+    - **Window Restart Policy:** Any material unexplained financial divergence or state-machine defect immediately restarts the 14-day continuous observation window from zero (Day 0).
     - Blocked strategy diagnostics record exact metric, threshold, and timestamp for any risk halt.
     - Absolute isolation: imported historical datasets are strictly blocked from writing to `paper_accounts` or triggering fills.
-11. **Test Requirements:** PostgreSQL concurrency race tests (`FOR UPDATE` row locking), double-funding negative controls, partial exit precision tests.
-12. **Performance & Resource Budgets:** Position processing latency PROPOSED P95 < 15 ms; memory footprint < 128 MiB; zero lock contention on concurrent accounts.
-13. **Shadow Execution & Rollback:** Continuous comparison of Go shadow balance vs PHP live balance; discrepancy > 0.0001 USDT raises immediate alert. Rollback is trivial since PHP remains the live writer.
-14. **Security & Data Integrity:** Zero real trading keys; accounts strictly isolated; preserved 5% entry-block and 10% halt risk thresholds.
-15. **Git Commit Boundaries:** Risk engine, position lifecycle engine, accounting ledger engine, and migration scripts.
-16. **Evidence & Scorecard Mappings:** Direct mapping to core Phase 0 financial requirements and Phase 4 operational controls.
-17. **Explicit Out-of-Scope Items:** No direct writes to live production tables during Phase 5.
-18. **Operator Approval Requirements:** Review of 14-day shadow reconciliation report.
+12. **Test Requirements:** PostgreSQL concurrency race tests (`FOR UPDATE` row locking), double-funding negative controls, partial exit precision tests, offline replay of captured divergent events.
+13. **Performance & Resource Budgets:** Position processing latency PROPOSED P95 < 15 ms; memory footprint < 128 MiB; zero lock contention on concurrent accounts.
+14. **Shadow Execution & Rollback:** Continuous comparison of Go shadow balance vs PHP live balance; discrepancy > 0.0001 USDT raises immediate alert. Rollback is trivial since PHP remains the live writer.
+15. **Security & Data Integrity:** Zero real trading keys; accounts strictly isolated; preserved 5% entry-block and 10% halt risk thresholds.
+16. **Git Commit Boundaries:** Risk engine, position lifecycle engine, accounting ledger engine, reconciliation diff tool, and migration scripts.
+17. **Evidence & Scorecard Mappings:** Direct mapping to core Phase 0 financial requirements and Phase 4 operational controls.
+18. **Explicit Out-of-Scope Items:** No direct writes to live production tables during Phase 5.
+19. **Operator Approval Requirements:** Review of 14-day zero-defect shadow reconciliation report generated by `cmd/vector-reconcile`.
 
 ---
 
 ### Phase 6 — Extensible Multi-Exchange SDK & Declarative Exchange Onboarding
 
-1. **Business Objective:** Implement standardized multi-exchange adapter contracts in Go, provide a Declarative Exchange Builder (CSV import & UI workflow) allowing standard cryptocurrency perpetual exchanges to be onboarded without custom code, support offline exchange identities for research without API connections, and surface high-throughput comparative analytics via Laravel API.
-2. **Technical Scope:** Universal Exchange SDK (`ExchangeDescriptor`, `ExchangeAdapter`, `ExchangeRegistry`, `ExchangeCapabilities`), Generic Config-Driven Exchange Adapter (`pkg/exchange/generic`), CSV Onboarding Parser with strict SSRF validation, offline research source registry, native Bybit/Binance adapters, third test-only exchange adapter verification, streaming financial analytics, and slippage decomposition.
+1. **Business Objective:** Implement standardized multi-exchange adapter contracts in Go, provide a Declarative Exchange Builder MVP (CSV/JSON mapping) allowing standard cryptocurrency perpetual exchanges to be onboarded in isolated research scope without custom code, support offline exchange identities for research without API connections, and surface high-throughput comparative analytics via Laravel API.
+2. **Technical Scope:** Universal Exchange SDK (`ExchangeDescriptor`, `ExchangeAdapter`, `ExchangeRegistry`, `ExchangeCapabilities`), Declarative Exchange MVP Adapter (`pkg/exchange/generic`), CSV Onboarding Parser with strict SSRF validation, offline research source registry, native Bybit/Binance adapters, third test-only exchange adapter verification, streaming financial analytics, and slippage decomposition.
 3. **Existing Components to Reuse:** `MetricRegistry.php`, `ExchangeComparisonService.php`, frontend analytics views.
 4. **Components to Migrate / Replace:** Performance statistics calculations, Sharpe/Sortino/Calmar math, correlation matrices, slippage attribution.
 5. **Go Packages / Services:**
@@ -539,32 +703,42 @@ Every phase follows a standardized 18-point execution contract.
    - `internal/exchange/stub`: Test-only third exchange adapter proving generic CSV extensibility.
    - `internal/analytics`: Streaming financial metrics calculation.
    - `internal/attribution`: Mark-to-market and slippage decomposition engine.
-6. **Interfaces & Versioned Contracts:** Normalized multi-exchange DTOs; analytics query API contracts; Canonical Exchange Configuration Schema.
-7. **State and Event Ownership:** Go maintains read-optimized analytical materialized caches in Redis; PostgreSQL remains system of record.
-8. **Dependencies:** Requires Phase 5 financial accounting; prerequisite for Phase 7 cutover.
-9. **Implementation Work Packages:**
-   - Package 6.1: Unified Exchange SDK contracts and capability declaration system.
-   - Package 6.2: Declarative Exchange Configuration Schema & CSV Parser (`MIG-20`).
-   - Package 6.3: Generic Config-Driven Exchange Adapter Runtime (`MIG-21`).
-   - Package 6.4: Exchange Onboarding UI, SSRF validator, and Approval Lifecycle in Laravel (`MIG-22`).
-   - Package 6.5: Config-Driven Contract Conformance Test Harness (`MIG-23`).
-   - Package 6.6: Standardization of Bybit and Binance adapters under the new SDK.
-   - Package 6.7: Third test-only exchange onboarding via CSV template (`stub_exchange_csv`).
-   - Package 6.8: Offline Exchange Research Identity registration (e.g. OKX historical research without live adapter).
-10. **Exact Acceptance Criteria:**
+6. **Declarative Exchange MVP Specification:**
+   - **Scope:** Minimal approved CSV/JSON mapping contract.
+   - **Supported Metadata:** Exchange identity (`exchange_id`, `display_name`), market category (`linear_perpetual`), symbol mapping (`symbol_map`).
+   - **Market Data Mapping:** Timestamp/timezone semantics in UTC millisecond epoch, OHLCV field mapping (`open`, `high`, `low`, `close`, `volume`).
+   - **Provenance & Quality:** Validation checksums and provenance metadata.
+   - **Strict Operational Boundary:** Operates **strictly in isolated research/import scope**.
+   - **CRITICAL SAFETY RESTRICTION:** The MVP must **NOT** automatically activate an exchange for PAPER trading or authoritative market-data ingestion.
+   - **Activation Gate:** Production PAPER exchange activation retains separately defined validation and operator gates.
+   - **Architecture Invariant:** No unrestricted scripting language or second general-purpose programming environment inside VECTOR.
+7. **Interfaces & Versioned Contracts:** Normalized multi-exchange DTOs; analytics query API contracts; Canonical Exchange Configuration Schema.
+8. **State and Event Ownership:** Go maintains read-optimized analytical materialized caches in Redis; PostgreSQL remains system of record.
+9. **Dependencies:** Requires Phase 5 financial accounting; prerequisite for Phase 7 cutover.
+10. **Implementation Work Packages:**
+    - Package 6.1: Unified Exchange SDK contracts and capability declaration system.
+    - Package 6.2: Declarative Exchange Configuration Schema & Minimal CSV Parser MVP (`MIG-20` MVP).
+    - Package 6.3: Generic Config-Driven Exchange Adapter Runtime MVP (`MIG-21` MVP).
+    - Package 6.4: Exchange Onboarding UI, SSRF validator, and Approval Lifecycle in Laravel (`MIG-22` MVP).
+    - Package 6.5: Config-Driven Contract Conformance Test Harness (`MIG-23`).
+    - Package 6.6: Standardization of Bybit and Binance adapters under the new SDK.
+    - Package 6.7: Third test-only exchange onboarding via CSV template (`stub_exchange_csv`).
+    - Package 6.8: Offline Exchange Research Identity registration (e.g. OKX historical research without live adapter).
+11. **Exact Acceptance Criteria:**
     - Third test-only exchange onboarded via CSV template passes complete contract conformance suite without writing custom Go code.
+    - Declarative Exchange MVP functions cleanly in isolated research scope with zero leaks into PAPER trading.
     - Offline research exchange identity (OKX) supports full backtesting on imported data without active API adapter.
     - Unsupported APIs cleanly return `REQUIRES_CUSTOM_ADAPTER` without runtime failure.
     - Strict SSRF protection rejects internal, loopback, private, or metadata IPs in endpoint URLs.
     - Unified metric calculation for 26 accounts over 90 days generated in PROPOSED < 100 ms.
-11. **Test Requirements:** Multi-exchange contract conformance test suite; CSV schema fuzzing; SSRF attack vector suite; extreme market data gap/delisting simulations; unsupported capability fail-closed tests.
-12. **Performance & Resource Budgets:** Analytical query response PROPOSED P95 < 50 ms; Redis cache size < 64 MiB.
-13. **Shadow Execution & Rollback:** Frontend toggles between PHP and Go analytics via feature flag; zero state mutations.
-14. **Security & Data Integrity:** Public market data only; zero trading credentials; CSV upload cannot execute arbitrary code or bypass owner approval.
-15. **Git Commit Boundaries:** Exchange adapter packages, analytics engine, and API integration.
-16. **Evidence & Scorecard Mappings:** Maps to `VEC-P2-001` through `VEC-P2-010`, `VEC-P5-001` through `VEC-P5-008`, and `MIG-20`–`MIG-23`.
-17. **Explicit Out-of-Scope Items:** No live real-money order routing to any exchange.
-18. **Operator Approval Requirements:** Formal owner approval required to transition any exchange from `RESEARCH_READY` to `PAPER_ELIGIBLE`.
+12. **Test Requirements:** Multi-exchange contract conformance test suite; CSV schema fuzzing; SSRF attack vector suite; extreme market data gap/delisting simulations; unsupported capability fail-closed tests.
+13. **Performance & Resource Budgets:** Analytical query response PROPOSED P95 < 50 ms; Redis cache size < 64 MiB.
+14. **Shadow Execution & Rollback:** Frontend toggles between PHP and Go analytics via feature flag; zero state mutations.
+15. **Security & Data Integrity:** Public market data only; zero trading credentials; CSV upload cannot execute arbitrary code, trigger network requests without approval, or bypass owner gates.
+16. **Git Commit Boundaries:** Exchange adapter packages, analytics engine, and API integration.
+17. **Evidence & Scorecard Mappings:** Maps to `VEC-P2-001` through `VEC-P2-010`, `VEC-P5-001` through `VEC-P5-008`, and `MIG-20`–`MIG-23`.
+18. **Explicit Out-of-Scope Items:** No live real-money order routing to any exchange; no automatic promotion to PAPER trading.
+19. **Operator Approval Requirements:** Formal owner approval required to transition any exchange from `RESEARCH_READY` to `PAPER_ELIGIBLE`.
 
 ---
 
@@ -577,17 +751,18 @@ Every phase follows a standardized 18-point execution contract.
 5. **Go Packages / Services:** Unified Go Daemon (`cmd/vector-core`) orchestrating Ingestion, Strategies, Risk, and PAPER Lifecycle as a lean, single-process, multi-goroutine binary.
 6. **Interfaces & Versioned Contracts:** Laravel acts as a client/reverse-proxy to the Go daemon via lightweight local Unix Domain Socket or HTTP on localhost.
 7. **State and Event Ownership:** Go becomes the **sole authoritative writer** to trading and financial tables; database-enforced fencing token prevents any PHP writes. Laravel PostgreSQL user permissions restricted to `SELECT` on financial ledgers.
-8. **Dependencies:** Requires successful completion and 14-day shadow validation of Phases 1 through 6.
+8. **Dependencies:** Requires successful completion, 14-day zero-defect continuous shadow operation verified by `cmd/vector-reconcile`, zero active divergences or unresolved exceptions across Phases 1 through 6. Single authoritative writer invariant strictly preserved.
 9. **Implementation Work Packages:**
    - Package 7.1: PostgreSQL fencing trigger deployment (`enforce_account_writer_fencing()`).
    - Package 7.2: Account-by-account cutover orchestration CLI in Laravel.
    - Package 7.3: Activation of Go daemon as primary writer.
-   - Package 7.4: Verification of 14-day zero-defect continuous operation.
+   - Package 7.4: Verification of 14-day zero-defect continuous operation post-cutover.
    - Package 7.5: Decommissioning and removal of duplicate PHP computational classes.
 10. **Exact Acceptance Criteria:**
     - Go daemon running continuously for 14 days with zero crashes, zero data-loss events, and zero ledger discrepancies.
     - End-to-end candle-to-ledger latency PROPOSED P95 < 20 ms across all accounts.
     - PostgreSQL trigger rejects any attempted write with stale epoch or unauthorized writer identity.
+    - Exactly ONE authoritative financial writer exists at any given millisecond.
 11. **Test Requirements:** Chaos testing (PostgreSQL restart, Redis crash, network drop); continuous integrity reconciler verifying ledger identities.
 12. **Performance & Resource Budgets:** Total VPS footprint: Go Daemon < 256 MiB, PHP-FPM < 128 MiB (lean API mode), CPU load decreased significantly.
 13. **Shadow Execution & Rollback:** Account-by-account transactional handover under monotonic fencing tokens; rollback script re-enables PHP writer with explicit audit log entry if an anomaly occurs. Never rollback by restoring a stale database backup.
@@ -689,6 +864,42 @@ Every phase follows a standardized 18-point execution contract.
 ### 6.4 14-Step Strategy Lifecycle
 1. `DRAFT` $\rightarrow$ 2. `SCHEMA_VALIDATED` $\rightarrow$ 3. `SYNTACTICALLY_SOUND` $\rightarrow$ 4. `SIMULATION_READY` $\rightarrow$ 5. `BACKTEST_COMPLETE` $\rightarrow$ 6. `OVERFIT_SCREENED` $\rightarrow$ 7. `PROFIT_ATTRIBUTED` $\rightarrow$ 8. `PARITY_VERIFIED` $\rightarrow$ 9. `CANDIDATE_POOLED` $\rightarrow$ 10. `OPERATOR_APPROVED` $\rightarrow$ 11. `PAPER_ACTIVE` $\rightarrow$ 12. `UNDERPERFORMING` $\rightarrow$ 13. `QUARANTINED` $\rightarrow$ 14. `ARCHIVED`.
 
+### 6.5 Declarative Strategy MVP Specification
+
+To prevent speculative abstraction and delivery risk, the Declarative Strategy Builder begins with a strictly bounded Minimal Viable Product (MVP) before expanding to complex grammars:
+
+1. **Initial Indicator Set (Exactly Three Existing SDK Indicators):**
+   - `EMA` (Exponential Moving Average) — derived from `app/Indicators/Calculators/EmaCalculator.php`.
+   - `RSI` (Relative Strength Index) — derived from `app/Indicators/Calculators/RsiCalculator.php`.
+   - `ATR` (Average True Range) — derived from `app/Indicators/Calculators/AtrCalculator.php`.
+   *(No new mathematical indicators are invented; all logic reuses certified implementations).*
+
+2. **Comparison Operators (Exactly Two):**
+   - `GREATER_THAN` (`GT`): Left operand value strictly greater than right operand.
+   - `LESS_THAN` (`LT`): Left operand value strictly less than right operand.
+
+3. **Boolean Composition:**
+   - Standard `AND` and `OR` boolean grouping trees. Arbitrary nested expressions without clear boolean operators are rejected.
+
+4. **Static Typed Parameters:**
+   - Numerical thresholds, periods (positive integers), price series enums (`close`, `open`, `high`, `low`).
+
+5. **Deterministic Signal Semantics:**
+   - Evaluation triggered strictly on closed candles.
+   - Insufficient history or null indicator marks emit `SKIP` with structured reason codes (`INSUFFICIENT_HISTORY`, `NULL_INDICATOR`).
+
+6. **Strict Schema Validation & Safety Boundaries:**
+   - Validated against canonical schema `declarative-strategy-v1.schema.json`.
+   - **Zero Dynamic Code Evaluation:** No `eval()`, JavaScript execution, Python bridging, shell calls, or arbitrary AST interpretation.
+   - **Zero Implicit Authority:** A declarative strategy has no direct authority over orders, positions, or risk parameters; it emits candidate signals only.
+
+7. **Mandatory Parity Acceptance Criteria:**
+   - Must achieve 100% bit-exact decision parity against an equivalent native Go strategy implementation across 10,000 golden candle fixtures.
+   - Deterministic execution across repeated runs with identical input data.
+   - Rejection of invalid, unparseable, or out-of-range configurations at schema validation time.
+   - Bounded execution time (< 1 ms per evaluation).
+   - Expansion to advanced indicator catalogs (`MACD`, `BOLLINGER_BANDS`, `ADX`, `VWAP`), operators (`CROSS_ABOVE`, `CROSS_BELOW`), and visual builder UI occurs only after formal MVP acceptance.
+
 ---
 
 ## 7. Multi-Exchange Extensibility Specification & Declarative Onboarding
@@ -725,6 +936,29 @@ schema_version,section,key,value
 
 ### 7.4 10-State Exchange Lifecycle
 `DRAFT` $\rightarrow$ `SCHEMA_VALIDATED` $\rightarrow$ `SSRF_CLEARED` $\rightarrow$ `SANDBOX_CONNECTED` $\rightarrow$ `PUBLIC_DATA_VERIFIED` $\rightarrow$ `CONFORMANCE_TESTED` $\rightarrow$ `READY_FOR_APPROVAL` $\rightarrow$ `APPROVED` $\rightarrow$ `RESEARCH_ACTIVE` $\rightarrow$ `RETIRED`.
+
+### 7.5 Declarative Exchange MVP Specification
+
+To avoid creating an unconstrained scripting engine or unverified integration surface, the Declarative Exchange Builder begins strictly as an isolated Research/Import MVP:
+
+1. **Minimal CSV/JSON Mapping Contract:**
+   - **Exchange Identity:** `exchange_id` (slug), `display_name`, `market_type` (`linear_perpetual`).
+   - **Symbol Resolution:** Explicit mapping of exchange-specific ticker strings to canonical symbols (e.g. `XBTUSDT` $\rightarrow$ `BTCUSDT`).
+   - **Timestamp & Timezone Semantics:** Explicit UTC millisecond epoch timestamps. Local timezones or ambiguous string dates without offset are rejected.
+   - **OHLCV Field Mapping:** Canonical column mapping (`open`, `high`, `low`, `close`, `volume`).
+   - **Metadata & Provenance:** Source checksums, license/terms tags, and data provider attribution.
+
+2. **Strict Operational Boundary:**
+   - The Declarative Exchange MVP operates **strictly within offline research, dataset ingestion, and backtesting scope**.
+   - **Zero Live Ingestion:** MVP does not open live WebSocket streams or connect to live exchange REST endpoints.
+
+3. **Mandatory Paper Trading Safety Invariant:**
+   - The Declarative Exchange MVP **MUST NOT** automatically provision or activate an exchange for PAPER trading accounts.
+   - Enabling an exchange for forward virtual PAPER trading requires explicit human operator governance, full 10-criteria conformance testing, and verified risk engine parameterization under a separate approved operational gate.
+
+4. **Prohibition of Embedded Scripting:**
+   - VECTOR strictly rejects embedding general-purpose programming languages (Lua, Python, JavaScript, shell scripts) inside exchange templates.
+   - Complex non-standard protocols, specialized authentication handshakes, or non-linear settlement calculations cleanly fall back to native Go SDK implementations (`pkg/exchange`).
 
 ---
 
@@ -1028,6 +1262,20 @@ $$\text{Net Realized PnL} = \text{Gross Realized PnL} - \text{Commissions} + \te
 - **Virtual PAPER Trading Only:** No real exchange orders; zero trade credentials; read-only public market data ingestion only.
 - **Independent Infrastructure:** ECONOM / econom-group resources are strictly isolated and out of scope.
 
+### 10.4 Go Supply Chain Security & Dependency Governance
+
+To maintain platform safety, cryptographic integrity, and compliance across all Go components, a mandatory Supply Chain Security Gate is established in Phase 1 and governs all subsequent Go phases:
+
+1. **Explicit Justification & Allowlist:** Every external Go module introduced into `go.mod` must have a documented business justification, identified owner, and be registered in the Approved Dependency Register.
+2. **Provenance & Maintenance Review:** External dependencies must be actively maintained, have a transparent release cadence, well-documented source provenance, and an established security disclosure policy.
+3. **Mandatory Vulnerability Auditing:** Every dependency must be audited using `govulncheck` before addition or version bumping. Zero known high or critical vulnerabilities are permitted in production binaries.
+4. **License Compatibility:** All dependencies must possess permissive open-source licenses compatible with VECTOR (MIT, Apache 2.0, BSD-2/3). Restrictive or copyleft licenses (e.g. GNU GPL, AGPL) are strictly scrutinized or rejected.
+5. **Standard Library Preference:** Developers must prefer the Go Standard Library for networking, cryptography, encoding, and data structures. External third-party packages are permitted only when specialized computational requirements (e.g. Parquet columnar reader, PostgreSQL binary driver) cannot be met by standard primitives.
+6. **Exact Version Pinning & Immutable Checksums:** Floating versions, ranges, or `@latest` tags are forbidden. Exact semantic versions must be pinned in `go.mod`. The `go.sum` file must be committed, preserved, and validated via `go mod verify` in CI.
+7. **SBOM & Transitive Dependency Tracking:** A Software Bill of Materials (SBOM) must be generated for all compiled binaries. Transitive dependencies are audited with equal rigor to direct dependencies.
+8. **Prohibition of Untrusted Forks & Network Builds:** `replace` directives pointing to untrusted forks, unvetted GitHub branches, or local filesystem paths are prohibited in production builds. Build scripts must not execute arbitrary network-dependent downloads during compilation (`go build -mod=readonly`).
+9. **Zero Automatic Deployment Upgrades:** Container builds and deployment workflows must never execute `go get -u` or silently update dependencies at deployment time.
+
 ---
 
 ## 11. Database-Enforced Financial Fencing & Single-Writer Protocol
@@ -1062,28 +1310,67 @@ To guarantee that PHP and Go can **never simultaneously write** to authoritative
 
 ---
 
-## 12. Parity Validation Protocols
+## 12. Parity Validation & Shadow Reconciliation Protocols
 
+### 12.1 Strategy Parity Protocol
 Before Go becomes authoritative for strategy execution, every family must achieve **bit-exact parity** against versioned PHP golden fixtures:
-
-### Parity Protocol
 1. **Fixture Extraction:** 10,000 closed candles extracted for each of the 13 families across BTCUSDT and ETHUSDT (1h, 30m, 15m, 5m).
 2. **PHP Baseline Execution:** Run PHP strategy scanner, recording complete decision vector (`decision`, `reason_code`, `price_plan`, `indicator_snapshot`).
 3. **Go Differential Runner:** Execute Go strategy on identical candle stream.
 4. **Comparison Gate:** Decisions must match 100.000%; reason codes must match 100.000%; price levels must match within $1 \times 10^{-8}$.
 5. **Resolution:** Any divergence must be documented, root-caused, and resolved before execution authority transitions.
 
+### 12.2 Shadow Reconciliation & Divergence Diagnostic Protocol
+During Phase 5 shadow execution, Go evaluates live market streams and simulates orders, fills, and double-entry accounting in parallel with PHP without mutating authoritative live ledgers:
+
+1. **Aligned Observation Boundaries:** All comparisons execute against identical closed-candle events and synchronized snapshot epochs. Comparisons across differing timestamps or unclosed candles are invalid.
+2. **Canonical 15-Point Comparison Dimensions:**
+   `Exchange`, `Account ID`, `Strategy ID`, `Instrument`, `Event Sequence`, `State Transition`, `Quantity`, `Gross PnL`, `Fees`, `Funding Settlements`, `Realized PnL`, `Unrealized PnL`, `Equity`, `Decimal Rounding Decisions`, `Source Market Marks`.
+3. **Deterministic Diagnostic Tool (`cmd/vector-reconcile`):**
+   - Ingests parallel PHP and Go execution event streams.
+   - Pinpoints the **FIRST** chronological event where state or accounting values diverge.
+   - Renders side-by-side tabular comparison of both state transitions, decimal values, and math operations.
+   - Classifies discrepancy into standard root-cause types:
+     - `DATA_MISMATCH`: Differing input candle or market mark.
+     - `TIMING_MISMATCH`: Processing events out of order or lagging queue consumer.
+     - `PRECISION_MISMATCH`: Premature intermediate rounding or floating-point pollution.
+     - `MISSING_EVENT`: Dropped fill, funding settlement, or execution notice.
+     - `DUPLICATE_EVENT`: Redundant processing of an identical event without idempotency suppression.
+     - `STATE_MACHINE_DIVERGENCE`: Inconsistent transition order (e.g. TP1 before SL).
+   - Generates machine-readable diff files (`reconciliation_diff_<timestamp>.json`) and Markdown summary reports.
+   - Provides deterministic offline reproduction fixtures enabling engineers to replay divergent scenarios in isolated unit tests.
+   - Strictly read-only: does not modify live or shadow ledgers.
+4. **Alert & Resolution Policy:**
+   - **Alert Ceiling:** Any balance, equity, or PnL divergence $> 0.0001\text{ USDT}$ triggers an immediate high-priority diagnostic alert.
+   - **Financial Invariant Exact Equality:** Double-entry accounting identities require exact equality ($0.000000000000\text{ USDT}$).
+   - **One-Cent Mismatch Mandate:** A divergence of even one cent ($0.01\text{ USDT}$) represents a material systemic failure and must be investigated to complete root-cause resolution; it can never be waived as immaterial.
+   - **14-Day Validation Reset:** Any material, unexplained financial divergence or state-machine defect immediately restarts the 14-day continuous validation timer from zero (Day 0).
+   - **Cutover Blocker:** Phase 7 cutover is strictly prohibited while any active or unclassified reconciliation divergence exists.
+
 ---
 
-## 13. Scorecard V3.3 Transition & Migration Registry
+## 13. Scorecard V3.4 Transition & Migration Registry Governance
 
-To maintain audit integrity, the frozen baseline is strictly protected:
+To maintain audit integrity and prevent aspirational reporting:
 
-1. **Frozen Baseline Preserved:** `VECTOR-SCOPE-20261027-v1` remains immutable in `docs/progress/baselines/VECTOR-SCOPE-20261027-v1.json`.
-2. **Proposed Baseline V3.3:** Proposed file `docs/progress/baselines/VECTOR-SCOPE-20261028-v3-proposal.json` maps the requirements to the 9-phase sequence.
-3. **Go Migration Registry (`docs/progress/VECTOR_GO_MIGRATION_REGISTRY_V3.md`):** Tracks the operational migration of each component independently across four states (`PHP_AUTH`, `GO_SHADOW`, `GO_AUTH`, `PHP_RETIRED`), now including `MIG-01` through `MIG-29`.
-4. **Scope Distinction:** `APPROVED ARCHITECTURAL SCOPE != IMPLEMENTED RUNTIME CAPABILITY`. Packages `MIG-18` through `MIG-29` are approved planned milestones, not completed implementations.
-5. **Four Independent Progress Dimensions:** Functional Implementation %, Verification %, Product %, and Go Migration %.
+1. **Frozen Baseline Preserved:** `VECTOR-SCOPE-20261027-v1` remains permanently immutable in `docs/progress/baselines/VECTOR-SCOPE-20261027-v1.json`.
+2. **Proposed Baseline V3.4:** Proposed tracking baseline incorporates the 9-phase sequence, Phase 1.0–1.2 increments, and Declarative MVP gates.
+3. **Atomic Migration Registry Updates Rule:**
+   - Whenever a migration package's implementation or ownership maturity changes, the authoritative migration registry (`docs/progress/VECTOR_GO_MIGRATION_REGISTRY_V3.md`) **MUST be updated in the exact same Git commit** as the relevant code implementation change.
+   - Documentation-only amendments do not constitute implementation progress and must never alter maturity states.
+   - No automatic promotion of maturity status based on test counts alone.
+   - Evidence recorded in the registry must correspond to the exact commit SHA where verification passed.
+4. **Six Defined Package Maturity States:**
+   - `APPROVED`: Architectural scope and acceptance criteria approved; runtime implementation not started.
+   - `PHP_AUTH`: Existing PHP implementation is the sole authoritative writer.
+   - `GO_IMPLEMENTED`: Go code implemented, tested, and passing unit/benchmark tests, but not yet verified in operational parallel shadow mode.
+   - `GO_SHADOW`: Go implementation running concurrently in parallel shadow mode; verified by `cmd/vector-reconcile` diff harness without write authority.
+   - `GO_AUTH`: Go promoted to sole authoritative single writer under database fencing; PHP financial write permissions revoked.
+   - `PHP_RETIRED`: Duplicate legacy PHP computational logic cleanly decommissioned and removed from repository.
+5. **Lightweight Automated Drift Check Specification:**
+   - Future verification tooling (`scripts/verify_migration_registry.py`) will check consistency between Git commits, declared package maturity, and corresponding source path existence.
+6. **Scope vs Verification Distinction:** `APPROVED ARCHITECTURAL SCOPE != IMPLEMENTED RUNTIME CAPABILITY`. Packages `MIG-18` through `MIG-29` represent approved planned milestones, not completed implementations.
+7. **Four Independent Progress Dimensions:** Functional Implementation %, Verification %, Product %, and Go Migration %.
 
 ---
 
@@ -1091,18 +1378,23 @@ To maintain audit integrity, the frozen baseline is strictly protected:
 
 | Subsystem | Specific Component | Phase 0–4 State | Phase 5–6 State | Target Phase 7 State | Authoritative Writer |
 |:---|:---|:---:|:---:|:---:|:---:|
+| **Foundation** | Scaled Financial Decimal (`pkg/decimal` - Phase 1.0) | Planned / Approved | Go Pure Library | Go Pure Library | Pure Library |
+| **Foundation** | Core Types & Universal Enums (`pkg/types` - Phase 1.0) | Planned / Approved | Go Pure Library | Go Pure Library | Pure Library |
+| **Foundation** | IPC Message Protocol Envelopes (`pkg/protocol` - Phase 1.1)| Planned / Approved | Go Protocol Engine | Go Protocol Engine | Pure Library |
+| **Foundation** | Fencing Token Generator (`pkg/fencing` - Phase 1.1) | Planned / Approved | Go Fencing Engine | Go Fencing Engine | Pure Library |
+| **Foundation** | Dataset Foundational Manifest Types (`pkg/dataset` - Phase 1.2)| Planned / Approved| Go Manifest Engine | Go Manifest Engine | Pure Library |
 | **Market Data** | Public Candle REST / WS | PHP | Go (Authoritative) | Go | **Go Engine** |
-| **Market Data** | Generic Config Ingestion (CSV)| Planned | Go Config Engine | Go Config Engine | **Go Engine** |
+| **Market Data** | Generic Config Ingestion (CSV MVP - Phase 6)| Planned | Go Config Engine | Go Config Engine | **Go Engine** |
 | **Market Data** | Candle Ring Buffer | PHP / Redis | Go In-Memory | Go | **Go Engine** |
 | **Market Data** | Funding Rates & Open Interest | PHP | Go | Go | **Go Engine** |
-| **Dataset Manager**| Historical Dataset Importer (CSV/Parquet)| Planned | Go Importer | Go Importer | **Go Engine** |
-| **Dataset Manager**| Data Quality & Validation Engine | Planned | Go Validation Engine| Go Validation Engine| **Go Engine** |
-| **Dataset Manager**| Dataset Storage & Versioning | Planned | Postgres / Go | Postgres / Go | **Go Engine** |
-| **Dataset Manager**| Dataset Manager UI & Manifests | Planned | Vue 3 / Laravel | Vue 3 / Laravel | **Laravel Plane**|
-| **Indicators** | Technical Indicators (EMA, RSI...) | PHP & Go | Go Library | Go Library | Pure Library |
+| **Dataset Manager**| Historical Dataset Importer (CSV/Parquet - Phase 2)| Planned | Go Importer | Go Importer | **Go Engine** |
+| **Dataset Manager**| Data Quality & Validation Engine (Phase 2) | Planned | Go Validation Engine| Go Validation Engine| **Go Engine** |
+| **Dataset Manager**| Dataset Storage & Versioning (Phase 2) | Planned | Postgres / Go | Postgres / Go | **Go Engine** |
+| **Dataset Manager**| Dataset Manager UI & Manifests (Phase 2) | Planned | Vue 3 / Laravel | Vue 3 / Laravel | **Laravel Plane**|
+| **Indicators** | Technical Indicators (EMA, RSI, ATR...) | PHP & Go | Go Library | Go Library | Pure Library |
 | **Strategy** | 13 PRIMARY Strategy Families | PHP (5 in Go) | Go (Shadow Parity) | Go (Authoritative) | **Go Engine** |
 | **Strategy** | Strategy Extensibility SDK | PHP Registry | Go Strategy SDK | Go Strategy SDK | **Go Engine** |
-| **Strategy** | Declarative Strategy Engine | Planned | Go Declarative Engine| Go Declarative Engine| **Go Engine** |
+| **Strategy** | Declarative Strategy MVP (EMA, RSI, ATR - Phase 3)| Planned | Go Declarative MVP | Go Declarative Engine| **Go Engine** |
 | **Strategy** | Real-Time Signal Generation | PHP | Go (Shadow) | Go (Authoritative) | **Go Engine** |
 | **Research** | Backtesting Engine | Go | Go | Go | **Go Worker** |
 | **Research** | Dataset Selection & Loader | Planned | Go Loader | Go Loader | **Go Worker** |
@@ -1115,8 +1407,9 @@ To maintain audit integrity, the frozen baseline is strictly protected:
 | **Paper Trading**| Position Lifecycle (Orders/Fills) | PHP | Go (Shadow) | Go (Authoritative) | **Go Engine** |
 | **Paper Trading**| Double-Entry Financial Ledger | PHP | Go (Shadow) | Go (Authoritative) | **Go Engine** |
 | **Paper Trading**| Funding & Fee Settlement | PHP | Go (Shadow) | Go (Authoritative) | **Go Engine** |
+| **Paper Trading**| Reconciliation Diff Tool (`cmd/vector-reconcile` - Phase 5)| Planned | Go Diagnostic Tool | Go Diagnostic Tool | Read-Only Tool |
 | **Adapters** | Multi-Exchange Extensibility SDK| PHP Adapters | Go Exchange SDK | Go Exchange SDK | **Go Engine** |
-| **Adapters** | Generic Config Exchange Adapter| Planned | Go Generic Adapter | Go Generic Adapter | **Go Engine** |
+| **Adapters** | Declarative Exchange MVP (Research Scope - Phase 6)| Planned | Go Generic MVP | Go Generic Adapter | **Go Engine** |
 | **Analytics** | Statistics, Drawdowns, Sharpe | PHP | Go Engine | Go Engine | **Go Engine** |
 | **Control Plane**| Exchange & Strategy Builders UI| Laravel | Laravel | Laravel | **Laravel Plane**|
 | **Control Plane**| Candidate Lab Approval Gates | PHP Laravel | PHP Laravel | PHP Laravel | **Laravel Plane**|
@@ -1129,14 +1422,14 @@ To maintain audit integrity, the frozen baseline is strictly protected:
 
 ## 15. Implementation Handoff & Next Steps
 
-### Current System Status at Baseline `5a8fcd6`
+### Current System Status at Baseline `aeffb31` (Roadmap V3.4)
 - **Phase 0 Status:** **BLOCKED**. All 42 local V1 obligations and 9 browser V3 obligations have authentic passing verification evidence. All 922 backend PHP tests, 64 frontend tests, and Go research tests are passing cleanly.
-- **Phase 0 Blocker:** 45 Production V2 obligations require operator execution of [`phase0_production_acceptance.sql`](file:///home/thunder/work/traderbybit/scripts/diagnostics/phase0_production_acceptance.sql) on the VPS according to [`OPERATOR_CHECKLIST.md`](file:///home/thunder/work/traderbybit/docs/progress/evidence/phase0-production-acceptance/OPERATOR_CHECKLIST.md).
+- **Phase 0 Blocker:** 45 Production V2 obligations require operator execution of [`phase0_production_acceptance.sql`](file:///home/thunder/work/traderbybit/scripts/diagnostics/phase0_production_acceptance.sql) and completion of the formal evidence-backed Operator Attestation protocol on the VPS according to [`OPERATOR_CHECKLIST.md`](file:///home/thunder/work/traderbybit/docs/progress/evidence/phase0-production-acceptance/OPERATOR_CHECKLIST.md).
 - **Binance Immutable Candle Investigation:** Server-time clock skew is an established hypothesis; awaiting operator capture of exact production conflict record to verify.
-- **Phase 1 Status:** **NOT STARTED**. Strictly blocked until formal Phase 0 operator sign-off. Implementation of planned packages `MIG-18` through `MIG-29` is **not** a prerequisite for Phase 1.
+- **Phase 1 Status:** **NOT STARTED**. Strictly blocked until formal Phase 0 Operator Attestation is signed. Implementation of planned packages `MIG-18` through `MIG-29` is **not** a prerequisite for Phase 1.
 
 ### Immediate Action Required by Next Engineer / Operator:
-1. **Operator Action:** Execute the production diagnostic queries on the VPS and record output in `docs/progress/evidence/phase0-production-acceptance/`.
+1. **Operator Action:** Execute the production diagnostic queries on the VPS and complete the formal Operator Attestation record in `docs/progress/evidence/phase0-production-acceptance/operator_attestation.json`.
 2. **Production Conflict Investigation:** Collect the structured Binance immutable candle conflict record from the VPS logs to verify the clock skew root cause.
 3. **Evidence Closure:** Execute `python3 scripts/vector_progress.py --phase 0 --generate` to admit fresh production evidence and close Gate 0.
-4. **Transition to Phase 1:** Upon owner authorization, initiate Phase 1 (Go Foundation: `pkg/decimal`, `pkg/types`, `pkg/protocol`, `pkg/fencing`, `pkg/dataset`).
+4. **Transition to Phase 1.0:** Upon explicit owner authorization, initiate **Phase 1.0** (Financial Decimal and Core Types: `pkg/decimal`, `pkg/types`). Phase 1.1 and 1.2 remain blocked until Phase 1.0 parity verification is accepted.

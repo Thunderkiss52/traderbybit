@@ -199,3 +199,123 @@ The closure run is strictly read-only. It does not authorize the audit-export
 `POST` example above, any autonomy settings mutation, any funding repair, any
 pipeline replay, or any migration rollback. Those obligations remain PENDING
 until separately approved evidence is reviewed.
+
+---
+
+## 4. Formal Operator Attestation Specification & Workflow
+
+### 4.1 Purpose & Governance Principles
+To transition Phase 0 from informal, ambiguous sign-off into an immutable, verifiable engineering record, every Phase 0 evaluation must terminate with a formal, evidence-backed **Operator Attestation**.
+
+1. **Evidence-Based Decision:** An attestation records a human operator's evidence-based finding. It does **not** falsely claim that unverified anomalies were magically resolved, nor does it imply an automatic transfer of legal liability.
+2. **Strict Gate Behavior:**
+   - **Missing Evidence = NOT VERIFIED:** If diagnostic logs, SQL outputs, or API responses are missing, the obligation is strictly `NOT VERIFIED`. It cannot be assumed to pass.
+   - **No Informal Overrides:** A failed or missing mandatory gate cannot be overridden by oral agreement, chat messages, or informal comments.
+   - **Approved Exceptions Required:** Any gate approved despite an anomaly must be recorded with explicit scope, rationale, risk assessment, and operator decision in the `unresolved_exceptions` ledger.
+   - **Exact SHA Binding:** Evidence collected for a specific Git SHA cannot be reused for a different SHA without fresh, documented compatibility verification.
+   - **Successful Deployment Alone != Acceptance:** A passing deployment health check or green CI pipeline proves container startup only, not financial correctness, ledger reconciliation, or data integrity.
+   - **Zero Automatic Acceptance:** The application or test harness must never generate self-attestation or mark Phase 0 accepted without human operator execution.
+
+### 4.2 Required Attestation Fields
+Every authoritative attestation record must contain the following 16 canonical fields:
+
+1. `attestation_schema_version`: Version of the attestation contract (e.g. `vector.attestation.phase0.v1`).
+2. `environment_identity`: Target environment identifier (e.g. `production-vps-primary`).
+3. `deployed_git_sha`: Exact 40-character commit SHA deployed and inspected.
+4. `docker_image_digests`: Map of service names to immutable image digests (`sha256:...`).
+5. `verification_timestamp_utc`: ISO 8601 UTC timestamp when verification occurred.
+6. `operator_identity`: Name, title, and public key or email of the authorized human operator.
+7. `requirement_gate_evaluations`: Map of all 45 V2 obligations + 9 P0 requirements to explicit status: `PASS`, `FAIL`, or `NOT_VERIFIED`.
+8. `sql_diagnostic_manifest`: List of diagnostic scripts (`phase0_production_acceptance.sql`, etc.), SHA-256 checksums, execution results, and exit codes.
+9. `postgresql_readonly_evidence`: Transaction read-only confirmation, duration, query error counts (must be 0).
+10. `financial_reconciliation_summary`: Net PnL discrepancy metric (must be $\le 0.0001\text{ USDT}$), double-entry balance status.
+11. `paper_census_summary`: Verified census of all 26 independent accounts (13 Bybit + 13 Binance PRIMARY accounts, isolated equity).
+12. `pipeline_terminalization_summary`: Pipeline terminalization evidence (zero cross-exchange leaks, zero permanently stuck stages).
+13. `unresolved_exceptions`: Array of structured exception objects (`requirement_id`, `scope`, `rationale`, `mitigation`, `operator_decision`).
+14. `evidence_hashes`: Cryptographic SHA-256 hashes for all captured log and JSON evidence files.
+15. `operator_declaration`: Exact mandatory human-readable approval text:
+    > *"I have reviewed the attached evidence and explicitly approve the listed Phase 0 acceptance results for the identified release SHA."*
+16. `signature_block`: Cryptographic signature (Git commit signature or PGP signature block) OR tamper-evident append-only audit reference.
+
+### 4.3 Signing & Tamper-Evident Integrity
+- **Cryptographic Signing (Preferred):** Where Git signing keys or PGP infrastructure are configured, the attestation artifact must be cryptographically signed by the operator identity.
+- **Tamper-Evident Audit Logging (Alternative):** If PGP keys are not available in the operational environment, the attestation must be logged in an append-only audit ledger with SHA-256 artifact checksums and verified timestamps.
+- **No Fabricated Signatures:** Never invent signatures, insert placeholder key IDs, or claim cryptographic verification when no signature was generated.
+
+### 4.4 Canonical JSON Schema Template (`vector.attestation.phase0.v1`)
+
+```json
+{
+  "$schema": "https://vector.traderbybit.internal/schemas/v3.4/phase0-attestation.json",
+  "attestation_schema_version": "vector.attestation.phase0.v1",
+  "environment_identity": "production-vps-primary",
+  "deployed_git_sha": "9ba6970b4514c32149866e77500757a5784ddcf8",
+  "docker_image_digests": {
+    "app": "sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "postgres": "sha256:ca978112ca1bbdcafac231b39a23dc4da786eff8147c4e72b9807785afee48bb",
+    "redis": "sha256:8843d7f92416211de9ebb963ff4ce28125932878139589d9361ad582a8848f32"
+  },
+  "verification_timestamp_utc": "2026-10-30T12:00:00Z",
+  "operator_identity": {
+    "name": "Operator Name",
+    "role": "Technical Owner / Release Engineer",
+    "email": "operator@traderbybit.internal",
+    "key_id": "0xDEADBEEFCAFE0001"
+  },
+  "gate_summary": {
+    "total_obligations": 45,
+    "pass_count": 0,
+    "fail_count": 0,
+    "not_verified_count": 45,
+    "verdict": "NOT_READY"
+  },
+  "sql_diagnostic_manifest": [
+    {
+      "script_name": "scripts/diagnostics/phase0_production_acceptance.sql",
+      "sha256": "4b227777d4dd1fc61c6f884f48641d02b4d121d3fd328cb08b5531fcacdabf8a",
+      "execution_status": "PENDING_EXECUTION",
+      "exit_code": null
+    }
+  ],
+  "postgresql_readonly_evidence": {
+    "read_only_transaction_enforced": true,
+    "statement_timeout_sec": 30,
+    "lock_timeout_sec": 5,
+    "error_count": 0
+  },
+  "financial_reconciliation_summary": {
+    "max_net_pnl_discrepancy": null,
+    "identity_verified": false
+  },
+  "paper_census_summary": {
+    "bybit_primary_count": 13,
+    "binance_primary_count": 13,
+    "total_verified_accounts": 26,
+    "isolation_confirmed": false
+  },
+  "pipeline_terminalization_summary": {
+    "stuck_stages_count": 0,
+    "cross_exchange_leaks_count": 0,
+    "terminalization_confirmed": false
+  },
+  "unresolved_exceptions": [],
+  "evidence_hashes": {
+    "production_diagnostic.log": "PENDING",
+    "binance_conflict_telemetry.log": "PENDING"
+  },
+  "operator_declaration": "I have reviewed the attached evidence and explicitly approve the listed Phase 0 acceptance results for the identified release SHA.",
+  "signature_block": {
+    "signature_type": "PGP_ARMORED_DETACHED",
+    "signature": null,
+    "signed_at_utc": null
+  }
+}
+```
+
+### 4.5 Operator Workflow for Attestation Submission
+1. **Deploy Release:** Operator triggers GitHub Actions deployment to VPS.
+2. **Execute Read-Only Diagnostics:** Run Step 2 through Step 4 of Section 3.
+3. **Inspect Output & Predicates:** Verify every obligation in Section 2 against the captured evidence.
+4. **Populate Attestation Record:** Fill `docs/progress/evidence/phase0-production-acceptance/operator_attestation.json` with authentic evidence hashes, exact Git SHA, container digests, and gate results.
+5. **Sign & Commit:** Cryptographically sign the record (or generate audit receipt) and commit locally.
+6. **Authorization Gate:** Only upon verified `verdict: "ACCEPTED"` and operator signature is Phase 1.0 implementation authorized to commence.
