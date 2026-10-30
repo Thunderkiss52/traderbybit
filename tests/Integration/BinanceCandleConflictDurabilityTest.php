@@ -226,7 +226,13 @@ final class BinanceCandleConflictDurabilityTest extends TestCase
     public function test_database_connection_failure_is_unavailable_and_leaves_evidence_after_recovery(): void
     {
         $config = config('database.connections.pgsql');
-        config(['database.connections.pgsql.port' => 1]);
+        // WSL drops SYNs to unbound loopback ports instead of returning RST.
+        // Bound the PDO connect attempt so the unavailable-database path is
+        // exercised promptly without changing the failure semantics.
+        config([
+            'database.connections.pgsql.port' => 1,
+            'database.connections.pgsql.options' => [\PDO::ATTR_TIMEOUT => 1],
+        ]);
         DB::purge('pgsql');
         try {
             self::assertSame('CANDLE_HISTORY_INTEGRITY_UNAVAILABLE', $this->window());

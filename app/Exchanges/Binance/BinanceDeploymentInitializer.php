@@ -39,6 +39,11 @@ final class BinanceDeploymentInitializer
             // Provisioning, capital allocation, snapshot repair and M9 must commit together.
             // An application rollback cannot undo earlier committed PAPER records.
             return DB::transaction(function () use ($amount, $approvalReference): array {
+                // This must be the first SQL in the top-level deployment transaction.
+                // M9 and both Bybit checksums then see one PostgreSQL MVCC snapshot.
+                if (DB::connection()->transactionLevel() === 1) {
+                    DB::statement('SET TRANSACTION ISOLATION LEVEL REPEATABLE READ');
+                }
                 // Preflight 1: Schema check
                 $schema = DB::getSchemaBuilder();
                 if (! $schema->hasTable('paper_accounts') || ! $schema->hasColumn('paper_accounts', 'exchange_id')) {

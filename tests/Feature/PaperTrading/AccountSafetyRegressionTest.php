@@ -5,14 +5,36 @@ declare(strict_types=1);
 namespace Tests\Feature\PaperTrading;
 
 use App\PaperTrading\Application\PaperAccountService;
+use App\PaperTrading\Application\PaperExecutionEligibilityService;
 use App\PaperTrading\Application\PerformanceStatisticsService;
+use App\PaperTrading\Application\PositionLifecycleService;
 use App\PaperTrading\Infrastructure\Persistence\EquitySnapshotRecord;
+use Brick\Math\BigDecimal;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use ReflectionMethod;
 use Tests\TestCase;
 
 final class AccountSafetyRegressionTest extends TestCase
 {
     use RefreshDatabase;
+
+    public function test_five_percent_valuation_drawdown_persists_block_and_rejects_new_entries(): void
+    {
+        $account = $this->app->make(PaperAccountService::class)->default();
+        $recalculate = new ReflectionMethod(PositionLifecycleService::class, 'refreshAccountMetrics');
+        $recalculate->invoke(
+            $this->app->make(PositionLifecycleService::class),
+            $account, BigDecimal::of('-500'), BigDecimal::zero(),
+        );
+
+        $account = $account->fresh();
+        self::assertSame('BLOCKED', $account->status);
+        self::assertSame('9500.000000000000', $account->current_equity);
+        self::assertSame('5.00000000', $account->current_drawdown_percent);
+        self::assertSame('entry_drawdown_limit_exceeded',
+            $this->app->make(PaperExecutionEligibilityService::class)->accountEntryRejectionReason($account));
+        self::assertSame('BLOCKED', $this->app->make(PaperAccountService::class)->resume($account->id)->status);
+    }
 
     public function test_resume_keeps_hard_drawdown_limits_and_cannot_override_cooldown(): void
     {

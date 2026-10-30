@@ -54,3 +54,25 @@ ssh -T "$VECTOR_PROD_SSH" \
 Required output: `transaction_read_only=on`; each migration applied once with its table present; journal/conflict state counts; six account rows with corrected/original M9 differences, realized/equity differences, position and execution/funding totals; all relevant position rows; the 13-strategy Binance cohort with capital, snapshot, position and journal counts; and the overall account census. A missing account, nonzero corrected difference, closed mark, other ledger/provenance mismatch, unexpected Binance capital or history, or missing schema object blocks a retry pending classification. **The actual production rows have not been supplied, so the verdict is WAITING FOR OPERATOR READ-ONLY DIAGNOSTIC.**
 
 **Severity: HIGH.** The actual six production mismatches and possible partial Binance writes remain unverified. Phase 0 stays BLOCKED; Phase 1 has not started. The prior local P1 V4 gate remains valid for its eight candle-integrity guarantees, but it cannot authorize a deployment retry after this distinct M9 failure.
+
+## Second failure (`c81d3974`) — MVCC snapshot fix
+
+The second deployment failed with one `UNREALIZED_MISMATCH` for `multi_timeframe_trend_following`. The operator's read-only diagnostic at `2026-10-30 08:51:05 UTC` showed `m9_difference = 0` for all 13 Bybit accounts, including `2.408252280000` account unrealized PnL matched by one active position. This proves consistency at the diagnostic snapshot; it does not prove consistency at the earlier deployment instant. The deployment-time values were never captured.
+
+### Supported mechanism
+
+M9 previously ran inside the initializer transaction at PostgreSQL `READ COMMITTED` and read the account cohort and each account's positions in separate SQL statements. Every PAPER account-unrealized writer found in the source is `PositionLifecycleService::refreshAccountMetrics`, called inside the same `DB::transaction` that updates the position mark. That writer is atomic. A concurrent atomic valuation commit that lands between M9's account `SELECT` and position `SELECT` is therefore visible as an old account row plus a new position row at `READ COMMITTED`, producing a transient false `UNREALIZED_MISMATCH`. The later healthy diagnostic is consistent with that transient shape. The exact production instant remains unproven because the failed deployment did not log the compared values.
+
+### Fix
+
+- `BinanceDeploymentInitializer` now sets `SET TRANSACTION ISOLATION LEVEL REPEATABLE READ` before the first SQL statement of the top-level deployment transaction. Provisioning, capital, checkpoint preflight, Bybit checksums and M9 then share one MVCC snapshot.
+- `ExchangePaperReconciliation::inspect()` opens its own `REPEATABLE READ READ ONLY` transaction when called without one. A runtime caller that supplies a transaction at `READ COMMITTED` fails closed instead of authorizing M9.
+- M9 still compares exact `NUMERIC`/`BigDecimal` values, still rejects genuine account/position, closed-mark, realized, equity, fee, funding, provenance and census failures, and still includes BLOCKED accounts.
+- Every failure now carries `account_id`, account status, account unrealized PnL, summed active-position unrealized PnL, exact difference, active-position count, closed nonzero marks, position count, reconciliation scope, UTC check time, PostgreSQL snapshot and isolation metadata. Values are taken from the same snapshot.
+- No migration, account reset, financial-history rewrite, tolerance change or M9 bypass was introduced.
+
+### Verification
+
+Task-owned isolated PostgreSQL 17 (`bybit_test`) was used. The new integration test commits an atomic position+account valuation update from an independent connection between M9's account and position reads. At `REPEATABLE READ` M9 passes and observes the pre-commit values; the same state committed before reconciliation still fails with exact diagnostics. The deployment initializer is tested through the same interleaving. BLOCKED accounts remain included and are not a failure cause. Full results are recorded in the final task report.
+
+The three BLOCKED Bybit accounts (`baseline`, `regime_switching`, `trend_pullback`) were not modified. Their exact historical block reason cannot be established from equity alone; [the read-only diagnostic](BYBIT_BLOCKED_READ_ONLY_20261030.sql) returns account risk state, snapshots at or above the 5% entry limit, recent risk decisions and entry/position journal events for operator classification. Local policy tests confirm the 5% drawdown rule produces `BLOCKED`, blocks new entries, survives `resume`, and does not affect M9.
