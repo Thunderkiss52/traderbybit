@@ -1,0 +1,59 @@
+{
+  "source_head_before_changes": "0c0cb4bc490c4f4cafe2c9ab05b0e6789e374de6",
+  "environment": "task-owned PostgreSQL 17 bybit_test on Docker network none; PHP 8.5.12; no production connection",
+  "commands": [
+    {
+      "check": "targeted",
+      "inner_command": "php -dxdebug.mode=off vendor/bin/phpunit tests/Feature/Exchanges/BinanceDeploymentInitializationTest.php tests/Feature/PaperTrading/EquitySnapshotCrossExchangeIntegrityTest.php --log-junit /tmp/vector-m9retry-20261030/targeted.xml",
+      "exit_code": 0
+    },
+    {
+      "check": "full",
+      "inner_command": "php -dxdebug.mode=off -dmemory_limit=1G vendor/bin/phpunit --log-junit /tmp/vector-m9retry-20261030/full.xml",
+      "exit_code": 0
+    },
+    {
+      "check": "pint",
+      "inner_command": "php vendor/bin/pint --test",
+      "exit_code": 0
+    },
+    {
+      "check": "diagnostic_synthetic_six",
+      "inner_command": "psql -X -v ON_ERROR_STOP=1 -P pager=off -U postgres -d bybit_test -f - < docs/reports/M9_UNREALIZED_READ_ONLY_20261030.sql; PGOPTIONS=-c default_transaction_read_only=on",
+      "exit_code": 0,
+      "synthetic_setup": "UPDATE paper_accounts SET unrealized_pnl = 1, current_equity = starting_balance + realized_pnl + 1 WHERE exchange_id = bybit AND is_primary AND primary_strategy_id IN (the six named failed strategies); UPDATE 6 on task-owned bybit_test"
+    },
+    {
+      "check": "operator_command_local_segment",
+      "inner_command": "docker exec -i -e 'PGOPTIONS=-c default_transaction_read_only=on' vector-m9retry-20261030-pg sh -c 'exec psql -X -v ON_ERROR_STOP=1 -P pager=off -U \"$POSTGRES_USER\" -d \"$POSTGRES_DB\"' < docs/reports/M9_UNREALIZED_READ_ONLY_20261030.sql",
+      "exit_code": 0
+    },
+    {
+      "check": "old_source_boot",
+      "detail": "671f72f source with unchanged composer.lock and current vendor booted against schema containing both new migrations; Bybit account read succeeded",
+      "exit_code": 0
+    }
+  ],
+  "junit": {
+    "targeted": {
+      "tests": 16,
+      "assertions": 423,
+      "errors": 0,
+      "failures": 0,
+      "skipped": 0
+    },
+    "full": {
+      "tests": 1073,
+      "assertions": 10605,
+      "errors": 0,
+      "failures": 0,
+      "skipped": 1
+    }
+  },
+  "notes": "synthetic six-account differences are not production values",
+  "source_sha256": {
+    "app/Exchanges/Binance/BinanceDeploymentInitializer.php": "b5ea126067446b01c294d1a16198753f0d1a2b07077dd26987222a612c25e885",
+    "tests/Feature/Exchanges/BinanceDeploymentInitializationTest.php": "9134e8436618ee050db5504f87db2167e23d8cb7cd48d52b924506250778d97f",
+    "docs/reports/M9_UNREALIZED_READ_ONLY_20261030.sql": "9d7dae59574e9ab3296673c2e5830e6571c59ee17e7c52a4819416cf27032367"
+  }
+}

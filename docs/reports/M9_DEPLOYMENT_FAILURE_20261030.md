@@ -1,6 +1,6 @@
 # M9 deployment failure — 2026-10-30
 
-**Status: NOT READY for a deployment retry.** This report separates the operator-supplied production log from local verification. No production connection or mutation was made during this investigation.
+**Status: WAITING FOR OPERATOR READ-ONLY DIAGNOSTIC.** This report separates the operator-supplied production log from local verification. No production connection or mutation was made during this investigation.
 
 ## Observed deployment result
 
@@ -12,7 +12,7 @@ M9 previously summed `unrealized_pnl` across **all** virtual positions while the
 
 The previous initializer committed provisioning, capital, and snapshot repair before M9. A later M9 failure could therefore leave PAPER records despite application-image rollback. The same commit places initialization writes and M9 in one PostgreSQL transaction so a new M9 failure rolls those writes back. This change does not reverse any records from the failed production attempt.
 
-## Verification
+## Initial fix verification
 
 All tests used task-owned PostgreSQL `bybit_test` in an isolated container, never production. Logs, JUnit, commands, exit codes, and hashes are in [M9 evidence](../progress/evidence/m9-deploy-failure-20261030/).
 
@@ -31,5 +31,26 @@ The targeted regression proves a failed M9 transaction leaves no newly provision
 ## Required operator diagnostic before retry
 
 With separate operator authorization, run the [read-only, repeatable-read SQL](M9_UNREALIZED_READ_ONLY_20261030.sql) on production and retain its row-level output securely. It identifies active versus closed position marks, account differences, latest snapshots, and existing Binance accounts/capital/snapshots. Inspect the six strategies and any existing Binance initialization writes before deciding whether code alone is sufficient. Do not run remediation SQL or alter PAPER history on the basis of this report.
+
+### Focused retry review
+
+The failure log contains six instances of the **same** M9 check, `UNREALIZED_MISMATCH`; it does not identify six different failed invariants. M9 still enforces exact account unrealized PnL = sum of active position marks. It separately rejects nonzero closed-position marks. It also verifies account realized PnL = position gross + funding - fees (tolerance `0.000001`), equity = starting balance + realized + unrealized (same tolerance), position net PnL, execution quantities/gross/fees, funding source and amounts, exchange provenance, approved Binance capital, and the 26-account census. The new calculation does not make a true active-position difference pass.
+
+The initializer uses one PostgreSQL transaction for Bybit account completion, Binance provisioning, approved capital, checkpoint preflight and M9. Nested service transactions share that connection. Unique account `(exchange_id, primary_strategy_id)`, capital `(paper_account_id, approval_reference)`, and snapshot `(paper_account_id, source_event_key)` indexes constrain retries. A cache lock reduces concurrent attempts; a duplicate after lock expiry can fail on a unique constraint, but cannot create a second account or allocation. The initializer previously applied snapshot repair automatically; local commit `519a0173e56e49ee109a3cbe5eccf364c2ff4a1b` now uses its dry-run path and stops on repair candidates without modifying those historical records. Separate authorization remains required for any repair.
+
+Final-code isolated PostgreSQL checks are retained in [retry evidence](../progress/evidence/m9-retry-review-20261030/): targeted PHPUnit 16 tests / 423 assertions; full PHPUnit 1,073 tests / 10,605 assertions / one intentional public Bybit API skip; Pint 720 files; PHP syntax on both changed PHP files; read-only diagnostic against a synthetic six-mismatch fixture; old-source bootstrap and account read against the migrated schema. Each executed check exited 0. The synthetic fixture is a failure-shape test, not a copy of production balances or positions.
+
+Both applied migrations only create new conflict tables and their constraints/indexes; they do not alter the previous application's tables. In `docker/scripts/update.sh`, the error trap restores the prior application images and runs a healthcheck; deployment-state promotion happens only after all steps pass. It explicitly leaves migrations applied. The operator log shows the previous image passed its healthcheck after rollback. An isolated run also booted source `671f72f` against a PostgreSQL schema containing both migrations and read the 13 Bybit accounts. This verifies basic schema compatibility, not every production path or the actual deployment-state files.
+
+From a trusted operator workstation with this repository checked out, set `VECTOR_PROD_SSH` to the authorized SSH target and run the following **only when authorized for read-only production diagnostics**. The SQL is streamed to PostgreSQL; no file is written on the VPS. `PGOPTIONS` and the SQL transaction independently enforce read-only mode. Keep the output private because it contains PAPER account details.
+
+```bash
+umask 077
+ssh -T "$VECTOR_PROD_SSH" \
+  "docker exec -i -e PGOPTIONS='-c default_transaction_read_only=on' bybit-signals-postgres-1 sh -c 'exec psql -X -v ON_ERROR_STOP=1 -P pager=off -U \"\$POSTGRES_USER\" -d \"\$POSTGRES_DB\"'" \
+  < docs/reports/M9_UNREALIZED_READ_ONLY_20261030.sql > m9-production-readonly.txt
+```
+
+Required output: `transaction_read_only=on`; each migration applied once with its table present; journal/conflict state counts; six account rows with corrected/original M9 differences, realized/equity differences, position and execution/funding totals; all relevant position rows; the 13-strategy Binance cohort with capital, snapshot, position and journal counts; and the overall account census. A missing account, nonzero corrected difference, closed mark, other ledger/provenance mismatch, unexpected Binance capital or history, or missing schema object blocks a retry pending classification. **The actual production rows have not been supplied, so the verdict is WAITING FOR OPERATOR READ-ONLY DIAGNOSTIC.**
 
 **Severity: HIGH.** The actual six production mismatches and possible partial Binance writes remain unverified. Phase 0 stays BLOCKED; Phase 1 has not started. The prior local P1 V4 gate remains valid for its eight candle-integrity guarantees, but it cannot authorize a deployment retry after this distinct M9 failure.
