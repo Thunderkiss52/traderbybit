@@ -5,6 +5,8 @@ declare(strict_types=1);
 namespace Tests\Feature\Exchanges;
 
 use App\Exchanges\Binance\BinanceDeploymentInitializer;
+use App\Exchanges\Binance\BinancePaperCapital;
+use App\Exchanges\Binance\BinancePaperProvisioner;
 use App\Exchanges\Binance\ExchangePaperReconciliation;
 use App\PaperTrading\Application\PaperAccountService;
 use App\PaperTrading\Infrastructure\Persistence\JournalEventRecord;
@@ -203,6 +205,91 @@ final class BinanceDeploymentInitializationTest extends TestCase
         self::assertEquals($beforeSnapshots, DB::table('equity_snapshots')->orderBy('id')->get());
         self::assertSame(0, DB::table('paper_capital_events')->where('exchange_id', 'binance')->count());
         self::assertSame(0, DB::table('paper_accounts')->where('exchange_id', 'binance')->count());
+    }
+
+    public function test_retry_refuses_to_rewrite_existing_binance_checkpoint(): void
+    {
+        $this->app->make(PaperAccountService::class)->allPrimaryAccounts('bybit');
+        $initializer = app(BinanceDeploymentInitializer::class);
+        $initializer->initialize('10000', 'OWNER-VECTOR-20261023');
+        $account = DB::table('paper_accounts')->where('exchange_id', 'binance')->first();
+        $snapshotId = DB::table('equity_snapshots')->insertGetId([
+            'paper_account_id' => $account->id,
+            'exchange_id' => 'bybit',
+            'recorded_at' => now('UTC'),
+            'equity' => $account->current_equity,
+            'realized_pnl' => '0',
+            'unrealized_pnl' => '0',
+            'drawdown_percent' => '0',
+            'source_event_key' => 'checkpoint:retry-provenance-test',
+            'created_at' => now('UTC'),
+            'updated_at' => now('UTC'),
+        ]);
+        $before = DB::table('equity_snapshots')->where('id', $snapshotId)->first();
+
+        try {
+            $initializer->initialize('10000', 'OWNER-VECTOR-20261023');
+            self::fail('Initializer silently repaired a historical PAPER checkpoint.');
+        } catch (\RuntimeException $e) {
+            self::assertStringContainsString('checkpoint provenance requires separate review', $e->getMessage());
+        }
+
+        self::assertEquals($before, DB::table('equity_snapshots')->where('id', $snapshotId)->first());
+        self::assertSame(13, DB::table('paper_capital_events')->where('exchange_id', 'binance')->count());
+    }
+
+    public function test_retry_completes_previously_provisioned_unfunded_binance_cohort_once(): void
+    {
+        app(PaperAccountService::class)->allPrimaryAccounts('bybit');
+        config(['exchanges.binance_paper_provisioning_approved' => true]);
+        app(BinancePaperProvisioner::class)->provision();
+        self::assertSame(13, DB::table('paper_accounts')->where('exchange_id', 'binance')->count());
+        self::assertSame(0, DB::table('paper_capital_events')->where('exchange_id', 'binance')->count());
+
+        $initializer = app(BinanceDeploymentInitializer::class);
+        $result = $initializer->initialize('10000', 'OWNER-VECTOR-20261023');
+        self::assertSame('LEDGER_PASS_ONLY', $result['reconciliation']['status']);
+        self::assertSame(0, $result['provisioned']['created']);
+        self::assertSame(13, $result['capital']['accounts_allocated']);
+        $events = DB::table('paper_capital_events')->where('exchange_id', 'binance')->orderBy('id')->get();
+        $snapshots = DB::table('equity_snapshots')->where('exchange_id', 'binance')->orderBy('id')->get();
+
+        $repeat = $initializer->initialize('10000', 'OWNER-VECTOR-20261023');
+        self::assertSame(13, $repeat['capital']['idempotent_repeats']);
+        self::assertEquals($events, DB::table('paper_capital_events')->where('exchange_id', 'binance')->orderBy('id')->get());
+        self::assertEquals($snapshots, DB::table('equity_snapshots')->where('exchange_id', 'binance')->orderBy('id')->get());
+    }
+
+    public function test_six_m9_mismatches_preserve_previously_committed_binance_cohort(): void
+    {
+        app(PaperAccountService::class)->allPrimaryAccounts('bybit');
+        config(['exchanges.binance_paper_provisioning_approved' => true]);
+        app(BinancePaperProvisioner::class)->provision();
+        app(BinancePaperCapital::class)->allocate('10000', 'OWNER-VECTOR-20261023');
+        foreach (['support_resistance_bounce', 'support_resistance_breakout',
+            'funding_open_interest_squeeze', 'liquidity_sweep_reversal',
+            'volatility_compression_breakout', 'btc_eth_lead_lag'] as $strategyId) {
+            DB::table('paper_accounts')->where('exchange_id', 'bybit')
+                ->where('primary_strategy_id', $strategyId)
+                ->update(['unrealized_pnl' => '1', 'current_equity' => '10001']);
+        }
+        $issues = app(ExchangePaperReconciliation::class)->inspect()['issues'];
+        self::assertCount(6, $issues);
+        self::assertSame(['UNREALIZED_MISMATCH'], array_values(array_unique(array_column($issues, 'code'))));
+        $accounts = DB::table('paper_accounts')->orderBy('id')->get();
+        $capital = DB::table('paper_capital_events')->orderBy('id')->get();
+        $snapshots = DB::table('equity_snapshots')->orderBy('id')->get();
+
+        try {
+            app(BinanceDeploymentInitializer::class)->initialize('10000', 'OWNER-VECTOR-20261023');
+            self::fail('M9 accepted six mismatched Bybit accounts.');
+        } catch (\RuntimeException $e) {
+            self::assertStringContainsString('UNREALIZED_MISMATCH', $e->getMessage());
+        }
+
+        self::assertEquals($accounts, DB::table('paper_accounts')->orderBy('id')->get());
+        self::assertEquals($capital, DB::table('paper_capital_events')->orderBy('id')->get());
+        self::assertEquals($snapshots, DB::table('equity_snapshots')->orderBy('id')->get());
     }
 
     public function test_deployment_initialization_is_idempotent_after_binance_activation_and_trading_history(): void

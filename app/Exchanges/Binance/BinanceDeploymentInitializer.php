@@ -72,9 +72,13 @@ final class BinanceDeploymentInitializer
                     throw new RuntimeException('Bybit financial state integrity violation during Binance initialization.');
                 }
 
-                // Step 3.5: Ensure existing Binance checkpoints are consistent before reconciliation
+                // Existing PAPER checkpoints require separate approval for repair.
+                // Deployment initialization must not rewrite historical evidence.
                 $repairService = $this->snapshotRepair ?? app(EquitySnapshotRepairService::class);
-                $repairResult = $repairService->repair(apply: true);
+                $repairResult = $repairService->repair(apply: false);
+                if ($repairResult['candidates_count'] !== 0) {
+                    throw new RuntimeException('Binance checkpoint provenance requires separate review before initialization.');
+                }
 
                 // Step 4: Run full M9 26-account reconciliation
                 $reconcileReport = $this->reconciliation->inspect();
