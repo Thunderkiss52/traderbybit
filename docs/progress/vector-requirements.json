@@ -506,7 +506,8 @@
         "No credit inferred from old pass counts. Runtime source atom credit does not prove integrated target behavior.",
         "2026-10-27 evidence closure: Exact synthetic fee/funding identities and negative controls pass. The atomic criterion also asks for reconciliation of the current account population, unavailable here. Procedure: Retain the named fixture results; obtain Q1/Q3 plus certified historical schedules and independently recalculate the current population, including all five previously reported late-funding candidates. No repair command.",
         "Phase 0 Final Closure: VEC-P0-003-V1 remains UNAVAILABLE pending operator-authorized live account population reconciliation.",
-        "2026-10-29 Phase 0 integrity remediation: see docs/progress/evidence/phase0-production-acceptance/REMEDIATION_20261029.md and VALIDATION_20261029.md. New local regressions do not certify the entire frozen obligation. All production V2 and product acceptance remain pending; no scores admitted from aggregate production counts."
+        "2026-10-29 Phase 0 integrity remediation: see docs/progress/evidence/phase0-production-acceptance/REMEDIATION_20261029.md and VALIDATION_20261029.md. New local regressions do not certify the entire frozen obligation. All production V2 and product acceptance remain pending; no scores admitted from aggregate production counts.",
+        "2026-10-30 operator-supplied deployment log: six Bybit PRIMARY accounts failed M9 with UNREALIZED_MISMATCH. Exact account/position values and funding provenance were not provided; no historical repair or new acceptance credit. See docs/reports/M9_DEPLOYMENT_FAILURE_20261030.md."
       ],
       "assessed_commit": "d9a0aeb5d14233fc95e9e5cc55d8748814362f59",
       "roadmap_reference": "docs/roadmap/VECTOR_POST_REMEDIATION_IMPLEMENTATION_ROADMAP.md",
@@ -1359,7 +1360,8 @@
         "2026-10-27 evidence closure: Both atomic criteria require operator-authorized current-release evidence and independent acceptance. None was collected. Procedure: Collect the production packets below, map each acceptance ID, obtain explicit responsible-actor acceptance and retain authorization. Local fixtures cannot satisfy this obligation.",
         "Phase 0 Final Closure: VEC-P0-008-V1 remains UNAVAILABLE pending operator sign-off and production authorization gate.",
         "2026-10-29 Phase 0 integrity remediation: see docs/progress/evidence/phase0-production-acceptance/REMEDIATION_20261029.md and VALIDATION_20261029.md. New local regressions do not certify the entire frozen obligation. All production V2 and product acceptance remain pending; no scores admitted from aggregate production counts.",
-        "2026-10-30 P1 V4 local gate is ready for an authorized operator push after 8 known integrity guarantees passed. See docs/reports/P1_CANDLE_INTEGRITY_V4_20261030.md. The Phase 0 production acceptance obligation remains BLOCKED; no production, browser or product evidence was collected."
+        "2026-10-30 P1 V4 local gate is ready for an authorized operator push after 8 known integrity guarantees passed. See docs/reports/P1_CANDLE_INTEGRITY_V4_20261030.md. The Phase 0 production acceptance obligation remains BLOCKED; no production, browser or product evidence was collected.",
+        "2026-10-30 deployment attempt at 39ca806 failed M9 and application rolled back to 671f72f; additive migrations remain. Local 2deae21 prevents new partial Binance provisioning on an M9 failure, but production account rows and prior side effects remain unverified. Gate remains BLOCKED. See docs/reports/M9_DEPLOYMENT_FAILURE_20261030.md."
       ],
       "assessed_commit": "d9a0aeb5d14233fc95e9e5cc55d8748814362f59",
       "roadmap_reference": "docs/roadmap/VECTOR_POST_REMEDIATION_IMPLEMENTATION_ROADMAP.md",

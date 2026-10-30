@@ -8,6 +8,12 @@
 **Target Proposal Baseline:** `VECTOR-SCOPE-20261028-v3.3`
 **Execution Mode:** STRICTLY VIRTUAL PAPER TRADING ONLY. Zero real exchange trading; zero private trade credentials; zero order placement endpoints.
 
+### P1 production deployment attempt — 2026-10-30
+
+The operator-supplied GitHub Actions log for `39ca8063fcd324548cdf0b33ccb90dfd3e4ed73e` shows **FAILED** deployment at M9: six Bybit PRIMARY accounts reported `UNREALIZED_MISMATCH`. The workflow's application rollback restored the `671f72f11ba76a978dc1a6f29ae0ceeeb63e9322` image and the supplied healthcheck passed; additive conflict migrations `220000` and `220100` remain applied. The log does not establish whether the initializer already committed Binance account/capital/snapshot changes. See the [failure analysis and read-only diagnostic](../reports/M9_DEPLOYMENT_FAILURE_20261030.md). Do not retry deployment from the successful local V4 gate alone.
+
+Local commit `2deae2121e7fc2c06b099eb07355b995697b3fc9` aligns M9 unrealized scope with active positions, flags nonzero closed-position marks, and makes initialization database writes atomic. The production values remain unclassified; these fixes are **LOCAL VERIFIED, PRODUCTION NOT VERIFIED**. Phase 0 stays **BLOCKED**, Phase 1 **NOT STARTED**. No production repair or deployment was performed by the coding agent.
+
 ### P1 Binance Candle Integrity V4 local gate — 2026-10-30
 
 The [V4 report](../reports/P1_CANDLE_INTEGRITY_V4_20261030.md) supersedes the V3 local NOT READY verdict for its three reproduced blockers. Journal recovery is idempotent and durably receipted; malformed evidence fails closed; ongoing strategy inputs consult shared storage and reject affected scopes. The five V2 fixes and all three V3 fixes have focused PostgreSQL regression evidence. Targeted PHPUnit: 126 tests / 1,108 assertions; full PHPUnit: 1,069 tests / 10,581 assertions / one intentional network skip; both exit 0. Pint, PHP syntax, frontend tests/build, Go race, preserved V3 probes and strict tracker validation passed; full command records and hashes are in the [V4 evidence directory](../progress/evidence/p1-candle-integrity-v4-20261030/).
