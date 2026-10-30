@@ -22,6 +22,7 @@ use App\QuoteIntegrity\Console\QimRunChecksCommand;
 use App\QuoteIntegrity\Console\QimSampleBarsCommand;
 use App\Research\Console\ResearchBenchmarkCommand;
 use App\Strategy\Console\GenerateSignalsCommand;
+use App\Strategy\Domain\StrategyInputIntegrityException;
 use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Auth\AuthenticationException;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
@@ -75,6 +76,14 @@ return Application::configure(basePath: dirname(__DIR__))
         $exceptions->render(function (Throwable $exception, Request $request): ?Response {
             if (! $request->is('api/*')) {
                 return null;
+            }
+            if ($exception instanceof StrategyInputIntegrityException) {
+                return response()->json([
+                    'schema_version' => '1.0.0', 'research_mode' => true,
+                    'error' => ['code' => $exception->reasonCode, 'message' => 'Strategy input is blocked by candle integrity.',
+                        'integrity_status' => $exception->integrityStatus, 'scope' => $exception->scope,
+                        'request_id' => $request->attributes->get('request_id')],
+                ], 503);
             }
             if ($exception instanceof HttpExceptionInterface
                 || $exception instanceof ValidationException

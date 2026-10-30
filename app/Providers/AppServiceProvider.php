@@ -22,6 +22,7 @@ use App\Indicators\Math\Decimal;
 use App\MarketData\Application\CandleSynchronizer;
 use App\MarketData\Application\ClosedCandleIngestor;
 use App\MarketData\Application\FundingHistorySynchronizer;
+use App\MarketData\Application\MarketCandleConflictService;
 use App\MarketData\Application\MarketStreamSupervisor;
 use App\MarketData\Application\OpenInterestHistorySynchronizer;
 use App\MarketData\Contracts\Backoff;
@@ -154,6 +155,7 @@ class AppServiceProvider extends ServiceProvider
             indicators: $app->make(IndicatorEngine::class),
             contexts: $app->make(MarketContextRepository::class),
             config: (array) config('strategy'),
+            integrity: $app->make(MarketCandleConflictService::class),
         ));
         $this->app->singleton(SignalGenerator::class, fn ($app): SignalGenerator => new SignalGenerator(
             inputs: $app->make(StrategyInputFactory::class),

@@ -4,13 +4,13 @@ declare(strict_types=1);
 
 namespace App\MarketData\Application;
 
+use App\MarketData\Domain\CandleConflictEvidence;
 use App\MarketData\Domain\CandleIntegrityUnavailable;
 use App\MarketData\Infrastructure\Persistence\CandleConflictJournal;
-use App\MarketData\Infrastructure\Persistence\MarketCandleConflictRecord;
+use App\MarketData\Infrastructure\Persistence\CandleIntegrityDatabase;
 use Carbon\CarbonImmutable;
 use DateTimeInterface;
-use Illuminate\Database\Connectors\ConnectionFactory;
-use Illuminate\Support\Facades\DB;
+use Illuminate\Database\Connection;
 use Throwable;
 
 final class MarketCandleConflictService
@@ -36,17 +36,10 @@ final class MarketCandleConflictService
         string $sourceProvenance = 'binance_public_rest'
     ): array {
         $now = CarbonImmutable::now('UTC');
-        $nowStr = $now->toIso8601String();
-        $fingerprint = hash('sha256', json_encode([
-            'exchange' => $exchange,
-            'category' => $category,
-            'symbol' => $symbol,
-            'interval' => $interval,
-            'open_time' => $openTimeUtc,
-            'incoming' => $incomingValues,
-        ], JSON_THROW_ON_ERROR));
+        $nowStr = $now->toISOString();
 
         $conflictData = [
+            'schema_version' => 1, 'event_id' => bin2hex(random_bytes(32)),
             'exchange' => $exchange,
             'category' => $category,
             'symbol' => $symbol,
@@ -57,12 +50,12 @@ final class MarketCandleConflictService
             'conflict_column' => $conflictColumn,
             'error_message' => $errorMessage,
             'source_provenance' => $sourceProvenance,
-            'payload_fingerprint' => $fingerprint,
             'first_seen_at' => $nowStr,
             'last_seen_at' => $nowStr,
             'occurrence_count' => 1,
             'status' => 'UNRESOLVED',
         ];
+        $conflictData['payload_fingerprint'] = CandleConflictEvidence::fingerprint($conflictData);
 
         $journal = app(CandleConflictJournal::class);
         $pending = null;
@@ -72,58 +65,17 @@ final class MarketCandleConflictService
         } catch (Throwable $e) {
             $journalFailure = $e;
         }
-        $connection = null;
-        $connectTimeout = getenv('PGCONNECT_TIMEOUT');
+        $recovery = app(CandleConflictRecovery::class);
         try {
-            // Clone the resolved WRITE configuration, including SSL, schema and socket settings.
-            // ConnectionFactory creates a genuinely new PDO, outside any caller transaction.
-            $config = DB::connection()->getConfig();
-            if (($config['driver'] ?? null) !== 'pgsql') {
-                throw new CandleIntegrityUnavailable('PostgreSQL integrity storage required.');
-            }
-            unset($config['read'], $config['write'], $config['url']);
-            putenv('PGCONNECT_TIMEOUT=3');
-            $connection = app(ConnectionFactory::class)->make($config, 'candle_integrity_writer');
-            $persisted = $connection->transaction(function () use ($connection, $conflictData, $now): array {
-                $connection->statement("SET LOCAL lock_timeout = '1000ms'");
-                $connection->statement("SET LOCAL statement_timeout = '3000ms'");
-                $values = $conflictData;
-                $values['stored_values'] = json_encode($values['stored_values'], JSON_THROW_ON_ERROR);
-                $values['incoming_values'] = json_encode($values['incoming_values'], JSON_THROW_ON_ERROR);
-                $values['created_at'] = $now;
-                $values['updated_at'] = $now;
-                $values['resolved_at'] = null;
-                // One PostgreSQL statement serializes concurrent insert/reopen/count updates.
-                // First stored values, first_seen_at and prior resolution notes remain intact.
-                $connection->table('market_candle_conflicts')->upsert([$values],
-                    ['exchange', 'category', 'symbol', 'interval', 'open_time'], [
-                        'incoming_values', 'conflict_column', 'error_message', 'payload_fingerprint',
-                        'last_seen_at', 'updated_at', 'status', 'resolved_at',
-                        'occurrence_count' => $connection->raw('market_candle_conflicts.occurrence_count + 1'),
-                    ]);
-                $identity = array_intersect_key($values, array_flip(['exchange', 'category', 'symbol', 'interval', 'open_time']));
-
-                return (array) $connection->table('market_candle_conflicts')->where($identity)->first();
-            }, attempts: 1);
             if ($pending !== null) {
-                $journal->complete($pending);
+                return $recovery->recover($pending)['conflict'];
             }
-            if ($journalFailure !== null) {
-                throw new CandleIntegrityUnavailable('Shared journal unavailable; database evidence was committed.', previous: $journalFailure);
-            }
+            // Preserve independent DB evidence even if journal creation failed, then reject success.
+            $recovery->persist($conflictData, $conflictData['event_id'], hash('sha256', json_encode($conflictData, JSON_THROW_ON_ERROR)."\n"), $conflictData['event_id'].'.json');
+            throw new CandleIntegrityUnavailable('CANDLE_INTEGRITY_UNAVAILABLE: shared journal unavailable; database evidence committed.', previous: $journalFailure);
         } catch (Throwable $e) {
-            // The write-ahead file remains on shared app_storage and blocks readiness.
-            throw new CandleIntegrityUnavailable('CANDLE_INTEGRITY_UNAVAILABLE: conflict persistence not acknowledged.', previous: $e);
-        } finally {
-            $connection?->disconnect();
-            $connectTimeout === false ? putenv('PGCONNECT_TIMEOUT') : putenv('PGCONNECT_TIMEOUT='.$connectTimeout);
+            throw new CandleIntegrityUnavailable('CANDLE_INTEGRITY_UNAVAILABLE: conflict persistence not acknowledged.', previous: $e, reasonCode: $e instanceof CandleIntegrityUnavailable ? $e->reasonCode : 'CANDLE_INTEGRITY_UNAVAILABLE');
         }
-
-        foreach (['stored_values', 'incoming_values'] as $column) {
-            $persisted[$column] = json_decode($persisted[$column], true, flags: JSON_THROW_ON_ERROR);
-        }
-
-        return $persisted;
     }
 
     /**
@@ -136,37 +88,126 @@ final class MarketCandleConflictService
         ?DateTimeInterface $windowStart = null,
         ?DateTimeInterface $windowEnd = null
     ): bool {
+        $db = app(CandleIntegrityDatabase::class)->connect();
         try {
-            app(CandleConflictJournal::class)->assertClear($exchange, $symbol, $interval, $windowStart, $windowEnd);
+            return $this->hasActiveConflictOn($db, $exchange, $symbol, $interval, $windowStart, $windowEnd);
+        } finally {
+            $db->disconnect();
+        }
+    }
 
-            $query = MarketCandleConflictRecord::query()->useWritePdo()
-                ->where('exchange', $exchange)
-                ->where('symbol', $symbol)
-                ->where('interval', $interval)
-                ->where('status', 'UNRESOLVED');
-
+    /**
+     * Same as hasActiveConflict but reuses an already-open independent integrity connection.
+     * Callers that scan many scopes must open one connection and pass it here; each call
+     * otherwise builds a fresh primary session, which is correct but expensive in loops.
+     */
+    public function hasActiveConflictOn(
+        Connection $db,
+        string $exchange,
+        string $symbol,
+        string $interval,
+        ?DateTimeInterface $windowStart = null,
+        ?DateTimeInterface $windowEnd = null
+    ): bool {
+        $journal = app(CandleConflictJournal::class);
+        try {
+            $journal->assertClear($exchange, $symbol, $interval, $windowStart, $windowEnd);
+            $this->assertRecovered($db, $exchange, $symbol, $interval, $windowStart, $windowEnd);
+            $query = $db->table('market_candle_conflicts')->where('exchange', $exchange)->where('category', 'linear')
+                ->where('symbol', $symbol)->where('interval', $interval)->where('status', 'UNRESOLVED');
             if ($windowStart !== null) {
                 $query->where('open_time', '>=', $windowStart);
             }
             if ($windowEnd !== null) {
                 $query->where('open_time', '<=', $windowEnd);
             }
-
             $found = $query->exists();
-            app(CandleConflictJournal::class)->assertClear($exchange, $symbol, $interval, $windowStart, $windowEnd);
+            $this->assertRecovered($db, $exchange, $symbol, $interval, $windowStart, $windowEnd);
+            $journal->assertClear($exchange, $symbol, $interval, $windowStart, $windowEnd);
 
             return $found;
         } catch (Throwable $e) {
-            throw new CandleIntegrityUnavailable('CANDLE_INTEGRITY_UNAVAILABLE: conflict lookup failed.', previous: $e);
+            throw new CandleIntegrityUnavailable('CANDLE_INTEGRITY_UNAVAILABLE: conflict lookup failed.', previous: $e, reasonCode: $e instanceof CandleIntegrityUnavailable ? $e->reasonCode : 'CANDLE_INTEGRITY_UNAVAILABLE');
+        }
+    }
+
+    private function assertRecovered(Connection $db, ?string $exchange = null, ?string $symbol = null, ?string $interval = null, ?DateTimeInterface $start = null, ?DateTimeInterface $end = null): void
+    {
+        $query = $db->table('market_candle_conflict_journal')->where('state', '<>', 'RECOVERED');
+        foreach (compact('exchange', 'symbol', 'interval') as $key => $value) {
+            if ($value !== null) {
+                $query->where($key, $value);
+            }
+        }
+        if ($start !== null) {
+            $query->where('open_time', '>=', $start);
+        }
+        if ($end !== null) {
+            $query->where('open_time', '<=', $end);
+        }
+        if ($query->exists()) {
+            throw new CandleIntegrityUnavailable('CANDLE_INTEGRITY_UNAVAILABLE: durable recovery is unfinished.', reasonCode: 'CANDLE_JOURNAL_RECOVERY_PENDING');
         }
     }
 
     public function integrityStatus(string $exchange, string $symbol, string $interval, ?DateTimeInterface $windowStart = null, ?DateTimeInterface $windowEnd = null): string
     {
+        return $this->integrityReport($exchange, $symbol, $interval, $windowStart, $windowEnd)['status'];
+    }
+
+    /** @param list<array{exchange:string,symbol:string,interval:string,window_start:?DateTimeInterface,window_end:?DateTimeInterface}> $scopes */
+    public function integrityReports(array $scopes, ?Connection $db = null): array
+    {
+        $owned = $db === null;
         try {
-            return $this->hasActiveConflict($exchange, $symbol, $interval, $windowStart, $windowEnd) ? 'CONFLICTED' : 'VALID';
-        } catch (CandleIntegrityUnavailable) {
-            return 'UNAVAILABLE';
+            $db ??= app(CandleIntegrityDatabase::class)->connect();
+        } catch (CandleIntegrityUnavailable $e) {
+            // Fail closed per scope: a shared-connection failure must not crash the whole scan,
+            // and each affected scope reports UNAVAILABLE rather than a partial VALID.
+            return array_map(static fn (array $s): array => ['status' => 'UNAVAILABLE', 'reason_code' => $e->reasonCode, 'exchange' => $s['exchange'], 'symbol' => $s['symbol'], 'interval' => $s['interval']], $scopes);
+        }
+        try {
+            $results = [];
+            foreach ($scopes as $scope) {
+                $results[] = $this->integrityReportOn($db, $scope['exchange'], $scope['symbol'], $scope['interval'], $scope['window_start'] ?? null, $scope['window_end'] ?? null);
+            }
+
+            return $results;
+        } finally {
+            if ($owned) {
+                $db->disconnect();
+            }
+        }
+    }
+
+    public function integrityReport(string $exchange, string $symbol, string $interval, ?DateTimeInterface $windowStart = null, ?DateTimeInterface $windowEnd = null): array
+    {
+        $db = null;
+        try {
+            $db = app(CandleIntegrityDatabase::class)->connect();
+
+            return $this->integrityReportOn($db, $exchange, $symbol, $interval, $windowStart, $windowEnd);
+        } catch (CandleIntegrityUnavailable $e) {
+            return ['status' => 'UNAVAILABLE', 'reason_code' => $e->reasonCode];
+        } finally {
+            $db?->disconnect();
+        }
+    }
+
+    public function integrityReportOn(
+        Connection $db,
+        string $exchange,
+        string $symbol,
+        string $interval,
+        ?DateTimeInterface $windowStart = null,
+        ?DateTimeInterface $windowEnd = null
+    ): array {
+        try {
+            $conflicted = $this->hasActiveConflictOn($db, $exchange, $symbol, $interval, $windowStart, $windowEnd);
+
+            return ['status' => $conflicted ? 'CONFLICTED' : 'VALID', 'reason_code' => $conflicted ? 'CANDLE_HISTORY_INTEGRITY_CONFLICT' : null];
+        } catch (CandleIntegrityUnavailable $e) {
+            return ['status' => 'UNAVAILABLE', 'reason_code' => $e->reasonCode];
         }
     }
 
@@ -177,10 +218,13 @@ final class MarketCandleConflictService
      */
     public function unresolvedConflicts(?string $exchange = null, ?string $symbol = null, ?string $interval = null): array
     {
+        $db = null;
         try {
             app(CandleConflictJournal::class)->assertClear($exchange, $symbol, $interval);
+            $db = app(CandleIntegrityDatabase::class)->connect();
+            $this->assertRecovered($db, $exchange, $symbol, $interval);
 
-            $query = MarketCandleConflictRecord::query()->useWritePdo()->where('status', 'UNRESOLVED');
+            $query = $db->table('market_candle_conflicts')->where('status', 'UNRESOLVED');
             if ($exchange !== null) {
                 $query->where('exchange', $exchange);
             }
@@ -197,22 +241,25 @@ final class MarketCandleConflictService
                 'category' => $r->category,
                 'symbol' => $r->symbol,
                 'interval' => $r->interval,
-                'open_time' => $r->open_time?->toIso8601String(),
-                'stored_values' => $r->stored_values,
-                'incoming_values' => $r->incoming_values,
+                'open_time' => CarbonImmutable::parse($r->open_time)->toIso8601String(),
+                'stored_values' => json_decode($r->stored_values, true, flags: JSON_THROW_ON_ERROR),
+                'incoming_values' => json_decode($r->incoming_values, true, flags: JSON_THROW_ON_ERROR),
                 'conflict_column' => $r->conflict_column,
                 'error_message' => $r->error_message,
                 'source_provenance' => $r->source_provenance,
-                'first_seen_at' => $r->first_seen_at?->toIso8601String(),
-                'last_seen_at' => $r->last_seen_at?->toIso8601String(),
+                'first_seen_at' => CarbonImmutable::parse($r->first_seen_at)->toIso8601String(),
+                'last_seen_at' => CarbonImmutable::parse($r->last_seen_at)->toIso8601String(),
                 'occurrence_count' => $r->occurrence_count,
                 'status' => $r->status,
             ])->all();
+            $this->assertRecovered($db, $exchange, $symbol, $interval);
             app(CandleConflictJournal::class)->assertClear($exchange, $symbol, $interval);
 
             return $result;
         } catch (Throwable $e) {
-            throw new CandleIntegrityUnavailable('CANDLE_INTEGRITY_UNAVAILABLE: conflict lookup failed.', previous: $e);
+            throw new CandleIntegrityUnavailable('CANDLE_INTEGRITY_UNAVAILABLE: conflict lookup failed.', previous: $e, reasonCode: $e instanceof CandleIntegrityUnavailable ? $e->reasonCode : 'CANDLE_INTEGRITY_UNAVAILABLE');
+        } finally {
+            $db?->disconnect();
         }
     }
 
@@ -221,20 +268,26 @@ final class MarketCandleConflictService
      */
     public function countUnresolved(?string $exchange = null): int
     {
+        $db = null;
         try {
             app(CandleConflictJournal::class)->assertClear($exchange);
+            $db = app(CandleIntegrityDatabase::class)->connect();
+            $this->assertRecovered($db, $exchange);
 
-            $query = MarketCandleConflictRecord::query()->useWritePdo()->where('status', 'UNRESOLVED');
+            $query = $db->table('market_candle_conflicts')->where('status', 'UNRESOLVED');
             if ($exchange !== null) {
                 $query->where('exchange', $exchange);
             }
 
             $count = $query->count();
+            $this->assertRecovered($db, $exchange);
             app(CandleConflictJournal::class)->assertClear($exchange);
 
             return $count;
         } catch (Throwable $e) {
-            throw new CandleIntegrityUnavailable('CANDLE_INTEGRITY_UNAVAILABLE: conflict lookup failed.', previous: $e);
+            throw new CandleIntegrityUnavailable('CANDLE_INTEGRITY_UNAVAILABLE: conflict lookup failed.', previous: $e, reasonCode: $e instanceof CandleIntegrityUnavailable ? $e->reasonCode : 'CANDLE_INTEGRITY_UNAVAILABLE');
+        } finally {
+            $db?->disconnect();
         }
     }
 }

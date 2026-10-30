@@ -6,12 +6,14 @@ namespace App\Strategy\Application;
 
 use App\Indicators\Application\IndicatorEngine;
 use App\Indicators\Exceptions\InvalidSeriesException;
+use App\MarketData\Application\MarketCandleConflictService;
 use App\MarketData\Domain\Candle;
 use App\MarketData\Domain\Interval;
 use App\MarketData\Infrastructure\Persistence\CandleRecord;
 use App\Strategy\Contracts\MarketContextRepository;
 use App\Strategy\Domain\BarState;
 use App\Strategy\Domain\StrategyInput;
+use App\Strategy\Domain\StrategyInputIntegrityException;
 use App\Strategy\Domain\TimeframeState;
 use DateTimeImmutable;
 use DateTimeInterface;
@@ -22,6 +24,7 @@ final readonly class StrategyInputFactory
         private IndicatorEngine $indicators,
         private MarketContextRepository $contexts,
         private array $config,
+        private MarketCandleConflictService $integrity,
     ) {}
 
     public static function peerSymbol(string $symbol): ?string
@@ -42,6 +45,12 @@ final readonly class StrategyInputFactory
 
     public function make(string $exchange, string $category, string $symbol, DateTimeImmutable $at, ?string $peerSymbol = null): StrategyInput
     {
+        foreach (array_filter([$symbol, $peerSymbol], static fn ($value): bool => $value !== null) as $inputSymbol) {
+            if (! in_array($exchange, (array) config('exchanges.enabled', []), true) || $category !== 'linear'
+                || ! preg_match('/^[A-Z0-9]{4,32}$/D', $inputSymbol) || ! in_array($inputSymbol, (array) config('market_data.symbols', []), true)) {
+                throw new StrategyInputIntegrityException('CANDLE_SCOPE_UNSUPPORTED', 'UNAVAILABLE', compact('exchange', 'category', 'symbol'));
+            }
+        }
         $states = [];
         $errors = [];
         foreach ($this->config['timeframes'] as $role => $interval) {
@@ -62,6 +71,8 @@ final readonly class StrategyInputFactory
             } catch (InvalidSeriesException) {
                 $states[$role] = new TimeframeState((string) $interval, [], false);
                 $errors[] = "non_contiguous_{$role}_history";
+            } catch (\PDOException) {
+                throw new StrategyInputIntegrityException('CANDLE_STORAGE_UNAVAILABLE', 'UNAVAILABLE', compact('exchange', 'category', 'symbol', 'interval'));
             }
         }
 
@@ -71,16 +82,46 @@ final readonly class StrategyInputFactory
                 $peer = $this->state($exchange, $category, $peerSymbol, Interval::parse((string) $this->config['timeframes']['entry']), $at);
             } catch (InvalidSeriesException) {
                 $peer = new TimeframeState((string) $this->config['timeframes']['entry'], [], false);
+            } catch (\PDOException) {
+                throw new StrategyInputIntegrityException('CANDLE_STORAGE_UNAVAILABLE', 'UNAVAILABLE', ['exchange' => $exchange, 'category' => $category, 'symbol' => $peerSymbol]);
             }
         }
 
-        return new StrategyInput(
+        $this->assertIntegrity($exchange, $category, $symbol, $at, $states, $peerSymbol, $peer);
+        try {
+            $context = $this->contexts->latestAt($exchange, $category, $symbol, $at);
+        } catch (\PDOException) {
+            throw new StrategyInputIntegrityException('CANDLE_CONTEXT_STORAGE_UNAVAILABLE', 'UNAVAILABLE', compact('exchange', 'category', 'symbol'));
+        }
+        $input = new StrategyInput(
             exchange: $exchange, category: $category, symbol: $symbol, decisionTime: $at,
             trend: $states['trend'], setup: $states['setup'], entry: $states['entry'], confirmation: $states['confirmation'],
-            marketContext: $this->contexts->latestAt($exchange, $category, $symbol, $at),
+            marketContext: $context,
             validationErrors: array_values(array_unique($errors)),
             peerEntry: $peer,
         );
+        // Recheck shared storage after all providers/computation, immediately before handing input to a caller.
+        $this->assertIntegrity($exchange, $category, $symbol, $at, $states, $peerSymbol, $peer);
+
+        return $input;
+    }
+
+    private function assertIntegrity(string $exchange, string $category, string $symbol, DateTimeImmutable $at, array $states, ?string $peerSymbol, ?TimeframeState $peer): void
+    {
+        foreach ([[$symbol, $states], ...($peer === null ? [] : [[$peerSymbol, [$peer]]])] as [$inputSymbol, $inputStates]) {
+            foreach ($inputStates as $state) {
+                $seconds = Interval::parse($state->interval)->seconds();
+                $start = $state->bars[0]->openTime ?? $at->modify('-'.((int) $this->config['history_limit'] * $seconds).' seconds');
+                $end = $state->latest()?->openTime ?? $at->modify('-'.$seconds.' seconds');
+                $report = $this->integrity->integrityReport($exchange, $inputSymbol, $state->interval, $start, $end);
+                if ($report['status'] !== 'VALID') {
+                    throw new StrategyInputIntegrityException($report['reason_code'] ?? 'CANDLE_INTEGRITY_UNAVAILABLE', $report['status'], [
+                        'exchange' => $exchange, 'category' => $category, 'symbol' => $inputSymbol, 'interval' => $state->interval,
+                        'window_start' => $start->format(DATE_ATOM), 'window_end' => $end->format(DATE_ATOM),
+                    ]);
+                }
+            }
+        }
     }
 
     private function state(string $exchange, string $category, string $symbol, Interval $interval, DateTimeImmutable $at): TimeframeState

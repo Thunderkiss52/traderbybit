@@ -193,6 +193,9 @@ final class BinancePaperReadiness
                     'required' => 220,
                     'status' => $status,
                     'ready' => $isReady,
+                    'integrity_reason_code' => str_starts_with($status, 'CANDLE_HISTORY_INTEGRITY_')
+                        ? $this->conflictService->integrityReport('binance', $symbol, $interval,
+                            $candles->last()?->open_time, $candles->first()?->open_time)['reason_code'] : null,
                 ];
             }
         }

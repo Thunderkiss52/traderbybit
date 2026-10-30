@@ -41,6 +41,18 @@ final class SystemFreshnessService
         $intervals = ['5', '15', '30', '60', '240'];
         $exchanges = $exchangeFilter !== null ? [$exchangeFilter] : ['bybit', 'binance'];
 
+        $scopes = [];
+        foreach ($exchanges as $exchange) {
+            foreach ($symbols as $symbol) {
+                foreach ($intervals as $interval) {
+                    $scopes[] = compact('exchange', 'symbol', 'interval');
+                }
+            }
+        }
+        // Reuse one independent primary session; connection failures become UNAVAILABLE per scope.
+        $reports = $this->conflictService->integrityReports($scopes);
+        $reportIndex = 0;
+
         foreach ($exchanges as $exchange) {
             foreach ($symbols as $symbol) {
                 foreach ($intervals as $interval) {
@@ -72,7 +84,9 @@ final class SystemFreshnessService
                         $isStale = $lagSeconds > $missingThresholdSeconds;
                     }
 
-                    $integrity = $candleReadFailed ? 'UNAVAILABLE' : $this->conflictService->integrityStatus($exchange, $symbol, $interval);
+                    $report = $reports[$reportIndex++];
+                    $integrityReport = $candleReadFailed ? ['status' => 'UNAVAILABLE', 'reason_code' => 'CANDLE_STORAGE_UNAVAILABLE'] : $report;
+                    $integrity = $integrityReport['status'];
                     $hasConflict = $integrity === 'UNAVAILABLE' ? null : $integrity === 'CONFLICTED';
 
                     if ($integrity === 'UNAVAILABLE') {
@@ -80,6 +94,7 @@ final class SystemFreshnessService
                         $integrityUnavailable = true;
                         $alerts[] = [
                             'code' => 'CANDLE_INTEGRITY_UNAVAILABLE', 'severity' => 'ERROR',
+                            'diagnostic_code' => $integrityReport['reason_code'],
                             'exchange' => $exchange, 'symbol' => $symbol, 'interval' => $interval,
                             'message' => "Candle integrity unavailable for {$exchange} {$symbol} {$interval}m.",
                         ];
@@ -134,6 +149,7 @@ final class SystemFreshnessService
                         'is_stale' => $isStale,
                         'has_conflict' => $hasConflict,
                         'integrity_status' => $integrity,
+                        'integrity_reason_code' => $integrityReport['reason_code'],
                     ];
                 }
             }

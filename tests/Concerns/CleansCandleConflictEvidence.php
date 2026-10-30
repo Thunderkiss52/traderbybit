@@ -18,7 +18,14 @@ trait CleansCandleConflictEvidence
             if ($db->getDatabaseName() !== 'bybit_test' || $db->transactionLevel() !== 0) {
                 throw new \RuntimeException('Conflict fixture cleanup requires isolated, rolled-back PostgreSQL.');
             }
+            $db->table('market_candle_conflict_journal')->delete();
             $db->table('market_candle_conflicts')->delete();
+            foreach (glob($path.'/recovered/*.json') ?: [] as $file) {
+                unlink($file);
+            }
+            if (is_dir($path.'/recovered')) {
+                rmdir($path.'/recovered');
+            }
             foreach (glob($path.'/*.json') ?: [] as $file) {
                 unlink($file);
             }
