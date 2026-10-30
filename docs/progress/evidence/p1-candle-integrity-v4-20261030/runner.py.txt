@@ -1,0 +1,26 @@
+import os,sys,json,pathlib,subprocess,datetime,hashlib
+base=pathlib.Path(__file__).parent
+repo=pathlib.Path('/home/thunder/work/traderbybit')
+name,mode,*cmd=sys.argv[1:]
+env=os.environ.copy()
+env.update({'APP_ENV':'testing','APP_DEBUG':'false','APP_KEY':'base64:MDEyMzQ1Njc4OWFiY2RlZjAxMjM0NTY3ODlhYmNkZWY=','DB_CONNECTION':'pgsql','DB_HOST':'127.0.0.1','DB_PORT':'25432','DB_DATABASE':'bybit_test','DB_USERNAME':'postgres','DB_PASSWORD':'testpass','DB_URL':'','TEST_DB_HOST':'127.0.0.1','TEST_DB_PORT':'25432','TEST_DB_DATABASE':'bybit_test','TEST_DB_USERNAME':'postgres','TEST_DB_PASSWORD':'testpass','RUN_DB':'bybit_test','CACHE_STORE':'array','SESSION_DRIVER':'array','QUEUE_CONNECTION':'sync','LOG_CHANNEL':'stderr','RUN_BYBIT_INTEGRATION':'0'})
+env['PATH']=str(base/'bin')+':/home/thunder/.nvm/versions/node/v22.23.4/bin:/home/thunder/sdk/go1.24.6/bin:'+env['PATH']
+cwd=repo/('frontend' if mode=='front' else 'research-go' if mode=='go' else '')
+if mode=='php':
+ env['DB_PORT']=env['TEST_DB_PORT']='5432'
+ env['GOFLAGS']='-buildvcs=false'
+ docker=['docker','run','--rm','--label','io.traderbybit.task=p1-recovery-20261030','--network','container:vector-p1-recovery-20261030-pg','--user','1000:1000','--entrypoint','','-v',str(repo)+':/work','-v',str(base)+':'+str(base),'-w','/work']
+ for k,v in env.items():
+  if k in ['PATH','HOME']:continue
+  if k.startswith(('APP_','DB_','TEST_DB_','RUN_','GO')) or k in ['CACHE_STORE','SESSION_DRIVER','QUEUE_CONNECTION','LOG_CHANNEL']:docker+=['-e',k+'='+v]
+ docker+=['-v',str(base/'research-worker')+':/work/bin/research-worker:ro','-v',str(base/'research-worker')+':/work/research-go/bin/research-worker:ro','-e','HOME=/tmp','-e','GOCACHE=/tmp/go-cache','-e','GOPATH=/tmp/go','vector-p1-recovery-20261030-test:local']
+ cmd=docker+cmd
+started=datetime.datetime.now(datetime.timezone.utc).isoformat()
+with (base/'logs'/f'{name}.log').open('wb') as log:
+ code=subprocess.call(cmd,cwd=cwd,env=env,stdout=log,stderr=subprocess.STDOUT)
+raw=(base/'logs'/f'{name}.log').read_bytes()
+data={'name':name,'command':cmd,'cwd':str(cwd),'started_at':started,'finished_at':datetime.datetime.now(datetime.timezone.utc).isoformat(),'exit_code':code,'sha256':hashlib.sha256(raw).hexdigest(),'source_head':subprocess.check_output(['git','rev-parse','HEAD'],cwd=repo,text=True).strip(),'environment':'task-owned PostgreSQL bybit_test at task-container:5432; PHP8.5.12; Node22.23.4; no production'}
+(base/'logs'/f'{name}.json').write_text(json.dumps(data,indent=2)+'\n')
+print(json.dumps(data))
+print('\n'.join(raw.decode(errors='replace').splitlines()[-16:]))
+sys.exit(code)

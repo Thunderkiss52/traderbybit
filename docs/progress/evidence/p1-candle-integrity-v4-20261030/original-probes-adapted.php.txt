@@ -1,0 +1,110 @@
+<?php
+declare(strict_types=1);
+
+require '/work/vendor/autoload.php';
+$app = require '/work/bootstrap/app.php';
+$app->make(Illuminate\Contracts\Console\Kernel::class)->bootstrap();
+
+use App\Exchanges\Binance\BinanceCandleIngestion;
+use App\Exchanges\Binance\BinanceCandleWindow;
+use App\MarketData\Application\MarketCandleConflictService;
+use App\MarketData\Domain\CandleIntegrityUnavailable;
+use Illuminate\Support\Facades\Artisan;
+use Illuminate\Support\Facades\Event;
+use Illuminate\Console\Events\ScheduledTaskFailed;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Schedule;
+
+if (DB::selectOne('select current_database() as db')->db !== 'bybit_test' || !app()->environment('testing')) {
+    throw new RuntimeException('Isolated testing database required.');
+}
+$observer = new PDO('pgsql:host=127.0.0.1;port=5432;dbname=bybit_test', 'postgres', 'testpass');
+$service = app(MarketCandleConflictService::class);
+$journalDirectory = storage_path('framework/v3-original-probes');
+config(['market_data.conflict_journal_path' => $journalDirectory]);
+$rows = [];
+Http::preventStrayRequests();
+Http::fake(['https://fapi.binance.com/fapi/v1/klines*' => function () use (&$rows) { return Http::response($rows); }]);
+$row = static fn (int $i, string $close = '102'): array => [1767225600000 + $i * 1800000, '100', '105', '99', $close, '10', 1767225600000 + ($i + 1) * 1800000 - 1, '1010'];
+$cleanup = static function () use ($journalDirectory): void {
+    // Isolated fixture reset only. Preserve every pending file before reset; this is not application recovery.
+    $archive = __DIR__.'/v3-probe-archive';
+    if (!is_dir($archive)) { mkdir($archive, 0700); }
+    foreach (glob($journalDirectory.'/*.json') ?: [] as $file) {
+        copy($file, $archive.'/'.basename($file));
+        unlink($file);
+    }
+    DB::table('market_candle_conflict_journal')->where('symbol', 'BTCUSDT')->where('interval', '30')->delete();
+    DB::table('market_candle_conflicts')->where('symbol', 'BTCUSDT')->where('interval', '30')->delete();
+    DB::table('market_candles')->where('exchange', 'binance')->where('symbol', 'BTCUSDT')->where('interval', '30')->delete();
+};
+$count = static fn (): int => (int) $observer->query("select count(*) from market_candle_conflicts where symbol='BTCUSDT' and interval='30'")->fetchColumn();
+$emit = static function (string $name, mixed $result): void { echo json_encode(['probe' => $name, 'observed' => $result], JSON_THROW_ON_ERROR).PHP_EOL; };
+$times = array_map(static fn ($i) => 1767225600 + 3600 - $i * 1800, range(0, 219));
+$window = static fn () => BinanceCandleWindow::status($times, 1800, 1767225600 + 5400, 220, $service, 'binance', 'BTCUSDT', '30');
+config()->set('market_data.symbols', ['BTCUSDT', 'ETHUSDT']);
+$cleanup();
+try {
+    $rows = [$row(1)];
+    app(BinanceCandleIngestion::class)->ingest('BTCUSDT', '30m', 1);
+    $rows = [$row(0), $row(1, '103'), $row(2)];
+    try { app(BinanceCandleIngestion::class)->ingest('BTCUSDT', '30m', 3); }
+    catch (DomainException $e) { $emit('strict_top_level_rollback', ['error' => $e->getMessage(), 'candles' => DB::table('market_candles')->where('symbol', 'BTCUSDT')->where('interval', '30')->count(), 'conflicts_seen_by_independent_connection' => $count()]); }
+    $result = app(BinanceCandleIngestion::class)->ingest('BTCUSDT', '30m', 3, true);
+    $emit('quarantine_top_level_control', [$result, 'independent_conflicts' => $count(), 'window' => $window()]);
+
+    DB::table('market_candle_conflicts')->where('symbol', 'BTCUSDT')->where('interval', '30')->update(['status' => 'RESOLVED', 'resolved_at' => now()]);
+    $result = app(BinanceCandleIngestion::class)->ingest('BTCUSDT', '30m', 3, true);
+    $emit('recurrent_conflict_after_resolution', ['ingestion_status' => $result['status'], 'persisted_status' => DB::table('market_candle_conflicts')->where('symbol', 'BTCUSDT')->where('interval', '30')->value('status'), 'window' => $window()]);
+
+    $cleanup();
+    $rows = [$row(1)];
+    app(BinanceCandleIngestion::class)->ingest('BTCUSDT', '30m', 1);
+    DB::statement("ALTER TABLE market_candle_conflicts ADD CONSTRAINT gate_reject_conflict CHECK (symbol <> 'BTCUSDT')");
+    try {
+        $rows = [$row(0), $row(1, '103'), $row(2)];
+        try {
+            app(BinanceCandleIngestion::class)->ingest('BTCUSDT', '30m', 3, true);
+            throw new RuntimeException('Expected integrity-unavailable failure.');
+        } catch (CandleIntegrityUnavailable $e) { $result = $e->ingestionReport; }
+        $emit('conflict_persistence_failure', ['ingestion_status' => $result['status'], 'new_closed_candles' => $result['new_closed_candles'], 'independent_conflicts' => $count(), 'window' => $window()]);
+    } finally { DB::statement('ALTER TABLE market_candle_conflicts DROP CONSTRAINT gate_reject_conflict'); }
+
+    $cleanup();
+    $safeRead = static function (callable $read): mixed {
+        try { return $read(); } catch (CandleIntegrityUnavailable) { return 'UNAVAILABLE'; }
+    };
+    DB::statement('ALTER TABLE market_candle_conflicts RENAME TO gate_hidden_conflicts');
+    try { $emit('missing_conflict_table', ['active' => $safeRead(fn () => $service->hasActiveConflict('binance', 'BTCUSDT', '30')), 'window' => $window()]); }
+    finally { DB::statement('ALTER TABLE gate_hidden_conflicts RENAME TO market_candle_conflicts'); }
+
+    DB::statement('ALTER TABLE market_candle_conflicts RENAME COLUMN status TO gate_hidden_status');
+    try { $emit('conflict_query_failure', ['active' => $safeRead(fn () => $service->hasActiveConflict('binance', 'BTCUSDT', '30')), 'window' => $window(), 'count' => $safeRead(fn () => $service->countUnresolved('binance'))]); }
+    finally { DB::statement('ALTER TABLE market_candle_conflicts RENAME COLUMN gate_hidden_status TO status'); }
+
+    $cleanup();
+    $rows = [$row(1)];
+    app(BinanceCandleIngestion::class)->ingest('BTCUSDT', '30m', 1);
+    $rows = [$row(0), $row(1, '103'), $row(2)];
+    $event = collect(Schedule::events())->first(fn ($e) => $e->description === 'binance:htf:BTCUSDT:30m');
+    foreach (Schedule::events() as $other) { if ($other !== $event) { $other->skip(fn () => true); } }
+    $event->cron('* * * * *');
+    $event->command = 'CANDLE_TEST_CASE=partial CANDLE_TEST_JOURNAL='.escapeshellarg($journalDirectory).' '.str_replace('artisan', 'tests/Fixtures/binance_scheduled_command.php', $event->command);
+    $failures = [];
+    Event::listen(ScheduledTaskFailed::class, function ($e) use (&$failures): void { $failures[] = $e; });
+    Artisan::call('schedule:run', ['--no-ansi' => true]);
+    if ($event->exitCode !== 2 || count($failures) !== 1) { throw new RuntimeException('Scheduled partial ingestion did not fail.'); }
+    $emit('scheduled_partial_ingestion', ['scheduler_exit_code' => $event->exitCode, 'failed_events' => count($failures), 'independent_conflicts' => $count()]);
+
+    $cleanup();
+    $rows = [$row(1)];
+    app(BinanceCandleIngestion::class)->ingest('BTCUSDT', '30m', 1);
+    $rows = [$row(0), $row(1, '103'), $row(2)];
+    DB::beginTransaction();
+    try {
+        try { app(BinanceCandleIngestion::class)->ingest('BTCUSDT', '30m', 3); } catch (DomainException) {}
+        $emit('outer_transaction_before_rollback', ['same_connection_conflicts' => DB::table('market_candle_conflicts')->where('symbol', 'BTCUSDT')->where('interval', '30')->count(), 'independent_conflicts' => $count()]);
+    } finally { DB::rollBack(); }
+    $emit('outer_transaction_after_rollback', ['independent_conflicts' => $count()]);
+} finally { $cleanup(); }

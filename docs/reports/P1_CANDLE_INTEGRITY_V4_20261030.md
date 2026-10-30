@@ -1,0 +1,35 @@
+# P1 candle integrity V4 — local release gate
+
+Date: 2026-10-30. Initial HEAD `30376593042c6bd29397c20e8f074f396e09a1da` on `main`, with the task's implementation already uncommitted. Implementation commit: `3576d7437c1e308d619562b514b44f2102d39d1c`. Exact verified source hashes, environment, JUnit, compressed command output, exit codes and checksums are in [the V4 evidence directory](../progress/evidence/p1-candle-integrity-v4-20261030/). The documentation commit follows this report.
+
+## Three reproduced blockers and fixes
+
+| Blocker | Root cause | Verified local fix |
+|---|---|---|
+| A: replay increments counts and leaves the source pending | A random new journal file and scope UPSERT represented every replay as a new event; there was no source receipt or recovery state. | A versioned event ID and exact evidence hash identify the source. PostgreSQL `market_candle_conflict_journal` records PENDING, leased IN_PROGRESS, retryable/permanent FAILED and RECOVERED. A row lock and claim token fence workers. One transaction applies the conflict UPSERT and stores the RECOVERED receipt. Only an independently committed receipt allows the original bytes to move to `recovered/`. Duplicate deliveries return the receipt without another UPSERT. The bounded CLI reports COMPLETE only when files and unfinished receipts are both zero. |
+| B: malformed symbol certifies input | The old reader checked key presence and compared a symbol value without strict type/schema validation; an array skipped the scope match. | The versioned payload validator rejects missing, null, typed-wrong, malformed and unsupported identities, values, timestamps and fingerprints. Invalid bytes remain available for review. Only independently valid scope prefixes narrow the block; an uncertain symbol blocks its exchange, and an unreadable exchange blocks all scopes. Readiness and health expose UNAVAILABLE and a reason code. |
+| C: strategy factory bypasses pending files | The ongoing strategy path checked candle continuity and freshness but did not call the conflict gate. | `StrategyInputFactory` validates each actual input window, including the peer entry, through the shared journal and a fresh independent PostgreSQL primary connection. It rechecks immediately before returning. Pending, failed, leased, malformed, unavailable and unresolved scopes raise a machine-readable integrity exception; API rendering uses a safe 503 body. Unrelated exchange/symbol/interval/time windows remain isolated. |
+
+Recovery never changes `market_candles`, PAPER ledgers, balances, positions or executions. Recovery of a conflict is **not** resolution of that conflict: it remains UNRESOLVED until separately reviewed. Legacy complete V2 files use a stable filename-derived ID and retain their original bytes. Invalid payloads are permanent manual-review cases; transient database writes remain retryable. An unrecordable FAILED transition leaves the fenced IN_PROGRESS claim and source file, which still blocks reads. The 10-second claim expires for a killed worker; the token and row lock prevent an old worker from committing after another worker claims it. A crash before the receipt transaction commits rolls back the conflict effect. A crash after commit but before file archive replays only the archive step. These are tested process and PostgreSQL guarantees; VPS disk durability and shared-volume permissions are unverified.
+
+## Eight known guarantees
+
+The 126-test targeted suite passed with 1,108 assertions, zero skips/failures/errors. It includes the preserved original five controls: rejected persistence never READY; independent committed evidence survives outer rollback; read errors fail closed; recurrence reopens atomically with exact concurrency counts; and real scheduled partial ingestion exits 2 and emits one failure event. The adapted preserved V3 probe also passed (exit 0) for all five. New coverage proves exactly one event effect under four independent worker processes, duplicate/legacy deliveries, three SIGKILL boundaries (after claim, during uncommitted apply, after commit), retryable and permanent failure, failed failure-state write, immutable candle preservation, invalid symbols, shared-storage loss, fresh-process strategy rejection, final-boundary races and post-recovery input after independent conflict resolution. Two independent backend PIDs and exact committed counts are printed in the targeted log.
+
+## Checks and limits
+
+| Command / check | Result | Exit |
+|---|---:|---:|
+| `php -dxdebug.mode=off -dmemory_limit=1G vendor/bin/phpunit` | 1,069 tests, 10,581 assertions, 1 intentional public-Bybit skip, 0 failures/errors | 0 |
+| Same PHPUnit command with the 13 targeted classes in `commands.jsonl` | 126 tests, 1,108 assertions, 0 skips/failures/errors | 0 |
+| `php vendor/bin/pint --test` | 720 files pass | 0 |
+| `find app bootstrap config database routes tests -name '*.php' -print0 \| xargs -0 -n 1 php -l` (`pipefail`) | 704 PHP files, no syntax errors | 0 |
+| `npm test`; `npm run build` | 64 frontend tests pass; typecheck and build pass | 0; 0 |
+| `go test -race -count=1 ./...` | Pass; Go source unchanged | 0 |
+| `python3 -m unittest discover -s scripts/tests -p test_vector_progress.py -v` | 25 tracker tests pass | 0 |
+| Adapted original V3 probe | Five preserved blockers pass | 0 |
+| `python3 scripts/vector_progress.py --generate`; `python3 scripts/vector_progress.py --strict --base-ref 30376593042c6bd29397c20e8f074f396e09a1da`; `git diff --check` | Generated scorecard, strict validation and diff check pass | 0; 0; 0 |
+
+The first targeted baseline failed six health tests because a database connection error escaped the health method; the health scan now converts that error to per-scope UNAVAILABLE. That failed run is retained. The first host PHP attempt could not start PHPUnit because its 8.5.9 install lacked required extensions. An initial combined `--generate --strict` invocation exited 2 on stale projections; separate generation followed by strict validation passed. Verified runs used a task-owned PHP 8.5.12 test container and PostgreSQL 17.11 `bybit_test` with tmpfs, on an internal Docker network. Exchange requests in integrity tests were faked. Source hashes remained identical after the successful checks. No browser, production database, VPS filesystem or real forward-PAPER acceptance was tested.
+
+**Verdict: READY FOR FINAL PRE-PUSH GATE / READY FOR OPERATOR PUSH — AWAITING EXPLICIT AUTHORIZATION.** This is local release readiness for the three V3 blockers and eight known guarantees, not production or product acceptance. Phase 0 remains BLOCKED, Phase 1 NOT STARTED. Four historical BTCUSDT/ETHUSDT 30m/1h conflicts at 2026-10-27T00:00:00Z remain a separately authorized high-severity remediation issue; the prepared SQL was not run. The provisional scorecard remains 0% implementation / 0% verification / 0% product acceptance from stale/unavailable/failing evidence, and does not grant acceptance. No push, deploy, production mutation, PAPER-history mutation or ECONOM access occurred.

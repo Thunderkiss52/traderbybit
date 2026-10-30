@@ -8,6 +8,12 @@
 **Target Proposal Baseline:** `VECTOR-SCOPE-20261028-v3.3`
 **Execution Mode:** STRICTLY VIRTUAL PAPER TRADING ONLY. Zero real exchange trading; zero private trade credentials; zero order placement endpoints.
 
+### P1 Binance Candle Integrity V4 local gate — 2026-10-30
+
+The [V4 report](../reports/P1_CANDLE_INTEGRITY_V4_20261030.md) supersedes the V3 local NOT READY verdict for its three reproduced blockers. Journal recovery is idempotent and durably receipted; malformed evidence fails closed; ongoing strategy inputs consult shared storage and reject affected scopes. The five V2 fixes and all three V3 fixes have focused PostgreSQL regression evidence. Targeted PHPUnit: 126 tests / 1,108 assertions; full PHPUnit: 1,069 tests / 10,581 assertions / one intentional network skip; both exit 0. Pint, PHP syntax, frontend tests/build, Go race, preserved V3 probes and strict tracker validation passed; full command records and hashes are in the [V4 evidence directory](../progress/evidence/p1-candle-integrity-v4-20261030/).
+
+**Local P1 status: READY FOR OPERATOR PUSH — AWAITING EXPLICIT AUTHORIZATION.** This grants no push or deployment permission. Phase 0 remains **BLOCKED**, roadmap Phase 1 **NOT STARTED**, and no production/product acceptance is inferred. The four previously reported historical Binance conflicts need separate operator-authorized classification/remediation. Production storage, PAPER history and the ECONOM project were not accessed or modified. The provisional completion score remains 0% / 0% / 0%; frozen scope and the failed performance gate are unchanged.
+
 ### P1 Binance Candle Integrity V3 release gate — 2026-10-29
 
 This release package is separate from roadmap Phase 1. Phase 0 remains **BLOCKED**;

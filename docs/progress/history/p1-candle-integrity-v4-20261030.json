@@ -1,0 +1,2597 @@
+{
+  "status": "PROVISIONAL",
+  "source_head": "3576d7437c1e308d619562b514b44f2102d39d1c",
+  "assessment_head": "5b674960adc8ff6591134537763dce7a5bb0bb3c",
+  "assessment_date": "2026-10-30",
+  "scope_baseline": "VECTOR-SCOPE-20261027-v1",
+  "scope_hash": "6d207a2bd441156d909b72e93166ea2fb932c152c32627fd6d06083668d71117",
+  "registry_hash": "c1ea088fc1abda221b38792830e1e801fb1c5028c4960d7c4718f4b4a04ee053",
+  "overall": {
+    "implementation": 0.0,
+    "verification": 0.0,
+    "product": 0.0
+  },
+  "freshness": {
+    "FAILED": 1,
+    "STALE": 51,
+    "UNAVAILABLE": 177
+  },
+  "phases": [
+    {
+      "phase": 0,
+      "requirements": 45,
+      "implemented": 0,
+      "verified": 0,
+      "accepted_capabilities": 0,
+      "implementation": 0.0,
+      "verification": 0.0,
+      "product": 0.0,
+      "remaining": [
+        "VEC-P0-001",
+        "VEC-P0-002",
+        "VEC-P0-003",
+        "VEC-P0-004",
+        "VEC-P0-005",
+        "VEC-P0-006",
+        "VEC-P0-007",
+        "VEC-P0-008",
+        "VEC-P0-009",
+        "VEC-P0-101",
+        "VEC-P0-102",
+        "VEC-P0-103",
+        "VEC-P0-104",
+        "VEC-P0-105",
+        "VEC-P0-106",
+        "VEC-P0-107",
+        "VEC-P0-108",
+        "VEC-P0-109",
+        "VEC-P0-110",
+        "VEC-P0-111",
+        "VEC-P0-112",
+        "VEC-P0-113",
+        "VEC-P0-114",
+        "VEC-P0-115",
+        "VEC-P0-116",
+        "VEC-P0-117",
+        "VEC-P0-118",
+        "VEC-P0-119",
+        "VEC-P0-120",
+        "VEC-P0-121",
+        "VEC-P0-122",
+        "VEC-P0-123",
+        "VEC-P0-124",
+        "VEC-P0-125",
+        "VEC-P0-126",
+        "VEC-P0-127",
+        "VEC-P0-201",
+        "VEC-P0-202",
+        "VEC-P0-203",
+        "VEC-P0-204",
+        "VEC-P0-205",
+        "VEC-P0-206",
+        "VEC-P0-207",
+        "VEC-P0-208",
+        "VEC-P0-209"
+      ],
+      "critical_blockers": [
+        "VEC-P0-001",
+        "VEC-P0-002",
+        "VEC-P0-003",
+        "VEC-P0-004",
+        "VEC-P0-005",
+        "VEC-P0-006",
+        "VEC-P0-007",
+        "VEC-P0-008",
+        "VEC-P0-009",
+        "VEC-P0-101",
+        "VEC-P0-102",
+        "VEC-P0-103",
+        "VEC-P0-104",
+        "VEC-P0-105",
+        "VEC-P0-106",
+        "VEC-P0-107",
+        "VEC-P0-108",
+        "VEC-P0-109",
+        "VEC-P0-110",
+        "VEC-P0-111",
+        "VEC-P0-112",
+        "VEC-P0-113",
+        "VEC-P0-114",
+        "VEC-P0-115",
+        "VEC-P0-116",
+        "VEC-P0-117",
+        "VEC-P0-118",
+        "VEC-P0-119",
+        "VEC-P0-120",
+        "VEC-P0-121",
+        "VEC-P0-122",
+        "VEC-P0-123",
+        "VEC-P0-124",
+        "VEC-P0-125",
+        "VEC-P0-126",
+        "VEC-P0-127",
+        "VEC-P0-201",
+        "VEC-P0-202",
+        "VEC-P0-203",
+        "VEC-P0-204",
+        "VEC-P0-205",
+        "VEC-P0-206",
+        "VEC-P0-207",
+        "VEC-P0-208",
+        "VEC-P0-209"
+      ]
+    },
+    {
+      "phase": 1,
+      "requirements": 8,
+      "implemented": 0,
+      "verified": 0,
+      "accepted_capabilities": 0,
+      "implementation": 0.0,
+      "verification": 0.0,
+      "product": 0.0,
+      "remaining": [
+        "VEC-P1-001",
+        "VEC-P1-002",
+        "VEC-P1-003",
+        "VEC-P1-004",
+        "VEC-P1-005",
+        "VEC-P1-006",
+        "VEC-P1-007",
+        "VEC-P1-008"
+      ],
+      "critical_blockers": []
+    },
+    {
+      "phase": 2,
+      "requirements": 10,
+      "implemented": 0,
+      "verified": 0,
+      "accepted_capabilities": 0,
+      "implementation": 0.0,
+      "verification": 0.0,
+      "product": 0.0,
+      "remaining": [
+        "VEC-P2-001",
+        "VEC-P2-002",
+        "VEC-P2-003",
+        "VEC-P2-004",
+        "VEC-P2-005",
+        "VEC-P2-006",
+        "VEC-P2-007",
+        "VEC-P2-008",
+        "VEC-P2-009",
+        "VEC-P2-010"
+      ],
+      "critical_blockers": [
+        "VEC-P2-004"
+      ]
+    },
+    {
+      "phase": 3,
+      "requirements": 11,
+      "implemented": 0,
+      "verified": 0,
+      "accepted_capabilities": 0,
+      "implementation": 0.0,
+      "verification": 0.0,
+      "product": 0.0,
+      "remaining": [
+        "VEC-P3-001",
+        "VEC-P3-002",
+        "VEC-P3-003",
+        "VEC-P3-004",
+        "VEC-P3-005",
+        "VEC-P3-006",
+        "VEC-P3-007",
+        "VEC-P3-008",
+        "VEC-P3-009",
+        "VEC-P3-010",
+        "VEC-P3-011"
+      ],
+      "critical_blockers": []
+    },
+    {
+      "phase": 4,
+      "requirements": 10,
+      "implemented": 0,
+      "verified": 0,
+      "accepted_capabilities": 0,
+      "implementation": 0.0,
+      "verification": 0.0,
+      "product": 0.0,
+      "remaining": [
+        "VEC-P4-001",
+        "VEC-P4-002",
+        "VEC-P4-003",
+        "VEC-P4-004",
+        "VEC-P4-005",
+        "VEC-P4-006",
+        "VEC-P4-007",
+        "VEC-P4-008",
+        "VEC-P4-009",
+        "VEC-P4-010"
+      ],
+      "critical_blockers": [
+        "VEC-P4-005",
+        "VEC-P4-007",
+        "VEC-P4-009"
+      ]
+    },
+    {
+      "phase": 5,
+      "requirements": 8,
+      "implemented": 0,
+      "verified": 0,
+      "accepted_capabilities": 0,
+      "implementation": 0.0,
+      "verification": 0.0,
+      "product": 0.0,
+      "remaining": [
+        "VEC-P5-001",
+        "VEC-P5-002",
+        "VEC-P5-003",
+        "VEC-P5-004",
+        "VEC-P5-005",
+        "VEC-P5-006",
+        "VEC-P5-007",
+        "VEC-P5-008"
+      ],
+      "critical_blockers": []
+    },
+    {
+      "phase": 6,
+      "requirements": 5,
+      "implemented": 0,
+      "verified": 0,
+      "accepted_capabilities": 0,
+      "implementation": null,
+      "verification": 0.0,
+      "product": 0.0,
+      "remaining": [
+        "VEC-P6-001",
+        "VEC-P6-002",
+        "VEC-P6-003",
+        "VEC-P6-004",
+        "VEC-P6-005"
+      ],
+      "critical_blockers": []
+    }
+  ],
+  "requirements": [
+    {
+      "id": "VEC-P0-001",
+      "phase": 0,
+      "title": "26 independent PAPER account topology",
+      "type": "runtime",
+      "priority": 0,
+      "weight": 3,
+      "capability": "CAP-P0",
+      "implementation": 0.0,
+      "verification": 0.0,
+      "product": 0.0,
+      "state": "BLOCKED",
+      "blockers": [
+        "Local V1 passed; production V2, applicable browser V3 and explicit product acceptance remain pending."
+      ],
+      "dependencies": [],
+      "missing_evidence": [
+        "VEC-P0-001-V1:STALE",
+        "VEC-P0-001-V2:UNAVAILABLE"
+      ]
+    },
+    {
+      "id": "VEC-P0-002",
+      "phase": 0,
+      "title": "PAPER pipeline terminalization and recovery",
+      "type": "runtime",
+      "priority": 0,
+      "weight": 3,
+      "capability": "CAP-P0",
+      "implementation": 0.0,
+      "verification": 0.0,
+      "product": 0.0,
+      "state": "BLOCKED",
+      "blockers": [
+        "Local V1 passed; production V2, applicable browser V3 and explicit product acceptance remain pending."
+      ],
+      "dependencies": [],
+      "missing_evidence": [
+        "VEC-P0-002-V1:STALE",
+        "VEC-P0-002-V2:UNAVAILABLE"
+      ]
+    },
+    {
+      "id": "VEC-P0-003",
+      "phase": 0,
+      "title": "Financial ledger and funding completeness",
+      "type": "runtime",
+      "priority": 0,
+      "weight": 3,
+      "capability": "CAP-P0",
+      "implementation": 0.0,
+      "verification": 0.0,
+      "product": 0.0,
+      "state": "BLOCKED",
+      "blockers": [
+        "Local V1 incomplete: Exact synthetic fee/funding identities and negative controls pass. The atomic criterion also asks for reconciliation of the current account population, unavailable here. Production V2 and explicit product acceptance pending."
+      ],
+      "dependencies": [],
+      "missing_evidence": [
+        "VEC-P0-003-V1:UNAVAILABLE",
+        "VEC-P0-003-V2:UNAVAILABLE"
+      ]
+    },
+    {
+      "id": "VEC-P0-004",
+      "phase": 0,
+      "title": "Risk gates and account isolation",
+      "type": "runtime",
+      "priority": 0,
+      "weight": 3,
+      "capability": "CAP-P0",
+      "implementation": 0.0,
+      "verification": 0.0,
+      "product": 0.0,
+      "state": "BLOCKED",
+      "blockers": [
+        "Local V1 passed; production V2, applicable browser V3 and explicit product acceptance remain pending."
+      ],
+      "dependencies": [],
+      "missing_evidence": [
+        "VEC-P0-004-V1:STALE",
+        "VEC-P0-004-V2:UNAVAILABLE"
+      ]
+    },
+    {
+      "id": "VEC-P0-005",
+      "phase": 0,
+      "title": "Binance execution approval configuration",
+      "type": "runtime",
+      "priority": 0,
+      "weight": 3,
+      "capability": "CAP-P0",
+      "implementation": 0.0,
+      "verification": 0.0,
+      "product": 0.0,
+      "state": "BLOCKED",
+      "blockers": [
+        "Local V1 passed; production V2, applicable browser V3 and explicit product acceptance remain pending."
+      ],
+      "dependencies": [],
+      "missing_evidence": [
+        "VEC-P0-005-V1:STALE",
+        "VEC-P0-005-V2:UNAVAILABLE"
+      ]
+    },
+    {
+      "id": "VEC-P0-006",
+      "phase": 0,
+      "title": "Support/resistance statistical bootstrap",
+      "type": "runtime",
+      "priority": 0,
+      "weight": 3,
+      "capability": "CAP-P0",
+      "implementation": 0.0,
+      "verification": 0.0,
+      "product": 0.0,
+      "state": "BLOCKED",
+      "blockers": [
+        "Local V1 passed; production V2, applicable browser V3 and explicit product acceptance remain pending."
+      ],
+      "dependencies": [],
+      "missing_evidence": [
+        "VEC-P0-006-V1:STALE",
+        "VEC-P0-006-V2:UNAVAILABLE"
+      ]
+    },
+    {
+      "id": "VEC-P0-007",
+      "phase": 0,
+      "title": "PostgreSQL acceptance infrastructure",
+      "type": "runtime",
+      "priority": 0,
+      "weight": 3,
+      "capability": "CAP-P0",
+      "implementation": 0.0,
+      "verification": 0.0,
+      "product": 0.0,
+      "state": "BLOCKED",
+      "blockers": [
+        "Local V1 passed; production V2, applicable browser V3 and explicit product acceptance remain pending."
+      ],
+      "dependencies": [],
+      "missing_evidence": [
+        "VEC-P0-007-V1:STALE",
+        "VEC-P0-007-V2:UNAVAILABLE"
+      ]
+    },
+    {
+      "id": "VEC-P0-008",
+      "phase": 0,
+      "title": "Production acceptance gate",
+      "type": "assurance",
+      "priority": 0,
+      "weight": 3,
+      "capability": "CAP-P0",
+      "implementation": 0.0,
+      "verification": 0.0,
+      "product": 0.0,
+      "state": "BLOCKED",
+      "blockers": [
+        "Local V1 incomplete: Both atomic criteria require operator-authorized current-release evidence and independent acceptance. None was collected. Production V2 and explicit product acceptance pending."
+      ],
+      "dependencies": [
+        "VEC-P0-001",
+        "VEC-P0-002",
+        "VEC-P0-003",
+        "VEC-P0-004",
+        "VEC-P0-005",
+        "VEC-P0-006",
+        "VEC-P0-007",
+        "VEC-P0-009",
+        "VEC-P0-101",
+        "VEC-P0-102",
+        "VEC-P0-103",
+        "VEC-P0-104",
+        "VEC-P0-105",
+        "VEC-P0-106",
+        "VEC-P0-107",
+        "VEC-P0-108",
+        "VEC-P0-109",
+        "VEC-P0-110",
+        "VEC-P0-111",
+        "VEC-P0-112",
+        "VEC-P0-113",
+        "VEC-P0-114",
+        "VEC-P0-115",
+        "VEC-P0-116",
+        "VEC-P0-117",
+        "VEC-P0-118",
+        "VEC-P0-119",
+        "VEC-P0-120",
+        "VEC-P0-121",
+        "VEC-P0-122",
+        "VEC-P0-123",
+        "VEC-P0-124",
+        "VEC-P0-125",
+        "VEC-P0-126",
+        "VEC-P0-127",
+        "VEC-P0-201",
+        "VEC-P0-202",
+        "VEC-P0-203",
+        "VEC-P0-204",
+        "VEC-P0-205",
+        "VEC-P0-206",
+        "VEC-P0-207",
+        "VEC-P0-208",
+        "VEC-P0-209"
+      ],
+      "missing_evidence": [
+        "VEC-P0-008-V1:UNAVAILABLE",
+        "VEC-P0-008-V2:UNAVAILABLE"
+      ]
+    },
+    {
+      "id": "VEC-P0-009",
+      "phase": 0,
+      "title": "Resource and performance baseline",
+      "type": "assurance",
+      "priority": 0,
+      "weight": 3,
+      "capability": "CAP-P0",
+      "implementation": 0.0,
+      "verification": 0.0,
+      "product": 0.0,
+      "state": "FAILED",
+      "blockers": [
+        "Local ingestion gate failed: 500 new rows P95 74.860 ms >=50 ms. Mixed PAPER/research load and effective host limits unverified. Production V2 and explicit product acceptance pending."
+      ],
+      "dependencies": [],
+      "missing_evidence": [
+        "VEC-P0-009-V1:FAILED",
+        "VEC-P0-009-V2:UNAVAILABLE"
+      ]
+    },
+    {
+      "id": "VEC-P0-101",
+      "phase": 0,
+      "title": "F01 \u2014 False Decision Replay Verification & State Mutation [HIGH]",
+      "type": "assurance",
+      "priority": 0,
+      "weight": 1,
+      "capability": "CAP-P0",
+      "implementation": 0.0,
+      "verification": 0.0,
+      "product": 0.0,
+      "state": "BLOCKED",
+      "blockers": [
+        "Local V1 passed; production V2, applicable browser V3 and explicit product acceptance remain pending."
+      ],
+      "dependencies": [],
+      "missing_evidence": [
+        "VEC-P0-101-V1:STALE",
+        "VEC-P0-101-V2:UNAVAILABLE"
+      ]
+    },
+    {
+      "id": "VEC-P0-102",
+      "phase": 0,
+      "title": "F02 \u2014 Profitability Response Envelope Chain Breakdown [CRITICAL]",
+      "type": "assurance",
+      "priority": 0,
+      "weight": 1,
+      "capability": "CAP-P0",
+      "implementation": 0.0,
+      "verification": 0.0,
+      "product": 0.0,
+      "state": "BLOCKED",
+      "blockers": [
+        "Local V1 passed; production V2, applicable browser V3 and explicit product acceptance remain pending."
+      ],
+      "dependencies": [],
+      "missing_evidence": [
+        "VEC-P0-102-V1:STALE",
+        "VEC-P0-102-V2:UNAVAILABLE",
+        "VEC-P0-102-V3:STALE"
+      ]
+    },
+    {
+      "id": "VEC-P0-103",
+      "phase": 0,
+      "title": "F03 \u2014 Fabricated Financial Fallback Values in UI [CRITICAL]",
+      "type": "assurance",
+      "priority": 0,
+      "weight": 1,
+      "capability": "CAP-P0",
+      "implementation": 0.0,
+      "verification": 0.0,
+      "product": 0.0,
+      "state": "BLOCKED",
+      "blockers": [
+        "Local V1 passed; production V2, applicable browser V3 and explicit product acceptance remain pending."
+      ],
+      "dependencies": [],
+      "missing_evidence": [
+        "VEC-P0-103-V1:STALE",
+        "VEC-P0-103-V2:UNAVAILABLE",
+        "VEC-P0-103-V3:STALE"
+      ]
+    },
+    {
+      "id": "VEC-P0-104",
+      "phase": 0,
+      "title": "F04 \u2014 Reconciliation Findings Misread in Controller [HIGH]",
+      "type": "assurance",
+      "priority": 0,
+      "weight": 1,
+      "capability": "CAP-P0",
+      "implementation": 0.0,
+      "verification": 0.0,
+      "product": 0.0,
+      "state": "BLOCKED",
+      "blockers": [
+        "Local V1 passed; production V2, applicable browser V3 and explicit product acceptance remain pending."
+      ],
+      "dependencies": [],
+      "missing_evidence": [
+        "VEC-P0-104-V1:STALE",
+        "VEC-P0-104-V2:UNAVAILABLE"
+      ]
+    },
+    {
+      "id": "VEC-P0-105",
+      "phase": 0,
+      "title": "F05 \u2014 Outdated Roadmap Module Statuses [MEDIUM]",
+      "type": "assurance",
+      "priority": 0,
+      "weight": 1,
+      "capability": "CAP-P0",
+      "implementation": 0.0,
+      "verification": 0.0,
+      "product": 0.0,
+      "state": "BLOCKED",
+      "blockers": [
+        "Local V1 passed; production V2, applicable browser V3 and explicit product acceptance remain pending."
+      ],
+      "dependencies": [],
+      "missing_evidence": [
+        "VEC-P0-105-V1:STALE",
+        "VEC-P0-105-V2:UNAVAILABLE"
+      ]
+    },
+    {
+      "id": "VEC-P0-106",
+      "phase": 0,
+      "title": "F06 \u2014 Reconciliation Ignores Drawdown Mismatch [HIGH]",
+      "type": "assurance",
+      "priority": 0,
+      "weight": 1,
+      "capability": "CAP-P0",
+      "implementation": 0.0,
+      "verification": 0.0,
+      "product": 0.0,
+      "state": "BLOCKED",
+      "blockers": [
+        "Local V1 passed; production V2, applicable browser V3 and explicit product acceptance remain pending."
+      ],
+      "dependencies": [],
+      "missing_evidence": [
+        "VEC-P0-106-V1:STALE",
+        "VEC-P0-106-V2:UNAVAILABLE"
+      ]
+    },
+    {
+      "id": "VEC-P0-107",
+      "phase": 0,
+      "title": "F07 \u2014 Audit ZIP Export Silent Column Dropping [HIGH]",
+      "type": "assurance",
+      "priority": 0,
+      "weight": 1,
+      "capability": "CAP-P0",
+      "implementation": 0.0,
+      "verification": 0.0,
+      "product": 0.0,
+      "state": "BLOCKED",
+      "blockers": [
+        "Local V1 passed; production V2, applicable browser V3 and explicit product acceptance remain pending."
+      ],
+      "dependencies": [],
+      "missing_evidence": [
+        "VEC-P0-107-V1:STALE",
+        "VEC-P0-107-V2:UNAVAILABLE"
+      ]
+    },
+    {
+      "id": "VEC-P0-108",
+      "phase": 0,
+      "title": "F08 \u2014 Strategy Funnel Cohort & Status Discrepancy [MEDIUM]",
+      "type": "assurance",
+      "priority": 0,
+      "weight": 1,
+      "capability": "CAP-P0",
+      "implementation": 0.0,
+      "verification": 0.0,
+      "product": 0.0,
+      "state": "BLOCKED",
+      "blockers": [
+        "Local V1 passed; production V2, applicable browser V3 and explicit product acceptance remain pending."
+      ],
+      "dependencies": [],
+      "missing_evidence": [
+        "VEC-P0-108-V1:STALE",
+        "VEC-P0-108-V2:UNAVAILABLE"
+      ]
+    },
+    {
+      "id": "VEC-P0-109",
+      "phase": 0,
+      "title": "F09 \u2014 Frontend Single-Account Display Default Blinds Multi-Account System [HIGH]",
+      "type": "assurance",
+      "priority": 0,
+      "weight": 1,
+      "capability": "CAP-P0",
+      "implementation": 0.0,
+      "verification": 0.0,
+      "product": 0.0,
+      "state": "BLOCKED",
+      "blockers": [
+        "Local V1 passed; production V2, applicable browser V3 and explicit product acceptance remain pending."
+      ],
+      "dependencies": [],
+      "missing_evidence": [
+        "VEC-P0-109-V1:STALE",
+        "VEC-P0-109-V2:UNAVAILABLE",
+        "VEC-P0-109-V3:STALE"
+      ]
+    },
+    {
+      "id": "VEC-P0-110",
+      "phase": 0,
+      "title": "F10 \u2014 Signal Annotation Query Reversal and Account Scope Defect [HIGH]",
+      "type": "assurance",
+      "priority": 0,
+      "weight": 1,
+      "capability": "CAP-P0",
+      "implementation": 0.0,
+      "verification": 0.0,
+      "product": 0.0,
+      "state": "BLOCKED",
+      "blockers": [
+        "Local V1 passed; production V2, applicable browser V3 and explicit product acceptance remain pending."
+      ],
+      "dependencies": [],
+      "missing_evidence": [
+        "VEC-P0-110-V1:STALE",
+        "VEC-P0-110-V2:UNAVAILABLE"
+      ]
+    },
+    {
+      "id": "VEC-P0-111",
+      "phase": 0,
+      "title": "F11 \u2014 Statistics Page Lifecycle Population Mixing [MEDIUM]",
+      "type": "assurance",
+      "priority": 0,
+      "weight": 1,
+      "capability": "CAP-P0",
+      "implementation": 0.0,
+      "verification": 0.0,
+      "product": 0.0,
+      "state": "BLOCKED",
+      "blockers": [
+        "Local V1 passed; production V2, applicable browser V3 and explicit product acceptance remain pending."
+      ],
+      "dependencies": [],
+      "missing_evidence": [
+        "VEC-P0-111-V1:STALE",
+        "VEC-P0-111-V2:UNAVAILABLE"
+      ]
+    },
+    {
+      "id": "VEC-P0-112",
+      "phase": 0,
+      "title": "F12 \u2014 Daily Performance Marks Missing Opening as Complete [HIGH]",
+      "type": "assurance",
+      "priority": 0,
+      "weight": 1,
+      "capability": "CAP-P0",
+      "implementation": 0.0,
+      "verification": 0.0,
+      "product": 0.0,
+      "state": "BLOCKED",
+      "blockers": [
+        "Local V1 passed; production V2, applicable browser V3 and explicit product acceptance remain pending."
+      ],
+      "dependencies": [],
+      "missing_evidence": [
+        "VEC-P0-112-V1:STALE",
+        "VEC-P0-112-V2:UNAVAILABLE"
+      ]
+    },
+    {
+      "id": "VEC-P0-113",
+      "phase": 0,
+      "title": "F13 \u2014 Research Health Funnel False Healthy Parent Status and Hardcoded Lookback [MEDIUM]",
+      "type": "assurance",
+      "priority": 0,
+      "weight": 1,
+      "capability": "CAP-P0",
+      "implementation": 0.0,
+      "verification": 0.0,
+      "product": 0.0,
+      "state": "BLOCKED",
+      "blockers": [
+        "Local V1 passed; production V2, applicable browser V3 and explicit product acceptance remain pending."
+      ],
+      "dependencies": [],
+      "missing_evidence": [
+        "VEC-P0-113-V1:STALE",
+        "VEC-P0-113-V2:UNAVAILABLE"
+      ]
+    },
+    {
+      "id": "VEC-P0-114",
+      "phase": 0,
+      "title": "F14 \u2014 Research Report Freshness Shape Mismatches [MEDIUM]",
+      "type": "assurance",
+      "priority": 0,
+      "weight": 1,
+      "capability": "CAP-P0",
+      "implementation": 0.0,
+      "verification": 0.0,
+      "product": 0.0,
+      "state": "BLOCKED",
+      "blockers": [
+        "Local V1 passed; production V2, applicable browser V3 and explicit product acceptance remain pending."
+      ],
+      "dependencies": [],
+      "missing_evidence": [
+        "VEC-P0-114-V1:STALE",
+        "VEC-P0-114-V2:UNAVAILABLE",
+        "VEC-P0-114-V3:STALE"
+      ]
+    },
+    {
+      "id": "VEC-P0-115",
+      "phase": 0,
+      "title": "F15 \u2014 Portfolio Correlation Invalid Status Check and Trade-Order Pairing [HIGH]",
+      "type": "assurance",
+      "priority": 0,
+      "weight": 1,
+      "capability": "CAP-P0",
+      "implementation": 0.0,
+      "verification": 0.0,
+      "product": 0.0,
+      "state": "BLOCKED",
+      "blockers": [
+        "Local V1 passed; production V2, applicable browser V3 and explicit product acceptance remain pending."
+      ],
+      "dependencies": [],
+      "missing_evidence": [
+        "VEC-P0-115-V1:STALE",
+        "VEC-P0-115-V2:UNAVAILABLE"
+      ]
+    },
+    {
+      "id": "VEC-P0-116",
+      "phase": 0,
+      "title": "F16 \u2014 Strategy Degradation Cross-Exchange Pollution [HIGH]",
+      "type": "assurance",
+      "priority": 0,
+      "weight": 1,
+      "capability": "CAP-P0",
+      "implementation": 0.0,
+      "verification": 0.0,
+      "product": 0.0,
+      "state": "BLOCKED",
+      "blockers": [
+        "Local V1 passed; production V2, applicable browser V3 and explicit product acceptance remain pending."
+      ],
+      "dependencies": [],
+      "missing_evidence": [
+        "VEC-P0-116-V1:STALE",
+        "VEC-P0-116-V2:UNAVAILABLE"
+      ]
+    },
+    {
+      "id": "VEC-P0-117",
+      "phase": 0,
+      "title": "F17 \u2014 Learning Feature Store Missing Exchange Filter [MEDIUM]",
+      "type": "assurance",
+      "priority": 0,
+      "weight": 1,
+      "capability": "CAP-P0",
+      "implementation": 0.0,
+      "verification": 0.0,
+      "product": 0.0,
+      "state": "BLOCKED",
+      "blockers": [
+        "Local V1 passed; production V2, applicable browser V3 and explicit product acceptance remain pending."
+      ],
+      "dependencies": [],
+      "missing_evidence": [
+        "VEC-P0-117-V1:STALE",
+        "VEC-P0-117-V2:UNAVAILABLE"
+      ]
+    },
+    {
+      "id": "VEC-P0-118",
+      "phase": 0,
+      "title": "F18 \u2014 Model Training Purging Fallback Leakage [MEDIUM]",
+      "type": "assurance",
+      "priority": 0,
+      "weight": 1,
+      "capability": "CAP-P0",
+      "implementation": 0.0,
+      "verification": 0.0,
+      "product": 0.0,
+      "state": "BLOCKED",
+      "blockers": [
+        "Local V1 passed; production V2, applicable browser V3 and explicit product acceptance remain pending."
+      ],
+      "dependencies": [],
+      "missing_evidence": [
+        "VEC-P0-118-V1:STALE",
+        "VEC-P0-118-V2:UNAVAILABLE"
+      ]
+    },
+    {
+      "id": "VEC-P0-119",
+      "phase": 0,
+      "title": "F19 \u2014 Autonomy Settings Raw Flags vs Permissions [LOW]",
+      "type": "assurance",
+      "priority": 0,
+      "weight": 1,
+      "capability": "CAP-P0",
+      "implementation": 0.0,
+      "verification": 0.0,
+      "product": 0.0,
+      "state": "BLOCKED",
+      "blockers": [
+        "Local V1 passed; production V2, applicable browser V3 and explicit product acceptance remain pending."
+      ],
+      "dependencies": [],
+      "missing_evidence": [
+        "VEC-P0-119-V1:STALE",
+        "VEC-P0-119-V2:UNAVAILABLE",
+        "VEC-P0-119-V3:STALE"
+      ]
+    },
+    {
+      "id": "VEC-P0-120",
+      "phase": 0,
+      "title": "F20 \u2014 Dual Kill-Switch Divergence & Blindness [HIGH]",
+      "type": "assurance",
+      "priority": 0,
+      "weight": 1,
+      "capability": "CAP-P0",
+      "implementation": 0.0,
+      "verification": 0.0,
+      "product": 0.0,
+      "state": "BLOCKED",
+      "blockers": [
+        "Local V1 passed; production V2, applicable browser V3 and explicit product acceptance remain pending."
+      ],
+      "dependencies": [],
+      "missing_evidence": [
+        "VEC-P0-120-V1:STALE",
+        "VEC-P0-120-V2:UNAVAILABLE",
+        "VEC-P0-120-V3:STALE"
+      ]
+    },
+    {
+      "id": "VEC-P0-121",
+      "phase": 0,
+      "title": "F21 \u2014 Compute Workers Static Capability Map [MEDIUM]",
+      "type": "assurance",
+      "priority": 0,
+      "weight": 1,
+      "capability": "CAP-P0",
+      "implementation": 0.0,
+      "verification": 0.0,
+      "product": 0.0,
+      "state": "BLOCKED",
+      "blockers": [
+        "Local V1 passed; production V2, applicable browser V3 and explicit product acceptance remain pending."
+      ],
+      "dependencies": [],
+      "missing_evidence": [
+        "VEC-P0-121-V1:STALE",
+        "VEC-P0-121-V2:UNAVAILABLE"
+      ]
+    },
+    {
+      "id": "VEC-P0-122",
+      "phase": 0,
+      "title": "F22 \u2014 Quote Integrity Silent Error Swallowing [MEDIUM]",
+      "type": "assurance",
+      "priority": 0,
+      "weight": 1,
+      "capability": "CAP-P0",
+      "implementation": 0.0,
+      "verification": 0.0,
+      "product": 0.0,
+      "state": "BLOCKED",
+      "blockers": [
+        "Local V1 passed; production V2, applicable browser V3 and explicit product acceptance remain pending."
+      ],
+      "dependencies": [],
+      "missing_evidence": [
+        "VEC-P0-122-V1:STALE",
+        "VEC-P0-122-V2:UNAVAILABLE",
+        "VEC-P0-122-V3:STALE"
+      ]
+    },
+    {
+      "id": "VEC-P0-123",
+      "phase": 0,
+      "title": "F23 \u2014 UI Pagination Truncations [LOW]",
+      "type": "assurance",
+      "priority": 0,
+      "weight": 1,
+      "capability": "CAP-P0",
+      "implementation": 0.0,
+      "verification": 0.0,
+      "product": 0.0,
+      "state": "BLOCKED",
+      "blockers": [
+        "Local V1 passed; production V2, applicable browser V3 and explicit product acceptance remain pending."
+      ],
+      "dependencies": [],
+      "missing_evidence": [
+        "VEC-P0-123-V1:STALE",
+        "VEC-P0-123-V2:UNAVAILABLE",
+        "VEC-P0-123-V3:STALE"
+      ]
+    },
+    {
+      "id": "VEC-P0-124",
+      "phase": 0,
+      "title": "F24 \u2014 Slippage Position Trace Scope [MEDIUM]",
+      "type": "assurance",
+      "priority": 0,
+      "weight": 1,
+      "capability": "CAP-P0",
+      "implementation": 0.0,
+      "verification": 0.0,
+      "product": 0.0,
+      "state": "BLOCKED",
+      "blockers": [
+        "Local V1 passed; production V2, applicable browser V3 and explicit product acceptance remain pending."
+      ],
+      "dependencies": [],
+      "missing_evidence": [
+        "VEC-P0-124-V1:STALE",
+        "VEC-P0-124-V2:UNAVAILABLE"
+      ]
+    },
+    {
+      "id": "VEC-P0-125",
+      "phase": 0,
+      "title": "F25 \u2014 Candidate Lab Immediate Evaluation Rejection Due to Missing Backtest Linkage [HIGH]",
+      "type": "assurance",
+      "priority": 0,
+      "weight": 1,
+      "capability": "CAP-P0",
+      "implementation": 0.0,
+      "verification": 0.0,
+      "product": 0.0,
+      "state": "BLOCKED",
+      "blockers": [
+        "Local V1 passed; production V2, applicable browser V3 and explicit product acceptance remain pending."
+      ],
+      "dependencies": [],
+      "missing_evidence": [
+        "VEC-P0-125-V1:STALE",
+        "VEC-P0-125-V2:UNAVAILABLE",
+        "VEC-P0-125-V3:STALE"
+      ]
+    },
+    {
+      "id": "VEC-P0-126",
+      "phase": 0,
+      "title": "F26 \u2014 Autonomy Approval Audit Trail Loses Rejected Promotions [HIGH]",
+      "type": "assurance",
+      "priority": 0,
+      "weight": 1,
+      "capability": "CAP-P0",
+      "implementation": 0.0,
+      "verification": 0.0,
+      "product": 0.0,
+      "state": "BLOCKED",
+      "blockers": [
+        "Local V1 passed; production V2, applicable browser V3 and explicit product acceptance remain pending."
+      ],
+      "dependencies": [],
+      "missing_evidence": [
+        "VEC-P0-126-V1:STALE",
+        "VEC-P0-126-V2:UNAVAILABLE"
+      ]
+    },
+    {
+      "id": "VEC-P0-127",
+      "phase": 0,
+      "title": "F27 \u2014 Account-Level Entry Block Observability Void [HIGH]",
+      "type": "assurance",
+      "priority": 0,
+      "weight": 1,
+      "capability": "CAP-P0",
+      "implementation": 0.0,
+      "verification": 0.0,
+      "product": 0.0,
+      "state": "BLOCKED",
+      "blockers": [
+        "Local V1 passed; production V2, applicable browser V3 and explicit product acceptance remain pending."
+      ],
+      "dependencies": [],
+      "missing_evidence": [
+        "VEC-P0-127-V1:STALE",
+        "VEC-P0-127-V2:UNAVAILABLE"
+      ]
+    },
+    {
+      "id": "VEC-P0-201",
+      "phase": 0,
+      "title": "I01 \u2014 Lifecycle: `SIGNALS_EVALUATED` never correctly terminalizes",
+      "type": "assurance",
+      "priority": 0,
+      "weight": 1,
+      "capability": "CAP-P0",
+      "implementation": 0.0,
+      "verification": 0.0,
+      "product": 0.0,
+      "state": "BLOCKED",
+      "blockers": [
+        "Local V1 passed; production V2, applicable browser V3 and explicit product acceptance remain pending."
+      ],
+      "dependencies": [],
+      "missing_evidence": [
+        "VEC-P0-201-V1:STALE",
+        "VEC-P0-201-V2:UNAVAILABLE"
+      ]
+    },
+    {
+      "id": "VEC-P0-202",
+      "phase": 0,
+      "title": "I02 \u2014 TP1 fractional exit can round to zero",
+      "type": "assurance",
+      "priority": 0,
+      "weight": 1,
+      "capability": "CAP-P0",
+      "implementation": 0.0,
+      "verification": 0.0,
+      "product": 0.0,
+      "state": "BLOCKED",
+      "blockers": [
+        "Local V1 passed; production V2, applicable browser V3 and explicit product acceptance remain pending."
+      ],
+      "dependencies": [],
+      "missing_evidence": [
+        "VEC-P0-202-V1:STALE",
+        "VEC-P0-202-V2:UNAVAILABLE"
+      ]
+    },
+    {
+      "id": "VEC-P0-203",
+      "phase": 0,
+      "title": "I03 \u2014 `funding_complete=false` persists for all positions",
+      "type": "assurance",
+      "priority": 0,
+      "weight": 1,
+      "capability": "CAP-P0",
+      "implementation": 0.0,
+      "verification": 0.0,
+      "product": 0.0,
+      "state": "BLOCKED",
+      "blockers": [
+        "Local V1 passed; production V2, applicable browser V3 and explicit product acceptance remain pending."
+      ],
+      "dependencies": [],
+      "missing_evidence": [
+        "VEC-P0-203-V1:STALE",
+        "VEC-P0-203-V2:UNAVAILABLE"
+      ]
+    },
+    {
+      "id": "VEC-P0-204",
+      "phase": 0,
+      "title": "I04 \u2014 `PAPER_PROCESSED=COMPLETED` despite per-account failures",
+      "type": "assurance",
+      "priority": 0,
+      "weight": 1,
+      "capability": "CAP-P0",
+      "implementation": 0.0,
+      "verification": 0.0,
+      "product": 0.0,
+      "state": "BLOCKED",
+      "blockers": [
+        "Local V1 passed; production V2, applicable browser V3 and explicit product acceptance remain pending."
+      ],
+      "dependencies": [],
+      "missing_evidence": [
+        "VEC-P0-204-V1:STALE",
+        "VEC-P0-204-V2:UNAVAILABLE"
+      ]
+    },
+    {
+      "id": "VEC-P0-205",
+      "phase": 0,
+      "title": "I05 \u2014 Binance 5m candle gap invokes Bybit-only recovery",
+      "type": "assurance",
+      "priority": 0,
+      "weight": 1,
+      "capability": "CAP-P0",
+      "implementation": 0.0,
+      "verification": 0.0,
+      "product": 0.0,
+      "state": "BLOCKED",
+      "blockers": [
+        "Local V1 passed; production V2, applicable browser V3 and explicit product acceptance remain pending."
+      ],
+      "dependencies": [],
+      "missing_evidence": [
+        "VEC-P0-205-V1:STALE",
+        "VEC-P0-205-V2:UNAVAILABLE"
+      ]
+    },
+    {
+      "id": "VEC-P0-206",
+      "phase": 0,
+      "title": "I06 \u2014 Binance provenance exception outside per-account catch",
+      "type": "assurance",
+      "priority": 0,
+      "weight": 1,
+      "capability": "CAP-P0",
+      "implementation": 0.0,
+      "verification": 0.0,
+      "product": 0.0,
+      "state": "BLOCKED",
+      "blockers": [
+        "Local V1 passed; production V2, applicable browser V3 and explicit product acceptance remain pending."
+      ],
+      "dependencies": [],
+      "missing_evidence": [
+        "VEC-P0-206-V1:STALE",
+        "VEC-P0-206-V2:UNAVAILABLE"
+      ]
+    },
+    {
+      "id": "VEC-P0-207",
+      "phase": 0,
+      "title": "I07 \u2014 Late funding may never settle on closed positions",
+      "type": "assurance",
+      "priority": 0,
+      "weight": 1,
+      "capability": "CAP-P0",
+      "implementation": 0.0,
+      "verification": 0.0,
+      "product": 0.0,
+      "state": "BLOCKED",
+      "blockers": [
+        "Local V1 passed; production V2, applicable browser V3 and explicit product acceptance remain pending."
+      ],
+      "dependencies": [],
+      "missing_evidence": [
+        "VEC-P0-207-V1:STALE",
+        "VEC-P0-207-V2:UNAVAILABLE"
+      ]
+    },
+    {
+      "id": "VEC-P0-208",
+      "phase": 0,
+      "title": "I08 \u2014 Fresh snapshot timestamp can certify stale market valuation",
+      "type": "assurance",
+      "priority": 0,
+      "weight": 1,
+      "capability": "CAP-P0",
+      "implementation": 0.0,
+      "verification": 0.0,
+      "product": 0.0,
+      "state": "BLOCKED",
+      "blockers": [
+        "Local V1 passed; production V2, applicable browser V3 and explicit product acceptance remain pending."
+      ],
+      "dependencies": [],
+      "missing_evidence": [
+        "VEC-P0-208-V1:STALE",
+        "VEC-P0-208-V2:UNAVAILABLE"
+      ]
+    },
+    {
+      "id": "VEC-P0-209",
+      "phase": 0,
+      "title": "I09 \u2014 5m `CANDLE_CLOSED` acknowledged before downstream PAPER completion",
+      "type": "assurance",
+      "priority": 0,
+      "weight": 1,
+      "capability": "CAP-P0",
+      "implementation": 0.0,
+      "verification": 0.0,
+      "product": 0.0,
+      "state": "BLOCKED",
+      "blockers": [
+        "Local V1 passed; production V2, applicable browser V3 and explicit product acceptance remain pending."
+      ],
+      "dependencies": [],
+      "missing_evidence": [
+        "VEC-P0-209-V1:STALE",
+        "VEC-P0-209-V2:UNAVAILABLE"
+      ]
+    },
+    {
+      "id": "VEC-P1-001",
+      "phase": 1,
+      "title": "Common strategy interface",
+      "type": "runtime",
+      "priority": 1,
+      "weight": 2,
+      "capability": "CAP-P1",
+      "implementation": 0.0,
+      "verification": 0.0,
+      "product": 0.0,
+      "state": "BLOCKED",
+      "blockers": [
+        "Current requirement-specific execution evidence and explicit product acceptance unavailable."
+      ],
+      "dependencies": [
+        "VEC-P0-008"
+      ],
+      "missing_evidence": [
+        "VEC-P1-001-V1:UNAVAILABLE",
+        "VEC-P1-001-V2:UNAVAILABLE"
+      ]
+    },
+    {
+      "id": "VEC-P1-002",
+      "phase": 1,
+      "title": "Parameter schemas",
+      "type": "runtime",
+      "priority": 1,
+      "weight": 2,
+      "capability": "CAP-P1",
+      "implementation": 0.0,
+      "verification": 0.0,
+      "product": 0.0,
+      "state": "BLOCKED",
+      "blockers": [
+        "Target criteria not confirmed implemented; complete prerequisite gates first."
+      ],
+      "dependencies": [
+        "VEC-P0-008"
+      ],
+      "missing_evidence": [
+        "VEC-P1-002-V1:UNAVAILABLE",
+        "VEC-P1-002-V2:UNAVAILABLE"
+      ]
+    },
+    {
+      "id": "VEC-P1-003",
+      "phase": 1,
+      "title": "Strategy metadata",
+      "type": "runtime",
+      "priority": 1,
+      "weight": 2,
+      "capability": "CAP-P1",
+      "implementation": 0.0,
+      "verification": 0.0,
+      "product": 0.0,
+      "state": "BLOCKED",
+      "blockers": [
+        "Current requirement-specific execution evidence and explicit product acceptance unavailable."
+      ],
+      "dependencies": [
+        "VEC-P0-008"
+      ],
+      "missing_evidence": [
+        "VEC-P1-003-V1:UNAVAILABLE",
+        "VEC-P1-003-V2:UNAVAILABLE"
+      ]
+    },
+    {
+      "id": "VEC-P1-004",
+      "phase": 1,
+      "title": "Immutable executable versions",
+      "type": "runtime",
+      "priority": 1,
+      "weight": 2,
+      "capability": "CAP-P1",
+      "implementation": 0.0,
+      "verification": 0.0,
+      "product": 0.0,
+      "state": "BLOCKED",
+      "blockers": [
+        "Target criteria not confirmed implemented; complete prerequisite gates first."
+      ],
+      "dependencies": [
+        "VEC-P0-008"
+      ],
+      "missing_evidence": [
+        "VEC-P1-004-V1:UNAVAILABLE",
+        "VEC-P1-004-V2:UNAVAILABLE"
+      ]
+    },
+    {
+      "id": "VEC-P1-005",
+      "phase": 1,
+      "title": "Approved strategy registration",
+      "type": "runtime",
+      "priority": 1,
+      "weight": 2,
+      "capability": "CAP-P1",
+      "implementation": 0.0,
+      "verification": 0.0,
+      "product": 0.0,
+      "state": "BLOCKED",
+      "blockers": [
+        "Current requirement-specific execution evidence and explicit product acceptance unavailable."
+      ],
+      "dependencies": [
+        "VEC-P0-008"
+      ],
+      "missing_evidence": [
+        "VEC-P1-005-V1:UNAVAILABLE",
+        "VEC-P1-005-V2:UNAVAILABLE"
+      ]
+    },
+    {
+      "id": "VEC-P1-006",
+      "phase": 1,
+      "title": "Safe strategy generator",
+      "type": "runtime",
+      "priority": 1,
+      "weight": 2,
+      "capability": "CAP-P1",
+      "implementation": 0.0,
+      "verification": 0.0,
+      "product": 0.0,
+      "state": "BLOCKED",
+      "blockers": [
+        "Target criteria not confirmed implemented; complete prerequisite gates first."
+      ],
+      "dependencies": [
+        "VEC-P0-008"
+      ],
+      "missing_evidence": [
+        "VEC-P1-006-V1:UNAVAILABLE",
+        "VEC-P1-006-V2:UNAVAILABLE"
+      ]
+    },
+    {
+      "id": "VEC-P1-007",
+      "phase": 1,
+      "title": "All-13 compatibility",
+      "type": "runtime",
+      "priority": 1,
+      "weight": 2,
+      "capability": "CAP-P1",
+      "implementation": 0.0,
+      "verification": 0.0,
+      "product": 0.0,
+      "state": "BLOCKED",
+      "blockers": [
+        "Target criteria not confirmed implemented; complete prerequisite gates first."
+      ],
+      "dependencies": [
+        "VEC-P0-008"
+      ],
+      "missing_evidence": [
+        "VEC-P1-007-V1:UNAVAILABLE",
+        "VEC-P1-007-V2:UNAVAILABLE"
+      ]
+    },
+    {
+      "id": "VEC-P1-008",
+      "phase": 1,
+      "title": "Automated strategy contract tests",
+      "type": "runtime",
+      "priority": 1,
+      "weight": 2,
+      "capability": "CAP-P1",
+      "implementation": 0.0,
+      "verification": 0.0,
+      "product": 0.0,
+      "state": "BLOCKED",
+      "blockers": [
+        "Target criteria not confirmed implemented; complete prerequisite gates first."
+      ],
+      "dependencies": [
+        "VEC-P0-008"
+      ],
+      "missing_evidence": [
+        "VEC-P1-008-V1:UNAVAILABLE",
+        "VEC-P1-008-V2:UNAVAILABLE"
+      ]
+    },
+    {
+      "id": "VEC-P2-001",
+      "phase": 2,
+      "title": "Exchange comparison",
+      "type": "runtime",
+      "priority": 1,
+      "weight": 2,
+      "capability": "CAP-P2",
+      "implementation": 0.0,
+      "verification": 0.0,
+      "product": 0.0,
+      "state": "BLOCKED",
+      "blockers": [
+        "Current requirement-specific execution evidence and explicit product acceptance unavailable."
+      ],
+      "dependencies": [
+        "VEC-P0-008",
+        "VEC-P1-004"
+      ],
+      "missing_evidence": [
+        "VEC-P2-001-V1:UNAVAILABLE",
+        "VEC-P2-001-V2:UNAVAILABLE",
+        "VEC-P2-001-V3:UNAVAILABLE"
+      ]
+    },
+    {
+      "id": "VEC-P2-002",
+      "phase": 2,
+      "title": "Per-strategy profitability",
+      "type": "runtime",
+      "priority": 1,
+      "weight": 2,
+      "capability": "CAP-P2",
+      "implementation": 0.0,
+      "verification": 0.0,
+      "product": 0.0,
+      "state": "BLOCKED",
+      "blockers": [
+        "Current requirement-specific execution evidence and explicit product acceptance unavailable."
+      ],
+      "dependencies": [
+        "VEC-P0-008",
+        "VEC-P1-004"
+      ],
+      "missing_evidence": [
+        "VEC-P2-002-V1:UNAVAILABLE",
+        "VEC-P2-002-V2:UNAVAILABLE",
+        "VEC-P2-002-V3:UNAVAILABLE"
+      ]
+    },
+    {
+      "id": "VEC-P2-003",
+      "phase": 2,
+      "title": "Account-specific PnL",
+      "type": "runtime",
+      "priority": 1,
+      "weight": 2,
+      "capability": "CAP-P2",
+      "implementation": 0.0,
+      "verification": 0.0,
+      "product": 0.0,
+      "state": "BLOCKED",
+      "blockers": [
+        "Current requirement-specific execution evidence and explicit product acceptance unavailable."
+      ],
+      "dependencies": [
+        "VEC-P0-008",
+        "VEC-P1-004"
+      ],
+      "missing_evidence": [
+        "VEC-P2-003-V1:UNAVAILABLE",
+        "VEC-P2-003-V2:UNAVAILABLE",
+        "VEC-P2-003-V3:UNAVAILABLE"
+      ]
+    },
+    {
+      "id": "VEC-P2-004",
+      "phase": 2,
+      "title": "Fees and funding analytics",
+      "type": "runtime",
+      "priority": 0,
+      "weight": 3,
+      "capability": "CAP-P2",
+      "implementation": 0.0,
+      "verification": 0.0,
+      "product": 0.0,
+      "state": "BLOCKED",
+      "blockers": [
+        "Current requirement-specific execution evidence and explicit product acceptance unavailable."
+      ],
+      "dependencies": [
+        "VEC-P0-008",
+        "VEC-P1-004"
+      ],
+      "missing_evidence": [
+        "VEC-P2-004-V1:UNAVAILABLE",
+        "VEC-P2-004-V2:UNAVAILABLE",
+        "VEC-P2-004-V3:UNAVAILABLE"
+      ]
+    },
+    {
+      "id": "VEC-P2-005",
+      "phase": 2,
+      "title": "Drawdown and risk analytics",
+      "type": "runtime",
+      "priority": 1,
+      "weight": 3,
+      "capability": "CAP-P2",
+      "implementation": 0.0,
+      "verification": 0.0,
+      "product": 0.0,
+      "state": "BLOCKED",
+      "blockers": [
+        "Current requirement-specific execution evidence and explicit product acceptance unavailable."
+      ],
+      "dependencies": [
+        "VEC-P0-008",
+        "VEC-P1-004"
+      ],
+      "missing_evidence": [
+        "VEC-P2-005-V1:UNAVAILABLE",
+        "VEC-P2-005-V2:UNAVAILABLE",
+        "VEC-P2-005-V3:UNAVAILABLE"
+      ]
+    },
+    {
+      "id": "VEC-P2-006",
+      "phase": 2,
+      "title": "Strategy version comparison",
+      "type": "runtime",
+      "priority": 1,
+      "weight": 2,
+      "capability": "CAP-P2",
+      "implementation": 0.0,
+      "verification": 0.0,
+      "product": 0.0,
+      "state": "BLOCKED",
+      "blockers": [
+        "Target criteria not confirmed implemented; complete prerequisite gates first."
+      ],
+      "dependencies": [
+        "VEC-P0-008",
+        "VEC-P1-004"
+      ],
+      "missing_evidence": [
+        "VEC-P2-006-V1:UNAVAILABLE",
+        "VEC-P2-006-V2:UNAVAILABLE",
+        "VEC-P2-006-V3:UNAVAILABLE"
+      ]
+    },
+    {
+      "id": "VEC-P2-007",
+      "phase": 2,
+      "title": "Research evidence lineage",
+      "type": "runtime",
+      "priority": 1,
+      "weight": 2,
+      "capability": "CAP-P2",
+      "implementation": 0.0,
+      "verification": 0.0,
+      "product": 0.0,
+      "state": "BLOCKED",
+      "blockers": [
+        "Current requirement-specific execution evidence and explicit product acceptance unavailable."
+      ],
+      "dependencies": [
+        "VEC-P0-008",
+        "VEC-P1-004"
+      ],
+      "missing_evidence": [
+        "VEC-P2-007-V1:UNAVAILABLE",
+        "VEC-P2-007-V2:UNAVAILABLE",
+        "VEC-P2-007-V3:UNAVAILABLE"
+      ]
+    },
+    {
+      "id": "VEC-P2-008",
+      "phase": 2,
+      "title": "Complete strategy audit exports",
+      "type": "runtime",
+      "priority": 1,
+      "weight": 2,
+      "capability": "CAP-P2",
+      "implementation": 0.0,
+      "verification": 0.0,
+      "product": 0.0,
+      "state": "BLOCKED",
+      "blockers": [
+        "Current requirement-specific execution evidence and explicit product acceptance unavailable."
+      ],
+      "dependencies": [
+        "VEC-P0-008",
+        "VEC-P1-004"
+      ],
+      "missing_evidence": [
+        "VEC-P2-008-V1:UNAVAILABLE",
+        "VEC-P2-008-V2:UNAVAILABLE",
+        "VEC-P2-008-V3:UNAVAILABLE"
+      ]
+    },
+    {
+      "id": "VEC-P2-009",
+      "phase": 2,
+      "title": "Data completeness and statistical adequacy",
+      "type": "runtime",
+      "priority": 1,
+      "weight": 2,
+      "capability": "CAP-P2",
+      "implementation": 0.0,
+      "verification": 0.0,
+      "product": 0.0,
+      "state": "BLOCKED",
+      "blockers": [
+        "Current requirement-specific execution evidence and explicit product acceptance unavailable."
+      ],
+      "dependencies": [
+        "VEC-P0-008",
+        "VEC-P1-004"
+      ],
+      "missing_evidence": [
+        "VEC-P2-009-V1:UNAVAILABLE",
+        "VEC-P2-009-V2:UNAVAILABLE",
+        "VEC-P2-009-V3:UNAVAILABLE"
+      ]
+    },
+    {
+      "id": "VEC-P2-010",
+      "phase": 2,
+      "title": "Reliable financial frontend",
+      "type": "runtime",
+      "priority": 1,
+      "weight": 2,
+      "capability": "CAP-P2",
+      "implementation": 0.0,
+      "verification": 0.0,
+      "product": 0.0,
+      "state": "BLOCKED",
+      "blockers": [
+        "Target criteria not confirmed implemented; complete prerequisite gates first."
+      ],
+      "dependencies": [
+        "VEC-P0-008",
+        "VEC-P1-004"
+      ],
+      "missing_evidence": [
+        "VEC-P2-010-V1:UNAVAILABLE",
+        "VEC-P2-010-V2:UNAVAILABLE",
+        "VEC-P2-010-V3:UNAVAILABLE"
+      ]
+    },
+    {
+      "id": "VEC-P3-001",
+      "phase": 3,
+      "title": "Deterministic candidate generation",
+      "type": "runtime",
+      "priority": 1,
+      "weight": 2,
+      "capability": "CAP-P3",
+      "implementation": 0.0,
+      "verification": 0.0,
+      "product": 0.0,
+      "state": "BLOCKED",
+      "blockers": [
+        "Current requirement-specific execution evidence and explicit product acceptance unavailable."
+      ],
+      "dependencies": [
+        "VEC-P0-008",
+        "VEC-P1-004"
+      ],
+      "missing_evidence": [
+        "VEC-P3-001-V1:UNAVAILABLE",
+        "VEC-P3-001-V2:UNAVAILABLE",
+        "VEC-P3-001-V3:UNAVAILABLE"
+      ]
+    },
+    {
+      "id": "VEC-P3-002",
+      "phase": 3,
+      "title": "Bounded parameter optimization",
+      "type": "runtime",
+      "priority": 1,
+      "weight": 2,
+      "capability": "CAP-P3",
+      "implementation": 0.0,
+      "verification": 0.0,
+      "product": 0.0,
+      "state": "BLOCKED",
+      "blockers": [
+        "Current requirement-specific execution evidence and explicit product acceptance unavailable."
+      ],
+      "dependencies": [
+        "VEC-P0-008",
+        "VEC-P1-004"
+      ],
+      "missing_evidence": [
+        "VEC-P3-002-V1:UNAVAILABLE",
+        "VEC-P3-002-V2:UNAVAILABLE",
+        "VEC-P3-002-V3:UNAVAILABLE"
+      ]
+    },
+    {
+      "id": "VEC-P3-003",
+      "phase": 3,
+      "title": "Immutable experiment manifests",
+      "type": "runtime",
+      "priority": 1,
+      "weight": 2,
+      "capability": "CAP-P3",
+      "implementation": 0.0,
+      "verification": 0.0,
+      "product": 0.0,
+      "state": "BLOCKED",
+      "blockers": [
+        "Target criteria not confirmed implemented; complete prerequisite gates first."
+      ],
+      "dependencies": [
+        "VEC-P0-008",
+        "VEC-P1-004"
+      ],
+      "missing_evidence": [
+        "VEC-P3-003-V1:UNAVAILABLE",
+        "VEC-P3-003-V2:UNAVAILABLE",
+        "VEC-P3-003-V3:UNAVAILABLE"
+      ]
+    },
+    {
+      "id": "VEC-P3-004",
+      "phase": 3,
+      "title": "Reproducible datasets",
+      "type": "runtime",
+      "priority": 1,
+      "weight": 2,
+      "capability": "CAP-P3",
+      "implementation": 0.0,
+      "verification": 0.0,
+      "product": 0.0,
+      "state": "BLOCKED",
+      "blockers": [
+        "Current requirement-specific execution evidence and explicit product acceptance unavailable."
+      ],
+      "dependencies": [
+        "VEC-P0-008",
+        "VEC-P1-004"
+      ],
+      "missing_evidence": [
+        "VEC-P3-004-V1:UNAVAILABLE",
+        "VEC-P3-004-V2:UNAVAILABLE",
+        "VEC-P3-004-V3:UNAVAILABLE"
+      ]
+    },
+    {
+      "id": "VEC-P3-005",
+      "phase": 3,
+      "title": "Bounded research jobs",
+      "type": "runtime",
+      "priority": 1,
+      "weight": 2,
+      "capability": "CAP-P3",
+      "implementation": 0.0,
+      "verification": 0.0,
+      "product": 0.0,
+      "state": "BLOCKED",
+      "blockers": [
+        "Current requirement-specific execution evidence and explicit product acceptance unavailable."
+      ],
+      "dependencies": [
+        "VEC-P0-008",
+        "VEC-P1-004"
+      ],
+      "missing_evidence": [
+        "VEC-P3-005-V1:UNAVAILABLE",
+        "VEC-P3-005-V2:UNAVAILABLE",
+        "VEC-P3-005-V3:UNAVAILABLE"
+      ]
+    },
+    {
+      "id": "VEC-P3-006",
+      "phase": 3,
+      "title": "Candidate lineage",
+      "type": "runtime",
+      "priority": 1,
+      "weight": 2,
+      "capability": "CAP-P3",
+      "implementation": 0.0,
+      "verification": 0.0,
+      "product": 0.0,
+      "state": "BLOCKED",
+      "blockers": [
+        "Current requirement-specific execution evidence and explicit product acceptance unavailable."
+      ],
+      "dependencies": [
+        "VEC-P0-008",
+        "VEC-P1-004"
+      ],
+      "missing_evidence": [
+        "VEC-P3-006-V1:UNAVAILABLE",
+        "VEC-P3-006-V2:UNAVAILABLE",
+        "VEC-P3-006-V3:UNAVAILABLE"
+      ]
+    },
+    {
+      "id": "VEC-P3-007",
+      "phase": 3,
+      "title": "Automatic validation scheduling",
+      "type": "runtime",
+      "priority": 1,
+      "weight": 2,
+      "capability": "CAP-P3",
+      "implementation": 0.0,
+      "verification": 0.0,
+      "product": 0.0,
+      "state": "BLOCKED",
+      "blockers": [
+        "Current requirement-specific execution evidence and explicit product acceptance unavailable."
+      ],
+      "dependencies": [
+        "VEC-P0-008",
+        "VEC-P1-004"
+      ],
+      "missing_evidence": [
+        "VEC-P3-007-V1:UNAVAILABLE",
+        "VEC-P3-007-V2:UNAVAILABLE",
+        "VEC-P3-007-V3:UNAVAILABLE"
+      ]
+    },
+    {
+      "id": "VEC-P3-008",
+      "phase": 3,
+      "title": "Research failure recovery",
+      "type": "runtime",
+      "priority": 1,
+      "weight": 2,
+      "capability": "CAP-P3",
+      "implementation": 0.0,
+      "verification": 0.0,
+      "product": 0.0,
+      "state": "BLOCKED",
+      "blockers": [
+        "Current requirement-specific execution evidence and explicit product acceptance unavailable."
+      ],
+      "dependencies": [
+        "VEC-P0-008",
+        "VEC-P1-004"
+      ],
+      "missing_evidence": [
+        "VEC-P3-008-V1:UNAVAILABLE",
+        "VEC-P3-008-V2:UNAVAILABLE",
+        "VEC-P3-008-V3:UNAVAILABLE"
+      ]
+    },
+    {
+      "id": "VEC-P3-009",
+      "phase": 3,
+      "title": "Compute protection and backpressure",
+      "type": "runtime",
+      "priority": 1,
+      "weight": 2,
+      "capability": "CAP-P3",
+      "implementation": 0.0,
+      "verification": 0.0,
+      "product": 0.0,
+      "state": "BLOCKED",
+      "blockers": [
+        "Target criteria not confirmed implemented; complete prerequisite gates first."
+      ],
+      "dependencies": [
+        "VEC-P0-008",
+        "VEC-P1-004"
+      ],
+      "missing_evidence": [
+        "VEC-P3-009-V1:UNAVAILABLE",
+        "VEC-P3-009-V2:UNAVAILABLE",
+        "VEC-P3-009-V3:UNAVAILABLE"
+      ]
+    },
+    {
+      "id": "VEC-P3-010",
+      "phase": 3,
+      "title": "Evolution progress visibility",
+      "type": "runtime",
+      "priority": 1,
+      "weight": 2,
+      "capability": "CAP-P3",
+      "implementation": 0.0,
+      "verification": 0.0,
+      "product": 0.0,
+      "state": "BLOCKED",
+      "blockers": [
+        "Target criteria not confirmed implemented; complete prerequisite gates first."
+      ],
+      "dependencies": [
+        "VEC-P0-008",
+        "VEC-P1-004"
+      ],
+      "missing_evidence": [
+        "VEC-P3-010-V1:UNAVAILABLE",
+        "VEC-P3-010-V2:UNAVAILABLE",
+        "VEC-P3-010-V3:UNAVAILABLE"
+      ]
+    },
+    {
+      "id": "VEC-P3-011",
+      "phase": 3,
+      "title": "Advanced bounded search",
+      "type": "runtime",
+      "priority": 1,
+      "weight": 2,
+      "capability": "CAP-P3",
+      "implementation": 0.0,
+      "verification": 0.0,
+      "product": 0.0,
+      "state": "BLOCKED",
+      "blockers": [
+        "Target criteria not confirmed implemented; complete prerequisite gates first."
+      ],
+      "dependencies": [
+        "VEC-P0-008",
+        "VEC-P1-004"
+      ],
+      "missing_evidence": [
+        "VEC-P3-011-V1:UNAVAILABLE",
+        "VEC-P3-011-V2:UNAVAILABLE",
+        "VEC-P3-011-V3:UNAVAILABLE"
+      ]
+    },
+    {
+      "id": "VEC-P4-001",
+      "phase": 4,
+      "title": "Backtest validation",
+      "type": "runtime",
+      "priority": 1,
+      "weight": 2,
+      "capability": "CAP-P4",
+      "implementation": 0.0,
+      "verification": 0.0,
+      "product": 0.0,
+      "state": "BLOCKED",
+      "blockers": [
+        "Current requirement-specific execution evidence and explicit product acceptance unavailable."
+      ],
+      "dependencies": [
+        "VEC-P0-008",
+        "VEC-P1-004",
+        "VEC-P3-003"
+      ],
+      "missing_evidence": [
+        "VEC-P4-001-V1:UNAVAILABLE",
+        "VEC-P4-001-V2:UNAVAILABLE",
+        "VEC-P4-001-V3:UNAVAILABLE"
+      ]
+    },
+    {
+      "id": "VEC-P4-002",
+      "phase": 4,
+      "title": "Out-of-sample validation",
+      "type": "runtime",
+      "priority": 1,
+      "weight": 2,
+      "capability": "CAP-P4",
+      "implementation": 0.0,
+      "verification": 0.0,
+      "product": 0.0,
+      "state": "BLOCKED",
+      "blockers": [
+        "Current requirement-specific execution evidence and explicit product acceptance unavailable."
+      ],
+      "dependencies": [
+        "VEC-P0-008",
+        "VEC-P1-004",
+        "VEC-P3-003"
+      ],
+      "missing_evidence": [
+        "VEC-P4-002-V1:UNAVAILABLE",
+        "VEC-P4-002-V2:UNAVAILABLE",
+        "VEC-P4-002-V3:UNAVAILABLE"
+      ]
+    },
+    {
+      "id": "VEC-P4-003",
+      "phase": 4,
+      "title": "Walk-forward optimization",
+      "type": "runtime",
+      "priority": 1,
+      "weight": 2,
+      "capability": "CAP-P4",
+      "implementation": 0.0,
+      "verification": 0.0,
+      "product": 0.0,
+      "state": "BLOCKED",
+      "blockers": [
+        "Current requirement-specific execution evidence and explicit product acceptance unavailable."
+      ],
+      "dependencies": [
+        "VEC-P0-008",
+        "VEC-P1-004",
+        "VEC-P3-003"
+      ],
+      "missing_evidence": [
+        "VEC-P4-003-V1:UNAVAILABLE",
+        "VEC-P4-003-V2:UNAVAILABLE",
+        "VEC-P4-003-V3:UNAVAILABLE"
+      ]
+    },
+    {
+      "id": "VEC-P4-004",
+      "phase": 4,
+      "title": "Monte Carlo robustness",
+      "type": "runtime",
+      "priority": 1,
+      "weight": 2,
+      "capability": "CAP-P4",
+      "implementation": 0.0,
+      "verification": 0.0,
+      "product": 0.0,
+      "state": "BLOCKED",
+      "blockers": [
+        "Current requirement-specific execution evidence and explicit product acceptance unavailable."
+      ],
+      "dependencies": [
+        "VEC-P0-008",
+        "VEC-P1-004",
+        "VEC-P3-003"
+      ],
+      "missing_evidence": [
+        "VEC-P4-004-V1:UNAVAILABLE",
+        "VEC-P4-004-V2:UNAVAILABLE",
+        "VEC-P4-004-V3:UNAVAILABLE"
+      ]
+    },
+    {
+      "id": "VEC-P4-005",
+      "phase": 4,
+      "title": "Forward PAPER validation",
+      "type": "runtime",
+      "priority": 0,
+      "weight": 2,
+      "capability": "CAP-P4",
+      "implementation": 0.0,
+      "verification": 0.0,
+      "product": 0.0,
+      "state": "BLOCKED",
+      "blockers": [
+        "Target criteria not confirmed implemented; complete prerequisite gates first."
+      ],
+      "dependencies": [
+        "VEC-P0-008",
+        "VEC-P1-004",
+        "VEC-P3-003"
+      ],
+      "missing_evidence": [
+        "VEC-P4-005-V1:UNAVAILABLE",
+        "VEC-P4-005-V2:UNAVAILABLE",
+        "VEC-P4-005-V3:UNAVAILABLE"
+      ]
+    },
+    {
+      "id": "VEC-P4-006",
+      "phase": 4,
+      "title": "Champion/challenger comparison",
+      "type": "runtime",
+      "priority": 1,
+      "weight": 2,
+      "capability": "CAP-P4",
+      "implementation": 0.0,
+      "verification": 0.0,
+      "product": 0.0,
+      "state": "BLOCKED",
+      "blockers": [
+        "Current requirement-specific execution evidence and explicit product acceptance unavailable."
+      ],
+      "dependencies": [
+        "VEC-P0-008",
+        "VEC-P1-004",
+        "VEC-P3-003"
+      ],
+      "missing_evidence": [
+        "VEC-P4-006-V1:UNAVAILABLE",
+        "VEC-P4-006-V2:UNAVAILABLE",
+        "VEC-P4-006-V3:UNAVAILABLE"
+      ]
+    },
+    {
+      "id": "VEC-P4-007",
+      "phase": 4,
+      "title": "Evidence-based admission",
+      "type": "runtime",
+      "priority": 0,
+      "weight": 2,
+      "capability": "CAP-P4",
+      "implementation": 0.0,
+      "verification": 0.0,
+      "product": 0.0,
+      "state": "BLOCKED",
+      "blockers": [
+        "Current requirement-specific execution evidence and explicit product acceptance unavailable."
+      ],
+      "dependencies": [
+        "VEC-P0-008",
+        "VEC-P1-004",
+        "VEC-P3-003"
+      ],
+      "missing_evidence": [
+        "VEC-P4-007-V1:UNAVAILABLE",
+        "VEC-P4-007-V2:UNAVAILABLE",
+        "VEC-P4-007-V3:UNAVAILABLE"
+      ]
+    },
+    {
+      "id": "VEC-P4-008",
+      "phase": 4,
+      "title": "Controlled PAPER rollout",
+      "type": "runtime",
+      "priority": 1,
+      "weight": 2,
+      "capability": "CAP-P4",
+      "implementation": 0.0,
+      "verification": 0.0,
+      "product": 0.0,
+      "state": "BLOCKED",
+      "blockers": [
+        "Target criteria not confirmed implemented; complete prerequisite gates first."
+      ],
+      "dependencies": [
+        "VEC-P0-008",
+        "VEC-P1-004",
+        "VEC-P3-003"
+      ],
+      "missing_evidence": [
+        "VEC-P4-008-V1:UNAVAILABLE",
+        "VEC-P4-008-V2:UNAVAILABLE",
+        "VEC-P4-008-V3:UNAVAILABLE"
+      ]
+    },
+    {
+      "id": "VEC-P4-009",
+      "phase": 4,
+      "title": "Operational PAPER rollback",
+      "type": "runtime",
+      "priority": 0,
+      "weight": 3,
+      "capability": "CAP-P4",
+      "implementation": 0.0,
+      "verification": 0.0,
+      "product": 0.0,
+      "state": "BLOCKED",
+      "blockers": [
+        "Target criteria not confirmed implemented; complete prerequisite gates first."
+      ],
+      "dependencies": [
+        "VEC-P0-008",
+        "VEC-P1-004",
+        "VEC-P3-003"
+      ],
+      "missing_evidence": [
+        "VEC-P4-009-V1:UNAVAILABLE",
+        "VEC-P4-009-V2:UNAVAILABLE",
+        "VEC-P4-009-V3:UNAVAILABLE"
+      ]
+    },
+    {
+      "id": "VEC-P4-010",
+      "phase": 4,
+      "title": "Kill switches and risk protection",
+      "type": "runtime",
+      "priority": 1,
+      "weight": 3,
+      "capability": "CAP-P4",
+      "implementation": 0.0,
+      "verification": 0.0,
+      "product": 0.0,
+      "state": "BLOCKED",
+      "blockers": [
+        "Current requirement-specific execution evidence and explicit product acceptance unavailable."
+      ],
+      "dependencies": [
+        "VEC-P0-008",
+        "VEC-P1-004",
+        "VEC-P3-003"
+      ],
+      "missing_evidence": [
+        "VEC-P4-010-V1:UNAVAILABLE",
+        "VEC-P4-010-V2:UNAVAILABLE",
+        "VEC-P4-010-V3:UNAVAILABLE"
+      ]
+    },
+    {
+      "id": "VEC-P5-001",
+      "phase": 5,
+      "title": "Common exchange contracts",
+      "type": "runtime",
+      "priority": 1,
+      "weight": 2,
+      "capability": "CAP-P5",
+      "implementation": 0.0,
+      "verification": 0.0,
+      "product": 0.0,
+      "state": "BLOCKED",
+      "blockers": [
+        "Current requirement-specific execution evidence and explicit product acceptance unavailable."
+      ],
+      "dependencies": [
+        "VEC-P0-008",
+        "VEC-P1-004",
+        "VEC-P3-003"
+      ],
+      "missing_evidence": [
+        "VEC-P5-001-V1:UNAVAILABLE",
+        "VEC-P5-001-V2:UNAVAILABLE"
+      ]
+    },
+    {
+      "id": "VEC-P5-002",
+      "phase": 5,
+      "title": "Capability discovery",
+      "type": "runtime",
+      "priority": 1,
+      "weight": 2,
+      "capability": "CAP-P5",
+      "implementation": 0.0,
+      "verification": 0.0,
+      "product": 0.0,
+      "state": "BLOCKED",
+      "blockers": [
+        "Target criteria not confirmed implemented; complete prerequisite gates first."
+      ],
+      "dependencies": [
+        "VEC-P0-008",
+        "VEC-P1-004",
+        "VEC-P3-003"
+      ],
+      "missing_evidence": [
+        "VEC-P5-002-V1:UNAVAILABLE",
+        "VEC-P5-002-V2:UNAVAILABLE"
+      ]
+    },
+    {
+      "id": "VEC-P5-003",
+      "phase": 5,
+      "title": "Market data normalization",
+      "type": "runtime",
+      "priority": 1,
+      "weight": 2,
+      "capability": "CAP-P5",
+      "implementation": 0.0,
+      "verification": 0.0,
+      "product": 0.0,
+      "state": "BLOCKED",
+      "blockers": [
+        "Current requirement-specific execution evidence and explicit product acceptance unavailable."
+      ],
+      "dependencies": [
+        "VEC-P0-008",
+        "VEC-P1-004",
+        "VEC-P3-003"
+      ],
+      "missing_evidence": [
+        "VEC-P5-003-V1:UNAVAILABLE",
+        "VEC-P5-003-V2:UNAVAILABLE"
+      ]
+    },
+    {
+      "id": "VEC-P5-004",
+      "phase": 5,
+      "title": "Instrument metadata",
+      "type": "runtime",
+      "priority": 1,
+      "weight": 2,
+      "capability": "CAP-P5",
+      "implementation": 0.0,
+      "verification": 0.0,
+      "product": 0.0,
+      "state": "BLOCKED",
+      "blockers": [
+        "Current requirement-specific execution evidence and explicit product acceptance unavailable."
+      ],
+      "dependencies": [
+        "VEC-P0-008",
+        "VEC-P1-004",
+        "VEC-P3-003"
+      ],
+      "missing_evidence": [
+        "VEC-P5-004-V1:UNAVAILABLE",
+        "VEC-P5-004-V2:UNAVAILABLE"
+      ]
+    },
+    {
+      "id": "VEC-P5-005",
+      "phase": 5,
+      "title": "Funding schedules",
+      "type": "runtime",
+      "priority": 1,
+      "weight": 3,
+      "capability": "CAP-P5",
+      "implementation": 0.0,
+      "verification": 0.0,
+      "product": 0.0,
+      "state": "BLOCKED",
+      "blockers": [
+        "Target criteria not confirmed implemented; complete prerequisite gates first."
+      ],
+      "dependencies": [
+        "VEC-P0-008",
+        "VEC-P1-004",
+        "VEC-P3-003"
+      ],
+      "missing_evidence": [
+        "VEC-P5-005-V1:UNAVAILABLE",
+        "VEC-P5-005-V2:UNAVAILABLE"
+      ]
+    },
+    {
+      "id": "VEC-P5-006",
+      "phase": 5,
+      "title": "Fee models",
+      "type": "runtime",
+      "priority": 1,
+      "weight": 2,
+      "capability": "CAP-P5",
+      "implementation": 0.0,
+      "verification": 0.0,
+      "product": 0.0,
+      "state": "BLOCKED",
+      "blockers": [
+        "Target criteria not confirmed implemented; complete prerequisite gates first."
+      ],
+      "dependencies": [
+        "VEC-P0-008",
+        "VEC-P1-004",
+        "VEC-P3-003"
+      ],
+      "missing_evidence": [
+        "VEC-P5-006-V1:UNAVAILABLE",
+        "VEC-P5-006-V2:UNAVAILABLE"
+      ]
+    },
+    {
+      "id": "VEC-P5-007",
+      "phase": 5,
+      "title": "Adapter conformance tests",
+      "type": "runtime",
+      "priority": 1,
+      "weight": 2,
+      "capability": "CAP-P5",
+      "implementation": 0.0,
+      "verification": 0.0,
+      "product": 0.0,
+      "state": "BLOCKED",
+      "blockers": [
+        "Target criteria not confirmed implemented; complete prerequisite gates first."
+      ],
+      "dependencies": [
+        "VEC-P0-008",
+        "VEC-P1-004",
+        "VEC-P3-003"
+      ],
+      "missing_evidence": [
+        "VEC-P5-007-V1:UNAVAILABLE",
+        "VEC-P5-007-V2:UNAVAILABLE"
+      ]
+    },
+    {
+      "id": "VEC-P5-008",
+      "phase": 5,
+      "title": "New exchange onboarding",
+      "type": "runtime",
+      "priority": 1,
+      "weight": 2,
+      "capability": "CAP-P5",
+      "implementation": 0.0,
+      "verification": 0.0,
+      "product": 0.0,
+      "state": "BLOCKED",
+      "blockers": [
+        "Target criteria not confirmed implemented; complete prerequisite gates first."
+      ],
+      "dependencies": [
+        "VEC-P0-008",
+        "VEC-P1-004",
+        "VEC-P3-003"
+      ],
+      "missing_evidence": [
+        "VEC-P5-008-V1:UNAVAILABLE",
+        "VEC-P5-008-V2:UNAVAILABLE"
+      ]
+    },
+    {
+      "id": "VEC-P6-001",
+      "phase": 6,
+      "title": "External responsibility separation",
+      "type": "documentation",
+      "priority": 1,
+      "weight": 2,
+      "capability": "CAP-P6",
+      "implementation": 100.0,
+      "verification": 0.0,
+      "product": 0.0,
+      "state": "BLOCKED",
+      "blockers": [
+        "Current requirement-specific execution evidence and explicit product acceptance unavailable."
+      ],
+      "dependencies": [
+        "VEC-P0-008"
+      ],
+      "missing_evidence": [
+        "VEC-P6-001-V1:UNAVAILABLE"
+      ]
+    },
+    {
+      "id": "VEC-P6-002",
+      "phase": 6,
+      "title": "Versioned external contract proposal",
+      "type": "documentation",
+      "priority": 1,
+      "weight": 2,
+      "capability": "CAP-P6",
+      "implementation": 100.0,
+      "verification": 0.0,
+      "product": 0.0,
+      "state": "BLOCKED",
+      "blockers": [
+        "Current requirement-specific execution evidence and explicit product acceptance unavailable."
+      ],
+      "dependencies": [
+        "VEC-P0-008"
+      ],
+      "missing_evidence": [
+        "VEC-P6-002-V1:UNAVAILABLE"
+      ]
+    },
+    {
+      "id": "VEC-P6-003",
+      "phase": 6,
+      "title": "External security and authorization",
+      "type": "documentation",
+      "priority": 1,
+      "weight": 2,
+      "capability": "CAP-P6",
+      "implementation": 100.0,
+      "verification": 0.0,
+      "product": 0.0,
+      "state": "BLOCKED",
+      "blockers": [
+        "Current requirement-specific execution evidence and explicit product acceptance unavailable."
+      ],
+      "dependencies": [
+        "VEC-P0-008"
+      ],
+      "missing_evidence": [
+        "VEC-P6-003-V1:UNAVAILABLE"
+      ]
+    },
+    {
+      "id": "VEC-P6-004",
+      "phase": 6,
+      "title": "External event lineage",
+      "type": "documentation",
+      "priority": 1,
+      "weight": 2,
+      "capability": "CAP-P6",
+      "implementation": 100.0,
+      "verification": 0.0,
+      "product": 0.0,
+      "state": "BLOCKED",
+      "blockers": [
+        "Current requirement-specific execution evidence and explicit product acceptance unavailable."
+      ],
+      "dependencies": [
+        "VEC-P0-008"
+      ],
+      "missing_evidence": [
+        "VEC-P6-004-V1:UNAVAILABLE"
+      ]
+    },
+    {
+      "id": "VEC-P6-005",
+      "phase": 6,
+      "title": "Future integration acceptance",
+      "type": "documentation",
+      "priority": 1,
+      "weight": 2,
+      "capability": "CAP-P6",
+      "implementation": 100.0,
+      "verification": 0.0,
+      "product": 0.0,
+      "state": "BLOCKED",
+      "blockers": [
+        "Current requirement-specific execution evidence and explicit product acceptance unavailable."
+      ],
+      "dependencies": [
+        "VEC-P0-008"
+      ],
+      "missing_evidence": [
+        "VEC-P6-005-V1:UNAVAILABLE"
+      ]
+    }
+  ],
+  "next_actions": {
+    "unverified_implemented": null,
+    "phase0_blocker": "VEC-P0-001",
+    "next_increment": "Phase 0 evidence closure",
+    "preventing_phase1": [
+      "VEC-P0-001",
+      "VEC-P0-002",
+      "VEC-P0-003",
+      "VEC-P0-004",
+      "VEC-P0-005",
+      "VEC-P0-006",
+      "VEC-P0-007",
+      "VEC-P0-008",
+      "VEC-P0-009",
+      "VEC-P0-101",
+      "VEC-P0-102",
+      "VEC-P0-103",
+      "VEC-P0-104",
+      "VEC-P0-105",
+      "VEC-P0-106",
+      "VEC-P0-107",
+      "VEC-P0-108",
+      "VEC-P0-109",
+      "VEC-P0-110",
+      "VEC-P0-111",
+      "VEC-P0-112",
+      "VEC-P0-113",
+      "VEC-P0-114",
+      "VEC-P0-115",
+      "VEC-P0-116",
+      "VEC-P0-117",
+      "VEC-P0-118",
+      "VEC-P0-119",
+      "VEC-P0-120",
+      "VEC-P0-121",
+      "VEC-P0-122",
+      "VEC-P0-123",
+      "VEC-P0-124",
+      "VEC-P0-125",
+      "VEC-P0-126",
+      "VEC-P0-127",
+      "VEC-P0-201",
+      "VEC-P0-202",
+      "VEC-P0-203",
+      "VEC-P0-204",
+      "VEC-P0-205",
+      "VEC-P0-206",
+      "VEC-P0-207",
+      "VEC-P0-208",
+      "VEC-P0-209"
+    ]
+  },
+  "comparison": {
+    "status": "NO_COMPARABLE_SNAPSHOT",
+    "delivery_delta": null
+  }
+}

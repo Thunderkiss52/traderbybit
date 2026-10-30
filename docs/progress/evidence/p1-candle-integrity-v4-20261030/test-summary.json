@@ -1,0 +1,129 @@
+{
+  "baseline2": {
+    "tests": 57,
+    "assertions": 250,
+    "failures": 6,
+    "errors": 0,
+    "skipped": [],
+    "exit_code": 1
+  },
+  "iteration1": {
+    "tests": 60,
+    "assertions": 311,
+    "failures": 0,
+    "errors": 0,
+    "skipped": [],
+    "exit_code": 0
+  },
+  "iteration2": {
+    "tests": 126,
+    "assertions": 1108,
+    "failures": 0,
+    "errors": 0,
+    "skipped": [],
+    "exit_code": 0
+  },
+  "full": {
+    "tests": 1069,
+    "assertions": 10581,
+    "failures": 0,
+    "errors": 0,
+    "skipped": [
+      "Tests\\Integration\\BybitPublicApiIntegrationTest::test_public_linear_market_endpoints_match_the_documented_contract"
+    ],
+    "exit_code": 0
+  },
+  "target_classes": {
+    "Tests\\Integration\\BinanceCandleConflictDurabilityTest": {
+      "tests": 13,
+      "assertions": 119,
+      "errors": 0,
+      "failures": 0,
+      "skipped": 0
+    },
+    "Tests\\Feature\\Exchanges\\BinanceHtfScheduleTest": {
+      "tests": 5,
+      "assertions": 87,
+      "errors": 0,
+      "failures": 0,
+      "skipped": 0
+    },
+    "Tests\\Integration\\BinanceCandleInsertionRaceTest": {
+      "tests": 4,
+      "assertions": 76,
+      "errors": 0,
+      "failures": 0,
+      "skipped": 0
+    },
+    "Tests\\Feature\\Exchanges\\BinanceCandleConflictQuarantineTest": {
+      "tests": 3,
+      "assertions": 27,
+      "errors": 0,
+      "failures": 0,
+      "skipped": 0
+    },
+    "Tests\\Feature\\Exchanges\\BinanceBatchCandleIngestionTest": {
+      "tests": 14,
+      "assertions": 204,
+      "errors": 0,
+      "failures": 0,
+      "skipped": 0
+    },
+    "Tests\\Feature\\Exchanges\\BinanceImmutableMarketIngestionTest": {
+      "tests": 2,
+      "assertions": 12,
+      "errors": 0,
+      "failures": 0,
+      "skipped": 0
+    },
+    "Tests\\Unit\\Research\\SystemFreshnessServiceTest": {
+      "tests": 6,
+      "assertions": 181,
+      "errors": 0,
+      "failures": 0,
+      "skipped": 0
+    },
+    "Tests\\Feature\\Research\\ResearchHealthApiTest": {
+      "tests": 3,
+      "assertions": 22,
+      "errors": 0,
+      "failures": 0,
+      "skipped": 0
+    },
+    "Tests\\Unit\\Exchanges\\BinanceCandleWindowTest": {
+      "tests": 5,
+      "assertions": 10,
+      "errors": 0,
+      "failures": 0,
+      "skipped": 0
+    },
+    "Tests\\Feature\\Exchanges\\BinancePaperReadinessTest": {
+      "tests": 11,
+      "assertions": 56,
+      "errors": 0,
+      "failures": 0,
+      "skipped": 0
+    },
+    "Tests\\Unit\\MarketData\\CandleConflictJournalTest": {
+      "tests": 25,
+      "assertions": 73,
+      "errors": 0,
+      "failures": 0,
+      "skipped": 0
+    },
+    "Tests\\Integration\\CandleConflictRecoveryTest": {
+      "tests": 16,
+      "assertions": 101,
+      "errors": 0,
+      "failures": 0,
+      "skipped": 0
+    },
+    "Tests\\Integration\\StrategyInputIntegrityTest": {
+      "tests": 19,
+      "assertions": 140,
+      "errors": 0,
+      "failures": 0,
+      "skipped": 0
+    }
+  }
+}

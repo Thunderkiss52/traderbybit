@@ -1,0 +1,21 @@
+ M app/Exchanges/Binance/BinancePaperReadiness.php
+ M app/MarketData/Application/MarketCandleConflictService.php
+ M app/MarketData/Domain/CandleIntegrityUnavailable.php
+ M app/MarketData/Infrastructure/Persistence/CandleConflictJournal.php
+ M app/Providers/AppServiceProvider.php
+ M app/Research/Application/SystemFreshnessService.php
+ M app/Strategy/Application/StrategyInputFactory.php
+ M bootstrap/app.php
+ M tests/Concerns/CleansCandleConflictEvidence.php
+?? app/Console/
+?? app/MarketData/Application/CandleConflictRecovery.php
+?? app/MarketData/Domain/CandleConflictEvidence.php
+?? app/MarketData/Infrastructure/Persistence/CandleIntegrityDatabase.php
+?? app/Strategy/Domain/StrategyInputIntegrityException.php
+?? database/migrations/2026_10_29_220100_create_market_candle_conflict_journal_table.php
+?? tests/Fixtures/CandleConflictEvidenceFixture.php
+?? tests/Fixtures/candle_recovery_worker.php
+?? tests/Fixtures/strategy_input_integrity_worker.php
+?? tests/Integration/CandleConflictRecoveryTest.php
+?? tests/Integration/StrategyInputIntegrityTest.php
+?? tests/Unit/MarketData/CandleConflictJournalTest.php

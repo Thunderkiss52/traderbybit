@@ -1,0 +1,15 @@
+{
+  "initial_head": "30376593042c6bd29397c20e8f074f396e09a1da",
+  "initial_status": " M app/Exchanges/Binance/BinancePaperReadiness.php\n M app/MarketData/Application/MarketCandleConflictService.php\n M app/MarketData/Domain/CandleIntegrityUnavailable.php\n M app/MarketData/Infrastructure/Persistence/CandleConflictJournal.php\n M app/Providers/AppServiceProvider.php\n M app/Research/Application/SystemFreshnessService.php\n M app/Strategy/Application/StrategyInputFactory.php\n M bootstrap/app.php\n M tests/Concerns/CleansCandleConflictEvidence.php\n?? app/Console/\n?? app/MarketData/Application/CandleConflictRecovery.php\n?? app/MarketData/Domain/CandleConflictEvidence.php\n?? app/MarketData/Infrastructure/Persistence/CandleIntegrityDatabase.php\n?? app/Strategy/Domain/StrategyInputIntegrityException.php\n?? database/migrations/2026_10_29_220100_create_market_candle_conflict_journal_table.php\n?? tests/Fixtures/CandleConflictEvidenceFixture.php\n?? tests/Fixtures/candle_recovery_worker.php\n?? tests/Fixtures/strategy_input_integrity_worker.php\n?? tests/Integration/CandleConflictRecoveryTest.php\n?? tests/Integration/StrategyInputIntegrityTest.php\n?? tests/Unit/MarketData/CandleConflictJournalTest.php\n",
+  "database": "bybit_test|PostgreSQL 17.11 (Debian 17.11-1.pgdg13+2) on x86_64-pc-linux-gnu, compiled by gcc (Debian 14.2.0-19) 14.2.0, 64-bit|3296",
+  "resource": {
+    "io.traderbybit.task": "p1-recovery-20261030"
+  },
+  "runtime_image_id": "sha256:02c66d89f408eb8481e9fd02026f2eadbafb3f20c6584056201fb7b7581c21f7",
+  "node": "22.23.4",
+  "php": "8.5.12",
+  "go": "1.24.6",
+  "isolated_http": "all integrity tests fake exchange HTTP; PostgreSQL internal Docker network",
+  "source_hashes_sha256": "109714f8217d1f4749ff61b16bdc2e31b906a9b64977c54134d57c1cb2254ae1",
+  "paper_history": "only synthetic test fixtures in bybit_test; no production read or write"
+}
