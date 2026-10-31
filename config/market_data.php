@@ -20,7 +20,7 @@ return [
     ],
     'websocket' => [
         'url' => env('BYBIT_WS_URL', 'wss://stream.bybit.com/v5/public/linear'),
-        'heartbeat_seconds' => (int) env('BYBIT_WS_HEARTBEAT_SECONDS', 20),
+        'heartbeat_seconds' => (int) env('BYBIT_WS_HEARTBEAT_SECONDS', 10),
         'receive_timeout_seconds' => (int) env('BYBIT_WS_RECEIVE_TIMEOUT', 1),
         'reconnect_max_seconds' => (int) env('BYBIT_WS_RECONNECT_MAX_SECONDS', 30),
         'recovery_lookback_minutes' => (int) env('BYBIT_WS_RECOVERY_LOOKBACK_MINUTES', 180),

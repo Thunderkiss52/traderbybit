@@ -52,6 +52,69 @@ final class MarketStreamSupervisorTest extends TestCase
         self::assertSame(2, $client->candleRequests);
         self::assertSame([1], $sleeper->delays);
     }
+
+    public function test_it_sends_subscription_and_proactive_heartbeat_on_connect(): void
+    {
+        $connection = new RecordingConnection;
+        $connector = new FixedConnector($connection);
+        $client = new CountingMarketClient;
+        $store = new EloquentCandleStore;
+        $sleeper = new NoopSleeper;
+        $supervisor = new MarketStreamSupervisor(
+            $connector,
+            new ClosedCandleIngestor(new BybitWebSocketMessageParser, $store),
+            new CandleSynchronizer($client, $store, new GapDetector, 0, 10),
+            $store,
+            new ImmediateBackoff,
+            $sleeper,
+            app('log'),
+            'wss://example.test/v5/public/linear',
+            ['BTCUSDT'],
+            ['5'],
+            10,
+            5,
+            30,
+        );
+
+        $supervisor->run(1);
+
+        self::assertGreaterThanOrEqual(2, count($connection->sentMessages));
+        $subscribeMessage = json_decode($connection->sentMessages[0], true);
+        self::assertSame('subscribe', $subscribeMessage['op']);
+        self::assertSame(['kline.5.BTCUSDT'], $subscribeMessage['args']);
+
+        $heartbeatMessage = json_decode($connection->sentMessages[1], true);
+        self::assertSame('ping', $heartbeatMessage['op']);
+        self::assertStringStartsWith('heartbeat-init-', (string) $heartbeatMessage['req_id']);
+    }
+}
+
+final class FixedConnector implements WebSocketConnector
+{
+    public function __construct(private WebSocketConnection $connection) {}
+
+    public function connect(string $url): WebSocketConnection
+    {
+        return $this->connection;
+    }
+}
+
+final class RecordingConnection implements WebSocketConnection
+{
+    /** @var list<string> */
+    public array $sentMessages = [];
+
+    public function send(string $payload): void
+    {
+        $this->sentMessages[] = $payload;
+    }
+
+    public function receive(): ?string
+    {
+        throw new RuntimeException('stop-after-first-cycle');
+    }
+
+    public function close(): void {}
 }
 
 final class FailingConnector implements WebSocketConnector

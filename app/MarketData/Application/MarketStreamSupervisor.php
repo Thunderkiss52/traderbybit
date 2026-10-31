@@ -99,11 +99,17 @@ final class MarketStreamSupervisor
             'op' => 'subscribe',
             'args' => $topics,
         ], JSON_THROW_ON_ERROR));
+
+        // Proactively send initial heartbeat to prevent Bybit server 20s idle drop during REST gap recovery
+        $connection->send(json_encode([
+            'req_id' => 'heartbeat-init-'.((string) time()),
+            'op' => 'ping',
+        ], JSON_THROW_ON_ERROR));
     }
 
     private function consume(WebSocketConnection $connection): void
     {
-        $lastHeartbeat = 0;
+        $lastHeartbeat = time();
 
         while (! $this->stopping) {
             $now = time();
