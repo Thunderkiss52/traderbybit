@@ -369,3 +369,26 @@ func TestBinanceJobLoadsBinanceCandles(t *testing.T) {
 		t.Fatalf("expected Binance-scoped DB query, got %q", mockDrv.lastCandleExchange)
 	}
 }
+
+func TestFailJob_SuccessfulExecution(t *testing.T) {
+	mockDrv.reset()
+	db := initMockDB()
+	defer db.Close()
+	runner := NewRunner(db, "test-worker-failjob")
+	runner.generationToken = 1
+	ctx := context.Background()
+
+	err := runner.FailJob(ctx, "job-fail-123", 1, errors.New("simulated error message"))
+	if err != nil {
+		t.Fatalf("expected FailJob to succeed, got: %v", err)
+	}
+
+	mockDrv.mu.Lock()
+	defer mockDrv.mu.Unlock()
+	if mockDrv.failedJobID != "job-fail-123" {
+		t.Fatalf("expected failedJobID to be job-fail-123, got: %s", mockDrv.failedJobID)
+	}
+	if !strings.Contains(mockDrv.failedReason, "simulated error message") {
+		t.Fatalf("expected failedReason to contain simulated error message, got: %s", mockDrv.failedReason)
+	}
+}

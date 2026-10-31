@@ -334,7 +334,7 @@ func (r *Runner) FailJob(ctx context.Context, jobID string, fencingToken int64, 
 		SET retry_count = retry_count + 1,
 		    sanitized_error = $1,
 		    status = CASE WHEN retry_count + 1 < max_retries THEN 'QUEUED' ELSE 'FAILED' END,
-		    completed_at = CASE WHEN retry_count + 1 >= max_retries THEN $2 ELSE NULL END,
+		    completed_at = CASE WHEN retry_count + 1 >= max_retries THEN $2::timestamptz ELSE NULL END,
 		    lease_owner = NULL, lease_expires_at = NULL
 		WHERE job_id = $3 AND lease_owner = $4 AND fencing_token = $5 AND status IN ('CLAIMED', 'RUNNING')
 	`
@@ -448,7 +448,9 @@ func (r *Runner) ExecuteJob(ctx context.Context, req *contracts.JobRequest, fenc
 	// candles for a Binance research job (or an unidentified dataset).
 	exchange, err := jobscope.ResolveExchange(req.Payload)
 	if err != nil {
-		_ = r.FailJob(ctx, req.JobID, fencingToken, err)
+		if fjErr := r.FailJob(ctx, req.JobID, fencingToken, err); fjErr != nil {
+			log.Printf("[jobrunner] FailJob error for job %s: %v", req.JobID, fjErr)
+		}
 		return err
 	}
 

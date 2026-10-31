@@ -10,12 +10,19 @@ use Carbon\CarbonImmutable;
 use DateTimeImmutable;
 use Illuminate\Support\Facades\DB;
 use Ramsey\Uuid\Uuid;
+use Symfony\Component\Finder\Finder;
 use Symfony\Component\Process\Process;
 use Tests\TestCase;
 
 final class GoResearchWorkerIntegrationTest extends TestCase
 {
     private array $cleanupJobIds = [];
+
+    protected function setUp(): void
+    {
+        parent::setUp();
+        $this->assertIsolatedDatabase(DB::connection('pgsql'));
+    }
 
     protected function tearDown(): void
     {
@@ -25,6 +32,47 @@ final class GoResearchWorkerIntegrationTest extends TestCase
         parent::tearDown();
     }
 
+    private function ensureWorkerBinary(): string
+    {
+        $workerBinary = base_path('bin/research-worker');
+        $sourceDir = base_path('research-go');
+
+        $needsBuild = ! file_exists($workerBinary);
+        if (! $needsBuild) {
+            $binMtime = filemtime($workerBinary);
+            $finder = new Finder;
+            $finder->files()->in($sourceDir)->name('*.go');
+            foreach ($finder as $file) {
+                if ($file->getMTime() > $binMtime) {
+                    $needsBuild = true;
+                    break;
+                }
+            }
+        }
+
+        if ($needsBuild) {
+            $buildProcess = new Process(['go', 'build', '-o', $workerBinary, './cmd/research-worker'], $sourceDir);
+            $buildProcess->run();
+            if (! $buildProcess->isSuccessful()) {
+                $this->markTestSkipped('Go compiler unavailable to build research-worker binary: '.$buildProcess->getErrorOutput());
+            }
+        }
+
+        return $workerBinary;
+    }
+
+    private function workerEnv(): array
+    {
+        return [
+            'DB_HOST' => (string) config('database.connections.pgsql.host', '127.0.0.1'),
+            'DB_PORT' => (string) config('database.connections.pgsql.port', '25432'),
+            'DB_USERNAME' => (string) config('database.connections.pgsql.username', 'postgres'),
+            'DB_PASSWORD' => (string) config('database.connections.pgsql.password', 'testpass'),
+            'DB_DATABASE' => (string) config('database.connections.pgsql.database', 'bybit_test'),
+            'DB_SSLMODE' => 'disable',
+        ];
+    }
+
     public function test_scheduler_queue_go_worker_persists_succeeded_result(): void
     {
         $driver = DB::connection()->getDriverName();
@@ -32,15 +80,7 @@ final class GoResearchWorkerIntegrationTest extends TestCase
             $this->markTestSkipped('Go research-worker requires a PostgreSQL database connection (current: '.$driver.').');
         }
 
-        $workerBinary = base_path('bin/research-worker');
-        if (! file_exists($workerBinary)) {
-            // Build binary if not built yet
-            $buildProcess = new Process(['go', 'build', '-o', $workerBinary, './cmd/research-worker'], base_path('research-go'));
-            $buildProcess->run();
-            if (! $buildProcess->isSuccessful()) {
-                $this->markTestSkipped('Go compiler unavailable to build research-worker binary.');
-            }
-        }
+        $workerBinary = $this->ensureWorkerBinary();
 
         // 1. Seed closed candles into market_candles table
         $baseTime = new DateTimeImmutable('2026-10-01T00:00:00Z');
@@ -79,6 +119,7 @@ final class GoResearchWorkerIntegrationTest extends TestCase
             'research_mode' => 'RESEARCH',
             'limits' => ['max_rows' => 500],
             'payload' => [
+                'exchange' => 'bybit',
                 'symbol' => 'BTCUSDT',
                 'interval' => '5',
                 'category' => 'linear',
@@ -92,24 +133,48 @@ final class GoResearchWorkerIntegrationTest extends TestCase
         self::assertSame('QUEUED', $job->status);
 
         // 3. Execute Go worker in -once mode
-        $env = [
-            'DB_HOST' => config('database.connections.pgsql.host', '127.0.0.1'),
-            'DB_PORT' => (string) config('database.connections.pgsql.port', '5432'),
-            'DB_USERNAME' => config('database.connections.pgsql.username', 'postgres'),
-            'DB_PASSWORD' => config('database.connections.pgsql.password', 'testpass'),
-            'DB_DATABASE' => config('database.connections.pgsql.database', 'bybit_test'),
-            'DB_SSLMODE' => 'disable',
-        ];
-
-        $process = new Process([$workerBinary, '-once'], base_path(), $env);
+        $startTime = microtime(true);
+        $process = new Process([$workerBinary, '-once'], base_path(), $this->workerEnv());
         $process->setTimeout(30);
         $process->run();
 
-        self::assertTrue($process->isSuccessful(), 'Worker exited with failure: '.$process->getErrorOutput().' '.$process->getOutput());
+        self::assertTrue(
+            $process->isSuccessful(),
+            sprintf(
+                "Worker exited with failure code %d.\nStderr:\n%s\nStdout:\n%s",
+                $process->getExitCode() ?? -1,
+                $process->getErrorOutput(),
+                $process->getOutput()
+            )
+        );
 
-        // 4. Assert job in PostgreSQL transitioned to SUCCEEDED with persisted manifest and telemetry
-        $refreshed = ResearchJobRecord::query()->where('job_id', $job->job_id)->firstOrFail();
-        self::assertSame('SUCCEEDED', $refreshed->status);
+        // 4. Assert job in PostgreSQL transitioned to SUCCEEDED with bounded condition polling
+        $refreshed = null;
+        $pollDeadline = microtime(true) + 10.0;
+        do {
+            $refreshed = ResearchJobRecord::query()->where('job_id', $job->job_id)->first();
+            if ($refreshed !== null && $refreshed->status === 'SUCCEEDED') {
+                break;
+            }
+            usleep(50_000);
+        } while (microtime(true) < $pollDeadline);
+
+        self::assertNotNull($refreshed, 'Research job record should exist in database.');
+        self::assertSame(
+            'SUCCEEDED',
+            $refreshed->status,
+            sprintf(
+                "Go research-worker failed to transition job %s to SUCCEEDED.\nExit Code: %d\nElapsed: %.2fs\nJob Status: %s\nProgress: %s\nSanitized Error: %s\nStdout:\n%s\nStderr:\n%s",
+                $job->job_id,
+                $process->getExitCode() ?? -1,
+                microtime(true) - $startTime,
+                $refreshed->status,
+                (string) ($refreshed->progress ?? 'null'),
+                $refreshed->sanitized_error ?? 'none',
+                $process->getOutput(),
+                $process->getErrorOutput()
+            )
+        );
         self::assertSame(100, $refreshed->progress);
         self::assertNotEmpty($refreshed->result_manifest_sha256);
         self::assertIsArray($refreshed->result_payload);
@@ -144,6 +209,135 @@ final class GoResearchWorkerIntegrationTest extends TestCase
         self::assertTrue($workerEntry['available']);
         self::assertTrue($workerEntry['is_heartbeat_fresh']);
         self::assertSame('ready', $workerEntry['status']);
+    }
+
+    public function test_go_worker_persists_failure_and_sanitized_error_when_job_invalid(): void
+    {
+        $driver = DB::connection()->getDriverName();
+        if ($driver !== 'pgsql') {
+            $this->markTestSkipped('Go research-worker requires a PostgreSQL database connection (current: '.$driver.').');
+        }
+
+        $workerBinary = $this->ensureWorkerBinary();
+        $service = $this->app->make(ResearchJobService::class);
+
+        // Submit job with max_retries = 1 so failure immediately transitions to FAILED
+        $job = $service->submitJob([
+            'job_id' => Uuid::uuid4()->toString(),
+            'schema_version' => 1,
+            'idempotency_key' => 'idemp-worker-fail-'.Uuid::uuid4()->toString(),
+            'kind' => 'BACKTEST',
+            'algorithm_version' => '1.0.0',
+            'code_revision' => 'git-v4',
+            'strategy_id' => 'trend_pullback',
+            'strategy_version' => '1.0.0',
+            'configuration_hash' => hash('sha256', 'worker_fail_test'),
+            'research_mode' => 'RESEARCH',
+            'max_retries' => 1,
+            'limits' => ['max_rows' => 100],
+            'payload' => [
+                'exchange' => 'unsupported_exchange',
+                'symbol' => 'BTCUSDT',
+            ],
+            'created_by' => 'integration_test_failure',
+        ]);
+        $this->cleanupJobIds[] = $job->job_id;
+
+        self::assertSame('QUEUED', $job->status);
+
+        // Execute Go worker in -once mode; invalid exchange must trigger FailJob
+        $process = new Process([$workerBinary, '-once'], base_path(), $this->workerEnv());
+        $process->setTimeout(30);
+        $process->run();
+
+        // Worker must exit with non-zero failure in -once mode when job execution fails
+        self::assertFalse($process->isSuccessful(), 'Worker should exit non-zero when executing an invalid job in -once mode.');
+        self::assertSame(1, $process->getExitCode());
+
+        // Bounded condition polling for terminal FAILED state in PostgreSQL
+        $refreshed = null;
+        $pollDeadline = microtime(true) + 10.0;
+        do {
+            $refreshed = ResearchJobRecord::query()->where('job_id', $job->job_id)->first();
+            if ($refreshed !== null && $refreshed->status === 'FAILED') {
+                break;
+            }
+            usleep(50_000);
+        } while (microtime(true) < $pollDeadline);
+
+        self::assertNotNull($refreshed);
+        self::assertSame('FAILED', $refreshed->status);
+        self::assertNotNull($refreshed->completed_at, 'completed_at timestamp must be set when retries are exhausted without SQL type errors');
+        self::assertStringContainsString('research job exchange is missing or unsupported', (string) $refreshed->sanitized_error);
+        self::assertSame(1, $refreshed->retry_count);
+        self::assertNull($refreshed->lease_owner);
+
+        // Assert worker registered failed job in telemetry
+        $workerRow = DB::table('research_workers')
+            ->where('engine', 'go')
+            ->where('last_job_id', $job->job_id)
+            ->first();
+        self::assertNotNull($workerRow);
+        self::assertGreaterThanOrEqual(1, $workerRow->total_jobs_failed);
+    }
+
+    public function test_go_worker_requeues_job_when_retries_remain(): void
+    {
+        $driver = DB::connection()->getDriverName();
+        if ($driver !== 'pgsql') {
+            $this->markTestSkipped('Go research-worker requires a PostgreSQL database connection (current: '.$driver.').');
+        }
+
+        $workerBinary = $this->ensureWorkerBinary();
+        $service = $this->app->make(ResearchJobService::class);
+
+        // Submit job with max_retries = 3 so first failure transitions back to QUEUED
+        $job = $service->submitJob([
+            'job_id' => Uuid::uuid4()->toString(),
+            'schema_version' => 1,
+            'idempotency_key' => 'idemp-worker-retry-'.Uuid::uuid4()->toString(),
+            'kind' => 'BACKTEST',
+            'algorithm_version' => '1.0.0',
+            'code_revision' => 'git-v4',
+            'strategy_id' => 'trend_pullback',
+            'strategy_version' => '1.0.0',
+            'configuration_hash' => hash('sha256', 'worker_retry_test'),
+            'research_mode' => 'RESEARCH',
+            'max_retries' => 3,
+            'limits' => ['max_rows' => 100],
+            'payload' => [
+                'exchange' => 'unsupported_exchange',
+                'symbol' => 'BTCUSDT',
+            ],
+            'created_by' => 'integration_test_retry',
+        ]);
+        $this->cleanupJobIds[] = $job->job_id;
+
+        self::assertSame('QUEUED', $job->status);
+
+        $process = new Process([$workerBinary, '-once'], base_path(), $this->workerEnv());
+        $process->setTimeout(30);
+        $process->run();
+
+        self::assertFalse($process->isSuccessful(), 'Worker should exit non-zero when job fails in -once mode.');
+
+        // Bounded condition polling for QUEUED retry state in PostgreSQL
+        $refreshed = null;
+        $pollDeadline = microtime(true) + 10.0;
+        do {
+            $refreshed = ResearchJobRecord::query()->where('job_id', $job->job_id)->first();
+            if ($refreshed !== null && $refreshed->status === 'QUEUED' && $refreshed->retry_count === 1) {
+                break;
+            }
+            usleep(50_000);
+        } while (microtime(true) < $pollDeadline);
+
+        self::assertNotNull($refreshed);
+        self::assertSame('QUEUED', $refreshed->status);
+        self::assertNull($refreshed->completed_at, 'completed_at must remain NULL while retries remain');
+        self::assertSame(1, $refreshed->retry_count);
+        self::assertNull($refreshed->lease_owner);
+        self::assertStringContainsString('research job exchange is missing or unsupported', (string) $refreshed->sanitized_error);
     }
 
     public function test_worker_lifecycle_e2e_superseded_worker_rejected_and_cannot_persist_result(): void

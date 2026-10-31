@@ -319,6 +319,10 @@ func main() {
 			}
 
 			if *onceFlag {
+				if execErr != nil {
+					log.Printf("[worker] Exiting with failure status in -once mode.")
+					os.Exit(1)
+				}
 				log.Println("[worker] Completed single job in -once mode. Exiting.")
 				return
 			}
