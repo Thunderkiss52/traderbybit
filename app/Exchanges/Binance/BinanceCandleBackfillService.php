@@ -4,51 +4,78 @@ declare(strict_types=1);
 
 namespace App\Exchanges\Binance;
 
+use App\MarketData\Domain\Interval;
 use App\MarketData\Infrastructure\Persistence\CandleRecord;
 use Carbon\CarbonImmutable;
-use DomainException;
-use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Log;
 use InvalidArgumentException;
-use RuntimeException;
 
-/** Deterministic Binance historical candle backfill. Paper-only, never places orders. */
+/** Repairs closed Binance candle history only. Persisted candles are the recovery checkpoint. */
 final class BinanceCandleBackfillService
 {
     private const MAX_CHUNK_SIZE = 500;
+
     private const MAX_PASSES = 3;
 
-    public function __construct(
-        private BinanceCandleIngestion $ingestion,
-    ) {}
+    public function __construct(private BinanceCandleIngestion $ingestion) {}
 
     public function backfill(string $symbol, string $interval, ?int $fromMs = null, ?int $toMs = null): array
     {
         $this->assertScope($symbol, $interval);
-        $dbInterval = $this->dbInterval($interval);
-        $intervalObj = Interval::parse($dbInterval);
-        $stepMs = $intervalObj->milliseconds();
+        $dbInterval = ['5m' => '5', '15m' => '15', '30m' => '30', '1h' => '60', '4h' => '240'][$interval];
+        $stepMs = Interval::parse($dbInterval)->milliseconds();
         $nowMs = (int) floor(microtime(true) * 1000);
-        $lastClosedOpenMs = intdiv($nowMs - 120_000, $stepMs) * $stepMs - $stepMs;
-        $effectiveToMs = $toMs ?? $lastClosedOpenMs;
-        $effectiveFromMs = $fromMs ?? max(0, $effectiveToMs - (int) config('market_data.sync.backfill_history_ms', 7 * 86_400_000));
-        $attemptToken = bin2hex(random_bytes(16));
-
-        $previous = \App\MarketData\Infrastructure\Persistence\BinanceCandleBackfillEventRecord::query()
-            ->where('exchange','binance')->where('symbol',$symbol)->where('interval',$dbInterval)
-            ->where('from_ms','<=',$effectiveFromMs)->where('to_ms','>=',$effectiveToMs)
-            ->where('status','COMPLETED')->latest('completed_at')->first();
-        if ($previous !== null) {
-            return array_merge($previous->report ?? [], ['status' => 'COMPLETED', 'replayed' => true, 'previous_completed_at' => $previous->completed_at?->toIso8601String()]);
+        $lastClosedExclusive = intdiv($nowMs - 120_000, $stepMs) * $stepMs;
+        $requestedToMs = $toMs ?? $lastClosedExclusive;
+        $requestedFromMs = $fromMs ?? max(0, $requestedToMs - (int) config('market_data.sync.backfill_history_ms', 7 * 86_400_000));
+        if ($requestedFromMs < 0 || $requestedFromMs >= $requestedToMs) {
+            throw new InvalidArgumentException('Candle range start must precede end.');
         }
 
-        $report = $this->runRange($symbol, $dbInterval, $effectiveFromMs, $effectiveToMs, $attemptToken);
-        \App\MarketData\Infrastructure\Persistence\BinanceCandleBackfillEventRecord::query()->insertOrIgnore(array_merge([
-            'exchange' => 'binance', 'symbol' => $symbol, 'interval' => $dbInterval,
-            'from_ms' => $effectiveFromMs, 'to_ms' => $effectiveToMs,
-            'attempt_token' => $attemptToken, 'completed_at' => CarbonImmutable::now('UTC'),
-        ], $report));
-        return $report;
+        // The API range is half-open. Never request a forming candle, even when
+        // an operator supplies an end time in the future.
+        $startMs = intdiv($requestedFromMs + $stepMs - 1, $stepMs) * $stepMs;
+        $endMs = min(intdiv($requestedToMs + $stepMs - 1, $stepMs) * $stepMs, $lastClosedExclusive);
+        if ($startMs >= $endMs) {
+            throw new InvalidArgumentException('No closed candles fall inside the requested range.');
+        }
+
+        $remaining = $this->missingInRange($symbol, $dbInterval, $startMs, $endMs);
+        $windows = $this->windows($startMs, $endMs, $stepMs);
+        $requested = 0;
+        $inserted = 0;
+        $conflicts = 0;
+
+        for ($pass = 0; $pass < self::MAX_PASSES; $pass++) {
+            foreach ($windows as [$windowFrom, $windowTo]) {
+                $report = $this->ingestion->ingestRange($symbol, $interval, $windowFrom, $windowTo, true);
+                $requested++;
+                $inserted += (int) $report['new_closed_candles'];
+                $conflicts += (int) $report['conflicts_count'];
+            }
+
+            $nextMissing = $this->missingInRange($symbol, $dbInterval, $startMs, $endMs);
+            if ($nextMissing === [] || count($nextMissing) >= count($remaining)) {
+                $remaining = $nextMissing;
+                break;
+            }
+            $remaining = $nextMissing;
+            $windows = $this->missingWindows($remaining, $stepMs);
+        }
+
+        return [
+            'exchange_id' => 'binance',
+            'symbol' => $symbol,
+            'interval' => $dbInterval,
+            'from_ms' => $startMs,
+            'to_ms' => $endMs,
+            'requested_count' => $requested,
+            'inserted_count' => $inserted,
+            'conflict_count' => $conflicts,
+            'remaining_gap_count' => count($remaining),
+            'remaining_from_ms' => $remaining,
+            'status' => $conflicts > 0 ? 'QUARANTINED' : ($remaining === [] ? 'COMPLETED' : 'PARTIAL'),
+            'execution_status' => 'PAPER_EXECUTION_BLOCKED_UNTIL_VERIFIED',
+        ];
     }
 
     private function assertScope(string $symbol, string $interval): void
@@ -61,116 +88,53 @@ final class BinanceCandleBackfillService
         }
     }
 
-    private function dbInterval(string $interval): string
+    private function windows(int $fromMs, int $toMs, int $stepMs): array
     {
-        return ['5m' => '5', '15m' => '15', '30m' => '30', '1h' => '60', '4h' => '240'][$interval];
+        $windows = [];
+        for ($start = $fromMs; $start < $toMs; $start += self::MAX_CHUNK_SIZE * $stepMs) {
+            $windows[] = [$start, min($start + self::MAX_CHUNK_SIZE * $stepMs, $toMs)];
+        }
+
+        return $windows;
     }
 
-    private function apiInterval(string $dbInterval): string
+    private function missingWindows(array $missing, int $stepMs): array
     {
-        return ['5' => '5m', '15' => '15m', '30' => '30m', '60' => '1h', '240' => '4h'][$dbInterval];
-    }
-
-    private function runRange(string $symbol, string $dbInterval, int $fromMs, int $toMs, string $attemptToken): array
-    {
-        $stepMs = Interval::parse($dbInterval)->milliseconds();
-        $chunks = [];
-        $pos = $fromMs;
-        while ($pos < $toMs) {
-            $end = min(self::MAX_CHUNK_SIZE * $stepMs, $toMs);
-            if ($end <= $pos) { break; }
-            $chunks[] = [$pos, $end];
-            $pos = $end;
-        }
-        $requested = 0;
-        $inserted = 0;
-        $conflicts = 0;
-        $integrityFailure = null;
-        $remaining = [];
-        $maxPasses = self::MAX_PASSES;
-
-        for ($pass = 0; $pass < $maxPasses; $pass++) {
-            $progress = false;
-            foreach ($chunks as $i => [$chunkFrom, $chunkTo]) {
-                $requested++;
-                $progress = true;
-                $rows = $this->ingestion->ingestRange($symbol, $this->apiInterval($dbInterval), $chunkFrom, $chunkTo, true);
-                $inserted += (int) ($rows['new_closed_candles'] ?? 0);
-                $conflicts += (int) ($rows['conflicts_count'] ?? 0);
-                if ($rows['status'] === 'INTEGRITY_UNAVAILABLE') {
-                    $integrityFailure ??= $rows['execution_status'];
-                }
-                $missing = $this->missingInRange($symbol, $dbInterval, $chunkFrom, $chunkTo);
-                if ($missing === []) {
-                    unset($chunks[$i]);
-                }
+        $windows = [];
+        $start = $previous = $missing[0];
+        $count = 1;
+        foreach (array_slice($missing, 1) as $openMs) {
+            if ($openMs !== $previous + $stepMs || $count === self::MAX_CHUNK_SIZE) {
+                $windows[] = [$start, $previous + $stepMs];
+                $start = $openMs;
+                $count = 0;
             }
-            if (empty($chunks)) {
-                break;
-            }
-            if (! $progress) {
-                break;
-            }
+            $previous = $openMs;
+            $count++;
         }
+        $windows[] = [$start, $previous + $stepMs];
 
-        foreach ($chunks as [$cf, $ct]) {
-            $remaining[] = $cf;
-        }
-
-        $status = empty($chunks) ? 'COMPLETED' : ($remaining === [] ? 'COMPLETED' : 'PARTIAL');
-        if ($integrityFailure !== null) {
-            $status = 'QUARANTINED';
-        }
-
-        $report = [
-            'exchange_id' => 'binance',
-            'symbol' => $symbol,
-            'interval' => $dbInterval,
-            'from_ms' => $effectiveFromMs,
-            'to_ms' => $effectiveToMs,
-            'attempt_token' => $attemptToken,
-            'requested_count' => $requested,
-            'inserted_count' => $inserted,
-            'conflict_count' => $conflicts,
-            'remaining_gap_count' => count($remaining),
-            'remaining_from_ms' => $remaining,
-            'status' => $status,
-            'execution_status' => 'PAPER_EXECUTION_BLOCKED_UNTIL_VERIFIED',
-        ];
-        if ($integrityFailure !== null) {
-            $report['integrity_failure'] = $integrityFailure;
-        }
-        return $report;
+        return $windows;
     }
 
     private function missingInRange(string $symbol, string $dbInterval, int $fromMs, int $toMs): array
     {
         $stepMs = Interval::parse($dbInterval)->milliseconds();
-        $expected = [];
-        $pos = $fromMs;
-        while ($pos < $toMs) {
-            $expected[] = $pos;
-            $pos += $stepMs;
-        }
-        if ($expected === []) {
-            return [];
-        }
-        $rows = CandleRecord::query()
+        $present = CandleRecord::query()
             ->where('exchange', 'binance')->where('category', 'linear')
             ->where('symbol', $symbol)->where('interval', $dbInterval)
             ->where('is_closed', true)
             ->where('open_time', '>=', CarbonImmutable::createFromTimestampMsUTC($fromMs))
             ->where('open_time', '<', CarbonImmutable::createFromTimestampMsUTC($toMs))
             ->pluck('open_time')
-            ->map(function ($t): int { return $t->getTimestamp() * 1000; })
-            ->all();
-        $present = array_flip($rows);
+            ->mapWithKeys(static fn ($time): array => [$time->getTimestamp() * 1000 => true]);
         $missing = [];
-        foreach ($expected as $openMs) {
-            if (! isset($present[$openMs])) {
+        for ($openMs = $fromMs; $openMs < $toMs; $openMs += $stepMs) {
+            if (! $present->has($openMs)) {
                 $missing[] = $openMs;
             }
         }
+
         return $missing;
     }
 }

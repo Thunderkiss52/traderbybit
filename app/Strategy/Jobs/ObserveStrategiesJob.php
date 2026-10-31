@@ -27,19 +27,15 @@ final class ObserveStrategiesJob implements ShouldQueue
 
     public function middleware(): array
     {
-        $lockKey = $this->at !== null ? "strategy-observations:{$this->symbol}:{$this->at}" : "strategy-observations:{$this->symbol}:recent";
-        return [(new WithoutOverlapping($lockKey))->expireAfter(620)];
+        $lockKey = $this->at !== null ? "strategy-observations:job:bybit:{$this->symbol}:{$this->at}" : "strategy-observations:job:bybit:{$this->symbol}:recent";
+
+        return [(new WithoutOverlapping($lockKey))->expireAfter(660)];
     }
 
     public function handle(StrategyObservationService $service): void
     {
         if ($this->at !== null) {
-            try {
-                $service->observe($this->symbol, new DateTimeImmutable($this->at));
-            } catch (App\Strategy\Exceptions\StrategyObservationActiveException $e) {
-                // Benign observation conflict: scheduled job already has the slot; return without error.
-                return;
-            }
+            $service->observe($this->symbol, new DateTimeImmutable($this->at));
 
             return;
         }

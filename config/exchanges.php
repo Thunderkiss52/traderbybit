@@ -12,6 +12,7 @@ return [
         // Public 5m OI observations older than this may not drive a signal.
         'open_interest_max_lag_seconds' => 900,
         'max_candles_per_request' => 500,
+        'automatic_candle_recovery_enabled' => (bool) env('VECTOR_BINANCE_AUTOMATIC_CANDLE_RECOVERY_ENABLED', false),
         // Opt-in only after isolated DB verification, real funded PAPER accounts and documented costs.
         'paper_execution_approved' => (bool) env('VECTOR_BINANCE_PAPER_EXECUTION_APPROVED', false),
         'paper_taker_rate' => env('VECTOR_BINANCE_PAPER_TAKER_RATE'), // Approved, versioned exchange fee evidence required.

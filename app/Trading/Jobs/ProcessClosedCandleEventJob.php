@@ -9,6 +9,7 @@ use App\Strategy\Application\MarketContextCollector;
 use App\Strategy\Application\MarketScannerService;
 use App\Strategy\Application\StrategyObservationService;
 use App\Strategy\Contracts\MarketContextRepository;
+use App\Strategy\Exceptions\StrategyObservationActiveException;
 use App\Trading\Application\TradingPipelineEventService;
 use App\Trading\Infrastructure\Persistence\TradingPipelineEventRecord;
 use Carbon\CarbonImmutable;
@@ -44,7 +45,7 @@ final class ProcessClosedCandleEventJob implements ShouldQueue
     {
         return [
             (new WithoutOverlapping("pipeline:candle:{$this->exchange}:{$this->symbol}:{$this->timeframe}:{$this->candleCloseAtIso}"))
-                ->expireAfter(120),
+                ->expireAfter(150),
         ];
     }
 
@@ -63,19 +64,42 @@ final class ProcessClosedCandleEventJob implements ShouldQueue
             return;
         }
 
-        if ($eventRecord->status === TradingPipelineEventRecord::STATUS_COMPLETED) {
-            return; // Already completed (idempotent).
+        if (in_array($eventRecord->status, [
+            TradingPipelineEventRecord::STATUS_COMPLETED,
+            TradingPipelineEventRecord::STATUS_PARTIAL,
+            TradingPipelineEventRecord::STATUS_STALE,
+        ], true)) {
+            return; // Terminal stages must never be restarted or downgraded.
         }
 
         $closeAt = new DateTimeImmutable($this->candleCloseAtIso);
+        if ($eventRecord->status === TradingPipelineEventRecord::STATUS_FAILED
+            && TradingPipelineEventRecord::query()
+                ->where('exchange', $this->exchange)->where('symbol', $this->symbol)
+                ->where('candle_close_at', $closeAt)
+                ->where('stage', TradingPipelineEventRecord::STAGE_PAPER_PROCESSED)
+                ->whereIn('status', [
+                    TradingPipelineEventRecord::STATUS_COMPLETED,
+                    TradingPipelineEventRecord::STATUS_PARTIAL,
+                    TradingPipelineEventRecord::STATUS_FAILED,
+                ])->exists()) {
+            return; // Only targeted paper recovery may retry a terminal failed batch.
+        }
 
         // Strict 300-second freshness guard: never execute trades on stale events.
         if (! $pipelineService->isFresh($closeAt)) {
-            $eventRecord->update([
-                'status' => TradingPipelineEventRecord::STATUS_STALE,
-                'last_error' => 'Candle close exceeds freshness threshold (300s). Processing rejected.',
+            if ($eventRecord->status !== TradingPipelineEventRecord::STATUS_FAILED) {
+                TradingPipelineEventRecord::query()->whereKey($eventRecord->id)
+                    ->whereIn('status', [TradingPipelineEventRecord::STATUS_PENDING, TradingPipelineEventRecord::STATUS_DISPATCHED])
+                    ->update([
+                        'status' => TradingPipelineEventRecord::STATUS_STALE,
+                        'last_error' => 'Candle close exceeds freshness threshold (300s). Processing rejected.',
+                    ]);
+            }
+            Log::info('Closed candle event rejected after freshness window.', [
+                'event_key' => $eventRecord->event_key,
+                'status' => $eventRecord->fresh()->status,
             ]);
-            Log::info("Closed candle event {$eventRecord->event_key} rejected as STALE (exceeded freshness window).");
 
             return;
         }
@@ -95,10 +119,12 @@ final class ProcessClosedCandleEventJob implements ShouldQueue
                 ]);
             }
         } catch (Throwable $e) {
-            $eventRecord->update([
-                'status' => TradingPipelineEventRecord::STATUS_FAILED,
-                'last_error' => $e->getMessage(),
-            ]);
+            TradingPipelineEventRecord::query()->whereKey($eventRecord->id)
+                ->whereNotIn('status', [TradingPipelineEventRecord::STATUS_COMPLETED, TradingPipelineEventRecord::STATUS_PARTIAL, TradingPipelineEventRecord::STATUS_STALE])
+                ->update([
+                    'status' => TradingPipelineEventRecord::STATUS_FAILED,
+                    'last_error' => $e->getMessage(),
+                ]);
             Log::error("ProcessClosedCandleEventJob failed for {$eventRecord->event_key}: ".$e->getMessage(), [
                 'exception' => $e::class,
                 'trace' => $e->getTraceAsString(),
@@ -124,9 +150,19 @@ final class ProcessClosedCandleEventJob implements ShouldQueue
         } elseif ($this->exchange === 'binance') {
             try {
                 $observations = app(StrategyObservationService::class)->observe($this->symbol, $closeAt, 'binance', 'linear');
-            } catch (App\Strategy\Exceptions\StrategyObservationActiveException $e) {
-                // Benign observation conflict: treat as no new signals for this candle.
-                $observations = [];
+            } catch (StrategyObservationActiveException $e) {
+                // Benign observation conflict: the canonical worker holds the slot.
+                // Leave the event PENDING so trading:pipeline-recovery retries it
+                // after the lock is released. Never record a false SIGNALS_EVALUATED
+                // or mark the candle COMPLETED for a race the canonical worker will own.
+                TradingPipelineEventRecord::query()->whereKey($eventRecord->id)
+                    ->whereNotIn('status', [TradingPipelineEventRecord::STATUS_COMPLETED, TradingPipelineEventRecord::STATUS_PARTIAL, TradingPipelineEventRecord::STATUS_STALE])
+                    ->update([
+                        'status' => TradingPipelineEventRecord::STATUS_PENDING,
+                        'last_error' => $e->getMessage(),
+                    ]);
+
+                return;
             }
             $signalsCount = count($observations);
         }
@@ -134,11 +170,19 @@ final class ProcessClosedCandleEventJob implements ShouldQueue
         // 3. Record SIGNALS_EVALUATED event and dispatch paper processing.
         $pipelineService->recordSignalsEvaluated($this->exchange, $this->symbol, $closeAt, $signalsCount);
 
-        // 4. Mark candle event COMPLETED.
-        $eventRecord->update([
-            'status' => TradingPipelineEventRecord::STATUS_COMPLETED,
-            'completed_at' => CarbonImmutable::now('UTC'),
-        ]);
+        // Paper processing owns terminal acknowledgement of the decision candle.
+        // Dispatching downstream work is not a completed PAPER cycle.
+        $eventDriven = $pipelineService->isEventDriven();
+        TradingPipelineEventRecord::query()->whereKey($eventRecord->id)
+            ->whereNotIn('status', [
+                TradingPipelineEventRecord::STATUS_COMPLETED,
+                TradingPipelineEventRecord::STATUS_PARTIAL,
+                TradingPipelineEventRecord::STATUS_FAILED,
+                TradingPipelineEventRecord::STATUS_STALE,
+            ])->update([
+                'status' => $eventDriven ? TradingPipelineEventRecord::STATUS_DISPATCHED : TradingPipelineEventRecord::STATUS_COMPLETED,
+                'completed_at' => $eventDriven ? null : CarbonImmutable::now('UTC'),
+            ]);
     }
 
     private function handleExecutionCandle(
@@ -152,10 +196,16 @@ final class ProcessClosedCandleEventJob implements ShouldQueue
             ProcessPaperPipelineJob::dispatch($this->exchange, $this->symbol, $this->candleCloseAtIso)
                 ->onQueue($queue);
 
-            $eventRecord->update([
-                'status' => TradingPipelineEventRecord::STATUS_DISPATCHED,
-                'completed_at' => null,
-            ]);
+            TradingPipelineEventRecord::query()->whereKey($eventRecord->id)
+                ->whereNotIn('status', [
+                    TradingPipelineEventRecord::STATUS_COMPLETED,
+                    TradingPipelineEventRecord::STATUS_PARTIAL,
+                    TradingPipelineEventRecord::STATUS_FAILED,
+                    TradingPipelineEventRecord::STATUS_STALE,
+                ])->update([
+                    'status' => TradingPipelineEventRecord::STATUS_DISPATCHED,
+                    'completed_at' => null,
+                ]);
         } else {
             $eventRecord->update([
                 'status' => TradingPipelineEventRecord::STATUS_COMPLETED,

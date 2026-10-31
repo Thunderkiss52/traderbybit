@@ -6,6 +6,7 @@ namespace App\Exchanges\Binance;
 
 use App\MarketData\Application\MarketCandleConflictService;
 use App\MarketData\Domain\CandleIntegrityUnavailable;
+use App\MarketData\Domain\Interval;
 use DomainException;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
@@ -39,10 +40,20 @@ final readonly class BinanceCandleIngestion
     public function ingestRange(string $symbol, string $interval, int $fromMs, int $toMs, bool $quarantineConflicts = false): array
     {
         $this->assertScope($symbol, $interval);
-        if ($fromMs >= $toMs) {
-            throw new InvalidArgumentException('Candle range start must precede end.');
+        $dbInterval = ['5m' => '5', '15m' => '15', '30m' => '30', '1h' => '60', '4h' => '240'][$interval];
+        $stepMs = Interval::parse($dbInterval)->milliseconds();
+        if ($fromMs < 0 || $fromMs >= $toMs || $fromMs % $stepMs !== 0 || $toMs % $stepMs !== 0
+            || $toMs - $fromMs > 500 * $stepMs) {
+            throw new InvalidArgumentException('Historical candle range must be aligned and contain at most 500 candles.');
         }
-        $rows = $this->adapter->fetchCandles($symbol, $interval, 500, $fromMs, $toMs);
+        $rows = $this->adapter->fetchCandles($symbol, $interval, 500, $fromMs, $toMs - 1);
+        foreach ($rows as $row) {
+            $openTime = new \DateTimeImmutable($row['open_time_utc']);
+            $openMs = (int) $openTime->format('U') * 1000 + (int) $openTime->format('v');
+            if ($openMs < $fromMs || $openMs >= $toMs) {
+                throw new DomainException('Binance returned a candle outside the requested historical range.');
+            }
+        }
 
         return $this->persist($rows, $symbol, $interval, $quarantineConflicts);
     }

@@ -9,9 +9,8 @@ use RuntimeException;
 
 /**
  * Thrown when a strategy-observation slot is already being evaluated by a
- * concurrent worker. This is a benign scheduling event, NOT a data or
- * computation failure: the owning worker will complete the canonical slot and
- * downstream pipeline stages will terminalize the duplicate attempt.
+ * concurrent worker. The owning worker may complete the canonical slot, but
+ * callers must retain retry or recovery ownership until that is verified.
  *
  * Callers must never map this exception to a terminal FAILED state.
  */

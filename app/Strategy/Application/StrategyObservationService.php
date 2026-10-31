@@ -13,9 +13,9 @@ use App\PatternDiscovery\Infrastructure\Persistence\CandlestickPatternOccurrence
 use App\Research\Application\ModelAdvisoryService;
 use App\Research\Infrastructure\Persistence\LearningCandidateStrategyRecord;
 use App\Strategy\Contracts\SignalRepository;
-use App\Strategy\Exceptions\StrategyObservationActiveException;
 use App\Strategy\Domain\SignalDecision;
 use App\Strategy\Domain\StrategyInput;
+use App\Strategy\Exceptions\StrategyObservationActiveException;
 use App\Strategy\Infrastructure\Persistence\StrategyObservationRecord;
 use DateTimeImmutable;
 use Illuminate\Contracts\Cache\Factory as CacheFactory;
@@ -43,7 +43,9 @@ final readonly class StrategyObservationService
     {
         $at ??= $this->inputs->latestDecisionTime($exchange, $category, $symbol)
             ?? throw new RuntimeException("No closed 15m candle is available for {$symbol}.");
-        $lock = $this->cache->lock("strategy-observations:{$exchange}:{$category}:{$symbol}:{$at->format('U.u')}", 120);
+        // Longer than the longest observation job timeout. A worker killed
+        // without finally releasing the lock still expires automatically.
+        $lock = $this->cache->lock("strategy-observations:{$exchange}:{$category}:{$symbol}:{$at->format('U.u')}", 660);
         if (! $lock->get()) {
             throw StrategyObservationActiveException::forSlot("{$exchange}:{$category}:{$symbol}", $at);
         }

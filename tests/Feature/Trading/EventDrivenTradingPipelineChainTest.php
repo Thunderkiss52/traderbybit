@@ -117,8 +117,8 @@ final class EventDrivenTradingPipelineChainTest extends TestCase
         );
         $candleJob->handle($pipelineService);
 
-        // 3. Verify candle event transitioned to COMPLETED
-        self::assertSame(TradingPipelineEventRecord::STATUS_COMPLETED, $candleEvent->fresh()->status);
+        // 3. A dispatched paper job has not yet acknowledged the candle.
+        self::assertSame(TradingPipelineEventRecord::STATUS_DISPATCHED, $candleEvent->fresh()->status);
 
         // 4. Verify signals and observations were created for all 13 registered strategies
         $bybitObservations = StrategyObservationRecord::query()
@@ -153,6 +153,7 @@ final class EventDrivenTradingPipelineChainTest extends TestCase
             ->first();
         self::assertNotNull($paperEvent);
         self::assertSame(TradingPipelineEventRecord::STATUS_COMPLETED, $paperEvent->status);
+        self::assertSame(TradingPipelineEventRecord::STATUS_COMPLETED, $candleEvent->fresh()->status);
     }
 
     public function test_binance_complete_candle_to_signal_to_paper_event_chain(): void
@@ -230,8 +231,8 @@ final class EventDrivenTradingPipelineChainTest extends TestCase
         );
         $candleJob->handle($pipelineService);
 
-        // 3. Verify candle event transitioned to COMPLETED
-        self::assertSame(TradingPipelineEventRecord::STATUS_COMPLETED, $candleEvent->fresh()->status);
+        // 3. A dispatched paper job has not yet acknowledged the candle.
+        self::assertSame(TradingPipelineEventRecord::STATUS_DISPATCHED, $candleEvent->fresh()->status);
 
         // 4. Verify signals and observations were created for Binance
         $binanceObservations = StrategyObservationRecord::query()
@@ -260,6 +261,7 @@ final class EventDrivenTradingPipelineChainTest extends TestCase
             ->first();
         self::assertNotNull($paperEvent);
         self::assertSame(TradingPipelineEventRecord::STATUS_COMPLETED, $paperEvent->status);
+        self::assertSame(TradingPipelineEventRecord::STATUS_COMPLETED, $candleEvent->fresh()->status);
     }
 
     private function seedMarketContext(string $exchange, string $symbol, DateTimeImmutable $at): void
