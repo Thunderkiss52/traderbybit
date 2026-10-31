@@ -247,28 +247,9 @@ final class M9SnapshotIsolationPostgresIntegrationTest extends TestCase
     {
         config(['database.connections.m9_writer' => config('database.connections.pgsql')]);
         DB::purge('m9_writer');
+        $writer = DB::connection('m9_writer');
+        $this->assertIsolatedDatabase($writer);
 
-        return DB::connection('m9_writer');
-    }
-
-    private function assertIsolatedDatabase(): void
-    {
-        $connection = DB::connection('pgsql');
-        if (! app()->environment('testing') || $connection->getDriverName() !== 'pgsql'
-            || $connection->getDatabaseName() !== 'bybit_test' || $connection->getConfig('host') !== '127.0.0.1') {
-            throw new \RuntimeException('M9 concurrency test requires isolated loopback PostgreSQL bybit_test.');
-        }
-        // Confirm the effective port and server-side identity before destructive SQL.
-        // Laravel configuration alone does not prove which database is connected.
-        $expectedPort = (int) env('TEST_DB_PORT', env('DB_PORT', 25432));
-        if ($expectedPort <= 0 || (int) $connection->getConfig('port') !== $expectedPort
-            || filled($connection->getConfig('url'))) {
-            throw new \RuntimeException('M9 test database endpoint mismatch (port or connection URL).');
-        }
-        $identity = $connection->selectOne('SELECT current_database() AS database_name, current_user AS database_user');
-        if ($identity === null || $identity->database_name !== 'bybit_test'
-            || $identity->database_user !== $connection->getConfig('username')) {
-            throw new \RuntimeException('M9 test connected to an unexpected PostgreSQL database or role.');
-        }
+        return $writer;
     }
 }

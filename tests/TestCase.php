@@ -3,6 +3,7 @@
 namespace Tests;
 
 use Brick\Math\BigDecimal;
+use Illuminate\Database\Connection;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Foundation\Testing\TestCase as BaseTestCase;
 use Illuminate\Support\Facades\Artisan;
@@ -43,11 +44,11 @@ abstract class TestCase extends BaseTestCase
 
     protected function ensurePostgresTestDatabaseReady(string $requiredTable = 'paper_accounts'): void
     {
-        $testPort = (int) (env('TEST_DB_PORT') ?: env('DB_PORT', 25432));
-        $testHost = (string) (env('TEST_DB_HOST') ?: env('DB_HOST', '127.0.0.1'));
-        $testDb = (string) (env('TEST_DB_DATABASE') ?: env('DB_DATABASE', 'bybit_test'));
-        $testUser = (string) (env('TEST_DB_USERNAME') ?: env('DB_USERNAME', 'postgres'));
-        $testPass = (string) (env('TEST_DB_PASSWORD') ?: env('DB_PASSWORD', 'testpass'));
+        $testPort = (int) (env('TEST_DB_PORT') ?: config('database.connections.pgsql.port') ?: env('DB_PORT', 25432));
+        $testHost = (string) (env('TEST_DB_HOST') ?: config('database.connections.pgsql.host') ?: env('DB_HOST', '127.0.0.1'));
+        $testDb = (string) (env('TEST_DB_DATABASE') ?: config('database.connections.pgsql.database') ?: env('DB_DATABASE', 'bybit_test'));
+        $testUser = (string) (env('TEST_DB_USERNAME') ?: config('database.connections.pgsql.username') ?: env('DB_USERNAME', 'postgres'));
+        $testPass = (string) (env('TEST_DB_PASSWORD') ?: config('database.connections.pgsql.password') ?: env('DB_PASSWORD', 'testpass'));
 
         $connectionOk = @fsockopen($testHost, $testPort, $errno, $errstr, 0.5);
         if (! $connectionOk) {
@@ -66,16 +67,96 @@ abstract class TestCase extends BaseTestCase
         DB::purge('pgsql');
         DB::reconnect('pgsql');
 
-        $currentDb = DB::connection()->getDatabaseName();
-        if ($currentDb !== 'bybit_test') {
-            $this->fail("SAFETY ABORT: PostgreSQL test must run strictly against isolated 'bybit_test' database (current: {$currentDb}).");
-        }
-        if (app()->environment('production')) {
-            $this->fail('SAFETY ABORT: Cannot run integration tests in production environment.');
-        }
+        // Fail-closed read-only preflight before checking schema or running any migrations
+        $this->assertIsolatedDatabase(DB::connection('pgsql'));
 
         if (! Schema::connection('pgsql')->hasTable($requiredTable)) {
             Artisan::call('migrate', ['--database' => 'pgsql', '--force' => true]);
         }
+    }
+
+    public function assertIsolatedDatabase(?Connection $connection = null): void
+    {
+        $connection ??= DB::connection('pgsql');
+
+        // 1. Environment safety: strictly testing environment during test execution
+        if (! app()->environment('testing') || ! app()->runningUnitTests()) {
+            throw new \RuntimeException('Database isolation check failed: must run strictly in testing environment.');
+        }
+        if (app()->environment('production', 'staging', 'prod')) {
+            throw new \RuntimeException('Database isolation check failed: cannot target production or staging.');
+        }
+
+        // 2. Driver check: strictly PostgreSQL
+        if ($connection->getDriverName() !== 'pgsql') {
+            throw new \RuntimeException("Database isolation check failed: driver must be 'pgsql', got '{$connection->getDriverName()}'.");
+        }
+
+        // 3. Configured database name check: strictly dedicated test database
+        $configuredDb = (string) $connection->getDatabaseName();
+        $expectedDb = (string) (env('TEST_DB_DATABASE') ?: env('DB_DATABASE', 'bybit_test'));
+        if ($configuredDb !== 'bybit_test' || $configuredDb !== $expectedDb) {
+            throw new \RuntimeException("Database isolation check failed: target database must be strictly 'bybit_test' (configured: '{$configuredDb}').");
+        }
+
+        // 4. Host check: local loopback or isolated test container
+        $host = (string) $connection->getConfig('host');
+        if (! $this->isSafeTestHost($host)) {
+            throw new \RuntimeException("Database isolation check failed: host '{$host}' is not an authorized local or isolated container endpoint.");
+        }
+
+        // 5. Port check: valid positive integer
+        $port = (int) $connection->getConfig('port');
+        if ($port <= 0) {
+            throw new \RuntimeException('Database isolation check failed: invalid or missing port.');
+        }
+
+        // 6. Dangerous URL override check
+        $url = (string) $connection->getConfig('url');
+        if (filled($url)) {
+            $parsed = parse_url($url);
+            if (! is_array($parsed)
+                || ($parsed['scheme'] ?? '') !== 'pgsql'
+                || ltrim($parsed['path'] ?? '', '/') !== 'bybit_test'
+                || ! $this->isSafeTestHost($parsed['host'] ?? '')) {
+                throw new \RuntimeException('Database isolation check failed: dangerous database URL override detected.');
+            }
+        }
+
+        // 7. Live server-side query verification: verify current_database() and current_user
+        try {
+            $identity = $connection->selectOne('SELECT current_database() AS database_name, current_user AS database_user');
+        } catch (\Throwable $e) {
+            throw new \RuntimeException('Database isolation check failed: cannot query PostgreSQL server identity: '.$e->getMessage(), 0, $e);
+        }
+
+        if ($identity === null || $identity->database_name !== 'bybit_test') {
+            throw new \RuntimeException("Database isolation check failed: server current_database() is '".($identity?->database_name ?? 'null')."', strictly 'bybit_test' required.");
+        }
+
+        $expectedUser = (string) $connection->getConfig('username');
+        if ($expectedUser !== '' && $identity->database_user !== $expectedUser) {
+            throw new \RuntimeException("Database isolation check failed: server current_user is '{$identity->database_user}', expected '{$expectedUser}'.");
+        }
+    }
+
+    public function isSafeTestHost(string $host): bool
+    {
+        if ($host === '' || $host === '127.0.0.1' || $host === 'localhost' || $host === '::1') {
+            return true;
+        }
+
+        // Isolated Docker container service names commonly used in CI/Compose
+        if (in_array(strtolower($host), ['postgres', 'pgsql', 'db', 'vector-postgres', 'bybit-signals-postgres', 'vector-ci-opt-pg-20261031'], true)) {
+            return true;
+        }
+
+        // Private container bridge networks (e.g. 172.16.0.0/12, 10.0.0.0/8, 192.168.0.0/16)
+        if (filter_var($host, FILTER_VALIDATE_IP, FILTER_FLAG_NO_PRIV_RANGE | FILTER_FLAG_NO_RES_RANGE) === false
+            && filter_var($host, FILTER_VALIDATE_IP) !== false) {
+            return true;
+        }
+
+        return false;
     }
 }

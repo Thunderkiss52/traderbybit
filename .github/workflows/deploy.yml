@@ -52,18 +52,24 @@ jobs:
           COMMIT_SHA: ${{ steps.target.outputs.sha }}
         run: |
           set -Eeuo pipefail
-          echo "Verifying CI checks for commit ${COMMIT_SHA}..."
-          runs_json="$(gh run list --workflow=ci.yml --commit="${COMMIT_SHA}" --json databaseId,status,conclusion,headSha --jq '[.[] | select(.headSha == "'"${COMMIT_SHA}"'")]' 2>/dev/null || echo '[]')"
+          echo "Verifying mandatory CI checks for commit ${COMMIT_SHA}..."
+          runs_json="$(gh run list --workflow=ci.yml --commit="${COMMIT_SHA}" --json databaseId,status,conclusion,headSha 2>/dev/null || echo '[]')"
           if [[ -z "${runs_json}" || "${runs_json}" == "[]" ]]; then
-            echo "Notice: No dedicated CI run found via API query for commit ${COMMIT_SHA}."
-            echo "Checking if GHCR images exist directly as proof of successful build..."
+            echo "Error: No CI workflow run found for commit ${COMMIT_SHA} in '.github/workflows/ci.yml'." >&2
+            echo "Deployment rejected: every production deployment must be verified by a passing CI run." >&2
+            exit 1
+          fi
+
+          successful_run="$(echo "${runs_json}" | python3 -c 'import sys, json; data=json.load(sys.stdin) if not sys.stdin.isatty() else []; matches=[str(r.get("databaseId")) for r in data if r.get("headSha")==sys.argv[1] and r.get("status")=="completed" and r.get("conclusion")=="success"]; print(matches[0] if matches else "")' "${COMMIT_SHA}")"
+
+          if [[ -n "${successful_run}" ]]; then
+            echo "Verified: commit ${COMMIT_SHA} successfully passed CI in run ID ${successful_run}."
           else
-            successful_run="$(echo "${runs_json}" | jq -r '[.[] | select(.conclusion == "success")] | .[0].databaseId // empty')"
-            if [[ -n "${successful_run}" ]]; then
-              echo "Verified: commit ${COMMIT_SHA} passed CI in run ID ${successful_run}."
-            else
-              echo "Warning: CI run for commit ${COMMIT_SHA} is not marked as successful yet." >&2
-            fi
+            statuses="$(echo "${runs_json}" | python3 -c 'import sys, json; data=json.load(sys.stdin) if not sys.stdin.isatty() else []; print("; ".join("Run %s: status=%s, conclusion=%s" % (r.get("databaseId"), r.get("status"), r.get("conclusion") or "in_progress") for r in data if r.get("headSha")==sys.argv[1]))' "${COMMIT_SHA}")"
+            echo "Error: Commit ${COMMIT_SHA} has no successful completed CI run in '.github/workflows/ci.yml'." >&2
+            echo "Existing CI runs for ${COMMIT_SHA}: ${statuses:-none}" >&2
+            echo "Deployment rejected: immutable preverified deployment requires all CI matrix checks to pass." >&2
+            exit 1
           fi
 
       - name: Verify immutable Docker images in GHCR

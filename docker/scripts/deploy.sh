@@ -27,11 +27,21 @@ fi
 
 compose config --quiet
 if [[ "${DEPLOY_MODE:-build}" == "pull" ]]; then
-    compose pull app web research-worker
-    if ! docker image inspect "${RESEARCH_WORKER_IMAGE:-bybit-signals-research-worker}:${IMAGE_TAG:-latest}" >/dev/null 2>&1; then
-        echo "Building research-worker image for tag ${IMAGE_TAG:-latest}..."
-        compose build research-worker
+    echo "Pulling immutable images (app, web, research-worker) for tag ${IMAGE_TAG:-latest}..."
+    if ! compose pull app web research-worker; then
+        echo "Error: Failed to pull required immutable images for tag ${IMAGE_TAG:-latest}." >&2
+        exit 1
     fi
+    for svc_img in "${APP_IMAGE:-bybit-signals-app}:${IMAGE_TAG:-latest}" \
+                   "${WEB_IMAGE:-bybit-signals-web}:${IMAGE_TAG:-latest}" \
+                   "${RESEARCH_WORKER_IMAGE:-bybit-signals-research-worker}:${IMAGE_TAG:-latest}"; do
+        if ! docker image inspect "${svc_img}" >/dev/null 2>&1; then
+            echo "Error: Required immutable image '${svc_img}' is missing after pull." >&2
+            echo "Silent build fallback is prohibited in production. Aborting deployment." >&2
+            exit 1
+        fi
+    done
+    echo "Verified all required immutable images are present locally."
 elif [[ "${SKIP_BUILD:-0}" != "1" ]]; then
     compose build --pull app web research-worker
 fi

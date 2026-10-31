@@ -61,11 +61,21 @@ rollback_application() {
 trap rollback_application ERR
 
 if [[ "${DEPLOY_MODE:-pull}" == "pull" ]]; then
-    compose pull app web research-worker
-    if ! docker image inspect "${RESEARCH_WORKER_IMAGE:-bybit-signals-research-worker}:${NEW_TAG}" >/dev/null 2>&1; then
-        echo "Building research-worker image for tag ${NEW_TAG}..."
-        compose build research-worker
+    echo "Pulling immutable images (app, web, research-worker) for tag ${NEW_TAG}..."
+    if ! compose pull app web research-worker; then
+        echo "Error: Failed to pull required immutable images for tag ${NEW_TAG}." >&2
+        exit 1
     fi
+    for svc_img in "${APP_IMAGE:-bybit-signals-app}:${NEW_TAG}" \
+                   "${WEB_IMAGE:-bybit-signals-web}:${NEW_TAG}" \
+                   "${RESEARCH_WORKER_IMAGE:-bybit-signals-research-worker}:${NEW_TAG}"; do
+        if ! docker image inspect "${svc_img}" >/dev/null 2>&1; then
+            echo "Error: Required immutable image '${svc_img}' is missing after pull." >&2
+            echo "Silent build fallback is prohibited in production. Aborting deployment." >&2
+            exit 1
+        fi
+    done
+    echo "Verified all required immutable images are present locally."
 else
     compose build --pull app web research-worker
 fi
