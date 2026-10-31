@@ -95,22 +95,22 @@ jobs:
         include:
           - lane: unit
             name: 'Unit Tests'
-            command: 'vendor/bin/phpunit --testsuite Unit --no-ansi'
+            command: 'vendor/bin/phpunit --testsuite Unit --colors=never'
           - lane: integration
             name: 'Integration Tests'
-            command: 'vendor/bin/phpunit --testsuite Integration --no-ansi'
+            command: 'vendor/bin/phpunit --testsuite Integration --colors=never'
           - lane: feature-research
             name: 'Feature: Research & Backtest'
-            command: 'vendor/bin/phpunit tests/Feature/Research tests/Feature/Backtest tests/Feature/PatternDiscovery --no-ansi'
+            command: 'vendor/bin/phpunit tests/Feature/Research tests/Feature/Backtest tests/Feature/PatternDiscovery --colors=never'
           - lane: feature-paper
             name: 'Feature: Paper & Trading'
-            command: 'vendor/bin/phpunit tests/Feature/PaperTrading tests/Feature/Trading --no-ansi'
+            command: 'vendor/bin/phpunit tests/Feature/PaperTrading tests/Feature/Trading --colors=never'
           - lane: feature-exchanges
             name: 'Feature: Exchanges'
-            command: 'vendor/bin/phpunit tests/Feature/Exchanges --no-ansi'
+            command: 'vendor/bin/phpunit tests/Feature/Exchanges --colors=never'
           - lane: feature-market
             name: 'Feature: Market Data & Strategy'
-            command: 'vendor/bin/phpunit tests/Feature/MarketData tests/Feature/Strategy tests/Feature/Api tests/Feature/Security tests/Feature/Audit tests/Feature/Indicators tests/Feature/QuoteIntegrity --no-ansi'
+            command: 'vendor/bin/phpunit tests/Feature/MarketData tests/Feature/Strategy tests/Feature/Api tests/Feature/Security tests/Feature/Audit tests/Feature/Indicators tests/Feature/QuoteIntegrity --colors=never'
     name: PHP Tests (${{ matrix.name }})
     services:
       postgres:
