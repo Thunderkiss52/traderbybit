@@ -47,11 +47,23 @@ final class ProcessPaperPipelineJob implements ShouldQueue
 
     public function handle(TradingPipelineEventService $pipelineService, PaperProcessingService $paperService): void
     {
+        $startMs = (int) floor(microtime(true) * 1000);
         $at = new DateTimeImmutable($this->atIso);
 
         // Enforce temporal causality and freshness window.
         if (! $pipelineService->isFresh($at)) {
-            Log::info("ProcessPaperPipelineJob: {$this->exchange}:{$this->symbol} at {$this->atIso} rejected as STALE (exceeded 300s freshness window).");
+            $now = now('UTC')->toDateTimeImmutable();
+            $ageSeconds = $now->getTimestamp() - $at->getTimestamp();
+            $budgetSeconds = $pipelineService->freshnessSeconds();
+
+            Log::warning("ProcessPaperPipelineJob: {$this->exchange}:{$this->symbol} rejected as STALE (exceeded freshness budget)", [
+                'exchange' => $this->exchange,
+                'symbol' => $this->symbol,
+                'candle_close_at' => $this->atIso,
+                'age_seconds' => $ageSeconds,
+                'freshness_budget_seconds' => $budgetSeconds,
+                'rejection_reason' => 'FRESHNESS_BUDGET_EXCEEDED',
+            ]);
 
             $terminal = TradingPipelineEventRecord::query()->where('exchange', $this->exchange)
                 ->where('symbol', $this->symbol)->where('candle_close_at', $at)

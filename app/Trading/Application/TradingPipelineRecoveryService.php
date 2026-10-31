@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Trading\Application;
 
 use App\MarketData\Infrastructure\Persistence\CandleRecord;
+use App\Strategy\Infrastructure\Persistence\StrategyObservationRecord;
 use App\Trading\Infrastructure\Persistence\TradingPipelineEventRecord;
 use App\Trading\Jobs\ProcessClosedCandleEventJob;
 use App\Trading\Jobs\ProcessPaperPipelineJob;
@@ -46,6 +47,21 @@ final class TradingPipelineRecoveryService
 
         if ($serviced) {
             return true;
+        }
+
+        $canonicalStrategies = (array) config('paper.primary_strategies', []);
+        if (! empty($canonicalStrategies)) {
+            $existingCount = StrategyObservationRecord::query()
+                ->where('exchange', strtolower($exchange))
+                ->where('category', 'linear')
+                ->where('symbol', strtoupper($symbol))
+                ->where('decision_time', $closeAt)
+                ->whereNull('superseded_by')
+                ->count();
+
+            if ($existingCount >= count($canonicalStrategies)) {
+                return true;
+            }
         }
 
         if ($includeInFlight && $this->eventService->isFresh($closeAt)) {
@@ -131,14 +147,39 @@ final class TradingPipelineRecoveryService
                     TradingPipelineEventRecord::STATUS_COMPLETED,
                     TradingPipelineEventRecord::STATUS_PARTIAL,
                     TradingPipelineEventRecord::STATUS_FAILED,
+                    TradingPipelineEventRecord::STATUS_STALE,
                 ], true)) {
+                    $terminalStatus = $paperRecord->status === TradingPipelineEventRecord::STATUS_STALE
+                        ? TradingPipelineEventRecord::STATUS_COMPLETED
+                        : $paperRecord->status;
                     $event->update([
-                        'status' => $paperRecord->status,
+                        'status' => $terminalStatus,
                         'completed_at' => $paperRecord->completed_at ?? CarbonImmutable::now('UTC'),
                         'updated_at' => CarbonImmutable::now('UTC'),
                     ]);
                     $recovered++;
-                    Log::info("Recovery: Terminalized upstream event {$event->event_key} to {$paperRecord->status} matching existing downstream PAPER_PROCESSED.");
+                    Log::info("Recovery: Terminalized upstream event {$event->event_key} to {$terminalStatus} matching existing downstream PAPER_PROCESSED.");
+
+                    continue;
+                }
+            }
+
+            // If downstream SIGNALS_EVALUATED has already completed for a CANDLE_CLOSED event, terminalize CANDLE_CLOSED to COMPLETED.
+            if ($event->stage === TradingPipelineEventRecord::STAGE_CANDLE_CLOSED) {
+                $signalsKey = "{$event->exchange}:{$event->symbol}:15:{$closeIso}:".TradingPipelineEventRecord::STAGE_SIGNALS_EVALUATED;
+                $signalsRecord = TradingPipelineEventRecord::query()->where('event_key', $signalsKey)->first();
+
+                if ($signalsRecord !== null && in_array($signalsRecord->status, [
+                    TradingPipelineEventRecord::STATUS_COMPLETED,
+                    TradingPipelineEventRecord::STATUS_DISPATCHED,
+                ], true)) {
+                    $event->update([
+                        'status' => TradingPipelineEventRecord::STATUS_COMPLETED,
+                        'completed_at' => $signalsRecord->completed_at ?? CarbonImmutable::now('UTC'),
+                        'updated_at' => CarbonImmutable::now('UTC'),
+                    ]);
+                    $recovered++;
+                    Log::info("Recovery: Terminalized CANDLE_CLOSED event {$event->event_key} to COMPLETED matching existing downstream SIGNALS_EVALUATED.");
 
                     continue;
                 }

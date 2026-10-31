@@ -7,21 +7,29 @@ namespace App\Exchanges\Binance;
 use App\MarketData\Application\MarketCandleConflictService;
 use App\MarketData\Domain\CandleIntegrityUnavailable;
 use App\MarketData\Domain\Interval;
+use App\Trading\Application\TradingPipelineEventService;
+use DateTimeImmutable;
+use DateTimeZone;
 use DomainException;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use InvalidArgumentException;
+use Throwable;
 
 /** Explicit, bounded Binance ingestion. Never generates trading signals or paper fills. */
 final readonly class BinanceCandleIngestion
 {
     private MarketCandleConflictService $conflictService;
 
+    private TradingPipelineEventService $pipelineService;
+
     public function __construct(
         private BinancePublicAdapter $adapter,
-        ?MarketCandleConflictService $conflictService = null
+        ?MarketCandleConflictService $conflictService = null,
+        ?TradingPipelineEventService $pipelineService = null,
     ) {
         $this->conflictService = $conflictService ?? app(MarketCandleConflictService::class);
+        $this->pipelineService = $pipelineService ?? app(TradingPipelineEventService::class);
     }
 
     public function ingest(string $symbol, string $interval, int $limit = 100, bool $quarantineConflicts = false): array
@@ -48,7 +56,7 @@ final readonly class BinanceCandleIngestion
         }
         $rows = $this->adapter->fetchCandles($symbol, $interval, 500, $fromMs, $toMs - 1);
         foreach ($rows as $row) {
-            $openTime = new \DateTimeImmutable($row['open_time_utc']);
+            $openTime = new DateTimeImmutable($row['open_time_utc']);
             $openMs = (int) $openTime->format('U') * 1000 + (int) $openTime->format('v');
             if ($openMs < $fromMs || $openMs >= $toMs) {
                 throw new DomainException('Binance returned a candle outside the requested historical range.');
@@ -164,6 +172,30 @@ final readonly class BinanceCandleIngestion
         if ($integrityFailure !== null) {
             // Quarantine retains unrelated valid rows, but never acknowledges a failed integrity write.
             throw new CandleIntegrityUnavailable('CANDLE_INTEGRITY_UNAVAILABLE: quarantine evidence not acknowledged.', previous: $integrityFailure, ingestionReport: $report);
+        }
+
+        if ($interval === '15m' && config('trading.pipeline_mode') === 'EVENT_DRIVEN' && in_array($symbol, (array) config('trading.symbols', ['BTCUSDT', 'ETHUSDT']), true)) {
+            try {
+                $latestCloseTs = 0;
+                foreach ($rows as $candle) {
+                    if (! empty($candle['is_closed']) && ! empty($candle['open_time_utc'])) {
+                        $closeTs = strtotime((string) $candle['open_time_utc']) + 15 * 60;
+                        if ($closeTs > $latestCloseTs) {
+                            $latestCloseTs = $closeTs;
+                        }
+                    }
+                }
+                if ($latestCloseTs > 0) {
+                    $closeAt = (new DateTimeImmutable('@'.$latestCloseTs))->setTimezone(new DateTimeZone('UTC'));
+                    if ($this->pipelineService->isFresh($closeAt)) {
+                        $this->pipelineService->recordCandleClosed('binance', $symbol, '15', $closeAt);
+                    }
+                }
+            } catch (Throwable $e) {
+                Log::warning("BinanceCandleIngestion: failed to dispatch closed candle event for {$symbol}: ".$e->getMessage(), [
+                    'exception' => $e::class,
+                ]);
+            }
         }
 
         return $report;

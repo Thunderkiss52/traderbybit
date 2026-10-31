@@ -10,8 +10,10 @@ use App\Strategy\Application\StrategyInputFactory;
 use App\Strategy\Application\StrategyObservationService;
 use App\Strategy\Application\StrategyRegistry;
 use App\Strategy\Contracts\SignalRepository;
+use App\Trading\Application\TradingPipelineEventService;
 use DateTimeImmutable;
 use DomainException;
+use Throwable;
 
 /** Owner-operated PAPER/RESEARCH cycle; never places real exchange orders. */
 final readonly class BinanceResearchCycle
@@ -22,6 +24,7 @@ final readonly class BinanceResearchCycle
         private SignalRepository $signals,
         private PaperProcessingService $paper,
         private StrategyObservationService $observations,
+        private ?TradingPipelineEventService $pipeline = null,
     ) {}
 
     public function run(string $symbol, bool $execute = false, ?DateTimeImmutable $at = null): array
@@ -76,6 +79,14 @@ final readonly class BinanceResearchCycle
         }
 
         $observed = $this->observations->observe($symbol, $at, 'binance', 'linear');
+        $pipelineService = $this->pipeline ?? (config('trading.pipeline_mode') === 'EVENT_DRIVEN' ? app(TradingPipelineEventService::class) : null);
+        if ($pipelineService !== null && in_array($symbol, (array) config('trading.symbols', ['BTCUSDT', 'ETHUSDT']), true)) {
+            try {
+                $pipelineService->recordSignalsEvaluated('binance', $symbol, $at, count($observed));
+            } catch (Throwable) {
+                // Non-fatal if recording pipeline event fails
+            }
+        }
         $results = [];
         foreach ($observed as $obs) {
             $results[] = [

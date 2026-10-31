@@ -63,6 +63,14 @@ final class TradingPipelineEventService
         $record = null;
         try {
             $now = CarbonImmutable::now('UTC');
+            $closeMs = (int) $candleCloseAt->format('U') * 1000 + (int) $candleCloseAt->format('v');
+            $nowMs = (int) $now->format('U') * 1000 + (int) $now->format('v');
+            $candleCloseLatencyMs = max(0, $nowMs - $closeMs);
+
+            $eventPayload = array_merge($payload ?? [], [
+                'candle_close_to_event_ms' => $candleCloseLatencyMs,
+            ]);
+
             $inserted = DB::table('trading_pipeline_events')->insertOrIgnore([
                 'event_key' => $eventKey,
                 'exchange' => $exchange,
@@ -71,7 +79,7 @@ final class TradingPipelineEventService
                 'stage' => TradingPipelineEventRecord::STAGE_CANDLE_CLOSED,
                 'candle_close_at' => $candleCloseAt,
                 'status' => TradingPipelineEventRecord::STATUS_PENDING,
-                'payload' => $payload !== null ? json_encode($payload, JSON_THROW_ON_ERROR) : null,
+                'payload' => json_encode($eventPayload, JSON_THROW_ON_ERROR),
                 'attempts' => 0,
                 'created_at' => $now,
                 'updated_at' => $now,
@@ -115,9 +123,13 @@ final class TradingPipelineEventService
 
         $eventKey = "{$exchange}:{$symbol}:15:{$closeIso}:".TradingPipelineEventRecord::STAGE_SIGNALS_EVALUATED;
         $now = CarbonImmutable::now('UTC');
+        $closeMs = (int) $candleCloseAt->format('U') * 1000 + (int) $candleCloseAt->format('v');
+        $nowMs = (int) $now->format('U') * 1000 + (int) $now->format('v');
+        $evalLatencyMs = max(0, $nowMs - $closeMs);
 
         $data = [
             'signals_count' => $signalsCount,
+            'eval_latency_from_close_ms' => $evalLatencyMs,
             ...($payload ?? []),
         ];
 
