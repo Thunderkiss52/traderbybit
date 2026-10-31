@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Backtest\Application;
 
 use App\Backtest\Contracts\HistoricalSignalEvaluator;
+use App\Backtest\Contracts\ResettableHistoricalSignalEvaluator;
 use App\Backtest\Domain\Segment;
 use App\Backtest\Domain\SimulationResult;
 use App\MarketData\Infrastructure\Persistence\CandleRecord;
@@ -34,6 +35,10 @@ final readonly class BacktestSimulationEngine
     {
         if (! in_array($exchange, ['bybit', 'binance'], true)) {
             throw new \InvalidArgumentException('Unsupported backtest exchange.');
+        }
+        // A singleton engine can outlive a job: never reuse inputs across simulations.
+        if ($this->signals instanceof ResettableHistoricalSignalEvaluator) {
+            $this->signals->resetInputCache();
         }
         $strategyConfig['_exchange'] = $exchange;
         $execution = new PaperExecutionEngine($executionConfig);

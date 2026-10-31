@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace App\Backtest\Application;
 
-use App\Backtest\Contracts\HistoricalSignalEvaluator;
+use App\Backtest\Contracts\ResettableHistoricalSignalEvaluator;
 use App\Strategy\Application\LevelInteractionAnalyzer;
 use App\Strategy\Application\LevelProbabilityService;
 use App\Strategy\Application\StrategyEngine;
@@ -26,8 +26,10 @@ use App\Strategy\Research\TrendPullbackStrategy;
 use App\Strategy\Research\VolatilityCompressionBreakoutStrategy;
 use DateTimeImmutable;
 
-final class StrategySignalEvaluator implements HistoricalSignalEvaluator
+final class StrategySignalEvaluator implements ResettableHistoricalSignalEvaluator
 {
+    private const MAX_CACHED_INPUTS = 64;
+
     /** @var array<string, StrategyInput> */
     private array $inputCache = [];
 
@@ -36,6 +38,11 @@ final class StrategySignalEvaluator implements HistoricalSignalEvaluator
         private readonly LevelInteractionAnalyzer $levels,
         private readonly LevelProbabilityService $probabilities,
     ) {}
+
+    public function resetInputCache(): void
+    {
+        $this->inputCache = [];
+    }
 
     public function evaluate(string $symbol, DateTimeImmutable $at, array $strategyConfig): SignalDecision
     {
@@ -46,7 +53,13 @@ final class StrategySignalEvaluator implements HistoricalSignalEvaluator
             throw new \InvalidArgumentException('Unsupported backtest exchange.');
         }
         $cacheKey = "{$exchange}:linear:{$symbol}:{$at->getTimestamp()}:{$peer}";
-        $input = $this->inputCache[$cacheKey] ??= $this->inputs->make($exchange, 'linear', $symbol, $at, $peer);
+        if (! isset($this->inputCache[$cacheKey])) {
+            if (count($this->inputCache) >= self::MAX_CACHED_INPUTS) {
+                $this->resetInputCache();
+            }
+            $this->inputCache[$cacheKey] = $this->inputs->make($exchange, 'linear', $symbol, $at, $peer);
+        }
+        $input = $this->inputCache[$cacheKey];
         if ($id === null || $id === 'baseline') {
             $config = $strategyConfig;
             unset($config['_research_strategy_id']);

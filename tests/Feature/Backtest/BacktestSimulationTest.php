@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Tests\Feature\Backtest;
 
 use App\Backtest\Application\BacktestSimulationEngine;
+use App\Backtest\Application\StrategySignalEvaluator;
 use App\Backtest\Contracts\HistoricalSignalEvaluator;
 use App\Backtest\Domain\Segment;
 use App\MarketData\Infrastructure\Persistence\CandleRecord;
@@ -26,6 +27,21 @@ use Tests\TestCase;
 final class BacktestSimulationTest extends TestCase
 {
     use RefreshDatabase;
+
+    public function test_reused_engine_clears_input_cache_before_each_simulation(): void
+    {
+        $evaluator = app(StrategySignalEvaluator::class);
+        $cache = new \ReflectionProperty(StrategySignalEvaluator::class, 'inputCache');
+        $paper = config('paper');
+        $engine = new BacktestSimulationEngine($evaluator, new RiskEngine($paper), new CorrelationService($paper), $paper);
+        $segment = new Segment('test', new DateTimeImmutable('2026-01-01T09:55:00Z'), new DateTimeImmutable('2026-01-01T10:20:00Z'));
+
+        foreach ([1, 2] as $iteration) {
+            $cache->setValue($evaluator, ['stale-from-another-run' => new \stdClass]);
+            $engine->simulate([], $segment, config('strategy'), $paper, '10000');
+            self::assertSame([], $cache->getValue($evaluator), "Simulation {$iteration} did not invalidate stale cached inputs.");
+        }
+    }
 
     public function test_binance_simulation_never_uses_bybit_candles(): void
     {
