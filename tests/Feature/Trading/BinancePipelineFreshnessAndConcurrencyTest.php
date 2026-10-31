@@ -305,9 +305,9 @@ final class BinancePipelineFreshnessAndConcurrencyTest extends TestCase
     }
 
     /**
-     * Requirement 3 & Schedule Cadence: Verify cron expressions and background execution for Binance tasks.
+     * Requirement 3 & Schedule Cadence: Verify cron expressions and withoutOverlapping isolation for Binance tasks.
      */
-    public function test_scheduler_cadence_and_background_execution_for_binance_tasks(): void
+    public function test_scheduler_cadence_and_isolation_for_binance_tasks(): void
     {
         config(['exchanges.binance.research_cycle_enabled' => true]);
 
@@ -317,39 +317,25 @@ final class BinancePipelineFreshnessAndConcurrencyTest extends TestCase
 
         $events = collect($schedule->events());
 
-        // Verify HTF 15m
-        $htf15m = $events->first(fn ($e) => str_contains((string) $e->description, 'binance:htf:BTCUSDT:15m') || str_contains((string) $e->command, '15m'));
-        self::assertNotNull($htf15m);
-        self::assertSame('1,16,31,46 * * * *', $htf15m->expression);
-        self::assertTrue($htf15m->runInBackground);
+        // Verify all 4 HTF intervals are registered with 15m cadence and withoutOverlapping
+        foreach (['15m', '30m', '1h', '4h'] as $interval) {
+            $htf = $events->first(fn ($e) => str_contains((string) $e->description, "binance:htf:BTCUSDT:{$interval}"));
+            self::assertNotNull($htf);
+            self::assertSame('1,16,31,46 * * * *', $htf->expression);
+            self::assertTrue($htf->withoutOverlapping);
+        }
 
-        // Verify HTF 30m
-        $htf30m = $events->first(fn ($e) => str_contains((string) $e->description, 'binance:htf:BTCUSDT:30m') || (str_contains((string) $e->command, '30m') && str_contains((string) $e->command, 'binance:ingest-htf')));
-        self::assertNotNull($htf30m);
-        self::assertSame('1,31 * * * *', $htf30m->expression);
-        self::assertTrue($htf30m->runInBackground);
-
-        // Verify HTF 1h
-        $htf1h = $events->first(fn ($e) => str_contains((string) $e->description, 'binance:htf:BTCUSDT:1h') || (str_contains((string) $e->command, '1h') && str_contains((string) $e->command, 'binance:ingest-htf')));
-        self::assertNotNull($htf1h);
-        self::assertSame('1 * * * *', $htf1h->expression);
-        self::assertTrue($htf1h->runInBackground);
-
-        // Verify HTF 4h
-        $htf4h = $events->first(fn ($e) => str_contains((string) $e->description, 'binance:htf:BTCUSDT:4h') || (str_contains((string) $e->command, '4h') && str_contains((string) $e->command, 'binance:ingest-htf')));
-        self::assertNotNull($htf4h);
-        self::assertSame('1 0,4,8,12,16,20 * * *', $htf4h->expression);
-        self::assertTrue($htf4h->runInBackground);
-
-        // Verify 5m ingestion runs in background
+        // Verify 5m ingestion runs with 5m cadence and withoutOverlapping
         $m5 = $events->first(fn ($e) => str_contains((string) $e->description, 'binance:5m:BTCUSDT'));
         self::assertNotNull($m5);
-        self::assertTrue($m5->runInBackground);
+        self::assertSame('1,6,11,16,21,26,31,36,41,46,51,56 * * * *', $m5->expression);
+        self::assertTrue($m5->withoutOverlapping);
 
-        // Verify context capture runs in background
+        // Verify context capture runs before 15m decision with withoutOverlapping
         $context = $events->first(fn ($e) => str_contains((string) $e->description, 'binance:context:BTCUSDT'));
         self::assertNotNull($context);
-        self::assertTrue($context->runInBackground);
+        self::assertSame('13,28,43,58 * * * *', $context->expression);
+        self::assertTrue($context->withoutOverlapping);
     }
 
     /**

@@ -311,50 +311,18 @@ Schedule::job(new CapturePaperEquityJob)
 if ((bool) config('exchanges.binance.research_cycle_enabled', false)) {
     foreach ((array) config('market_data.symbols', ['BTCUSDT', 'ETHUSDT']) as $symbol) {
         $symbol = (string) $symbol;
-        Schedule::command('binance:capture-context', [$symbol])
-            ->cron('13,28,43,58 * * * *')->name("binance:context:{$symbol}")
-            ->runInBackground()
-            ->withoutOverlapping(10);
-
-        Schedule::command('binance:ingest-candles', [$symbol, '5m', '--limit' => 30, '--quarantine'])
+        Schedule::call(fn () => app(BinanceContextCapture::class)->capture($symbol))
+            ->cron('13,28,43,58 * * * *')->name("binance:context:{$symbol}")->withoutOverlapping();
+        Schedule::call(fn () => app(BinanceCandleIngestion::class)->ingest($symbol, '5m', 30))
             ->cron('1,6,11,16,21,26,31,36,41,46,51,56 * * * *')
-            ->name("binance:5m:{$symbol}")
-            ->runInBackground()
-            ->withoutOverlapping(5);
-
-        // 15m HTF: closes at :00, :15, :30, :45 -> ingest at :01, :16, :31, :46
-        Schedule::command('binance:ingest-htf', [$symbol, '15m', '--limit' => 10, '--quarantine'])
-            ->appendOutputTo(storage_path('logs/binance-htf-ingestion.log'))
-            ->cron('1,16,31,46 * * * *')->name("binance:htf:{$symbol}:15m")
-            ->runInBackground()
-            ->withoutOverlapping(10);
-
-        // 30m HTF: closes at :00, :30 -> ingest at :01, :31
-        Schedule::command('binance:ingest-htf', [$symbol, '30m', '--limit' => 10, '--quarantine'])
-            ->appendOutputTo(storage_path('logs/binance-htf-ingestion.log'))
-            ->cron('1,31 * * * *')->name("binance:htf:{$symbol}:30m")
-            ->runInBackground()
-            ->withoutOverlapping(10);
-
-        // 1h HTF: closes at :00 -> ingest at :01
-        Schedule::command('binance:ingest-htf', [$symbol, '1h', '--limit' => 10, '--quarantine'])
-            ->appendOutputTo(storage_path('logs/binance-htf-ingestion.log'))
-            ->cron('1 * * * *')->name("binance:htf:{$symbol}:1h")
-            ->runInBackground()
-            ->withoutOverlapping(10);
-
-        // 4h HTF: closes at 00:00, 04:00, 08:00, 12:00, 16:00, 20:00 -> ingest at :01 of those hours
-        Schedule::command('binance:ingest-htf', [$symbol, '4h', '--limit' => 10, '--quarantine'])
-            ->appendOutputTo(storage_path('logs/binance-htf-ingestion.log'))
-            ->cron('1 0,4,8,12,16,20 * * *')->name("binance:htf:{$symbol}:4h")
-            ->runInBackground()
-            ->withoutOverlapping(10);
-
-        Schedule::command('binance:ingest-funding', [$symbol])
-            ->cron('10 * * * *')->name("binance:funding:{$symbol}")
-            ->runInBackground()
-            ->withoutOverlapping(10);
-
+            ->name("binance:5m:{$symbol}")->withoutOverlapping();
+        foreach (['15m', '30m', '1h', '4h'] as $interval) {
+            Schedule::command('binance:ingest-htf', [$symbol, $interval, '--limit' => 10, '--quarantine'])
+                ->appendOutputTo(storage_path('logs/binance-htf-ingestion.log'))
+                ->cron('1,16,31,46 * * * *')->name("binance:htf:{$symbol}:{$interval}")->withoutOverlapping();
+        }
+        Schedule::call(fn () => app(BinanceFundingIngestion::class)->ingest($symbol))
+            ->cron('10 * * * *')->name("binance:funding:{$symbol}")->withoutOverlapping();
         Schedule::call(function () use ($symbol): void {
             if (config('trading.pipeline_mode') === 'EVENT_DRIVEN') {
                 $recovery = app(TradingPipelineRecoveryService::class);
@@ -363,8 +331,7 @@ if ((bool) config('exchanges.binance.research_cycle_enabled', false)) {
                 }
             }
             app(BinanceResearchCycle::class)->run($symbol, false);
-        })->cron('2,17,32,47 * * * *')->name("binance:signals:{$symbol}")
-            ->withoutOverlapping(10);
+        })->cron('2,17,32,47 * * * *')->name("binance:signals:{$symbol}")->withoutOverlapping();
     }
     // Maintain and service Binance paper accounts on every 5m cycle.
     // When owner execution is approved, new entries are permitted. When unapproved,
