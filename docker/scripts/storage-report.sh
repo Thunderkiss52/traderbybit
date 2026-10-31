@@ -7,7 +7,7 @@ echo "Filesystem:"
 df -h "${PROJECT_ROOT}" "${BACKUP_DIR:-${PROJECT_ROOT}/backups/bybit-signals}"
 
 echo "Bybit Signals images:"
-for repository in "${APP_IMAGE:-bybit-signals-app}" "${WEB_IMAGE:-bybit-signals-web}" "${RESEARCH_WORKER_IMAGE:-bybit-signals-research-worker}"; do
+for repository in "${APP_IMAGE}" "${WEB_IMAGE}" "${RESEARCH_WORKER_IMAGE}"; do
     docker image ls "${repository}" --format '{{.Repository}}:{{.Tag}} {{.Size}} {{.ID}}'
 done
 

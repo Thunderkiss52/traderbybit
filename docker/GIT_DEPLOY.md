@@ -1,14 +1,14 @@
 # GitHub Actions deployment — one-time setup and checks
 
-The workflow `.github/workflows/deploy.yml` is **manual** (`Actions → Deploy Production → Run workflow`) and is restricted to the `main` branch. It runs backend/frontend tests, publishes versioned `app` and `web` images to GHCR, and connects to the VPS over SSH. The images are **not** built on the VPS.
+The workflow `.github/workflows/deploy.yml` is **manual** (`Actions → Deploy Production → Run workflow`) and is restricted to the `main` branch. It runs backend/frontend tests, publishes versioned `app`, `web`, and `research-worker` images to GHCR, and connects to the VPS over SSH. The images are **not** built on the VPS.
 
 ## Before first click (one-time server setup)
 
 The workflow **does not provision** SSH, the server deploy wrapper, or the production secrets. Set these up once on the VPS, where the existing paper-trading deployment is already running:
 
 1. Ensure `/srv/bybit-signals/.env.production` exists with secure permissions (`chmod 600`) and the existing Docker Compose stack is healthy. **Do not overwrite the production environment, database, or volumes.**
-2. Configure `APP_IMAGE=ghcr.io/<owner>/<repo>/app` and `WEB_IMAGE=ghcr.io/<owner>/<repo>/web` in `.env.production`, matching the lowercased GitHub repository name used by the workflow. Set `DEPLOY_MODE=pull`. **Do not change `IMAGE_TAG` to an unavailable GHCR tag.**
-3. The server must be able to pull both image packages from GHCR. Either make both GHCR packages public, or authenticate the server Docker daemon with a token limited to `read:packages`. Test pulling a previously published SHA tag before enabling regular releases. Do not put registry tokens in the repository.
+2. Configure `APP_IMAGE=ghcr.io/<owner>/<repo>/app`, `WEB_IMAGE=ghcr.io/<owner>/<repo>/web`, and `RESEARCH_WORKER_IMAGE=ghcr.io/<owner>/<repo>/research-worker` in `.env.production`, matching the lowercased GitHub repository name used by the workflow. Set `DEPLOY_MODE=pull`. **Do not change `IMAGE_TAG` to an unavailable GHCR tag.**
+3. The server must be able to pull all image packages from GHCR. Either make the GHCR packages public, or authenticate the server Docker daemon with a token limited to `read:packages`. Test pulling a previously published SHA tag before enabling regular releases. Do not put registry tokens in the repository.
 4. Create `/srv/bybit-signals/incoming`, `/srv/bybit-signals/releases`, and `/srv/bybit-signals/deploy-state`. Ensure the deploy user can upload archives to `incoming` and that the deploy wrapper can read those archives and the protected `.env.production`.
 5. Install `docker/scripts/production-deploy-wrapper.sh` from the reviewed repository as `/usr/local/sbin/bybit-signals-deploy`, owned by root and executable. The workflow runs `sudo -n /usr/local/sbin/bybit-signals-deploy <40-hex-commit-sha>`. Use a narrowly scoped `sudoers` entry for this exact script, not unrestricted sudo. A Docker-capable deployment user is effectively privileged: review this security boundary carefully.
 6. The wrapper expects an **already initialized** Docker Compose deployment because `update.sh` creates a PostgreSQL backup before updating. For a brand new server, bootstrap with the documented `docker/scripts/deploy.sh` process first, then enable GitHub deployment.
@@ -44,7 +44,7 @@ The workflow can be rerun for the **same SHA**; `update.sh` recognizes the deplo
 - **`Permission denied (publickey)`**: check deploy SSH key/user and `authorized_keys`.
 - **`sudo: a password is required` / command not found**: install wrapper and configure narrow passwordless sudo permission.
 - **`No such file or directory: /srv/bybit-signals/incoming`**: create upload directory and permissions.
-- **`pull access denied` / `unauthorized`**: check `APP_IMAGE`/`WEB_IMAGE`, GHCR visibility and server `docker login`.
+- **`pull access denied` / `unauthorized`**: check `APP_IMAGE`/`WEB_IMAGE`/`RESEARCH_WORKER_IMAGE`, GHCR visibility and server `docker login`.
 - **Backup or migration failure**: ensure running PostgreSQL, stable persistent volumes, and compatible migrations. Do not auto-restore production DB.
 - **`Image is already deployed`**: expected on repeated clicks for the same commit.
 - **Healthcheck failure**: inspect only `bybit-signals` Compose logs; investigate before attempting another deployment.

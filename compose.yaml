@@ -35,7 +35,7 @@ x-app-environment: &app-environment
   VECTOR_BINANCE_RESEARCH_CYCLE_ENABLED: ${VECTOR_BINANCE_RESEARCH_CYCLE_ENABLED:-true}
 
 x-php-service: &php-service
-  image: ${APP_IMAGE:-bybit-signals-app}:${IMAGE_TAG:-latest}
+  image: ${APP_IMAGE:?APP_IMAGE is required}:${IMAGE_TAG:?IMAGE_TAG is required}
   restart: unless-stopped
   env_file:
     - ${ENV_FILE:-.env.production}
@@ -76,7 +76,7 @@ services:
     cpus: ${APP_CPU_LIMIT:-1.0}
 
   web:
-    image: ${WEB_IMAGE:-bybit-signals-web}:${IMAGE_TAG:-latest}
+    image: ${WEB_IMAGE:?WEB_IMAGE is required}:${IMAGE_TAG:?IMAGE_TAG is required}
     build:
       context: .
       dockerfile: docker/php/Dockerfile
@@ -236,7 +236,7 @@ services:
     cpus: ${BACKTEST_CPU_LIMIT:-2.0}
 
   research-worker:
-    image: ${RESEARCH_WORKER_IMAGE:-bybit-signals-research-worker}:${IMAGE_TAG:-latest}
+    image: ${RESEARCH_WORKER_IMAGE:?RESEARCH_WORKER_IMAGE is required}:${IMAGE_TAG:?IMAGE_TAG is required}
     build:
       context: .
       dockerfile: docker/go/Dockerfile

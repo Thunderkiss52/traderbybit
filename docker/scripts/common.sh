@@ -32,6 +32,38 @@ if [[ -n "${REQUESTED_IMAGE_TAG}" ]]; then
     IMAGE_TAG="${REQUESTED_IMAGE_TAG}"
 fi
 
+# Auto-derive RESEARCH_WORKER_IMAGE if missing but APP_IMAGE or WEB_IMAGE is provided
+if [[ -z "${RESEARCH_WORKER_IMAGE:-}" ]]; then
+    if [[ -n "${APP_IMAGE:-}" && "${APP_IMAGE}" == */app ]]; then
+        RESEARCH_WORKER_IMAGE="${APP_IMAGE%/app}/research-worker"
+        export RESEARCH_WORKER_IMAGE
+    elif [[ -n "${WEB_IMAGE:-}" && "${WEB_IMAGE}" == */web ]]; then
+        RESEARCH_WORKER_IMAGE="${WEB_IMAGE%/web}/research-worker"
+        export RESEARCH_WORKER_IMAGE
+    fi
+fi
+
+if [[ -z "${IMAGE_TAG:-}" ]]; then
+    IMAGE_TAG="latest"
+fi
+export IMAGE_TAG
+
+# Fail closed if image references are missing or use unqualified fallback names in pull mode
+if [[ "${DEPLOY_MODE:-}" == "pull" && "${ALLOW_TEST_PROJECT:-0}" != "1" ]]; then
+    for img_var in APP_IMAGE WEB_IMAGE RESEARCH_WORKER_IMAGE; do
+        val="${!img_var:-}"
+        if [[ -z "${val}" ]]; then
+            echo "[FATAL] ${img_var} is required for pull deployment mode." >&2
+            exit 1
+        fi
+        if [[ "${val}" =~ ^bybit-signals- || "${val}" != *"/"* ]]; then
+            echo "[FATAL] ${img_var} must be a qualified registry image reference (e.g. ghcr.io/<owner>/<repo>/<target>), got: '${val}'." >&2
+            exit 1
+        fi
+    done
+fi
+export APP_IMAGE WEB_IMAGE RESEARCH_WORKER_IMAGE
+
 COMPOSE_PROJECT_NAME="${COMPOSE_PROJECT_NAME:-bybit-signals}"
 if [[ "${COMPOSE_PROJECT_NAME}" != "bybit-signals" && "${ALLOW_TEST_PROJECT:-0}" != "1" ]]; then
     echo "COMPOSE_PROJECT_NAME must be bybit-signals for this deployment." >&2
@@ -50,7 +82,7 @@ APPLICATION_SERVICES=(
 )
 
 mkdir -p "${DEPLOY_STATE_DIR}"
-export ENV_FILE COMPOSE_PROJECT_NAME DEPLOY_STATE_DIR
+export ENV_FILE COMPOSE_PROJECT_NAME DEPLOY_STATE_DIR APP_IMAGE WEB_IMAGE RESEARCH_WORKER_IMAGE IMAGE_TAG
 COMPOSE_ARGS=(docker compose --project-name "${COMPOSE_PROJECT_NAME}" --env-file "${ENV_FILE}" -f "${PROJECT_ROOT}/compose.yaml")
 if [[ "${USE_EXTERNAL_PROXY:-0}" == "1" ]]; then
     : "${EXTERNAL_PROXY_NETWORK:?EXTERNAL_PROXY_NETWORK is required when USE_EXTERNAL_PROXY=1}"

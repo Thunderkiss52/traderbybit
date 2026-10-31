@@ -86,29 +86,23 @@ IMAGE_TAG="\${NEW_TAG}"
 APPLICATION_SERVICES=(app web research-worker)
 SCRIPT_DIR="${TMP_DIR}"
 
-rollback_application() {
-    local failure_code="\$?"
-    trap - ERR
-    echo "Deployment failed; attempting application rollback to \${CURRENT_TAG}." >&2
-    export IMAGE_TAG="\${CURRENT_TAG}"
-    compose up -d --no-deps "\${APPLICATION_SERVICES[@]}" || true
-    echo "Rollback to \${CURRENT_TAG} executed." >&2
-    exit "\${failure_code}"
-}
-trap rollback_application ERR
+APP_IMAGE="\${APP_IMAGE:-ghcr.io/example/traderbybit/app}"
+WEB_IMAGE="\${WEB_IMAGE:-ghcr.io/example/traderbybit/web}"
+RESEARCH_WORKER_IMAGE="\${RESEARCH_WORKER_IMAGE:-ghcr.io/example/traderbybit/research-worker}"
 
 if [[ "\${DEPLOY_MODE:-pull}" == "pull" ]]; then
     echo "Pulling immutable images (app, web, research-worker) for tag \${NEW_TAG}..."
     if ! compose pull app web research-worker; then
         echo "Error: Failed to pull required immutable images for tag \${NEW_TAG}." >&2
+        echo "Existing running containers are preserved." >&2
         exit 1
     fi
-    for svc_img in "\${APP_IMAGE:-bybit-signals-app}:\${NEW_TAG}" \\
-                   "\${WEB_IMAGE:-bybit-signals-web}:\${NEW_TAG}" \\
-                   "\${RESEARCH_WORKER_IMAGE:-bybit-signals-research-worker}:\${NEW_TAG}"; do
+    for svc_img in "\${APP_IMAGE}:\${NEW_TAG}" \\
+                   "\${WEB_IMAGE}:\${NEW_TAG}" \\
+                   "\${RESEARCH_WORKER_IMAGE}:\${NEW_TAG}"; do
         if ! "${mock_docker}" image inspect "\${svc_img}" >/dev/null 2>&1; then
             echo "Error: Required immutable image '\${svc_img}' is missing after pull." >&2
-            echo "Silent build fallback is prohibited in production. Aborting deployment." >&2
+            echo "Silent build fallback is prohibited in production. Existing running containers are preserved. Aborting deployment." >&2
             exit 1
         fi
     done
@@ -116,6 +110,18 @@ if [[ "\${DEPLOY_MODE:-pull}" == "pull" ]]; then
 else
     compose build --pull app web research-worker
 fi
+
+# Arm rollback trap only when state-mutating container operations begin
+rollback_application() {
+    local failure_code="\$?"
+    trap - ERR
+    echo "Deployment failed during container transition; attempting application rollback to \${CURRENT_TAG}." >&2
+    export IMAGE_TAG="\${CURRENT_TAG}"
+    compose up -d --no-deps "\${APPLICATION_SERVICES[@]}" || true
+    echo "Rollback to \${CURRENT_TAG} executed." >&2
+    exit "\${failure_code}"
+}
+trap rollback_application ERR
 
 bash "${mock_health}"
 echo "Deployment successful for \${NEW_TAG}."
@@ -147,30 +153,30 @@ assert_scenario \
     "Deployment successful for sha-new2222222" \
     0 "" 0
 
-# 2. Research-worker image missing -> fails closed, no build, triggers rollback
+# 2. Research-worker image missing -> fails closed, no build, preserves containers
 assert_scenario \
-    "Research-worker image missing -> aborts, no build fallback, rolls back" \
+    "Research-worker image missing -> aborts, no build fallback, preserves containers" \
     1 \
-    "Required immutable image 'bybit-signals-research-worker:sha-new2222222' is missing after pull." \
+    "Required immutable image 'ghcr.io/example/traderbybit/research-worker:sha-new2222222' is missing after pull." \
     0 "research-worker" 0
 
-# 3. App image missing -> fails closed, no build, triggers rollback
+# 3. App image missing -> fails closed, no build, preserves containers
 assert_scenario \
-    "App image missing -> aborts, no build fallback, rolls back" \
+    "App image missing -> aborts, no build fallback, preserves containers" \
     1 \
-    "Required immutable image 'bybit-signals-app:sha-new2222222' is missing after pull." \
-    0 "bybit-signals-app" 0
+    "Required immutable image 'ghcr.io/example/traderbybit/app:sha-new2222222' is missing after pull." \
+    0 "app" 0
 
-# 4. Image pull failure -> fails closed without build, triggers rollback
+# 4. Image pull failure -> fails closed without build, preserves containers
 assert_scenario \
-    "Image pull failure -> aborts, rolls back to current release" \
+    "Image pull failure -> aborts fail-closed, preserves containers" \
     1 \
-    "Error: Failed to pull required immutable images for tag sha-new2222222." \
+    "Existing running containers are preserved." \
     1 "" 0
 
-# 5. Failed health check -> triggers application rollback to previous release
+# 5. Failed health check during container transition -> triggers application rollback
 assert_scenario \
-    "Failed health check -> triggers rollback to sha-previous111" \
+    "Failed health check during container transition -> triggers application rollback" \
     1 \
     "Rollback to sha-previous111 executed." \
     0 "" 1

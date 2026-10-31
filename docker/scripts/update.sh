@@ -48,30 +48,33 @@ fi
 bash "${PROJECT_ROOT}/docker/postgres/backup.sh"
 
 export IMAGE_TAG="${NEW_TAG}"
-rollback_application() {
-    local failure_code="$?"
-    trap - ERR
-    echo "Deployment failed; attempting application rollback to ${CURRENT_TAG}. Database migrations are not rolled back." >&2
-    export IMAGE_TAG="${CURRENT_TAG}"
-    compose up -d --no-deps "${APPLICATION_SERVICES[@]}" || true
-    compose restart web || true
-    bash "${SCRIPT_DIR}/healthcheck.sh" || true
-    exit "${failure_code}"
-}
-trap rollback_application ERR
 
 if [[ "${DEPLOY_MODE:-pull}" == "pull" ]]; then
+    for img_var in APP_IMAGE WEB_IMAGE RESEARCH_WORKER_IMAGE; do
+        val="${!img_var:-}"
+        if [[ -z "${val}" ]]; then
+            echo "[FATAL] ${img_var} is required for pull deployment mode." >&2
+            echo "Existing running containers are preserved." >&2
+            exit 1
+        fi
+        if [[ "${val}" =~ ^bybit-signals- || "${val}" != *"/"* ]]; then
+            echo "[FATAL] ${img_var} must be a qualified registry image reference (e.g. ghcr.io/<owner>/<repo>/<target>), got: '${val}'." >&2
+            echo "Existing running containers are preserved." >&2
+            exit 1
+        fi
+    done
     echo "Pulling immutable images (app, web, research-worker) for tag ${NEW_TAG}..."
     if ! compose pull app web research-worker; then
         echo "Error: Failed to pull required immutable images for tag ${NEW_TAG}." >&2
+        echo "Existing running containers are preserved." >&2
         exit 1
     fi
-    for svc_img in "${APP_IMAGE:-bybit-signals-app}:${NEW_TAG}" \
-                   "${WEB_IMAGE:-bybit-signals-web}:${NEW_TAG}" \
-                   "${RESEARCH_WORKER_IMAGE:-bybit-signals-research-worker}:${NEW_TAG}"; do
+    for svc_img in "${APP_IMAGE}:${NEW_TAG}" \
+                   "${WEB_IMAGE}:${NEW_TAG}" \
+                   "${RESEARCH_WORKER_IMAGE}:${NEW_TAG}"; do
         if ! docker image inspect "${svc_img}" >/dev/null 2>&1; then
             echo "Error: Required immutable image '${svc_img}' is missing after pull." >&2
-            echo "Silent build fallback is prohibited in production. Aborting deployment." >&2
+            echo "Silent build fallback is prohibited in production. Existing running containers are preserved. Aborting deployment." >&2
             exit 1
         fi
     done
@@ -80,6 +83,20 @@ else
     compose build --pull app web research-worker
 fi
 assert_free_disk_space
+
+# Arm rollback trap only when state-mutating container operations begin
+rollback_application() {
+    local failure_code="$?"
+    trap - ERR
+    echo "Deployment failed during container transition; attempting application rollback to ${CURRENT_TAG}. Database migrations are not rolled back." >&2
+    export IMAGE_TAG="${CURRENT_TAG}"
+    compose up -d --no-deps "${APPLICATION_SERVICES[@]}" || true
+    compose restart web || true
+    bash "${SCRIPT_DIR}/healthcheck.sh" || true
+    exit "${failure_code}"
+}
+trap rollback_application ERR
+
 compose up -d postgres redis
 wait_healthy postgres 180
 wait_healthy redis 120

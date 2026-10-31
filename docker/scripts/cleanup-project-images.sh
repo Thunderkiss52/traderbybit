@@ -13,7 +13,7 @@ if [[ -z "${previous}" && -f "${DEPLOY_STATE_DIR}/.deploy-previous" ]]; then
     previous="$(<"${DEPLOY_STATE_DIR}/.deploy-previous")"
 fi
 
-for repository in "${APP_IMAGE:-bybit-signals-app}" "${WEB_IMAGE:-bybit-signals-web}" "${RESEARCH_WORKER_IMAGE:-bybit-signals-research-worker}"; do
+for repository in "${APP_IMAGE}" "${WEB_IMAGE}" "${RESEARCH_WORKER_IMAGE}"; do
     while read -r tag image_id; do
         [[ -n "${tag}" && "${tag}" != "<none>" ]] || continue
         [[ "${tag}" == "${current}" || "${tag}" == "${previous}" ]] && continue
