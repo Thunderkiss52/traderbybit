@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace App\MarketData\Jobs;
 
-use App\Exchanges\Binance\BinanceCandleIngestion;
+use App\Exchanges\Binance\BinanceCandleBackfillService;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
@@ -43,12 +43,21 @@ final class RecoverCandleGapsJob implements ShouldQueue
         $symbols = $this->symbol !== null ? [$this->symbol] : (array) config('market_data.symbols', ['BTCUSDT', 'ETHUSDT']);
 
         if ($targetExchange === 'binance') {
-            $ingestion = app(BinanceCandleIngestion::class);
+            if (! (bool) config('exchanges.binance.automatic_candle_recovery_enabled', false)) {
+                Log::info('Automatic Binance candle gap recovery is disabled.');
+
+                return;
+            }
+            $backfill = app(BinanceCandleBackfillService::class);
+            $intervals = ['5m', '15m', '30m', '1h', '4h'];
             $failures = [];
             foreach ($symbols as $symbol) {
-                foreach (['5m', '15m'] as $interval) {
+                foreach ($intervals as $interval) {
                     try {
-                        $ingestion->ingest((string) $symbol, $interval, 100);
+                        $report = $backfill->backfill($symbol, $interval);
+                        if ($report['status'] !== 'COMPLETED') {
+                            throw new RuntimeException('Binance candle recovery status: '.$report['status']);
+                        }
                     } catch (Throwable $e) {
                         $failures[] = $symbol.':'.$interval;
                         Log::warning('Binance candle gap recovery failed', [
@@ -59,7 +68,6 @@ final class RecoverCandleGapsJob implements ShouldQueue
                 }
             }
             if ($failures !== []) {
-                // Successful scopes stay committed; retry verifies their immutable rows.
                 throw new RuntimeException('Binance candle gap recovery incomplete: '.implode(', ', $failures));
             }
 

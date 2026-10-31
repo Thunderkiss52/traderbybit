@@ -6,6 +6,7 @@ namespace App\Exchanges\Binance;
 
 use App\MarketData\Application\MarketCandleConflictService;
 use App\MarketData\Domain\CandleIntegrityUnavailable;
+use App\MarketData\Domain\Interval;
 use DomainException;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
@@ -25,13 +26,50 @@ final readonly class BinanceCandleIngestion
 
     public function ingest(string $symbol, string $interval, int $limit = 100, bool $quarantineConflicts = false): array
     {
+        $this->assertScope($symbol, $interval);
+        $rows = $this->adapter->fetchCandles($symbol, $interval, $limit);
+
+        return $this->persist($rows, $symbol, $interval, $quarantineConflicts);
+    }
+
+    /**
+     * Bounded historical range ingest. The adapter paginates by start/end time
+     * so a historical gap can be filled deterministically. Open candles are
+     * always skipped; existing rows remain immutable.
+     */
+    public function ingestRange(string $symbol, string $interval, int $fromMs, int $toMs, bool $quarantineConflicts = false): array
+    {
+        $this->assertScope($symbol, $interval);
+        $dbInterval = ['5m' => '5', '15m' => '15', '30m' => '30', '1h' => '60', '4h' => '240'][$interval];
+        $stepMs = Interval::parse($dbInterval)->milliseconds();
+        if ($fromMs < 0 || $fromMs >= $toMs || $fromMs % $stepMs !== 0 || $toMs % $stepMs !== 0
+            || $toMs - $fromMs > 500 * $stepMs) {
+            throw new InvalidArgumentException('Historical candle range must be aligned and contain at most 500 candles.');
+        }
+        $rows = $this->adapter->fetchCandles($symbol, $interval, 500, $fromMs, $toMs - 1);
+        foreach ($rows as $row) {
+            $openTime = new \DateTimeImmutable($row['open_time_utc']);
+            $openMs = (int) $openTime->format('U') * 1000 + (int) $openTime->format('v');
+            if ($openMs < $fromMs || $openMs >= $toMs) {
+                throw new DomainException('Binance returned a candle outside the requested historical range.');
+            }
+        }
+
+        return $this->persist($rows, $symbol, $interval, $quarantineConflicts);
+    }
+
+    private function assertScope(string $symbol, string $interval): void
+    {
         if (! in_array($symbol, (array) config('market_data.symbols', ['BTCUSDT', 'ETHUSDT']), true)) {
             throw new InvalidArgumentException('Market symbol not configured.');
         }
         if (! isset(['5m' => 1, '15m' => 1, '30m' => 1, '1h' => 1, '4h' => 1][$interval])) {
             throw new InvalidArgumentException('Interval not enabled for Binance research.');
         }
-        $rows = $this->adapter->fetchCandles($symbol, $interval, $limit);
+    }
+
+    private function persist(array $rows, string $symbol, string $interval, bool $quarantineConflicts): array
+    {
         $map = ['5m' => '5', '15m' => '15', '30m' => '30', '1h' => '60', '4h' => '240'];
         $scope = ['exchange' => 'binance', 'category' => 'linear', 'symbol' => $symbol, 'interval' => $map[$interval]];
 

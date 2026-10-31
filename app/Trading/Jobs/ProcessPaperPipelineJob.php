@@ -41,7 +41,7 @@ final class ProcessPaperPipelineJob implements ShouldQueue
     {
         return [
             (new WithoutOverlapping("pipeline:paper:{$this->exchange}:{$this->symbol}:{$this->atIso}"))
-                ->expireAfter(180),
+                ->expireAfter(210),
         ];
     }
 

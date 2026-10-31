@@ -19,6 +19,7 @@ use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Queue;
 use Ramsey\Uuid\Uuid;
+use RuntimeException;
 use Tests\TestCase;
 
 final class ExchangeIngestionAndValuationStageCTest extends TestCase
@@ -27,13 +28,19 @@ final class ExchangeIngestionAndValuationStageCTest extends TestCase
 
     public function test_gap_recovery_routes_strictly_to_binance_ingestion_for_binance_exchange(): void
     {
+        config(['exchanges.binance.automatic_candle_recovery_enabled' => true]);
         Queue::fake();
         Http::fake([
             '*fapi.binance.com*' => Http::response([]),
         ]);
 
         $job = new RecoverCandleGapsJob('binance', 'BTCUSDT');
-        $job->handle();
+        try {
+            $job->handle();
+            self::fail('An empty Binance response cannot complete the missing range.');
+        } catch (RuntimeException $e) {
+            self::assertStringContainsString('Binance candle gap recovery incomplete', $e->getMessage());
+        }
 
         // Must NOT push Bybit SyncCandlesJob!
         Queue::assertNotPushed(SyncCandlesJob::class);

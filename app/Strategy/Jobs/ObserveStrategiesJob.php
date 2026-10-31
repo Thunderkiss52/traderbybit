@@ -27,7 +27,9 @@ final class ObserveStrategiesJob implements ShouldQueue
 
     public function middleware(): array
     {
-        return [(new WithoutOverlapping("strategy-observations:{$this->symbol}:{$this->at}"))->expireAfter(620)];
+        $lockKey = $this->at !== null ? "strategy-observations:job:bybit:{$this->symbol}:{$this->at}" : "strategy-observations:job:bybit:{$this->symbol}:recent";
+
+        return [(new WithoutOverlapping($lockKey))->expireAfter(660)];
     }
 
     public function handle(StrategyObservationService $service): void

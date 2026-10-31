@@ -10,10 +10,12 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Queue;
 use RuntimeException;
+use Tests\Concerns\CleansCandleConflictEvidence;
 use Tests\TestCase;
 
 final class BinanceGapRecoveryTest extends TestCase
 {
+    use CleansCandleConflictEvidence;
     use RefreshDatabase;
 
     private string $btcHigh = '105';
@@ -21,16 +23,35 @@ final class BinanceGapRecoveryTest extends TestCase
     protected function setUp(): void
     {
         parent::setUp();
-        config(['market_data.symbols' => ['BTCUSDT', 'ETHUSDT']]);
+        $this->registerConflictCleanup();
+        config([
+            'market_data.symbols' => ['BTCUSDT', 'ETHUSDT'],
+            'market_data.sync.backfill_history_ms' => 4 * 60 * 60 * 1000,
+            'exchanges.binance.automatic_candle_recovery_enabled' => true,
+        ]);
         Queue::fake();
         Http::preventStrayRequests();
         Http::fake(['https://fapi.binance.com/fapi/v1/klines*' => function ($request) {
-            $duration = $request['interval'] === '5m' ? 300000 : 900000;
-            $open = 1767225600000; // 2026-01-01 00:00:00 UTC; aligned to both intervals.
+            $duration = ['5m' => 300000, '15m' => 900000, '30m' => 1800000, '1h' => 3600000, '4h' => 14400000][$request['interval']];
             $high = $request['symbol'] === 'BTCUSDT' && $request['interval'] === '5m' ? $this->btcHigh : '105';
+            $rows = [];
+            for ($open = (int) $request['startTime']; $open <= (int) $request['endTime']; $open += $duration) {
+                $rows[] = [$open, '100', $high, '99', '102', '10', $open + $duration - 1, '1010'];
+            }
 
-            return Http::response([[$open, '100', $high, '99', '102', '10', $open + $duration - 1, '1010']]);
+            return Http::response($rows);
         }]);
+    }
+
+    public function test_automatic_binance_recovery_requires_explicit_opt_in(): void
+    {
+        config(['exchanges.binance.automatic_candle_recovery_enabled' => false]);
+
+        (new RecoverCandleGapsJob('binance'))->handle();
+
+        self::assertSame(0, DB::table('market_candles')->count());
+        Http::assertNothingSent();
+        Queue::assertNothingPushed();
     }
 
     public function test_failed_scope_does_not_skip_other_scopes_and_retry_preserves_completed_rows(): void
@@ -38,13 +59,13 @@ final class BinanceGapRecoveryTest extends TestCase
         $this->btcHigh = '90'; // Invalid OHLC fails before persistence.
         $job = new RecoverCandleGapsJob('binance');
         $this->assertRecoveryFailure($job);
-        self::assertSame(3, DB::table('market_candles')->count());
-        self::assertSame(1, DB::table('market_candles')->where('symbol', 'BTCUSDT')->where('interval', '15')->count());
+        self::assertGreaterThan(3, DB::table('market_candles')->count());
+        self::assertSame(16, DB::table('market_candles')->where('symbol', 'BTCUSDT')->where('interval', '15')->count());
         $completed = DB::table('market_candles')->orderBy('id')->get();
         $this->btcHigh = '105';
         $job->handle();
         $job->handle();
-        self::assertSame(4, DB::table('market_candles')->where('exchange', 'binance')->count());
+        self::assertSame(48, DB::table('market_candles')->where('exchange', 'binance')->where('symbol', 'BTCUSDT')->where('interval', '5')->count());
         self::assertEquals($completed, DB::table('market_candles')->whereIn('id', $completed->pluck('id'))->orderBy('id')->get());
         self::assertSame(0, DB::table('signals')->count());
         self::assertSame(0, DB::table('virtual_positions')->count());
