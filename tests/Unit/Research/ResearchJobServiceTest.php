@@ -30,7 +30,7 @@ final class ResearchJobServiceTest extends TestCase
             'strategy_id' => 'trend_pullback',
             'strategy_version' => '1.0.0',
             'random_seed' => 42,
-            'payload' => ['symbol' => 'BTCUSDT', 'timeframe' => '15m'],
+            'payload' => ['exchange' => 'bybit', 'symbol' => 'BTCUSDT', 'timeframe' => '15m'],
         ]);
 
         $this->assertNotNull($job->job_id);
@@ -38,6 +38,8 @@ final class ResearchJobServiceTest extends TestCase
         $this->assertSame('QUEUED', $job->status);
         $this->assertSame('trend_pullback', $job->strategy_id);
         $this->assertSame(42, $job->random_seed);
+        $this->assertSame('bybit', $job->payload['exchange']);
+        $this->assertSame('bybit', $job->payload['exchange_id']);
         $this->assertDatabaseHas('research_jobs', [
             'job_id' => $job->job_id,
             'status' => 'QUEUED',
@@ -49,6 +51,7 @@ final class ResearchJobServiceTest extends TestCase
         $this->expectException(InvalidArgumentException::class);
         $this->service->submitJob([
             'kind' => 'INVALID_KIND',
+            'payload' => ['exchange' => 'bybit'],
         ]);
     }
 
@@ -58,12 +61,14 @@ final class ResearchJobServiceTest extends TestCase
             'kind' => 'WALK_FORWARD',
             'idempotency_key' => 'dedup-test-key-123',
             'strategy_id' => 'momentum',
+            'payload' => ['exchange' => 'bybit'],
         ]);
 
         $job2 = $this->service->submitJob([
             'kind' => 'WALK_FORWARD',
             'idempotency_key' => 'dedup-test-key-123',
             'strategy_id' => 'momentum',
+            'payload' => ['exchange' => 'bybit'],
         ]);
 
         $this->assertSame($job1->job_id, $job2->job_id);
@@ -75,6 +80,7 @@ final class ResearchJobServiceTest extends TestCase
         $job = $this->service->submitJob([
             'kind' => 'PATTERN_MINE',
             'strategy_id' => 'support_resistance_bounce',
+            'payload' => ['exchange' => 'bybit'],
         ]);
 
         $claimed = $this->service->claimNextJob('worker-node-1', 120);
@@ -96,6 +102,7 @@ final class ResearchJobServiceTest extends TestCase
     {
         $job = $this->service->submitJob([
             'kind' => 'MONTE_CARLO',
+            'payload' => ['exchange' => 'bybit'],
         ]);
 
         $claimed = $this->service->claimNextJob('worker-node-1', 60);
@@ -113,6 +120,7 @@ final class ResearchJobServiceTest extends TestCase
     {
         $job = $this->service->submitJob([
             'kind' => 'REPLAY',
+            'payload' => ['exchange' => 'bybit'],
         ]);
 
         $claimed = $this->service->claimNextJob('worker-node-1', 60);
@@ -144,6 +152,7 @@ final class ResearchJobServiceTest extends TestCase
         $job = $this->service->submitJob([
             'kind' => 'BACKTEST',
             'max_retries' => 2,
+            'payload' => ['exchange' => 'bybit'],
         ]);
 
         $claimed = $this->service->claimNextJob('worker-node-1', 60);
@@ -166,7 +175,10 @@ final class ResearchJobServiceTest extends TestCase
 
     public function test_reconcile_stale_leases(): void
     {
-        $job = $this->service->submitJob(['kind' => 'BACKTEST']);
+        $job = $this->service->submitJob([
+            'kind' => 'BACKTEST',
+            'payload' => ['exchange' => 'bybit'],
+        ]);
         $claimed = $this->service->claimNextJob('crashed-worker', 10);
 
         // Manually expire the lease
@@ -178,6 +190,140 @@ final class ResearchJobServiceTest extends TestCase
         $fresh = $job->fresh();
         $this->assertSame('QUEUED', $fresh->status);
         $this->assertNull($fresh->lease_owner);
+    }
+
+    public function test_rejects_go_kind_missing_exchange(): void
+    {
+        $this->expectException(InvalidArgumentException::class);
+        $this->expectExceptionMessage("Research job kind 'BACKTEST' requires explicit exchange provenance ('bybit' or 'binance').");
+        $this->service->submitJob([
+            'kind' => 'BACKTEST',
+            'payload' => ['symbol' => 'BTCUSDT'],
+        ]);
+    }
+
+    public function test_accepts_binance_exchange_provenance(): void
+    {
+        $job = $this->service->submitJob([
+            'kind' => 'BACKTEST',
+            'payload' => ['exchange' => 'binance', 'symbol' => 'BTCUSDT'],
+        ]);
+
+        $this->assertSame('binance', $job->payload['exchange']);
+        $this->assertSame('binance', $job->payload['exchange_id']);
+    }
+
+    public function test_accepts_dataset_exchange_provenance(): void
+    {
+        $job = $this->service->submitJob([
+            'kind' => 'BACKTEST',
+            'payload' => [
+                'dataset' => ['exchange' => 'binance'],
+                'symbol' => 'BTCUSDT',
+            ],
+        ]);
+
+        $this->assertSame('binance', $job->payload['exchange']);
+        $this->assertSame('binance', $job->payload['exchange_id']);
+    }
+
+    public function test_accepts_dataset_exchange_top_level_alias(): void
+    {
+        $job = $this->service->submitJob([
+            'kind' => 'WALK_FORWARD',
+            'payload' => [
+                'dataset_exchange' => 'bybit',
+                'symbol' => 'BTCUSDT',
+            ],
+        ]);
+
+        $this->assertSame('bybit', $job->payload['exchange']);
+        $this->assertSame('bybit', $job->payload['exchange_id']);
+    }
+
+    public function test_rejects_conflicting_exchange_identities(): void
+    {
+        $this->expectException(InvalidArgumentException::class);
+        $this->expectExceptionMessage("Research job exchange identities disagree: 'bybit' vs 'binance'");
+        $this->service->submitJob([
+            'kind' => 'FEATURE_BUILD',
+            'payload' => [
+                'exchange' => 'bybit',
+                'exchange_id' => 'binance',
+            ],
+        ]);
+    }
+
+    public function test_rejects_conflicting_dataset_exchange(): void
+    {
+        $this->expectException(InvalidArgumentException::class);
+        $this->expectExceptionMessage("Research job exchange identities disagree: 'bybit' vs 'binance'");
+        $this->service->submitJob([
+            'kind' => 'BACKTEST',
+            'payload' => [
+                'exchange' => 'bybit',
+                'dataset' => ['exchange' => 'binance'],
+            ],
+        ]);
+    }
+
+    public function test_rejects_unsupported_exchange_identity(): void
+    {
+        $this->expectException(InvalidArgumentException::class);
+        $this->expectExceptionMessage("Research job exchange 'okx' is unsupported. Strictly 'bybit' or 'binance' required.");
+        $this->service->submitJob([
+            'kind' => 'BACKTEST',
+            'payload' => ['exchange' => 'okx'],
+        ]);
+    }
+
+    public function test_rejects_empty_or_non_string_exchange(): void
+    {
+        $this->expectException(InvalidArgumentException::class);
+        $this->expectExceptionMessage("Research job exchange at 'payload.exchange' must be a nonempty string.");
+        $this->service->submitJob([
+            'kind' => 'BACKTEST',
+            'payload' => ['exchange' => '   '],
+        ]);
+    }
+
+    public function test_idempotency_key_cannot_conflate_bybit_and_binance_jobs(): void
+    {
+        // 1. Submit active Bybit job with shared idempotency key
+        $bybitJob = $this->service->submitJob([
+            'kind' => 'BACKTEST',
+            'idempotency_key' => 'shared-key-exchange-test',
+            'payload' => ['exchange' => 'bybit', 'symbol' => 'BTCUSDT'],
+        ]);
+        $this->assertSame('QUEUED', $bybitJob->status);
+
+        // 2. Submitting same idempotency key for Binance must reject conflict
+        $this->expectException(InvalidArgumentException::class);
+        $this->expectExceptionMessage("Idempotency conflict: Active research job '{$bybitJob->job_id}' with key 'shared-key-exchange-test' belongs to exchange 'bybit', cannot be reused for 'binance'.");
+
+        $this->service->submitJob([
+            'kind' => 'BACKTEST',
+            'idempotency_key' => 'shared-key-exchange-test',
+            'payload' => ['exchange' => 'binance', 'symbol' => 'BTCUSDT'],
+        ]);
+    }
+
+    public function test_auto_generated_idempotency_keys_differ_between_exchanges(): void
+    {
+        $bybitJob = $this->service->submitJob([
+            'kind' => 'BACKTEST',
+            'strategy_id' => 'trend_pullback',
+            'payload' => ['exchange' => 'bybit', 'symbol' => 'BTCUSDT'],
+        ]);
+
+        $binanceJob = $this->service->submitJob([
+            'kind' => 'BACKTEST',
+            'strategy_id' => 'trend_pullback',
+            'payload' => ['exchange' => 'binance', 'symbol' => 'BTCUSDT'],
+        ]);
+
+        $this->assertNotSame($bybitJob->idempotency_key, $binanceJob->idempotency_key);
+        $this->assertNotSame($bybitJob->job_id, $binanceJob->job_id);
     }
 
     public function test_capability_routing_reflects_actual_worker_presence(): void

@@ -219,14 +219,16 @@ final class GoResearchWorkerIntegrationTest extends TestCase
         }
 
         $workerBinary = $this->ensureWorkerBinary();
-        $service = $this->app->make(ResearchJobService::class);
 
-        // Submit job with max_retries = 1 so failure immediately transitions to FAILED
-        $job = $service->submitJob([
-            'job_id' => Uuid::uuid4()->toString(),
+        // Direct DB insert simulating an already-queued raw job with unsupported exchange
+        $jobId = Uuid::uuid4()->toString();
+        $this->cleanupJobIds[] = $jobId;
+        DB::table('research_jobs')->insert([
+            'job_id' => $jobId,
             'schema_version' => 1,
             'idempotency_key' => 'idemp-worker-fail-'.Uuid::uuid4()->toString(),
             'kind' => 'BACKTEST',
+            'status' => 'QUEUED',
             'algorithm_version' => '1.0.0',
             'code_revision' => 'git-v4',
             'strategy_id' => 'trend_pullback',
@@ -234,16 +236,19 @@ final class GoResearchWorkerIntegrationTest extends TestCase
             'configuration_hash' => hash('sha256', 'worker_fail_test'),
             'research_mode' => 'RESEARCH',
             'max_retries' => 1,
-            'limits' => ['max_rows' => 100],
-            'payload' => [
+            'retry_count' => 0,
+            'progress' => 0,
+            'fencing_token' => 1,
+            'limits' => json_encode(['max_rows' => 100]),
+            'payload' => json_encode([
                 'exchange' => 'unsupported_exchange',
                 'symbol' => 'BTCUSDT',
-            ],
+            ]),
             'created_by' => 'integration_test_failure',
+            'requested_at_utc' => now('UTC'),
+            'created_at' => now('UTC'),
+            'updated_at' => now('UTC'),
         ]);
-        $this->cleanupJobIds[] = $job->job_id;
-
-        self::assertSame('QUEUED', $job->status);
 
         // Execute Go worker in -once mode; invalid exchange must trigger FailJob
         $process = new Process([$workerBinary, '-once'], base_path(), $this->workerEnv());
@@ -258,7 +263,7 @@ final class GoResearchWorkerIntegrationTest extends TestCase
         $refreshed = null;
         $pollDeadline = microtime(true) + 10.0;
         do {
-            $refreshed = ResearchJobRecord::query()->where('job_id', $job->job_id)->first();
+            $refreshed = ResearchJobRecord::query()->where('job_id', $jobId)->first();
             if ($refreshed !== null && $refreshed->status === 'FAILED') {
                 break;
             }
@@ -275,7 +280,7 @@ final class GoResearchWorkerIntegrationTest extends TestCase
         // Assert worker registered failed job in telemetry
         $workerRow = DB::table('research_workers')
             ->where('engine', 'go')
-            ->where('last_job_id', $job->job_id)
+            ->where('last_job_id', $jobId)
             ->first();
         self::assertNotNull($workerRow);
         self::assertGreaterThanOrEqual(1, $workerRow->total_jobs_failed);
@@ -289,14 +294,16 @@ final class GoResearchWorkerIntegrationTest extends TestCase
         }
 
         $workerBinary = $this->ensureWorkerBinary();
-        $service = $this->app->make(ResearchJobService::class);
 
-        // Submit job with max_retries = 3 so first failure transitions back to QUEUED
-        $job = $service->submitJob([
-            'job_id' => Uuid::uuid4()->toString(),
+        // Direct DB insert simulating an already-queued raw job with unsupported exchange and max_retries = 3
+        $jobId = Uuid::uuid4()->toString();
+        $this->cleanupJobIds[] = $jobId;
+        DB::table('research_jobs')->insert([
+            'job_id' => $jobId,
             'schema_version' => 1,
             'idempotency_key' => 'idemp-worker-retry-'.Uuid::uuid4()->toString(),
             'kind' => 'BACKTEST',
+            'status' => 'QUEUED',
             'algorithm_version' => '1.0.0',
             'code_revision' => 'git-v4',
             'strategy_id' => 'trend_pullback',
@@ -304,16 +311,19 @@ final class GoResearchWorkerIntegrationTest extends TestCase
             'configuration_hash' => hash('sha256', 'worker_retry_test'),
             'research_mode' => 'RESEARCH',
             'max_retries' => 3,
-            'limits' => ['max_rows' => 100],
-            'payload' => [
+            'retry_count' => 0,
+            'progress' => 0,
+            'fencing_token' => 1,
+            'limits' => json_encode(['max_rows' => 100]),
+            'payload' => json_encode([
                 'exchange' => 'unsupported_exchange',
                 'symbol' => 'BTCUSDT',
-            ],
+            ]),
             'created_by' => 'integration_test_retry',
+            'requested_at_utc' => now('UTC'),
+            'created_at' => now('UTC'),
+            'updated_at' => now('UTC'),
         ]);
-        $this->cleanupJobIds[] = $job->job_id;
-
-        self::assertSame('QUEUED', $job->status);
 
         $process = new Process([$workerBinary, '-once'], base_path(), $this->workerEnv());
         $process->setTimeout(30);
@@ -325,7 +335,7 @@ final class GoResearchWorkerIntegrationTest extends TestCase
         $refreshed = null;
         $pollDeadline = microtime(true) + 10.0;
         do {
-            $refreshed = ResearchJobRecord::query()->where('job_id', $job->job_id)->first();
+            $refreshed = ResearchJobRecord::query()->where('job_id', $jobId)->first();
             if ($refreshed !== null && $refreshed->status === 'QUEUED' && $refreshed->retry_count === 1) {
                 break;
             }
@@ -382,7 +392,10 @@ final class GoResearchWorkerIntegrationTest extends TestCase
             'configuration_hash' => hash('sha256', 'lifecycle_test'),
             'research_mode' => 'RESEARCH',
             'limits' => ['max_rows' => 100],
-            'payload' => ['symbol' => 'BTCUSDT'],
+            'payload' => [
+                'exchange' => 'bybit',
+                'symbol' => 'BTCUSDT',
+            ],
             'created_by' => 'lifecycle_integration_test',
         ]);
         $this->cleanupJobIds[] = $job->job_id;

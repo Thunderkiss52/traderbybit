@@ -80,6 +80,8 @@ final class ResearchJobController extends Controller
                 'limits.max_rows' => ['nullable', 'integer', 'min:1', 'max:10000000'],
                 'limits.max_duration_s' => ['nullable', 'integer', 'min:1', 'max:7200'],
                 'limits.max_memory_mib' => ['nullable', 'integer', 'min:64', 'max:4096'],
+                'exchange' => ['nullable', 'string', 'max:32'],
+                'exchange_id' => ['nullable', 'string', 'max:32'],
                 'payload' => ['nullable', 'array'],
                 'idempotency_key' => ['nullable', 'string', 'max:64'],
                 'created_by' => ['nullable', 'string', 'max:64'],
@@ -100,6 +102,8 @@ final class ResearchJobController extends Controller
             ], Response::HTTP_ACCEPTED);
         } catch (ValidationException $e) {
             throw $e;
+        } catch (\InvalidArgumentException $e) {
+            throw ValidationException::withMessages(['exchange' => $e->getMessage()]);
         } catch (Throwable $e) {
             // Do not log request payloads, Throwable objects or their messages:
             // research payloads can contain credentials or private input.

@@ -39,6 +39,7 @@ final class ResearchJobApiTest extends TestCase
             'kind' => 'WALK_FORWARD',
             'strategy_id' => 'donchian_atr_breakout',
             'payload' => [
+                'exchange' => 'bybit',
                 'symbol' => 'BTCUSDT',
                 'parameters' => ['donchian_period' => 20],
             ],
@@ -56,6 +57,67 @@ final class ResearchJobApiTest extends TestCase
             'strategy_id' => 'donchian_atr_breakout',
             'status' => 'QUEUED',
         ]);
+    }
+
+    public function test_rejects_go_job_submission_without_exchange_provenance(): void
+    {
+        $response = $this->postJson('/api/v1/research/jobs', [
+            'kind' => 'BACKTEST',
+            'strategy_id' => 'trend_pullback',
+            'payload' => [
+                'symbol' => 'BTCUSDT',
+            ],
+        ]);
+
+        $response->assertStatus(422);
+        $response->assertJsonValidationErrors(['exchange']);
+    }
+
+    public function test_rejects_go_job_submission_with_conflicting_exchange(): void
+    {
+        $response = $this->postJson('/api/v1/research/jobs', [
+            'kind' => 'BACKTEST',
+            'strategy_id' => 'trend_pullback',
+            'payload' => [
+                'exchange' => 'bybit',
+                'exchange_id' => 'binance',
+            ],
+        ]);
+
+        $response->assertStatus(422);
+        $response->assertJsonValidationErrors(['exchange']);
+    }
+
+    public function test_rejects_go_job_submission_with_unsupported_exchange(): void
+    {
+        $response = $this->postJson('/api/v1/research/jobs', [
+            'kind' => 'BACKTEST',
+            'strategy_id' => 'trend_pullback',
+            'payload' => [
+                'exchange' => 'okx',
+            ],
+        ]);
+
+        $response->assertStatus(422);
+        $response->assertJsonValidationErrors(['exchange']);
+    }
+
+    public function test_accepts_go_job_submission_with_binance_and_dataset_provenance(): void
+    {
+        $response = $this->postJson('/api/v1/research/jobs', [
+            'kind' => 'BACKTEST',
+            'strategy_id' => 'trend_pullback',
+            'payload' => [
+                'dataset' => ['exchange' => 'binance'],
+                'symbol' => 'BTCUSDT',
+            ],
+        ]);
+
+        $response->assertStatus(202);
+        $jobId = $response->json('data.job_id');
+        $job = ResearchJobRecord::query()->where('job_id', $jobId)->firstOrFail();
+        self::assertSame('binance', $job->payload['exchange']);
+        self::assertSame('binance', $job->payload['exchange_id']);
     }
 
     public function test_can_show_single_research_job(): void

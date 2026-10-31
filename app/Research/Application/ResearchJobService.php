@@ -26,12 +26,82 @@ final readonly class ResearchJobService
         'MODEL_TRAIN',
     ];
 
+    public const GO_EXCHANGE_DEPENDENT_KINDS = [
+        'BACKTEST',
+        'WALK_FORWARD',
+        'PATTERN_MINE',
+        'REPLAY',
+        'SKIP_OUTCOMES',
+        'MONTE_CARLO',
+        'FEATURE_BUILD',
+    ];
+
     public const TERMINAL_STATUSES = [
         'SUCCEEDED',
         'FAILED',
         'CANCELLED',
         'EXPIRED',
     ];
+
+    /**
+     * Resolves and validates exchange provenance across top-level, payload, and dataset keys.
+     * Rejects empty, unknown, or contradictory exchange identities.
+     * Returns normalized 'bybit' or 'binance', or null if no exchange was specified.
+     *
+     * @param  array<string, mixed>  $data
+     */
+    public function resolveExchangeProvenance(array $data): ?string
+    {
+        $payload = is_array($data['payload'] ?? null) ? $data['payload'] : [];
+        $candidates = [];
+
+        // Check top-level aliases
+        foreach (['exchange', 'exchange_id', 'dataset_exchange'] as $key) {
+            if (array_key_exists($key, $data) && $data[$key] !== null) {
+                $candidates[$key] = $data[$key];
+            }
+        }
+
+        // Check payload aliases
+        foreach (['exchange', 'exchange_id', 'dataset_exchange'] as $key) {
+            if (array_key_exists($key, $payload) && $payload[$key] !== null) {
+                $candidates["payload.{$key}"] = $payload[$key];
+            }
+        }
+
+        // Check payload.dataset nested array (offline datasets)
+        if (isset($payload['dataset']) && is_array($payload['dataset'])) {
+            foreach (['exchange', 'exchange_id'] as $key) {
+                if (array_key_exists($key, $payload['dataset']) && $payload['dataset'][$key] !== null) {
+                    $candidates["payload.dataset.{$key}"] = $payload['dataset'][$key];
+                }
+            }
+        }
+
+        if (empty($candidates)) {
+            return null;
+        }
+
+        $resolved = null;
+        foreach ($candidates as $source => $value) {
+            if (! is_string($value) || trim($value) === '') {
+                throw new InvalidArgumentException("Research job exchange at '{$source}' must be a nonempty string.");
+            }
+
+            $normalized = strtolower(trim($value));
+            if ($resolved !== null && $resolved !== $normalized) {
+                throw new InvalidArgumentException("Research job exchange identities disagree: '{$resolved}' vs '{$normalized}' at '{$source}'.");
+            }
+
+            $resolved = $normalized;
+        }
+
+        if (! in_array($resolved, ['bybit', 'binance'], true)) {
+            throw new InvalidArgumentException("Research job exchange '{$resolved}' is unsupported. Strictly 'bybit' or 'binance' required.");
+        }
+
+        return $resolved;
+    }
 
     /**
      * @param  array<string, mixed>  $data
@@ -44,12 +114,26 @@ final readonly class ResearchJobService
                 throw new InvalidArgumentException('Unsupported research job kind.');
             }
 
+            $resolvedExchange = $this->resolveExchangeProvenance($data);
+
+            if (in_array($kind, self::GO_EXCHANGE_DEPENDENT_KINDS, true) && $resolvedExchange === null) {
+                throw new InvalidArgumentException("Research job kind '{$kind}' requires explicit exchange provenance ('bybit' or 'binance').");
+            }
+
+            if ($resolvedExchange !== null) {
+                if (! isset($data['payload']) || ! is_array($data['payload'])) {
+                    $data['payload'] = [];
+                }
+                $data['payload']['exchange'] = $resolvedExchange;
+                $data['payload']['exchange_id'] = $resolvedExchange;
+            }
+
             $idempotencyKey = (string) ($data['idempotency_key'] ?? '');
             if ($idempotencyKey === '') {
                 $idempotencyKey = hash('sha256', (string) json_encode($data));
             }
 
-            return DB::transaction(function () use ($data, $kind, $idempotencyKey) {
+            return DB::transaction(function () use ($data, $kind, $idempotencyKey, $resolvedExchange) {
                 // Check if active job with same kind and idempotency key already exists
                 $existing = ResearchJobRecord::query()
                     ->where('kind', $kind)
@@ -59,6 +143,13 @@ final readonly class ResearchJobService
                     ->first();
 
                 if ($existing !== null) {
+                    $existingExchange = $this->resolveExchangeProvenance(['payload' => (array) $existing->payload]);
+                    if ($existingExchange !== null && $resolvedExchange !== null && $existingExchange !== $resolvedExchange) {
+                        throw new InvalidArgumentException(
+                            "Idempotency conflict: Active research job '{$existing->job_id}' with key '{$idempotencyKey}' belongs to exchange '{$existingExchange}', cannot be reused for '{$resolvedExchange}'."
+                        );
+                    }
+
                     return $existing;
                 }
 
