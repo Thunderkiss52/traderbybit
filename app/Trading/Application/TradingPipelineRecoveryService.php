@@ -20,18 +20,20 @@ final class TradingPipelineRecoveryService
     ) {}
 
     /**
-     * Check if a decision time has already been evaluated by the event-driven pipeline.
+     * Check if a decision time has already been evaluated or is in flight by the event-driven pipeline.
      */
-    public function isDecisionAlreadyServiced(string $exchange, string $symbol, ?DateTimeImmutable $at = null): bool
-    {
+    public function isDecisionAlreadyServiced(
+        string $exchange,
+        string $symbol,
+        ?DateTimeImmutable $at = null,
+        bool $includeInFlight = true
+    ): bool {
         $closeAt = $at ?? $this->latest15mClose($exchange, $symbol);
         if ($closeAt === null) {
             return false;
         }
 
-        $closeIso = $closeAt->format(DATE_ATOM);
-
-        return TradingPipelineEventRecord::query()
+        $serviced = TradingPipelineEventRecord::query()
             ->where('exchange', strtolower($exchange))
             ->where('symbol', strtoupper($symbol))
             ->where('stage', TradingPipelineEventRecord::STAGE_SIGNALS_EVALUATED)
@@ -41,6 +43,26 @@ final class TradingPipelineRecoveryService
                 TradingPipelineEventRecord::STATUS_COMPLETED,
             ])
             ->exists();
+
+        if ($serviced) {
+            return true;
+        }
+
+        if ($includeInFlight && $this->eventService->isFresh($closeAt)) {
+            return TradingPipelineEventRecord::query()
+                ->where('exchange', strtolower($exchange))
+                ->where('symbol', strtoupper($symbol))
+                ->where('stage', TradingPipelineEventRecord::STAGE_CANDLE_CLOSED)
+                ->where('timeframe', '15')
+                ->where('candle_close_at', $closeAt)
+                ->whereIn('status', [
+                    TradingPipelineEventRecord::STATUS_PENDING,
+                    TradingPipelineEventRecord::STATUS_DISPATCHED,
+                ])
+                ->exists();
+        }
+
+        return false;
     }
 
     /**
