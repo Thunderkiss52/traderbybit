@@ -67,6 +67,7 @@ final class ModelAdvisoryIntegrationTest extends TestCase
             'target_event' => 'TP_BEFORE_SL',
             'version' => 'v1.0.0',
             'parameters' => [
+                'exchange' => 'bybit',
                 'target_event' => 'TP_BEFORE_SL',
                 'symbol' => $symbol,
                 'approved_for_advisory' => true,

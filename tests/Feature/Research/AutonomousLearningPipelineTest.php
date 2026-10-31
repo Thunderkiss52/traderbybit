@@ -91,6 +91,7 @@ final class AutonomousLearningPipelineTest extends TestCase
                 'label_r_multiple' => $j % 2 === 0 ? 1.87 : -1.13,
                 'outcome_at' => $t0->addMinutes(($j + 4) * 15),
                 'data_quality' => [
+                    'exchange' => 'bybit',
                     'candles_evaluated' => 20,
                     'missing_bars' => 0,
                     'no_look_ahead_verified' => true,
@@ -224,6 +225,7 @@ final class AutonomousLearningPipelineTest extends TestCase
                 'label_r_multiple' => $j % 2 === 0 ? 1.87 : -1.13,
                 'outcome_at' => $outcomeTime,
                 'data_quality' => [
+                    'exchange' => 'bybit',
                     'candles_evaluated' => 20,
                     'missing_bars' => 0,
                     'no_look_ahead_verified' => true,

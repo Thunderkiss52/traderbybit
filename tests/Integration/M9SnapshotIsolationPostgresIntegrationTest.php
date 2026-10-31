@@ -34,6 +34,7 @@ final class M9SnapshotIsolationPostgresIntegrationTest extends TestCase
 
     private function cleanTables(): void
     {
+        $this->assertIsolatedDatabase();
         if (DB::connection('pgsql')->getDriverName() === 'pgsql') {
             DB::connection('pgsql')->statement('TRUNCATE TABLE virtual_executions, virtual_positions, equity_snapshots, signals, paper_accounts, position_funding_events, market_funding_events CASCADE;');
         }

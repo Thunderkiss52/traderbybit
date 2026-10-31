@@ -54,6 +54,7 @@ type OpenInterestEvent struct {
 
 // Dataset carries every input a candidate is allowed to read.
 type Dataset struct {
+	Exchange         string              `json:"exchange,omitempty"`
 	Symbol           string              `json:"symbol"`
 	EntryInterval    string              `json:"entry_interval"`
 	DecisionInterval string              `json:"decision_interval"`
@@ -87,11 +88,15 @@ type Candidate interface {
 }
 
 // toCandles converts the research bar type into the shared engine candle type.
-func toCandles(bars []Bar) []datasets.Candle {
+func toCandles(bars []Bar, exchange ...string) []datasets.Candle {
+	ex := "bybit"
+	if len(exchange) > 0 && exchange[0] != "" {
+		ex = exchange[0]
+	}
 	out := make([]datasets.Candle, 0, len(bars))
 	for _, b := range bars {
 		out = append(out, datasets.Candle{
-			Exchange: "bybit",
+			Exchange: ex,
 			Category: "linear",
 			Symbol:   b.Symbol,
 			Interval: b.Interval,

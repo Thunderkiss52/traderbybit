@@ -6,6 +6,7 @@ namespace Tests\Unit\Research;
 
 use App\Research\Application\LearningPredictorService;
 use App\Research\Infrastructure\Persistence\LearningFeatureSnapshotRecord;
+use App\Research\Infrastructure\Persistence\LearningModelArtifactRecord;
 use Carbon\CarbonImmutable;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Str;
@@ -56,6 +57,7 @@ final class LogisticRegressionTrainingTest extends TestCase
                 'label_r_multiple' => $isTp ? 1.87 : -1.13,
                 'outcome_at' => $base->addHours($i * 2)->addMinutes(60),
                 'data_quality' => [
+                    'exchange' => 'bybit',
                     'candles_evaluated' => 20,
                     'missing_bars' => 0,
                     'no_look_ahead_verified' => true,
@@ -118,11 +120,94 @@ final class LogisticRegressionTrainingTest extends TestCase
                 'label_outcome' => 'TP',
                 'label_r_multiple' => 1.87,
                 'outcome_at' => $base->addHours($i)->addMinutes(30),
-                'data_quality' => ['no_look_ahead_verified' => true],
+                'data_quality' => [
+                    'exchange' => 'bybit', 'no_look_ahead_verified' => true],
             ]);
         }
 
         $artifact = $this->service->trainModel('TP_BEFORE_SL', $symbol);
         $this->assertNull($artifact);
+    }
+
+    public function test_training_rejects_one_class_labels_without_division_by_zero_or_artifact(): void
+    {
+        $base = CarbonImmutable::parse('2026-10-18 00:00:00');
+        foreach (['TP', 'SL'] as $outcome) {
+            $symbol = $outcome === 'TP' ? 'BTCUSDT' : 'ETHUSDT';
+            for ($i = 0; $i < 20; $i++) {
+                LearningFeatureSnapshotRecord::query()->create([
+                    'id' => (string) Str::uuid(),
+                    'symbol' => $symbol,
+                    'timeframe' => '15',
+                    'decision_time' => $base->addHours($i * 3),
+                    'available_at' => $base->addHours($i * 3)->addMinutes(15),
+                    'feature_schema_version' => '1.0.0',
+                    'strategy_id' => 'baseline',
+                    'regime' => 'UNKNOWN',
+                    'features' => ['hl_spread_pct' => 1.0, 'recent_volatility' => 0.5],
+                    'label_status' => 'MATURED',
+                    'label_outcome' => $outcome,
+                    'label_r_multiple' => $outcome === 'TP' ? 2 : -1,
+                    'outcome_at' => $base->addHours($i * 3)->addMinutes(30),
+                    'data_quality' => ['exchange' => 'bybit', 'no_look_ahead_verified' => true],
+                ]);
+            }
+            $this->assertNull($this->service->trainModel('TP_BEFORE_SL', $symbol, 'bybit'));
+        }
+        $this->assertSame(0, LearningModelArtifactRecord::query()->count());
+    }
+
+    public function test_matured_labels_never_cross_exchange_boundaries(): void
+    {
+        $base = CarbonImmutable::parse('2026-10-18 00:00:00');
+        for ($i = 0; $i < 20; $i++) {
+            foreach (['bybit', 'binance'] as $exchange) {
+                $outcome = $exchange === 'binance' ? 'TP' : ($i % 2 === 0 ? 'TP' : 'SL');
+                LearningFeatureSnapshotRecord::query()->create([
+                    'id' => (string) Str::uuid(),
+                    'symbol' => 'ETHUSDT',
+                    'timeframe' => '15',
+                    'decision_time' => $base->addHours($i * 3),
+                    'available_at' => $base->addHours($i * 3)->addMinutes(15),
+                    'feature_schema_version' => '1.0.0',
+                    'strategy_id' => 'baseline',
+                    'regime' => 'UNKNOWN',
+                    'features' => ['hl_spread_pct' => 1.0 + ($i % 2), 'recent_volatility' => 0.5],
+                    'label_status' => 'MATURED',
+                    'label_outcome' => $outcome,
+                    'label_r_multiple' => $outcome === 'TP' ? 2 : -1,
+                    'outcome_at' => $base->addHours($i * 3)->addMinutes(30),
+                    'data_quality' => ['exchange' => $exchange, 'no_look_ahead_verified' => true],
+                ]);
+            }
+        }
+
+        $bybit = $this->service->trainModel('TP_BEFORE_SL', 'ETHUSDT', 'bybit');
+        $this->assertNotNull($bybit);
+        $this->assertSame(20, $bybit->parameters['total_sample_size']);
+        $this->assertSame('bybit', $bybit->parameters['exchange']);
+        $this->assertNull($this->service->trainModel('TP_BEFORE_SL', 'ETHUSDT', 'binance'));
+        $this->assertSame('INSUFFICIENT_DATA', $this->service->predictCalibrated('TP_BEFORE_SL', [], 'ETHUSDT', 'binance')['status']);
+    }
+
+    public function test_missing_exchange_provenance_is_not_assumed_bybit(): void
+    {
+        $base = CarbonImmutable::parse('2026-10-18 00:00:00');
+        for ($i = 0; $i < 20; $i++) {
+            LearningFeatureSnapshotRecord::query()->create([
+                'id' => (string) Str::uuid(),
+                'symbol' => 'BTCUSDT', 'timeframe' => '15',
+                'decision_time' => $base->addHours($i * 3),
+                'available_at' => $base->addHours($i * 3)->addMinutes(15),
+                'feature_schema_version' => '1.0.0',
+                'strategy_id' => 'baseline', 'regime' => 'UNKNOWN',
+                'features' => ['hl_spread_pct' => 1.0],
+                'label_status' => 'MATURED',
+                'label_outcome' => $i % 2 ? 'TP' : 'SL',
+                'outcome_at' => $base->addHours($i * 3)->addMinutes(30),
+                'data_quality' => ['no_look_ahead_verified' => true],
+            ]);
+        }
+        $this->assertNull($this->service->trainModel('TP_BEFORE_SL', 'BTCUSDT', 'bybit'));
     }
 }

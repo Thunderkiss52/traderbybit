@@ -48,11 +48,12 @@ func TestIsSupportedKind(t *testing.T) {
 
 // Mock database driver to test ExecuteJob failure with unsupported kind
 type mockDriver struct {
-	mu               sync.Mutex
-	failedJobID      string
-	failedReason     string
-	overrideGenToken int64
-	queryErr         error
+	mu                 sync.Mutex
+	failedJobID        string
+	failedReason       string
+	lastCandleExchange string
+	overrideGenToken   int64
+	queryErr           error
 }
 
 func (m *mockDriver) reset() {
@@ -60,6 +61,7 @@ func (m *mockDriver) reset() {
 	defer m.mu.Unlock()
 	m.failedJobID = ""
 	m.failedReason = ""
+	m.lastCandleExchange = ""
 	m.overrideGenToken = 0
 	m.queryErr = nil
 }
@@ -112,6 +114,11 @@ func (s *mockStmt) Query(args []driver.Value) (driver.Rows, error) {
 	s.conn.driver.mu.Lock()
 	qErr := s.conn.driver.queryErr
 	genToken := s.conn.driver.overrideGenToken
+	if strings.Contains(s.query, "FROM market_candles") && len(args) > 0 {
+		if exchange, ok := args[0].(string); ok {
+			s.conn.driver.lastCandleExchange = exchange
+		}
+	}
 	s.conn.driver.mu.Unlock()
 
 	if qErr != nil {
@@ -324,5 +331,41 @@ func TestVerifyWorkerGeneration_DBErrorPropagates(t *testing.T) {
 	err := runner.StartJob(ctx, "job-dberr-1", 1)
 	if err == nil || !strings.Contains(err.Error(), "simulated database network failure") {
 		t.Fatalf("expected database network failure to propagate, got: %v", err)
+	}
+}
+
+// No legacy implicit Bybit fallback: source-less jobs must never select a market.
+func TestExecuteJobRejectsMissingExchangeBeforeCandleRead(t *testing.T) {
+	mockDrv.reset()
+	db := initMockDB()
+	defer db.Close()
+	runner := NewRunner(db, "test-worker-source")
+	runner.generationToken = 1
+	req := &contracts.JobRequest{JobID: "missing-exchange", Kind: contracts.KindBacktest,
+		Payload: map[string]interface{}{"symbol": "BTCUSDT"}}
+	err := runner.ExecuteJob(context.Background(), req, 1)
+	if err == nil || !strings.Contains(err.Error(), "exchange") {
+		t.Fatalf("expected explicit exchange error, got: %v", err)
+	}
+	mockDrv.mu.Lock()
+	defer mockDrv.mu.Unlock()
+	if mockDrv.lastCandleExchange != "" {
+		t.Fatal("source-less job unexpectedly queried candles")
+	}
+}
+
+func TestBinanceJobLoadsBinanceCandles(t *testing.T) {
+	mockDrv.reset()
+	db := initMockDB()
+	defer db.Close()
+	runner := NewRunner(db, "test-worker-binance")
+	runner.generationToken = 1
+	req := &contracts.JobRequest{JobID: "binance-scope", Kind: contracts.KindBacktest,
+		Payload: map[string]interface{}{"exchange": "binance", "symbol": "BTCUSDT"}}
+	_ = runner.ExecuteJob(context.Background(), req, 1) // empty mocked dataset can fail backtest
+	mockDrv.mu.Lock()
+	defer mockDrv.mu.Unlock()
+	if mockDrv.lastCandleExchange != "binance" {
+		t.Fatalf("expected Binance-scoped DB query, got %q", mockDrv.lastCandleExchange)
 	}
 }

@@ -213,7 +213,7 @@ final class MlAuthorityAndProperScoringPostgresIntegrationTest extends TestCase
                 'label_outcome' => $isTp ? 'TP' : 'SL',
                 'label_r_multiple' => $isTp ? 2.0 : -1.0,
                 'outcome_at' => $now->subDays(20 - $i)->addHours(2),
-                'data_quality' => ['verified' => true],
+                'data_quality' => ['exchange' => 'bybit', 'verified' => true],
             ]);
         }
 

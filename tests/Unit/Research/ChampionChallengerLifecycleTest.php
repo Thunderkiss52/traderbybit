@@ -151,6 +151,7 @@ final class ChampionChallengerLifecycleTest extends TestCase
                 'label_r_multiple' => $isTp ? 1.87 : -1.13,
                 'outcome_at' => $base->addMinutes($i * 15 + 120),
                 'data_quality' => [
+                    'exchange' => 'bybit',
                     'candles_evaluated' => 20,
                     'missing_bars' => 0,
                     'no_look_ahead_verified' => true,

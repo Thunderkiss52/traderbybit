@@ -42,7 +42,7 @@ final class ModelAdvisoryService
         // Query active champion model for this target event & symbol
         $model = LearningModelArtifactRecord::query()
             ->where('target_event', $targetEvent)
-            ->where('name', "Logistic_{$targetEvent}_{$decision->symbol}")
+            ->where('name', LearningPredictorService::scopedModelName($targetEvent, $decision->symbol, $decision->exchange))
             ->where('status', 'ACTIVE')
             ->latest('created_at')
             ->first();
@@ -114,8 +114,12 @@ final class ModelAdvisoryService
             );
         }
 
-        // Validate model eligibility under Gate 6 promotion policy
+        // Preserve legacy-model observability, but never grant advisory authority
+        // to an artifact with missing or mismatching exchange provenance.
         $eligibility = $this->promotionPolicy->evaluateAdvisoryEligibility($model);
+        if (($model->parameters['exchange'] ?? null) !== $decision->exchange) {
+            $eligibility = ['eligible' => false, 'reason' => 'model_exchange_provenance_missing_or_mismatched'];
+        }
         if (! $eligibility['eligible']) {
             $altered = false;
             $finalSide = $decision->side;
@@ -126,7 +130,7 @@ final class ModelAdvisoryService
             // Predict probability for shadow observation and research logs only
             $prob = 0.50;
             try {
-                $pred = $this->predictor->predictCalibrated($targetEvent, $features);
+                $pred = $this->predictor->predictCalibrated($targetEvent, $features, $decision->symbol, $decision->exchange);
                 $prob = $pred['probability'] !== null ? (float) $pred['probability'] : 0.50;
             } catch (\Throwable) {
                 // Ignore prediction errors for ineligible model
@@ -206,7 +210,7 @@ final class ModelAdvisoryService
         // Predict calibrated probability using model weights with exception protection
         $inferenceException = null;
         try {
-            $pred = $this->predictor->predictCalibrated($targetEvent, $features);
+            $pred = $this->predictor->predictCalibrated($targetEvent, $features, $decision->symbol, $decision->exchange);
             $prob = $pred['probability'] !== null ? (float) $pred['probability'] : 0.50;
             $recommendation = $prob >= $threshold ? 'ALLOW' : 'VETO_LOW_PROBABILITY';
         } catch (\Throwable $e) {

@@ -119,6 +119,22 @@ Artisan::command('binance:backfill-candles {symbol=BTCUSDT} {interval=30m} {--da
     $toArg = $this->option('to');
     $apply = (bool) $this->option('apply');
 
+    if ($days < 1 || $days > 365) {
+        $this->error('--days must be between 1 and 365.');
+
+        return 1;
+    }
+
+    // CLI ranges are Unix epoch milliseconds, not ISO dates or Unix seconds.
+    // Reject ambiguous strings instead of silently casting "2026-10-27" to 2026.
+    foreach (['--from' => $fromArg, '--to' => $toArg] as $name => $value) {
+        if ($value !== null && (! is_string($value) || preg_match('/^[1-9][0-9]{12}$/D', $value) !== 1)) {
+            $this->error("{$name} must be a 13-digit Unix epoch timestamp in milliseconds (UTC); ISO dates are not accepted.");
+
+            return 1;
+        }
+    }
+
     $nowMs = (int) floor(microtime(true) * 1000);
     $fromMs = $fromArg !== null ? (int) $fromArg : max(0, $nowMs - $days * 86_400_000);
     $toMs = $toArg !== null ? (int) $toArg : $nowMs;
@@ -128,7 +144,7 @@ Artisan::command('binance:backfill-candles {symbol=BTCUSDT} {interval=30m} {--da
         return 1;
     }
     if (! $apply) {
-        $this->comment("DRY-RUN: would backfill {$symbol} {$interval} from {$fromMs} to {$toMs}. Pass --apply to write.");
+        $this->comment("DRY-RUN (range validation only; no API fetch or coverage check): {$symbol} {$interval} from {$fromMs} to {$toMs}. Pass --apply to write.");
 
         return 0;
     }

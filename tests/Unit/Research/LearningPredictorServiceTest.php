@@ -45,7 +45,8 @@ final class LearningPredictorServiceTest extends TestCase
                 'label_outcome' => $i % 2 === 0 ? 'TP' : 'SL',
                 'label_r_multiple' => $i % 2 === 0 ? 2.0 : -1.0,
                 'outcome_at' => $now->subDays(10 - $i)->addHours(2),
-                'data_quality' => ['verified' => true],
+                'data_quality' => [
+                    'exchange' => 'bybit', 'verified' => true],
             ]);
         }
 

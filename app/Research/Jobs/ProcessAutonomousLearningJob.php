@@ -62,14 +62,15 @@ final class ProcessAutonomousLearningJob implements ShouldQueue
 
         // 2. Continuous machine learning model training & champion/challenger lifecycle
         $symbols = (array) config('market_data.symbols', ['BTCUSDT', 'ETHUSDT']);
-        foreach ($symbols as $symbol) {
-            // Check concept drift
-            $drift = $predictor->detectConceptDrift($symbol, 'TP_BEFORE_SL');
-            if ($autonomy->isAllowed('retrain_models') && ($drift['drift_detected'] || $drift['recommendation'] === 'TRAIN_INITIAL')) {
-                Log::info("[AutonomousLearning] Initiating model training for {$symbol} (trigger: {$drift['recommendation']}).");
-                $artifact = $predictor->trainModel('TP_BEFORE_SL', $symbol);
-                if ($artifact) {
-                    Log::info("[AutonomousLearning] Trained model {$artifact->name} {$artifact->version} status: {$artifact->status}.");
+        foreach (['bybit', 'binance'] as $exchange) {
+            foreach ($symbols as $symbol) {
+                $drift = $predictor->detectConceptDrift($symbol, 'TP_BEFORE_SL', $exchange);
+                if ($autonomy->isAllowed('retrain_models') && ($drift['drift_detected'] || $drift['recommendation'] === 'TRAIN_INITIAL')) {
+                    Log::info("[AutonomousLearning] Initiating model training for {$exchange}:{$symbol} (trigger: {$drift['recommendation']}).");
+                    $artifact = $predictor->trainModel('TP_BEFORE_SL', $symbol, $exchange);
+                    if ($artifact) {
+                        Log::info("[AutonomousLearning] Trained model {$artifact->name} {$artifact->version} status: {$artifact->status}.");
+                    }
                 }
             }
         }

@@ -30,12 +30,16 @@ class LearningPredictorService
      * Train and calibrate an outcome prediction model on matured labels.
      * Uses a purged temporal train/validation split and executes champion/challenger evaluation.
      */
-    public function trainModel(string $targetEvent = 'TP_BEFORE_SL', string $symbol = 'BTCUSDT'): ?LearningModelArtifactRecord
+    public function trainModel(string $targetEvent = 'TP_BEFORE_SL', string $symbol = 'BTCUSDT', string $exchange = 'bybit'): ?LearningModelArtifactRecord
     {
         $this->assertTrainingAllowed();
+        $modelName = self::scopedModelName($targetEvent, $symbol, $exchange);
 
+        // Legacy snapshots without a verified exchange are deliberately excluded.
+        // They must not be presumed Bybit when the same symbol exists on Binance.
         $snapshots = LearningFeatureSnapshotRecord::query()
             ->where('symbol', $symbol)
+            ->where('data_quality->exchange', $exchange)
             ->where('label_status', 'MATURED')
             ->orderBy('decision_time')
             ->get();
@@ -152,8 +156,14 @@ class LearningPredictorService
         // Fit logistic model via Batch Gradient Descent with L2 regularization
         $trainY = array_column($trainSlice, 'y');
         $positives = array_sum($trainY);
-        $prior = count($trainY) > 0 ? $positives / count($trainY) : 0.5;
-        $w0 = log(max(0.05, min(0.95, $prior / (1.0 - $prior))));
+        // A one-class training set cannot identify predictive coefficients.
+        // Fail closed rather than training/promoting an uninformative model.
+        if ($positives <= 0.0 || $positives >= $m) {
+            return null;
+        }
+        $prior = $positives / $m;
+        $boundedPrior = max(0.05, min(0.95, $prior));
+        $w0 = log($boundedPrior / (1.0 - $boundedPrior));
         $w = array_fill_keys($featureKeys, 0.0);
 
         $iterations = 300;
@@ -204,13 +214,14 @@ class LearningPredictorService
         // Evaluate on untouched out-of-sample Validation slice
         $valMetrics = $this->evaluateDataset($valSlice, $weights);
 
-        $artifactHash = hash('sha256', json_encode($weights).':'.$totalCount);
+        $artifactHash = hash('sha256', json_encode($weights).':'.$totalCount.':'.$exchange.':'.$symbol);
         $version = 'v'.date('Ymd.His');
 
         // Check if active champion model exists
         $champion = LearningModelArtifactRecord::query()
             ->where('target_event', $targetEvent)
-            ->where('name', "Logistic_{$targetEvent}_{$symbol}")
+            ->where('name', $modelName)
+            ->where('parameters->exchange', $exchange)
             ->where('status', 'ACTIVE')
             ->latest('created_at')
             ->first();
@@ -266,13 +277,15 @@ class LearningPredictorService
 
         $candidate = LearningModelArtifactRecord::query()->create([
             'id' => (string) Str::uuid(),
-            'name' => "Logistic_{$targetEvent}_{$symbol}",
+            'name' => $modelName,
             'model_type' => 'LOGISTIC_REGRESSION',
             'target_event' => $targetEvent,
             'version' => $version,
             'parameters' => [
                 'target_event' => $targetEvent,
                 'symbol' => $symbol,
+                'exchange' => $exchange,
+                'label_source' => 'PROXY_FIXED_BARRIERS',
                 'total_sample_size' => $totalCount,
                 'train_sample_size' => count($trainSlice),
                 'validation_sample_size' => count($valSlice),
@@ -414,11 +427,13 @@ class LearningPredictorService
     /**
      * Detect concept drift on the active champion model.
      */
-    public function detectConceptDrift(string $symbol = 'BTCUSDT', string $targetEvent = 'TP_BEFORE_SL'): array
+    public function detectConceptDrift(string $symbol = 'BTCUSDT', string $targetEvent = 'TP_BEFORE_SL', string $exchange = 'bybit'): array
     {
+        $modelName = self::scopedModelName($targetEvent, $symbol, $exchange);
         $champion = LearningModelArtifactRecord::query()
             ->where('target_event', $targetEvent)
-            ->where('name', "Logistic_{$targetEvent}_{$symbol}")
+            ->where('name', $modelName)
+            ->where('parameters->exchange', $exchange)
             ->where('status', 'ACTIVE')
             ->latest('created_at')
             ->first();
@@ -433,6 +448,7 @@ class LearningPredictorService
 
         $recentMatured = LearningFeatureSnapshotRecord::query()
             ->where('symbol', $symbol)
+            ->where('data_quality->exchange', $exchange)
             ->where('label_status', 'MATURED')
             ->latest('decision_time')
             ->limit(15)
@@ -475,10 +491,13 @@ class LearningPredictorService
     /**
      * Calibrate probability for a new observation vector using the active model.
      */
-    public function predictCalibrated(string $targetEvent, array $featureVector): array
+    public function predictCalibrated(string $targetEvent, array $featureVector, string $symbol = 'BTCUSDT', string $exchange = 'bybit'): array
     {
+        $modelName = self::scopedModelName($targetEvent, $symbol, $exchange);
         $model = LearningModelArtifactRecord::query()
             ->where('target_event', $targetEvent)
+            ->where('name', $modelName)
+            ->where('parameters->exchange', $exchange)
             ->where('status', 'ACTIVE')
             ->latest('created_at')
             ->first();
@@ -531,11 +550,13 @@ class LearningPredictorService
     /**
      * Rollback the active champion model to the previous champion (or retire it if none exists).
      */
-    public function rollbackModel(string $targetEvent = 'TP_BEFORE_SL', string $symbol = 'BTCUSDT', string $reason = 'Manual rollback or concept drift detected'): ?LearningModelArtifactRecord
+    public function rollbackModel(string $targetEvent = 'TP_BEFORE_SL', string $symbol = 'BTCUSDT', string $reason = 'Manual rollback or concept drift detected', string $exchange = 'bybit'): ?LearningModelArtifactRecord
     {
+        $modelName = self::scopedModelName($targetEvent, $symbol, $exchange);
         $current = LearningModelArtifactRecord::query()
             ->where('target_event', $targetEvent)
-            ->where('name', "Logistic_{$targetEvent}_{$symbol}")
+            ->where('name', $modelName)
+            ->where('parameters->exchange', $exchange)
             ->where('status', 'ACTIVE')
             ->latest('created_at')
             ->first();
@@ -546,7 +567,8 @@ class LearningPredictorService
 
         $previous = LearningModelArtifactRecord::query()
             ->where('target_event', $targetEvent)
-            ->where('name', "Logistic_{$targetEvent}_{$symbol}")
+            ->where('name', $modelName)
+            ->where('parameters->exchange', $exchange)
             ->where('id', '!=', $current->id)
             ->whereIn('status', ['SUPERSEDED', 'RETIRED', 'STANDBY'])
             ->latest('created_at')
@@ -560,7 +582,7 @@ class LearningPredictorService
             prevState: 'ACTIVE',
             newState: 'ROLLED_BACK',
             reason: $reason,
-            evidence: ['target_event' => $targetEvent, 'symbol' => $symbol, 'previous_model_id' => $previous?->id]
+            evidence: ['target_event' => $targetEvent, 'symbol' => $symbol, 'exchange' => $exchange, 'previous_model_id' => $previous?->id]
         );
 
         if ($previous !== null) {
@@ -571,11 +593,24 @@ class LearningPredictorService
                 prevState: 'SUPERSEDED',
                 newState: 'ACTIVE',
                 reason: "Restored champion after rollback of {$current->id}: {$reason}",
-                evidence: ['target_event' => $targetEvent, 'symbol' => $symbol]
+                evidence: ['target_event' => $targetEvent, 'symbol' => $symbol, 'exchange' => $exchange]
             );
         }
 
         return $previous;
+    }
+
+    /**
+     * Scope model identity to its exchange. Legacy Bybit names remain visible
+     * for audit, but unscoped artifacts cannot be used for calibration.
+     */
+    public static function scopedModelName(string $targetEvent, string $symbol, string $exchange): string
+    {
+        if (! in_array($exchange, ['bybit', 'binance'], true)) {
+            throw new \InvalidArgumentException('Unsupported ML model exchange.');
+        }
+
+        return "Logistic_{$targetEvent}_{$symbol}".($exchange === 'bybit' ? '' : '_binance');
     }
 
     private function recordAutonomyEvent(string $action, string $targetId, string $prevState, string $newState, string $reason, ?array $evidence = null): void

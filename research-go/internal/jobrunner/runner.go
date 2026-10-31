@@ -16,6 +16,7 @@ import (
 	"github.com/traderbybit/research-go/internal/contracts"
 	"github.com/traderbybit/research-go/internal/datasets"
 	"github.com/traderbybit/research-go/internal/decimal"
+	"github.com/traderbybit/research-go/internal/jobscope"
 	"github.com/traderbybit/research-go/internal/patterns"
 	"github.com/traderbybit/research-go/internal/replay"
 	"github.com/traderbybit/research-go/internal/simulation"
@@ -386,17 +387,15 @@ func (r *Runner) ExecuteJob(ctx context.Context, req *contracts.JobRequest, fenc
 	go func() {
 		ticker := time.NewTicker(5 * time.Second)
 		defer ticker.Stop()
-		progress := 5
-		_ = r.Heartbeat(hbCtx, req.JobID, fencingToken, progress, "Processing", 60*time.Second)
+		// Lease heartbeats indicate liveness, not fabricated work completion.
+		// CompleteJob is solely responsible for setting progress to 100.
+		_ = r.Heartbeat(hbCtx, req.JobID, fencingToken, 0, "Running (progress unavailable)", 60*time.Second)
 		for {
 			select {
 			case <-hbCtx.Done():
 				return
 			case <-ticker.C:
-				if progress < 95 {
-					progress += 5
-				}
-				_ = r.Heartbeat(hbCtx, req.JobID, fencingToken, progress, "Processing", 60*time.Second)
+				_ = r.Heartbeat(hbCtx, req.JobID, fencingToken, 0, "Running (progress unavailable)", 60*time.Second)
 			}
 		}
 	}()
@@ -445,7 +444,15 @@ func (r *Runner) ExecuteJob(ctx context.Context, req *contracts.JobRequest, fenc
 		maxRows = req.Limits.MaxRows
 	}
 
-	candles, err := datasets.LoadCandlesFromDB(r.db, "bybit", category, symbol, interval, fromTime, toTime, maxRows)
+	// Market-data source is an explicit job contract: never silently read Bybit
+	// candles for a Binance research job (or an unidentified dataset).
+	exchange, err := jobscope.ResolveExchange(req.Payload)
+	if err != nil {
+		_ = r.FailJob(ctx, req.JobID, fencingToken, err)
+		return err
+	}
+
+	candles, err := datasets.LoadCandlesFromDB(r.db, exchange, category, symbol, interval, fromTime, toTime, maxRows)
 	if err != nil {
 		_ = r.FailJob(ctx, req.JobID, fencingToken, err)
 		return fmt.Errorf("failed to load candles: %w", err)

@@ -337,12 +337,15 @@ final class AutonomousLearningController extends Controller
         }
     }
 
-    public function models(): ResearchResource|JsonResponse
+    public function models(Request $request): ResearchResource|JsonResponse
     {
         try {
-            $records = LearningModelArtifactRecord::query()
-                ->latest('created_at')
-                ->get();
+            $exchange = $request->query('exchange');
+            $query = LearningModelArtifactRecord::query()->latest('created_at');
+            if (is_string($exchange) && in_array($exchange, ['bybit', 'binance'], true)) {
+                $query->where('parameters->exchange', $exchange);
+            }
+            $records = $query->get();
 
             return $this->ok($records);
         } catch (Throwable $e) {
@@ -357,11 +360,13 @@ final class AutonomousLearningController extends Controller
 
     public function trainModel(Request $request, LearningPredictorService $trainer): ResearchResource|JsonResponse
     {
+        $request->validate(['exchange' => ['sometimes', 'in:bybit,binance']]);
         try {
             $event = $request->string('target_event', 'TP_BEFORE_SL')->toString();
             $symbol = $request->string('symbol', 'BTCUSDT')->toString();
 
-            $artifact = $trainer->trainModel($event, $symbol);
+            $exchange = $request->string('exchange', 'bybit')->toString();
+            $artifact = $trainer->trainModel($event, $symbol, $exchange);
 
             return $this->ok($artifact ?? ['status' => 'INSUFFICIENT_DATA', 'message' => 'Minimum 10 matured observations required to train model.']);
         } catch (Throwable $e) {

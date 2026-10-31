@@ -207,7 +207,7 @@ func ExecuteResearchEvaluation(c Candidate, d Dataset, cfg EvaluationConfig) (*E
 		}
 
 		slice := d.Bars[sp.StartIndex:sp.EndIndex]
-		report, err := engine.RunSignals(toCandles(slice), splitSignals, c.ID())
+		report, err := engine.RunSignals(toCandles(slice, d.Exchange), splitSignals, c.ID())
 		if err != nil {
 			return nil, fmt.Errorf("candidate %s split %s: %w", c.ID(), sp.Name, err)
 		}

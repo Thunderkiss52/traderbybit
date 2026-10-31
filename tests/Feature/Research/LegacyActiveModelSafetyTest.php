@@ -313,6 +313,7 @@ final class LegacyActiveModelSafetyTest extends TestCase
             'model_type' => 'LOGISTIC_REGRESSION',
             'target_event' => $targetEvent,
             'parameters' => [
+                'exchange' => 'bybit',
                 'approved_for_advisory' => true,
                 'gate6_validation' => ['all_gates_passed' => true, 'policy_version' => '4.0.0'],
             ],
@@ -361,6 +362,7 @@ final class LegacyActiveModelSafetyTest extends TestCase
             'model_type' => 'LOGISTIC_REGRESSION',
             'target_event' => $targetEvent,
             'parameters' => [
+                'exchange' => 'bybit',
                 'approved_for_advisory' => true,
                 'gate6_validation' => ['all_gates_passed' => true, 'policy_version' => '4.0.0'],
             ],
