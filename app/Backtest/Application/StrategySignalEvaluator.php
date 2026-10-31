@@ -10,6 +10,7 @@ use App\Strategy\Application\LevelProbabilityService;
 use App\Strategy\Application\StrategyEngine;
 use App\Strategy\Application\StrategyInputFactory;
 use App\Strategy\Domain\SignalDecision;
+use App\Strategy\Domain\StrategyInput;
 use App\Strategy\Research\BollingerMeanReversionStrategy;
 use App\Strategy\Research\BtcEthLeadLagStrategy;
 use App\Strategy\Research\DonchianBreakoutStrategy;
@@ -25,12 +26,15 @@ use App\Strategy\Research\TrendPullbackStrategy;
 use App\Strategy\Research\VolatilityCompressionBreakoutStrategy;
 use DateTimeImmutable;
 
-final readonly class StrategySignalEvaluator implements HistoricalSignalEvaluator
+final class StrategySignalEvaluator implements HistoricalSignalEvaluator
 {
+    /** @var array<string, StrategyInput> */
+    private array $inputCache = [];
+
     public function __construct(
-        private StrategyInputFactory $inputs,
-        private LevelInteractionAnalyzer $levels,
-        private LevelProbabilityService $probabilities,
+        private readonly StrategyInputFactory $inputs,
+        private readonly LevelInteractionAnalyzer $levels,
+        private readonly LevelProbabilityService $probabilities,
     ) {}
 
     public function evaluate(string $symbol, DateTimeImmutable $at, array $strategyConfig): SignalDecision
@@ -41,7 +45,8 @@ final readonly class StrategySignalEvaluator implements HistoricalSignalEvaluato
         if (! in_array($exchange, ['bybit', 'binance'], true)) {
             throw new \InvalidArgumentException('Unsupported backtest exchange.');
         }
-        $input = $this->inputs->make($exchange, 'linear', $symbol, $at, $peer);
+        $cacheKey = "{$exchange}:linear:{$symbol}:{$at->getTimestamp()}:{$peer}";
+        $input = $this->inputCache[$cacheKey] ??= $this->inputs->make($exchange, 'linear', $symbol, $at, $peer);
         if ($id === null || $id === 'baseline') {
             $config = $strategyConfig;
             unset($config['_research_strategy_id']);

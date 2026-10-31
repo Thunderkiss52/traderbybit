@@ -1,0 +1,232 @@
+name: CI Verification and Artifacts
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  go-tests:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: research-go
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version: '1.27.3'
+          cache-dependency-path: research-go/go.sum
+      - name: Verify Go module
+        run: go mod verify
+      - name: Build Go packages
+        run: go build ./...
+      - name: Vet Go packages
+        run: go vet ./...
+      - name: Check Go formatting
+        run: |
+          unformatted="$(gofmt -l .)"
+          if [ -n "$unformatted" ]; then
+            echo "Unformatted Go files:"
+            echo "$unformatted"
+            exit 1
+          fi
+      - name: Run Go tests
+        run: go test ./...
+      - name: Run Go race detector
+        run: go test -race ./...
+
+  frontend-tests:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+      - name: Install frontend dependencies
+        working-directory: frontend
+        run: npm ci --no-audit --no-fund
+      - name: Run frontend tests
+        working-directory: frontend
+        run: npm test
+      - name: Build frontend
+        working-directory: frontend
+        run: npm run build
+
+  php-format:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.5.12'
+          tools: composer:v2
+          coverage: none
+      - name: Get Composer cache directory
+        id: composer-cache
+        run: echo "dir=$(composer config cache-files-dir)" >> "$GITHUB_OUTPUT"
+      - name: Cache Composer dependencies
+        uses: actions/cache@v4
+        with:
+          path: ${{ steps.composer-cache.outputs.dir }}
+          key: ${{ runner.os }}-composer-${{ hashFiles('**/composer.lock') }}
+          restore-keys: ${{ runner.os }}-composer-
+      - name: Install Composer dependencies
+        run: composer install --no-interaction --prefer-dist --no-progress
+      - name: Check PHP formatting
+        run: vendor/bin/pint --test
+
+  backend-tests:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - lane: unit
+            name: 'Unit Tests'
+            command: 'vendor/bin/phpunit --testsuite Unit --no-ansi'
+          - lane: integration
+            name: 'Integration Tests'
+            command: 'vendor/bin/phpunit --testsuite Integration --no-ansi'
+          - lane: feature-research
+            name: 'Feature: Research & Backtest'
+            command: 'vendor/bin/phpunit tests/Feature/Research tests/Feature/Backtest tests/Feature/PatternDiscovery --no-ansi'
+          - lane: feature-paper
+            name: 'Feature: Paper & Trading'
+            command: 'vendor/bin/phpunit tests/Feature/PaperTrading tests/Feature/Trading --no-ansi'
+          - lane: feature-exchanges
+            name: 'Feature: Exchanges'
+            command: 'vendor/bin/phpunit tests/Feature/Exchanges --no-ansi'
+          - lane: feature-market
+            name: 'Feature: Market Data & Strategy'
+            command: 'vendor/bin/phpunit tests/Feature/MarketData tests/Feature/Strategy tests/Feature/Api tests/Feature/Security tests/Feature/Audit tests/Feature/Indicators tests/Feature/QuoteIntegrity --no-ansi'
+    name: PHP Tests (${{ matrix.name }})
+    services:
+      postgres:
+        image: postgres:17-alpine
+        env:
+          POSTGRES_DB: bybit_test
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: testpass
+        ports:
+          - 25432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d bybit_test"
+          --health-interval 5s --health-timeout 5s --health-retries 10
+      redis:
+        image: redis:7-alpine
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 5s --health-timeout 5s --health-retries 10
+    env:
+      APP_ENV: testing
+      DB_CONNECTION: pgsql
+      DB_DATABASE: bybit_test
+      DB_HOST: 127.0.0.1
+      DB_PORT: 25432
+      REDIS_HOST: 127.0.0.1
+      REDIS_PORT: 6379
+      DB_USERNAME: postgres
+      DB_PASSWORD: testpass
+      DB_URL: ''
+      TEST_DB_HOST: 127.0.0.1
+      TEST_DB_PORT: 25432
+      TEST_DB_DATABASE: bybit_test
+      TEST_DB_USERNAME: postgres
+      TEST_DB_PASSWORD: testpass
+      RUN_DB: bybit_test
+      XDEBUG_MODE: off
+    steps:
+      - uses: actions/checkout@v4
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.5.12'
+          tools: composer:v2
+          extensions: mbstring, dom, xml, xmlwriter, pdo_sqlite, sqlite3, pdo_pgsql, intl, pcntl, zip, bcmath, redis, opcache
+          coverage: none
+      - name: Get Composer cache directory
+        id: composer-cache
+        run: echo "dir=$(composer config cache-files-dir)" >> "$GITHUB_OUTPUT"
+      - name: Cache Composer dependencies
+        uses: actions/cache@v4
+        with:
+          path: ${{ steps.composer-cache.outputs.dir }}
+          key: ${{ runner.os }}-composer-${{ hashFiles('**/composer.lock') }}
+          restore-keys: ${{ runner.os }}-composer-
+      - name: Install Composer dependencies
+        run: composer install --no-interaction --prefer-dist --no-progress
+      - name: Prepare isolated testing environment
+        shell: bash
+        run: |
+          cp .env.example .env
+          chmod 600 .env
+      - name: Verify isolated PostgreSQL identity
+        run: php scripts/verify-test-database.php
+      - name: Migrate PostgreSQL test database
+        run: php artisan migrate --database=pgsql --force
+      - name: Run ${{ matrix.name }}
+        run: ${{ matrix.command }}
+
+  publish-images:
+    needs: [go-tests, frontend-tests, php-format, backend-tests]
+    if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        include:
+          - target: app
+            file: docker/php/Dockerfile
+            target_stage: app
+          - target: web
+            file: docker/php/Dockerfile
+            target_stage: web
+          - target: research-worker
+            file: docker/go/Dockerfile
+            target_stage: ''
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - uses: actions/checkout@v4
+      - name: Determine GHCR image name
+        id: images
+        shell: bash
+        run: |
+          repo_lc="${GITHUB_REPOSITORY,,}"
+          echo "tag=ghcr.io/${repo_lc}/${{ matrix.target }}:sha-${{ github.sha }}" >> "$GITHUB_OUTPUT"
+      - uses: docker/setup-buildx-action@v3
+      - name: Authenticate to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - name: Capture immutable build metadata
+        id: build-metadata
+        run: echo "timestamp=$(date -u +%Y-%m-%dT%H:%M:%SZ)" >> "$GITHUB_OUTPUT"
+      - name: Build and publish ${{ matrix.target }}
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: ${{ matrix.file }}
+          target: ${{ matrix.target_stage != '' && matrix.target_stage || '' }}
+          push: true
+          build-args: |
+            BUILD_COMMIT=${{ github.sha }}
+            BUILD_TIMESTAMP=${{ steps.build-metadata.outputs.timestamp }}
+          tags: ${{ steps.images.outputs.tag }}
+          cache-from: type=gha,scope=bybit-${{ matrix.target }}
+          cache-to: type=gha,scope=bybit-${{ matrix.target }},mode=max

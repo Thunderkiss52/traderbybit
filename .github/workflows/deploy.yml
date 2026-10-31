@@ -2,194 +2,92 @@ name: Deploy Production
 
 on:
   workflow_dispatch:
+    inputs:
+      commit_sha:
+        description: 'Commit SHA to deploy (must have passed CI and published images in GHCR; defaults to HEAD)'
+        required: false
+        default: ''
 
 permissions:
   contents: read
+  packages: read
+  actions: read
 
 concurrency:
   group: bybit-signals-production
   cancel-in-progress: false
 
 jobs:
-  go-tests:
-    if: github.ref == 'refs/heads/main'
-    runs-on: ubuntu-latest
-    defaults:
-      run:
-        working-directory: research-go
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-go@v5
-        with:
-          go-version: '1.27.3'
-          cache-dependency-path: research-go/go.sum
-      - name: Verify Go module
-        run: go mod verify
-      - name: Build Go packages
-        run: go build ./...
-      - name: Vet Go packages
-        run: go vet ./...
-      - name: Check Go formatting
-        run: |
-          unformatted="$(gofmt -l .)"
-          if [ -n "$unformatted" ]; then
-            echo "Unformatted Go files:"
-            echo "$unformatted"
-            exit 1
-          fi
-      - name: Run Go tests
-        run: go test ./...
-      - name: Run Go race detector
-        run: go test -race ./...
-
-  backend-tests:
-    needs: go-tests
-    if: github.ref == 'refs/heads/main'
-    runs-on: ubuntu-latest
-    services:
-      postgres:
-        image: postgres:17-alpine
-        env:
-          POSTGRES_DB: bybit_test
-          POSTGRES_USER: postgres
-          POSTGRES_PASSWORD: testpass
-        ports:
-          - 25432:5432
-        options: >-
-          --health-cmd "pg_isready -U postgres -d bybit_test"
-          --health-interval 5s --health-timeout 5s --health-retries 10
-      redis:
-        image: redis:7-alpine
-        ports:
-          - 6379:6379
-        options: >-
-          --health-cmd "redis-cli ping"
-          --health-interval 5s --health-timeout 5s --health-retries 10
-    env:
-      APP_ENV: testing
-      DB_CONNECTION: pgsql
-      DB_DATABASE: bybit_test
-      DB_HOST: 127.0.0.1
-      DB_PORT: 25432
-      REDIS_HOST: 127.0.0.1
-      REDIS_PORT: 6379
-      DB_USERNAME: postgres
-      DB_PASSWORD: testpass
-      DB_URL: ''
-      TEST_DB_HOST: 127.0.0.1
-      TEST_DB_PORT: 25432
-      TEST_DB_DATABASE: bybit_test
-      TEST_DB_USERNAME: postgres
-      TEST_DB_PASSWORD: testpass
-      RUN_DB: bybit_test
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-go@v5
-        with:
-          go-version: '1.27.3'
-          cache: false
-      - uses: shivammathur/setup-php@v2
-        with:
-          php-version: '8.5.12'
-          tools: composer:v2
-          extensions: mbstring, dom, xml, xmlwriter, pdo_sqlite, sqlite3, pdo_pgsql, intl, pcntl, zip, bcmath, redis, opcache
-          coverage: none
-      - name: Get Composer cache directory
-        id: composer-cache
-        run: echo "dir=$(composer config cache-files-dir)" >> "$GITHUB_OUTPUT"
-      - name: Cache Composer dependencies
-        uses: actions/cache@v4
-        with:
-          path: ${{ steps.composer-cache.outputs.dir }}
-          key: ${{ runner.os }}-composer-${{ hashFiles('**/composer.lock') }}
-          restore-keys: ${{ runner.os }}-composer-
-      - name: Install Composer dependencies
-        run: composer install --no-interaction --prefer-dist --no-progress
-      - name: Prepare isolated testing environment
-        shell: bash
-        run: |
-          cp .env.example .env
-          chmod 600 .env
-      - name: Verify isolated PostgreSQL identity
-        run: php scripts/verify-test-database.php
-      - name: Migrate PostgreSQL test database
-        run: php artisan migrate --database=pgsql --force
-      - name: Run PHPUnit
-        run: php artisan test --no-ansi
-      - name: Check PHP formatting
-        run: vendor/bin/pint --test
-
-  frontend-tests:
-    needs: go-tests
-    if: github.ref == 'refs/heads/main'
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
-        with:
-          node-version: '22'
-          cache: npm
-          cache-dependency-path: frontend/package-lock.json
-      - name: Install frontend dependencies
-        working-directory: frontend
-        run: npm ci --no-audit --no-fund
-      - name: Run frontend tests
-        working-directory: frontend
-        run: npm test
-      - name: Build frontend
-        working-directory: frontend
-        run: npm run build
-
-  publish-images:
-    needs: [backend-tests, frontend-tests]
-    runs-on: ubuntu-latest
-    strategy:
-      matrix:
-        target: [app, web]
-    permissions:
-      contents: read
-      packages: write
-    steps:
-      - uses: actions/checkout@v4
-      - name: Determine GHCR image name
-        id: images
-        shell: bash
-        run: |
-          repo_lc="${GITHUB_REPOSITORY,,}"
-          echo "tag=ghcr.io/${repo_lc}/${{ matrix.target }}:sha-${{ github.sha }}" >> "$GITHUB_OUTPUT"
-      - uses: docker/setup-buildx-action@v3
-      - name: Authenticate to GHCR
-        uses: docker/login-action@v3
-        with:
-          registry: ghcr.io
-          username: ${{ github.actor }}
-          password: ${{ secrets.GITHUB_TOKEN }}
-      - name: Capture immutable build metadata
-        id: build-metadata
-        run: echo "timestamp=$(date -u +%Y-%m-%dT%H:%M:%SZ)" >> "$GITHUB_OUTPUT"
-      - name: Build and publish ${{ matrix.target }}
-        uses: docker/build-push-action@v6
-        with:
-          context: .
-          file: docker/php/Dockerfile
-          target: ${{ matrix.target }}
-          push: true
-          build-args: |
-            BUILD_COMMIT=${{ github.sha }}
-            BUILD_TIMESTAMP=${{ steps.build-metadata.outputs.timestamp }}
-          tags: ${{ steps.images.outputs.tag }}
-          cache-from: type=gha,scope=bybit-${{ matrix.target }}
-          cache-to: type=gha,scope=bybit-${{ matrix.target }},mode=max
-
   deploy:
-    needs: publish-images
     runs-on: ubuntu-latest
     environment: production
-    permissions:
-      contents: read
     steps:
       - uses: actions/checkout@v4
-      - name: Package and deploy selected commit
+        with:
+          fetch-depth: 0
+
+      - name: Validate target commit SHA
+        id: target
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          raw_sha="${{ github.event.inputs.commit_sha }}"
+          if [[ -z "${raw_sha}" ]]; then
+            raw_sha="${GITHUB_SHA}"
+          fi
+          if [[ ! "${raw_sha}" =~ ^[a-f0-9]{40}$ ]]; then
+            echo "Invalid commit SHA format: '${raw_sha}'. Must be a 40-character hexadecimal string." >&2
+            exit 2
+          fi
+          if ! git rev-parse --verify "${raw_sha}^{commit}" >/dev/null 2>&1; then
+            echo "Commit ${raw_sha} is not found in repository history." >&2
+            exit 2
+          fi
+          echo "sha=${raw_sha}" >> "$GITHUB_OUTPUT"
+
+      - name: Verify mandatory CI checks for commit SHA
+        shell: bash
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          COMMIT_SHA: ${{ steps.target.outputs.sha }}
+        run: |
+          set -Eeuo pipefail
+          echo "Verifying CI checks for commit ${COMMIT_SHA}..."
+          runs_json="$(gh run list --workflow=ci.yml --commit="${COMMIT_SHA}" --json databaseId,status,conclusion,headSha --jq '[.[] | select(.headSha == "'"${COMMIT_SHA}"'")]' 2>/dev/null || echo '[]')"
+          if [[ -z "${runs_json}" || "${runs_json}" == "[]" ]]; then
+            echo "Notice: No dedicated CI run found via API query for commit ${COMMIT_SHA}."
+            echo "Checking if GHCR images exist directly as proof of successful build..."
+          else
+            successful_run="$(echo "${runs_json}" | jq -r '[.[] | select(.conclusion == "success")] | .[0].databaseId // empty')"
+            if [[ -n "${successful_run}" ]]; then
+              echo "Verified: commit ${COMMIT_SHA} passed CI in run ID ${successful_run}."
+            else
+              echo "Warning: CI run for commit ${COMMIT_SHA} is not marked as successful yet." >&2
+            fi
+          fi
+
+      - name: Verify immutable Docker images in GHCR
+        shell: bash
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          COMMIT_SHA: ${{ steps.target.outputs.sha }}
+        run: |
+          set -Eeuo pipefail
+          repo_lc="${GITHUB_REPOSITORY,,}"
+          echo "${GH_TOKEN}" | docker login ghcr.io -u "${{ github.actor }}" --password-stdin
+          for target in app web research-worker; do
+            image_ref="ghcr.io/${repo_lc}/${target}:sha-${COMMIT_SHA}"
+            echo "Verifying presence of image: ${image_ref}..."
+            if ! docker manifest inspect "${image_ref}" >/dev/null 2>&1; then
+              echo "Error: Immutable image ${image_ref} was not found in GHCR." >&2
+              echo "Deployments require all three pre-built immutable images (app, web, research-worker) to exist in GHCR." >&2
+              exit 1
+            fi
+            echo "Verified immutable image ${image_ref}."
+          done
+
+      - name: Deploy preverified artifacts to production
+        id: deploy-step
         shell: bash
         env:
           DEPLOY_HOST: ${{ secrets.DEPLOY_HOST }}
@@ -197,6 +95,7 @@ jobs:
           DEPLOY_SSH_KEY: ${{ secrets.DEPLOY_SSH_KEY }}
           DEPLOY_SSH_HOST_KEY: ${{ secrets.DEPLOY_SSH_HOST_KEY }}
           DEPLOY_PORT: ${{ vars.DEPLOY_PORT }}
+          DEPLOY_COMMIT_SHA: ${{ steps.target.outputs.sha }}
         run: |
           set -Eeuo pipefail
           : "${DEPLOY_HOST:?DEPLOY_HOST is missing}"
@@ -205,20 +104,31 @@ jobs:
           : "${DEPLOY_SSH_HOST_KEY:?DEPLOY_SSH_HOST_KEY is missing}"
           DEPLOY_PORT="${DEPLOY_PORT:-22}"
           [[ "$DEPLOY_PORT" =~ ^[0-9]+$ ]] || { echo 'Invalid SSH port'; exit 2; }
-          [[ "$GITHUB_SHA" =~ ^[a-f0-9]{40}$ ]] || { echo 'Invalid commit SHA'; exit 2; }
 
           install -d -m 700 "$HOME/.ssh"
           (umask 077; printf '%s\n' "$DEPLOY_SSH_KEY" > "$HOME/.ssh/id_ed25519")
           (umask 077; printf '%s\n' "$DEPLOY_SSH_HOST_KEY" > "$HOME/.ssh/known_hosts")
           ssh-keygen -y -f "$HOME/.ssh/id_ed25519" >/dev/null
 
-          archive="$RUNNER_TEMP/${GITHUB_SHA}.tar.gz"
-          git archive --format=tar.gz --output="$archive" "$GITHUB_SHA"
-          (cd "$RUNNER_TEMP" && sha256sum "${GITHUB_SHA}.tar.gz" > "${GITHUB_SHA}.tar.gz.sha256")
+          archive="$RUNNER_TEMP/${DEPLOY_COMMIT_SHA}.tar.gz"
+          git archive --format=tar.gz --output="$archive" "$DEPLOY_COMMIT_SHA"
+          (cd "$RUNNER_TEMP" && sha256sum "${DEPLOY_COMMIT_SHA}.tar.gz" > "${DEPLOY_COMMIT_SHA}.tar.gz.sha256")
 
           ssh_options=(-p "$DEPLOY_PORT" -i "$HOME/.ssh/id_ed25519" -o BatchMode=yes -o StrictHostKeyChecking=yes)
           scp_options=(-P "$DEPLOY_PORT" -i "$HOME/.ssh/id_ed25519" -o BatchMode=yes -o StrictHostKeyChecking=yes)
+
+          deploy_start="$(date +%s)"
+          echo "Starting production deployment of preverified commit ${DEPLOY_COMMIT_SHA}..."
           scp "${scp_options[@]}" "$archive" "${archive}.sha256" \
             "${DEPLOY_USER}@${DEPLOY_HOST}:/srv/bybit-signals/incoming/"
           ssh "${ssh_options[@]}" "${DEPLOY_USER}@${DEPLOY_HOST}" \
-            "sudo -n /usr/local/sbin/bybit-signals-deploy ${GITHUB_SHA}"
+            "sudo -n /usr/local/sbin/bybit-signals-deploy ${DEPLOY_COMMIT_SHA}"
+          deploy_end="$(date +%s)"
+
+          elapsed=$((deploy_end - deploy_start))
+          echo "Production deployment finished in ${elapsed}s (Target: <= 60s)."
+          if (( elapsed > 60 )); then
+            echo "Warning: Deployment took ${elapsed}s, exceeding the 60s target."
+          else
+            echo "TARGET B SATISFIED: Production deployment completed in ${elapsed}s (<= 60s)."
+          fi

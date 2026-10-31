@@ -43,13 +43,13 @@ abstract class TestCase extends BaseTestCase
 
     protected function ensurePostgresTestDatabaseReady(string $requiredTable = 'paper_accounts'): void
     {
-        $testPort = (int) env('TEST_DB_PORT', 25432);
-        $testHost = (string) env('TEST_DB_HOST', '127.0.0.1');
-        $testDb = (string) env('TEST_DB_DATABASE', 'bybit_test');
-        $testUser = (string) env('TEST_DB_USERNAME', 'postgres');
-        $testPass = (string) env('TEST_DB_PASSWORD', 'testpass');
+        $testPort = (int) (env('TEST_DB_PORT') ?: env('DB_PORT', 25432));
+        $testHost = (string) (env('TEST_DB_HOST') ?: env('DB_HOST', '127.0.0.1'));
+        $testDb = (string) (env('TEST_DB_DATABASE') ?: env('DB_DATABASE', 'bybit_test'));
+        $testUser = (string) (env('TEST_DB_USERNAME') ?: env('DB_USERNAME', 'postgres'));
+        $testPass = (string) (env('TEST_DB_PASSWORD') ?: env('DB_PASSWORD', 'testpass'));
 
-        $connectionOk = @fsockopen($testHost, $testPort, $errno, $errstr, 1);
+        $connectionOk = @fsockopen($testHost, $testPort, $errno, $errstr, 0.5);
         if (! $connectionOk) {
             $this->markTestSkipped("PostgreSQL test container is not reachable on {$testHost}:{$testPort}.");
         }

@@ -13,7 +13,7 @@ if [[ -z "${previous}" && -f "${DEPLOY_STATE_DIR}/.deploy-previous" ]]; then
     previous="$(<"${DEPLOY_STATE_DIR}/.deploy-previous")"
 fi
 
-for repository in "${APP_IMAGE:-bybit-signals-app}" "${WEB_IMAGE:-bybit-signals-web}"; do
+for repository in "${APP_IMAGE:-bybit-signals-app}" "${WEB_IMAGE:-bybit-signals-web}" "${RESEARCH_WORKER_IMAGE:-bybit-signals-research-worker}"; do
     while read -r tag image_id; do
         [[ -n "${tag}" && "${tag}" != "<none>" ]] || continue
         [[ "${tag}" == "${current}" || "${tag}" == "${previous}" ]] && continue
@@ -24,7 +24,7 @@ for repository in "${APP_IMAGE:-bybit-signals-app}" "${WEB_IMAGE:-bybit-signals-
     done < <(docker image ls "${repository}" --format '{{.Tag}} {{.ID}}')
 done
 
-for component in app web; do
+for component in app web research-worker; do
     while read -r image_id; do
         [[ -n "${image_id}" ]] || continue
         if [[ -z "$(docker ps -aq --filter "ancestor=${image_id}")" ]]; then

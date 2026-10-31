@@ -42,7 +42,21 @@ final class StrategyInputIntegrityTest extends TestCase
         CarbonImmutable::setTestNow($this->at);
         Http::preventStrayRequests();
         $this->seedHistory();
-        $this->beforeApplicationDestroyed(fn () => DB::table('market_candles')->where('exchange', 'binance')->whereIn('symbol', ['BTCUSDT', 'ETHUSDT'])->delete());
+    }
+
+    public static function tearDownAfterClass(): void
+    {
+        try {
+            $host = env('TEST_DB_HOST') ?: env('DB_HOST', '127.0.0.1');
+            $port = env('TEST_DB_PORT') ?: env('DB_PORT', 25432);
+            $db = env('TEST_DB_DATABASE') ?: env('DB_DATABASE', 'bybit_test');
+            $user = env('TEST_DB_USERNAME') ?: env('DB_USERNAME', 'postgres');
+            $pass = env('TEST_DB_PASSWORD') ?: env('DB_PASSWORD', 'testpass');
+            $pdo = new \PDO("pgsql:host={$host};port={$port};dbname={$db}", $user, $pass);
+            $pdo->exec("DELETE FROM market_candles WHERE exchange = 'binance' AND symbol IN ('BTCUSDT', 'ETHUSDT')");
+        } catch (\Throwable) {
+        }
+        parent::tearDownAfterClass();
     }
 
     protected function tearDown(): void
@@ -183,8 +197,14 @@ final class StrategyInputIntegrityTest extends TestCase
     public function test_unavailable_postgres_connection_blocks_input_with_a_stable_reason(): void
     {
         $port = config('database.connections.pgsql.port');
-        config(['database.connections.pgsql.port' => 1]);
+        config([
+            'database.connections.pgsql.port' => 1,
+            'database.connections.pgsql.options' => [\PDO::ATTR_TIMEOUT => 1],
+            'database.connections.pgsql.connect_timeout' => 1,
+        ]);
         DB::purge('pgsql');
+        $prevTimeout = getenv('PGCONNECT_TIMEOUT');
+        putenv('PGCONNECT_TIMEOUT=1');
         try {
             $this->assertBlocked('CANDLE_STORAGE_UNAVAILABLE');
             $health = app(SystemFreshnessService::class)->check('binance');
@@ -193,6 +213,7 @@ final class StrategyInputIntegrityTest extends TestCase
             self::assertNull($health['unresolved_conflicts_count']);
             self::assertSame('UNAVAILABLE', $health['candle_freshness'][0]['integrity_status']);
         } finally {
+            $prevTimeout === false ? putenv('PGCONNECT_TIMEOUT') : putenv('PGCONNECT_TIMEOUT='.$prevTimeout);
             config(['database.connections.pgsql.port' => $port]);
             DB::purge('pgsql');
         }
@@ -304,6 +325,10 @@ final class StrategyInputIntegrityTest extends TestCase
 
     private function seedHistory(): void
     {
+        if (DB::table('market_candles')->where('exchange', 'binance')->where('symbol', 'BTCUSDT')->exists()) {
+            return;
+        }
+
         foreach (['BTCUSDT', 'ETHUSDT'] as $symbol) {
             foreach ([5, 15, 30, 60] as $minutes) {
                 $rows = [];

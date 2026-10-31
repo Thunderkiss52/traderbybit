@@ -12,7 +12,6 @@ use App\PaperTrading\Infrastructure\Persistence\VirtualPositionRecord;
 use App\Strategy\Infrastructure\Persistence\SignalRecord;
 use Illuminate\Database\Connection;
 use Illuminate\Database\Events\QueryExecuted;
-use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\DB;
 use Ramsey\Uuid\Uuid;
 use Tests\TestCase;
@@ -23,14 +22,21 @@ final class M9SnapshotIsolationPostgresIntegrationTest extends TestCase
     {
         parent::setUp();
         $this->assertIsolatedDatabase();
-        Artisan::call('migrate:fresh', ['--database' => 'pgsql', '--force' => true]);
+        $this->ensurePostgresTestDatabaseReady('paper_accounts');
+        $this->cleanTables();
     }
 
     protected function tearDown(): void
     {
-        $this->assertIsolatedDatabase();
-        Artisan::call('migrate:fresh', ['--database' => 'pgsql', '--force' => true]);
+        $this->cleanTables();
         parent::tearDown();
+    }
+
+    private function cleanTables(): void
+    {
+        if (DB::connection('pgsql')->getDriverName() === 'pgsql') {
+            DB::connection('pgsql')->statement('TRUNCATE TABLE virtual_executions, virtual_positions, equity_snapshots, signals, paper_accounts, position_funding_events, market_funding_events CASCADE;');
+        }
     }
 
     public function test_atomic_valuation_commit_during_m9_does_not_create_false_mismatch(): void

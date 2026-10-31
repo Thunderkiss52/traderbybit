@@ -53,22 +53,27 @@ final class SystemFreshnessService
         $reports = $this->conflictService->integrityReports($scopes);
         $reportIndex = 0;
 
+        $dbConnectionFailed = false;
         foreach ($exchanges as $exchange) {
             foreach ($symbols as $symbol) {
                 foreach ($intervals as $interval) {
-                    $candleReadFailed = false;
-                    try {
-                        $latest = CandleRecord::query()
-                            ->where('exchange', $exchange)
-                            ->where('symbol', $symbol)
-                            ->where('interval', $interval)
-                            ->where('is_closed', true)
-                            ->latest('open_time')
-                            ->first(['open_time', 'updated_at']);
+                    $candleReadFailed = $dbConnectionFailed;
+                    $latest = null;
+                    if (! $dbConnectionFailed) {
+                        try {
+                            $latest = CandleRecord::query()
+                                ->where('exchange', $exchange)
+                                ->where('symbol', $symbol)
+                                ->where('interval', $interval)
+                                ->where('is_closed', true)
+                                ->latest('open_time')
+                                ->first(['open_time', 'updated_at']);
 
-                    } catch (\Throwable) {
-                        $latest = null;
-                        $candleReadFailed = true;
+                        } catch (\Throwable) {
+                            $latest = null;
+                            $candleReadFailed = true;
+                            $dbConnectionFailed = true;
+                        }
                     }
 
                     $intervalMinutes = (int) $interval;

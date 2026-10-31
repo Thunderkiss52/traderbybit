@@ -27,7 +27,7 @@ fi
 
 compose config --quiet
 if [[ "${DEPLOY_MODE:-build}" == "pull" ]]; then
-    compose pull app web
+    compose pull app web research-worker
     if ! docker image inspect "${RESEARCH_WORKER_IMAGE:-bybit-signals-research-worker}:${IMAGE_TAG:-latest}" >/dev/null 2>&1; then
         echo "Building research-worker image for tag ${IMAGE_TAG:-latest}..."
         compose build research-worker

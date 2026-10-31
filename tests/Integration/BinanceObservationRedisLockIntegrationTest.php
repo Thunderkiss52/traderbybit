@@ -41,7 +41,7 @@ final class BinanceObservationRedisLockIntegrationTest extends TestCase
         self::assertNotNull($record);
         $key = 'strategy-observations:binance:linear:BTCUSDT:'.$at->format('U.u');
 
-        $worker = new Process([PHP_BINARY, base_path('tests/Fixtures/hold_observation_redis_lock.php'), $key, '5'],
+        $worker = new Process([PHP_BINARY, base_path('tests/Fixtures/hold_observation_redis_lock.php'), $key, '1'],
             base_path(), ['APP_ENV' => 'testing', 'CACHE_STORE' => 'redis', 'REDIS_HOST' => '127.0.0.1', 'REDIS_PORT' => '6379']);
         $worker->setTimeout(10);
         try {
@@ -55,7 +55,7 @@ final class BinanceObservationRedisLockIntegrationTest extends TestCase
             $worker->signal(SIGKILL);
             $worker->wait();
             self::assertFalse(Cache::lock($key, 1)->get(), 'Killed worker lock must remain fenced until expiry.');
-            usleep(5_200_000);
+            usleep(1_200_000);
             $recoveredLock = Cache::lock($key, 1);
             self::assertTrue($recoveredLock->get(), 'Expired lock must not persist indefinitely.');
             $recoveredLock->release();
