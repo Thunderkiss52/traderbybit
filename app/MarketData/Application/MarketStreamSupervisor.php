@@ -13,7 +13,9 @@ use App\MarketData\Domain\CandleQuery;
 use App\MarketData\Domain\Interval;
 use App\QuoteIntegrity\Application\QimGapRecorder;
 use Carbon\CarbonImmutable;
+use JsonException;
 use Psr\Log\LoggerInterface;
+use RuntimeException;
 use Throwable;
 
 final class MarketStreamSupervisor
@@ -36,6 +38,7 @@ final class MarketStreamSupervisor
         private readonly int $recoveryLookbackMinutes,
         private readonly int $reconnectMaxSeconds,
         private readonly ?QimGapRecorder $gapRecorder = null,
+        private readonly ?int $heartbeatTimeoutSeconds = null,
     ) {}
 
     public function requestStop(): void
@@ -50,12 +53,29 @@ final class MarketStreamSupervisor
 
         while (! $this->stopping && $cycle < $maxConnectionCycles) {
             $connection = null;
+            $connectStartedAt = microtime(true);
+
+            $this->log->info('Bybit public WebSocket connecting.', [
+                'cycle' => $cycle + 1,
+                'url' => $this->url,
+                'symbols' => $this->symbols,
+                'intervals' => $this->intervals,
+            ]);
+
             try {
                 $connection = $this->connector->connect($this->url);
+                $this->log->info('Bybit public WebSocket connected.', [
+                    'cycle' => $cycle + 1,
+                    'connect_duration_ms' => (int) ((microtime(true) - $connectStartedAt) * 1000),
+                ]);
+
                 $this->subscribe($connection);
-                // Subscribe first so frames are buffered while REST closes the reconnect gap.
-                $this->recoverMissedCandles();
-                $this->consume($connection);
+                $lastHeartbeat = time();
+
+                // Proactively recover missed candles while maintaining WebSocket heartbeats and frame ingestion
+                $this->recoverMissedCandles($connection, $lastHeartbeat);
+
+                $this->consume($connection, $lastHeartbeat);
             } catch (Throwable $exception) {
                 if (! $this->stopping) {
                     $this->log->warning('Bybit public WebSocket disconnected; reconnecting.', [
@@ -77,12 +97,24 @@ final class MarketStreamSupervisor
 
             $cycle++;
             if (! $this->stopping && $cycle < $maxConnectionCycles) {
-                $this->sleeper->sleepMilliseconds(min(
+                $backoffMs = min(
                     $this->reconnectMaxSeconds * 1000,
                     $this->backoff->milliseconds($cycle),
-                ));
+                );
+
+                $this->log->info('Bybit public WebSocket awaiting reconnect backoff.', [
+                    'cycle' => $cycle,
+                    'backoff_ms' => $backoffMs,
+                ]);
+
+                $this->sleeper->sleepMilliseconds($backoffMs);
             }
         }
+
+        $this->log->info('Bybit public WebSocket supervisor finished.', [
+            'stopping' => $this->stopping,
+            'cycles_completed' => $cycle,
+        ]);
     }
 
     private function subscribe(WebSocketConnection $connection): void
@@ -101,38 +133,93 @@ final class MarketStreamSupervisor
         ], JSON_THROW_ON_ERROR));
 
         // Proactively send initial heartbeat to prevent Bybit server 20s idle drop during REST gap recovery
+        $now = time();
         $connection->send(json_encode([
-            'req_id' => 'heartbeat-init-'.((string) time()),
+            'req_id' => 'heartbeat-init-'.((string) $now),
             'op' => 'ping',
         ], JSON_THROW_ON_ERROR));
+
+        $this->log->info('Bybit public WebSocket subscriptions sent.', [
+            'topics_count' => count($topics),
+            'topics' => $topics,
+        ]);
     }
 
-    private function consume(WebSocketConnection $connection): void
+    private function consume(WebSocketConnection $connection, int $lastHeartbeat): void
     {
-        $lastHeartbeat = time();
+        $lastPingSentAt = $lastHeartbeat;
+        $awaitingPong = false;
+        $heartbeatTimeoutSeconds = $this->heartbeatTimeoutSeconds ?? max($this->heartbeatSeconds * 2, 15);
 
         while (! $this->stopping) {
+            if (! $connection->isConnected()) {
+                throw new RuntimeException('Bybit WebSocket connection is not connected; connection dead.');
+            }
+
             $now = time();
-            if ($now - $lastHeartbeat >= $this->heartbeatSeconds) {
+
+            // Heartbeat cadence check
+            if ($now - $lastPingSentAt >= $this->heartbeatSeconds) {
+                if ($awaitingPong && ($now - $lastPingSentAt >= $heartbeatTimeoutSeconds)) {
+                    throw new RuntimeException(sprintf(
+                        'Bybit WebSocket heartbeat pong timeout: no response for %d seconds; connection dead.',
+                        $now - $lastPingSentAt
+                    ));
+                }
+
                 $connection->send(json_encode([
                     'req_id' => 'heartbeat-'.((string) $now),
                     'op' => 'ping',
                 ], JSON_THROW_ON_ERROR));
-                $lastHeartbeat = $now;
+
+                $this->log->debug('Bybit public WebSocket heartbeat ping sent.', [
+                    'req_id' => 'heartbeat-'.$now,
+                ]);
+
+                $lastPingSentAt = $now;
+                $awaitingPong = true;
+            }
+
+            // Check ping timeout even between ping intervals
+            if ($awaitingPong && ($now - $lastPingSentAt >= $heartbeatTimeoutSeconds)) {
+                throw new RuntimeException(sprintf(
+                    'Bybit WebSocket heartbeat pong timeout: no response for %d seconds; connection dead.',
+                    $now - $lastPingSentAt
+                ));
             }
 
             $message = $connection->receive();
             if ($message !== null) {
+                if ($this->isPongMessage($message)) {
+                    $awaitingPong = false;
+                    $this->log->debug('Bybit public WebSocket heartbeat pong received.');
+
+                    continue;
+                }
+
+                if ($this->isSubscriptionMessage($message)) {
+                    $awaitingPong = false;
+                    $this->log->info('Bybit public WebSocket subscription confirmed.');
+
+                    continue;
+                }
+
                 $this->ingestor->ingest($message);
             }
         }
     }
 
-    private function recoverMissedCandles(): void
+    private function recoverMissedCandles(WebSocketConnection $connection, int &$lastHeartbeat): void
     {
         $nowMs = (int) floor(microtime(true) * 1000);
         foreach ($this->symbols as $symbol) {
             foreach ($this->intervals as $value) {
+                if ($this->stopping) {
+                    return;
+                }
+
+                $this->maintainHeartbeat($connection, $lastHeartbeat);
+
                 $interval = Interval::parse($value);
                 $latest = $this->store->latestClosedOpenTimeMs('bybit', 'linear', $symbol, $value);
                 $from = $latest === null
@@ -221,8 +308,74 @@ final class MarketStreamSupervisor
                         throw $syncException;
                     }
                 }
+
+                // Drain any frames arrived during REST recovery and maintain heartbeats
+                $this->drainPendingWebSocketFrames($connection);
+                $this->maintainHeartbeat($connection, $lastHeartbeat);
             }
         }
+    }
+
+    private function maintainHeartbeat(WebSocketConnection $connection, int &$lastHeartbeat): void
+    {
+        $now = time();
+        if ($now - $lastHeartbeat >= $this->heartbeatSeconds) {
+            $connection->send(json_encode([
+                'req_id' => 'heartbeat-gap-'.((string) $now),
+                'op' => 'ping',
+            ], JSON_THROW_ON_ERROR));
+            $lastHeartbeat = $now;
+        }
+    }
+
+    private function drainPendingWebSocketFrames(WebSocketConnection $connection): void
+    {
+        $drained = 0;
+        while (! $this->stopping && $drained < 50) {
+            $message = $connection->receive();
+            if ($message === null) {
+                break;
+            }
+            if (! $this->isPongMessage($message) && ! $this->isSubscriptionMessage($message)) {
+                $this->ingestor->ingest($message);
+            }
+            $drained++;
+        }
+    }
+
+    private function isPongMessage(string $message): bool
+    {
+        if (! str_contains($message, 'pong')) {
+            return false;
+        }
+
+        try {
+            $data = json_decode($message, true, flags: JSON_THROW_ON_ERROR);
+            if (is_array($data)) {
+                return ($data['op'] ?? null) === 'pong'
+                    || ($data['ret_msg'] ?? null) === 'pong';
+            }
+        } catch (JsonException) {
+        }
+
+        return false;
+    }
+
+    private function isSubscriptionMessage(string $message): bool
+    {
+        if (! str_contains($message, 'subscribe')) {
+            return false;
+        }
+
+        try {
+            $data = json_decode($message, true, flags: JSON_THROW_ON_ERROR);
+            if (is_array($data)) {
+                return ($data['op'] ?? null) === 'subscribe';
+            }
+        } catch (JsonException) {
+        }
+
+        return false;
     }
 
     private function installSignalHandlers(): void

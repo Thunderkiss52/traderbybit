@@ -11,4 +11,6 @@ interface WebSocketConnection
     public function receive(): ?string;
 
     public function close(): void;
+
+    public function isConnected(): bool;
 }
