@@ -177,7 +177,7 @@ final readonly class PaperAccountService
                 throw new \DomainException('Binance PRIMARY account is not provisioned.');
             }
             $id = Uuid::uuid5(Uuid::NAMESPACE_URL, "traderbybit:paper:primary:{$strategyId}")->toString();
-            $starting = (string) $this->config['default_account']['starting_balance'];
+            $starting = app(NewPrimaryCapitalPolicy::class)->openingBalance($exchangeId, $strategyId);
 
             $account = PaperAccountRecord::query()->firstOrCreate(['id' => $id], [
                 'name' => 'Forward Paper '.$strategyId,
