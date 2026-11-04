@@ -1,0 +1,36 @@
+const { chromium } = await import(process.env.PLAYWRIGHT_MODULE || "playwright-core");
+import assert from "node:assert/strict";
+const browser=await chromium.launch({executablePath:"/usr/bin/google-chrome",headless:true,args:["--no-sandbox"]});
+try {
+ const page=await browser.newPage(); const errors=[];page.on("pageerror",e=>errors.push(e.message));
+ await page.route("**/api/**",async route=>{const url=new URL(route.request().url());url.host=process.env.VECTOR_BROWSER_API_HOST || "127.0.0.1:18124";const response=await route.fetch({url:url.toString()});await route.fulfill({response});});
+ await page.goto((process.env.VECTOR_BROWSER_BASE_URL || "http://127.0.0.1:18125") + "/strategies");
+ await page.getByLabel("Research owner token").fill(process.env.VECTOR_BROWSER_TOKEN || "builder-browser-test");
+ await page.getByRole("button",{name:"Load strategies",exact:true}).click();
+ await page.getByRole("button",{name:"Interpret description",exact:true}).click();
+ await page.getByText("RSI period 14",{exact:false}).first().waitFor();
+ await page.getByLabel("I confirm these interpreted rules and assumptions").check();
+ await page.getByRole("button",{name:"Validate",exact:true}).click();
+ const saved=page.waitForResponse(r=>r.url().endsWith("/api/v1/strategies")&&r.request().method()==="POST");
+ await page.getByRole("button",{name:"Save immutable version",exact:true}).click();
+ assert.equal((await saved).status(),201);
+ await page.getByText("Immutable version saved.",{exact:true}).waitFor();
+ await page.getByLabel("From UTC (ISO 8601)",{exact:true}).fill("2026-01-15T00:00:00Z");
+ await page.getByLabel("To UTC (ISO 8601), maximum 7 days",{exact:true}).fill("2026-01-16T00:00:00Z");
+ const backtest=page.waitForResponse(r=>r.url().endsWith("/backtests")&&r.request().method()==="POST");
+ await page.getByRole("button",{name:"Run pinned Go backtest",exact:true}).click();
+ const backtestResponse=await backtest;
+ assert.equal(backtestResponse.status(),200,await backtestResponse.text());
+ const run=(await backtestResponse.json()).data;
+ const metadata=typeof run.metadata==="string"?JSON.parse(run.metadata):run.metadata;
+ const result=typeof run.result==="string"?JSON.parse(run.result):run.result;
+ assert.ok(result.report.total_trades>0,"Synthetic replay must exercise actual trade execution");
+ assert.ok(metadata.dataset_pin.checksum);assert.equal(metadata.funding_complete,false);
+ const repeat=page.waitForResponse(r=>r.url().endsWith("/backtests")&&r.request().method()==="POST");
+ await page.getByRole("button",{name:"Run pinned Go backtest",exact:true}).click();
+ assert.equal((await (await repeat).json()).data.id,run.id);
+ await page.getByRole("button",{name:"Submit for PAPER approval",exact:true}).click();
+ await page.getByRole("alert").filter({hasText:"parity"}).waitFor();
+ assert.deepEqual(errors,[]);await page.screenshot({path:process.env.VECTOR_BROWSER_SCREENSHOT || "/tmp/vector-builder-strategies.png",fullPage:true});
+ console.log("PASS: real Chromium authoring, confirmation, validation, immutable save, pinned Go backtest, reproducible repeat, and rejected PAPER approval; zero page errors");
+} finally {await browser.close();}

@@ -1,5 +1,12 @@
 # syntax=docker/dockerfile:1.7
 
+FROM golang:1.27.3-alpine3.24 AS strategy-dsl
+WORKDIR /build
+COPY research-go/go.mod research-go/go.sum ./
+RUN go mod download
+COPY research-go/ ./
+RUN CGO_ENABLED=0 go build -trimpath -ldflags="-s -w" -o /strategy-dsl ./cmd/strategy-dsl
+
 FROM node:22-alpine AS frontend
 WORKDIR /build/frontend
 COPY frontend/package.json frontend/package-lock.json ./
@@ -49,6 +56,8 @@ FROM php-base AS app
 ARG BUILD_COMMIT=unknown
 ARG BUILD_TIMESTAMP=unknown
 ENV APP_ENV=production
+ENV STRATEGY_DSL_BINARY=/usr/local/bin/vector-strategy-dsl
+COPY --from=strategy-dsl /strategy-dsl /usr/local/bin/vector-strategy-dsl
 LABEL io.bybit-signals.component="app"
 COPY --chown=app:app app ./app
 COPY --chown=app:app bootstrap ./bootstrap

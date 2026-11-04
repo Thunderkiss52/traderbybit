@@ -59,6 +59,9 @@ storage/latency_benchmark.json
 last_development_for_full_service/
 VECTOR_UNIFIED_13_PRIMARY_26_PAPER_MULTI_EXCHANGE_SPEC_V2_4_EN.md
 
+# Local Go builder artifact
+/research-go/bin/strategy-dsl
+
 # Python bytecode and cache
 __pycache__/
 *.py[cod]
