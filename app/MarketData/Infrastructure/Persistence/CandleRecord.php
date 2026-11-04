@@ -10,6 +10,8 @@ final class CandleRecord extends Model
 {
     protected $table = 'market_candles';
 
+    protected $dateFormat = 'Y-m-d H:i:s.uP';
+
     protected $guarded = [];
 
     protected function casts(): array

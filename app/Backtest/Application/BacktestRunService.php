@@ -14,6 +14,7 @@ use App\Backtest\Infrastructure\Persistence\BacktestRunRecord;
 use App\Backtest\Infrastructure\Persistence\BacktestSegmentRecord;
 use App\Backtest\Infrastructure\Persistence\BacktestTradeRecord;
 use App\MarketData\Infrastructure\Persistence\CandleRecord;
+use App\Strategy\Application\StrategyInputFactory;
 use Brick\Math\BigDecimal;
 use Brick\Math\RoundingMode;
 use DateTimeImmutable;
@@ -36,13 +37,24 @@ class BacktestRunService
     public function run(array $symbols, DateTimeImmutable $from, DateTimeImmutable $to, bool $walkForward = false, ?array $strategyOverride = null, string $exchange = 'bybit'): BacktestRunRecord
     {
         sort($symbols);
-        $dataset = $this->datasets->inspect($symbols, $from, $to, (int) $this->config['warmup_bars'], $exchange);
         $strategy = $strategyOverride ?? (array) config('strategy');
         // The run argument owns exchange selection; overrides cannot redirect data reads.
         unset($strategy['_exchange']);
         if ($exchange !== 'bybit') {
             $strategy['_exchange'] = $exchange;
         }
+        $datasetSymbols = $symbols;
+        if (($strategy['_research_strategy_id'] ?? null) === 'btc_eth_lead_lag') {
+            foreach ($symbols as $symbol) {
+                $peer = StrategyInputFactory::peerSymbol($symbol);
+                if ($peer !== null) {
+                    $datasetSymbols[] = $peer;
+                }
+            }
+            $datasetSymbols = array_values(array_unique($datasetSymbols));
+            sort($datasetSymbols);
+        }
+        $dataset = $this->datasets->inspect($datasetSymbols, $from, $to, (int) $this->config['warmup_bars'], $exchange);
         $paper = (array) config('paper');
         if ($exchange === 'binance') {
             foreach (['paper_taker_rate', 'paper_slippage_rate'] as $key) {
@@ -80,6 +92,12 @@ class BacktestRunService
             }
             $this->guardCancellation($run);
             $payload = $walkForward ? $this->executeWalkForward($run, $symbols, $from, $to, $strategy, $paper) : $this->executeSplit($run, $symbols, $from, $to, $strategy, $paper);
+            // Market observations are mutable in this schema. A changed source
+            // cannot be published under the checksum captured before simulation.
+            $finalDataset = $this->datasets->inspect($datasetSymbols, $from, $to, (int) $this->config['warmup_bars'], $exchange);
+            if ($finalDataset['checksum'] !== $dataset['checksum']) {
+                throw new \RuntimeException('Historical inputs changed during backtest.');
+            }
             $run->update(['status' => 'COMPLETED', 'progress' => 100, 'metrics' => $payload['metrics'], 'warnings' => array_values(array_unique(array_merge($dataset['warnings'], $payload['warnings']))), 'completed_at' => now('UTC')]);
             BacktestReportRecord::query()->updateOrCreate(['backtest_run_id' => $run->id, 'kind' => 'summary'], ['payload' => $payload]);
         } catch (BacktestCancelled) {

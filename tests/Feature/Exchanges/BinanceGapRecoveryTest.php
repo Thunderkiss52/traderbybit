@@ -28,6 +28,9 @@ final class BinanceGapRecoveryTest extends TestCase
             'market_data.symbols' => ['BTCUSDT', 'ETHUSDT'],
             'market_data.sync.backfill_history_ms' => 4 * 60 * 60 * 1000,
             'exchanges.binance.automatic_candle_recovery_enabled' => true,
+            // This fixture verifies historical repair. Fresh 15m bars can also
+            // dispatch forward pipeline work depending on wall-clock alignment.
+            'trading.pipeline_mode' => 'SCHEDULED',
         ]);
         Queue::fake();
         Http::preventStrayRequests();

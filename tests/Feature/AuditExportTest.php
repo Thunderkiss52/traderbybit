@@ -109,6 +109,31 @@ final class AuditExportTest extends TestCase
         }
     }
 
+    public function test_archive_verification_rejects_payload_changed_after_checksum_capture(): void
+    {
+        $path = tempnam(sys_get_temp_dir(), 'vector-audit-zip-');
+        self::assertIsString($path);
+        try {
+            $verify = new \ReflectionMethod(AuditExportService::class, 'verifyArchivePayloads');
+            $expected = ['manifest.csv' => hash('sha256', "original\n")];
+            $zip = new ZipArchive;
+            self::assertTrue($zip->open($path, ZipArchive::OVERWRITE) === true);
+            self::assertTrue($zip->addFromString('manifest.csv', "original\n"));
+            self::assertTrue($zip->close());
+            $verify->invoke(app(AuditExportService::class), $path, $expected);
+
+            $zip = new ZipArchive;
+            self::assertTrue($zip->open($path, ZipArchive::OVERWRITE) === true);
+            self::assertTrue($zip->addFromString('manifest.csv', "changed\n"));
+            self::assertTrue($zip->close());
+            $this->expectException(\RuntimeException::class);
+            $this->expectExceptionMessage('audit_archive_checksum_mismatch');
+            $verify->invoke(app(AuditExportService::class), $path, $expected);
+        } finally {
+            @unlink($path);
+        }
+    }
+
     public function test_all_four_export_periods_generate_successfully_with_learning_and_health_datasets(): void
     {
         if (! extension_loaded('zip')) {

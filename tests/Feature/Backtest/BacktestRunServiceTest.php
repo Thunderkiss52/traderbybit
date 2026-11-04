@@ -121,6 +121,51 @@ final class BacktestRunServiceTest extends TestCase
         self::assertSame(3, DB::table('backtest_segments')->where('backtest_run_id', $run->id)->count());
     }
 
+    public function test_lead_lag_run_rejects_missing_peer_history_before_persisting(): void
+    {
+        $this->seedCompleteHour();
+        config()->set('backtest.warmup_bars', 0);
+        $strategy = (array) config('strategy');
+        $strategy['_research_strategy_id'] = 'btc_eth_lead_lag';
+
+        try {
+            app(BacktestRunService::class)->run(['BTCUSDT'], new DateTimeImmutable('2026-01-01T00:00:00Z'), new DateTimeImmutable('2026-01-01T01:00:00Z'), strategyOverride: $strategy);
+            self::fail('Unbound peer history was accepted.');
+        } catch (\RuntimeException $error) {
+            self::assertStringContainsString('ETHUSDT', $error->getMessage());
+        }
+        self::assertSame(0, BacktestRunRecord::query()->count());
+    }
+
+    public function test_changed_source_during_run_fails_before_completion(): void
+    {
+        $this->seedCompleteHour();
+        config()->set('backtest.warmup_bars', 0);
+        config()->set('backtest.optimization.grid', ['trend.adx_min' => ['20']]);
+        config()->set('backtest.optimization.minimum_trades', 0);
+        config()->set('backtest.stress.fee_multipliers', []);
+        config()->set('backtest.stress.slippage_multipliers', []);
+        DB::unprepared(<<<'SQL'
+            CREATE FUNCTION vector_test_mutate_backtest_source() RETURNS trigger LANGUAGE plpgsql AS $$
+            BEGIN
+                UPDATE market_candles SET close = 102
+                WHERE symbol = 'BTCUSDT' AND interval = '30' AND open_time = '2026-01-01 00:30:00+00';
+                RETURN NEW;
+            END;
+            $$;
+            CREATE TRIGGER vector_test_mutate_backtest_source
+            AFTER INSERT ON backtest_segments FOR EACH ROW EXECUTE FUNCTION vector_test_mutate_backtest_source();
+            SQL);
+
+        try {
+            app(BacktestRunService::class)->run(['BTCUSDT'], new DateTimeImmutable('2026-01-01T00:00:00Z'), new DateTimeImmutable('2026-01-01T01:00:00Z'));
+            self::fail('Changed source was published as completed.');
+        } catch (\RuntimeException $error) {
+            self::assertSame('Historical inputs changed during backtest.', $error->getMessage());
+        }
+        self::assertSame('FAILED', BacktestRunRecord::query()->firstOrFail()->status);
+    }
+
     private function seedCompleteHour(string $exchange = 'bybit'): void
     {
         foreach ([5, 15, 30, 60] as $minutes) {

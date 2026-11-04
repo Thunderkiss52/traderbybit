@@ -10,6 +10,8 @@ final class MarketContextRecord extends Model
 {
     protected $table = 'market_context_snapshots';
 
+    protected $dateFormat = 'Y-m-d H:i:s.uP';
+
     protected $guarded = [];
 
     protected function casts(): array

@@ -212,6 +212,9 @@ final class AuditExportService
             $this->writeExportMetadata($workingDir.'/export_metadata.csv', $metadata, $counts, $entries);
             $this->writeExportManifest($workingDir.'/manifest.csv', $entries, $export->id);
             $this->writeExportChecksums($workingDir.'/checksums.csv', $workingDir, array_keys($entries));
+            $expectedArchiveHashes = array_map(static fn (array $entry): string => $entry['sha256'], $entries);
+            $expectedArchiveHashes['manifest.csv'] = hash_file('sha256', $workingDir.'/manifest.csv');
+            $expectedArchiveHashes['checksums.csv'] = hash_file('sha256', $workingDir.'/checksums.csv');
             $part = $this->archivePath($id).'.part';
             $zip = new ZipArchive;
             if ($zip->open($part, ZipArchive::CREATE | ZipArchive::OVERWRITE) !== true) {
@@ -232,6 +235,7 @@ final class AuditExportService
             if (! $zip->close()) {
                 throw new RuntimeException('audit_zip_close_failed');
             }
+            $this->verifyArchivePayloads($part, $expectedArchiveHashes);
             if (filesize($part) > (int) config('audit.max_archive_bytes')) {
                 throw new RuntimeException('audit_archive_size_limit');
             }
@@ -319,6 +323,43 @@ final class AuditExportService
             }
         } finally {
             fclose($handle);
+        }
+    }
+
+    /** @param array<string,string> $expectedHashes */
+    private function verifyArchivePayloads(string $path, array $expectedHashes): void
+    {
+        $archive = new ZipArchive;
+        if ($archive->open($path, ZipArchive::RDONLY) !== true) {
+            throw new RuntimeException('audit_archive_verification_open_failed');
+        }
+        try {
+            if ($archive->numFiles !== count($expectedHashes)) {
+                throw new RuntimeException('audit_archive_payload_count_mismatch');
+            }
+            foreach ($expectedHashes as $name => $expected) {
+                $stream = $archive->getStream($name);
+                if ($stream === false) {
+                    throw new RuntimeException('audit_archive_payload_missing');
+                }
+                $hash = hash_init('sha256');
+                try {
+                    while (! feof($stream)) {
+                        $bytes = fread($stream, 65536);
+                        if ($bytes === false) {
+                            throw new RuntimeException('audit_archive_payload_read_failed');
+                        }
+                        hash_update($hash, $bytes);
+                    }
+                } finally {
+                    fclose($stream);
+                }
+                if (! hash_equals($expected, hash_final($hash))) {
+                    throw new RuntimeException('audit_archive_checksum_mismatch');
+                }
+            }
+        } finally {
+            $archive->close();
         }
     }
 

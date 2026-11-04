@@ -10,6 +10,8 @@ final class MarketFundingEventRecord extends Model
 {
     protected $table = 'market_funding_events';
 
+    protected $dateFormat = 'Y-m-d H:i:s.uP';
+
     protected $guarded = [];
 
     protected function casts(): array
