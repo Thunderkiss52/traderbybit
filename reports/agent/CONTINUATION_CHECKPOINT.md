@@ -1,17 +1,16 @@
-# VECTOR Continuation Checkpoint — Independent Release Readiness Audit
+# VECTOR Continuation Checkpoint — Production Drawdown Reconciliation & System Integrity
 
-**Date & Time:** 2026-11-04T19:22:00+03:00  
-**Repository Working Directory:** `/home/thunder/work/traderbybit`  
-**Base Commit / Upstream:** `origin/main` (`afd5d194f02e3478c5c6c2e4dfdd00380c216a00`)  
-**Current HEAD:** `09783b8`  
-**Branch:** `main` (ahead of `origin/main` by 16 commits)  
+**Date & Time:** 2026-11-04T20:36:00+03:00
+**Repository Working Directory:** `/home/thunder/work/traderbybit`
+**Base Commit / Upstream:** `origin/main` (`afd5d194f02e3478c5c6c2e4dfdd00380c216a00`)
+**Current HEAD:** `0ff87ff`
+**Branch:** `main` (ahead of `origin/main` by 17 commits)
 
 ---
 
 ## 1. Current HEAD and Working-Tree State
 
-- **HEAD:** `09783b8` ("docs(audit): publish independent release readiness audit, financial gates, and production preflight")
-- **Working Tree:** Clean. All verified changes committed locally.
+- **HEAD:** `0ff87ff` ("docs(reports): update continuation checkpoint to HEAD")
 - **Untracked Historical References Preserved:**
   - `VECTOR_INDEPENDENT_AUDIT_20261031.md` (historical audit report from 2026-10-31)
   - `VECTOR_RELEASE_HARDENING.patch` (uncommitted patch from 2026-10-31)
@@ -22,32 +21,24 @@
 
 ---
 
-## 2. Completed Release Gates (Gates A through J)
+## 2. Latest Completed Stage: Production Drawdown Reconciliation Investigation & Remediation
 
-1. **Gate A — Git History & Change Completeness:**
-   - 15 unpublished commits verified from baseline `afd5d19` to HEAD `bcd5411`.
-   - Verified 4 new database migrations, lockfiles, Go worker binaries, and service registrations.
-2. **Gate B — Financial Reconciliation Beyond LEDGER_PASS_ONLY:**
-   - Analyzed exact semantics of `ExchangePaperReconciliation::inspect()`.
-   - Reconciled all 26 accounts (`LEDGER_PASS_ONLY`), position net PnL, double-entry journaling, and cross-exchange isolation.
-3. **Gate C — All 13 Strategies on Both Exchanges (13 × 2 Matrix):**
-   - Verified all 13 PRIMARY strategies registered, execution-eligible, and isolated across Bybit and Binance portfolios (26 accounts total).
-4. **Gate D — Global Risk and Concurrency:**
-   - Verified `pg_advisory_xact_lock(20261103, 50001)` serializes concurrent position entries.
-   - Enforced 5% global portfolio loss cap and prospective risk budget ceilings.
-5. **Gate E — Immutable Historical Dataset Pinning:**
-   - Verified `DatasetInspector::pin()` and `verifyPin()` on `historical_dataset_pins` schema.
-   - Rejects dataset mutations and conflicting scope fingerprints.
-6. **Gate F — Historical Import and Backtest E2E:**
-   - Verified closed-candle batch ingestion, gap detection, quarantine, and backtest streaming ZIP exports.
-7. **Gate G — Full Application API & Browser E2E:**
-   - Tested 12 critical API endpoints (HTTP 200).
-   - Executed automated Headless Chrome Playwright E2E suite (`scripts/run-browser-e2e.py`) verifying Dashboard, Research Lab (13 strategies), and Statistics with 3 full-page screenshots captured.
-8. **Gate H — Docker, Go Worker, CI and Deployment Provenance:**
-   - Verified Go static compilation, race detector, toolchain compatibility, and GHCR deployment workflow.
-9. **Gate I — Full Regression Verification:**
-   - 1,232 Laravel tests passed (11,695 assertions).
-   - 42 Go worker tests passed with race detector clean.
+1. **Production Drawdown Root Cause Analysis:**
+   - Completed in-depth investigation of Bybit `baseline` (`94b97f13-107d-54a9-b4eb-1ca5a9c79743`) and Bybit `momentum` (`1b36e922-59b6-50a6-8209-cd0391dce128`).
+   - Answered all 8 required investigation points in [`reports/agent/PRODUCTION_DRAWDOWN_ROOT_CAUSE.md`](file:///home/thunder/work/traderbybit/reports/agent/PRODUCTION_DRAWDOWN_ROOT_CAUSE.md).
+   - Demonstrated exact mathematical relationship of stored account metrics:
+     * Baseline: `(10000 - 9461.501450960003) / 10000 * 100 = 5.38498549%` (exact match with stored).
+     * Momentum: `(10000 - 9497.160758949486) / 10000 * 100 = 5.02839241%` (exact match with stored).
+   - Both accounts legitimately breached the 5.0% risk limit and remain strictly `BLOCKED`.
+2. **Code Remediation:**
+   - Hardened `PerformanceStatisticsService::drawdown()` with valuation provenance guards (`FLAT_VERIFIED`, `FRESH`, `STALE`, `LEGACY_UNKNOWN`). Unverified legacy floating marks and stale marks are excluded from elevating peak equity.
+   - Hardened `PositionLifecycleService::snapshot()` to persist `valuation_fresh` and `valued_through` across all execution and mark events.
+   - Enhanced `LedgerReconciliationService` to audit `legacy_unverified_peaks_count` and expose `findings` in returned reports.
+3. **Deterministic Regression Tests:**
+   - Implemented [`tests/Feature/PaperTrading/ProductionDrawdownReconciliationTest.php`](file:///home/thunder/work/traderbybit/tests/Feature/PaperTrading/ProductionDrawdownReconciliationTest.php) covering 4 cases (all passed, 23 assertions).
+4. **Deliverables Published:**
+   - [`reports/agent/PRODUCTION_DRAWDOWN_ROOT_CAUSE.md`](file:///home/thunder/work/traderbybit/reports/agent/PRODUCTION_DRAWDOWN_ROOT_CAUSE.md)
+   - [`reports/agent/PRODUCTION_RECONCILIATION_REMEDIATION.md`](file:///home/thunder/work/traderbybit/reports/agent/PRODUCTION_RECONCILIATION_REMEDIATION.md)
    - 64 Node.js frontend tests passed and Vite 5 production build clean.
    - Laravel Pint passed across all 765 files.
 10. **Gate J — Phase 0 Production Preflight:**

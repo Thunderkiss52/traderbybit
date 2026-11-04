@@ -119,7 +119,7 @@ final class PerformanceStatisticsService
         $maximumDrawdown = $this->drawdown(
             $accountForDrawdown->starting_balance,
             EquitySnapshotRecord::query()->performance()->where('paper_account_id', $accountId)
-                ->oldest('recorded_at')->oldest('id')->cursor(['equity', 'source_event_key']),
+                ->oldest('recorded_at')->oldest('id')->cursor(['equity', 'source_event_key', 'unrealized_pnl', 'valuation_fresh']),
             $accountForDrawdown->current_equity
         );
 
@@ -178,7 +178,7 @@ final class PerformanceStatisticsService
                 $this->drawdown(
                     $account->starting_balance,
                     EquitySnapshotRecord::query()->performance()->where('paper_account_id', $account->id)
-                        ->oldest('recorded_at')->oldest('id')->cursor(['equity', 'source_event_key']),
+                        ->oldest('recorded_at')->oldest('id')->cursor(['equity', 'source_event_key', 'unrealized_pnl', 'valuation_fresh']),
                     $account->current_equity
                 )
             ),
@@ -205,7 +205,27 @@ final class PerformanceStatisticsService
                 $hasActualValuation = true;
             }
             $equity = BigDecimal::of((string) ($value->equity ?? $value));
-            if ($peak === null || $equity->isGreaterThan($peak)) {
+
+            // Valuation provenance guard:
+            // An equity snapshot can elevate the historical peak only if its valuation is verified:
+            // 1. Flat snapshots with zero unrealized PnL (FLAT_VERIFIED) - equity is 100% realized and cash-backed.
+            // 2. Snapshots with valuation_fresh === true (FRESH) - contemporaneous market mark (<= 300s).
+            // Snapshots with valuation_fresh === false (STALE) or valuation_fresh === null with non-zero unrealized PnL
+            // (LEGACY_UNKNOWN) represent unverified floating mark-to-market valuations and must not elevate peak equity.
+            $canElevatePeak = true;
+            if (is_object($value)) {
+                $valuationFresh = $value->valuation_fresh ?? null;
+                $hasUnrealized = isset($value->unrealized_pnl);
+                $unrealizedIsZero = $hasUnrealized && BigDecimal::of((string) $value->unrealized_pnl)->isZero();
+
+                if ($valuationFresh === false) {
+                    $canElevatePeak = false;
+                } elseif ($valuationFresh === null && $hasUnrealized && ! $unrealizedIsZero) {
+                    $canElevatePeak = false;
+                }
+            }
+
+            if ($canElevatePeak && ($peak === null || $equity->isGreaterThan($peak))) {
                 $peak = $equity;
             }
             if (! $peak->isZero()) {

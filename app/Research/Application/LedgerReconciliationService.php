@@ -162,6 +162,13 @@ final class LedgerReconciliationService
         }
         $status = $discrepancies !== [] ? 'DISCREPANCY_DETECTED' : ($incompleteReasons !== [] ? 'INCOMPLETE' : 'PASSED');
 
+        $legacyUnverifiedPeaks = EquitySnapshotRecord::query()
+            ->where('paper_account_id', $accountId)
+            ->whereNull('valuation_fresh')
+            ->where('unrealized_pnl', '!=', 0)
+            ->where('equity', '>', $account->peak_equity ?? $account->starting_balance)
+            ->count();
+
         // Persist run record
         $record = ReconciliationRunRecord::query()->create([
             'id' => (string) Str::uuid(),
@@ -183,6 +190,7 @@ final class LedgerReconciliationService
                 'incomplete_reasons' => $incompleteReasons,
                 'global_execution_integrity' => $globalIntegrity,
                 'drawdown_comparison' => 'OBSERVED_LOWER_BOUND_NOT_FULL_HISTORY',
+                'legacy_unverified_peaks_count' => $legacyUnverifiedPeaks,
                 'current_drawdown_percent' => (string) $currentDrawdown,
                 'discrepancies' => $discrepancies,
                 'open_positions_count' => $openPositions->count(),
@@ -210,6 +218,7 @@ final class LedgerReconciliationService
             'discrepancies' => $discrepancies,
             'incomplete_reasons' => $incompleteReasons,
             'global_execution_integrity' => $globalIntegrity,
+            'findings' => $record->findings,
             'completed_at' => $record->completed_at->toIso8601String(),
         ];
     }

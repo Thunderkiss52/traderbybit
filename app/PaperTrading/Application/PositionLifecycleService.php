@@ -19,6 +19,7 @@ use App\PaperTrading\Infrastructure\Persistence\VirtualPositionRecord;
 use App\Strategy\Infrastructure\Persistence\SignalRecord;
 use Brick\Math\BigDecimal;
 use Brick\Math\RoundingMode;
+use Carbon\CarbonImmutable;
 use DateTimeImmutable;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
@@ -628,10 +629,28 @@ final readonly class PositionLifecycleService
 
     private function snapshot(PaperAccountRecord $account, DateTimeImmutable $at, string $key): void
     {
+        $isFlat = BigDecimal::of((string) $account->unrealized_pnl)->isZero();
+        $valuationFresh = true;
+        $valuedThrough = $at;
+        if (! $isFlat && ! str_starts_with($key, 'mark:')) {
+            $oldestMark = VirtualPositionRecord::query()
+                ->where('paper_account_id', $account->id)
+                ->whereIn('status', [PositionStatus::Open->value, PositionStatus::PartiallyClosed->value])
+                ->min('last_processed_event_at');
+            if ($oldestMark !== null) {
+                $valuedThrough = CarbonImmutable::parse($oldestMark)->toDateTimeImmutable();
+                if (max(0, $at->getTimestamp() - $valuedThrough->getTimestamp()) > 300) {
+                    $valuationFresh = false;
+                }
+            }
+        }
+
         EquitySnapshotRecord::query()->insertOrIgnore([[
             'paper_account_id' => $account->id, 'exchange_id' => $account->exchange_id, 'recorded_at' => $at, 'equity' => $account->current_equity,
             'realized_pnl' => $account->realized_pnl, 'unrealized_pnl' => $account->unrealized_pnl,
-            'drawdown_percent' => $account->current_drawdown_percent, 'source_event_key' => $key, 'created_at' => now(), 'updated_at' => now(),
+            'drawdown_percent' => $account->current_drawdown_percent, 'source_event_key' => $key,
+            'valued_through' => $valuedThrough, 'valuation_fresh' => $valuationFresh,
+            'created_at' => now(), 'updated_at' => now(),
         ]]);
     }
 
