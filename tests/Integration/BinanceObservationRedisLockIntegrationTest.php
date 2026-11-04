@@ -42,7 +42,13 @@ final class BinanceObservationRedisLockIntegrationTest extends TestCase
         $key = 'strategy-observations:binance:linear:BTCUSDT:'.$at->format('U.u');
 
         $worker = new Process([PHP_BINARY, base_path('tests/Fixtures/hold_observation_redis_lock.php'), $key, '1'],
-            base_path(), ['APP_ENV' => 'testing', 'CACHE_STORE' => 'redis', 'REDIS_HOST' => '127.0.0.1', 'REDIS_PORT' => '6379']);
+            base_path(), [
+                'APP_ENV' => 'testing',
+                'CACHE_STORE' => 'redis',
+                'REDIS_HOST' => (string) (env('REDIS_HOST') ?: config('database.redis.default.host', '127.0.0.1')),
+                'REDIS_PORT' => (string) (env('REDIS_PORT') ?: config('database.redis.default.port', '6379')),
+                'REDIS_PASSWORD' => (string) (env('REDIS_PASSWORD') ?: config('database.redis.default.password')),
+            ]);
         $worker->setTimeout(10);
         try {
             $worker->start();

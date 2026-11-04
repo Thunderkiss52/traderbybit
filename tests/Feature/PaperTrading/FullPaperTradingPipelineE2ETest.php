@@ -222,7 +222,9 @@ final class FullPaperTradingPipelineE2ETest extends TestCase
 
     public function test_e2e_stop_loss_exit_with_realized_loss_and_double_entry_journaling(): void
     {
-        $account = $this->app->make(PaperAccountService::class)->primaryAccount('trend_pullback', 'bybit');
+        $accountService = $this->app->make(PaperAccountService::class);
+        $strategy = $this->app->make(StrategyRegistry::class)->get('trend_pullback');
+        $account = $accountService->strategyForward('trend_pullback', $strategy->version(), $strategy->parameters());
         $account->update(['status' => 'ACTIVE']);
         $processingService = $this->app->make(PaperProcessingService::class);
 
@@ -273,7 +275,9 @@ final class FullPaperTradingPipelineE2ETest extends TestCase
 
     public function test_e2e_timeout_exit_when_maximum_holding_time_exceeded(): void
     {
-        $account = $this->app->make(PaperAccountService::class)->primaryAccount('trend_pullback', 'bybit');
+        $accountService = $this->app->make(PaperAccountService::class);
+        $strategy = $this->app->make(StrategyRegistry::class)->get('trend_pullback');
+        $account = $accountService->strategyForward('trend_pullback', $strategy->version(), $strategy->parameters());
         $account->update(['status' => 'ACTIVE']);
         $processingService = $this->app->make(PaperProcessingService::class);
 
@@ -319,7 +323,9 @@ final class FullPaperTradingPipelineE2ETest extends TestCase
 
     public function test_defensive_zero_sized_tp1_prevented_without_corrupting_position_state(): void
     {
-        $account = $this->app->make(PaperAccountService::class)->primaryAccount('trend_pullback', 'bybit');
+        $accountService = $this->app->make(PaperAccountService::class);
+        $strategy = $this->app->make(StrategyRegistry::class)->get('trend_pullback');
+        $account = $accountService->strategyForward('trend_pullback', $strategy->version(), $strategy->parameters());
         $account->update(['status' => 'ACTIVE']);
         $lifecycle = $this->app->make(PositionLifecycleService::class);
 
@@ -363,7 +369,9 @@ final class FullPaperTradingPipelineE2ETest extends TestCase
 
     public function test_defensive_min_notional_rejection_at_position_sizing(): void
     {
-        $account = $this->app->make(PaperAccountService::class)->primaryAccount('trend_pullback', 'bybit');
+        $accountService = $this->app->make(PaperAccountService::class);
+        $strategy = $this->app->make(StrategyRegistry::class)->get('trend_pullback');
+        $account = $accountService->strategyForward('trend_pullback', $strategy->version(), $strategy->parameters());
         $account->update(['status' => 'ACTIVE']);
         $processingService = $this->app->make(PaperProcessingService::class);
 
@@ -401,7 +409,9 @@ final class FullPaperTradingPipelineE2ETest extends TestCase
 
     public function test_pipeline_idempotency_duplicate_signals_and_duplicate_processing_ticks(): void
     {
-        $account = $this->app->make(PaperAccountService::class)->primaryAccount('trend_pullback', 'bybit');
+        $accountService = $this->app->make(PaperAccountService::class);
+        $strategy = $this->app->make(StrategyRegistry::class)->get('trend_pullback');
+        $account = $accountService->strategyForward('trend_pullback', $strategy->version(), $strategy->parameters());
         $account->update(['status' => 'ACTIVE']);
         $processingService = $this->app->make(PaperProcessingService::class);
 

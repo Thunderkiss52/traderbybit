@@ -78,10 +78,16 @@ final class PaperPipelineConcurrentWorkersIntegrationTest extends TestCase
             CarbonImmutable::setTestNow(null);
 
             $environment = [
-                'APP_ENV' => 'testing', 'CACHE_STORE' => 'redis', 'REDIS_HOST' => '127.0.0.1',
-                'DB_CONNECTION' => 'pgsql', 'DB_HOST' => '127.0.0.1',
+                'APP_ENV' => 'testing',
+                'CACHE_STORE' => 'redis',
+                'REDIS_HOST' => (string) (env('REDIS_HOST') ?: config('database.redis.default.host', '127.0.0.1')),
+                'REDIS_PORT' => (string) (env('REDIS_PORT') ?: config('database.redis.default.port', '6379')),
+                'REDIS_PASSWORD' => (string) (env('REDIS_PASSWORD') ?: config('database.redis.default.password')),
+                'DB_CONNECTION' => 'pgsql',
+                'DB_HOST' => (string) DB::connection()->getConfig('host'),
                 'DB_PORT' => (string) DB::connection()->getConfig('port'),
-                'DB_DATABASE' => 'bybit_test', 'DB_USERNAME' => (string) DB::connection()->getConfig('username'),
+                'DB_DATABASE' => 'bybit_test',
+                'DB_USERNAME' => (string) DB::connection()->getConfig('username'),
                 'DB_PASSWORD' => (string) DB::connection()->getConfig('password'),
                 'TRADING_FRESHNESS_SECONDS' => '3600',
             ];
