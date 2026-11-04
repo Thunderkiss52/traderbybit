@@ -24,6 +24,11 @@ final class StrategyEvolutionService
             'momentum',
             'support_resistance_bounce',
             'support_resistance_breakout',
+            'funding_open_interest_squeeze',
+            'liquidity_sweep_reversal',
+            'volatility_compression_breakout',
+            'btc_eth_lead_lag',
+            'multi_timeframe_trend_following',
         ])));
     }
 
@@ -35,7 +40,8 @@ final class StrategyEvolutionService
         if (! in_array($exchange, ['bybit', 'binance'], true)) {
             throw new \InvalidArgumentException('Unsupported candidate exchange.');
         }
-        if (! in_array($parentStrategyId, $this->families(), true)) {
+        if (! in_array($parentStrategyId, (array) config('paper.primary_strategies', []), true)
+            || ! in_array($parentStrategyId, $this->families(), true)) {
             throw new \InvalidArgumentException("Unknown strategy family: {$parentStrategyId}");
         }
 

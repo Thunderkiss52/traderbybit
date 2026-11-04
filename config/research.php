@@ -28,7 +28,8 @@ return [
         'pattern_retry_new_decisions' => (int) env('RESEARCH_AUTO_PATTERN_RETRY_NEW_DECISIONS', 120),
     ],
     'evolution' => [
-        'families' => ['baseline', 'trend_pullback', 'bollinger_mean_reversion', 'donchian_atr_breakout', 'regime_switching', 'momentum', 'support_resistance_bounce', 'support_resistance_breakout'],
+        // Only explicitly bounded mutation spaces are eligible; all 13 PRIMARY families are covered.
+        'families' => ['baseline', 'trend_pullback', 'bollinger_mean_reversion', 'donchian_atr_breakout', 'regime_switching', 'momentum', 'support_resistance_bounce', 'support_resistance_breakout', 'funding_open_interest_squeeze', 'liquidity_sweep_reversal', 'volatility_compression_breakout', 'btc_eth_lead_lag', 'multi_timeframe_trend_following'],
         'validation_days' => (int) env('RESEARCH_EVOLUTION_VALIDATION_DAYS', 180),
         'validation_end_lag_hours' => (int) env('RESEARCH_EVOLUTION_END_LAG_HOURS', 24),
         'max_total_active' => (int) env('RESEARCH_EVOLUTION_MAX_TOTAL_ACTIVE', 8),
@@ -44,6 +45,12 @@ return [
             'momentum' => ['minimum_score' => ['step' => 5, 'min' => 60, 'max' => 85], 'adx_min' => ['step' => 2, 'min' => 16, 'max' => 26], 'relative_volume_min' => ['step' => 0.1, 'min' => 0.9, 'max' => 1.4]],
             'support_resistance_bounce' => ['minimum_success_probability' => ['step' => 0.05, 'min' => 0.50, 'max' => 0.70], 'stop_atr' => ['step' => 0.25, 'min' => 1.0, 'max' => 2.0], 'tp1_r' => ['step' => 0.25, 'min' => 1.0, 'max' => 2.0]],
             'support_resistance_breakout' => ['minimum_success_probability' => ['step' => 0.05, 'min' => 0.50, 'max' => 0.70], 'stop_atr' => ['step' => 0.25, 'min' => 1.0, 'max' => 2.5], 'tp1_r' => ['step' => 0.25, 'min' => 1.0, 'max' => 2.5]],
+            // New families are research-only until causal WFO, costs, attribution and owner gates pass.
+            'funding_open_interest_squeeze' => ['price_momentum_lookback' => ['step' => 1, 'min' => 2, 'max' => 10], 'stop_atr' => ['step' => 0.25, 'min' => 1.0, 'max' => 2.5]],
+            'liquidity_sweep_reversal' => ['level_lookback' => ['step' => 4, 'min' => 12, 'max' => 40], 'stop_atr' => ['step' => 0.25, 'min' => 1.0, 'max' => 2.5]],
+            'volatility_compression_breakout' => ['compression_bars' => ['step' => 2, 'min' => 4, 'max' => 12], 'base_bars' => ['step' => 4, 'min' => 16, 'max' => 40], 'compression_rate' => ['step' => 0.05, 'min' => 0.60, 'max' => 0.95]],
+            'btc_eth_lead_lag' => ['peer_lag_bars' => ['step' => 1, 'min' => 2, 'max' => 8], 'peer_move_threshold' => ['step' => 0.0005, 'min' => 0.001, 'max' => 0.004]],
+            'multi_timeframe_trend_following' => ['entry_ema_fast' => ['step' => 2, 'min' => 5, 'max' => 13], 'entry_ema_slow' => ['step' => 2, 'min' => 17, 'max' => 35]],
         ],
     ],
     'optimization' => [

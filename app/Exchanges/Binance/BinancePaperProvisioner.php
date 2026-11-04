@@ -25,7 +25,11 @@ final class BinancePaperProvisioner
         return DB::transaction(static function (): array {
             $created = 0;
             $existing = 0;
-            foreach ((array) config('paper.primary_strategies', []) as $strategyId) {
+            $strategies = (array) config('paper.primary_strategies', []);
+            if ($strategies === [] || count($strategies) !== count(array_unique($strategies))) {
+                throw new RuntimeException('Registered PRIMARY strategy list must be nonempty and unique.');
+            }
+            foreach ($strategies as $strategyId) {
                 $bybit = DB::table('paper_accounts')->where('exchange_id', 'bybit')
                     ->where('primary_strategy_id', $strategyId)->where('is_primary', true)->first();
                 $canonicalBybitIds = array_filter([

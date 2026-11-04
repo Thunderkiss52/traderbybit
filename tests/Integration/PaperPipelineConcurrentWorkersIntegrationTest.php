@@ -5,8 +5,8 @@ declare(strict_types=1);
 namespace Tests\Integration;
 
 use App\MarketData\Infrastructure\Persistence\CandleRecord;
+use App\PaperTrading\Application\PaperAccountService;
 use App\PaperTrading\Application\PaperProcessingService;
-use App\PaperTrading\Infrastructure\Persistence\PaperAccountRecord;
 use App\Strategy\Application\StrategyRegistry;
 use App\Strategy\Infrastructure\Persistence\MarketContextRecord;
 use App\Strategy\Infrastructure\Persistence\SignalRecord;
@@ -22,26 +22,17 @@ final class PaperPipelineConcurrentWorkersIntegrationTest extends TestCase
     public function test_two_workers_commit_one_fill_and_one_financial_journal_sequence(): void
     {
         $this->ensurePostgresTestDatabaseReady('paper_accounts');
-        config(['cache.default' => 'redis', 'trading.pipeline_mode' => 'EVENT_DRIVEN']);
+        config(['cache.default' => 'redis', 'trading.pipeline_mode' => 'EVENT_DRIVEN', 'trading.freshness_seconds' => 3600]);
         Cache::purge('redis');
 
         $processTime = CarbonImmutable::now('UTC')->startOfMinute();
         $processTime = $processTime->subMinutes($processTime->minute % 5);
         $decisionTime = $processTime->subMinutes(5);
-        $existingAccounts = DB::table('paper_accounts')->orderBy('id')->get()->toJson();
         $strategy = app(StrategyRegistry::class)->get('baseline');
-        $account = PaperAccountRecord::query()->create([
-            'id' => Uuid::uuid4()->toString(), 'name' => 'Concurrent worker fixture',
-            'status' => 'ACTIVE', 'starting_balance' => '10000', 'current_equity' => '10000',
-            'peak_equity' => '10000', 'realized_pnl' => '0', 'unrealized_pnl' => '0',
-            'reserved_risk' => '0', 'maximum_drawdown_percent' => '0',
-            'current_drawdown_percent' => '0', 'mode' => 'STRATEGY_FORWARD_PAPER',
-            'exchange_id' => 'bybit', 'strategy_id' => 'baseline',
-            'strategy_version' => $strategy->version(),
-            'configuration_hash' => StrategyRegistry::hash($strategy->parameters()),
-            'strategy_parameters' => $strategy->parameters(), 'is_primary' => true,
-            'created_at' => $decisionTime->subMinutes(10), 'updated_at' => $decisionTime->subMinutes(10),
-        ]);
+        $account = app(PaperAccountService::class)->default();
+        $accountOriginalData = (array) DB::table('paper_accounts')->where('id', $account->id)->first();
+        DB::table('paper_accounts')->where('id', $account->id)->update(['created_at' => $decisionTime->subMinutes(10)]);
+        $existingOtherAccounts = DB::table('paper_accounts')->where('id', '!=', $account->id)->orderBy('id')->get()->toJson();
         $signalId = Uuid::uuid4()->toString();
         $barrier = sys_get_temp_dir().'/vector-paper-race-'.bin2hex(random_bytes(8));
         $workers = [];
@@ -92,6 +83,7 @@ final class PaperPipelineConcurrentWorkersIntegrationTest extends TestCase
                 'DB_PORT' => (string) DB::connection()->getConfig('port'),
                 'DB_DATABASE' => 'bybit_test', 'DB_USERNAME' => (string) DB::connection()->getConfig('username'),
                 'DB_PASSWORD' => (string) DB::connection()->getConfig('password'),
+                'TRADING_FRESHNESS_SECONDS' => '3600',
             ];
             for ($index = 0; $index < 2; $index++) {
                 $worker = new Process([PHP_BINARY, base_path('tests/Fixtures/run_paper_pipeline_at_barrier.php'),
@@ -113,7 +105,7 @@ final class PaperPipelineConcurrentWorkersIntegrationTest extends TestCase
             self::assertSame(1, DB::table('trading_journal_events')->where('paper_account_id', $account->id)->where('event_type', 'POSITION_OPENED')->count());
             self::assertSame(1, DB::table('trading_pipeline_events')->where('stage', 'PAPER_PROCESSED')->where('symbol', 'BTCUSDT')->where('candle_close_at', $processTime)->count());
             self::assertSame(0, DB::table('trading_pipeline_events')->where('stage', 'PAPER_PROCESSED')->where('status', 'FAILED')->where('candle_close_at', $processTime)->count());
-            self::assertSame($existingAccounts, DB::table('paper_accounts')->where('id', '!=', $account->id)->orderBy('id')->get()->toJson());
+            self::assertSame($existingOtherAccounts, DB::table('paper_accounts')->where('id', '!=', $account->id)->orderBy('id')->get()->toJson());
         } finally {
             CarbonImmutable::setTestNow(null);
             foreach ($workers as $worker) {
@@ -124,7 +116,12 @@ final class PaperPipelineConcurrentWorkersIntegrationTest extends TestCase
             @unlink($barrier);
             // Child processes need committed fixtures. Remove only this test's rows.
             DB::table('trading_pipeline_events')->where('symbol', 'BTCUSDT')->where('candle_close_at', $processTime)->delete();
-            PaperAccountRecord::query()->whereKey($account->id)->delete();
+            $positionIds = DB::table('virtual_positions')->where('paper_account_id', $account->id)->pluck('id');
+            DB::table('virtual_executions')->whereIn('position_id', $positionIds)->delete();
+            DB::table('virtual_positions')->where('paper_account_id', $account->id)->delete();
+            DB::table('paper_signal_states')->where('paper_account_id', $account->id)->where('signal_id', $signalId)->delete();
+            DB::table('trading_journal_events')->where('paper_account_id', $account->id)->delete();
+            DB::table('paper_accounts')->where('id', $account->id)->update($accountOriginalData);
             SignalRecord::query()->whereKey($signalId)->delete();
             if ($candleId !== null) {
                 CandleRecord::query()->whereKey($candleId)->delete();

@@ -70,9 +70,7 @@ final readonly class PaperProcessingService
                 try {
                     $registry = app(StrategyRegistry::class);
                     $strategy = $registry->get($account->strategy_id);
-                    if ($strategy->version() === $account->strategy_version) {
-                        $account = $this->accounts->strategyForward($account->strategy_id, $strategy->version(), $strategy->parameters());
-                    }
+                    $account = $this->accounts->strategyForward($account->strategy_id, $strategy->version(), $strategy->parameters());
                 } catch (Throwable) {
                     // If strategy cannot be resolved or adopted, proceed to normal eligibility check
                 }
@@ -396,6 +394,12 @@ final readonly class PaperProcessingService
         $size = $limits === null ? null : $this->sizing->calculate($account->current_equity, $signal->model_risk_percent, $entry, $signal->stop_loss, $limits, $this->execution->costs($account->exchange_id));
         if ($size !== null && ! $size->allowed) {
             $failures[] = (string) $size->reason;
+        }
+        if ($account->is_primary && $size !== null && $size->allowed) {
+            $aggregateReason = app(GlobalPaperCapitalGuard::class)->entryRejectionReason((string) $size->riskCapital);
+            if ($aggregateReason !== null) {
+                $failures[] = $aggregateReason;
+            }
         }
         $active = VirtualPositionRecord::query()->where('paper_account_id', $account->id)->whereIn('status', [PositionStatus::Open->value, PositionStatus::PartiallyClosed->value])->get();
         $existingSymbolPosition = $active->first(fn (VirtualPositionRecord $p): bool => $p->symbol === $signal->symbol);

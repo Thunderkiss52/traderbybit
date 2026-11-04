@@ -64,7 +64,7 @@ final readonly class BinanceResearchCycle
             $accounts = PaperAccountRecord::query()->where('exchange_id', 'binance')->where('is_primary', true)
                 ->get()->keyBy('primary_strategy_id');
             if ($accounts->count() !== count($primary)) {
-                throw new DomainException('Binance 13-account population is incomplete.');
+                throw new DomainException('Binance PRIMARY account population is incomplete.');
             }
             foreach ($primary as $id) {
                 $account = $accounts->get($id);

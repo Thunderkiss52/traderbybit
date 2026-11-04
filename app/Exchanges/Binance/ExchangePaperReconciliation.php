@@ -47,7 +47,9 @@ final class ExchangePaperReconciliation
             'backend_pid' => (int) $metadata->backend_pid,
         ];
         $strategies = (array) config('paper.primary_strategies', []);
-        $exchanges = ['bybit', 'binance'];
+        // New public-data exchanges have zero-funded BLOCKED PAPER placeholders
+        // until their own accounting/execution adapters are reviewed.
+        $exchanges = array_values((array) config('exchanges.enabled', ['bybit', 'binance']));
         // Count every PRIMARY row, not only the two expected exchanges. A
         // foreign/NULL exchange row must not disappear from the 26-account
         // census merely because the supported pairs are all present.
@@ -74,6 +76,11 @@ final class ExchangePaperReconciliation
                 }
                 $account = $matches->first();
                 $accountIssueStart = count($issues);
+                if (! in_array($exchange, ['bybit', 'binance'], true) && ($account->status !== 'BLOCKED'
+                    || ! BigDecimal::of((string) $account->starting_balance)->isZero()
+                    || ! BigDecimal::of((string) $account->current_equity)->isZero())) {
+                    $issues[] = ['exchange_id' => $exchange, 'strategy_id' => $strategy, 'code' => 'UNVERIFIED_EXCHANGE_FUNDED_OR_ACTIVE'];
+                }
                 if ($account->strategy_id !== $strategy || $account->research_experiment_id !== null) {
                     $issues[] = ['exchange_id' => $exchange, 'strategy_id' => $strategy, 'code' => 'INVALID_ACCOUNT_PROVENANCE'];
                 }

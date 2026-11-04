@@ -21,6 +21,7 @@ use App\MarketData\Jobs\SyncFundingHistoryJob;
 use App\MarketData\Jobs\SyncOpenInterestHistoryJob;
 use App\PaperTrading\Application\EquitySnapshotRepairService;
 use App\PaperTrading\Application\PaperProcessingService;
+use App\PaperTrading\Application\PaperTopologySynchronizer;
 use App\PaperTrading\Infrastructure\Persistence\PaperAccountRecord;
 use App\PaperTrading\Jobs\CapturePaperEquityJob;
 use App\PaperTrading\Jobs\ProcessPaperTradingJob;
@@ -37,6 +38,20 @@ use App\Trading\Application\TradingPipelineRecoveryService;
 use Illuminate\Foundation\Inspiring;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\Schedule;
+
+// The scheduler reconciles newly REGISTERED PRIMARY strategies against enabled exchanges.
+// New Bybit strategies remain BLOCKED; Binance requires separate provisioning approval.
+Artisan::command('paper:sync-topology {--apply : Create missing BLOCKED paper accounts; default dry-run}', function (PaperTopologySynchronizer $topology): int {
+    try {
+        $this->line(json_encode($topology->sync((bool) $this->option('apply')), JSON_PRETTY_PRINT | JSON_THROW_ON_ERROR));
+
+        return 0;
+    } catch (Throwable $e) {
+        $this->error('PAPER topology check failed: '.$e->getMessage());
+
+        return 1;
+    }
+})->purpose('Idempotently reconcile enabled exchanges x registered PRIMARY strategies; never enable live orders');
 
 // Separate owner-approved data migration and irreversible account provisioning.
 Artisan::command('binance:provision-paper-accounts {--force : Approve provisioning explicitly without requiring env variable}', function (BinancePaperProvisioner $provisioner): void {
@@ -398,3 +413,9 @@ Schedule::call(fn () => app(TradingPipelineRecoveryService::class)->recover())
 // Execute continuous quantitative learning, model retraining, and challenger evaluation.
 Schedule::job(new ProcessAutonomousLearningJob)
     ->cron('9,24,39,54 * * * *')->name('research:autonomous-learning')->withoutOverlapping();
+
+// Automatic account attachment for newly registered strategy families. Approval to trade is separate.
+if (config('paper.topology.auto_sync_enabled', true)) {
+    Schedule::command('paper:sync-topology --apply')->everyFiveMinutes()
+        ->name('paper:sync-topology')->withoutOverlapping();
+}

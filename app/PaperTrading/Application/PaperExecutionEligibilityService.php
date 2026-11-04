@@ -60,6 +60,12 @@ final readonly class PaperExecutionEligibilityService
             return 'account_not_active';
         }
 
+        $globalReason = $account->is_primary
+            ? app(GlobalPaperCapitalGuard::class)->entryRejectionReason() : null;
+        if ($globalReason !== null) {
+            return $globalReason;
+        }
+
         // SIGNAL_ONLY check (e.g. btc_eth_lead_lag)
         $signalOnly = (array) config('research.forward_paper.signal_only_strategies', []);
         if (in_array($account->strategy_id, $signalOnly, true)) {

@@ -23,8 +23,8 @@ final class BinancePaperActivation
             throw new DomainException('Binance closed-candle research schedule is disabled.');
         }
         $strategies = (array) config('paper.primary_strategies', []);
-        if (count($strategies) !== 13) {
-            throw new DomainException('13 strategies required.');
+        if ($strategies === [] || count($strategies) !== count(array_unique($strategies))) {
+            throw new DomainException('Nonempty, unique PRIMARY strategy registry required.');
         }
         $symbols = (array) config('market_data.symbols', []);
         if (count($symbols) < 2 || ! in_array('BTCUSDT', $symbols, true) || ! in_array('ETHUSDT', $symbols, true)) {
@@ -59,7 +59,7 @@ final class BinancePaperActivation
         return DB::transaction(static function () use ($strategies): array {
             $accounts = PaperAccountRecord::query()->where('exchange_id', 'binance')->where('is_primary', true)
                 ->lockForUpdate()->get()->keyBy('primary_strategy_id');
-            if ($accounts->count() !== 13) {
+            if ($accounts->count() !== count($strategies)) {
                 throw new DomainException('Binance PRIMARY account set incomplete.');
             }
             $activated = 0;

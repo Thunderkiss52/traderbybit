@@ -30,8 +30,8 @@ final class BinancePaperCapital
             $strategies = (array) config('paper.primary_strategies', []);
             $accounts = PaperAccountRecord::query()->where('exchange_id', 'binance')->where('is_primary', true)
                 ->lockForUpdate()->get()->keyBy('primary_strategy_id');
-            if (count($strategies) !== 13 || $accounts->count() !== 13) {
-                throw new DomainException('Exactly 13 canonical Binance PRIMARY paper accounts are required.');
+            if ($strategies === [] || count($strategies) !== count(array_unique($strategies)) || $accounts->count() !== count($strategies)) {
+                throw new DomainException('Canonical Binance PRIMARY paper account census does not match registered strategies.');
             }
             $allocated = 0;
             $existing = 0;
@@ -46,6 +46,27 @@ final class BinancePaperCapital
                 if ($event !== null) {
                     if (! BigDecimal::of($event->amount)->isEqualTo(BigDecimal::of($amount))) {
                         throw new DomainException('Owner approval reference reused with a different paper amount.');
+                    }
+                    $existing++;
+
+                    continue;
+                }
+                // When a new PRIMARY strategy is registered, earlier Binance
+                // accounts must retain their original funding and ledger. A
+                // fresh approval may fund ONLY the newly provisioned zero account.
+                $historicalEvents = DB::table('paper_capital_events')
+                    ->where('paper_account_id', $account->id)->get();
+                if ($historicalEvents->isNotEmpty()) {
+                    $approvedSum = BigDecimal::zero();
+                    foreach ($historicalEvents as $oldEvent) {
+                        if ($oldEvent->exchange_id !== 'binance') {
+                            throw new DomainException('Existing capital event has foreign exchange provenance.');
+                        }
+                        $approvedSum = $approvedSum->plus((string) $oldEvent->amount);
+                    }
+                    if (! $approvedSum->isEqualTo(BigDecimal::of((string) $account->starting_balance))
+                        || ! BigDecimal::of((string) $account->starting_balance)->isEqualTo(BigDecimal::of($amount))) {
+                        throw new DomainException('Existing paper capital differs from new approval or ledger.');
                     }
                     $existing++;
 

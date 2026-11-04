@@ -81,8 +81,8 @@ final readonly class PaperAccountService
 
             return $primary;
         }
-        if ($primary !== null && $primary->configuration_hash === null && $primary->strategy_version === $strategyVersion) {
-            return DB::transaction(function () use ($primary, $strategyId, $hash, $parameters): PaperAccountRecord {
+        if ($primary !== null && $primary->configuration_hash === null) {
+            return DB::transaction(function () use ($primary, $strategyId, $strategyVersion, $hash, $parameters): PaperAccountRecord {
                 $primary = PaperAccountRecord::query()->lockForUpdate()->findOrFail($primary->id);
                 $canonicalIds = array_filter([
                     $strategyId === 'baseline' ? Uuid::uuid5(Uuid::NAMESPACE_URL, 'traderbybit:paper:default')->toString() : null,
@@ -96,7 +96,7 @@ final readonly class PaperAccountService
                 if ($primary->strategy_parameters !== null && StrategyRegistry::hash($primary->strategy_parameters) !== $hash) {
                     throw new \DomainException('Primary account configuration parameter conflict requires explicit reconciliation.');
                 }
-                $primary->update(['configuration_hash' => $hash, 'strategy_parameters' => $parameters]);
+                $primary->update(['configuration_hash' => $hash, 'strategy_parameters' => $parameters, 'strategy_version' => $strategyVersion]);
                 $this->ensureInitialSnapshot($primary);
 
                 return $primary;
@@ -181,7 +181,8 @@ final readonly class PaperAccountService
 
             $account = PaperAccountRecord::query()->firstOrCreate(['id' => $id], [
                 'name' => 'Forward Paper '.$strategyId,
-                'status' => AccountStatus::Active->value,
+                'status' => in_array($strategyId, (array) config('paper.initially_approved_bybit_strategies', []), true)
+                    ? AccountStatus::Active->value : AccountStatus::Blocked->value,
                 'starting_balance' => $starting,
                 'current_equity' => $starting,
                 'peak_equity' => $starting,

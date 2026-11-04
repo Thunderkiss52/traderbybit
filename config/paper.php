@@ -36,6 +36,15 @@ return [
         'btc_eth_lead_lag',
         'multi_timeframe_trend_following',
     ],
+    // Historical owner-approved Bybit cohort. Future registered strategies are
+    // automatically attached but default to BLOCKED pending a separate approval.
+    'initially_approved_bybit_strategies' => [
+        'baseline', 'trend_pullback', 'bollinger_mean_reversion', 'donchian_atr_breakout',
+        'regime_switching', 'momentum', 'support_resistance_bounce',
+        'support_resistance_breakout', 'funding_open_interest_squeeze',
+        'liquidity_sweep_reversal', 'volatility_compression_breakout',
+        'btc_eth_lead_lag', 'multi_timeframe_trend_following',
+    ],
     'fees' => ['taker_rate' => '0.00055', 'maker_rate' => '0.00020', 'default_liquidity' => 'taker'],
     'slippage_rate' => '0.0002',
     'tp1_fraction' => '0.50',
@@ -48,6 +57,10 @@ return [
     'risk_by_quality' => ['A' => '0.50', 'B' => '0.25', 'C' => '0.10'],
     'correlation' => ['window' => 100, 'threshold' => '0.80', 'insufficient_data_policy' => 'reject'],
     'drawdown' => ['block_new_entries_percent' => '5', 'halt_percent' => '10', 'risk_closure_percent' => '15'],
+    // Aggregate funded PRIMARY virtual capital: 5% below SUM(account peak equity) stops NEW entries (conservative upper bound).
+    // Not a synchronized portfolio HWM or a guaranteed maximum realized loss.
+    'global_capital' => ['enabled' => true, 'maximum_loss_percent' => '5'],
+    'topology' => ['auto_sync_enabled' => true],
     'losing_streak' => ['count' => 3, 'cooldown_minutes' => 60],
     'market_safety' => [
         'maximum_context_age_seconds' => 300, 'maximum_spread_percent' => '0.001', 'minimum_turnover_24h' => '50000000',

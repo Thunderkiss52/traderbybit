@@ -39,12 +39,21 @@ final readonly class PositionLifecycleService
         $eligibility->assertOpenEligible($account, $state, $signal, $at);
 
         return DB::transaction(function () use ($account, $state, $signal, $size, $quote, $at, $eligibility): VirtualPositionRecord {
+            // All PAPER entry transactions acquire the same guard lock before account rows.
+            app(GlobalPaperCapitalGuard::class)->lockEntryDecision();
             $lockedAccount = PaperAccountRecord::query()->lockForUpdate()->findOrFail($account->id);
             $lockedState = PaperSignalStateRecord::query()->lockForUpdate()->findOrFail($state->id);
             // Recheck authorization *inside* the account lock. A previously
             // loaded ACTIVE model is not evidence that the account is still
             // permitted to open an entry when concurrent risk/jobs change it.
             $eligibility->assertOpenEligible($lockedAccount, $lockedState, $signal, $at);
+            // Include the prospective position risk, not just existing reservations.
+            // Guard uses a shared PostgreSQL entry lock to prevent simultaneous oversubscription.
+            $aggregateReason = $lockedAccount->is_primary
+                ? app(GlobalPaperCapitalGuard::class)->entryRejectionReason((string) $size->riskCapital) : null;
+            if ($aggregateReason !== null) {
+                throw new \DomainException('Entry ineligible: '.$aggregateReason);
+            }
             $positionId = Uuid::uuid5(Uuid::NAMESPACE_URL, "traderbybit:position:{$account->id}:{$signal->id}")->toString();
             if ($existing = VirtualPositionRecord::query()->find($positionId)) {
                 return $existing;

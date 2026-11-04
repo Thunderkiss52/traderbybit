@@ -50,14 +50,14 @@ final class BinanceDeploymentInitializer
                     throw new RuntimeException('Exchange-scoped schema migration required before initialization.');
                 }
 
-                // Preflight 2: Verify all 13 canonical Bybit accounts exist
+                // Preflight 2: Verify all registered canonical Bybit accounts exist
                 $bybitAccounts = DB::table('paper_accounts')->where('exchange_id', 'bybit')->where('is_primary', true)->get();
-                if ($bybitAccounts->count() !== 13) {
+                if ($bybitAccounts->count() !== count((array) config('paper.primary_strategies', []))) {
                     // Populate/ensure Bybit primary accounts
                     $this->accounts->allPrimaryAccounts('bybit');
                     $bybitAccounts = DB::table('paper_accounts')->where('exchange_id', 'bybit')->where('is_primary', true)->get();
-                    if ($bybitAccounts->count() !== 13) {
-                        throw new RuntimeException('Bybit 13 canonical primary accounts population is incomplete.');
+                    if ($bybitAccounts->count() !== count((array) config('paper.primary_strategies', []))) {
+                        throw new RuntimeException('Bybit canonical primary account population is incomplete.');
                     }
                 }
 
@@ -88,7 +88,7 @@ final class BinanceDeploymentInitializer
                 // Step 4: Run full M9 26-account reconciliation
                 $reconcileReport = $this->reconciliation->inspect();
                 if ($reconcileReport['status'] !== 'LEDGER_PASS_ONLY') {
-                    throw new RuntimeException('M9 26-account reconciliation failed: '.json_encode($reconcileReport['issues'], JSON_THROW_ON_ERROR));
+                    throw new RuntimeException('M9 full-cohort reconciliation failed: '.json_encode($reconcileReport['issues'], JSON_THROW_ON_ERROR));
                 }
 
                 return [
@@ -98,7 +98,7 @@ final class BinanceDeploymentInitializer
                     'snapshot_repair' => $repairResult,
                     'reconciliation' => $reconcileReport,
                     'bybit_history_preserved' => true,
-                    'canonical_accounts_count' => 26,
+                    'canonical_accounts_count' => count((array) config('exchanges.enabled', [])) * count((array) config('paper.primary_strategies', [])),
                 ];
             }, attempts: 1);
         } finally {
