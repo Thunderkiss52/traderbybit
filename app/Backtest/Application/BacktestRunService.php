@@ -54,7 +54,7 @@ class BacktestRunService
             $datasetSymbols = array_values(array_unique($datasetSymbols));
             sort($datasetSymbols);
         }
-        $dataset = $this->datasets->inspect($datasetSymbols, $from, $to, (int) $this->config['warmup_bars'], $exchange);
+        $dataset = $this->datasets->pin($datasetSymbols, $from, $to, (int) $this->config['warmup_bars'], $exchange);
         $paper = (array) config('paper');
         if ($exchange === 'binance') {
             foreach (['paper_taker_rate', 'paper_slippage_rate'] as $key) {
@@ -94,8 +94,9 @@ class BacktestRunService
             $payload = $walkForward ? $this->executeWalkForward($run, $symbols, $from, $to, $strategy, $paper) : $this->executeSplit($run, $symbols, $from, $to, $strategy, $paper);
             // Market observations are mutable in this schema. A changed source
             // cannot be published under the checksum captured before simulation.
-            $finalDataset = $this->datasets->inspect($datasetSymbols, $from, $to, (int) $this->config['warmup_bars'], $exchange);
-            if ($finalDataset['checksum'] !== $dataset['checksum']) {
+            try {
+                $finalDataset = $this->datasets->verifyPin($dataset['id']);
+            } catch (Throwable) {
                 throw new \RuntimeException('Historical inputs changed during backtest.');
             }
             $run->update(['status' => 'COMPLETED', 'progress' => 100, 'metrics' => $payload['metrics'], 'warnings' => array_values(array_unique(array_merge($dataset['warnings'], $payload['warnings']))), 'completed_at' => now('UTC')]);

@@ -164,6 +164,58 @@ final class DatasetInspectorTest extends TestCase
         self::assertSame('2026-01-01 01:00:00.001', $funding->fresh()->funding_at->utc()->format('Y-m-d H:i:s.v'));
     }
 
+    public function test_dataset_pinning_is_idempotent_and_creates_immutable_record(): void
+    {
+        $this->completeHour();
+        $service = new DatasetInspector;
+        $from = new DateTimeImmutable('2026-01-01T00:00:00Z');
+        $to = new DateTimeImmutable('2026-01-01T01:00:00Z');
+
+        $first = $service->pin(['BTCUSDT'], $from, $to, 0);
+        self::assertFalse($first['already_pinned']);
+        self::assertNotEmpty($first['id']);
+        self::assertNotEmpty($first['checksum']);
+
+        $second = $service->pin(['BTCUSDT'], $from, $to, 0);
+        self::assertTrue($second['already_pinned']);
+        self::assertSame($first['id'], $second['id']);
+        self::assertSame($first['checksum'], $second['checksum']);
+
+        $verified = $service->verifyPin($first['id']);
+        self::assertSame($first['checksum'], $verified['checksum']);
+    }
+
+    public function test_dataset_pinning_rejects_conflicting_historical_mutation(): void
+    {
+        $this->completeHour();
+        $service = new DatasetInspector;
+        $from = new DateTimeImmutable('2026-01-01T00:00:00Z');
+        $to = new DateTimeImmutable('2026-01-01T01:00:00Z');
+
+        $pin = $service->pin(['BTCUSDT'], $from, $to, 0);
+
+        // Mutate a candle in the pinned scope
+        CandleRecord::query()->where('symbol', 'BTCUSDT')->where('interval', '5')
+            ->where('open_time', '2026-01-01 00:00:00+00:00')
+            ->update(['close' => '105.00']);
+
+        // verifyPin detects the mutation and rejects it
+        try {
+            $service->verifyPin($pin['id']);
+            self::fail('Expected mutation error was not thrown by verifyPin.');
+        } catch (RuntimeException $e) {
+            self::assertStringContainsString('Historical dataset mutation detected', $e->getMessage());
+        }
+
+        // pin() for the same scope detects the conflict against the existing immutable pin
+        try {
+            $service->pin(['BTCUSDT'], $from, $to, 0);
+            self::fail('Expected conflict error was not thrown by pin.');
+        } catch (RuntimeException $e) {
+            self::assertStringContainsString('Historical dataset conflict', $e->getMessage());
+        }
+    }
+
     private function completeHour(bool $includeThirty = true): void
     {
         foreach ([5, 15, 30, 60] as $minutes) {
