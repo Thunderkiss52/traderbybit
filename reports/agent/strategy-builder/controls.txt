@@ -1,0 +1,14 @@
+
+   PASS  Tests\Feature\Exchanges\BinanceGapRecoveryTest
+  ✓ automatic binance recovery requires explicit opt in                  2.20s
+  ✓ failed scope does not skip other scopes and retry preserves complet… 0.45s
+  ✓ immutable conflict remains failed on retry without rewriting histor… 7.30s
+
+   PASS  Tests\Integration\GoResearchWorkerIntegrationTest
+  ✓ scheduler queue go worker persists succeeded result                  3.25s
+  ✓ go worker persists failure and sanitized error when job invalid      3.12s
+  ✓ go worker requeues job when retries remain                           3.10s
+  ✓ worker lifecycle e2e superseded worker rejected and cannot persist…  0.10s
+
+  Tests:    7 passed (74 assertions)
+  Duration: 19.70s

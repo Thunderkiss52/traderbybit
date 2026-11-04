@@ -1,0 +1,7 @@
+
+   PASS  Tests\Feature\StrategyBuilder\DefinitionTest
+  ✓ versions are immutable idempotent and never provision accounts       1.82s
+  ✓ rejects unsafe or unsupported definitions                            0.04s
+
+  Tests:    2 passed (10 assertions)
+  Duration: 2.04s

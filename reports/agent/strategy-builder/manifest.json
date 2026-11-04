@@ -1,0 +1,85 @@
+{
+  "source_head": "70a989493ac20dc192fa194662d0ae8973b2a217",
+  "full_regression_start_head": "7e56831",
+  "date": "2026-11-04",
+  "environment": "isolated local PostgreSQL 17 / Redis 7.4 / PHP test image / Node 24.19.0 / Chromium",
+  "phpunit": {
+    "exit_code": 0,
+    "passed": 1255,
+    "skipped": 5,
+    "notices": 6,
+    "assertions": 11945
+  },
+  "product_acceptance": false,
+  "scores": {
+    "implementation": 0,
+    "verification": 0,
+    "product": 0
+  },
+  "logs": {
+    "/tmp/vector-builder-full-php.log": {
+      "sha256": "2ffb42bb6c966f692c6e953f52b49fbc797e102d99951a654f39882465f26049",
+      "bytes": 242163
+    },
+    "/tmp/vector-builder-baseline-full.log": {
+      "sha256": "fb12d0415cfa93c290b269a968d1a61b023e2a00fb5c0583eefc9f89405df51f",
+      "bytes": 216333
+    },
+    "/tmp/vector-builder-full-isolated.log": {
+      "sha256": "bc0d7bd0adb4391de1104c679719c9d0f7171a22fb7a3f8c7a7ac906f7803833",
+      "bytes": 219412
+    },
+    "/tmp/vector-builder-full-final.log": {
+      "sha256": "ccbe70cc399ca89d1f314b40a80c2ea260aa7b38495d2d6b4eddae6122b45369",
+      "bytes": 307107
+    },
+    "/tmp/vector-builder-full-verified.log": {
+      "sha256": "eed6d319008f0ebbabd4c5d75bc841ce1ffbfb2f17c18d7d3965a241572ff960",
+      "bytes": 188215
+    },
+    "/tmp/vector-builder-phpunit-direct.log": {
+      "sha256": "5372cadf914c81a87aeee6cbe0d169c6ca0e81a4dd9ef5aa496f4788a0f843ba",
+      "bytes": 3474
+    },
+    "/tmp/vector-builder-go-final.log": {
+      "sha256": "a6ac6634c78891113d3709648151191b9bfb3e060d56338c03c828da6f8fe969",
+      "bytes": 1403
+    },
+    "/tmp/vector-builder-node24-build.log": {
+      "sha256": "25af4e581c2fe19b7177bc487bbbc5a9e88bf00756bd72ad0e5920409befe706",
+      "bytes": 5836
+    },
+    "/tmp/vector-builder-node24-tests.log": {
+      "sha256": "c38df77a09f63b223176eb59acf7a712612eeb08eb65f0b3837bac2b56755f39",
+      "bytes": 6053
+    },
+    "/tmp/vector-builder-php-lint.log": {
+      "sha256": "92bda087fcae3cab9379e0606ad01a3f82b1147afaa87e35e3a10d823f356a21",
+      "bytes": 64089
+    },
+    "/tmp/vector-builder-pint-final.log": {
+      "sha256": "6ba625b6e69192310438ae52e531c16cabe3940180687783fbe71b0fc7021a86",
+      "bytes": 1513
+    },
+    "/tmp/vector-builder-tracker-strict-final.log": {
+      "sha256": "e0dadc9f440a4309d7ff8b6331d433fdb31f06d538a5660bc75903e27847546f",
+      "bytes": 1233
+    },
+    "/tmp/vector-builder-docker-build.log": {
+      "sha256": "f7a8084d7d3aec1c68aa5d61a9a000dc801b2c2f45a6216c3bdff74f09462595",
+      "bytes": 1351
+    }
+  },
+  "artifacts": {
+    "go.txt": "a6ac6634c78891113d3709648151191b9bfb3e060d56338c03c828da6f8fe969",
+    "example.json": "3c3a2f78415c1e48d1e9ca39d9bdc8d98b4f71c8c45ac84c02ebf01d8c40c649",
+    "controls.txt": "18f0886ed01e543e2a0d5af4189bb112455998cdfbabae0f72ce51f13f471b60",
+    "phpunit.txt": "43b3873545963b91c78163316f7e6b5824e05d441397a23eba0fe82d4535384e",
+    "targeted.txt": "3cda1eafbbea93fbe963dcdd39bbb7a7cab269ce5e37e4332c5165ab39b07399",
+    "frontend.txt": "c38df77a09f63b223176eb59acf7a712612eeb08eb65f0b3837bac2b56755f39",
+    "strategies.png": "b8bc39f80c7102926f4bcaa909e90e52ca5f7c2d0ae459a2e47a9ed523ad6eeb",
+    "pint.txt": "47df8e84558fbe1286d1ad41af37ee4a1b16c3b99c08c72017f64d4027468a71",
+    "typed-lists.txt": "bf0157a1b8adffa89e71313a159afb14cb2032f32405c9123da19b96021ed750",
+    "browser.log": "68a0f58f7d24070beef851994a2b930679b8fdf15b7a21caa5ca5c82e010317e"
+  }
+}

@@ -1,0 +1,50 @@
+{
+    "id": "user_ema_rsi",
+    "entry": {
+        "BUY": {
+            "and": [
+                {
+                    "op": "crosses_above",
+                    "left": "fast",
+                    "right": "slow"
+                },
+                {
+                    "op": "lt",
+                    "left": "rsi",
+                    "right": 65
+                }
+            ]
+        }
+    },
+    "symbols": [
+        "BTCUSDT"
+    ],
+    "version": 1,
+    "stop_atr": 1.5,
+    "take_atr": 3,
+    "exchanges": [
+        "bybit"
+    ],
+    "timeframe": "15",
+    "indicators": {
+        "rsi": {
+            "type": "RSI",
+            "period": 14,
+            "timeframe": "15"
+        },
+        "fast": {
+            "type": "EMA",
+            "period": 20,
+            "timeframe": "15"
+        },
+        "slow": {
+            "type": "EMA",
+            "period": 50,
+            "timeframe": "15"
+        }
+    },
+    "risk_percent": 0.5,
+    "timeout_bars": 48,
+    "cooldown_bars": 0,
+    "schema_version": 1
+}

@@ -1,0 +1,30 @@
+
+   PASS  Tests\Feature\Exchanges\ExchangeOnboardingTest
+  ✓ list exchanges returns bybit and binance with capabilities           1.92s
+  ✓ register new exchange succeeds with offline data source lifecycle    0.08s
+  ✓ register duplicate exchange is rejected                              0.05s
+  ✓ register invalid exchange id is rejected                             0.06s
+  ✓ csv upload validates ohlcv and inserts candles                       0.09s
+  ✓ csv upload detects duplicates idempotently                           0.09s
+  ✓ csv upload detects and records conflicts without corruption          0.09s
+  ✓ csv upload rejects malformed and non monotonic data                  0.07s
+  ✓ transition to research enabled requires candle history               0.08s
+  ✓ paper activation rejected without required capabilities              0.08s
+  ✓ show and coverage diagnostics                                        0.11s
+  ✓ topology sync preserves blocked accounts and global risk budget      0.12s
+
+   PASS  Tests\Feature\StrategyBuilder\AuthoringTest
+  ✓ russian and english produce identical definitions without llm        0.02s
+  ✓ ambiguous description is rejected                                    0.01s
+
+   PASS  Tests\Feature\StrategyBuilder\DefinitionTest
+  ✓ versions are immutable idempotent and never provision accounts       0.07s
+  ✓ rejects unsafe or unsupported definitions                            0.04s
+
+   PASS  Tests\Feature\StrategyBuilder\ManagementTest
+  ✓ authoring and rejected approval preserve all 26 accounts and global… 0.44s
+  ✓ management requires owner token and confirmation                     0.07s
+  ✓ real go backtest is pinned reproducible and rejects gaps             3.62s
+
+  Tests:    19 passed (116 assertions)
+  Duration: 7.28s

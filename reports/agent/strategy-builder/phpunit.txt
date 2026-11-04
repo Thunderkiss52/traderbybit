@@ -1,0 +1,41 @@
+PHPUnit 12.5.40 by Sebastian Bergmann and contributors.
+
+Runtime:       PHP 8.5.12
+Configuration: /app/phpunit.xml
+
+...........NNNNN.N...............SSSS........................   61 / 1260 (  4%)
+.............................................................  122 / 1260 (  9%)
+.............................................................  183 / 1260 ( 14%)
+.............................................................  244 / 1260 ( 19%)
+.............................................................  305 / 1260 ( 24%)
+.............................................................  366 / 1260 ( 29%)
+.............................................................  427 / 1260 ( 33%)
+.............................................................  488 / 1260 ( 38%)
+.............................................................  549 / 1260 ( 43%)
+.............................................................  610 / 1260 ( 48%)
+.............................................................  671 / 1260 ( 53%)
+.............................................................  732 / 1260 ( 58%)
+.............................................................  793 / 1260 ( 62%)
+.............................................................  854 / 1260 ( 67%)
+.............................................................  915 / 1260 ( 72%)
+.............................................................  976 / 1260 ( 77%)
+............................................................. 1037 / 1260 ( 82%)
+............................................................. 1098 / 1260 ( 87%)
+......................................................{"durability":"VERIFIED","main_pid":12717,"observer_pid":12718,"outer_rollback":false,"quarantine":false,"committed_conflicts":1}
+.{"durability":"VERIFIED","main_pid":12722,"observer_pid":12723,"outer_rollback":false,"quarantine":true,"committed_conflicts":1}
+.{"durability":"VERIFIED","main_pid":12727,"observer_pid":12728,"outer_rollback":true,"quarantine":false,"committed_conflicts":1}
+.{"durability":"VERIFIED","main_pid":12732,"observer_pid":12733,"outer_rollback":true,"quarantine":true,"committed_conflicts":1}
+.... 1159 / 1260 ( 91%)
+...........S{"recovery_durability":"VERIFIED","main_pid":12825,"observer_pid":12826,"after_outer_rollback":true,"count":1}
+.{"recovery_concurrency":"VERIFIED","independent_pids":["12839","12838","12837","12836"],"count":1}
+.{"recovery_crash":"crash-after-claim","committed_before_kill":{"state":"IN_PROGRESS","writer_pid":12850},"exit":137,"final_count":1,"final_attempts":2}
+.{"recovery_crash":"crash-during-apply","committed_before_kill":{"state":"IN_PROGRESS","uncommitted_count":1},"exit":137,"final_count":1,"final_attempts":2}
+.{"recovery_crash":"crash-after-commit","committed_before_kill":{"state":"RECOVERED","writer_pid":12866},"exit":137,"final_count":1,"final_attempts":1}
+............................................. 1220 / 1260 ( 96%)
+................{"fresh_process_integrity":"VERIFIED","parent_pid":1,"worker":{"status":"UNAVAILABLE","reason_code":"CANDLE_JOURNAL_PENDING","pid":359,"db_pid":13053}}
+........................                      1260 / 1260 (100%)
+
+Time: 06:06.039, Memory: 70.00 MB
+
+OK, but there were issues!
+Tests: 1260, Assertions: 11945, PHPUnit Notices: 6, Skipped: 5.
