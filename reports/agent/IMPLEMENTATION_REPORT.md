@@ -25,3 +25,15 @@ After the temporal unit, the archived R3 research-job race was confirmed in curr
 ## Completed local unit: R4 PAPER safety guards
 
 The current account reactivation and risk-boundary gaps were corrected without raising any default risk limit or modifying an existing account. Owner approval is now required for a blocked/halted-to-ACTIVE transition and is journaled; recovery and unknown drawdown remain blocked. Risk and sizing enforce the existing fixed ceilings even if configuration is loosened. Focused isolated PostgreSQL tests passed; see `R4_PAPER_RISK_GUARDS.md`. The full R4 patch remains unintegrated.
+
+## Completed local unit: R6 Global Paper Capital Guard and Topology Synchronizer
+
+Implemented `GlobalPaperCapitalGuard` (5% portfolio loss cap and entry risk ceiling on PRIMARY accounts) and `PaperTopologySynchronizer` (idempotently reconciling enabled exchanges $\times$ primary strategies topology). Serialized PostgreSQL entries using `pg_advisory_xact_lock(20261103, 50001)`. Made Binance deployment, provisioning, capital, and reconciliation dynamic across registered primary strategies, and added bounded mutation parameter spaces for all 13 strategy families. Statically recompiled `research-worker`. Committed as `0b17010`. Verified by `GlobalCapitalAndTopologyR6Test` (4 passed), `ConcurrentPaperEntryGlobalRiskPostgresIntegrationTest` (2 passed), `ThirteenPrimaryAccountsTest` (3 passed).
+
+## Completed local unit: R8 Historical Backtest Audit Subsystem and Sizing Settings
+
+Implemented asynchronous, signed-download `BacktestAuditService`, queue job `BuildBacktestAuditJob`, streaming ZIP archive builder `BacktestAuditArchiveBuilder` (exporting segments, trades, equity, optimizations, reports, candles, market context, funding, and SHA-256 member manifest), spreadsheet formula injection escaping `BacktestAuditCsv`, and recursive credential redaction `BacktestAuditRedactor`. Added `PaperSizingSettings` (supporting fixed notional and fixed margin with 2x leverage cap) and `NewPrimaryCapitalPolicy` (10,000 USDT virtual starting balance). Wired sizing into `PaperProcessingService` and `PositionSizingService`. Committed as `4ac1044`. Verified by `BacktestHistoricalAuditR8Test` (3 passed), `BacktestAuditCsvR8Test` (1 passed), `BacktestAuditRedactorR8Test` (1 passed), `R8CapitalPolicyTest` (4 passed), `R8SizingSettingsTest` (11 passed).
+
+## Completed local unit: R3 Worker Lease and Fencing Integrity
+
+Enforced database clock lease expiry check (`lease_expires_at > clock_timestamp()` in Go and `lease_expires_at > $now` in Laravel) across `StartJob`, `Heartbeat`, `CompleteJob`, and `FailJob`. Added row lock `lockForUpdate()` in `failJob` to prevent stale workers from resurrecting cancelled or reclaimed jobs. Added atomic compare-and-swap update in `reconcileStaleLeases`. Added credential and DSN sanitization to Go worker `FailJob`. Recompiled static binary `research-go/bin/research-worker` with `CGO_ENABLED=0`. Committed as `1764922`. Verified by `GoResearchWorkerIntegrationTest` (4 passed), `ResearchJobServiceTest` (22 passed), and `ResearchJobSubmissionPostgresIntegrationTest` (3 passed).
