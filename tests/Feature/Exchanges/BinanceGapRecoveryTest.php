@@ -23,6 +23,7 @@ final class BinanceGapRecoveryTest extends TestCase
     protected function setUp(): void
     {
         parent::setUp();
+        $this->freezeTime();
         $this->registerConflictCleanup();
         config([
             'market_data.symbols' => ['BTCUSDT', 'ETHUSDT'],
