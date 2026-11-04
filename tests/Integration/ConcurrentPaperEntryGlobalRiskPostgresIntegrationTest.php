@@ -17,15 +17,12 @@ use App\Strategy\Application\StrategyRegistry;
 use App\Strategy\Infrastructure\Persistence\SignalRecord;
 use DateTimeImmutable;
 use DomainException;
-use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
 use Ramsey\Uuid\Uuid;
 use Tests\TestCase;
 
 final class ConcurrentPaperEntryGlobalRiskPostgresIntegrationTest extends TestCase
 {
-    use RefreshDatabase;
-
     public function test_entry_decision_lock_serializes_concurrent_postgresql_transactions(): void
     {
         $this->ensurePostgresTestDatabaseReady('paper_accounts');
@@ -33,24 +30,29 @@ final class ConcurrentPaperEntryGlobalRiskPostgresIntegrationTest extends TestCa
 
         // Start transaction on connection 1 and acquire advisory lock
         $db1->beginTransaction();
-        app(GlobalPaperCapitalGuard::class)->lockEntryDecision();
+        try {
+            app(GlobalPaperCapitalGuard::class)->lockEntryDecision();
 
-        // Check that an advisory lock with classid 20261103, objid 50001 is held
-        $held = (int) $db1->selectOne("
-            SELECT COUNT(*) AS n 
-            FROM pg_locks 
-            WHERE locktype = 'advisory' 
-              AND (classid::bigint << 32 | objid::bigint) = (20261103::bigint << 32 | 50001::bigint)
-              AND granted = true
-        ")->n;
-        self::assertGreaterThanOrEqual(1, $held);
-
-        $db1->commit();
+            // Check that an advisory lock with classid 20261103, objid 50001 is held
+            $held = (int) $db1->selectOne("
+                SELECT COUNT(*) AS n 
+                FROM pg_locks 
+                WHERE locktype = 'advisory' 
+                  AND (classid::bigint << 32 | objid::bigint) = (20261103::bigint << 32 | 50001::bigint)
+                  AND granted = true
+            ")->n;
+            self::assertGreaterThanOrEqual(1, $held);
+        } finally {
+            $db1->rollBack();
+        }
     }
 
     public function test_two_concurrent_entries_across_different_accounts_reject_excess_risk(): void
     {
         $this->ensurePostgresTestDatabaseReady('paper_accounts');
+
+        // Capture pristine primary Bybit accounts state before provisioning and risk mutation
+        $bybitAccountsBefore = DB::table('paper_accounts')->where('exchange_id', 'bybit')->get()->map(fn ($r) => (array) $r)->all();
 
         // Set up 26 canonical accounts (all 13 Bybit + 13 Binance)
         config(['exchanges.binance_paper_provisioning_approved' => true]);
@@ -118,14 +120,29 @@ final class ConcurrentPaperEntryGlobalRiskPostgresIntegrationTest extends TestCa
             }
             self::assertTrue($exceptionThrown, 'Expected DomainException global_risk_budget_exceeded was not thrown');
         } finally {
-            $posIds = DB::table('virtual_positions')->whereIn('paper_account_id', [$account1->id, $account2->id])->pluck('id');
-            DB::table('virtual_executions')->whereIn('position_id', $posIds)->delete();
-            DB::table('virtual_positions')->whereIn('paper_account_id', [$account1->id, $account2->id])->delete();
-            DB::table('paper_signal_states')->whereIn('id', [$state1->id, $state2->id])->delete();
-            DB::table('trading_journal_events')->whereIn('paper_account_id', [$account1->id, $account2->id])->delete();
-            SignalRecord::query()->whereIn('id', [$signal1->id, $signal2->id])->delete();
-            PaperAccountRecord::query()->where('exchange_id', 'bybit')->update(['reserved_risk' => '0']);
+            $accountIds = array_filter([$account1->id ?? null, $account2->id ?? null]);
+            $signalIds = array_filter([$signal1->id ?? null, $signal2->id ?? null]);
+            $stateIds = array_filter([$state1->id ?? null, $state2->id ?? null]);
+
+            if (! empty($accountIds)) {
+                $posIds = DB::table('virtual_positions')->whereIn('paper_account_id', $accountIds)->pluck('id');
+                DB::table('virtual_executions')->whereIn('position_id', $posIds)->delete();
+                DB::table('virtual_positions')->whereIn('paper_account_id', $accountIds)->delete();
+                DB::table('trading_journal_events')->whereIn('paper_account_id', $accountIds)->delete();
+                DB::table('equity_snapshots')->whereIn('paper_account_id', $accountIds)
+                    ->where('source_event_key', '!=', 'account:initial')
+                    ->delete();
+            }
+            if (! empty($stateIds)) {
+                DB::table('paper_signal_states')->whereIn('id', $stateIds)->delete();
+            }
+            if (! empty($signalIds)) {
+                SignalRecord::query()->whereIn('id', $signalIds)->delete();
+            }
             PaperAccountRecord::query()->where('exchange_id', 'binance')->delete();
+            foreach ($bybitAccountsBefore as $accData) {
+                DB::table('paper_accounts')->where('id', $accData['id'])->update($accData);
+            }
         }
     }
 

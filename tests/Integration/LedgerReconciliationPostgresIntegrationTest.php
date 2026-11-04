@@ -89,7 +89,11 @@ final class LedgerReconciliationPostgresIntegrationTest extends TestCase
         foreach ($results as $res) {
             // Legacy migration-created fixtures may lack initial snapshots; do not certify them complete.
             $hasInitial = DB::table('equity_snapshots')->where('paper_account_id', $res['paper_account_id'])->where('source_event_key', 'account:initial')->exists();
-            self::assertSame($hasInitial ? 'PASSED' : 'INCOMPLETE', $res['status']);
+            self::assertSame(
+                $hasInitial ? 'PASSED' : 'INCOMPLETE',
+                $res['status'],
+                "Account {$res['paper_account_id']} failed reconciliation with status '{$res['status']}'. Discrepancies: ".json_encode($res['discrepancies'], JSON_PRETTY_PRINT)
+            );
             if (! $hasInitial) {
                 self::assertContains('initial_equity_snapshot_unavailable', $res['incomplete_reasons']);
             }
