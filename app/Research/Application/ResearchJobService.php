@@ -246,6 +246,7 @@ final readonly class ResearchJobService
                 ->where('lease_owner', $workerId)
                 ->where('fencing_token', $fencingToken)
                 ->where('status', 'CLAIMED')
+                ->where('lease_expires_at', '>', $now)
                 ->update([
                     'status' => 'RUNNING',
                     'started_at' => $now,
@@ -270,6 +271,7 @@ final readonly class ResearchJobService
                 ->where('lease_owner', $workerId)
                 ->where('fencing_token', $fencingToken)
                 ->whereIn('status', ['CLAIMED', 'RUNNING'])
+                ->where('lease_expires_at', '>', $now)
                 ->update([
                     'heartbeat_at' => $now,
                     'lease_expires_at' => $now->addSeconds($extensionSeconds),
@@ -301,6 +303,7 @@ final readonly class ResearchJobService
                 ->where('lease_owner', $workerId)
                 ->where('fencing_token', $fencingToken)
                 ->whereIn('status', ['CLAIMED', 'RUNNING'])
+                ->where('lease_expires_at', '>', $now)
                 ->update([
                     'status' => 'SUCCEEDED',
                     'progress' => 100,
@@ -323,42 +326,43 @@ final readonly class ResearchJobService
     public function failJob(string $jobId, string $workerId, int $fencingToken, string $error): bool
     {
         try {
-            /** @var ResearchJobRecord|null $job */
-            $job = ResearchJobRecord::query()
-                ->where('job_id', $jobId)
-                ->where('lease_owner', $workerId)
-                ->where('fencing_token', $fencingToken)
-                ->first();
+            return DB::transaction(function () use ($jobId, $workerId, $fencingToken) {
+                // A cancelled or reassigned job must never be resurrected by a
+                // worker that read its state before the cancellation/reclaim.
+                $job = ResearchJobRecord::query()
+                    ->where('job_id', $jobId)
+                    ->where('lease_owner', $workerId)
+                    ->where('fencing_token', $fencingToken)
+                    ->whereIn('status', ['CLAIMED', 'RUNNING'])
+                    ->lockForUpdate()
+                    ->first();
 
-            if ($job === null) {
-                return false;
-            }
+                if ($job === null) {
+                    return false;
+                }
 
-            $now = CarbonImmutable::now('UTC');
-            // Worker failures may contain URLs, tokens or connection strings.
-            // Public job state must never store a raw exception message.
-            $sanitizedError = 'Research worker execution failed; internal details suppressed.';
-
-            if ($job->retry_count + 1 < $job->max_retries) {
-                $job->update([
-                    'status' => 'QUEUED',
-                    'retry_count' => $job->retry_count + 1,
-                    'sanitized_error' => $sanitizedError,
+                $now = CarbonImmutable::now('UTC');
+                $retryCount = $job->retry_count + 1;
+                $isTerminal = $retryCount >= $job->max_retries;
+                $updates = [
+                    'status' => $isTerminal ? 'FAILED' : 'QUEUED',
+                    'retry_count' => $retryCount,
+                    'sanitized_error' => 'Research worker execution failed; internal details suppressed.',
                     'lease_owner' => null,
                     'lease_expires_at' => null,
-                ]);
-            } else {
-                $job->update([
-                    'status' => 'FAILED',
-                    'retry_count' => $job->retry_count + 1,
-                    'sanitized_error' => $sanitizedError,
-                    'completed_at' => $now,
-                    'lease_owner' => null,
-                    'lease_expires_at' => null,
-                ]);
-            }
+                ];
+                if ($isTerminal) {
+                    $updates['completed_at'] = $now;
+                }
 
-            return true;
+                return ResearchJobRecord::query()
+                    ->whereKey($job->getKey())
+                    ->where('lease_owner', $workerId)
+                    ->where('fencing_token', $fencingToken)
+                    ->whereIn('status', ['CLAIMED', 'RUNNING'])
+                    ->where('lease_expires_at', '>', $now)
+                    ->update($updates) === 1;
+            });
         } catch (Throwable $e) {
             Log::error('Research job operation failed.', ['worker' => $workerId]);
 
@@ -394,7 +398,6 @@ final readonly class ResearchJobService
     {
         try {
             $now = CarbonImmutable::now('UTC');
-
             $staleJobs = ResearchJobRecord::query()
                 ->whereIn('status', ['CLAIMED', 'RUNNING'])
                 ->where('lease_expires_at', '<', $now)
@@ -402,25 +405,31 @@ final readonly class ResearchJobService
 
             $reconciled = 0;
             foreach ($staleJobs as $job) {
-                if ($job->retry_count + 1 < $job->max_retries) {
-                    $job->update([
-                        'status' => 'QUEUED',
-                        'retry_count' => $job->retry_count + 1,
-                        'sanitized_error' => 'Worker lease expired; re-queued for retry',
-                        'lease_owner' => null,
-                        'lease_expires_at' => null,
-                    ]);
-                } else {
-                    $job->update([
-                        'status' => 'EXPIRED',
-                        'retry_count' => $job->retry_count + 1,
-                        'sanitized_error' => 'Worker lease expired; maximum retries exceeded',
-                        'completed_at' => $now,
-                        'lease_owner' => null,
-                        'lease_expires_at' => null,
-                    ]);
+                $retryCount = $job->retry_count + 1;
+                $expired = $retryCount >= $job->max_retries;
+                $updates = [
+                    'status' => $expired ? 'EXPIRED' : 'QUEUED',
+                    'retry_count' => $retryCount,
+                    'sanitized_error' => $expired
+                        ? 'Worker lease expired; maximum retries exceeded'
+                        : 'Worker lease expired; re-queued for retry',
+                    'lease_owner' => null,
+                    'lease_expires_at' => null,
+                ];
+                if ($expired) {
+                    $updates['completed_at'] = $now;
                 }
-                $reconciled++;
+
+                // Compare-and-swap: a concurrent heartbeat, cancellation or
+                // new owner must not be overwritten by stale reconciliation.
+                $reconciled += ResearchJobRecord::query()
+                    ->whereKey($job->getKey())
+                    ->where('lease_owner', $job->lease_owner)
+                    ->where('fencing_token', $job->fencing_token)
+                    ->where('retry_count', $job->retry_count)
+                    ->whereIn('status', ['CLAIMED', 'RUNNING'])
+                    ->where('lease_expires_at', '<', $now)
+                    ->update($updates);
             }
 
             return $reconciled;

@@ -173,6 +173,42 @@ final class ResearchJobServiceTest extends TestCase
         $this->assertSame(2, $fresh2->retry_count);
     }
 
+    public function test_cancelled_job_cannot_be_requeued_by_stale_worker_failure(): void
+    {
+        $job = $this->service->submitJob([
+            'kind' => 'BACKTEST',
+            'payload' => ['exchange' => 'bybit'],
+        ]);
+        $claimed = $this->service->claimNextJob('worker-before-cancel', 60);
+        $this->assertTrue($this->service->cancelJob($job->job_id));
+        $this->assertFalse($this->service->failJob(
+            $job->job_id,
+            'worker-before-cancel',
+            $claimed->fencing_token,
+            'internal error'
+        ));
+        $this->assertSame('CANCELLED', $job->fresh()->status);
+        $this->assertSame(0, $job->fresh()->retry_count);
+    }
+
+    public function test_expired_lease_cannot_be_revived_or_completed(): void
+    {
+        $job = $this->service->submitJob([
+            'kind' => 'BACKTEST',
+            'payload' => ['exchange' => 'bybit'],
+        ]);
+        $claimed = $this->service->claimNextJob('expired-worker', 60);
+        $claimed->update(['lease_expires_at' => CarbonImmutable::now('UTC')->subMinute()]);
+
+        $this->assertFalse($this->service->startJob($job->job_id, 'expired-worker', $claimed->fencing_token));
+        $this->assertFalse($this->service->heartbeat($job->job_id, 'expired-worker', $claimed->fencing_token));
+        $this->assertFalse($this->service->completeJob($job->job_id, 'expired-worker', $claimed->fencing_token, ['ok' => true]));
+        $this->assertFalse($this->service->failJob($job->job_id, 'expired-worker', $claimed->fencing_token, 'secret'));
+        $this->assertSame('CLAIMED', $job->fresh()->status);
+        $this->assertSame(1, $this->service->reconcileStaleLeases());
+        $this->assertSame('QUEUED', $job->fresh()->status);
+    }
+
     public function test_reconcile_stale_leases(): void
     {
         $job = $this->service->submitJob([

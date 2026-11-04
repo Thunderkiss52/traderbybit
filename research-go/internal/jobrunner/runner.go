@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"log"
 	"math"
+	"regexp"
 	"strings"
 	"time"
 
@@ -24,7 +25,20 @@ import (
 	"github.com/traderbybit/research-go/internal/walkforward"
 )
 
-var ErrStaleGeneration = errors.New("stale worker generation token")
+var (
+	ErrStaleGeneration = errors.New("stale worker generation token")
+	reDsnSecret        = regexp.MustCompile(`(?i)(postgres(?:ql)?://[^\s:@]+):[^\s@]+(@)`)
+	reTokenSecret      = regexp.MustCompile(`(?i)(password|secret|token|api_key|key)[:=]\s*([^\s,;&]+)`)
+)
+
+func sanitizeErrorMessage(errStr string) string {
+	if len(errStr) > 2000 {
+		errStr = errStr[:2000]
+	}
+	errStr = reDsnSecret.ReplaceAllString(errStr, "$1:***$2")
+	errStr = reTokenSecret.ReplaceAllString(errStr, "$1=***")
+	return errStr
+}
 
 type Runner struct {
 	db              *sql.DB
@@ -212,6 +226,7 @@ func (r *Runner) StartJob(ctx context.Context, jobID string, fencingToken int64)
 		UPDATE research_jobs
 		SET status = 'RUNNING', started_at = $1, heartbeat_at = $1
 		WHERE job_id = $2 AND lease_owner = $3 AND fencing_token = $4 AND status = 'CLAIMED'
+          AND lease_expires_at > clock_timestamp()
 	`
 	res, err := tx.ExecContext(ctx, query, now, jobID, r.workerID, fencingToken)
 	if err != nil {
@@ -246,6 +261,7 @@ func (r *Runner) Heartbeat(ctx context.Context, jobID string, fencingToken int64
 		UPDATE research_jobs
 		SET heartbeat_at = $1, lease_expires_at = $2, progress = $3, progress_message = $4
 		WHERE job_id = $5 AND lease_owner = $6 AND fencing_token = $7 AND status IN ('CLAIMED', 'RUNNING')
+          AND lease_expires_at > clock_timestamp()
 	`
 	res, err := tx.ExecContext(ctx, query, now, expires, progress, msg, jobID, r.workerID, fencingToken)
 	if err != nil {
@@ -295,6 +311,7 @@ func (r *Runner) CompleteJob(ctx context.Context, jobID string, fencingToken int
 		    result_manifest_sha256 = $1, result_payload = $2, runtime_stats = $3,
 		    completed_at = $4, lease_owner = NULL, lease_expires_at = NULL
 		WHERE job_id = $5 AND lease_owner = $6 AND fencing_token = $7 AND status IN ('CLAIMED', 'RUNNING')
+          AND lease_expires_at > clock_timestamp()
 	`
 	res, err := tx.ExecContext(ctx, query, manifestHash, resBytes, statsBytes, now, jobID, r.workerID, fencingToken)
 	if err != nil {
@@ -313,10 +330,9 @@ func (r *Runner) FailJob(ctx context.Context, jobID string, fencingToken int64, 
 		return errors.New("worker generation token is required and must be strictly positive")
 	}
 
-	sanitized := failErr.Error()
-	if len(sanitized) > 2000 {
-		sanitized = sanitized[:2000]
-	}
+	// The job status is exposed over API; never persist raw sensitive credentials
+	// such as DSNs, passwords, or tokens.
+	sanitized := sanitizeErrorMessage(failErr.Error())
 
 	tx, err := r.db.BeginTx(ctx, nil)
 	if err != nil {
@@ -337,6 +353,7 @@ func (r *Runner) FailJob(ctx context.Context, jobID string, fencingToken int64, 
 		    completed_at = CASE WHEN retry_count + 1 >= max_retries THEN $2::timestamptz ELSE NULL END,
 		    lease_owner = NULL, lease_expires_at = NULL
 		WHERE job_id = $3 AND lease_owner = $4 AND fencing_token = $5 AND status IN ('CLAIMED', 'RUNNING')
+          AND lease_expires_at > clock_timestamp()
 	`
 	res, err := tx.ExecContext(ctx, query, sanitized, now, jobID, r.workerID, fencingToken)
 	if err != nil {

@@ -48,12 +48,14 @@ func TestIsSupportedKind(t *testing.T) {
 
 // Mock database driver to test ExecuteJob failure with unsupported kind
 type mockDriver struct {
-	mu                 sync.Mutex
-	failedJobID        string
-	failedReason       string
-	lastCandleExchange string
-	overrideGenToken   int64
-	queryErr           error
+	mu                   sync.Mutex
+	failedJobID          string
+	failedReason         string
+	lastCandleExchange   string
+	executedSQL          []string
+	simulateExpiredLease bool
+	overrideGenToken     int64
+	queryErr             error
 }
 
 func (m *mockDriver) reset() {
@@ -62,6 +64,8 @@ func (m *mockDriver) reset() {
 	m.failedJobID = ""
 	m.failedReason = ""
 	m.lastCandleExchange = ""
+	m.executedSQL = nil
+	m.simulateExpiredLease = false
 	m.overrideGenToken = 0
 	m.queryErr = nil
 }
@@ -99,6 +103,13 @@ func (s *mockStmt) NumInput() int {
 }
 
 func (s *mockStmt) Exec(args []driver.Value) (driver.Result, error) {
+	s.conn.driver.mu.Lock()
+	s.conn.driver.executedSQL = append(s.conn.driver.executedSQL, s.query)
+	expired := s.conn.driver.simulateExpiredLease
+	s.conn.driver.mu.Unlock()
+	if expired && strings.Contains(s.query, "UPDATE research_jobs") && strings.Contains(s.query, "lease_expires_at > clock_timestamp()") {
+		return driver.RowsAffected(0), nil
+	}
 	if strings.Contains(s.query, "sanitized_error = $1") {
 		s.conn.driver.mu.Lock()
 		if len(args) >= 3 {
@@ -391,4 +402,53 @@ func TestFailJob_SuccessfulExecution(t *testing.T) {
 	if !strings.Contains(mockDrv.failedReason, "simulated error message") {
 		t.Fatalf("expected failedReason to contain simulated error message, got: %s", mockDrv.failedReason)
 	}
+}
+
+// A current fencing token is not sufficient after its lease has expired:
+// the authoritative database clock must reject stale work before mutation.
+func TestLeaseExpiryGuardsAllWorkerStateTransitions(t *testing.T) {
+	db := initMockDB()
+	defer db.Close()
+	mockDrv.reset()
+	defer mockDrv.reset()
+	r := NewRunner(db, "worker-expired-lease")
+	r.generationToken = 1
+	ctx := context.Background()
+	operations := []struct {
+		name string
+		run  func() error
+	}{
+		{"start", func() error { return r.StartJob(ctx, "job", 2) }},
+		{"heartbeat", func() error { return r.Heartbeat(ctx, "job", 2, 0, "running", 60*time.Second) }},
+		{"complete", func() error {
+			return r.CompleteJob(ctx, "job", 2, contracts.JobResult{Metrics: map[string]interface{}{"ok": true}})
+		}},
+		{"fail", func() error { return r.FailJob(ctx, "job", 2, errors.New("postgres://user:SECRET@host")) }},
+	}
+	for _, op := range operations {
+		t.Run(op.name, func(t *testing.T) {
+			mockDrv.reset()
+			if err := op.run(); err != nil {
+				t.Fatal(err)
+			}
+			mockDrv.mu.Lock()
+			queries := append([]string(nil), mockDrv.executedSQL...)
+			failure := mockDrv.failedReason
+			mockDrv.mu.Unlock()
+			found := false
+			for _, query := range queries {
+				if strings.Contains(query, "UPDATE research_jobs") &&
+					strings.Contains(query, "lease_expires_at > clock_timestamp()") {
+					found = true
+				}
+			}
+			if !found {
+				t.Fatalf("%s missing database lease-expiry fence in UPDATE: %v", op.name, queries)
+			}
+			if op.name == "fail" && strings.Contains(failure, "SECRET") {
+				t.Fatalf("sensitive failure exposed to API: %q", failure)
+			}
+		})
+	}
+	mockDrv.reset()
 }
