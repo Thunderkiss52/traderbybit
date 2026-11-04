@@ -17,3 +17,7 @@ The resulting checksum is a before/after mutation detector, not an immutable ver
 ## Completed local unit: R3 active research-job uniqueness
 
 After the temporal unit, the archived R3 research-job race was confirmed in current source and corrected with a transaction-scoped PostgreSQL advisory lock, row lock, and partial unique index. The migration aborts on pre-existing active duplicates without rewriting jobs. Isolated two-process PostgreSQL contention, direct duplicate rejection, terminal key reuse, and duplicate-preflight tests passed. Details and exact files are in `R3_RESEARCH_JOB_SUBMISSION.md`. Other R3 worker-lease hunks remain a separate task.
+
+## Completed local unit: dependency locks
+
+`composer.lock` and `frontend/package-lock.json` were updated to patched versions after the baseline scans found seven package findings. Installed local dependencies, both audits, the full PHP suite, 64 frontend tests, TypeScript and production build all passed. See `DEPENDENCY_REMEDIATION.md`. No runtime application behavior or production image was changed in this unit.

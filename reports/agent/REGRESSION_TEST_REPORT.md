@@ -23,6 +23,10 @@ The first full PHP attempt failed seven tests because the initial ephemeral runn
 
 The new migration ran on isolated `bybit_test` (PostgreSQL 17.11), exit 0. Focused `php -d xdebug.mode=off artisan test tests/Unit/Research/ResearchJobServiceTest.php tests/Integration/ResearchJobSubmissionPostgresIntegrationTest.php` passed 23 tests, 96 assertions, exit 0. The complete PHP suite was rerun with the new migration and code: 1,176 passed, 9 skipped, 11,112 assertions, 176.81 s, exit 0. `vendor/bin/pint --test` passed 743 files, exit 0. The nine skips remain skipped; they were not counted as passes. Go and frontend source did not change in this stage, so their earlier full-suite results above remain the applicable checks.
 
+## Locked dependency stage
+
+After installing the updated local Composer lockfile, the complete PHP suite passed again: 1,176 passed, 9 skipped, 11,112 assertions, 178.44 s, exit 0. Under Node 22, `npm test` passed 64 tests and `npm run build` passed including TypeScript; both exited 0. `composer audit --locked --no-interaction`, `composer validate --strict`, and `npm audit --omit=dev --audit-level=high` all exited 0; both audits reported zero advisories. The initial failed audit results above are retained as baseline evidence, not current lockfile status.
+
 ## Not established
 
 Historical replay against a real retained dataset, browser visual checks, production read-only financial evidence, immutable database snapshot consistency, true concurrent mutation of an audit export, and deployed performance were NOT_RUN. Archive candidate benchmarks and phase acceptance gates were not silently counted as current verification.
