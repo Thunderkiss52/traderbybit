@@ -13,9 +13,22 @@ use App\Http\Controllers\Api\V1\ResearchHealthController as H;
 use App\Http\Controllers\Api\V1\ResearchIntelligenceController as I;
 use App\Http\Controllers\Api\V1\ResearchJobController as J;
 use App\Http\Controllers\Api\V1\StrategyResearchController as R;
+use App\StrategyBuilder\ManagementController;
 use Illuminate\Support\Facades\Route;
 
 Route::prefix('v1')->middleware('throttle:api')->group(function () {
+    Route::prefix('strategies')->middleware('research.token')->group(function () {
+        $controller = ManagementController::class;
+        Route::get('/', [$controller, 'index']);
+        Route::post('/parse', [$controller, 'parse']);
+        Route::post('/validate', [$controller, 'validate']);
+        Route::post('/', [$controller, 'store']);
+        Route::get('/{id}', [$controller, 'show'])->whereNumber('id');
+        Route::get('/{id}/eligibility', [$controller, 'eligibility'])->whereNumber('id');
+        Route::post('/{id}/approve-paper', [$controller, 'approval'])->whereNumber('id');
+        Route::post('/{id}/backtests', [$controller, 'backtest'])->whereNumber('id');
+        Route::get('/{id}/backtests', [$controller, 'runs'])->whereNumber('id');
+    });
     Route::get('research/health/overview', [H::class, 'overview']);
     Route::get('research/health/strategy-funnel', [H::class, 'strategyFunnel']);
     Route::get('research/health/reconciliation-runs', [H::class, 'reconciliationRuns']);
