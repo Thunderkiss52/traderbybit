@@ -7,16 +7,16 @@ namespace App\StrategyBuilder;
 use App\Backtest\Application\DatasetInspector;
 use App\MarketData\Application\MarketCandleConflictService;
 use App\MarketData\Infrastructure\Persistence\CandleRecord;
+use App\PaperTrading\Infrastructure\Persistence\MarketFundingEventRecord;
 use App\Strategy\Application\StrategyRegistry;
 use Brick\Math\BigDecimal;
 use DateTimeImmutable;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
-use Symfony\Component\Process\Process;
 
 final readonly class HistoricalResearch
 {
-    public function __construct(private DatasetInspector $datasets, private DefinitionValidator $validator, private MarketCandleConflictService $integrity) {}
+    public function __construct(private DatasetInspector $datasets, private DefinitionValidator $validator, private MarketCandleConflictService $integrity, private GoEngine $engine) {}
 
     public function run(int $id, array $scope): object
     {
@@ -59,7 +59,7 @@ final readonly class HistoricalResearch
                 throw ValidationException::withMessages(['cost_model' => 'Explicit exchange-specific costs required.']);
             }
         }
-        $warmup = max(220, max(array_column($d['indicators'], 'period')) * 2 + 2);
+        $warmup = max(220, max(array_map(fn (array $indicator): int => max($indicator['period'] * 2, $indicator['slow_period'] ?? 0) + ($indicator['signal_period'] ?? 9) + 2, $d['indicators'])));
         try {
             $this->assertIntegrity($scope, $from, $to, $warmup);
             $pin = $this->datasets->pin([$scope['symbol']], $from, $to, $warmup, $scope['exchange']);
@@ -76,7 +76,11 @@ final readonly class HistoricalResearch
                 $series[$tf] = CandleRecord::query()->where(['exchange' => $scope['exchange'], 'category' => 'linear', 'symbol' => $scope['symbol'], 'interval' => $tf, 'is_closed' => true])->where('open_time', '>=', $start)->where('open_time', '<=', $to->modify('-'.$seconds.' seconds'))->orderBy('open_time')->get()->map(fn ($c) => ['exchange' => $c->exchange, 'category' => $c->category, 'symbol' => $c->symbol, 'interval' => (string) $c->interval, 'open_time' => $c->open_time->toIso8601String(), 'open' => $c->open, 'high' => $c->high, 'low' => $c->low, 'close' => $c->close, 'volume' => $c->volume, 'turnover' => $c->turnover, 'is_closed' => true])->all();
             }
             $input = ['definition' => $d, 'exchange' => $scope['exchange'], 'symbol' => $scope['symbol'], 'from' => $from->format(DATE_ATOM), 'as_of' => $to->format(DATE_ATOM), 'series' => $series, 'capital' => $scope['capital'], 'fee' => $cost['taker_rate'], 'slippage' => $cost['slippage_rate']];
-            $metadata = ['definition_checksum' => $row->checksum, 'dataset_pin' => $pin, 'scope' => $scope, 'costs' => $cost, 'engine_sha256' => hash_file('sha256', $binary), 'input_checksum' => StrategyRegistry::hash($input), 'funding_complete' => false];
+            $fundingEnabled = ($d['funding']['enabled'] ?? false) === true;
+            if ($fundingEnabled) {
+                $input['funding'] = MarketFundingEventRecord::query()->where(['exchange' => $scope['exchange'], 'category' => 'linear', 'symbol' => $scope['symbol']])->where('funding_at', '>', $from)->where('funding_at', '<', $to)->orderBy('funding_at')->get()->map(fn ($event) => ['at' => $event->funding_at->toIso8601String(), 'rate' => $event->rate, 'mark' => $event->mark_price])->all();
+            }
+            $metadata = ['definition_checksum' => $row->checksum, 'dataset_pin' => $pin, 'scope' => $scope, 'costs' => $cost, 'engine_sha256' => hash_file('sha256', $binary), 'input_checksum' => StrategyRegistry::hash($input), 'funding_complete' => $fundingEnabled];
             $fingerprint = StrategyRegistry::hash($metadata);
             $existing = DB::table('strategy_definition_runs')->find($fingerprint);
             if ($existing !== null) {
@@ -85,14 +89,7 @@ final readonly class HistoricalResearch
 
                 return $existing;
             }
-            $process = new Process([$binary]);
-            $process->setTimeout((int) config('strategy_builder.timeout_seconds'));
-            $process->setInput(json_encode($input, JSON_THROW_ON_ERROR));
-            $process->run();
-            if (! $process->isSuccessful()) {
-                throw new \RuntimeException('Go DSL evaluation rejected input: '.mb_substr($process->getErrorOutput(), 0, 1000));
-            }
-            $result = json_decode($process->getOutput(), true, flags: JSON_THROW_ON_ERROR);
+            $result = $this->engine->run($input);
             $this->datasets->verifyPin($pin['id']);
             $this->assertIntegrity($scope, $from, $to, $warmup);
             DB::transaction(function () use ($fingerprint, $id, $metadata, $result): void {

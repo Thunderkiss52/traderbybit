@@ -4,6 +4,7 @@ package strategydsl
 import (
 	"encoding/json"
 	"fmt"
+	"math"
 	"regexp"
 	"sort"
 	"strconv"
@@ -13,12 +14,16 @@ import (
 	"github.com/traderbybit/research-go/internal/backtest"
 	"github.com/traderbybit/research-go/internal/datasets"
 	"github.com/traderbybit/research-go/internal/decimal"
+	"github.com/traderbybit/research-go/internal/simulation"
 )
 
 type Indicator struct {
-	Type      string `json:"type"`
-	Period    int    `json:"period"`
-	Timeframe string `json:"timeframe"`
+	Type         string  `json:"type"`
+	Period       int     `json:"period"`
+	Timeframe    string  `json:"timeframe"`
+	SlowPeriod   int     `json:"slow_period,omitempty"`
+	SignalPeriod int     `json:"signal_period,omitempty"`
+	Deviation    float64 `json:"deviation,omitempty"`
 }
 type Condition struct {
 	And   []Condition     `json:"and,omitempty"`
@@ -29,22 +34,44 @@ type Condition struct {
 	Right json.RawMessage `json:"right,omitempty"`
 }
 type Definition struct {
-	SchemaVersion int                  `json:"schema_version"`
-	ID            string               `json:"id"`
-	Version       int                  `json:"version"`
-	Symbols       []string             `json:"symbols"`
-	Exchanges     []string             `json:"exchanges"`
-	Timeframe     string               `json:"timeframe"`
-	Indicators    map[string]Indicator `json:"indicators"`
-	Entry         map[string]Condition `json:"entry"`
-	StopATR       float64              `json:"stop_atr"`
-	TakeATR       float64              `json:"take_atr"`
-	RiskPercent   float64              `json:"risk_percent"`
-	TimeoutBars   int                  `json:"timeout_bars"`
-	CooldownBars  int                  `json:"cooldown_bars"`
+	SchemaVersion int                       `json:"schema_version"`
+	ID            string                    `json:"id"`
+	Version       int                       `json:"version"`
+	Symbols       []string                  `json:"symbols"`
+	Exchanges     []string                  `json:"exchanges"`
+	Timeframe     string                    `json:"timeframe"`
+	Indicators    map[string]Indicator      `json:"indicators"`
+	Entry         map[string]Condition      `json:"entry"`
+	StopATR       float64                   `json:"stop_atr"`
+	TakeATR       float64                   `json:"take_atr"`
+	RiskPercent   float64                   `json:"risk_percent"`
+	TimeoutBars   int                       `json:"timeout_bars"`
+	CooldownBars  int                       `json:"cooldown_bars"`
+	Exit          map[string]Condition      `json:"exit,omitempty"`
+	Regime        *Condition                `json:"regime,omitempty"`
+	PartialExit   *PartialExit              `json:"partial_exit,omitempty"`
+	Funding       *FundingConfig            `json:"funding,omitempty"`
+	Parameters    map[string]ParameterRange `json:"parameters,omitempty"`
+}
+type PartialExit struct {
+	ATR      float64 `json:"atr"`
+	Fraction float64 `json:"fraction"`
+}
+type FundingConfig struct {
+	Enabled       bool `json:"enabled"`
+	IntervalHours int  `json:"interval_hours"`
+}
+type ParameterRange struct {
+	Default float64 `json:"default"`
+	Min     float64 `json:"min"`
+	Max     float64 `json:"max"`
+	Step    float64 `json:"step"`
 }
 type Request struct {
+	Seed       int64                        `json:"seed,omitempty"`
 	Definition Definition                   `json:"definition"`
+	Mode       string                       `json:"mode,omitempty"`
+	Funding    []backtest.FundingEvent      `json:"funding,omitempty"`
 	Exchange   string                       `json:"exchange"`
 	Symbol     string                       `json:"symbol"`
 	Series     map[string][]datasets.Candle `json:"series"`
@@ -84,6 +111,9 @@ func frame(s string) int {
 }
 
 func (d Definition) Validate() error {
+	if err := validateParameters(d); err != nil {
+		return err
+	}
 	if !regexp.MustCompile(`^user_[a-z0-9_]{1,48}$`).MatchString(d.ID) || len(d.Symbols) == 0 || len(d.Symbols) > 20 || len(d.Exchanges) == 0 || len(d.Exchanges) > 10 {
 		return fmt.Errorf("invalid strategy identity or scope lists")
 	}
@@ -106,8 +136,43 @@ func (d Definition) Validate() error {
 		if !regexp.MustCompile(`^[a-z][a-z0-9_]{0,31}$`).MatchString(name) {
 			return fmt.Errorf("invalid indicator name")
 		}
-		if name == "" || i.Period < 2 || i.Period > 500 || frame(i.Timeframe) < frame(d.Timeframe) || !contains([]string{"SMA", "EMA", "RSI", "ATR", "VOLUME_SMA", "PRICE", "MACD", "BB_UPPER", "BB_LOWER", "DONCHIAN_HIGH", "DONCHIAN_LOW"}, i.Type) {
+		if name == "" || i.Period < 2 || i.Period > 500 || frame(i.Timeframe) < frame(d.Timeframe) || !contains([]string{"SMA", "EMA", "RSI", "ATR", "VOLUME_SMA", "PRICE", "MACD", "BB_UPPER", "BB_LOWER", "DONCHIAN_HIGH", "DONCHIAN_LOW", "ADX", "MACD_SIGNAL", "MACD_HISTOGRAM", "OPEN", "HIGH", "LOW", "VOLUME", "TURNOVER", "BODY", "RANGE"}, i.Type) {
 			return fmt.Errorf("unsupported indicator %s", name)
+		}
+	}
+	for _, ind := range d.Indicators {
+		if ind.SlowPeriod != 0 && (ind.SlowPeriod <= ind.Period || ind.SlowPeriod > 1000) {
+			return fmt.Errorf("invalid slow period")
+		}
+		if ind.SignalPeriod != 0 && (ind.SignalPeriod < 2 || ind.SignalPeriod > 500) {
+			return fmt.Errorf("invalid signal period")
+		}
+		if ind.Deviation != 0 && !(ind.Deviation > 0 && ind.Deviation <= 10) {
+			return fmt.Errorf("invalid band deviation")
+		}
+	}
+	if d.PartialExit != nil && (!(d.PartialExit.ATR > 0 && d.PartialExit.ATR < d.TakeATR) || !(d.PartialExit.Fraction > 0 && d.PartialExit.Fraction < 1)) {
+		return fmt.Errorf("invalid partial exit")
+	}
+	if d.Funding != nil && d.Funding.Enabled && d.Funding.IntervalHours != 1 && d.Funding.IntervalHours != 4 && d.Funding.IntervalHours != 8 {
+		return fmt.Errorf("unsupported funding schedule")
+	}
+	if d.Regime != nil {
+		if err := validateCondition(*d.Regime, d.Indicators, 0); err != nil {
+			return err
+		}
+	}
+	for side, c := range d.Exit {
+		if side != "BUY" && side != "SELL" {
+			return fmt.Errorf("invalid exit side")
+		}
+		if err := validateCondition(c, d.Indicators, 0); err != nil {
+			return err
+		}
+	}
+	for _, p := range d.Parameters {
+		if !(p.Min <= p.Default && p.Default <= p.Max && p.Step > 0) {
+			return fmt.Errorf("invalid parameter range")
 		}
 	}
 	for side, c := range d.Entry {
@@ -204,16 +269,20 @@ func values(cs []datasets.Candle, ind Indicator) []*decimal.Decimal {
 	case "ATR":
 		return algorithms.CalculateATR(cs, ind.Period)
 	case "BB_UPPER":
-		return algorithms.CalculateBollingerBands(closes, ind.Period, 2).Upper
+		return algorithms.CalculateBollingerBands(closes, ind.Period, bandDeviation(ind)).Upper
 	case "BB_LOWER":
-		return algorithms.CalculateBollingerBands(closes, ind.Period, 2).Lower
+		return algorithms.CalculateBollingerBands(closes, ind.Period, bandDeviation(ind)).Lower
 	case "DONCHIAN_HIGH":
 		return algorithms.CalculateDonchianChannels(cs, ind.Period).Upper
 	case "DONCHIAN_LOW":
 		return algorithms.CalculateDonchianChannels(cs, ind.Period).Lower
 	case "MACD":
 		fast := algorithms.CalculateEMA(closes, ind.Period)
-		slow := algorithms.CalculateEMA(closes, ind.Period*2)
+		slowPeriod := ind.SlowPeriod
+		if slowPeriod == 0 {
+			slowPeriod = ind.Period * 2
+		}
+		slow := algorithms.CalculateEMA(closes, slowPeriod)
 		out := make([]*decimal.Decimal, len(cs))
 		for i := range out {
 			if fast[i] != nil && slow[i] != nil {
@@ -223,12 +292,7 @@ func values(cs []datasets.Candle, ind Indicator) []*decimal.Decimal {
 		}
 		return out
 	default:
-		out := make([]*decimal.Decimal, len(cs))
-		for i := range closes {
-			v := closes[i]
-			out[i] = &v
-		}
-		return out
+		return extendedValues(cs, ind, closes)
 	}
 }
 
@@ -311,8 +375,18 @@ func evaluate(c Condition, vs map[string]valuePair) (bool, bool) {
 	return false, false
 }
 
+func bandDeviation(ind Indicator) float64 {
+	if ind.Deviation == 0 {
+		return 2
+	}
+	return ind.Deviation
+}
+
 func Run(req Request) (*Result, error) {
 	d := req.Definition
+	if req.Mode != "" && req.Mode != "backtest" && req.Mode != "signal" {
+		return nil, fmt.Errorf("unsupported execution mode")
+	}
 	if err := d.Validate(); err != nil {
 		return nil, err
 	}
@@ -352,9 +426,13 @@ func Run(req Request) (*Result, error) {
 	atr := algorithms.CalculateATR(candles, 14)
 	signals := []backtest.Signal{}
 	last := -100000
+	if len(req.Funding) > 0 && (d.Funding == nil || !d.Funding.Enabled) {
+		return nil, fmt.Errorf("funding data requires enabled funding configuration")
+	}
+	policy := backtest.ReplayPolicy{ExitAtOpen: map[int]map[string]bool{}, PartialTargets: map[int]backtest.PartialTarget{}, Funding: req.Funding}
 	for bar, c := range candles {
 		decision := c.OpenTime.Add(time.Duration(frame(d.Timeframe)) * time.Second)
-		if decision.Before(req.From) || bar+1 >= len(candles) || bar-last <= d.CooldownBars || atr[bar] == nil || !atr[bar].IsPositive() {
+		if decision.Before(req.From) || (bar+1 >= len(candles) && req.Mode != "signal") || atr[bar] == nil || !atr[bar].IsPositive() {
 			continue
 		}
 		vs := map[string]valuePair{}
@@ -376,6 +454,22 @@ func Run(req Request) (*Result, error) {
 				return nil, fmt.Errorf("insufficient warmup")
 			}
 			continue
+		}
+		policy.ExitAtOpen[bar+1] = map[string]bool{}
+		for side, node := range d.Exit {
+			hit, ok := evaluate(node, vs)
+			if ok && hit {
+				policy.ExitAtOpen[bar+1][side] = true
+			}
+		}
+		if bar-last <= d.CooldownBars {
+			continue
+		}
+		if d.Regime != nil {
+			hit, ok := evaluate(*d.Regime, vs)
+			if !ok || !hit {
+				continue
+			}
 		}
 		buy, short := false, false
 		if node, ok := d.Entry["BUY"]; ok {
@@ -399,7 +493,38 @@ func Run(req Request) (*Result, error) {
 			continue
 		}
 		signals = append(signals, backtest.Signal{Side: side, DecisionTime: decision, DecisionBar: bar, EntryBar: bar + 1, StopLoss: stop, TakeProfit: take, Reason: d.ID + "@" + strconv.Itoa(d.Version)})
+		if d.PartialExit != nil {
+			policy.PartialTargets[bar] = backtest.PartialTarget{Price: c.Close.Add(atr[bar].Mul(decimal.FromFloat64(d.PartialExit.ATR)).Mul(sign)), Fraction: decimal.FromFloat64(d.PartialExit.Fraction)}
+		}
 		last = bar
+	}
+	limitations := []string{}
+	if d.Funding == nil || !d.Funding.Enabled {
+		limitations = append(limitations, "FUNDING_NOT_MODELED")
+	} else if req.Mode != "signal" {
+		seconds := int64(d.Funding.IntervalHours * 3600)
+		expected := map[int64]bool{}
+		for at := (req.From.Unix()/seconds + 1) * seconds; at < req.AsOf.Unix(); at += seconds {
+			expected[at] = false
+		}
+		for _, event := range req.Funding {
+			if _, ok := expected[event.At.Unix()]; !ok {
+				return nil, fmt.Errorf("unexpected funding timestamp")
+			}
+			if expected[event.At.Unix()] {
+				return nil, fmt.Errorf("duplicate funding")
+			}
+			expected[event.At.Unix()] = true
+		}
+		for _, present := range expected {
+			if !present {
+				return nil, fmt.Errorf("incomplete funding coverage")
+			}
+		}
+	}
+	eligible := PaperBlockers(d)
+	if req.Mode == "signal" {
+		return &Result{Signals: signals, PaperEligible: len(eligible) == 0, Limitations: eligible}, nil
 	}
 	if !req.Capital.IsPositive() || req.Fee.IsNegative() || req.Fee.Cmp(decimal.FromInt64(1)) >= 0 || req.Slippage.IsNegative() || req.Slippage.Cmp(decimal.FromInt64(1)) >= 0 {
 		return nil, fmt.Errorf("invalid execution costs")
@@ -410,9 +535,72 @@ func Run(req Request) (*Result, error) {
 	cfg.SlippageRate = req.Slippage
 	cfg.RiskPerTradeRate = decimal.FromFloat64(d.RiskPercent / 100)
 	cfg.MaxHoldingBars = d.TimeoutBars
-	report, err := backtest.NewEngine(cfg).RunSignals(candles, signals, d.ID)
+	report, err := backtest.NewEngine(cfg).RunSignalsWithPolicy(candles, signals, d.ID, policy)
 	if err != nil {
 		return nil, err
 	}
-	return &Result{Signals: signals, Report: report, PaperEligible: false, Limitations: []string{"PAPER_PARITY_UNVERIFIED", "FUNDING_NOT_MODELED", "PARTIAL_EXITS_UNSUPPORTED", "CUSTOM_EXIT_RULES_UNSUPPORTED"}}, nil
+	report.Metadata["return_percent"] = report.NetPnL.Float64() / req.Capital.Float64() * 100
+	returns := []float64{}
+	for i := 1; i < len(report.EquitySeries); i++ {
+		before := report.EquitySeries[i-1].Equity.Float64()
+		if before > 0 {
+			returns = append(returns, report.EquitySeries[i].Equity.Float64()/before-1)
+		}
+	}
+	var sharpe *float64
+	if len(returns) > 1 {
+		mean := 0.0
+		for _, v := range returns {
+			mean += v
+		}
+		mean /= float64(len(returns))
+		variance := 0.0
+		for _, v := range returns {
+			variance += (v - mean) * (v - mean)
+		}
+		variance /= float64(len(returns) - 1)
+		if variance > 0 {
+			value := mean / math.Sqrt(variance)
+			sharpe = &value
+		}
+	}
+	report.Metadata["observed_period_sharpe"] = sharpe
+	report.Metadata["monte_carlo"] = map[string]interface{}{"status": "INSUFFICIENT_TRADES", "required": 10, "observed": report.TotalTrades}
+	if report.TotalTrades >= 10 {
+		cfg := simulation.DefaultMonteCarloConfig()
+		cfg.StartingBalance = req.Capital
+		cfg.RandomSeed = req.Seed
+		cfg.Iterations = 200
+		cfg.RuinThreshold = 10
+		mc, err := simulation.RunMonteCarlo(report.Trades, cfg)
+		if err != nil {
+			return nil, err
+		}
+		report.Metadata["monte_carlo"] = mc
+	}
+	return &Result{Signals: signals, Report: report, PaperEligible: len(eligible) == 0, Limitations: append(limitations, eligible...)}, nil
+}
+
+// PaperBlockers is the executable capability boundary shared with Laravel eligibility.
+func PaperBlockers(d Definition) []string {
+	out := []string{}
+	if d.Timeframe != "15" {
+		out = append(out, "PAPER_REQUIRES_15M")
+	}
+	if len(d.Exit) > 0 {
+		out = append(out, "CUSTOM_EXIT_PAPER_PARITY_UNVERIFIED")
+	}
+	if d.PartialExit != nil {
+		out = append(out, "PARTIAL_EXIT_PAPER_PARITY_UNVERIFIED")
+	}
+	if d.CooldownBars != 0 {
+		out = append(out, "COOLDOWN_PAPER_PARITY_UNVERIFIED")
+	}
+	if d.Funding != nil && d.Funding.Enabled && d.Funding.IntervalHours != 8 {
+		out = append(out, "PAPER_FUNDING_SCHEDULE_UNVERIFIED")
+	}
+	if d.Funding == nil || !d.Funding.Enabled {
+		out = append(out, "FUNDING_NOT_MODELED")
+	}
+	return out
 }

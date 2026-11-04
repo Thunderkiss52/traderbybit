@@ -32,6 +32,17 @@ type Signal struct {
 // and metric computation of Engine.Run, so a candidate and a baseline strategy
 // are measured with exactly the same assumptions.
 func (e *Engine) RunSignals(candles []datasets.Candle, signals []Signal, strategyID string) (report *BacktestReport, retErr error) {
+	return e.runSignals(candles, signals, strategyID, nil)
+}
+
+func (e *Engine) RunSignalsWithPolicy(candles []datasets.Candle, signals []Signal, strategyID string, policy ReplayPolicy) (*BacktestReport, error) {
+	if err := policy.validate(); err != nil {
+		return nil, err
+	}
+	return e.runSignals(candles, signals, strategyID, &policy)
+}
+
+func (e *Engine) runSignals(candles []datasets.Candle, signals []Signal, strategyID string, policy *ReplayPolicy) (report *BacktestReport, retErr error) {
 	defer func() {
 		if r := recover(); r != nil {
 			retErr = fmt.Errorf("signal backtest engine panic: %v", r)
@@ -72,59 +83,121 @@ func (e *Engine) RunSignals(candles []datasets.Candle, signals []Signal, strateg
 
 	var pos *activePosition
 	tradeCounter := 0
+	var detail *replayPosition
+	executions := []ReplayExecution{}
+	fundingTotal := decimal.Zero()
+	entryBlocks := 0
+
+	finish := func(c datasets.Candle, exitPrice decimal.Decimal, exitReason string, ambiguous bool) {
+		tradeCounter++
+		exitFee := pos.quantity.Mul(exitPrice).Mul(e.config.TakerFeeRate)
+		totalFees := pos.entryFee.Add(exitFee)
+
+		grossPnL := legProfit(pos.side, pos.quantity, pos.entryPrice, exitPrice)
+		netPnL := grossPnL.Sub(totalFees)
+		if policy != nil {
+			equity = equity.Add(grossPnL).Sub(exitFee)
+			grossPnL = grossPnL.Add(detail.gross)
+			totalFees = detail.fees.Add(exitFee)
+			netPnL = grossPnL.Sub(totalFees).Add(detail.funding)
+			executions = append(executions, ReplayExecution{Kind: exitReason, At: c.OpenTime, Side: pos.side, Price: exitPrice, Quantity: pos.quantity, Fee: exitFee, Funding: decimal.Zero()})
+		} else {
+			equity = equity.Add(netPnL)
+		}
+
+		rMult := 0.0
+		if pos.riskAmount.IsPositive() {
+			rMult = netPnL.Float64() / pos.riskAmount.Float64()
+		}
+
+		trades = append(trades, Trade{
+			ID:         tradeCounter,
+			Symbol:     c.Symbol,
+			Side:       pos.side,
+			EntryTime:  pos.entryTime,
+			ExitTime:   c.OpenTime,
+			EntryPrice: pos.entryPrice,
+			ExitPrice:  exitPrice,
+			Quantity:   detail.initial,
+			StopLoss:   pos.stopLoss,
+			TakeProfit: pos.takeProfit,
+			GrossPnL:   grossPnL,
+			Fees:       totalFees,
+			NetPnL:     netPnL,
+			RMultiple:  rMult,
+			ExitReason: exitReason,
+			Ambiguous:  ambiguous,
+		})
+
+		pos = nil
+	}
 
 	for i := 0; i < n; i++ {
 		c := candles[i]
+		if policy != nil && pos != nil {
+			for _, event := range policy.Funding {
+				if event.At.Equal(c.OpenTime) && event.At.After(pos.entryTime) {
+					amount := pos.quantity.Mul(event.Mark).Mul(event.Rate)
+					if pos.side == "BUY" {
+						amount = amount.Neg()
+					}
+					detail.funding = detail.funding.Add(amount)
+					fundingTotal = fundingTotal.Add(amount)
+					equity = equity.Add(amount)
+					executions = append(executions, ReplayExecution{Kind: "FUNDING", At: event.At, Side: pos.side, Price: event.Mark, Quantity: pos.quantity, Fee: decimal.Zero(), Funding: amount})
+				}
+			}
+		}
 
 		if pos != nil {
 			barsHeld := i - pos.entryBar
 			exitPrice, exitReason, ambiguous, hasExit := e.evaluateExit(pos, c, barsHeld)
+			if policy != nil {
+				if policy.ExitAtOpen[i][pos.side] {
+					exitPrice = e.exitSlip(c.Open, pos.side)
+					exitReason = "RULE_EXIT"
+					hasExit = true
+					ambiguous = false
+				}
+				if i == n-1 && !hasExit {
+					exitPrice = e.exitSlip(c.Close, pos.side)
+					exitReason = "END_OF_DATA"
+					hasExit = true
+				}
+				if exitReason == "TIMEOUT" {
+					exitPrice = e.exitSlip(exitPrice, pos.side)
+				}
+				if detail.partial != nil && !detail.partialDone && exitReason != "STOP_LOSS" && exitReason != "RULE_EXIT" {
+					t := detail.partial
+					hit := (pos.side == "BUY" && c.High.Cmp(t.Price) >= 0) || (pos.side == "SELL" && c.Low.Cmp(t.Price) <= 0)
+					if hit {
+						qty := detail.initial.Mul(t.Fraction)
+						if qty.IsPositive() && qty.Cmp(pos.quantity) < 0 {
+							price := e.exitSlip(t.Price, pos.side)
+							fee := qty.Mul(price).Mul(e.config.TakerFeeRate)
+							gross := legProfit(pos.side, qty, pos.entryPrice, price)
+							detail.gross = detail.gross.Add(gross)
+							detail.fees = detail.fees.Add(fee)
+							pos.quantity = pos.quantity.Sub(qty)
+							equity = equity.Add(gross).Sub(fee)
+							detail.partialDone = true
+							executions = append(executions, ReplayExecution{Kind: "PARTIAL_EXIT", At: c.OpenTime, Side: pos.side, Price: price, Quantity: qty, Fee: fee, Funding: decimal.Zero()})
+						}
+					}
+				}
+			}
 
 			if hasExit {
-				tradeCounter++
-				exitFee := pos.quantity.Mul(exitPrice).Mul(e.config.TakerFeeRate)
-				totalFees := pos.entryFee.Add(exitFee)
-
-				grossPnL := decimal.Zero()
-				if pos.side == "BUY" {
-					grossPnL = pos.quantity.Mul(exitPrice.Sub(pos.entryPrice))
-				} else {
-					grossPnL = pos.quantity.Mul(pos.entryPrice.Sub(exitPrice))
-				}
-
-				netPnL := grossPnL.Sub(totalFees)
-				equity = equity.Add(netPnL)
-
-				rMult := 0.0
-				if pos.riskAmount.IsPositive() {
-					rMult = netPnL.Float64() / pos.riskAmount.Float64()
-				}
-
-				trades = append(trades, Trade{
-					ID:         tradeCounter,
-					Symbol:     c.Symbol,
-					Side:       pos.side,
-					EntryTime:  pos.entryTime,
-					ExitTime:   c.OpenTime,
-					EntryPrice: pos.entryPrice,
-					ExitPrice:  exitPrice,
-					Quantity:   pos.quantity,
-					StopLoss:   pos.stopLoss,
-					TakeProfit: pos.takeProfit,
-					GrossPnL:   grossPnL,
-					Fees:       totalFees,
-					NetPnL:     netPnL,
-					RMultiple:  rMult,
-					ExitReason: exitReason,
-					Ambiguous:  ambiguous,
-				})
-
-				pos = nil
+				finish(c, exitPrice, exitReason, ambiguous)
 			}
 		}
 
 		if pos == nil {
-			if s, ok := byEntryBar[i]; ok {
+			blocked := policy != nil && peakEquity.IsPositive() && peakEquity.Sub(equity).Float64()/peakEquity.Float64() >= 0.05
+			if blocked {
+				entryBlocks++
+			}
+			if s, ok := byEntryBar[i]; ok && !blocked {
 				// The fill price is the open of the entry bar moved against the trader by the
 				// configured slippage. The stop distance is measured from that filled price, so the
 				// sized risk is exactly the configured share of the equity.
@@ -178,15 +251,32 @@ func (e *Engine) RunSignals(candles []datasets.Candle, signals []Signal, strateg
 						opened.stopLoss = stopLoss
 						opened.takeProfit = takeProfit
 						pos = opened
+						var partial *PartialTarget
+						if policy != nil {
+							if target, ok := policy.PartialTargets[s.DecisionBar]; ok {
+								copy := target
+								partial = &copy
+							}
+							equity = equity.Sub(opened.entryFee)
+							executions = append(executions, ReplayExecution{Kind: "ENTRY", At: c.OpenTime, Side: pos.side, Price: fillPrice, Quantity: pos.quantity, Fee: opened.entryFee, Funding: decimal.Zero()})
+						}
+						detail = newReplayPosition(opened.quantity, opened.entryFee, partial)
 					}
 				}
 			}
 		}
 
-		if equity.Cmp(peakEquity) > 0 {
-			peakEquity = equity
+		if policy != nil && i == n-1 && pos != nil {
+			finish(c, e.exitSlip(c.Close, pos.side), "END_OF_DATA", false)
 		}
-		dd := peakEquity.Sub(equity)
+		markedEquity := equity
+		if policy != nil && pos != nil {
+			markedEquity = equity.Add(legProfit(pos.side, pos.quantity, pos.entryPrice, c.Close))
+		}
+		if markedEquity.Cmp(peakEquity) > 0 {
+			peakEquity = markedEquity
+		}
+		dd := peakEquity.Sub(markedEquity)
 		if dd.Cmp(maxDrawdown) > 0 {
 			maxDrawdown = dd
 		}
@@ -201,13 +291,20 @@ func (e *Engine) RunSignals(candles []datasets.Candle, signals []Signal, strateg
 		if i%10 == 0 || i == n-1 {
 			equitySeries = append(equitySeries, EquityPoint{
 				Time:            c.OpenTime,
-				Equity:          equity,
+				Equity:          markedEquity,
 				DrawdownPercent: math.Round(ddPct*100) / 100,
 			})
 		}
 	}
 
-	return e.buildReport(strategyID, trades, equitySeries, equity, peakEquity, maxDrawdown, maxDrawdownPct), nil
+	report = e.buildReport(strategyID, trades, equitySeries, equity, peakEquity, maxDrawdown, maxDrawdownPct)
+	if policy != nil {
+		report.Metadata["executions"] = executions
+		report.Metadata["funding"] = fundingTotal.String()
+		report.Metadata["entry_blocks"] = entryBlocks
+		report.Expectancy = report.AverageR
+	}
+	return report, nil
 }
 
 // buildReport aggregates trades into the shared report structure.

@@ -6,6 +6,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/traderbybit/research-go/internal/backtest"
 	"github.com/traderbybit/research-go/internal/datasets"
 	"github.com/traderbybit/research-go/internal/decimal"
 )
@@ -95,5 +96,64 @@ func TestMultiTimeframeUsesOnlyClosedBars(t *testing.T) {
 		if s.DecisionTime.Before(cs[39].OpenTime.Add(time.Hour)) && !reflect.DeepEqual(s, b.Signals[i]) {
 			t.Fatal("unclosed HTF leakage")
 		}
+	}
+}
+
+func TestClosedSignalModeMatchesResearchDecision(t *testing.T) {
+	r := fixture()
+	historical, err := Run(r)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, want := range historical.Signals {
+		prefix := fixture()
+		prefix.Series["15"] = prefix.Series["15"][:want.DecisionBar+1]
+		prefix.AsOf = want.DecisionTime
+		prefix.Mode = "signal"
+		got, err := Run(prefix)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if len(got.Signals) == 0 || !reflect.DeepEqual(got.Signals[len(got.Signals)-1], want) {
+			t.Fatal("PAPER/research decision mismatch")
+		}
+	}
+}
+func TestFundingCoverageAndAdvancedIndicators(t *testing.T) {
+	r := fixture()
+	r.Definition.Funding = &FundingConfig{Enabled: true, IntervalHours: 8}
+	if _, err := Run(r); err == nil {
+		t.Fatal("missing funding accepted")
+	}
+	step := int64(8 * 3600)
+	for at := (r.From.Unix()/step + 1) * step; at < r.AsOf.Unix(); at += step {
+		r.Funding = append(r.Funding, backtest.FundingEvent{At: time.Unix(at, 0).UTC(), Rate: decimal.MustFromString("0.0001"), Mark: decimal.FromInt64(100)})
+	}
+	for _, kind := range []string{"ADX", "MACD_SIGNAL", "MACD_HISTOGRAM", "OPEN", "HIGH", "LOW", "BODY", "RANGE", "VOLUME", "TURNOVER"} {
+		r.Definition.Indicators["context"] = Indicator{Type: kind, Period: 3, Timeframe: "15"}
+		if _, err := Run(r); err != nil {
+			t.Fatalf("%s: %v", kind, err)
+		}
+	}
+	r.Definition.Exit = map[string]Condition{"BUY": {Op: "gt", Left: "fast", Right: json.RawMessage("0")}}
+	result, err := Run(r)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if result.PaperEligible {
+		t.Fatal("unverified custom-exit parity allowed")
+	}
+}
+func TestADXWilderReference(t *testing.T) {
+	r := fixture()
+	for i := range r.Series["15"] {
+		p := decimal.FromInt64(int64(100 + i))
+		r.Series["15"][i].High = p.Add(decimal.FromInt64(2))
+		r.Series["15"][i].Low = p.Sub(decimal.FromInt64(2))
+		r.Series["15"][i].Close = p
+	}
+	v := adx(r.Series["15"], 14)
+	if v[26] != nil || v[27] == nil || v[27].String() != "100.00000000" {
+		t.Fatal("ADX warmup/reference mismatch")
 	}
 }
