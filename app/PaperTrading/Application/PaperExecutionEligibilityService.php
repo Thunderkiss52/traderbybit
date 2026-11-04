@@ -10,6 +10,7 @@ use App\PaperTrading\Infrastructure\Persistence\PaperAccountRecord;
 use App\PaperTrading\Infrastructure\Persistence\PaperSignalStateRecord;
 use App\Research\Infrastructure\Persistence\LearningCandidateStrategyRecord;
 use App\Strategy\Application\StrategyRegistry;
+use App\Strategy\Infrastructure\Persistence\ResearchExperimentRecord;
 use App\Strategy\Infrastructure\Persistence\SignalRecord;
 use Brick\Math\BigDecimal;
 use DateTimeImmutable;
@@ -85,6 +86,17 @@ final readonly class PaperExecutionEligibilityService
 
         // Mode and configuration lifecycle validation
         if ($account->mode === 'RESEARCH_FORWARD_PAPER') {
+            if ($account->research_experiment_id !== null) {
+                $experiment = ResearchExperimentRecord::query()
+                    ->where('id', $account->research_experiment_id)
+                    ->where('status', 'COMPLETED')
+                    ->where('strategy_id', $account->strategy_id)
+                    ->where('strategy_version', $account->strategy_version)
+                    ->exists();
+
+                return $experiment ? null : 'unapproved_research_experiment';
+            }
+
             $promoted = LearningCandidateStrategyRecord::query()
                 ->where('paper_account_id', $account->id)
                 ->where('status', 'PAPER_PROMOTED')

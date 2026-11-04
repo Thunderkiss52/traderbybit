@@ -80,7 +80,11 @@ final class ProcessAutonomousLearningJob implements ShouldQueue
         $maxPerFamily = max(1, (int) config('research.evolution.max_per_family', 2));
         $perCycle = max(1, (int) config('research.evolution.max_evaluations_per_cycle', 2));
         $activeTotal = LearningCandidateStrategyRecord::query()
-            ->whereIn('status', ['RESEARCH_ONLY', 'PAPER_ELIGIBLE'])
+            ->where('status', 'RESEARCH_ONLY')
+            ->where(function ($q): void {
+                $q->whereNull('search_metadata->evaluation_status')
+                    ->orWhereIn('search_metadata->evaluation_status', ['PENDING', 'RUNNING']);
+            })
             ->count();
 
         if ($activeTotal < $maxTotalActive && $autonomy->isAllowed('discover_hypotheses') && $autonomy->isAllowed('tune_parameters')) {
@@ -88,7 +92,11 @@ final class ProcessAutonomousLearningJob implements ShouldQueue
             foreach ($evolution->families() as $family) {
                 $activeForFamily = LearningCandidateStrategyRecord::query()
                     ->where('parent_strategy_id', $family)
-                    ->whereIn('status', ['RESEARCH_ONLY', 'PAPER_ELIGIBLE'])
+                    ->where('status', 'RESEARCH_ONLY')
+                    ->where(function ($q): void {
+                        $q->whereNull('search_metadata->evaluation_status')
+                            ->orWhereIn('search_metadata->evaluation_status', ['PENDING', 'RUNNING']);
+                    })
                     ->count();
                 if ($activeForFamily >= $maxPerFamily) {
                     continue;
@@ -142,7 +150,6 @@ final class ProcessAutonomousLearningJob implements ShouldQueue
             ->where('status', 'RESEARCH_ONLY')
             ->where('search_metadata->evaluation_status', 'FAILED')
             ->oldest('created_at')
-            ->limit(20)
             ->get()
             ->first(function (LearningCandidateStrategyRecord $candidate) use ($maxAttempts, $staleBefore): bool {
                 $metadata = (array) $candidate->search_metadata;

@@ -24,6 +24,7 @@ use App\PaperTrading\Jobs\ProcessPaperTradingJob;
 use App\Research\Infrastructure\Persistence\LearningCandidateStrategyRecord;
 use App\Strategy\Application\StrategyRegistry;
 use App\Strategy\Infrastructure\Persistence\MarketContextRecord;
+use App\Strategy\Infrastructure\Persistence\ResearchExperimentRecord;
 use App\Strategy\Infrastructure\Persistence\SignalRecord;
 use DateTimeImmutable;
 use DomainException;
@@ -142,6 +143,54 @@ final class CentralExecutionEligibilityTest extends TestCase
         ]);
 
         self::assertTrue($eligibility->isAccountEntryEligible($account));
+    }
+
+    public function test_approved_completed_research_experiment_is_eligible(): void
+    {
+        $experimentId = (string) Uuid::uuid4();
+        ResearchExperimentRecord::query()->create([
+            'id' => $experimentId,
+            'status' => 'COMPLETED',
+            'strategy_id' => 'trend_pullback',
+            'strategy_version' => '1.3.0',
+            'configuration_hash' => hash('sha256', 'test'),
+            'parameters' => ['test' => true],
+            'symbols' => ['BTCUSDT'],
+            'from_at' => now()->subDays(30),
+            'to_at' => now(),
+            'evaluation_mode' => 'RESEARCH',
+            'resource_budget' => ['max_seconds' => 60],
+        ]);
+
+        $account = PaperAccountRecord::query()->create([
+            'id' => (string) Uuid::uuid4(),
+            'name' => 'Research Experiment Account',
+            'status' => 'ACTIVE',
+            'starting_balance' => '10000',
+            'current_equity' => '10000',
+            'peak_equity' => '10000',
+            'realized_pnl' => '0',
+            'unrealized_pnl' => '0',
+            'reserved_risk' => '0',
+            'maximum_drawdown_percent' => '0',
+            'current_drawdown_percent' => '0',
+            'mode' => 'RESEARCH_FORWARD_PAPER',
+            'exchange_id' => 'bybit',
+            'strategy_id' => 'trend_pullback',
+            'strategy_version' => '1.3.0',
+            'research_experiment_id' => $experimentId,
+        ]);
+
+        $eligibility = $this->app->make(PaperExecutionEligibilityService::class);
+        self::assertTrue($eligibility->isAccountEntryEligible($account));
+
+        // When experiment is not completed, it is rejected
+        ResearchExperimentRecord::query()
+            ->where('id', $experimentId)
+            ->update(['status' => 'RUNNING']);
+
+        self::assertFalse($eligibility->isAccountEntryEligible($account));
+        self::assertSame('unapproved_research_experiment', $eligibility->accountEntryRejectionReason($account));
     }
 
     public function test_inactive_account_rejects_new_entries_while_processing(): void
