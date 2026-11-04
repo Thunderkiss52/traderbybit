@@ -1,5 +1,6 @@
 <?php
 
+use App\Audit\Backtest\BacktestAuditController as BA;
 use App\Audit\Http\AuditExportController as A;
 use App\Exchanges\Http\ExchangeComparisonController as EX;
 use App\Http\Controllers\Api\V1\AutonomousLearningController;
@@ -58,6 +59,9 @@ Route::prefix('v1')->middleware('throttle:api')->group(function () {
     Route::post('research/jobs/{id}/cancel', [J::class, 'cancel']);
 
     Route::get('audit/strategy-funnel', [A::class, 'funnel']);
+    Route::post('audit/backtests/{runId}/exports', [BA::class, 'request']);
+    Route::get('audit/backtests/exports/{id}', [BA::class, 'status']);
+    Route::get('audit/backtests/exports/{id}/download', [BA::class, 'download'])->name('backtest.audit.download')->middleware('signed:relative');
     Route::post('audit/exports/quick', [A::class, 'create']);
     Route::get('audit/exports', [A::class, 'index']);
     Route::get('audit/exports/{id}', [A::class, 'show']);

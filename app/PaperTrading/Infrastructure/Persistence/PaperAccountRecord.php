@@ -25,7 +25,7 @@ final class PaperAccountRecord extends Model
             'cooldown_until' => 'immutable_datetime', 'drawdown_override' => 'boolean',
             'starting_balance' => 'string', 'current_equity' => 'string', 'peak_equity' => 'string',
             'realized_pnl' => 'string', 'unrealized_pnl' => 'string', 'reserved_risk' => 'string', 'maximum_drawdown_percent' => 'string', 'current_drawdown_percent' => 'string',
-            'strategy_parameters' => 'array',
+            'strategy_parameters' => 'array', 'sizing_settings' => 'array',
             'is_primary' => 'boolean',
         ];
     }

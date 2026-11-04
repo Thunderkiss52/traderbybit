@@ -391,7 +391,7 @@ final readonly class PaperProcessingService
             }
         }
         $entry = $signal->side === 'BUY' ? $signal->entry_high : $signal->entry_low;
-        $size = $limits === null ? null : $this->sizing->calculate($account->current_equity, $signal->model_risk_percent, $entry, $signal->stop_loss, $limits, $this->execution->costs($account->exchange_id));
+        $size = $limits === null ? null : $this->sizing->calculate($account->current_equity, $signal->model_risk_percent, $entry, $signal->stop_loss, $limits, $this->execution->costs($account->exchange_id), $account->sizing_settings);
         if ($size !== null && ! $size->allowed) {
             $failures[] = (string) $size->reason;
         }
@@ -511,7 +511,8 @@ final readonly class PaperProcessingService
                     $context = MarketContextRecord::query()->where('exchange', $signal->exchange)->where('category', $signal->category)
                         ->where('symbol', $signal->symbol)->where('observed_at', '<=', $signal->decision_time)->latest('observed_at')->firstOrFail();
                     $limits = new InstrumentConstraints($context->qty_step, $context->min_order_qty, $context->max_order_qty, $context->min_notional_value);
-                    $size = $this->sizing->calculate($account->refresh()->current_equity, $signal->model_risk_percent, $quote->price, $signal->stop_loss, $limits, $this->execution->costs($account->exchange_id));
+                    $refreshed = $account->refresh();
+                    $size = $this->sizing->calculate($refreshed->current_equity, $signal->model_risk_percent, $quote->price, $signal->stop_loss, $limits, $this->execution->costs($account->exchange_id), $refreshed->sizing_settings);
                     if (! $size->allowed) {
                         SignalLifecycle::from($state->status)->transitionTo(SignalLifecycle::Rejected);
                         $state->update(['status' => SignalLifecycle::Rejected->value, 'reason' => $size->reason, 'processed_at' => $bar->closeTime]);

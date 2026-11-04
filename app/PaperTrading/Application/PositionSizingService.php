@@ -14,7 +14,7 @@ final readonly class PositionSizingService
     public function __construct(private array $config) {}
 
     /** @param array{taker_rate: string, slippage_rate: string}|null $executionCosts */
-    public function calculate(string $equity, string $riskPercent, string $entry, string $stop, InstrumentConstraints $limits, ?array $executionCosts = null): PositionSize
+    public function calculate(string $equity, string $riskPercent, string $entry, string $stop, InstrumentConstraints $limits, ?array $executionCosts = null, ?array $sizingSettings = null): PositionSize
     {
         $d = static fn (string $v): BigDecimal => BigDecimal::of($v);
         $costs = $executionCosts ?? ['taker_rate' => (string) $this->config['fees']['taker_rate'], 'slippage_rate' => (string) $this->config['slippage_rate']];
@@ -45,7 +45,32 @@ final readonly class PositionSizingService
             return new PositionSize(false, null, (string) $riskCapital, null, null, 'zero_effective_loss');
         }
         $step = $d($limits->qtyStep);
-        $quantity = $riskCapital->dividedBy($effectiveLoss, 24, RoundingMode::Floor)->dividedBy($step, 0, RoundingMode::Floor)->multipliedBy($step);
+        try {
+            $settings = PaperSizingSettings::normalize($sizingSettings);
+        } catch (\DomainException) {
+            return new PositionSize(false, null, '0', null, null, 'invalid_sizing_settings');
+        }
+        if ($settings === null || $settings['mode'] === 'risk_percent') {
+            $quantity = $riskCapital->dividedBy($effectiveLoss, 24, RoundingMode::Floor)
+                ->dividedBy($step, 0, RoundingMode::Floor)->multipliedBy($step);
+        } else {
+            $targetNotional = $d($settings['amount']);
+            if ($settings['mode'] === 'fixed_margin') {
+                $targetNotional = $targetNotional->multipliedBy($settings['leverage']);
+            }
+            $quantity = $targetNotional->dividedBy($entry, 24, RoundingMode::Floor)
+                ->dividedBy($step, 0, RoundingMode::Floor)->multipliedBy($step);
+        }
+        // Reserve actual worst-case stop loss + estimated round-trip trading costs.
+        // Unlike fixed notional, risk_percent intentionally reserves its requested budget.
+        $actualRisk = $quantity->multipliedBy($effectiveLoss);
+        if ($actualRisk->isGreaterThan($riskCapital)) {
+            return new PositionSize(false, (string) $quantity, (string) $actualRisk, (string) $effectiveLoss,
+                (string) $quantity->multipliedBy($entry), 'sizing_exceeds_signal_risk_limit');
+        }
+        if ($settings !== null && $settings['mode'] !== 'risk_percent') {
+            $riskCapital = $actualRisk;
+        }
         $notional = $quantity->multipliedBy($entry);
         if ($quantity->isLessThan($d($limits->minOrderQty)) || $notional->isLessThan($d($limits->minNotionalValue))) {
             return new PositionSize(false, (string) $quantity, (string) $riskCapital, (string) $effectiveLoss, (string) $notional, 'below_minimum_order');
