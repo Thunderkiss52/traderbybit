@@ -18,11 +18,43 @@ final class ManagementController
         return response()->json(['data' => $rows, 'builtin' => $registry->metadata()]);
     }
 
-    public function parse(Request $request, AuthoringParser $parser): JsonResponse
+    public function parse(Request $request, AuthoringParser $parser, HostedAuthoring $hosted): JsonResponse
     {
-        $data = $request->validate(['description' => 'required|string|max:4000']);
+        $data = $request->validate(['description' => 'required|string|max:4000', 'provider' => 'sometimes|in:deterministic,hosted', 'consent' => 'sometimes|boolean']);
 
-        return response()->json(['data' => $parser->parse($data['description'])]);
+        return response()->json(['data' => ($data['provider'] ?? 'deterministic') === 'hosted' ? $hosted->parse($data['description'], $data['consent'] ?? false) : $parser->parse($data['description'])]);
+    }
+
+    public function drafts(): JsonResponse
+    {
+        return response()->json(['data' => DB::table('strategy_drafts')->orderByDesc('updated_at')->orderBy('id')->paginate(25)]);
+    }
+
+    public function draft(string $draft): JsonResponse
+    {
+        $row = DB::table('strategy_drafts')->find($draft);
+        abort_if($row === null, 404);
+
+        return response()->json(['data' => $row]);
+    }
+
+    public function saveDraft(Request $request, DraftService $drafts): JsonResponse
+    {
+        $data = $request->validate(['id' => 'required|uuid', 'revision' => 'nullable|integer|min:1', 'definition' => 'required|array|max:32', 'description' => 'nullable|string|max:4000']);
+
+        return response()->json(['data' => $drafts->save($data['id'], $data['revision'] ?? null, $data['definition'], $data['description'] ?? null)]);
+    }
+
+    public function publishDraft(Request $request, string $draft, DraftService $drafts): JsonResponse
+    {
+        $data = $request->validate(['revision' => 'required|integer|min:1', 'checksum' => 'required|string|size:64', 'interpretation_confirmed' => 'required|accepted']);
+
+        return response()->json(['data' => $drafts->publish($draft, $data['revision'], $data['checksum'])], 201);
+    }
+
+    public function schema(): JsonResponse
+    {
+        return response()->json(['data' => DefinitionSchema::document(), 'hosted_enabled' => config('strategy_builder.hosted.enabled') === true]);
     }
 
     public function validate(Request $request, DefinitionValidator $validator): JsonResponse

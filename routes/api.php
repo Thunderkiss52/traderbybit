@@ -21,6 +21,11 @@ Route::prefix('v1')->middleware('throttle:api')->group(function () {
         $controller = ManagementController::class;
         Route::get('/', [$controller, 'index']);
         Route::post('/parse', [$controller, 'parse']);
+        Route::get('/schema', [$controller, 'schema']);
+        Route::get('/drafts', [$controller, 'drafts']);
+        Route::post('/drafts', [$controller, 'saveDraft']);
+        Route::get('/drafts/{draft}', [$controller, 'draft'])->whereUuid('draft');
+        Route::post('/drafts/{draft}/publish', [$controller, 'publishDraft'])->whereUuid('draft');
         Route::post('/validate', [$controller, 'validate']);
         Route::post('/', [$controller, 'store']);
         Route::get('/{id}', [$controller, 'show'])->whereNumber('id');
