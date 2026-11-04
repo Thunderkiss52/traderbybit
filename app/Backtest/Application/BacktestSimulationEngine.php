@@ -8,6 +8,7 @@ use App\Backtest\Contracts\HistoricalSignalEvaluator;
 use App\Backtest\Contracts\ResettableHistoricalSignalEvaluator;
 use App\Backtest\Domain\Segment;
 use App\Backtest\Domain\SimulationResult;
+use App\Exchanges\ExchangeRegistry;
 use App\MarketData\Infrastructure\Persistence\CandleRecord;
 use App\PaperTrading\Application\CorrelationService;
 use App\PaperTrading\Application\PaperExecutionEngine;
@@ -33,8 +34,8 @@ final readonly class BacktestSimulationEngine
 
     public function simulate(array $symbols, Segment $segment, array $strategyConfig, array $executionConfig, string $startingBalance, string $exchange = 'bybit'): SimulationResult
     {
-        if (! in_array($exchange, ['bybit', 'binance'], true)) {
-            throw new \InvalidArgumentException('Unsupported backtest exchange.');
+        if (! app(ExchangeRegistry::class)->isSupportedForBacktest($exchange)) {
+            throw new \InvalidArgumentException("Unsupported backtest exchange '{$exchange}'.");
         }
         // A singleton engine can outlive a job: never reuse inputs across simulations.
         if ($this->signals instanceof ResettableHistoricalSignalEvaluator) {

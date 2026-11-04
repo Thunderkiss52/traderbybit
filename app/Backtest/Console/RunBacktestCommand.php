@@ -6,6 +6,7 @@ namespace App\Backtest\Console;
 
 use App\Backtest\Application\BacktestRunService;
 use App\Backtest\Jobs\RunBacktestJob;
+use App\Exchanges\ExchangeRegistry;
 use DateTimeImmutable;
 use Illuminate\Console\Command;
 
@@ -28,8 +29,8 @@ class RunBacktestCommand extends Command
             }
             $symbols = array_values(array_unique(array_filter(array_map('strtoupper', explode(',', (string) $this->option('symbols'))))));
             $exchange = (string) $this->option('exchange');
-            if (! in_array($exchange, ['bybit', 'binance'], true)) {
-                throw new \InvalidArgumentException('Unsupported backtest exchange.');
+            if (! app(ExchangeRegistry::class)->isSupportedForBacktest($exchange)) {
+                throw new \InvalidArgumentException("Unsupported backtest exchange '{$exchange}'.");
             }
             $from = new DateTimeImmutable((string) $this->option('from').' 00:00:00 UTC');
             $to = new DateTimeImmutable((string) $this->option('to').' 00:00:00 UTC');

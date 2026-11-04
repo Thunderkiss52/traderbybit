@@ -1,86 +1,90 @@
-# VECTOR Continuation Checkpoint — CI Ledger Reconciliation Fix & Primary Account Isolation
+# VECTOR Continuation Checkpoint — Universal Exchange Onboarding & Extensible Research Ingestion
 
-**Date & Time:** 2026-11-04T21:25:00+03:00
+**Date & Time:** 2026-11-04T22:15:00+03:00
 **Repository Working Directory:** `/home/thunder/work/traderbybit`
-**Base Commit / Upstream:** `origin/main` (`c6dbcd0fc28a7e0a895c9b19e26ba1a1cabf450a`)
+**Base Commit / Upstream:** `origin/main` (`129c33c`)
 **Branch:** `main`
 
 ---
 
-## 1. Current HEAD and Working-Tree State
+## 1. Objective & Completed Scope
 
-- **Starting Baseline:** `c6dbcd0` ("fix(paper): respect valuation provenance in drawdown reconciliation and eliminate false discrepancy")
-- **Untracked Historical References Preserved:**
-  - `VECTOR_INDEPENDENT_AUDIT_20261031.md` (historical audit report from 2026-10-31)
-  - `VECTOR_RELEASE_HARDENING.patch` (uncommitted patch from 2026-10-31)
-- **Safety Boundaries Strictly Maintained:**
-  - Strictly virtual PAPER trading mode; zero live exchange orders or trading credentials.
-  - Zero modification to `econom-group` containers, networks, or volumes.
-  - Zero Git pushes or remote branch alterations without explicit operator instruction.
+Universal exchange onboarding has been implemented end-to-end to enable adding research data sources, validating historical OHLCV CSV datasets, and provisioning isolated PAPER trading topologies via the web UI without manual database edits or Docker reconfiguration.
 
----
+### Completed Stages
 
-## 2. CI Failure Investigation & Root Cause Remediation
+1. **Database Schema & Canonical Seeding (`2026_11_04_000004_create_exchanges_table.php`):**
+   - Created `exchanges` table with `id` (PK, varchar 32), `name`, `market_type`, `description`, `lifecycle_status`, `capabilities` (JSON), `cost_model` (JSON), `paper_execution_assumptions` (JSON), `paper_eligible` (bool), `paper_approved` (bool), `paper_approved_at` (timestamptz), `metadata` (JSON), timestamps.
+   - Seeded canonical `bybit` (`ACTIVE_PAPER`, 13 accounts, cost schedule) and `binance` (`ACTIVE_PAPER`, 13 accounts, cost schedule).
+   - Created Eloquent entity: `App\Exchanges\Infrastructure\Persistence\ExchangeRecord`.
 
-### 2.1 The Issue
-During CI execution of the Integration test suite (`vendor/bin/phpunit --testsuite Integration`), test 63:
-`Tests\Integration\LedgerReconciliationPostgresIntegrationTest::test_reconcile_all_primary_accounts_in_postgresql_succeeds_without_sql_error`
-failed with:
-```text
-Failed asserting that two strings are identical.
---- Expected
-+++ Actual
-@@ @@
--'PASSED'
-+'DISCREPANCY_DETECTED'
-/app/tests/Integration/LedgerReconciliationPostgresIntegrationTest.php:92
-```
+2. **Domain Architecture & Capability-Based Lifecycle (`app/Exchanges/Domain/` and `app/Exchanges/Application/`):**
+   - Defined 5 explicit lifecycle states:
+     `OFFLINE_DATA_SOURCE` -> `CONNECTED_PUBLIC_DATA` -> `RESEARCH_ENABLED` -> `PAPER_ELIGIBLE` -> `ACTIVE_PAPER`.
+   - Built `ExchangeCapabilityValidator`: enforces technical eligibility for PAPER execution (live adapter code existence, complete 4 standard timeframes `5`, `15`, `30`, `60`, candle count >= 220, valid cost schedule, 0 unresolved candle conflicts, execution assumptions).
+   - Built `ExchangeCatalogService`: registers new exchanges, updates lifecycle, and manages owner approval.
+   - Extended `ExchangeRegistry`: provides dynamic `isSupportedForBacktest($exchange)` enabling backtests against any research-enabled exchange from DB.
+   - Updated backtest components (`DatasetInspector`, `BacktestSimulationEngine`, `StrategySignalEvaluator`, `RunBacktestJob`, `RunBacktestCommand`, `BacktestRunService`) to query `isSupportedForBacktest()`.
 
-### 2.2 Root Cause Analysis
-1. In `tests/Integration/ConcurrentPaperEntryGlobalRiskPostgresIntegrationTest.php` (which runs earlier in the Integration suite), `test_two_concurrent_entries_across_different_accounts_reject_excess_risk` executed `PositionLifecycleService::open(...)` on `$account1` (`trend_pullback`, one of the 13 canonical Bybit PRIMARY accounts).
-2. `PositionLifecycleService::open` altered `$account1`'s financial metrics in `paper_accounts` (deducting execution entry fee from `realized_pnl`, lowering `current_equity` from $10,000 to $9,997.25, and setting drawdown to 0.0275%) and inserted a snapshot row in `equity_snapshots`.
-3. In its `finally` block, the test deleted `virtual_executions` and `virtual_positions`, but did NOT restore `$account1`'s balance/equity/PnL metrics, did NOT delete the temporary `equity_snapshots` row, and relied on `use RefreshDatabase;` which was ineffective because `ensurePostgresTestDatabaseReady()` reconnected the PDO connection, causing queries to auto-commit directly to PostgreSQL.
-4. When `LedgerReconciliationPostgresIntegrationTest` subsequently reconciled the 13 primary accounts, `trend_pullback` exhibited:
-   - Stored balance: $9,997.25
-   - Recalculated balance: $10,000.00 (all virtual_executions were deleted, sum = 0)
-   - Diff: $2.75 > $0.05 threshold -> triggered `BALANCE_MISMATCH` and `EQUITY_MISMATCH`, setting status to `'DISCREPANCY_DETECTED'`.
+3. **Historical Candle CSV Dataset Importer & Coverage Service:**
+   - Implemented `HistoricalCandleCsvImporter`:
+     - Parses header variations (`open_time`, `timestamp`, `datetime`, `turnover`, `quote_volume`).
+     - Normalizes timestamps to UTC and enforces strict interval alignment.
+     - Validates OHLCV constraints (`High >= Low`, `High >= Open/Close`, `Low <= Open/Close`, positive OHLC, non-negative volume).
+     - Strict timestamp monotonicity (rejects inverted timestamps).
+     - Idempotent duplicate skipping (identical candles are skipped).
+     - Discrepancy conflict auditing: delegates to `MarketCandleConflictService` and records immutable audit records in `market_candle_conflicts`.
+     - Generates SHA-256 dataset checksum and records provenance metadata.
+   - Implemented `ExchangeCoverageService`:
+     - Generates per-symbol and per-interval metrics (bar count, span hours, expected bars, completeness %, lag seconds, freshness, unresolved conflicts count, dataset pins count).
 
-### 2.3 Remediation Implemented
-1. **Removed `use RefreshDatabase;`** from `ConcurrentPaperEntryGlobalRiskPostgresIntegrationTest`:
-   In line with all other Integration tests in VECTOR that explicitly manage isolated test fixtures against shared PostgreSQL databases.
-2. **Pristine State Capture & Restoration:**
-   - Captured the exact state of all primary Bybit accounts prior to running the risk limits test.
-   - In `finally`, restored each Bybit account row back to its exact pre-test values (`current_equity`, `realized_pnl`, `unrealized_pnl`, `reserved_risk`, `maximum_drawdown_percent`, `current_drawdown_percent`, `peak_equity`, `status`).
-3. **Comprehensive Fixture Cleanup:**
-   - Deleted all temporary `equity_snapshots` with `source_event_key != 'account:initial'`.
-   - Deleted temporary `virtual_positions`, `virtual_executions`, `trading_journal_events`, `paper_signal_states`, `signals`, and provisioned `binance` accounts.
-4. **Advisory Lock Safety:**
-   - Wrapped advisory lock verification in `test_entry_decision_lock_serializes_concurrent_postgresql_transactions` in a `try ... finally { $db1->rollBack(); }` block.
-5. **Observability Hardening:**
-   - Updated `LedgerReconciliationPostgresIntegrationTest` assertion message to output the failing account ID and JSON-encoded discrepancies, making any future diagnostic immediate.
+4. **PAPER Account Provisioning & Risk Limits:**
+   - Integrated with `PaperTopologySynchronizer`: dynamically checks owner-approved exchanges (`paper_approved = true`) to provision 13 primary forward accounts in `BLOCKED` status with starting balance 0.
+   - Integrated with `GlobalPaperCapitalGuard`: enforces the 5% portfolio loss cap across all approved exchanges, preserving existing 26 accounts, balances, positions, executions, and keeping Bybit `baseline` and `momentum` strictly `BLOCKED`.
 
----
+5. **REST API Controller & Endpoints (`app/Exchanges/Http/ExchangeManagementController.php`):**
+   - `GET /api/v1/exchanges`: list registered exchanges with capabilities and status.
+   - `POST /api/v1/exchanges`: register new exchange identifier.
+   - `GET /api/v1/exchanges/{id}`: detailed diagnostics and eligibility audit.
+   - `GET /api/v1/exchanges/{id}/coverage`: historical dataset coverage report.
+   - `POST /api/v1/exchanges/{id}/upload-candles`: multipart or CSV string upload with conflict auditing.
+   - `POST /api/v1/exchanges/{id}/lifecycle`: transition lifecycle status.
+   - `POST /api/v1/exchanges/{id}/approve-paper`: explicit owner approval for PAPER activation.
+   - `POST /api/v1/exchanges/{id}/sync-topology`: provision 13 primary accounts (dry-run or apply).
 
-## 3. Verification Evidence
-
-1. **Reproduction & Isolated Verification:**
-   - Running `ConcurrentPaperEntryGlobalRiskPostgresIntegrationTest` followed by `LedgerReconciliationPostgresIntegrationTest`:
-     `OK (5 tests, 64 assertions)` in 0.98s.
-   - Repeated double run to verify idempotency:
-     `OK (10 tests, 128 assertions)` in 1.55s.
-2. **PHP Formatting & Style:**
-   - `vendor/bin/pint --test`: `PASS ................. 766 files` (0 issues).
-3. **Paper Trading & Drawdown Regression:**
-   - `tests/Feature/PaperTrading/ProductionDrawdownReconciliationTest.php`: `OK (4 tests, 23 assertions)`.
-4. **Research Go Tests:**
-   - `go test ./...`: PASSED.
-   - `go test -race ./...`: PASSED with zero data races.
-5. **Frontend Suite:**
-   - `npm test`: 64/64 tests passed.
-   - `npm run build`: Vite 5 production build succeeded with 0 errors.
+6. **Frontend Quasar UI (`frontend/src/pages/ExchangesPage.vue`):**
+   - Exchange grid with colored status badges, metrics, and adapter status.
+   - Diagnostics modal with Capabilities Matrix and Technical PAPER Eligibility Checklist (listing exact blockers if ineligible).
+   - Historical series coverage table with completeness %, freshness, and time spans.
+   - "Register Exchange" dialog with market type, description, and fee schedule.
+   - "Upload Historical CSV" dialog supporting file upload or raw CSV paste.
+   - "Approve PAPER Activation" owner confirmation modal.
+   - "Sync Topology" dialog with Dry-Run vs Apply toggle.
+   - Added sidebar navigation link and `/exchanges` route in Vue Router.
 
 ---
 
-## 4. Release Audit Disposition
+## 2. Verification Evidence
 
-**`READY_FOR_OWNER_PRODUCTION_PREFLIGHT`**
+- **Backend Feature & Integration Tests:**
+  - `tests/Feature/Exchanges/ExchangeOnboardingTest.php`: 12 passed (74 assertions).
+  - All 15 test suites in `tests/Feature/Exchanges/`: 90 passed (1,109 assertions).
+  - `LedgerReconciliationPostgresIntegrationTest.php`: 3 passed (53 assertions).
+  - `ConcurrentPaperEntryGlobalRiskPostgresIntegrationTest.php`: 2 passed (13 assertions).
+- **Code Quality & Style:**
+  - Laravel Pint: 775 files passed (0 style issues).
+  - Go Tests (`research-go`): All packages passed with `-race` enabled.
+- **Frontend Quality:**
+  - Node tests (`frontend/tests/`): 70 passed (including 6 new exchange onboarding tests).
+  - Vite production build (`npm run build`): Completed in 7.41s with 0 errors.
+
+---
+
+## 3. Preserved Safety Boundaries
+
+- Strictly virtual PAPER trading mode; zero live exchange orders or trading credentials.
+- All 26 independent accounts (13 Bybit + 13 Binance) preserved.
+- Bybit `baseline` and `momentum` remain strictly `BLOCKED`.
+- Global 5% portfolio loss cap and risk limits intact.
+- Zero modifications to `econom-group` containers, networks, or volumes.
+- Zero Git pushes to remote.

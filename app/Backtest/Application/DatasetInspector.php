@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Backtest\Application;
 
+use App\Exchanges\ExchangeRegistry;
 use App\MarketData\Infrastructure\Persistence\CandleRecord;
 use App\PaperTrading\Infrastructure\Persistence\MarketFundingEventRecord;
 use App\Strategy\Infrastructure\Persistence\MarketContextRecord;
@@ -21,8 +22,8 @@ final class DatasetInspector
             || $from->getTimestamp() % 300 !== 0 || $to->getTimestamp() % 300 !== 0) {
             throw new \InvalidArgumentException('Invalid historical dataset scope.');
         }
-        if (! in_array($exchange, ['bybit', 'binance'], true)) {
-            throw new \InvalidArgumentException('Unsupported backtest exchange.');
+        if (! app(ExchangeRegistry::class)->isSupportedForBacktest($exchange)) {
+            throw new \InvalidArgumentException("Unsupported backtest exchange '{$exchange}'.");
         }
         $hash = hash_init('sha256');
         $warnings = [];

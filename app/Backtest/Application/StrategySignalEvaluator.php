@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Backtest\Application;
 
 use App\Backtest\Contracts\ResettableHistoricalSignalEvaluator;
+use App\Exchanges\ExchangeRegistry;
 use App\Strategy\Application\LevelInteractionAnalyzer;
 use App\Strategy\Application\LevelProbabilityService;
 use App\Strategy\Application\StrategyEngine;
@@ -49,8 +50,8 @@ final class StrategySignalEvaluator implements ResettableHistoricalSignalEvaluat
         $id = $strategyConfig['_research_strategy_id'] ?? null;
         $peer = $id === 'btc_eth_lead_lag' ? StrategyInputFactory::peerSymbol($symbol) : null;
         $exchange = $strategyConfig['_exchange'] ?? 'bybit';
-        if (! in_array($exchange, ['bybit', 'binance'], true)) {
-            throw new \InvalidArgumentException('Unsupported backtest exchange.');
+        if (! app(ExchangeRegistry::class)->isSupportedForBacktest($exchange)) {
+            throw new \InvalidArgumentException("Unsupported backtest exchange '{$exchange}'.");
         }
         $cacheKey = "{$exchange}:linear:{$symbol}:{$at->getTimestamp()}:{$peer}";
         if (! isset($this->inputCache[$cacheKey])) {

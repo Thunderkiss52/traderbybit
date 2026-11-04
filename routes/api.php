@@ -3,6 +3,7 @@
 use App\Audit\Backtest\BacktestAuditController as BA;
 use App\Audit\Http\AuditExportController as A;
 use App\Exchanges\Http\ExchangeComparisonController as EX;
+use App\Exchanges\Http\ExchangeManagementController as EMC;
 use App\Http\Controllers\Api\V1\AutonomousLearningController;
 use App\Http\Controllers\Api\V1\PatternResearchController as P;
 use App\Http\Controllers\Api\V1\ProfitabilityResearchController;
@@ -69,6 +70,14 @@ Route::prefix('v1')->middleware('throttle:api')->group(function () {
     Route::get('exchanges/comparison', [EX::class, 'index']);
     Route::get('exchanges/comparison.csv', [EX::class, 'csv']);
     Route::get('exchanges/binance/market/{symbol}/candles', [EX::class, 'binanceCandles']);
+    Route::get('exchanges', [EMC::class, 'index']);
+    Route::post('exchanges', [EMC::class, 'store']);
+    Route::get('exchanges/{id}', [EMC::class, 'show']);
+    Route::get('exchanges/{id}/coverage', [EMC::class, 'coverage']);
+    Route::post('exchanges/{id}/upload-candles', [EMC::class, 'uploadCandles']);
+    Route::post('exchanges/{id}/lifecycle', [EMC::class, 'updateLifecycle']);
+    Route::post('exchanges/{id}/approve-paper', [EMC::class, 'approvePaper']);
+    Route::post('exchanges/{id}/sync-topology', [EMC::class, 'syncTopology']);
     Route::get('dashboard', [C::class, 'dashboard']);
     Route::get('market/{symbol}/candles', [C::class, 'candles']);
     Route::get('market/{symbol}/indicators', [C::class, 'indicators']);

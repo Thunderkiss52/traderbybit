@@ -66,6 +66,17 @@ class BacktestRunService
             }
             $paper['fees']['taker_rate'] = config('exchanges.binance.paper_taker_rate');
             $paper['slippage_rate'] = config('exchanges.binance.paper_slippage_rate');
+        } elseif ($exchange !== 'bybit') {
+            $record = DB::table('exchanges')->where('id', $exchange)->first();
+            if ($record !== null && ! empty($record->cost_model)) {
+                $cost = json_decode((string) $record->cost_model, true);
+                if (! empty($cost['taker_rate'])) {
+                    $paper['fees']['taker_rate'] = (string) $cost['taker_rate'];
+                }
+                if (! empty($cost['slippage_rate'])) {
+                    $paper['slippage_rate'] = (string) $cost['slippage_rate'];
+                }
+            }
         }
         $type = $walkForward ? 'walk_forward' : 'split';
         $fingerprint = $this->fingerprint([$type, $symbols, $from->format(DATE_ATOM), $to->format(DATE_ATOM), $dataset['checksum'], $strategy, $paper, $this->config]);

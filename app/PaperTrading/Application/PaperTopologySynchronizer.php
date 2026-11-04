@@ -31,7 +31,8 @@ final readonly class PaperTopologySynchronizer
     public function sync(bool $apply = false): array
     {
         $strategyIds = array_values((array) config('paper.primary_strategies', []));
-        $exchangeIds = array_values((array) config('exchanges.enabled', []));
+        $approvedDbExchanges = DB::table('exchanges')->where('paper_approved', true)->pluck('id')->all();
+        $exchangeIds = array_values(array_unique(array_merge((array) config('exchanges.enabled', []), $approvedDbExchanges)));
         if ($strategyIds === [] || $exchangeIds === [] || count($strategyIds) !== count(array_unique($strategyIds))
             || count($exchangeIds) !== count(array_unique($exchangeIds))) {
             throw new RuntimeException('Exchange and PRIMARY strategy lists must be nonempty and unique.');
@@ -41,7 +42,9 @@ final readonly class PaperTopologySynchronizer
             $this->strategies->get($id);
         }
         foreach ($exchangeIds as $id) {
-            $this->exchanges->resolve($id);
+            if ($this->exchanges->hasAdapter($id)) {
+                $this->exchanges->resolve($id);
+            }
             // A public-data adapter may be registered before PAPER readiness.
             // All non-Bybit/Binance accounts will remain unfunded and BLOCKED.
         }

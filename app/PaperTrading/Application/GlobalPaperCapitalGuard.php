@@ -28,7 +28,8 @@ final class GlobalPaperCapitalGuard
             if ($cap->isLessThanOrEqualTo('0') || $cap->isGreaterThan('5')) {
                 return 'global_capital_limit_unverified';
             }
-            $exchanges = (array) config('exchanges.enabled', ['bybit', 'binance']);
+            $approvedDbExchanges = DB::table('exchanges')->where('paper_approved', true)->pluck('id')->all();
+            $exchanges = array_values(array_unique(array_merge((array) config('exchanges.enabled', ['bybit', 'binance']), $approvedDbExchanges)));
             $strategies = (array) config('paper.primary_strategies', []);
             if ($exchanges === [] || $strategies === [] || count($exchanges) !== count(array_unique($exchanges))
                 || count($strategies) !== count(array_unique($strategies))) {

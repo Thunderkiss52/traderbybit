@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Backtest\Jobs;
 
 use App\Backtest\Application\BacktestRunService;
+use App\Exchanges\ExchangeRegistry;
 use DateTimeImmutable;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
@@ -26,8 +27,8 @@ final class RunBacktestJob implements ShouldQueue
 
     public function __construct(public readonly array $symbols, public readonly string $from, public readonly string $to, public readonly bool $walkForward = false, string $exchange = 'bybit')
     {
-        if (! in_array($exchange, ['bybit', 'binance'], true)) {
-            throw new \InvalidArgumentException('Unsupported backtest exchange.');
+        if (! app(ExchangeRegistry::class)->isSupportedForBacktest($exchange)) {
+            throw new \InvalidArgumentException("Unsupported backtest exchange '{$exchange}'.");
         }
         $this->exchange = $exchange;
         $this->onQueue('backtests');
