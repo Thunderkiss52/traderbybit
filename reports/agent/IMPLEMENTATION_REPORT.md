@@ -13,3 +13,7 @@ The verified temporal intent of R9 is integrated in current code, with an explic
 ## Acceptance boundary
 
 The resulting checksum is a before/after mutation detector, not an immutable version or one stable read snapshot. Simulations, ordinary audit ZIPs, and asynchronous jobs cannot yet be independently reproduced from a retained source snapshot. No historical-backtest audit ZIP exists at this HEAD. Phase 0 and migration phases are not accepted. No production data or deployment was touched.
+
+## Completed local unit: R3 active research-job uniqueness
+
+After the temporal unit, the archived R3 research-job race was confirmed in current source and corrected with a transaction-scoped PostgreSQL advisory lock, row lock, and partial unique index. The migration aborts on pre-existing active duplicates without rewriting jobs. Isolated two-process PostgreSQL contention, direct duplicate rejection, terminal key reuse, and duplicate-preflight tests passed. Details and exact files are in `R3_RESEARCH_JOB_SUBMISSION.md`. Other R3 worker-lease hunks remain a separate task.

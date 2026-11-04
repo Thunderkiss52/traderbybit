@@ -134,12 +134,16 @@ final readonly class ResearchJobService
             }
 
             return DB::transaction(function () use ($data, $kind, $idempotencyKey, $resolvedExchange) {
-                // Check if active job with same kind and idempotency key already exists
+                // Serialize submissions even when no matching row exists yet.
+                if (DB::getDriverName() === 'pgsql') {
+                    DB::select('SELECT pg_advisory_xact_lock(hashtextextended(CAST(? AS text), 0))', [$kind.'|'.$idempotencyKey]);
+                }
+
                 $existing = ResearchJobRecord::query()
                     ->where('kind', $kind)
                     ->where('idempotency_key', $idempotencyKey)
                     ->whereNotIn('status', self::TERMINAL_STATUSES)
-                    ->lock('FOR UPDATE SKIP LOCKED')
+                    ->lockForUpdate()
                     ->first();
 
                 if ($existing !== null) {

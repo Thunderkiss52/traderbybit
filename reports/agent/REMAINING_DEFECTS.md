@@ -3,7 +3,7 @@
 | Priority | Finding | Evidence / next safe action |
 |---|---|---|
 | High | Historical runs and audit exports lack a retained immutable dataset or stable multi-query PostgreSQL snapshot. | Before/after checksum and ZIP member verification detect visible changes but cannot prove all intermediate reads used the same version. Design a dataset version and retention pin before claiming reproducible replay. |
-| High | R3 research-job submission can race. | Active duplicate lookup uses `FOR UPDATE SKIP LOCKED`; `research_jobs` has only a nonunique `(kind,idempotency_key)` index. Add PostgreSQL uniqueness and a cross-process test without rewriting existing jobs. |
+| High | R3 worker lease/fencing defects require separate review. | The submission race is locally fixed and cross-process tested. Archived R3 lease-expiry and Go-worker hunks were not applied; verify current worker transitions and PHP/Go parity before any further change. |
 | High | Phase 0 is blocked. | All 45 operational obligations lack current release-bound evidence; see `OWNER_ACTIONS_REQUIRED.md`. Local tests and old reports cannot replace row-level read-only production verification and owner attestation. |
 | High | Dependency audit fails. | One medium Composer and six high npm findings; see `SECURITY_REVIEW.md`. |
 | High | Missing R6 global PAPER capital guard and topology synchronizer. | Archive source differs from HEAD; account/risk policy and historical records must remain unchanged until tests and owner risk review support an implementation. |

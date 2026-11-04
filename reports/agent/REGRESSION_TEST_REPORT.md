@@ -19,6 +19,10 @@ Git baseline `afd5d194f02e3478c5c6c2e4dfdd00380c216a00`; test-only Docker networ
 
 The first full PHP attempt failed seven tests because the initial ephemeral runner lacked `psql`, Redis and a Go worker. After those test tools were supplied, a second run reached 1,169 passed with two wall-clock-sensitive Binance recovery test failures. The fixture was isolated from scheduled dispatch; the final full run above passed. These earlier runs are not reported as acceptance.
 
+## R3 submission stage, after the temporal commit
+
+The new migration ran on isolated `bybit_test` (PostgreSQL 17.11), exit 0. Focused `php -d xdebug.mode=off artisan test tests/Unit/Research/ResearchJobServiceTest.php tests/Integration/ResearchJobSubmissionPostgresIntegrationTest.php` passed 23 tests, 96 assertions, exit 0. The complete PHP suite was rerun with the new migration and code: 1,176 passed, 9 skipped, 11,112 assertions, 176.81 s, exit 0. `vendor/bin/pint --test` passed 743 files, exit 0. The nine skips remain skipped; they were not counted as passes. Go and frontend source did not change in this stage, so their earlier full-suite results above remain the applicable checks.
+
 ## Not established
 
 Historical replay against a real retained dataset, browser visual checks, production read-only financial evidence, immutable database snapshot consistency, true concurrent mutation of an audit export, and deployed performance were NOT_RUN. Archive candidate benchmarks and phase acceptance gates were not silently counted as current verification.

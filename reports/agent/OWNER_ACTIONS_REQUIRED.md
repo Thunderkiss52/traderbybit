@@ -56,3 +56,4 @@ All items below need read-only, release-SHA-bound operational evidence and owner
 - Decide whether to adopt the R4/R6/R8 risk and account-topology candidates after an account-level impact review; do not auto-unblock any owner-blocked Bybit account.
 - Approve a durable immutable dataset/snapshot design and historical-backtest audit export contract before claiming reproducible simulation-to-ZIP parity.
 - Approve each phase status change, cutover, push, or GitHub Actions deployment separately. No deployment or live execution is authorized by this report.
+- Before any future deployment of the R3 partial unique index, perform an authorized read-only census of active `(kind,idempotency_key)` duplicates in the actual target database; the migration intentionally aborts if any exist and never selects a winner automatically.
