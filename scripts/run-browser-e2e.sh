@@ -11,11 +11,17 @@ mkdir -p reports
 echo "=== Starting Browser E2E Environment Setup ==="
 
 # 1. Check isolated PostgreSQL
-if ! pg_isready -h 127.0.0.1 -p 25432 -U postgres >/dev/null 2>&1; then
-    echo "[FAIL] Isolated PostgreSQL is not reachable on 127.0.0.1:25432" >&2
+DB_HOST="${DB_HOST:-127.0.0.1}"
+DB_PORT="${DB_PORT:-25432}"
+REDIS_HOST="${REDIS_HOST:-127.0.0.1}"
+REDIS_PORT="${REDIS_PORT:-26379}"
+REDIS_PASSWORD="${REDIS_PASSWORD:-bybit_redis_secret}"
+
+if ! pg_isready -h "${DB_HOST}" -p "${DB_PORT}" -U postgres >/dev/null 2>&1; then
+    echo "[FAIL] Isolated PostgreSQL is not reachable on ${DB_HOST}:${DB_PORT}" >&2
     exit 1
 fi
-echo "[OK] PostgreSQL reachable on 127.0.0.1:25432"
+echo "[OK] PostgreSQL reachable on ${DB_HOST}:${DB_PORT}"
 
 # 2. Check Chrome binary
 if [ ! -f "/usr/bin/google-chrome" ]; then
@@ -51,29 +57,34 @@ cleanup() {
 }
 trap cleanup EXIT
 
-# 5. Start Laravel Backend on 127.0.0.1:8000
-echo "Starting Laravel backend on 127.0.0.1:8000 ..."
-DB_CONNECTION=pgsql \
-DB_HOST=127.0.0.1 \
-DB_PORT=25432 \
-DB_DATABASE=bybit_test \
-DB_USERNAME=postgres \
-DB_PASSWORD=testpass \
-REDIS_CLIENT=predis \
-CACHE_STORE=redis \
-REDIS_HOST=127.0.0.1 \
-REDIS_PORT=26379 \
-php -d xdebug.mode=off -S 127.0.0.1:8000 -t public public/index.php > reports/e2e_backend.log 2>&1 &
-LARAVEL_PID=$!
+# 5. Start Laravel Backend on 127.0.0.1:8000 if not already running
+if curl -s http://127.0.0.1:8000/api/v1/dashboard >/dev/null 2>&1; then
+    echo "[OK] Backend already running and responsive on port 8000"
+else
+    echo "Starting Laravel backend on 127.0.0.1:8000 ..."
+    DB_CONNECTION=pgsql \
+    DB_HOST="${DB_HOST}" \
+    DB_PORT="${DB_PORT}" \
+    DB_DATABASE=bybit_test \
+    DB_USERNAME=postgres \
+    DB_PASSWORD=testpass \
+    REDIS_CLIENT=predis \
+    CACHE_STORE=redis \
+    REDIS_HOST="${REDIS_HOST}" \
+    REDIS_PORT="${REDIS_PORT}" \
+    REDIS_PASSWORD="${REDIS_PASSWORD}" \
+    php -d xdebug.mode=off -S 127.0.0.1:8000 -t public public/index.php > reports/e2e_backend.log 2>&1 &
+    LARAVEL_PID=$!
 
-# Wait for backend
-for i in {1..30}; do
-    if curl -s http://127.0.0.1:8000/api/v1/dashboard >/dev/null 2>&1; then
-        echo "[OK] Backend ready on port 8000"
-        break
-    fi
-    sleep 0.2
-done
+    # Wait for backend
+    for i in {1..30}; do
+        if curl -s http://127.0.0.1:8000/api/v1/dashboard >/dev/null 2>&1; then
+            echo "[OK] Backend ready on port 8000"
+            break
+        fi
+        sleep 0.2
+    done
+fi
 
 # 6. Start Vite Preview on 127.0.0.1:4173
 echo "Starting Vite preview on 127.0.0.1:4173 ..."

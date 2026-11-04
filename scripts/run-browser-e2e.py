@@ -90,7 +90,7 @@ def main():
             )
             print("  [PASS] Research mode banner verified")
 
-            # Verify all 8 strategy accounts
+            # Verify all 13 strategy accounts
             expected_strategies = [
                 "baseline",
                 "trend_pullback",
@@ -100,6 +100,11 @@ def main():
                 "momentum",
                 "support_resistance_bounce",
                 "support_resistance_breakout",
+                "funding_open_interest_squeeze",
+                "liquidity_sweep_reversal",
+                "volatility_compression_breakout",
+                "btc_eth_lead_lag",
+                "multi_timeframe_trend_following",
             ]
 
             missing_strats = [s for s in expected_strategies if s not in page_content]

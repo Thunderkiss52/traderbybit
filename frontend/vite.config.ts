@@ -17,6 +17,16 @@ export default defineConfig({
       },
     },
   },
+  preview: {
+    proxy: {
+      '/api': {
+        target: 'http://127.0.0.1:8000',
+        configure: (proxy) => {
+          proxy.on('proxyReq', (proxyReq) => proxyReq.removeHeader('origin'));
+        },
+      },
+    },
+  },
   build: {
     target: 'es2022',
     chunkSizeWarningLimit: 500,
