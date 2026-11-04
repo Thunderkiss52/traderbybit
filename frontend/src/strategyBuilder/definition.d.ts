@@ -1,0 +1,3 @@
+export interface BuilderForm { id: string; version: number; symbol: string; exchange: string; timeframe: string; fast: number; slow: number; rsi: number; stop: number; take: number; risk: number; timeout: number; cooldown: number }
+export interface Definition { schema_version: number; id: string; version: number; symbols: string[]; exchanges: string[]; timeframe: string; indicators: Record<string, { type: string; period: number; timeframe: string }>; entry: Record<string, unknown>; stop_atr: number; take_atr: number; risk_percent: number; timeout_bars: number; cooldown_bars: number }
+export function emaDefinition(form: BuilderForm): Definition;

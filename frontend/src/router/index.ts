@@ -8,6 +8,7 @@ export const router = createRouter({
       path: '/',
       component: MainLayout,
       children: [
+        { path: "strategies", component: () => import("../pages/StrategiesPage.vue") },
         { path: '', redirect: '/dashboard' },
         { path: 'dashboard', component: () => import('../pages/DashboardPage.vue') },
         { path: 'market/:symbol', component: () => import('../pages/MarketPage.vue') },
