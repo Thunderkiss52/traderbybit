@@ -18,3 +18,11 @@ Tracker baseline: Implementation 0%, Verification 0%, Product 0%; Phase 0 eviden
 ## Implementation sequence
 
 DSL and immutable persistence; Go interpretation; deterministic authoring and visual editor; pinned historical research integration; fail-closed governance; regression and browser verification. Each unit requires executed targeted checks before its local commit. No production actions are authorized.
+
+## Stages 2 and 3: executed evidence
+
+Stage 2: isolated PostgreSQL 17, task-owned `vector-builder-pg-20261104`, port 26432, database `bybit_test`; PHP 8.5 test image. Definition tests: 2 passed, 8 assertions. Baseline Pint: 775 files passed. Immutable definitions and audit events are additive; no account changes.
+
+Stage 3: Go interpreter reuses decimal indicators and `Engine.RunSignals`; primary and higher-timeframe bars are aligned by close time, complete contiguous exchange-scoped inputs are mandatory, and entries fill on the next bar. Go race suite and vet passed, including determinism, prefix causality, incomplete candles, wrong exchange, gaps, future bars, warmup and higher-timeframe tests.
+
+DSL v1 research profile: SMA, EMA, RSI, ATR, volume SMA, close PRICE, MACD line (period fast, twice-period slow), Bollinger bands (2 deviations), Donchian high/low; AND/OR/NOT, typed comparisons, crossover, inclusive range and percentage change. ATR(14) stop/target, bounded risk <=0.5%, cooldown and timeout. ADX, partial exits, custom exit conditions and funding costs are explicitly unsupported. PAPER eligibility remains false until execution parity is implemented and verified. No profitability claim.

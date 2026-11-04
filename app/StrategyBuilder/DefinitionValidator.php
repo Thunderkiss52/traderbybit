@@ -9,7 +9,7 @@ use Illuminate\Validation\ValidationException;
 
 final class DefinitionValidator
 {
-    public const TYPES = ["SMA", "EMA", "RSI", "ATR", "VOLUME_SMA", "PRICE", "MACD", "ADX", "BB_UPPER", "BB_LOWER", "DONCHIAN_HIGH", "DONCHIAN_LOW"];
+    public const TYPES = ["SMA", "EMA", "RSI", "ATR", "VOLUME_SMA", "PRICE", "MACD", "BB_UPPER", "BB_LOWER", "DONCHIAN_HIGH", "DONCHIAN_LOW"];
 
     public function validate(array $definition): array
     {
