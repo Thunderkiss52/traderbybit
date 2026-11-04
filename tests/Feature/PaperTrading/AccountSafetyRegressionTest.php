@@ -9,6 +9,7 @@ use App\PaperTrading\Application\PaperExecutionEligibilityService;
 use App\PaperTrading\Application\PerformanceStatisticsService;
 use App\PaperTrading\Application\PositionLifecycleService;
 use App\PaperTrading\Infrastructure\Persistence\EquitySnapshotRecord;
+use App\PaperTrading\Infrastructure\Persistence\JournalEventRecord;
 use Brick\Math\BigDecimal;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use ReflectionMethod;
@@ -34,6 +35,58 @@ final class AccountSafetyRegressionTest extends TestCase
         self::assertSame('entry_drawdown_limit_exceeded',
             $this->app->make(PaperExecutionEligibilityService::class)->accountEntryRejectionReason($account));
         self::assertSame('BLOCKED', $this->app->make(PaperAccountService::class)->resume($account->id)->status);
+    }
+
+    public function test_equity_recovery_does_not_reactivate_blocked_bybit_account_without_owner_approval(): void
+    {
+        $account = $this->app->make(PaperAccountService::class)->default();
+        $recalculate = new ReflectionMethod(PositionLifecycleService::class, 'refreshAccountMetrics');
+        $lifecycle = $this->app->make(PositionLifecycleService::class);
+        $recalculate->invoke($lifecycle, $account, BigDecimal::of('-500'), BigDecimal::zero());
+        self::assertSame('BLOCKED', $account->fresh()->status);
+        $recalculate->invoke($lifecycle, $account->fresh(), BigDecimal::of('-400'), BigDecimal::zero());
+        self::assertSame('BLOCKED', $account->fresh()->status);
+        self::assertSame('4.00000000', $account->fresh()->current_drawdown_percent);
+
+        $accounts = $this->app->make(PaperAccountService::class);
+        try {
+            $accounts->resume($account->id);
+            self::fail('A blocked account was reactivated without owner approval.');
+        } catch (\DomainException $error) {
+            self::assertStringContainsString('owner approval', $error->getMessage());
+        }
+        self::assertSame('BLOCKED', $account->fresh()->status);
+        self::assertSame(0, JournalEventRecord::query()->where('paper_account_id', $account->id)
+            ->where('event_type', 'OWNER_APPROVED_PAPER_RESUME')->count());
+
+        self::assertSame('ACTIVE', $accounts->resume($account->id, ownerApproved: true)->status);
+        self::assertSame(1, JournalEventRecord::query()->where('paper_account_id', $account->id)
+            ->where('event_type', 'OWNER_APPROVED_PAPER_RESUME')->count());
+    }
+
+    public function test_unverified_or_negative_drawdown_blocks_new_entries(): void
+    {
+        $account = $this->app->make(PaperAccountService::class)->default();
+        $eligibility = $this->app->make(PaperExecutionEligibilityService::class);
+        $account->current_drawdown_percent = null;
+        self::assertSame('drawdown_unverified', $eligibility->accountEntryRejectionReason($account));
+        $account->current_drawdown_percent = '-1';
+        self::assertSame('drawdown_unverified', $eligibility->accountEntryRejectionReason($account));
+        $account->current_drawdown_percent = 'invalid';
+        self::assertSame('drawdown_unverified', $eligibility->accountEntryRejectionReason($account));
+    }
+
+    public function test_owner_flag_cannot_reactivate_an_account_with_negative_drawdown(): void
+    {
+        $account = $this->app->make(PaperAccountService::class)->default();
+        $account->update(['status' => 'BLOCKED', 'current_drawdown_percent' => '-1']);
+        try {
+            $this->app->make(PaperAccountService::class)->resume($account->id, ownerApproved: true);
+            self::fail('Negative drawdown was accepted for an owner-approved resume.');
+        } catch (\DomainException $error) {
+            self::assertStringContainsString('Invalid PAPER account drawdown', $error->getMessage());
+        }
+        self::assertSame('BLOCKED', $account->fresh()->status);
     }
 
     public function test_resume_keeps_hard_drawdown_limits_and_cannot_override_cooldown(): void

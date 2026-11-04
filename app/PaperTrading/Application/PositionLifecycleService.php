@@ -655,16 +655,13 @@ final readonly class PositionLifecycleService
             : $peak->minus($equity)->dividedBy($peak, 24, RoundingMode::HalfEven)->multipliedBy(100);
         $maxDrawdown = BigDecimal::max($account->maximum_drawdown_percent ?? '0', $drawdown);
 
+        $halt = BigDecimal::min(BigDecimal::of((string) $this->config['drawdown']['halt_percent']), BigDecimal::of('10'));
+        $block = BigDecimal::min(BigDecimal::of((string) $this->config['drawdown']['block_new_entries_percent']), BigDecimal::of('5'));
         $status = $account->status;
-        if ($drawdown->isGreaterThanOrEqualTo(BigDecimal::of((string) $this->config['drawdown']['halt_percent']))) {
+        if ($drawdown->isGreaterThanOrEqualTo($halt)) {
             $status = 'HALTED';
-        } elseif ($drawdown->isGreaterThanOrEqualTo(BigDecimal::of((string) $this->config['drawdown']['block_new_entries_percent']))) {
+        } elseif ($drawdown->isGreaterThanOrEqualTo($block) && $status !== 'HALTED') {
             $status = 'BLOCKED';
-        } elseif ($status === 'BLOCKED' && $account->exchange_id !== 'binance') {
-            // Binance BLOCKED also represents an owner-controlled activation gate.
-            // Market marks, funding settlements and equity recovery must never
-            // silently turn an explicitly blocked Binance paper account ACTIVE.
-            $status = 'ACTIVE';
         }
 
         $payload = [

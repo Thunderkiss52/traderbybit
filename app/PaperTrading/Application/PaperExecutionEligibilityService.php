@@ -37,16 +37,27 @@ final readonly class PaperExecutionEligibilityService
      */
     public function accountEntryRejectionReason(PaperAccountRecord $account): ?string
     {
-        if ($account->status !== 'ACTIVE') {
-            if ($account->current_drawdown_percent !== null && BigDecimal::of((string) $account->current_drawdown_percent)->isGreaterThanOrEqualTo('5.0')) {
-                return 'entry_drawdown_limit_exceeded';
-            }
-
-            return 'account_not_active';
+        $drawdown = $account->current_drawdown_percent;
+        if ($drawdown === null) {
+            return $account->status === 'ACTIVE' ? 'drawdown_unverified' : 'account_not_active';
         }
-
-        if ($account->current_drawdown_percent !== null && BigDecimal::of((string) $account->current_drawdown_percent)->isGreaterThanOrEqualTo('5.0')) {
+        try {
+            $measured = BigDecimal::of((string) $drawdown);
+            $threshold = BigDecimal::min(
+                BigDecimal::of((string) ($this->config['drawdown']['block_new_entries_percent'] ?? '5')),
+                BigDecimal::of('5'),
+            );
+        } catch (Throwable) {
+            return $account->status === 'ACTIVE' ? 'drawdown_unverified' : 'account_not_active';
+        }
+        if ($measured->isNegative() || $threshold->isLessThanOrEqualTo(0)) {
+            return $account->status === 'ACTIVE' ? 'drawdown_unverified' : 'account_not_active';
+        }
+        if ($measured->isGreaterThanOrEqualTo($threshold)) {
             return 'entry_drawdown_limit_exceeded';
+        }
+        if ($account->status !== 'ACTIVE') {
+            return 'account_not_active';
         }
 
         // SIGNAL_ONLY check (e.g. btc_eth_lead_lag)

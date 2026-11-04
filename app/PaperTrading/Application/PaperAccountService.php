@@ -17,6 +17,7 @@ final readonly class PaperAccountService
 {
     public function __construct(
         private array $config,
+        private TradingJournalService $journal,
         private ?StrategyRegistry $registry = null,
     ) {}
 
@@ -211,19 +212,34 @@ final readonly class PaperAccountService
         return collect((array) config('paper.primary_strategies', ['baseline']))->map(fn (string $s) => $this->primaryAccount($s, $exchangeId));
     }
 
-    public function resume(string $id): PaperAccountRecord
+    public function resume(string $id, bool $ownerApproved = false): PaperAccountRecord
     {
-        return DB::transaction(function () use ($id): PaperAccountRecord {
+        return DB::transaction(function () use ($id, $ownerApproved): PaperAccountRecord {
             $account = PaperAccountRecord::query()->lockForUpdate()->findOrFail($id);
             if ($account->exchange_id !== 'bybit') {
                 throw new \DomainException('Binance paper execution remains blocked pending verified exchange isolation.');
             }
             $drawdown = BigDecimal::of($account->current_drawdown_percent);
-            $halt = BigDecimal::of((string) config('paper.drawdown.halt_percent'));
-            $block = BigDecimal::of((string) config('paper.drawdown.block_new_entries_percent'));
+            if ($drawdown->isNegative()) {
+                throw new \DomainException('Invalid PAPER account drawdown; reactivation is prohibited.');
+            }
+            $halt = BigDecimal::min(BigDecimal::of((string) config('paper.drawdown.halt_percent')), BigDecimal::of('10'));
+            $block = BigDecimal::min(BigDecimal::of((string) config('paper.drawdown.block_new_entries_percent')), BigDecimal::of('5'));
             $status = $drawdown->isGreaterThanOrEqualTo($halt) ? AccountStatus::Halted->value
                 : ($drawdown->isGreaterThanOrEqualTo($block) ? AccountStatus::Blocked->value : AccountStatus::Active->value);
+            if ($status === AccountStatus::Active->value && $account->status !== AccountStatus::Active->value && ! $ownerApproved) {
+                throw new \DomainException('Explicit owner approval is required to reactivate a blocked PAPER account.');
+            }
+            $previousStatus = $account->status;
             $account->update(['status' => $status, 'drawdown_override' => false]);
+            if ($status === AccountStatus::Active->value && $previousStatus !== $status) {
+                $at = new \DateTimeImmutable('now', new \DateTimeZone('UTC'));
+                $this->journal->append(
+                    $account->id, null, null, 'OWNER_APPROVED_PAPER_RESUME', $at,
+                    ['from_status' => $previousStatus, 'to_status' => $status, 'drawdown_percent' => (string) $drawdown],
+                    'owner-approved-resume:'.$account->id.':'.$at->format('U.u'),
+                );
+            }
 
             return $account->refresh();
         });

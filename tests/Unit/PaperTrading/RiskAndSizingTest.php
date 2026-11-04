@@ -55,6 +55,9 @@ final class RiskAndSizingTest extends TestCase
             'negative risk' => [['risk_percent' => '-0.50'], 'invalid_signal_risk'],
             'maximum positions' => [['open_positions' => 3], 'maximum_positions_reached'],
             'portfolio risk' => [['total_risk_percent' => '1.25', 'risk_percent' => '0.50'], 'portfolio_risk_limit'],
+            'negative open risk' => [['total_risk_percent' => '-500'], 'invalid_total_risk_percent'],
+            'negative drawdown' => [['drawdown_percent' => '-1'], 'invalid_drawdown_percent'],
+            'unknown quality' => [['quality_class' => 'Z'], 'invalid_signal_quality_class'],
             'correlation' => [['same_direction_correlated_exposure' => true, 'correlation' => '0.85'], 'correlation_limit'],
             'missing correlation' => [['same_direction_correlated_exposure' => true, 'correlation' => null], 'correlation_data_insufficient'],
             'drawdown block' => [['drawdown_percent' => '5'], 'drawdown_entry_block'],
@@ -92,6 +95,34 @@ final class RiskAndSizingTest extends TestCase
         self::assertSame('1.000000000000', $service->pearson(['1', '2', '3', '4'], ['2', '4', '6', '8']));
         self::assertSame('-1.000000000000', $service->pearson(['1', '2', '3', '4'], ['8', '6', '4', '2']));
         self::assertNull($service->pearson(['1', '1'], ['2', '2']));
+    }
+
+    public function test_config_cannot_relax_paper_risk_ceiling(): void
+    {
+        $config = $this->config();
+        $config['risk_by_quality'] = ['A' => '25', 'B' => '25', 'C' => '25'];
+        $config['portfolio']['maximum_total_risk_percent'] = '50';
+        $config['portfolio']['maximum_notional_percent'] = '1000';
+        $config['drawdown'] = ['block_new_entries_percent' => '50', 'halt_percent' => '100'];
+        $risk = new RiskEngine($config);
+        self::assertContains('signal_risk_above_class_limit', $risk->assess(array_replace($this->baseRiskInput(), ['risk_percent' => '0.51']))->reasons);
+        self::assertContains('portfolio_risk_limit', $risk->assess(array_replace($this->baseRiskInput(), ['total_risk_percent' => '1.25']))->reasons);
+        self::assertContains('portfolio_notional_limit', $risk->assess(array_replace($this->baseRiskInput(), ['notional_after' => '20001']))->reasons);
+        self::assertContains('drawdown_entry_block', $risk->assess(array_replace($this->baseRiskInput(), ['drawdown_percent' => '5']))->reasons);
+        self::assertContains('drawdown_halt', $risk->assess(array_replace($this->baseRiskInput(), ['drawdown_percent' => '10']))->reasons);
+    }
+
+    public function test_sizing_rejects_unsafe_inputs_even_when_config_is_relaxed(): void
+    {
+        $config = $this->config();
+        $config['portfolio']['maximum_notional_percent'] = '1000';
+        $config['portfolio']['maximum_model_leverage'] = '10';
+        $sizing = new PositionSizingService($config);
+        $limits = new InstrumentConstraints('0.001', '0.001', '1000', '5');
+        self::assertSame('invalid_sizing_inputs', $sizing->calculate('10000', '0.51', '100', '99', $limits)->reason);
+        self::assertSame('invalid_sizing_inputs', $sizing->calculate('0', '0.5', '100', '99', $limits)->reason);
+        self::assertSame('invalid_sizing_inputs', $sizing->calculate('10000', '0.5', '0', '99', $limits)->reason);
+        self::assertSame('notional_limit_exceeded', $sizing->calculate('10000', '0.5', '100', '99.99', $limits)->reason);
     }
 
     private function baseRiskInput(): array

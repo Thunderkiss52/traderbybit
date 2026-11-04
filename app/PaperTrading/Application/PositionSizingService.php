@@ -28,6 +28,11 @@ final readonly class PositionSizingService
                 return new PositionSize(false, null, '0', null, null, 'invalid_instrument_constraints');
             }
         }
+        if ($d($equity)->isLessThanOrEqualTo(0) || $d($riskPercent)->isLessThanOrEqualTo(0)
+            || $d($riskPercent)->isGreaterThan('0.50') || $d($entry)->isLessThanOrEqualTo(0)
+            || $d($stop)->isLessThanOrEqualTo(0)) {
+            return new PositionSize(false, null, '0', null, null, 'invalid_sizing_inputs');
+        }
         $riskCapital = $d($equity)->multipliedBy($riskPercent)->dividedBy(100, 24, RoundingMode::HalfEven);
         $fee = $costs['taker_rate'];
         $slippage = $costs['slippage_rate'];
@@ -48,8 +53,12 @@ final readonly class PositionSizingService
         if ($quantity->isGreaterThan($d($limits->maxOrderQty))) {
             return new PositionSize(false, (string) $quantity, (string) $riskCapital, (string) $effectiveLoss, (string) $notional, 'above_maximum_quantity');
         }
-        $maxNotional = $d($equity)->multipliedBy((string) $this->config['portfolio']['maximum_notional_percent'])->dividedBy(100, 24, RoundingMode::HalfEven);
-        $maxLeverageNotional = $d($equity)->multipliedBy((string) $this->config['portfolio']['maximum_model_leverage']);
+        $maxNotional = $d($equity)->multipliedBy(BigDecimal::min(
+            $d((string) $this->config['portfolio']['maximum_notional_percent']), $d('200'),
+        ))->dividedBy(100, 24, RoundingMode::HalfEven);
+        $maxLeverageNotional = $d($equity)->multipliedBy(BigDecimal::min(
+            $d((string) $this->config['portfolio']['maximum_model_leverage']), $d('2.00'),
+        ));
         if ($notional->isGreaterThan($maxNotional) || $notional->isGreaterThan($maxLeverageNotional)) {
             return new PositionSize(false, (string) $quantity, (string) $riskCapital, (string) $effectiveLoss, (string) $notional, 'notional_limit_exceeded');
         }

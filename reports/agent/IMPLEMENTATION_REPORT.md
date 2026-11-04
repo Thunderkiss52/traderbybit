@@ -21,3 +21,7 @@ After the temporal unit, the archived R3 research-job race was confirmed in curr
 ## Completed local unit: dependency locks
 
 `composer.lock` and `frontend/package-lock.json` were updated to patched versions after the baseline scans found seven package findings. Installed local dependencies, both audits, the full PHP suite, 64 frontend tests, TypeScript and production build all passed. See `DEPENDENCY_REMEDIATION.md`. No runtime application behavior or production image was changed in this unit.
+
+## Completed local unit: R4 PAPER safety guards
+
+The current account reactivation and risk-boundary gaps were corrected without raising any default risk limit or modifying an existing account. Owner approval is now required for a blocked/halted-to-ACTIVE transition and is journaled; recovery and unknown drawdown remain blocked. Risk and sizing enforce the existing fixed ceilings even if configuration is loosened. Focused isolated PostgreSQL tests passed; see `R4_PAPER_RISK_GUARDS.md`. The full R4 patch remains unintegrated.

@@ -36,22 +36,49 @@ final readonly class RiskEngine
         if (! $riskPercent->isPositive()) {
             $reasons[] = 'invalid_signal_risk';
         }
-        $classLimit = BigDecimal::of((string) $this->config['risk_by_quality'][(string) $input['quality_class']]);
-        if ($riskPercent->isGreaterThan($classLimit)) {
-            $reasons[] = 'signal_risk_above_class_limit';
+        $quality = (string) $input['quality_class'];
+        $hardClassLimits = ['A' => '0.50', 'B' => '0.25', 'C' => '0.10'];
+        if (! isset($hardClassLimits[$quality], $this->config['risk_by_quality'][$quality])) {
+            $reasons[] = 'invalid_signal_quality_class';
+        } else {
+            $classLimit = BigDecimal::min(
+                BigDecimal::of((string) $this->config['risk_by_quality'][$quality]),
+                BigDecimal::of($hardClassLimits[$quality]),
+            );
+            if ($riskPercent->isGreaterThan($classLimit)) {
+                $reasons[] = 'signal_risk_above_class_limit';
+            }
         }
-        if (BigDecimal::of((string) $input['total_risk_percent'])->plus($riskPercent)->isGreaterThan(BigDecimal::of((string) $this->config['portfolio']['maximum_total_risk_percent']))) {
+        $openRisk = BigDecimal::of((string) $input['total_risk_percent']);
+        if ($openRisk->isNegative()) {
+            $reasons[] = 'invalid_total_risk_percent';
+        }
+        $maxOpenRisk = BigDecimal::min(
+            BigDecimal::of((string) $this->config['portfolio']['maximum_total_risk_percent']),
+            BigDecimal::of('1.50'),
+        );
+        if ($openRisk->plus($riskPercent)->isGreaterThan($maxOpenRisk)) {
             $reasons[] = 'portfolio_risk_limit';
         }
-        $maxNotional = $equity->multipliedBy((string) $this->config['portfolio']['maximum_notional_percent'])->dividedBy(100, 24, RoundingMode::HalfEven);
+        $maxNotionalPercent = BigDecimal::min(
+            BigDecimal::of((string) $this->config['portfolio']['maximum_notional_percent']),
+            BigDecimal::of('200'),
+        );
+        $maxNotional = $equity->multipliedBy($maxNotionalPercent)->dividedBy(100, 24, RoundingMode::HalfEven);
         if (BigDecimal::of((string) ($input['notional_after'] ?? '0'))->isGreaterThan($maxNotional)) {
             $reasons[] = 'portfolio_notional_limit';
         }
         $drawdown = BigDecimal::of((string) $input['drawdown_percent']);
+        if ($drawdown->isNegative()) {
+            $reasons[] = 'invalid_drawdown_percent';
+        }
         // Historical drawdown_override values must not disable financial safety limits.
-        if ($drawdown->isGreaterThanOrEqualTo(BigDecimal::of((string) $this->config['drawdown']['halt_percent']))) {
+        // Configuration may tighten these boundaries, never relax them.
+        $halt = BigDecimal::min(BigDecimal::of((string) $this->config['drawdown']['halt_percent']), BigDecimal::of('10'));
+        $entryBlock = BigDecimal::min(BigDecimal::of((string) $this->config['drawdown']['block_new_entries_percent']), BigDecimal::of('5'));
+        if ($drawdown->isGreaterThanOrEqualTo($halt)) {
             $reasons[] = 'drawdown_halt';
-        } elseif ($drawdown->isGreaterThanOrEqualTo(BigDecimal::of((string) $this->config['drawdown']['block_new_entries_percent']))) {
+        } elseif ($drawdown->isGreaterThanOrEqualTo($entryBlock)) {
             $reasons[] = 'drawdown_entry_block';
         }
         foreach ((array) ($input['market_failures'] ?? []) as $failure) {

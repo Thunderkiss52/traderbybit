@@ -27,6 +27,10 @@ The new migration ran on isolated `bybit_test` (PostgreSQL 17.11), exit 0. Focus
 
 After installing the updated local Composer lockfile, the complete PHP suite passed again: 1,176 passed, 9 skipped, 11,112 assertions, 178.44 s, exit 0. Under Node 22, `npm test` passed 64 tests and `npm run build` passed including TypeScript; both exited 0. `composer audit --locked --no-interaction`, `composer validate --strict`, and `npm audit --omit=dev --audit-level=high` all exited 0; both audits reported zero advisories. The initial failed audit results above are retained as baseline evidence, not current lockfile status.
 
+## R4 PAPER safety stage
+
+Focused `php -d xdebug.mode=off artisan test tests/Feature/PaperTrading/AccountSafetyRegressionTest.php tests/Unit/PaperTrading/RiskAndSizingTest.php` passed 40 tests and 84 assertions, exit 0. The complete PHP suite then passed 1,184 tests, skipped 9, made 11,137 assertions in 180.05 s, exit 0. `vendor/bin/pint --test` passed 743 files, exit 0. `find app config database routes tests -type f -name '*.php' -print0 | xargs -0 -P 4 -n 1 php -l` validated 723 files with no syntax error, exit 0. Only PHP/PAPER code changed in this stage; earlier Go and frontend checks remain applicable.
+
 ## Not established
 
 Historical replay against a real retained dataset, browser visual checks, production read-only financial evidence, immutable database snapshot consistency, true concurrent mutation of an audit export, and deployed performance were NOT_RUN. Archive candidate benchmarks and phase acceptance gates were not silently counted as current verification.

@@ -170,8 +170,9 @@ class AppServiceProvider extends ServiceProvider
             config: (array) config('paper'),
         ));
         $this->app->singleton(PaperAccountService::class, fn ($app): PaperAccountService => new PaperAccountService(
-            (array) config('paper'),
-            $app->make(StrategyRegistry::class),
+            config: (array) config('paper'),
+            journal: $app->make(TradingJournalService::class),
+            registry: $app->make(StrategyRegistry::class),
         ));
         $this->app->singleton(PositionSizingService::class, fn (): PositionSizingService => new PositionSizingService((array) config('paper')));
         $this->app->singleton(CorrelationService::class, fn (): CorrelationService => new CorrelationService((array) config('paper')));
