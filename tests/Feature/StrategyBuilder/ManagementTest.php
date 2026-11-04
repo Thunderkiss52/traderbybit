@@ -5,16 +5,39 @@ declare(strict_types=1);
 namespace Tests\Feature\StrategyBuilder;
 
 use App\MarketData\Infrastructure\Persistence\CandleRecord;
+use App\PaperTrading\Application\GlobalPaperCapitalGuard;
+use App\PaperTrading\Application\PaperTopologySynchronizer;
 use App\Strategy\Application\StrategyRegistry;
 use App\StrategyBuilder\DefinitionStore;
 use DateTimeImmutable;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Http;
 use Tests\TestCase;
 
 final class ManagementTest extends TestCase
 {
     use RefreshDatabase;
+
+    public function test_authoring_and_rejected_approval_preserve_all_26_accounts_and_global_guard(): void
+    {
+        Http::preventStrayRequests();
+        config(['exchanges.binance_paper_provisioning_approved' => true, 'services.research_api_token' => 'test-owner']);
+        app(PaperTopologySynchronizer::class)->sync(true);
+        DB::table('paper_accounts')->update(['status' => 'BLOCKED']);
+        $before = DB::table('paper_accounts')->orderBy('id')->get()->toJson();
+        self::assertSame(26, DB::table('paper_accounts')->count());
+        $guard = app(GlobalPaperCapitalGuard::class)->entryRejectionReason('1');
+        $budget = config('paper.global_capital');
+        $this->withHeader('X-Research-Token', 'test-owner');
+        $id = $this->postJson('/api/v1/strategies', ['definition' => DefinitionTest::example(), 'interpretation_confirmed' => true])->assertCreated()->json('data.id');
+        $this->postJson("/api/v1/strategies/{$id}/approve-paper")->assertUnprocessable();
+        app(PaperTopologySynchronizer::class)->sync(true);
+        self::assertSame($before, DB::table('paper_accounts')->orderBy('id')->get()->toJson());
+        self::assertSame($guard, app(GlobalPaperCapitalGuard::class)->entryRejectionReason('1'));
+        self::assertSame($budget, config('paper.global_capital'));
+        Http::assertNothingSent();
+    }
 
     public function test_management_requires_owner_token_and_confirmation(): void
     {

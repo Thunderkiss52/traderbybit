@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\StrategyBuilder;
 
 use App\Backtest\Application\DatasetInspector;
+use App\MarketData\Application\MarketCandleConflictService;
 use App\MarketData\Infrastructure\Persistence\CandleRecord;
 use App\Strategy\Application\StrategyRegistry;
 use Brick\Math\BigDecimal;
@@ -15,9 +16,22 @@ use Symfony\Component\Process\Process;
 
 final readonly class HistoricalResearch
 {
-    public function __construct(private DatasetInspector $datasets, private DefinitionValidator $validator) {}
+    public function __construct(private DatasetInspector $datasets, private DefinitionValidator $validator, private MarketCandleConflictService $integrity) {}
 
     public function run(int $id, array $scope): object
+    {
+        if (DB::transactionLevel() > 0) {
+            return $this->runSnapshot($id, $scope);
+        }
+
+        return DB::transaction(function () use ($id, $scope): object {
+            DB::statement('SET TRANSACTION ISOLATION LEVEL REPEATABLE READ');
+
+            return $this->runSnapshot($id, $scope);
+        }, 3);
+    }
+
+    private function runSnapshot(int $id, array $scope): object
     {
         $row = DB::table('strategy_definitions')->find($id);
         abort_if($row === null, 404);
@@ -47,6 +61,7 @@ final readonly class HistoricalResearch
         }
         $warmup = max(220, max(array_column($d['indicators'], 'period')) * 2 + 2);
         try {
+            $this->assertIntegrity($scope, $from, $to, $warmup);
             $pin = $this->datasets->pin([$scope['symbol']], $from, $to, $warmup, $scope['exchange']);
             foreach ($pin['warnings'] as $warning) {
                 if (str_starts_with($warning, 'insufficient_warmup:')) {
@@ -66,6 +81,7 @@ final readonly class HistoricalResearch
             $existing = DB::table('strategy_definition_runs')->find($fingerprint);
             if ($existing !== null) {
                 $this->datasets->verifyPin($pin['id']);
+                $this->assertIntegrity($scope, $from, $to, $warmup);
 
                 return $existing;
             }
@@ -78,6 +94,7 @@ final readonly class HistoricalResearch
             }
             $result = json_decode($process->getOutput(), true, flags: JSON_THROW_ON_ERROR);
             $this->datasets->verifyPin($pin['id']);
+            $this->assertIntegrity($scope, $from, $to, $warmup);
             DB::transaction(function () use ($fingerprint, $id, $metadata, $result): void {
                 DB::table('strategy_definition_runs')->insertOrIgnore(['id' => $fingerprint, 'definition_id' => $id, 'metadata' => json_encode($metadata, JSON_THROW_ON_ERROR), 'result' => json_encode($result, JSON_THROW_ON_ERROR), 'created_at' => now('UTC')]);
             }, 3);
@@ -85,6 +102,17 @@ final readonly class HistoricalResearch
             return DB::table('strategy_definition_runs')->find($fingerprint);
         } catch (\RuntimeException $e) {
             throw ValidationException::withMessages(['dataset' => $e->getMessage()]);
+        }
+    }
+
+    private function assertIntegrity(array $scope, DateTimeImmutable $from, DateTimeImmutable $to, int $warmup): void
+    {
+        foreach (['5', '15', '30', '60'] as $tf) {
+            $start = $from->modify('-'.(($warmup + 1) * (int) $tf).' minutes');
+            $report = $this->integrity->integrityReport($scope['exchange'], $scope['symbol'], $tf, $start, $to);
+            if ($report['status'] !== 'VALID') {
+                throw new \RuntimeException('Candle integrity blocks research: '.($report['reason_code'] ?? $report['status']));
+            }
         }
     }
 }

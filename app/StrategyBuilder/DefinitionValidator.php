@@ -30,11 +30,27 @@ final class DefinitionValidator
             'risk_percent' => 'required|numeric|gt:0|lte:0.5',
             'timeout_bars' => 'required|integer|min:1|max:1000', 'cooldown_bars' => 'required|integer|min:0|max:1000',
         ])->validate();
+        foreach (['schema_version', 'version', 'timeout_bars', 'cooldown_bars'] as $key) {
+            if (! is_int($definition[$key])) {
+                $this->fail($key.' must be a JSON integer.');
+            }
+        }
+        foreach (['stop_atr', 'take_atr', 'risk_percent'] as $key) {
+            if ((! is_int($definition[$key]) && ! is_float($definition[$key])) || ! is_finite((float) $definition[$key])) {
+                $this->fail($key.' must be a finite JSON number.');
+            }
+        }
+        if (! is_string($definition['timeframe'])) {
+            $this->fail('Timeframe must be a JSON string.');
+        }
         $keys = ['schema_version', 'id', 'version', 'symbols', 'exchanges', 'timeframe', 'indicators', 'entry', 'stop_atr', 'take_atr', 'risk_percent', 'timeout_bars', 'cooldown_bars'];
         if (array_diff(array_keys($definition), $keys)) {
             $this->fail('Unknown definition fields.');
         }
         foreach ($definition['indicators'] as $name => $indicator) {
+            if (! is_int($indicator['period']) || ! is_string($indicator['timeframe'])) {
+                $this->fail('Indicator period must be an integer and timeframe a string.');
+            }
             if (! is_string($name) || ! preg_match('/^[a-z][a-z0-9_]{0,31}$/D', $name) || (int) $indicator['timeframe'] < (int) $definition['timeframe']) {
                 $this->fail('Invalid indicator name or timeframe below primary timeframe.');
             }

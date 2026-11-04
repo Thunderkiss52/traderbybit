@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, ref, watch } from "vue";
+import { computed, nextTick, ref, watch } from "vue";
 import { api } from "../services/api";
 import { emaDefinition, type BuilderForm, type Definition } from "../strategyBuilder/definition.js";
 interface Version { id: number; strategy_id: string; version: number; status: string; checksum: string; definition: string | Definition }
@@ -25,8 +25,8 @@ async function parse() {await action(async()=>{const r=await api.post("/strategi
 async function validate() {await action(async()=>{await api.post("/strategies/validate",{definition:preview.value},{headers:headers()});validated.value=true;message.value="Definition validated for research. PAPER parity remains unverified.";});}
 async function save() {await action(async()=>{const r=await api.post("/strategies",{definition:preview.value,interpretation_confirmed:confirmed.value},{headers:headers()});selected.value=r.data.data.id;await load();message.value="Immutable version saved.";});}
 function edit(row:Version) {text.value=JSON.stringify(typeof row.definition==="string"?JSON.parse(row.definition):row.definition,null,2);history.value=null;}
-async function inspect(row:Version) {await action(async()=>{const r=await api.get(`/strategies/${row.id}`,{headers:headers()});history.value=r.data;selected.value=row.id;});}
-async function research() {await action(async()=>{const d=preview.value;if(!d||!selected.value)throw new Error("Select a saved version first");const r=await api.post(`/strategies/${selected.value}/backtests`,{exchange:d.exchanges[0],symbol:d.symbols[0],from:from.value,to:to.value,capital:capital.value},{headers:headers()});history.value=r.data;message.value="Research result. Funding is not modeled; PAPER approval remains blocked.";});}
+async function inspect(row:Version) {await action(async()=>{const r=await api.get(`/strategies/${row.id}`,{headers:headers()});edit(row);await nextTick();history.value=r.data;selected.value=row.id;});}
+async function research() {await action(async()=>{const d=preview.value;if(!d||!selected.value)throw new Error("Select a saved version first");const r=await api.post(`/strategies/${selected.value}/backtests`,{exchange:d.exchanges[0],symbol:d.symbols[0],from:from.value,to:to.value,capital:capital.value},{headers:headers(),timeout:75000});history.value=r.data;message.value="Research result. Funding is not modeled; PAPER approval remains blocked.";});}
 async function approval() {await action(async()=>{await api.post(`/strategies/${selected.value}/approve-paper`,{},{headers:headers()});});}
 async function results() {await action(async()=>{history.value=(await api.get(`/strategies/${selected.value}/backtests`,{headers:headers()})).data;});}
 </script>

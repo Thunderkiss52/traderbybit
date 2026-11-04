@@ -4,6 +4,7 @@ package strategydsl
 import (
 	"encoding/json"
 	"fmt"
+	"regexp"
 	"sort"
 	"strconv"
 	"time"
@@ -83,10 +84,28 @@ func frame(s string) int {
 }
 
 func (d Definition) Validate() error {
+	if !regexp.MustCompile(`^user_[a-z0-9_]{1,48}$`).MatchString(d.ID) || len(d.Symbols) == 0 || len(d.Symbols) > 20 || len(d.Exchanges) == 0 || len(d.Exchanges) > 10 {
+		return fmt.Errorf("invalid strategy identity or scope lists")
+	}
+	for _, list := range []struct {
+		values  []string
+		pattern string
+	}{{d.Symbols, `^[A-Z0-9]{3,24}$`}, {d.Exchanges, `^[a-z0-9_-]{2,32}$`}} {
+		seen := map[string]bool{}
+		for _, value := range list.values {
+			if seen[value] || !regexp.MustCompile(list.pattern).MatchString(value) {
+				return fmt.Errorf("invalid or duplicate scope")
+			}
+			seen[value] = true
+		}
+	}
 	if d.SchemaVersion != 1 || d.Version < 1 || len(d.ID) < 6 || d.ID[:5] != "user_" || frame(d.Timeframe) == 0 || len(d.Indicators) == 0 || len(d.Indicators) > 32 || len(d.Entry) == 0 || len(d.Entry) > 2 || !(d.StopATR > 0 && d.StopATR <= 20) || !(d.TakeATR > 0 && d.TakeATR <= 100) || !(d.RiskPercent > 0 && d.RiskPercent <= 0.5) || d.TimeoutBars < 1 || d.TimeoutBars > 1000 || d.CooldownBars < 0 || d.CooldownBars > 1000 {
 		return fmt.Errorf("invalid definition or risk limits")
 	}
 	for name, i := range d.Indicators {
+		if !regexp.MustCompile(`^[a-z][a-z0-9_]{0,31}$`).MatchString(name) {
+			return fmt.Errorf("invalid indicator name")
+		}
 		if name == "" || i.Period < 2 || i.Period > 500 || frame(i.Timeframe) < frame(d.Timeframe) || !contains([]string{"SMA", "EMA", "RSI", "ATR", "VOLUME_SMA", "PRICE", "MACD", "BB_UPPER", "BB_LOWER", "DONCHIAN_HIGH", "DONCHIAN_LOW"}, i.Type) {
 			return fmt.Errorf("unsupported indicator %s", name)
 		}
@@ -135,6 +154,9 @@ func validateCondition(c Condition, indicators map[string]Indicator, depth int) 
 		}
 	}
 	if c.Op != "" {
+		if string(c.Right) == "null" || len(c.Right) == 0 {
+			return fmt.Errorf("missing right operand")
+		}
 		modes++
 		if _, ok := indicators[c.Left]; !ok {
 			return fmt.Errorf("unknown left operand")

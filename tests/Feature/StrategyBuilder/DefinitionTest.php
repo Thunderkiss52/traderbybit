@@ -36,7 +36,7 @@ final class DefinitionTest extends TestCase
 
     public function test_rejects_unsafe_or_unsupported_definitions(): void
     {
-        foreach (['stop_atr' => null, 'risk_percent' => 6, 'code' => 'exec', 'entry' => ['BUY' => ['op' => 'invented', 'left' => 'fast', 'right' => 1]]] as $key => $value) {
+        foreach (['stop_atr' => null, 'risk_percent' => 6, 'code' => 'exec', 'version' => '1', 'entry' => ['BUY' => ['op' => 'invented', 'left' => 'fast', 'right' => 1]]] as $key => $value) {
             $definition = self::example();
             $definition[$key] = $value;
             try {
