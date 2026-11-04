@@ -75,6 +75,7 @@ final class ManagementTest extends TestCase
         self::assertSame($one['id'], $two['id']);
         self::assertSame($one['result'], $two['result']);
         self::assertFalse(json_decode($one['result'], true)['paper_eligible']);
+        self::assertGreaterThan(0, json_decode($one['result'], true)['report']['total_trades']);
         self::assertSame(1, DB::table('strategy_definition_runs')->count());
         CandleRecord::query()->where('interval', '15')->where('open_time', '2026-01-15T12:00:00Z')->delete();
         $this->postJson("/api/v1/strategies/{$d->id}/backtests", $scope)->assertUnprocessable();

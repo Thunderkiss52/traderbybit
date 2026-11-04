@@ -90,7 +90,7 @@ final class DefinitionValidator
         }
         $right = $node['right'];
         if ($node['op'] === 'within') {
-            if (! is_array($right) || ! array_is_list($right) || count($right) !== 2 || ! is_numeric($right[0]) || ! is_numeric($right[1]) || $right[0] > $right[1]) {
+            if (! is_array($right) || ! array_is_list($right) || count($right) !== 2 || (! is_int($right[0]) && ! is_float($right[0])) || (! is_int($right[1]) && ! is_float($right[1])) || $right[0] > $right[1]) {
                 $this->fail('Range requires ordered numeric bounds.');
             }
         } elseif (! is_int($right) && ! is_float($right) && (! is_string($right) || ! in_array($right, $names, true))) {

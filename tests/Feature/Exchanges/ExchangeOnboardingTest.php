@@ -10,15 +10,18 @@ use App\MarketData\Infrastructure\Persistence\CandleRecord;
 use Brick\Math\BigDecimal;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
+use Tests\Concerns\CleansCandleConflictEvidence;
 use Tests\TestCase;
 
 final class ExchangeOnboardingTest extends TestCase
 {
+    use CleansCandleConflictEvidence;
     use RefreshDatabase;
 
     protected function setUp(): void
     {
         parent::setUp();
+        $this->registerConflictCleanup();
         // Ensure baseline exchanges are present in test DB
         $this->seedBaselineExchanges();
     }
