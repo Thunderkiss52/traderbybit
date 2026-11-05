@@ -16,6 +16,7 @@ final readonly class ExchangeCatalogService
     public function __construct(
         private ExchangeRegistry $registry,
         private ExchangeCapabilityValidator $validator,
+        private ExchangeStrategyCompatibilityService $compatibility,
     ) {}
 
     /** @return list<array<string, mixed>> */
@@ -107,7 +108,7 @@ final readonly class ExchangeCatalogService
             'slippage_rate' => '0.0002',
         ]);
 
-        return ExchangeRecord::query()->create([
+        $created = ExchangeRecord::query()->create([
             'id' => $id,
             'name' => $name,
             'market_type' => $marketType,
@@ -124,6 +125,10 @@ final readonly class ExchangeCatalogService
             'paper_approved_at' => null,
             'metadata' => ['onboarded_at' => now('UTC')->toISOString()],
         ]);
+
+        $this->compatibility->reconcileExchange($created->id);
+
+        return $created;
     }
 
     public function updateLifecycle(string $id, string $status): ExchangeRecord
@@ -154,7 +159,10 @@ final readonly class ExchangeCatalogService
         $exchange->lifecycle_status = $targetStatus->value;
         $exchange->save();
 
-        return $exchange->fresh();
+        $fresh = $exchange->fresh();
+        $this->compatibility->reconcileExchange($fresh->id);
+
+        return $fresh;
     }
 
     public function approvePaper(string $id, bool $ownerApproved, string $reference = 'OWNER_APPROVAL'): ExchangeRecord
@@ -181,6 +189,9 @@ final readonly class ExchangeCatalogService
             ]),
         ]);
 
-        return $exchange->fresh();
+        $fresh = $exchange->fresh();
+        $this->compatibility->reconcileExchange($fresh->id);
+
+        return $fresh;
     }
 }

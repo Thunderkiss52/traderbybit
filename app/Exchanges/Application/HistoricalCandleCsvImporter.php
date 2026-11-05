@@ -275,6 +275,12 @@ final readonly class HistoricalCandleCsvImporter
             'metadata' => $metadata,
         ]);
 
+        try {
+            app(ExchangeStrategyCompatibilityService::class)->reconcileExchange($exchangeId);
+        } catch (Throwable) {
+            // Non-blocking
+        }
+
         return [
             'exchange_id' => $exchangeId,
             'symbol' => $symbol,

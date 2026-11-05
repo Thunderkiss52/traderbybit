@@ -1,5 +1,11 @@
 import axios from 'axios';
-import type { Exchange, ExchangeCoverageReport, HistoricalCandleUploadResult } from '../types';
+import type {
+  Exchange,
+  ExchangeCoverageReport,
+  HistoricalCandleUploadResult,
+  ExchangeStrategyCompatibilityRecord,
+  CompatibilityMatrixResponse,
+} from '../types';
 
 export const api = axios.create({ baseURL: '/api/v1', timeout: 15000 });
 api.interceptors.request.use(config => {
@@ -88,4 +94,28 @@ export async function syncExchangeTopology(
   apply: boolean = false
 ): Promise<{ data: any; message: string }> {
   return (await api.post(`/exchanges/${id}/sync-topology`, { apply })).data;
+}
+
+export async function fetchCompatibilityMatrix(): Promise<CompatibilityMatrixResponse> {
+  return (await api.get('/exchanges/matrix')).data.data;
+}
+
+export async function fetchExchangeStrategies(id: string): Promise<{
+  exchange_id: string;
+  strategies_evaluated: number;
+  results: ExchangeStrategyCompatibilityRecord[];
+}> {
+  return (await api.get(`/exchanges/${id}/strategies`)).data.data;
+}
+
+export async function reconcileExchangeCompatibility(id: string): Promise<{
+  success: boolean;
+  message: string;
+  data: {
+    exchange_id: string;
+    strategies_evaluated: number;
+    results: ExchangeStrategyCompatibilityRecord[];
+  };
+}> {
+  return (await api.post(`/exchanges/${id}/reconcile`)).data;
 }

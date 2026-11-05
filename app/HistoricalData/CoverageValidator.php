@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\HistoricalData;
 
+use App\Exchanges\Application\ExchangeStrategyCompatibilityService;
 use App\MarketData\Application\MarketCandleConflictService;
 use Carbon\CarbonImmutable;
 use Illuminate\Support\Facades\DB;
@@ -82,6 +83,14 @@ final readonly class CoverageValidator
             DB::table('historical_download_batches')->where('id', $id)->whereNotIn('status', ['ACTIVE', 'CANCELLED'])->update(['status' => $state, 'quality' => json_encode($quality, JSON_THROW_ON_ERROR), 'updated_at' => now('UTC')]);
             app(BatchRepository::class)->audit($id, 'COVERAGE_VALIDATED', $quality);
         }, 3);
+
+        if (class_exists(ExchangeStrategyCompatibilityService::class)) {
+            try {
+                app(ExchangeStrategyCompatibilityService::class)->reconcileExchange('binance');
+            } catch (\Throwable) {
+                // Non-blocking
+            }
+        }
 
         return $quality;
     }

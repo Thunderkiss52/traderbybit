@@ -7,6 +7,7 @@ namespace App\Exchanges\Http;
 use App\Exchanges\Application\ExchangeCapabilityValidator;
 use App\Exchanges\Application\ExchangeCatalogService;
 use App\Exchanges\Application\ExchangeCoverageService;
+use App\Exchanges\Application\ExchangeStrategyCompatibilityService;
 use App\Exchanges\Application\HistoricalCandleCsvImporter;
 use App\PaperTrading\Application\PaperTopologySynchronizer;
 use DomainException;
@@ -365,5 +366,36 @@ final class ExchangeManagementController extends Controller
                 'message' => $e->getMessage(),
             ], Response::HTTP_INTERNAL_SERVER_ERROR);
         }
+    }
+
+    /**
+     * Get compatibility evaluation of all strategies for an exchange.
+     */
+    public function strategies(string $id, ExchangeStrategyCompatibilityService $service): JsonResponse
+    {
+        return response()->json([
+            'data' => $service->reconcileExchange($id),
+        ]);
+    }
+
+    /**
+     * Manually trigger re-evaluation of compatibility for an exchange.
+     */
+    public function reconcile(string $id, ExchangeStrategyCompatibilityService $service): JsonResponse
+    {
+        return response()->json([
+            'data' => $service->reconcileExchange($id, force: true),
+            'message' => "Exchange '{$id}' compatibility reconciled successfully across all registered strategies.",
+        ]);
+    }
+
+    /**
+     * Get full compatibility matrix of all exchanges x all strategies.
+     */
+    public function matrix(ExchangeStrategyCompatibilityService $service): JsonResponse
+    {
+        return response()->json([
+            'data' => $service->getMatrix(),
+        ]);
     }
 }

@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\StrategyBuilder;
 
+use App\Exchanges\Application\ExchangeStrategyCompatibilityService;
 use App\Strategy\Application\StrategyRegistry;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
@@ -22,7 +23,7 @@ final readonly class DefinitionStore
             $this->engine->run(['definition' => $definition, 'mode' => 'validate'], $engineChecksum);
         }
 
-        return DB::transaction(function () use ($definition, $checksum, $actor, $engineChecksum): object {
+        $saved = DB::transaction(function () use ($definition, $checksum, $actor, $engineChecksum): object {
             DB::table('strategy_definitions')->insertOrIgnore([
                 'strategy_id' => $definition['id'], 'version' => $definition['version'],
                 'definition' => json_encode($definition, JSON_THROW_ON_ERROR), 'checksum' => $checksum,
@@ -38,5 +39,15 @@ final readonly class DefinitionStore
 
             return $row;
         }, 3);
+
+        if (class_exists(ExchangeStrategyCompatibilityService::class)) {
+            try {
+                app(ExchangeStrategyCompatibilityService::class)->reconcileStrategy($definition['id']);
+            } catch (\Throwable) {
+                // Non-blocking
+            }
+        }
+
+        return $saved;
     }
 }

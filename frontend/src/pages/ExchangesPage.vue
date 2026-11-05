@@ -3,17 +3,22 @@ import { computed, onMounted, ref } from 'vue';
 import { useQuasar } from 'quasar';
 import {
   approveExchangePaper,
+  fetchCompatibilityMatrix,
   fetchExchangeCoverage,
   fetchExchangeDetail,
   fetchExchanges,
+  fetchExchangeStrategies,
+  reconcileExchangeCompatibility,
   registerExchange,
   syncExchangeTopology,
   updateExchangeLifecycle,
   uploadExchangeCandles,
 } from '../services/api';
 import type {
+  CompatibilityMatrixResponse,
   Exchange,
   ExchangeCoverageReport,
+  ExchangeStrategyCompatibilityRecord,
   HistoricalCandleUploadResult,
 } from '../types';
 
@@ -28,6 +33,14 @@ const selectedExchangeId = ref<string | null>(null);
 const selectedExchange = ref<Exchange | null>(null);
 const coverageReport = ref<ExchangeCoverageReport | null>(null);
 const coverageLoading = ref(false);
+const strategyCompatibilities = ref<ExchangeStrategyCompatibilityRecord[]>([]);
+const compatLoading = ref(false);
+const reconcileLoading = ref(false);
+
+// Global Compatibility Matrix Dialog
+const matrixDialogOpen = ref(false);
+const matrixData = ref<CompatibilityMatrixResponse | null>(null);
+const matrixLoading = ref(false);
 
 // Register Dialog
 const registerDialogOpen = ref(false);
@@ -87,13 +100,16 @@ async function loadExchanges() {
 async function inspectExchange(id: string) {
   selectedExchangeId.value = id;
   coverageLoading.value = true;
+  compatLoading.value = true;
   try {
-    const [detail, cov] = await Promise.all([
+    const [detail, cov, compat] = await Promise.all([
       fetchExchangeDetail(id),
       fetchExchangeCoverage(id),
+      fetchExchangeStrategies(id),
     ]);
     selectedExchange.value = detail;
     coverageReport.value = cov;
+    strategyCompatibilities.value = compat.results || [];
   } catch (err: any) {
     $q.notify({
       type: 'negative',
@@ -101,6 +117,50 @@ async function inspectExchange(id: string) {
     });
   } finally {
     coverageLoading.value = false;
+    compatLoading.value = false;
+  }
+}
+
+async function triggerReconcile(exchangeId: string) {
+  reconcileLoading.value = true;
+  try {
+    const res = await reconcileExchangeCompatibility(exchangeId);
+    $q.notify({ type: 'positive', message: res.message || 'Compatibility evaluated successfully.' });
+    if (res.data?.results) {
+      strategyCompatibilities.value = res.data.results;
+    }
+  } catch (err: any) {
+    $q.notify({ type: 'negative', message: err.message || 'Reconciliation failed.' });
+  } finally {
+    reconcileLoading.value = false;
+  }
+}
+
+async function openMatrixDialog() {
+  matrixDialogOpen.value = true;
+  matrixLoading.value = true;
+  try {
+    matrixData.value = await fetchCompatibilityMatrix();
+  } catch (err: any) {
+    $q.notify({ type: 'negative', message: err.message || 'Failed to load compatibility matrix.' });
+  } finally {
+    matrixLoading.value = false;
+  }
+}
+
+function getCompatBadgeColor(status: string) {
+  switch (status) {
+    case 'PAPER_ELIGIBLE':
+      return 'positive';
+    case 'SHADOW_ELIGIBLE':
+      return 'info';
+    case 'RESEARCH_ELIGIBLE':
+      return 'secondary';
+    case 'INSUFFICIENT_DATA':
+      return 'warning';
+    case 'INCOMPATIBLE':
+    default:
+      return 'negative';
   }
 }
 
@@ -297,6 +357,14 @@ onMounted(() => {
         </div>
       </div>
       <div class="row q-gutter-sm">
+        <q-btn
+          outline
+          color="secondary"
+          icon="grid_view"
+          label="Compatibility Matrix"
+          :loading="matrixLoading"
+          @click="openMatrixDialog"
+        />
         <q-btn
           outline
           color="primary"
@@ -648,6 +716,101 @@ onMounted(() => {
             </q-card>
           </div>
         </div>
+
+        <q-separator />
+
+        <!-- Strategy Compatibility & Multi-Tier Eligibility Section -->
+        <q-card-section>
+          <div class="row items-center justify-between q-mb-md">
+            <div>
+              <div class="text-subtitle1 text-weight-bold row items-center q-gutter-xs">
+                <q-icon name="fact_check" color="primary" />
+                <span>Strategy Compatibility & Multi-Tier Eligibility</span>
+              </div>
+              <div class="text-caption text-grey-5">
+                Evaluates compatibility across 13 Primary and custom DSL strategies for Historical Research, Shadow, and PAPER execution tiers.
+              </div>
+            </div>
+            <div class="row q-gutter-sm">
+              <q-btn
+                outline
+                dense
+                color="secondary"
+                icon="sync"
+                label="Reconcile Compatibility"
+                :loading="reconcileLoading"
+                @click="triggerReconcile(selectedExchange.id)"
+              />
+            </div>
+          </div>
+
+          <div v-if="compatLoading" class="row justify-center q-pa-md">
+            <q-spinner color="primary" size="30px" />
+          </div>
+          <div v-else-if="!strategyCompatibilities.length" class="text-caption text-grey-5 q-pa-sm">
+            No compatibility records found. Click Reconcile to evaluate this exchange against registered strategies.
+          </div>
+          <q-markup-table v-else dense flat bordered class="bg-grey-10 text-caption">
+            <thead>
+              <tr>
+                <th class="text-left">Strategy</th>
+                <th class="text-center">Status</th>
+                <th class="text-center">Research</th>
+                <th class="text-center">Shadow</th>
+                <th class="text-center">PAPER</th>
+                <th class="text-left">Feature Checks</th>
+                <th class="text-left">Blockers / Missing Requirements</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr v-for="item in strategyCompatibilities" :key="item.strategy_id">
+                <td class="text-weight-bold">
+                  {{ item.strategy_id }}
+                  <span class="text-grey-5 text-caption">v{{ item.strategy_version }}</span>
+                </td>
+                <td class="text-center">
+                  <q-badge :color="getCompatBadgeColor(item.status)" :label="item.status" />
+                </td>
+                <td class="text-center">
+                  <q-icon
+                    :name="item.research_eligible ? 'check_circle' : 'cancel'"
+                    :color="item.research_eligible ? 'positive' : 'grey-6'"
+                    size="16px"
+                  />
+                </td>
+                <td class="text-center">
+                  <q-icon
+                    :name="item.shadow_eligible ? 'check_circle' : 'cancel'"
+                    :color="item.shadow_eligible ? 'positive' : 'grey-6'"
+                    size="16px"
+                  />
+                </td>
+                <td class="text-center">
+                  <q-icon
+                    :name="item.paper_eligible ? 'check_circle' : 'cancel'"
+                    :color="item.paper_eligible ? 'positive' : 'grey-6'"
+                    size="16px"
+                  />
+                </td>
+                <td class="text-caption text-grey-4">
+                  <span :class="item.checks.market_type_compatible ? 'text-positive' : 'text-negative'">Market</span> &bull;
+                  <span :class="item.checks.instruments_compatible ? 'text-positive' : 'text-negative'">Symbols</span> &bull;
+                  <span :class="item.checks.timeframes_compatible ? 'text-positive' : 'text-negative'">TF</span> &bull;
+                  <span :class="item.checks.history_compatible ? 'text-positive' : 'text-negative'">History</span> &bull;
+                  <span :class="item.checks.features_compatible ? 'text-positive' : 'text-negative'">Features</span>
+                </td>
+                <td class="text-grey-4">
+                  <div v-if="item.diagnostics?.missing_requirements?.length" class="text-warning">
+                    {{ item.diagnostics.missing_requirements.join('; ') }}
+                  </div>
+                  <div v-else class="text-positive">
+                    All requirements satisfied
+                  </div>
+                </td>
+              </tr>
+            </tbody>
+          </q-markup-table>
+        </q-card-section>
       </q-card>
     </div>
 
@@ -922,6 +1085,78 @@ onMounted(() => {
             :loading="syncLoading"
             @click="submitSync"
           />
+        </q-card-actions>
+      </q-card>
+    </q-dialog>
+
+    <!-- Global Compatibility Matrix Dialog -->
+    <q-dialog v-model="matrixDialogOpen" full-width>
+      <q-card class="bg-dark text-white">
+        <q-card-section class="row items-center justify-between">
+          <div class="row items-center q-gutter-sm">
+            <q-avatar icon="grid_view" color="secondary" text-color="black" />
+            <div>
+              <div class="text-h6 text-weight-bold">Universal Exchange × Strategy Compatibility Matrix</div>
+              <div class="text-caption text-grey-5">
+                Total Evaluations: {{ matrixData?.total_evaluations || 0 }} &bull;
+                Updated: {{ matrixData?.updated_at ? matrixData.updated_at.slice(0, 19).replace('T', ' ') : '—' }} UTC
+              </div>
+            </div>
+          </div>
+          <q-btn flat round dense icon="close" v-close-popup />
+        </q-card-section>
+        <q-separator />
+        <q-card-section class="q-pa-md">
+          <div v-if="matrixLoading" class="row justify-center q-pa-lg">
+            <q-spinner color="primary" size="40px" />
+          </div>
+          <div v-else-if="matrixData && matrixData.matrix">
+            <q-markup-table dense flat bordered class="bg-grey-10 text-caption">
+              <thead>
+                <tr>
+                  <th class="text-left">Exchange</th>
+                  <th
+                    v-for="strat in Object.keys(Object.values(matrixData.matrix)[0] || {})"
+                    :key="strat"
+                    class="text-center"
+                  >
+                    {{ strat }}
+                  </th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr v-for="(strats, exchId) in matrixData.matrix" :key="exchId">
+                  <td class="text-weight-bold text-primary">{{ exchId }}</td>
+                  <td
+                    v-for="(record, sId) in strats"
+                    :key="sId"
+                    class="text-center"
+                  >
+                    <q-badge
+                      :color="getCompatBadgeColor(record.status)"
+                      :label="record.status === 'PAPER_ELIGIBLE' ? 'PAPER' : (record.status === 'SHADOW_ELIGIBLE' ? 'SHADOW' : (record.status === 'RESEARCH_ELIGIBLE' ? 'RESEARCH' : (record.status === 'INSUFFICIENT_DATA' ? 'NODATA' : 'NO')))"
+                      dense
+                    >
+                      <q-tooltip>
+                        <div><strong>{{ exchId }} × {{ sId }}</strong></div>
+                        <div>Status: {{ record.status }}</div>
+                        <div>Research: {{ record.research_eligible ? 'YES' : 'NO' }}</div>
+                        <div>Shadow: {{ record.shadow_eligible ? 'YES' : 'NO' }}</div>
+                        <div>Paper: {{ record.paper_eligible ? 'YES' : 'NO' }}</div>
+                        <div v-if="record.diagnostics?.missing_requirements?.length" class="text-warning">
+                          Blockers: {{ record.diagnostics.missing_requirements.join(', ') }}
+                        </div>
+                      </q-tooltip>
+                    </q-badge>
+                  </td>
+                </tr>
+              </tbody>
+            </q-markup-table>
+          </div>
+        </q-card-section>
+        <q-separator />
+        <q-card-actions align="right">
+          <q-btn flat label="Close" color="primary" v-close-popup />
         </q-card-actions>
       </q-card>
     </q-dialog>

@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\StrategyBuilder;
 
+use App\Exchanges\Application\ExchangeStrategyCompatibilityService;
 use App\Strategy\Application\StrategyRegistry;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -235,5 +236,15 @@ final class ManagementController
         $data = $request->validate(['reference' => 'required|string|regex:/^[A-Za-z0-9._:-]{8,160}$/D', 'confirm_account_authorization' => 'required|accepted']);
 
         return response()->json(['data' => $authorization->authorize($id, $account, $data['reference'])]);
+    }
+
+    public function exchanges(int $id, ExchangeStrategyCompatibilityService $compatibility): JsonResponse
+    {
+        $strategyId = DB::table('strategy_definitions')->where('id', $id)->value('strategy_id');
+        abort_if($strategyId === null, 404, 'Strategy definition not found.');
+
+        return response()->json([
+            'data' => $compatibility->reconcileStrategy((string) $strategyId),
+        ]);
     }
 }

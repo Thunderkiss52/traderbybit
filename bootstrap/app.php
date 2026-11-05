@@ -5,6 +5,7 @@ use App\Backtest\Console\CancelBacktestCommand;
 use App\Backtest\Console\CompareBacktestsCommand;
 use App\Backtest\Console\RunBacktestCommand;
 use App\Backtest\Console\WalkForwardCommand;
+use App\Exchanges\Console\ReconcileCompatibilityCommand;
 use App\HistoricalData\AcquisitionFailure;
 use App\HistoricalData\HistoricalCommand;
 use App\Http\Middleware\ApiRequestDiagnostics;
@@ -53,6 +54,7 @@ return Application::configure(basePath: dirname(__DIR__))
         ]);
     })
     ->withCommands([
+        ReconcileCompatibilityCommand::class,
         HistoricalCommand::class,
         SyncCandlesCommand::class,
         StreamCandlesCommand::class,

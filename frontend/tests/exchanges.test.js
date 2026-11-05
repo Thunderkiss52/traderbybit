@@ -29,6 +29,9 @@ test('types/index.ts exports complete universal exchange onboarding interfaces',
   assert.match(types, /Exchange/);
   assert.match(types, /ExchangeCoverageReport/);
   assert.match(types, /HistoricalCandleUploadResult/);
+  assert.match(types, /ExchangeStrategyCompatibilityRecord/);
+  assert.match(types, /CompatibilityMatrixResponse/);
+  assert.match(types, /ExchangeStrategyCompatibilityStatus/);
 });
 
 test('api service exports all required exchange onboarding endpoints', () => {
@@ -41,6 +44,9 @@ test('api service exports all required exchange onboarding endpoints', () => {
   assert.match(api, /updateExchangeLifecycle/);
   assert.match(api, /approveExchangePaper/);
   assert.match(api, /syncExchangeTopology/);
+  assert.match(api, /fetchCompatibilityMatrix/);
+  assert.match(api, /fetchExchangeStrategies/);
+  assert.match(api, /reconcileExchangeCompatibility/);
 });
 
 test('ExchangesPage enforces mandatory research mode and virtual paper disclaimer', () => {
@@ -73,4 +79,33 @@ test('ExchangesPage provides CSV upload, owner approval, and topology sync dialo
   assert.match(page, /Approve Activation/);
   assert.match(page, /Apply Provisioning/);
   assert.match(page, /Checksum \(SHA-256\)/);
+});
+
+test('MainLayout provides dynamic navbar exchange selector with live/offline status indicator and aggregate mode', () => {
+  const layout = read('layouts/MainLayout.vue');
+  assert.match(layout, /data-testid="global-exchange-dropdown"/);
+  assert.match(layout, /s\.availableExchanges/);
+  assert.match(layout, /DATA LIVE/);
+  assert.match(layout, /DATA OFFLINE/);
+  assert.match(layout, /All Exchanges/);
+  assert.doesNotMatch(layout, /window\.location\.reload/);
+});
+
+test('settings store provides dynamic exchanges registry and exchange status helper', () => {
+  const settings = read('stores/settings.ts');
+  assert.match(settings, /availableExchanges/);
+  assert.match(settings, /loadExchanges/);
+  assert.match(settings, /selectedExchangeName/);
+  assert.match(settings, /selectedExchangeStatus/);
+});
+
+test('ExchangesPage provides strategy compatibility matrix and reconcile action', () => {
+  const page = read('pages/ExchangesPage.vue');
+  assert.match(page, /Strategy Compatibility & Multi-Tier Eligibility/);
+  assert.match(page, /triggerReconcile/);
+  assert.match(page, /Reconcile Compatibility/);
+  assert.match(page, /matrixDialogOpen/);
+  assert.match(page, /openMatrixDialog/);
+  assert.match(page, /Universal Exchange × Strategy Compatibility Matrix/);
+  assert.match(page, /strategyCompatibilities/);
 });

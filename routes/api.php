@@ -46,6 +46,7 @@ Route::prefix('v1')->middleware('throttle:api')->group(function () {
         Route::get('/{id}/shadow', [$controller, 'shadows'])->whereNumber('id');
         Route::post('/{id}/accounts/{account}/fund', [$controller, 'fund'])->whereNumber('id')->whereUuid('account');
         Route::post('/{id}/accounts/{account}/authorize', [$controller, 'authorizeAccount'])->whereNumber('id')->whereUuid('account');
+        Route::get('/{id}/exchanges', [$controller, 'exchanges'])->whereNumber('id');
     });
     Route::prefix('historical')->middleware('research.token')->group(function () {
         $c = HistoricalController::class;
@@ -122,8 +123,11 @@ Route::prefix('v1')->middleware('throttle:api')->group(function () {
     Route::get('exchanges/binance/market/{symbol}/candles', [EX::class, 'binanceCandles']);
     Route::get('exchanges', [EMC::class, 'index']);
     Route::post('exchanges', [EMC::class, 'store']);
+    Route::get('exchanges/matrix', [EMC::class, 'matrix']);
     Route::get('exchanges/{id}', [EMC::class, 'show']);
     Route::get('exchanges/{id}/coverage', [EMC::class, 'coverage']);
+    Route::get('exchanges/{id}/strategies', [EMC::class, 'strategies']);
+    Route::post('exchanges/{id}/reconcile', [EMC::class, 'reconcile']);
     Route::post('exchanges/{id}/upload-candles', [EMC::class, 'uploadCandles']);
     Route::post('exchanges/{id}/lifecycle', [EMC::class, 'updateLifecycle']);
     Route::post('exchanges/{id}/approve-paper', [EMC::class, 'approvePaper']);

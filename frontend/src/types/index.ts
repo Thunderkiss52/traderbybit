@@ -147,3 +147,47 @@ export interface HistoricalCandleUploadResult {
   last_bar_open_time?: string | null;
   checksum: string;
 }
+
+export type ExchangeStrategyCompatibilityStatus =
+  | 'PAPER_ELIGIBLE'
+  | 'SHADOW_ELIGIBLE'
+  | 'RESEARCH_ELIGIBLE'
+  | 'INSUFFICIENT_DATA'
+  | 'INCOMPATIBLE';
+
+export interface ExchangeStrategyCompatibilityRecord {
+  exchange_id: string;
+  strategy_id: string;
+  strategy_version: string;
+  status: ExchangeStrategyCompatibilityStatus;
+  research_eligible: boolean;
+  shadow_eligible: boolean;
+  paper_eligible: boolean;
+  checks: {
+    market_type_compatible: boolean;
+    instruments_compatible: boolean;
+    timeframes_compatible: boolean;
+    history_compatible: boolean;
+    features_compatible: boolean;
+    execution_model_compatible: boolean;
+  };
+  diagnostics?: {
+    missing_requirements?: string[];
+    checks?: Record<string, boolean>;
+  };
+  dataset_coverage?: {
+    total_candles?: number;
+    distinct_symbols?: number;
+    series_count?: number;
+    has_funding?: boolean;
+    has_open_interest?: boolean;
+  };
+  evaluated_at?: string;
+}
+
+export interface CompatibilityMatrixResponse {
+  matrix: Record<string, Record<string, ExchangeStrategyCompatibilityRecord>>;
+  total_evaluations: number;
+  updated_at: string;
+}
+
