@@ -85,10 +85,12 @@ test('MainLayout provides dynamic navbar exchange selector with live/offline sta
   const layout = read('layouts/MainLayout.vue');
   assert.match(layout, /data-testid="global-exchange-dropdown"/);
   assert.match(layout, /s\.availableExchanges/);
-  assert.match(layout, /DATA LIVE/);
-  assert.match(layout, /DATA OFFLINE/);
+  assert.match(layout, /s\.connectivity\.label/);
+  assert.match(layout, /s\.connectivity\.color/);
+  assert.match(layout, /data-testid="connectivity-indicator"/);
   assert.match(layout, /All Exchanges/);
   assert.doesNotMatch(layout, /window\.location\.reload/);
+  assert.doesNotMatch(layout, /navigator\.onLine/);
 });
 
 test('settings store provides dynamic exchanges registry and exchange status helper', () => {
@@ -97,6 +99,11 @@ test('settings store provides dynamic exchanges registry and exchange status hel
   assert.match(settings, /loadExchanges/);
   assert.match(settings, /selectedExchangeName/);
   assert.match(settings, /selectedExchangeStatus/);
+  assert.match(settings, /checkConnectivity/);
+  assert.match(settings, /DATA LIVE/);
+  assert.match(settings, /DATA STALE/);
+  assert.match(settings, /DATA OFFLINE/);
+  assert.match(settings, /DATA UNKNOWN/);
 });
 
 test('ExchangesPage provides strategy compatibility matrix and reconcile action', () => {

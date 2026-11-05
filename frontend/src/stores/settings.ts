@@ -9,6 +9,15 @@ export interface ExchangeOption {
   paper_approved?: boolean;
 }
 
+export type ConnectivityStatus = 'LIVE' | 'STALE' | 'OFFLINE' | 'UNKNOWN';
+
+export interface ExchangeConnectivity {
+  status: ConnectivityStatus;
+  label: string;
+  color: string;
+  detail?: string;
+}
+
 export const useSettings = defineStore('settings', () => {
   const saved = JSON.parse(localStorage.getItem('ui-settings') || '{}');
   const locale = ref(saved.locale || 'ru');
@@ -40,6 +49,63 @@ export const useSettings = defineStore('settings', () => {
     return selectedExchangeRecord.value?.lifecycle_status || 'UNKNOWN';
   });
 
+  const connectivity = ref<ExchangeConnectivity>({
+    status: 'UNKNOWN',
+    label: 'DATA UNKNOWN',
+    color: 'grey-8',
+    detail: 'Initializing connectivity check...',
+  });
+
+  async function checkConnectivity() {
+    try {
+      const targetExchange = exchange.value;
+      if (targetExchange === 'all') {
+        const res = await api.get('/research/health/data-freshness');
+        const payload = res.data?.data;
+        if (!payload || !Array.isArray(payload.candle_freshness)) {
+          connectivity.value = { status: 'UNKNOWN', label: 'DATA UNKNOWN', color: 'grey-8', detail: 'Invalid freshness payload' };
+          return;
+        }
+        const candles = payload.candle_freshness;
+        if (candles.length === 0) {
+          connectivity.value = { status: 'OFFLINE', label: 'DATA OFFLINE', color: 'negative', detail: 'No market feeds active' };
+          return;
+        }
+        const freshCount = candles.filter((c: any) => c.status === 'FRESH').length;
+        const staleCount = candles.filter((c: any) => c.status === 'STALE').length;
+        if (freshCount > 0 && staleCount === 0) {
+          connectivity.value = { status: 'LIVE', label: 'DATA LIVE', color: 'positive', detail: 'All market feeds fresh' };
+        } else if (freshCount > 0 && staleCount > 0) {
+          connectivity.value = { status: 'STALE', label: 'DATA STALE', color: 'warning', detail: `${staleCount} series lagging` };
+        } else if (staleCount > 0) {
+          connectivity.value = { status: 'STALE', label: 'DATA STALE', color: 'warning', detail: 'All feeds lagging' };
+        } else {
+          connectivity.value = { status: 'OFFLINE', label: 'DATA OFFLINE', color: 'negative', detail: 'Feeds offline or missing' };
+        }
+        return;
+      }
+
+      const res = await api.get(`/exchanges/${targetExchange}/coverage`);
+      const data = res.data?.data;
+      if (!data || !data.diagnostics) {
+        connectivity.value = { status: 'UNKNOWN', label: 'DATA UNKNOWN', color: 'grey-8', detail: 'Coverage diagnostics unavailable' };
+        return;
+      }
+      const { has_live_adapter, public_data_fresh, adapter_status } = data.diagnostics;
+      if (!has_live_adapter || adapter_status === 'OFFLINE_DATA_SOURCE') {
+        connectivity.value = { status: 'OFFLINE', label: 'DATA OFFLINE', color: 'negative', detail: 'Adapter offline or uninitialized' };
+      } else if (public_data_fresh) {
+        connectivity.value = { status: 'LIVE', label: 'DATA LIVE', color: 'positive', detail: 'Market feed live & fresh' };
+      } else if (data.total_candles > 0 || (Array.isArray(data.series) && data.series.length > 0)) {
+        connectivity.value = { status: 'STALE', label: 'DATA STALE', color: 'warning', detail: 'Market feed data stale' };
+      } else {
+        connectivity.value = { status: 'OFFLINE', label: 'DATA OFFLINE', color: 'negative', detail: 'No feed data ingested' };
+      }
+    } catch (err: any) {
+      connectivity.value = { status: 'UNKNOWN', label: 'DATA UNKNOWN', color: 'grey-8', detail: err?.message || 'Connection error' };
+    }
+  }
+
   async function loadExchanges() {
     try {
       const res = await api.get('/exchanges');
@@ -55,6 +121,7 @@ export const useSettings = defineStore('settings', () => {
           exchange.value = 'bybit';
         }
       }
+      void checkConnectivity();
     } catch {
       // Fallback
     }
@@ -62,6 +129,7 @@ export const useSettings = defineStore('settings', () => {
 
   watch(exchange, () => {
     account.value = '';
+    void checkConnectivity();
   });
 
   watch(
@@ -79,6 +147,7 @@ export const useSettings = defineStore('settings', () => {
     locale, dark, timezone, numberLocale, autoRefresh, account,
     preferredSymbol, preferredInterval, exchange,
     availableExchanges, selectedExchangeRecord, selectedExchangeName, selectedExchangeStatus,
+    connectivity, checkConnectivity,
     loadExchanges,
   };
 });

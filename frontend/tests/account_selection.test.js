@@ -61,7 +61,7 @@ test('table page provides account filter for signals and positions', () => {
 
 test('settings store clears account on exchange toggle to prevent cross-exchange contamination', () => {
   const text = source('stores/settings.ts');
-  assert.match(text, /watch\(exchange,\s*\(\)\s*=>\s*\{\s*account\.value\s*=\s*'';\s*\}\)/);
+  assert.match(text, /watch\(exchange,\s*\(\)\s*=>\s*\{[\s\S]*?account\.value\s*=\s*'';/);
 });
 
 test('dashboard aggregate mode and multi-page exchange reactivity are verified', () => {

@@ -6,27 +6,27 @@ import { useSettings } from '../stores/settings';
 import ResearchBanner from '../components/ResearchBanner.vue';
 
 const drawer = ref(false);
-const online = ref(window.navigator.onLine);
 const s = useSettings();
 const q = useQuasar();
 const { locale } = useI18n();
 
-const syncOnline = () => {
-  online.value = window.navigator.onLine;
-};
+let connectivityTimer: ReturnType<typeof setInterval> | undefined;
 
 watch(() => s.dark, (v) => q.dark.set(v), { immediate: true });
 watch(() => s.locale, (v) => { locale.value = v; }, { immediate: true });
 
 onMounted(() => {
-  window.addEventListener('online', syncOnline);
-  window.addEventListener('offline', syncOnline);
   void s.loadExchanges();
+  void s.checkConnectivity();
+  connectivityTimer = setInterval(() => {
+    void s.checkConnectivity();
+  }, 15000);
 });
 
 onBeforeUnmount(() => {
-  window.removeEventListener('online', syncOnline);
-  window.removeEventListener('offline', syncOnline);
+  if (connectivityTimer) {
+    clearInterval(connectivityTimer);
+  }
 });
 
 function statusColor(status: string): string {
@@ -152,9 +152,16 @@ const links = [
             class="q-pa-xs text-bold"
           />
 
-          <!-- Market Data Connectivity Indicator -->
-          <q-chip dense :color="online ? 'positive' : 'negative'" text-color="white" icon="wifi">
-            {{ online ? 'DATA LIVE' : 'DATA OFFLINE' }}
+          <!-- Market Data Connectivity Indicator (Truthful backend feed health: LIVE, STALE, OFFLINE, UNKNOWN) -->
+          <q-chip
+            dense
+            :color="s.connectivity.color"
+            text-color="white"
+            icon="wifi"
+            :title="s.connectivity.detail"
+            data-testid="connectivity-indicator"
+          >
+            {{ s.connectivity.label }}
           </q-chip>
         </div>
       </q-toolbar>
