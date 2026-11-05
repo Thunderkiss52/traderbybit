@@ -74,6 +74,8 @@ APPLICATION_SERVICES=(
     app
     web
     queue
+    queue-bybit
+    queue-binance
     scheduler
     market-ws
     audit-worker
@@ -90,7 +92,12 @@ if [[ "${USE_EXTERNAL_PROXY:-0}" == "1" ]]; then
 fi
 
 compose() {
-    "${COMPOSE_ARGS[@]}" "$@"
+    local overlay="${DEPLOY_STATE_DIR}/release-images/${IMAGE_TAG}.json"
+    if [[ -f "${overlay}" ]]; then
+        "${COMPOSE_ARGS[@]}" -f "${overlay}" "$@"
+    else
+        "${COMPOSE_ARGS[@]}" "$@"
+    fi
 }
 
 assert_free_disk_space() {
@@ -135,13 +142,22 @@ try:
     data = json.load(sys.stdin)
 except Exception:
     sys.exit(1)
-services = ["app", "web", "queue", "scheduler", "market-ws", "audit-worker", "backtest-worker", "research-worker"]
+services = ["app", "web", "queue", "queue-bybit", "queue-binance", "scheduler", "market-ws", "audit-worker", "backtest-worker", "research-worker"]
 for s in services:
     ref = data.get("services", {}).get(s, {}).get("image", "")
     if not ref:
         sys.exit(1)
     print(f"{s}={ref}")
 '
+}
+
+retain_release_image() {
+    local reference="$1"
+    docker image inspect "${reference}" >/dev/null || return 1
+    if [[ "${reference}" == *@sha256:* ]]; then
+        # Keep current/previous SHA aliases visible to the existing scoped image cleanup.
+        docker tag "${reference}" "${reference%@*}"
+    fi
 }
 
 check_service_readiness() {
@@ -159,6 +175,9 @@ check_service_readiness() {
             ;;
         queue)
             timeout 5 docker exec "${cid}" sh -c "tr '\\0' ' ' </proc/1/cmdline | grep -q 'queue:work'"
+            ;;
+        queue-bybit|queue-binance)
+            timeout 5 docker exec "${cid}" sh -c "tr '\\0' ' ' </proc/1/cmdline | grep -q 'queue:work.*trading-${service#queue-}'"
             ;;
         scheduler)
             timeout 5 docker exec "${cid}" sh -c "tr '\\0' ' ' </proc/1/cmdline | grep -q 'schedule:work'"
@@ -346,7 +365,7 @@ commit_deployment_state() {
     state_json="$(python3 -c '
 import json, sys
 
-services = ["app", "web", "queue", "scheduler", "market-ws", "audit-worker", "backtest-worker", "research-worker"]
+services = ["app", "web", "queue", "queue-bybit", "queue-binance", "scheduler", "market-ws", "audit-worker", "backtest-worker", "research-worker"]
 services_dict = {s: {"image_reference": "", "container_status": "configured"} for s in services}
 
 state = {

@@ -26,71 +26,43 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: Validate target commit SHA
+      - name: Validate exact target commit SHA
         id: target
         shell: bash
+        env:
+          REQUESTED_SHA: ${{ inputs.commit_sha }}
         run: |
           set -Eeuo pipefail
-          raw_sha="${{ github.event.inputs.commit_sha }}"
-          if [[ -z "${raw_sha}" ]]; then
-            raw_sha="${GITHUB_SHA}"
-          fi
-          if [[ ! "${raw_sha}" =~ ^[a-f0-9]{40}$ ]]; then
-            echo "Invalid commit SHA format: '${raw_sha}'. Must be a 40-character hexadecimal string." >&2
-            exit 2
-          fi
-          if ! git rev-parse --verify "${raw_sha}^{commit}" >/dev/null 2>&1; then
-            echo "Commit ${raw_sha} is not found in repository history." >&2
-            exit 2
-          fi
-          echo "sha=${raw_sha}" >> "$GITHUB_OUTPUT"
+          [[ "$GITHUB_REF" == refs/heads/main ]] || { echo 'Deploy workflow must run from main'; exit 2; }
+          target_sha="${REQUESTED_SHA:-$GITHUB_SHA}"
+          [[ "$target_sha" =~ ^[a-f0-9]{40}$ ]] || { echo 'Full hexadecimal SHA required'; exit 2; }
+          git cat-file -e "${target_sha}^{commit}"
+          echo "sha=$target_sha" >> "$GITHUB_OUTPUT"
 
-      - name: Verify mandatory CI checks for commit SHA
-        shell: bash
+      - name: Authorize current main and exact-SHA CI required
+        id: ci
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          COMMIT_SHA: ${{ steps.target.outputs.sha }}
-        run: |
-          set -Eeuo pipefail
-          echo "Verifying mandatory CI checks for commit ${COMMIT_SHA}..."
-          runs_json="$(gh run list --workflow=ci.yml --commit="${COMMIT_SHA}" --json databaseId,status,conclusion,headSha 2>/dev/null || echo '[]')"
-          if [[ -z "${runs_json}" || "${runs_json}" == "[]" ]]; then
-            echo "Error: No CI workflow run found for commit ${COMMIT_SHA} in '.github/workflows/ci.yml'." >&2
-            echo "Deployment rejected: every production deployment must be verified by a passing CI run." >&2
-            exit 1
-          fi
+          TARGET_SHA: ${{ steps.target.outputs.sha }}
+        run: python3 scripts/ci/release_guard.py authorize --sha "$TARGET_SHA" --repository "$GITHUB_REPOSITORY"
 
-          successful_run="$(echo "${runs_json}" | python3 -c 'import sys, json; data=json.load(sys.stdin) if not sys.stdin.isatty() else []; matches=[str(r.get("databaseId")) for r in data if r.get("headSha")==sys.argv[1] and r.get("status")=="completed" and r.get("conclusion")=="success"]; print(matches[0] if matches else "")' "${COMMIT_SHA}")"
+      - uses: actions/download-artifact@v4
+        with:
+          name: verified-release
+          path: verified-release
+          run-id: ${{ steps.ci.outputs.run_id }}
+          github-token: ${{ secrets.GITHUB_TOKEN }}
 
-          if [[ -n "${successful_run}" ]]; then
-            echo "Verified: commit ${COMMIT_SHA} successfully passed CI in run ID ${successful_run}."
-          else
-            statuses="$(echo "${runs_json}" | python3 -c 'import sys, json; data=json.load(sys.stdin) if not sys.stdin.isatty() else []; print("; ".join("Run %s: status=%s, conclusion=%s" % (r.get("databaseId"), r.get("status"), r.get("conclusion") or "in_progress") for r in data if r.get("headSha")==sys.argv[1]))' "${COMMIT_SHA}")"
-            echo "Error: Commit ${COMMIT_SHA} has no successful completed CI run in '.github/workflows/ci.yml'." >&2
-            echo "Existing CI runs for ${COMMIT_SHA}: ${statuses:-none}" >&2
-            echo "Deployment rejected: immutable preverified deployment requires all CI matrix checks to pass." >&2
-            exit 1
-          fi
-
-      - name: Verify immutable Docker images in GHCR
-        shell: bash
+      - name: Verify published image tags against CI-approved digests
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          COMMIT_SHA: ${{ steps.target.outputs.sha }}
+          TARGET_SHA: ${{ steps.target.outputs.sha }}
+          CI_RUN_ID: ${{ steps.ci.outputs.run_id }}
         run: |
           set -Eeuo pipefail
-          repo_lc="${GITHUB_REPOSITORY,,}"
-          echo "${GH_TOKEN}" | docker login ghcr.io -u "${{ github.actor }}" --password-stdin
-          for target in app web research-worker; do
-            image_ref="ghcr.io/${repo_lc}/${target}:sha-${COMMIT_SHA}"
-            echo "Verifying presence of image: ${image_ref}..."
-            if ! docker manifest inspect "${image_ref}" >/dev/null 2>&1; then
-              echo "Error: Immutable image ${image_ref} was not found in GHCR." >&2
-              echo "Deployments require all three pre-built immutable images (app, web, research-worker) to exist in GHCR." >&2
-              exit 1
-            fi
-            echo "Verified immutable image ${image_ref}."
-          done
+          python3 scripts/ci/release_guard.py manifest --sha "$TARGET_SHA" --repository "$GITHUB_REPOSITORY" --run-id "$CI_RUN_ID" --manifest verified-release/release-manifest.json > image-refs.txt
+          echo "$GH_TOKEN" | docker login ghcr.io -u "$GITHUB_ACTOR" --password-stdin
+          bash scripts/ci/verify_images.sh image-refs.txt
 
       - name: Deploy preverified artifacts to production
         id: deploy-step
@@ -102,6 +74,7 @@ jobs:
           DEPLOY_SSH_HOST_KEY: ${{ secrets.DEPLOY_SSH_HOST_KEY }}
           DEPLOY_PORT: ${{ vars.DEPLOY_PORT }}
           DEPLOY_COMMIT_SHA: ${{ steps.target.outputs.sha }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           set -Eeuo pipefail
           : "${DEPLOY_HOST:?DEPLOY_HOST is missing}"
@@ -117,24 +90,34 @@ jobs:
           ssh-keygen -y -f "$HOME/.ssh/id_ed25519" >/dev/null
 
           archive="$RUNNER_TEMP/${DEPLOY_COMMIT_SHA}.tar.gz"
-          git archive --format=tar.gz --output="$archive" "$DEPLOY_COMMIT_SHA"
+          # Include the verified digest manifest in the checksummed release archive.
+          git archive --format=tar --output="${archive%.gz}" "$DEPLOY_COMMIT_SHA" compose.yaml compose.proxy.yaml docker
+          cp verified-release/release-manifest.json "$RUNNER_TEMP/ci-release.json"
+          tar -rf "${archive%.gz}" -C "$RUNNER_TEMP" ci-release.json
+          gzip -n "${archive%.gz}"
           (cd "$RUNNER_TEMP" && sha256sum "${DEPLOY_COMMIT_SHA}.tar.gz" > "${DEPLOY_COMMIT_SHA}.tar.gz.sha256")
 
           ssh_options=(-p "$DEPLOY_PORT" -i "$HOME/.ssh/id_ed25519" -o BatchMode=yes -o StrictHostKeyChecking=yes)
           scp_options=(-P "$DEPLOY_PORT" -i "$HOME/.ssh/id_ed25519" -o BatchMode=yes -o StrictHostKeyChecking=yes)
 
+          # Recheck immediately before transfer; a queued dispatch cannot deploy stale main.
+          python3 scripts/ci/release_guard.py current --sha "$DEPLOY_COMMIT_SHA" --repository "$GITHUB_REPOSITORY"
           deploy_start="$(date +%s)"
           echo "Starting production deployment of preverified commit ${DEPLOY_COMMIT_SHA}..."
           scp "${scp_options[@]}" "$archive" "${archive}.sha256" \
             "${DEPLOY_USER}@${DEPLOY_HOST}:/srv/bybit-signals/incoming/"
+          python3 scripts/ci/release_guard.py current --sha "$DEPLOY_COMMIT_SHA" --repository "$GITHUB_REPOSITORY"
           ssh "${ssh_options[@]}" "${DEPLOY_USER}@${DEPLOY_HOST}" \
             "sudo -n /usr/local/sbin/bybit-signals-deploy ${DEPLOY_COMMIT_SHA}"
           deploy_end="$(date +%s)"
 
           elapsed=$((deploy_end - deploy_start))
-          echo "Production deployment finished in ${elapsed}s (Target: <= 60s)."
-          if (( elapsed > 60 )); then
-            echo "Warning: Deployment took ${elapsed}s, exceeding the 60s target."
-          else
-            echo "TARGET B SATISFIED: Production deployment completed in ${elapsed}s (<= 60s)."
-          fi
+          echo "Deployment execution: ${elapsed}s; target: 30s when pull/migration/startup conditions permit."
+          printf 'Deployed SHA: `%s`\n\nExecution: %ss (target 30s).\n\n' "$DEPLOY_COMMIT_SHA" "$elapsed" >> "$GITHUB_STEP_SUMMARY"
+          cat image-refs.txt >> "$GITHUB_STEP_SUMMARY"
+          cp verified-release/release-manifest.json deployed-release.json
+      - uses: actions/upload-artifact@v4
+        with:
+          name: deployed-release
+          path: deployed-release.json
+          if-no-files-found: error

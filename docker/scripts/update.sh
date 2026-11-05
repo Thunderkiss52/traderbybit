@@ -6,6 +6,14 @@ source "${SCRIPT_DIR}/common.sh"
 
 export AUTO_RECOVER_ON_DEPLOY="${AUTO_RECOVER_ON_DEPLOY:-1}"
 acquire_deployment_lock "DEPLOYMENT"
+if [[ "${DEPLOY_MODE:-pull}" == pull && "${ALLOW_TEST_PROJECT:-0}" != 1 ]]; then
+    [[ "${NEW_IMAGE_TAG:-}" =~ ^sha-[0-9a-f]{40}$ ]] || { echo 'Exact release SHA required.' >&2; exit 1; }
+    incoming="$(dirname "${DEPLOY_STATE_DIR}")/incoming/${NEW_IMAGE_TAG#sha-}.tar.gz"
+    bash "${SCRIPT_DIR}/stage-release-manifest.sh" "${incoming}" "${DEPLOY_STATE_DIR}/release-images" "${NEW_IMAGE_TAG#sha-}"
+elif [[ -f "${PROJECT_ROOT}/ci-release.json" ]]; then
+    [[ "${NEW_IMAGE_TAG:-}" =~ ^sha-[0-9a-f]{40}$ ]] || { echo 'Exact release SHA required.' >&2; exit 1; }
+    python3 "${SCRIPT_DIR}/release-images.py" "${PROJECT_ROOT}/ci-release.json" "${DEPLOY_STATE_DIR}/release-images" "${NEW_IMAGE_TAG#sha-}"
+fi
 bash "${SCRIPT_DIR}/validate-deployment-state.sh" pre-deploy
 
 CURRENT_TAG="${IMAGE_TAG:-latest}"
@@ -69,10 +77,10 @@ if [[ "${DEPLOY_MODE:-pull}" == "pull" ]]; then
         echo "Existing running containers are preserved." >&2
         exit 1
     fi
-    for svc_img in "${APP_IMAGE}:${NEW_TAG}" \
-                   "${WEB_IMAGE}:${NEW_TAG}" \
-                   "${RESEARCH_WORKER_IMAGE}:${NEW_TAG}"; do
-        if ! docker image inspect "${svc_img}" >/dev/null 2>&1; then
+    mapfile -t image_references < <(resolve_service_image_references "${NEW_TAG}" | cut -d= -f2 | sort -u)
+    [[ "${#image_references[@]}" == 3 ]] || { echo 'Expected three resolved release images.' >&2; exit 1; }
+    for svc_img in "${image_references[@]}"; do
+        if ! retain_release_image "${svc_img}"; then
             echo "Error: Required immutable image '${svc_img}' is missing after pull." >&2
             echo "Silent build fallback is prohibited in production. Existing running containers are preserved. Aborting deployment." >&2
             exit 1
@@ -90,7 +98,7 @@ rollback_application() {
     trap - ERR
     echo "Deployment failed during container transition; attempting application rollback to ${CURRENT_TAG}. Database migrations are not rolled back." >&2
     export IMAGE_TAG="${CURRENT_TAG}"
-    compose up -d --no-deps "${APPLICATION_SERVICES[@]}" || true
+    compose up -d --no-build --no-deps "${APPLICATION_SERVICES[@]}" || true
     compose restart web || true
     bash "${SCRIPT_DIR}/healthcheck.sh" || true
     exit "${failure_code}"
@@ -102,7 +110,7 @@ wait_healthy postgres 180
 wait_healthy redis 120
 compose run --rm --no-deps app php artisan migrate --force --no-interaction
 compose run --rm --no-deps app php artisan binance:initialize-paper --force --no-interaction
-compose up -d --remove-orphans
+compose up -d --no-build --no-deps "${APPLICATION_SERVICES[@]}"
 compose restart web
 
 for svc in "${APPLICATION_SERVICES[@]}"; do

@@ -16,7 +16,7 @@ previous="$(<"${DEPLOY_STATE_DIR}/.deploy-previous")"
 [[ -n "${previous}" && "${previous}" != "${current}" ]] || { echo "No distinct previous image tag is available." >&2; exit 1; }
 
 export IMAGE_TAG="${previous}"
-compose up -d --no-deps "${APPLICATION_SERVICES[@]}"
+compose up -d --no-build --no-deps "${APPLICATION_SERVICES[@]}"
 compose restart web
 
 for svc in "${APPLICATION_SERVICES[@]}"; do

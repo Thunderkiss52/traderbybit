@@ -31,10 +31,10 @@ export MIN_FREE_DISK_GB=1
 export PGPASSWORD=testpass
 
 PG_HOST="127.0.0.1"
-PG_PORT="25432"
+PG_PORT="${TEST_DB_PORT:-25432}"
 PG_USER="postgres"
 PG_DB="bybit_test"
-REDIS_PORT="26379"
+REDIS_PORT="${REDIS_PORT:-26379}"
 
 # Helper to query isolated postgres
 query_pg() {
@@ -112,6 +112,8 @@ if [[ "$*" =~ compose.*config ]]; then
     "app": {"image": "bybit-signals-app:${tag}"},
     "web": {"image": "bybit-signals-web:${tag}"},
     "queue": {"image": "bybit-signals-app:${tag}"},
+    "queue-bybit": {"image": "bybit-signals-app:${tag}"},
+    "queue-binance": {"image": "bybit-signals-app:${tag}"},
     "scheduler": {"image": "bybit-signals-app:${tag}"},
     "market-ws": {"image": "bybit-signals-app:${tag}"},
     "audit-worker": {"image": "bybit-signals-app:${tag}"},
@@ -227,6 +229,8 @@ cat <<'EOF' >"${MOCK_CONFIG}"
     "app": {"cid": "cid_app", "image": "bybit-signals-app:sha-94c853458e5a38f4bc46f32c4f95c56f52216e6c"},
     "web": {"cid": "cid_web", "image": "bybit-signals-web:sha-94c853458e5a38f4bc46f32c4f95c56f52216e6c"},
     "queue": {"cid": "cid_queue", "image": "bybit-signals-app:sha-94c853458e5a38f4bc46f32c4f95c56f52216e6c"},
+    "queue-bybit": {"cid": "cid_queue-bybit", "image": "bybit-signals-app:sha-94c853458e5a38f4bc46f32c4f95c56f52216e6c"},
+    "queue-binance": {"cid": "cid_queue-binance", "image": "bybit-signals-app:sha-94c853458e5a38f4bc46f32c4f95c56f52216e6c"},
     "scheduler": {"cid": "cid_scheduler", "image": "bybit-signals-app:sha-94c853458e5a38f4bc46f32c4f95c56f52216e6c"},
     "market-ws": {"cid": "cid_market-ws", "image": "bybit-signals-app:sha-94c853458e5a38f4bc46f32c4f95c56f52216e6c"},
     "audit-worker": {"cid": "cid_audit-worker", "image": "bybit-signals-app:sha-94c853458e5a38f4bc46f32c4f95c56f52216e6c"},
@@ -318,6 +322,8 @@ cat <<'EOF' >"${MOCK_CONFIG}"
     "app": {"cid": "cid_app", "image": "bybit-signals-app:sha-94c853458e5a38f4bc46f32c4f95c56f52216e6c"},
     "web": {"cid": "cid_web", "image": "bybit-signals-web:sha-94c853458e5a38f4bc46f32c4f95c56f52216e6c"},
     "queue": {"cid": "cid_queue", "image": "bybit-signals-app:sha-94c853458e5a38f4bc46f32c4f95c56f52216e6c"},
+    "queue-bybit": {"cid": "cid_queue-bybit", "image": "bybit-signals-app:sha-94c853458e5a38f4bc46f32c4f95c56f52216e6c"},
+    "queue-binance": {"cid": "cid_queue-binance", "image": "bybit-signals-app:sha-94c853458e5a38f4bc46f32c4f95c56f52216e6c"},
     "scheduler": {"cid": "cid_scheduler", "image": "bybit-signals-app:sha-94c853458e5a38f4bc46f32c4f95c56f52216e6c"},
     "market-ws": {"cid": "cid_market-ws", "image": "bybit-signals-app:sha-94c853458e5a38f4bc46f32c4f95c56f52216e6c"},
     "audit-worker": {"cid": "cid_audit-worker", "image": "bybit-signals-app:sha-19cf50468e5a38f4bc46f32c4f95c56f52216e6c"},
