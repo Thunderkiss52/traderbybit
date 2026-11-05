@@ -61,6 +61,11 @@ watch(() => settings.account, (val) => {
     selectedAccount.value = val;
   }
 });
+watch(() => settings.exchange, () => {
+  selectedAccount.value = '';
+  page.value = 1;
+  load();
+});
 
 onMounted(load);
 onBeforeUnmount(() => controller?.abort());

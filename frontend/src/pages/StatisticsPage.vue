@@ -91,6 +91,13 @@ watch(() => settings.account, (val) => {
     selectedAccount.value = val;
   }
 });
+watch(() => settings.exchange, () => {
+  selectedAccount.value = '';
+  equityPage.value = 1;
+  rPage.value = 1;
+  periodPage.value = 1;
+  fetchStatistics();
+});
 onBeforeUnmount(() => statsController?.abort());
 </script>
 

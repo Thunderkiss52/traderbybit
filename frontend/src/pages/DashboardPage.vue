@@ -18,7 +18,33 @@ const selectedExchange = computed({
   get: () => settings.exchange,
   set: (val: string) => settings.exchange = val as 'bybit' | 'binance',
 });
-const selectedAccounts = computed(() => (exchangeComparison.value?.accounts || []).filter((row: any) => row.exchange_id === selectedExchange.value));
+const selectedAccounts = computed(() => {
+  const accounts = exchangeComparison.value?.accounts || [];
+  if (selectedExchange.value === 'all') {
+    return accounts;
+  }
+  return accounts.filter((row: any) => row.exchange_id === selectedExchange.value);
+});
+const crossExchangeSummary = computed(() => {
+  const accounts = exchangeComparison.value?.accounts || [];
+  let starting = 0;
+  let equity = 0;
+  let realized = 0;
+  let unrealized = 0;
+  for (const acc of accounts) {
+    if (acc.starting_balance) starting += Number(acc.starting_balance) || 0;
+    if (acc.current_equity) equity += Number(acc.current_equity) || 0;
+    if (acc.realized_pnl) realized += Number(acc.realized_pnl) || 0;
+    if (acc.unrealized_pnl) unrealized += Number(acc.unrealized_pnl) || 0;
+  }
+  return {
+    accountsCount: accounts.length,
+    startingBalance: starting.toFixed(2),
+    currentEquity: equity.toFixed(2),
+    realizedPnl: (realized >= 0 ? '+' : '') + realized.toFixed(2),
+    unrealizedPnl: (unrealized >= 0 ? '+' : '') + unrealized.toFixed(2),
+  };
+});
 async function loadExchangeComparison() {
   try {
     exchangeComparison.value = await get<any>('/exchanges/comparison');
@@ -31,13 +57,13 @@ onMounted(loadExchangeComparison);
 
 const selectedAccount = ref<string>(settings.account || 'all');
 const accountOptions = computed(() => {
-  const exLabel = selectedExchange.value.toUpperCase();
+  const exLabel = selectedExchange.value === 'all' ? 'ALL EXCHANGES' : selectedExchange.value.toUpperCase();
   const list = data.value?.accounts || selectedAccounts.value || [];
   return [
     { label: `All Accounts (Aggregate Portfolio · ${exLabel})`, value: 'all' },
     ...list.map((a: any) => ({
-      label: `${a.name || a.strategy_id} (${a.strategy_id || a.primary_strategy_id}) [${a.status || 'ACTIVE'}]`,
-      value: a.id,
+      label: `${a.name || a.strategy_id} (${a.strategy_id || a.primary_strategy_id}) [${a.status || 'ACTIVE'}]${selectedExchange.value === 'all' && a.exchange_id ? ' · ' + a.exchange_id.toUpperCase() : ''}`,
+      value: a.id || a.account_id,
     })),
   ];
 });
@@ -76,6 +102,12 @@ watch(() => settings.account, (val: string) => {
   } else if (!val && selectedAccount.value !== 'all') {
     selectedAccount.value = 'all';
   }
+});
+
+watch(() => settings.exchange, () => {
+  selectedAccount.value = 'all';
+  loadDashboard();
+  loadExchangeComparison();
 });
 
 const { autoRefresh } = storeToRefs(useSettings());
@@ -188,14 +220,44 @@ const systemStatus = computed(() => {
         <a href="/api/v1/exchanges/comparison.csv" download>Export both exchanges (CSV)</a>
       </div>
       <p class="muted">13 PRIMARY strategy families × 2 exchange-specific accounts. Never merged automatically. Binance paper execution remains blocked until separately verified.</p>
-      <q-btn-toggle v-model="selectedExchange" :options="[{ label: 'Bybit', value: 'bybit' }, { label: 'Binance', value: 'binance' }]" unelevated toggle-color="primary" />
-      <q-btn flat dense label="Refresh" @click="loadExchangeComparison" />
+      <div class="row items-center q-gutter-sm q-mb-sm">
+        <q-btn-toggle v-model="selectedExchange" :options="[{ label: 'All Exchanges', value: 'all' }, { label: 'Bybit', value: 'bybit' }, { label: 'Binance', value: 'binance' }]" unelevated toggle-color="primary" />
+        <q-btn flat dense label="Refresh" @click="loadExchangeComparison" />
+      </div>
+      <div v-if="selectedExchange === 'all' && exchangeComparison" class="row q-col-gutter-sm q-mb-md">
+        <div class="col-12 col-md-3">
+          <MetricCard label="Total Paper Accounts" :value="crossExchangeSummary.accountsCount" />
+        </div>
+        <div class="col-12 col-md-3">
+          <MetricCard label="Aggregate Starting (USDT)" :value="crossExchangeSummary.startingBalance" />
+        </div>
+        <div class="col-12 col-md-3">
+          <MetricCard label="Aggregate Equity (USDT)" :value="crossExchangeSummary.currentEquity" />
+        </div>
+        <div class="col-12 col-md-3">
+          <MetricCard label="Aggregate Realized (USDT)" :value="crossExchangeSummary.realizedPnl" />
+        </div>
+      </div>
       <q-banner v-if="exchangeError" class="bg-warning text-black">{{ exchangeError }}</q-banner>
       <q-markup-table v-if="exchangeComparison" flat bordered class="q-mt-md">
-        <thead><tr><th class="text-left">Strategy</th><th>Status</th><th>Evaluation</th><th>Balance (USDT)</th><th>Equity (USDT)</th><th>Realized PnL</th><th>Unrealized PnL</th></tr></thead>
+        <thead>
+          <tr>
+            <th class="text-left">Strategy</th>
+            <th v-if="selectedExchange === 'all'" class="text-center">Exchange</th>
+            <th>Status</th>
+            <th>Evaluation</th>
+            <th>Balance (USDT)</th>
+            <th>Equity (USDT)</th>
+            <th>Realized PnL</th>
+            <th>Unrealized PnL</th>
+          </tr>
+        </thead>
         <tbody>
           <tr v-for="account in selectedAccounts" :key="`${account.exchange_id}:${account.strategy_id}`">
             <td class="text-left">{{ account.strategy_id }}</td>
+            <td v-if="selectedExchange === 'all'" class="text-center">
+              <q-badge color="grey-8">{{ account.exchange_id?.toUpperCase() }}</q-badge>
+            </td>
             <td>{{ account.status }}</td><td>{{ account.evaluation_status }}</td>
             <td class="text-right">{{ account.starting_balance ?? '—' }}</td>
             <td class="text-right">{{ account.current_equity ?? '—' }}</td>

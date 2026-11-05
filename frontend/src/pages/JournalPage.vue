@@ -62,6 +62,13 @@ async function loadCharts() {
     if (!chartsController.signal.aborted) error.value = exception.message;
   } finally { chartsLoading.value = false; }
 }
+async function reloadAccounts() {
+  try {
+    accounts.value = (await get<any[]>('/journal/accounts')).slice(0, 50);
+  } catch {
+    /* journal remains usable */
+  }
+}
 watch(page, loadJournal);
 watch(account, (val) => {
   settings.account = val;
@@ -71,10 +78,16 @@ watch(() => settings.account, (val) => {
     account.value = val;
   }
 });
-watch([days, account, eventType], resetPage);
-onMounted(async () => {
+watch(() => settings.exchange, () => {
+  account.value = '';
+  page.value = 1;
+  reloadAccounts();
   loadJournal();
-  try { accounts.value = (await get<any[]>('/journal/accounts')).slice(0, 50); } catch { /* journal remains usable */ }
+});
+watch([days, account, eventType], resetPage);
+onMounted(() => {
+  loadJournal();
+  reloadAccounts();
 });
 onBeforeUnmount(() => { controller?.abort(); chartsController?.abort(); });
 </script>

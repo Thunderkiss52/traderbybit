@@ -144,6 +144,14 @@ const exportCsv = () => {
   URL.revokeObjectURL(url);
 };
 
+async function reloadAccounts() {
+  try {
+    accounts.value = await get<any[]>('/journal/accounts');
+  } catch {
+    // fallback gracefully
+  }
+}
+
 watch([endpoint, page, pageSize, selectedAccount], () => {
   load();
 }, { immediate: true });
@@ -158,19 +166,20 @@ watch(() => settings.account, (val) => {
   }
 });
 
+watch(() => settings.exchange, () => {
+  selectedAccount.value = '';
+  page.value = 1;
+  reloadAccounts();
+  load();
+});
+
 watch(search, () => {
   clearTimeout(debounce);
   page.value = 1;
   debounce = setTimeout(load, 300);
 });
 
-onMounted(async () => {
-  try {
-    accounts.value = await get<any[]>('/journal/accounts');
-  } catch {
-    // fallback gracefully
-  }
-});
+onMounted(reloadAccounts);
 
 onBeforeUnmount(() => { controller?.abort(); clearTimeout(debounce); });
 </script>
