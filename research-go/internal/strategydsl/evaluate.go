@@ -129,7 +129,7 @@ func (d Definition) Validate() error {
 			seen[value] = true
 		}
 	}
-	if d.SchemaVersion != 1 || d.Version < 1 || len(d.ID) < 6 || d.ID[:5] != "user_" || frame(d.Timeframe) == 0 || len(d.Indicators) == 0 || len(d.Indicators) > 32 || len(d.Entry) == 0 || len(d.Entry) > 2 || !(d.StopATR > 0 && d.StopATR <= 20) || !(d.TakeATR > 0 && d.TakeATR <= 100) || !(d.RiskPercent > 0 && d.RiskPercent <= 0.5) || d.TimeoutBars < 1 || d.TimeoutBars > 1000 || d.CooldownBars < 0 || d.CooldownBars > 1000 {
+	if (d.SchemaVersion != 1 && d.SchemaVersion != 2) || d.Version < 1 || len(d.ID) < 6 || d.ID[:5] != "user_" || frame(d.Timeframe) == 0 || len(d.Indicators) == 0 || len(d.Indicators) > 32 || len(d.Entry) == 0 || len(d.Entry) > 2 || !(d.StopATR > 0 && d.StopATR <= 20) || !(d.TakeATR > 0 && d.TakeATR <= 100) || !(d.RiskPercent > 0 && d.RiskPercent <= 0.5) || d.TimeoutBars < 1 || d.TimeoutBars > 1000 || d.CooldownBars < 0 || d.CooldownBars > 1000 {
 		return fmt.Errorf("invalid definition or risk limits")
 	}
 	for name, i := range d.Indicators {
@@ -384,25 +384,36 @@ func bandDeviation(ind Indicator) float64 {
 
 func Run(req Request) (*Result, error) {
 	d := req.Definition
-	if req.Mode != "" && req.Mode != "backtest" && req.Mode != "signal" {
+	if req.Mode != "" && req.Mode != "backtest" && req.Mode != "signal" && req.Mode != "validate" {
 		return nil, fmt.Errorf("unsupported execution mode")
 	}
 	if err := d.Validate(); err != nil {
 		return nil, err
 	}
-	if !contains(d.Exchanges, req.Exchange) || !contains(d.Symbols, req.Symbol) || req.AsOf.IsZero() || req.From.IsZero() || !req.From.Before(req.AsOf) {
+	if req.Mode == "validate" {
+		blocked := PaperBlockers(d)
+		return &Result{Signals: []backtest.Signal{}, PaperEligible: len(blocked) == 0, Limitations: blocked}, nil
+	}
+	if !contains(d.Exchanges, req.Exchange) || !contains(d.Symbols, req.Symbol) || req.AsOf.IsZero() || req.From.IsZero() || req.From.After(req.AsOf) || (req.From.Equal(req.AsOf) && req.Mode != "signal") {
 		return nil, fmt.Errorf("invalid scope")
 	}
 	frames := map[string]bool{d.Timeframe: true}
 	for _, ind := range d.Indicators {
 		frames[ind.Timeframe] = true
 	}
+	window := HistoryWindow(d)
 	for tf := range frames {
 		cs := req.Series[tf]
 		if len(cs) < 2 {
 			return nil, fmt.Errorf("missing series %s", tf)
 		}
 		seconds := frame(tf)
+		if d.SchemaVersion == 2 {
+			before := sort.Search(len(cs), func(i int) bool { return cs[i].OpenTime.Add(time.Duration(seconds) * time.Second).After(req.From) })
+			if before < window+1 {
+				return nil, fmt.Errorf("insufficient bounded-window warmup %s", tf)
+			}
+		}
 		for i, c := range cs {
 			if !c.IsClosed || c.Exchange != req.Exchange || c.Symbol != req.Symbol || c.Category != "linear" || c.Interval != tf || c.OpenTime.Unix()%int64(seconds) != 0 || c.OpenTime.Add(time.Duration(seconds)*time.Second).After(req.AsOf) || !c.Low.IsPositive() || c.High.Cmp(c.Low) < 0 || c.Open.Cmp(c.Low) < 0 || c.Open.Cmp(c.High) > 0 || c.Close.Cmp(c.Low) < 0 || c.Close.Cmp(c.High) > 0 || c.Volume.IsNegative() {
 				return nil, fmt.Errorf("invalid candle %s/%d", tf, i)
@@ -418,12 +429,24 @@ func Run(req Request) (*Result, error) {
 	series := map[string][]*decimal.Decimal{}
 	names := make([]string, 0, len(d.Indicators))
 	for name, ind := range d.Indicators {
-		series[name] = values(req.Series[ind.Timeframe], ind)
+		if d.SchemaVersion == 1 {
+			series[name] = values(req.Series[ind.Timeframe], ind)
+		} else {
+			series[name] = make([]*decimal.Decimal, len(req.Series[ind.Timeframe]))
+		}
 		names = append(names, name)
 	}
 	sort.Strings(names)
 	candles := req.Series[d.Timeframe]
 	atr := algorithms.CalculateATR(candles, 14)
+	if d.SchemaVersion == 2 {
+		atr = make([]*decimal.Decimal, len(candles))
+		for i := range candles {
+			if i >= window-1 {
+				atr[i] = boundedValue(candles, Indicator{Type: "ATR", Period: 14, Timeframe: d.Timeframe}, i, window)
+			}
+		}
+	}
 	signals := []backtest.Signal{}
 	last := -100000
 	if len(req.Funding) > 0 && (d.Funding == nil || !d.Funding.Enabled) {
@@ -443,6 +466,14 @@ func Run(req Request) (*Result, error) {
 			idx := sort.Search(len(cs), func(i int) bool {
 				return cs[i].OpenTime.Add(time.Duration(frame(ind.Timeframe)) * time.Second).After(decision)
 			}) - 1
+			if d.SchemaVersion == 2 && idx >= 1 {
+				if series[name][idx] == nil {
+					series[name][idx] = boundedValue(cs, ind, idx, window)
+				}
+				if series[name][idx-1] == nil {
+					series[name][idx-1] = boundedValue(cs, ind, idx-1, window)
+				}
+			}
 			if idx < 1 || series[name][idx] == nil || series[name][idx-1] == nil {
 				ready = false
 				break
@@ -535,10 +566,17 @@ func Run(req Request) (*Result, error) {
 	cfg.SlippageRate = req.Slippage
 	cfg.RiskPerTradeRate = decimal.FromFloat64(d.RiskPercent / 100)
 	cfg.MaxHoldingBars = d.TimeoutBars
-	report, err := backtest.NewEngine(cfg).RunSignalsWithPolicy(candles, signals, d.ID, policy)
+	var report *backtest.BacktestReport
+	var err error
+	if d.SchemaVersion == 1 && len(d.Exit) == 0 && d.PartialExit == nil && (d.Funding == nil || !d.Funding.Enabled) {
+		report, err = backtest.NewEngine(cfg).RunSignals(candles, signals, d.ID)
+	} else {
+		report, err = backtest.NewEngine(cfg).RunSignalsWithPolicy(candles, signals, d.ID, policy)
+	}
 	if err != nil {
 		return nil, err
 	}
+	report.Metadata["evaluation_semantics"] = map[int]string{1: "legacy_prefix_v1", 2: "bounded_window_v2"}[d.SchemaVersion]
 	report.Metadata["return_percent"] = report.NetPnL.Float64() / req.Capital.Float64() * 100
 	returns := []float64{}
 	for i := 1; i < len(report.EquitySeries); i++ {
@@ -584,6 +622,9 @@ func Run(req Request) (*Result, error) {
 // PaperBlockers is the executable capability boundary shared with Laravel eligibility.
 func PaperBlockers(d Definition) []string {
 	out := []string{}
+	if d.SchemaVersion != 2 {
+		out = append(out, "PAPER_REQUIRES_SCHEMA_V2")
+	}
 	if d.Timeframe != "15" {
 		out = append(out, "PAPER_REQUIRES_15M")
 	}

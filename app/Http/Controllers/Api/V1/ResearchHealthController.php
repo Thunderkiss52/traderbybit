@@ -11,6 +11,7 @@ use App\Research\Application\SlotIntegrityService;
 use App\Research\Application\StrategyHealthService;
 use App\Research\Application\SystemFreshnessService;
 use App\Research\Infrastructure\Persistence\ReconciliationRunRecord;
+use App\StrategyBuilder\PrimaryStrategies;
 use Carbon\CarbonImmutable;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -150,7 +151,7 @@ final class ResearchHealthController extends Controller
             'environment' => config('app.env', 'production'),
             'market_category' => 'linear',
             'symbols' => (array) config('market_data.symbols', ['BTCUSDT', 'ETHUSDT']),
-            'active_strategies_count' => count((array) config('paper.primary_strategies', ['baseline'])),
+            'active_strategies_count' => count(PrimaryStrategies::ids()),
             'paper_only' => true,
         ]);
     }

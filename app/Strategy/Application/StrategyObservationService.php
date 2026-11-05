@@ -17,6 +17,7 @@ use App\Strategy\Domain\SignalDecision;
 use App\Strategy\Domain\StrategyInput;
 use App\Strategy\Exceptions\StrategyObservationActiveException;
 use App\Strategy\Infrastructure\Persistence\StrategyObservationRecord;
+use App\StrategyBuilder\ShadowService;
 use DateTimeImmutable;
 use Illuminate\Contracts\Cache\Factory as CacheFactory;
 use Illuminate\Support\Facades\Log;
@@ -36,6 +37,7 @@ final readonly class StrategyObservationService
         private PatternMatchService $patternMatches,
         private SignalRepository $signals,
         private CacheFactory $cache,
+        private ShadowService $dslShadows,
         private ?ModelAdvisoryService $advisory = null,
     ) {}
 
@@ -141,6 +143,8 @@ final readonly class StrategyObservationService
                 }
                 $observations[] = $observation;
             }
+
+            $this->dslShadows->observe($input);
 
             // Evaluate active promoted candidate strategies so they receive paper signals and executions
             $promotedCandidates = LearningCandidateStrategyRecord::query()

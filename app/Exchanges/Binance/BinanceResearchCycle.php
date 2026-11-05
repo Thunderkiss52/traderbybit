@@ -10,6 +10,7 @@ use App\Strategy\Application\StrategyInputFactory;
 use App\Strategy\Application\StrategyObservationService;
 use App\Strategy\Application\StrategyRegistry;
 use App\Strategy\Contracts\SignalRepository;
+use App\StrategyBuilder\PrimaryStrategies;
 use App\Trading\Application\TradingPipelineEventService;
 use DateTimeImmutable;
 use DomainException;
@@ -53,7 +54,7 @@ final readonly class BinanceResearchCycle
             }
         }
 
-        $primary = (array) config('paper.primary_strategies', []);
+        $primary = PrimaryStrategies::ids('binance');
         $accounts = null;
         if ($execute) {
             // A denied PAPER request must not write signals before discovering

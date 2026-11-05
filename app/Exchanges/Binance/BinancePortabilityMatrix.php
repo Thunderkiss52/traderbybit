@@ -6,6 +6,7 @@ namespace App\Exchanges\Binance;
 
 use App\MarketData\Application\MarketCandleConflictService;
 use App\MarketData\Infrastructure\Persistence\CandleRecord;
+use App\StrategyBuilder\PrimaryStrategies;
 
 /** M6 readiness inventory: historical count alone cannot establish data quality. */
 final class BinancePortabilityMatrix
@@ -31,7 +32,7 @@ final class BinancePortabilityMatrix
                 }
             }
         }
-        foreach ((array) config('paper.primary_strategies', []) as $strategy) {
+        foreach (PrimaryStrategies::ids('binance') as $strategy) {
             foreach (['bybit', 'binance'] as $exchange) {
                 $unready = [];
                 $historyStatuses = [];

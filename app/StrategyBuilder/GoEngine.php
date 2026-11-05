@@ -8,9 +8,11 @@ use Symfony\Component\Process\Process;
 
 final readonly class GoEngine
 {
-    public function run(array $input): array
+    public function __construct(private ExecutableStore $executables) {}
+
+    public function run(array $input, ?string $checksum = null): array
     {
-        $binary = (string) config('strategy_builder.go_binary');
+        $binary = $this->executables->resolve($checksum);
         if (! is_executable($binary)) {
             throw new \RuntimeException('Go DSL executable unavailable.');
         }

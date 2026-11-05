@@ -6,6 +6,7 @@ namespace App\Trading\Application;
 
 use App\MarketData\Infrastructure\Persistence\CandleRecord;
 use App\Strategy\Infrastructure\Persistence\StrategyObservationRecord;
+use App\StrategyBuilder\PrimaryStrategies;
 use App\Trading\Infrastructure\Persistence\TradingPipelineEventRecord;
 use App\Trading\Jobs\ProcessClosedCandleEventJob;
 use App\Trading\Jobs\ProcessPaperPipelineJob;
@@ -49,7 +50,7 @@ final class TradingPipelineRecoveryService
             return true;
         }
 
-        $canonicalStrategies = (array) config('paper.primary_strategies', []);
+        $canonicalStrategies = PrimaryStrategies::ids();
         if (! empty($canonicalStrategies)) {
             $existingCount = StrategyObservationRecord::query()
                 ->where('exchange', strtolower($exchange))

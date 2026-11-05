@@ -6,6 +6,7 @@ namespace App\Research\Application;
 
 use App\Research\Infrastructure\Persistence\LearningModelArtifactRecord;
 use App\Research\Infrastructure\Persistence\ResearchRecommendationRecord;
+use App\StrategyBuilder\PrimaryStrategies;
 use Carbon\CarbonImmutable;
 
 final class ResearchReportService
@@ -34,7 +35,7 @@ final class ResearchReportService
         $healthOverview = $this->health->overview($horizon === '24h' ? '24h' : '7d', persist: false);
 
         // 2. Degradation on primary strategies
-        $strategies = (array) config('paper.primary_strategies', ['baseline']);
+        $strategies = PrimaryStrategies::ids();
         $degradationReports = [];
         foreach ($strategies as $strat) {
             $snap = $this->degradation->evaluate($strat, $period === 'weekly' ? '7d' : '14d', persist: false);

@@ -18,11 +18,11 @@ final readonly class AuthoringParser
         if (! preg_match($pattern, preg_replace('/\\s+/u', ' ', $text), $m)) {
             throw ValidationException::withMessages(['description' => 'Unsupported or ambiguous description. Use the documented EMA/RSI grammar; no rules were invented.']);
         }
-        $d = ['schema_version' => 1, 'id' => 'user_ema_rsi', 'version' => 1, 'symbols' => [strtoupper($m[1])], 'exchanges' => ['bybit'], 'timeframe' => $m[8],
+        $d = ['schema_version' => 2, 'id' => 'user_ema_rsi', 'version' => 1, 'symbols' => [strtoupper($m[1])], 'exchanges' => ['bybit'], 'timeframe' => $m[8],
             'indicators' => ['fast' => ['type' => 'EMA', 'period' => (int) $m[2], 'timeframe' => $m[8]], 'slow' => ['type' => 'EMA', 'period' => (int) $m[3], 'timeframe' => $m[8]], 'rsi' => ['type' => 'RSI', 'period' => 14, 'timeframe' => $m[8]]],
             'entry' => ['BUY' => ['and' => [['op' => 'crosses_above', 'left' => 'fast', 'right' => 'slow'], ['op' => 'lt', 'left' => 'rsi', 'right' => (float) $m[4]]]]],
-            'stop_atr' => (float) $m[5], 'take_atr' => (float) $m[6], 'risk_percent' => (float) $m[7], 'timeout_bars' => 48, 'cooldown_bars' => 0];
+            'funding' => ['enabled' => true, 'interval_hours' => 8], 'stop_atr' => (float) $m[5], 'take_atr' => (float) $m[6], 'risk_percent' => (float) $m[7], 'timeout_bars' => 48, 'cooldown_bars' => 0];
 
-        return ['definition' => $this->validator->validate($d), 'assumptions' => ['RSI period 14', 'Bybit linear research', '48-bar timeout', 'No cooldown', 'ATR period 14'], 'confirmation_required' => true];
+        return ['definition' => $this->validator->validate($d), 'assumptions' => ['RSI period 14', 'Bybit linear research', '48-bar timeout', 'No cooldown', 'ATR period 14', 'Funding modeled on an explicit 8-hour calendar; complete rate/mark history is required'], 'confirmation_required' => true];
     }
 }

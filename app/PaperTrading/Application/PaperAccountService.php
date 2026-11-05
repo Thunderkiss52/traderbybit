@@ -8,6 +8,7 @@ use App\PaperTrading\Domain\AccountStatus;
 use App\PaperTrading\Infrastructure\Persistence\EquitySnapshotRecord;
 use App\PaperTrading\Infrastructure\Persistence\PaperAccountRecord;
 use App\Strategy\Application\StrategyRegistry;
+use App\StrategyBuilder\PrimaryStrategies;
 use Brick\Math\BigDecimal;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
@@ -146,7 +147,7 @@ final readonly class PaperAccountService
             if (! in_array($exchangeId, ['bybit', 'binance'], true)) {
                 throw new \DomainException('Unsupported paper exchange.');
             }
-            if (! in_array($strategyId, (array) config('paper.primary_strategies'), true)) {
+            if (! in_array($strategyId, PrimaryStrategies::ids($exchangeId), true)) {
                 throw new \DomainException('Unregistered primary strategy.');
             }
             if ($strategyId === 'baseline' && $exchangeId === 'bybit') {
@@ -197,6 +198,8 @@ final readonly class PaperAccountService
                 'primary_strategy_id' => $strategyId,
                 'is_primary' => true,
                 'strategy_version' => $version,
+                'configuration_hash' => $hash,
+                'strategy_parameters' => $parameters,
             ]);
 
             if (! $account->is_primary || $account->primary_strategy_id !== $strategyId || $account->research_experiment_id !== null || $account->exchange_id !== $exchangeId) {
@@ -210,7 +213,7 @@ final readonly class PaperAccountService
 
     public function allPrimaryAccounts(string $exchangeId = 'bybit'): Collection
     {
-        return collect((array) config('paper.primary_strategies', ['baseline']))->map(fn (string $s) => $this->primaryAccount($s, $exchangeId));
+        return collect(PrimaryStrategies::ids($exchangeId))->map(fn (string $s) => $this->primaryAccount($s, $exchangeId));
     }
 
     public function resume(string $id, bool $ownerApproved = false): PaperAccountRecord

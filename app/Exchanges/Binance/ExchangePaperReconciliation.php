@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Exchanges\Binance;
 
+use App\StrategyBuilder\PrimaryStrategies;
 use Brick\Math\BigDecimal;
 use Illuminate\Support\Facades\DB;
 use RuntimeException;
@@ -46,18 +47,19 @@ final class ExchangePaperReconciliation
             'snapshot' => (string) $metadata->snapshot,
             'backend_pid' => (int) $metadata->backend_pid,
         ];
-        $strategies = (array) config('paper.primary_strategies', []);
+        $strategies = PrimaryStrategies::ids();
         // New public-data exchanges have zero-funded BLOCKED PAPER placeholders
         // until their own accounting/execution adapters are reviewed.
         $exchanges = array_values((array) config('exchanges.enabled', ['bybit', 'binance']));
         // Count every PRIMARY row, not only the two expected exchanges. A
         // foreign/NULL exchange row must not disappear from the 26-account
         // census merely because the supported pairs are all present.
+        $scopes = PrimaryStrategies::byExchange($exchanges);
         $allPrimary = DB::table('paper_accounts')->where('is_primary', true)->get();
         $accounts = $allPrimary->filter(static fn ($account): bool => in_array($account->exchange_id, $exchanges, true));
         $issues = [];
         $coverage = [];
-        if ($allPrimary->count() !== count($strategies) * count($exchanges)) {
+        if ($allPrimary->count() !== array_sum(array_map('count', $scopes))) {
             $issues[] = ['exchange_id' => null, 'strategy_id' => null, 'code' => 'TOTAL_PRIMARY_ACCOUNT_COUNT_MISMATCH'];
         }
         foreach ($allPrimary as $account) {
@@ -68,6 +70,9 @@ final class ExchangePaperReconciliation
         }
         foreach ($strategies as $strategy) {
             foreach ($exchanges as $exchange) {
+                if (! in_array($strategy, $scopes[$exchange], true)) {
+                    continue;
+                }
                 $matches = $accounts->filter(fn ($a) => $a->exchange_id === $exchange && $a->primary_strategy_id === $strategy);
                 if ($matches->count() !== 1) {
                     $issues[] = ['exchange_id' => $exchange, 'strategy_id' => $strategy, 'code' => 'ACCOUNT_COUNT_NOT_ONE'];
@@ -117,11 +122,11 @@ final class ExchangePaperReconciliation
 
                         continue;
                     }
-                    if ($exchange === 'binance') {
+                    if ($exchange === 'binance' || str_starts_with($strategy, 'user_')) {
                         $approvedCapital = $approvedCapital->plus((string) $transfer->amount);
                     }
                 }
-                if ($exchange === 'binance'
+                if (($exchange === 'binance' || str_starts_with($strategy, 'user_'))
                     && ! $approvedCapital->isEqualTo(BigDecimal::of((string) $account->starting_balance))) {
                     $issues[] = ['exchange_id' => $exchange, 'strategy_id' => $strategy, 'code' => 'PAPER_CAPITAL_PROVENANCE_MISMATCH'];
                 }

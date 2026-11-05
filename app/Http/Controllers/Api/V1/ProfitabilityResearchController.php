@@ -22,6 +22,7 @@ use App\Research\Domain\SlippageAttributionFillRecord;
 use App\Research\Domain\SlippageAttributionRecord;
 use App\Research\Exceptions\IdempotencyConflictException;
 use App\Research\Infrastructure\Persistence\ReconciliationRunRecord;
+use App\StrategyBuilder\PrimaryStrategies;
 use Brick\Math\BigDecimal;
 use Carbon\CarbonImmutable;
 use Illuminate\Http\JsonResponse;
@@ -61,7 +62,7 @@ final class ProfitabilityResearchController extends Controller
     /** @return list<string> */
     private function primaryStrategies(): array
     {
-        return array_values((array) config('paper.primary_strategies', ['baseline']));
+        return array_values(PrimaryStrategies::ids());
     }
 
     /**

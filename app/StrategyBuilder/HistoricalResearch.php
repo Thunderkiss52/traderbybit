@@ -16,7 +16,7 @@ use Illuminate\Validation\ValidationException;
 
 final readonly class HistoricalResearch
 {
-    public function __construct(private DatasetInspector $datasets, private DefinitionValidator $validator, private MarketCandleConflictService $integrity, private GoEngine $engine) {}
+    public function __construct(private DatasetInspector $datasets, private DefinitionValidator $validator, private MarketCandleConflictService $integrity, private GoEngine $engine, private ExecutableStore $executables) {}
 
     public function run(int $id, array $scope): object
     {
@@ -41,7 +41,7 @@ final readonly class HistoricalResearch
         if (! in_array($scope['exchange'], $d['exchanges'], true) || ! in_array($scope['symbol'], $d['symbols'], true) || $from >= $to || $to->getTimestamp() - $from->getTimestamp() > (int) config('strategy_builder.max_days') * 86400 || $to > new DateTimeImmutable('now') || ! BigDecimal::of($scope['capital'])->isPositive()) {
             throw ValidationException::withMessages(['scope' => 'Invalid research scope or range exceeds seven-day resource bound.']);
         }
-        $binary = (string) config('strategy_builder.go_binary');
+        $binary = $this->executables->resolve($row->engine_checksum ?? null);
         if (! is_executable($binary)) {
             throw ValidationException::withMessages(['engine' => 'Go DSL binary unavailable; build research-go/cmd/strategy-dsl.']);
         }
@@ -59,7 +59,7 @@ final readonly class HistoricalResearch
                 throw ValidationException::withMessages(['cost_model' => 'Explicit exchange-specific costs required.']);
             }
         }
-        $warmup = max(220, max(array_map(fn (array $indicator): int => max($indicator['period'] * 2, $indicator['slow_period'] ?? 0) + ($indicator['signal_period'] ?? 9) + 2, $d['indicators'])));
+        $warmup = EvaluationProfile::window($d) + ($d['schema_version'] === 2 ? 1 : 0);
         try {
             $this->assertIntegrity($scope, $from, $to, $warmup);
             $pin = $this->datasets->pin([$scope['symbol']], $from, $to, $warmup, $scope['exchange']);
@@ -75,7 +75,7 @@ final readonly class HistoricalResearch
                 $start = (new DateTimeImmutable('@'.(intdiv($from->getTimestamp(), $seconds) * $seconds)))->modify('-'.$warmup * $seconds.' seconds');
                 $series[$tf] = CandleRecord::query()->where(['exchange' => $scope['exchange'], 'category' => 'linear', 'symbol' => $scope['symbol'], 'interval' => $tf, 'is_closed' => true])->where('open_time', '>=', $start)->where('open_time', '<=', $to->modify('-'.$seconds.' seconds'))->orderBy('open_time')->get()->map(fn ($c) => ['exchange' => $c->exchange, 'category' => $c->category, 'symbol' => $c->symbol, 'interval' => (string) $c->interval, 'open_time' => $c->open_time->toIso8601String(), 'open' => $c->open, 'high' => $c->high, 'low' => $c->low, 'close' => $c->close, 'volume' => $c->volume, 'turnover' => $c->turnover, 'is_closed' => true])->all();
             }
-            $input = ['definition' => $d, 'exchange' => $scope['exchange'], 'symbol' => $scope['symbol'], 'from' => $from->format(DATE_ATOM), 'as_of' => $to->format(DATE_ATOM), 'series' => $series, 'capital' => $scope['capital'], 'fee' => $cost['taker_rate'], 'slippage' => $cost['slippage_rate']];
+            $input = ['definition' => $d, 'exchange' => $scope['exchange'], 'symbol' => $scope['symbol'], 'from' => $from->format(DATE_ATOM), 'as_of' => $to->format(DATE_ATOM), 'series' => $series, 'capital' => $scope['capital'], 'fee' => $cost['taker_rate'], 'slippage' => $cost['slippage_rate'], 'seed' => (int) ($scope['seed'] ?? 0)];
             $fundingEnabled = ($d['funding']['enabled'] ?? false) === true;
             if ($fundingEnabled) {
                 $input['funding'] = MarketFundingEventRecord::query()->where(['exchange' => $scope['exchange'], 'category' => 'linear', 'symbol' => $scope['symbol']])->where('funding_at', '>', $from)->where('funding_at', '<', $to)->orderBy('funding_at')->get()->map(fn ($event) => ['at' => $event->funding_at->toIso8601String(), 'rate' => $event->rate, 'mark' => $event->mark_price])->all();
@@ -89,7 +89,7 @@ final readonly class HistoricalResearch
 
                 return $existing;
             }
-            $result = $this->engine->run($input);
+            $result = $this->engine->run($input, $row->engine_checksum ?? null);
             $this->datasets->verifyPin($pin['id']);
             $this->assertIntegrity($scope, $from, $to, $warmup);
             DB::transaction(function () use ($fingerprint, $id, $metadata, $result): void {

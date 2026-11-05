@@ -9,6 +9,7 @@ use App\Audit\Jobs\GenerateAuditExportJob;
 use App\PaperTrading\Application\DailyPerformanceService;
 use App\PaperTrading\Infrastructure\Persistence\EquitySnapshotRecord;
 use App\Strategy\Application\StrategyRegistry;
+use App\StrategyBuilder\PrimaryStrategies;
 use Brick\Math\BigDecimal;
 use Carbon\CarbonImmutable;
 use DateTimeInterface;
@@ -487,7 +488,7 @@ final class AuditExportService
             'primary_account_count', 'matching_version_count', 'coverage_status',
         ], ',', '"', '');
         $count = 0;
-        $primary = (array) config('paper.primary_strategies', []);
+        $primary = PrimaryStrategies::ids();
         $metadata = collect(app(StrategyRegistry::class)->metadata())->keyBy('id');
         foreach ((array) config('exchanges.enabled', ['bybit', 'binance']) as $exchangeId) {
             foreach ($primary as $strategyId) {

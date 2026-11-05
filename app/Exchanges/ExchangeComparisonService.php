@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Exchanges;
 
+use App\StrategyBuilder\PrimaryStrategies;
 use Illuminate\Support\Facades\DB;
 use RuntimeException;
 
@@ -12,8 +13,9 @@ final readonly class ExchangeComparisonService
 {
     public function report(): array
     {
-        $strategies = (array) config('paper.primary_strategies', []);
+        $strategies = PrimaryStrategies::ids();
         $exchanges = (array) config('exchanges.enabled', ['bybit', 'binance']);
+        $scopes = PrimaryStrategies::byExchange($exchanges);
         $rows = DB::table('paper_accounts')->where('is_primary', true)
             ->whereIn('exchange_id', $exchanges)->get();
         $byPair = [];
@@ -35,6 +37,9 @@ final readonly class ExchangeComparisonService
         $result = [];
         foreach ($strategies as $strategy) {
             foreach ($exchanges as $exchange) {
+                if (! in_array($strategy, $scopes[$exchange], true)) {
+                    continue;
+                }
                 $account = $byPair[$exchange.'|'.$strategy] ?? null;
                 $result[] = [
                     'strategy_id' => $strategy,
@@ -57,7 +62,7 @@ final readonly class ExchangeComparisonService
             'portfolio_aggregation' => 'DISABLED_BY_DEFAULT',
             'mode' => 'PAPER_ONLY',
             'strategy_families' => count($strategies),
-            'expected_accounts' => count($strategies) * count($exchanges),
+            'expected_accounts' => array_sum(array_map('count', $scopes)),
             'provisioned_accounts' => count(array_filter($result, static fn ($row) => $row['account_id'] !== null)),
             'exchanges' => $exchanges,
             'accounts' => $result,

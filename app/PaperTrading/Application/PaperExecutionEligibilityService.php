@@ -12,9 +12,11 @@ use App\Research\Infrastructure\Persistence\LearningCandidateStrategyRecord;
 use App\Strategy\Application\StrategyRegistry;
 use App\Strategy\Infrastructure\Persistence\ResearchExperimentRecord;
 use App\Strategy\Infrastructure\Persistence\SignalRecord;
+use App\StrategyBuilder\PrimaryStrategies;
 use Brick\Math\BigDecimal;
 use DateTimeImmutable;
 use DomainException;
+use Illuminate\Support\Facades\DB;
 use Throwable;
 
 final readonly class PaperExecutionEligibilityService
@@ -107,7 +109,10 @@ final readonly class PaperExecutionEligibilityService
         }
 
         // For STRATEGY_FORWARD_PAPER and FORWARD_PAPER:
-        $primary = (array) config('paper.primary_strategies', []);
+        if (str_starts_with($account->strategy_id, 'user_') && ! DB::table('strategy_primary_registrations')->where('strategy_id', $account->strategy_id)->where('enabled', true)->exists()) {
+            return 'primary_strategy_not_owner_active';
+        }
+        $primary = PrimaryStrategies::ids($account->exchange_id);
         $enabled = (array) config('research.forward_paper.enabled_strategies', []);
         if (! in_array($account->strategy_id, $primary, true) && ! in_array($account->strategy_id, $enabled, true)) {
             return 'forward_strategy_disabled';

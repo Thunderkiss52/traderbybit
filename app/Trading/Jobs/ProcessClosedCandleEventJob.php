@@ -11,6 +11,7 @@ use App\Strategy\Application\StrategyObservationService;
 use App\Strategy\Contracts\MarketContextRepository;
 use App\Strategy\Exceptions\StrategyObservationActiveException;
 use App\Strategy\Infrastructure\Persistence\StrategyObservationRecord;
+use App\StrategyBuilder\PrimaryStrategies;
 use App\Trading\Application\TradingPipelineEventService;
 use App\Trading\Infrastructure\Persistence\TradingPipelineEventRecord;
 use Carbon\CarbonImmutable;
@@ -178,7 +179,7 @@ final class ProcessClosedCandleEventJob implements ShouldQueue
         $this->ensureMarketContext($closeAt);
 
         // 2. Generate signals for all 13 strategies for this exchange and symbol.
-        $canonicalStrategies = (array) config('paper.primary_strategies', []);
+        $canonicalStrategies = PrimaryStrategies::ids();
         $existingObservations = StrategyObservationRecord::query()
             ->where('exchange', $this->exchange)
             ->where('category', 'linear')

@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Exchanges\Binance;
 
 use App\Strategy\Application\StrategyRegistry;
+use App\StrategyBuilder\PrimaryStrategies;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
 use Ramsey\Uuid\Uuid;
@@ -25,7 +26,7 @@ final class BinancePaperProvisioner
         return DB::transaction(static function (): array {
             $created = 0;
             $existing = 0;
-            $strategies = (array) config('paper.primary_strategies', []);
+            $strategies = PrimaryStrategies::ids('binance');
             if ($strategies === [] || count($strategies) !== count(array_unique($strategies))) {
                 throw new RuntimeException('Registered PRIMARY strategy list must be nonempty and unique.');
             }
@@ -37,8 +38,8 @@ final class BinancePaperProvisioner
                     Uuid::uuid5(Uuid::NAMESPACE_URL, 'traderbybit:paper:primary:'.$strategyId)->toString(),
                     Uuid::uuid5(Uuid::NAMESPACE_URL, 'traderbybit:paper:strategy:'.$strategyId)->toString(),
                 ]);
-                if ($bybit === null || ! in_array($bybit->id, $canonicalBybitIds, true) || $bybit->strategy_id !== $strategyId
-                    || $bybit->research_experiment_id !== null) {
+                if (! str_starts_with($strategyId, 'user_') && ($bybit === null || ! in_array($bybit->id, $canonicalBybitIds, true) || $bybit->strategy_id !== $strategyId
+                    || $bybit->research_experiment_id !== null)) {
                     // The legacy 2026-10-18 migration inferred PRIMARY from strategy_id.
                     // Noncanonical existing accounts require explicit provenance reconciliation.
                     throw new RuntimeException('Canonical Bybit account provenance is not verified.');

@@ -22,7 +22,7 @@ final readonly class HostedAuthoring
             $response = Http::timeout(30)->connectTimeout(5)->withoutRedirecting()->acceptJson()->withToken((string) config('strategy_builder.hosted.token'))->post($url, [
                 'model' => (string) config('strategy_builder.hosted.model'),
                 'description' => $description,
-                'schema_version' => 1,
+                'schema_version' => 2,
                 'instructions' => 'Return a JSON object containing definition and ambiguities. Never invent missing rules. Only data-only VECTOR strategy definitions are accepted.',
                 'schema' => DefinitionSchema::document(),
             ]);

@@ -157,3 +157,44 @@ func TestADXWilderReference(t *testing.T) {
 		t.Fatal("ADX warmup/reference mismatch")
 	}
 }
+
+func TestV2DecisionsRemainIdenticalAcrossMovingPaperWindows(t *testing.T) {
+	r := fixture()
+	r.Definition.SchemaVersion = 2
+	original := r.Series["15"]
+	r.Series["15"] = nil
+	for cycle := 0; cycle < 4; cycle++ {
+		for _, c := range original {
+			c.OpenTime = c.OpenTime.Add(time.Duration(cycle*len(original)) * 15 * time.Minute)
+			r.Series["15"] = append(r.Series["15"], c)
+		}
+	}
+	r.From = r.Series["15"][221].OpenTime
+	r.AsOf = r.Series["15"][len(r.Series["15"])-1].OpenTime.Add(15 * time.Minute)
+	a, err := Run(r)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(a.Signals) == 0 {
+		t.Fatal("no signals")
+	}
+	for _, want := range a.Signals {
+		p := r
+		p.Mode = "signal"
+		first := want.DecisionBar - 221
+		if first < 0 {
+			first = 0
+		}
+		p.Series = map[string][]datasets.Candle{"15": r.Series["15"][first : want.DecisionBar+1]}
+		p.AsOf = want.DecisionTime
+		p.From = want.DecisionTime
+		b, err := Run(p)
+		if err != nil {
+			t.Fatal(err)
+		}
+		got := b.Signals[len(b.Signals)-1]
+		if !got.DecisionTime.Equal(want.DecisionTime) || got.Side != want.Side || got.StopLoss.Cmp(want.StopLoss) != 0 || got.TakeProfit.Cmp(want.TakeProfit) != 0 {
+			t.Fatal("moving-window PAPER parity failed")
+		}
+	}
+}

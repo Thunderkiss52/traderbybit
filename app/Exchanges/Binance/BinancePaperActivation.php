@@ -9,6 +9,7 @@ use App\MarketData\Infrastructure\Persistence\CandleRecord;
 use App\PaperTrading\Infrastructure\Persistence\MarketFundingEventRecord;
 use App\PaperTrading\Infrastructure\Persistence\PaperAccountRecord;
 use App\Strategy\Infrastructure\Persistence\MarketContextRecord;
+use App\StrategyBuilder\PrimaryStrategies;
 use Brick\Math\BigDecimal;
 use DomainException;
 use Illuminate\Support\Facades\DB;
@@ -22,7 +23,7 @@ final class BinancePaperActivation
         if (config('exchanges.binance.research_cycle_enabled') !== true) {
             throw new DomainException('Binance closed-candle research schedule is disabled.');
         }
-        $strategies = (array) config('paper.primary_strategies', []);
+        $strategies = PrimaryStrategies::ids('binance');
         if ($strategies === [] || count($strategies) !== count(array_unique($strategies))) {
             throw new DomainException('Nonempty, unique PRIMARY strategy registry required.');
         }

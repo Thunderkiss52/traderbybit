@@ -7,6 +7,7 @@ namespace App\Exchanges\Binance;
 use App\PaperTrading\Application\EquitySnapshotRepairService;
 use App\PaperTrading\Application\PaperAccountService;
 use App\Strategy\Application\StrategyRegistry;
+use App\StrategyBuilder\PrimaryStrategies;
 use Illuminate\Contracts\Cache\Factory as CacheFactory;
 use Illuminate\Support\Facades\DB;
 use RuntimeException;
@@ -52,11 +53,11 @@ final class BinanceDeploymentInitializer
 
                 // Preflight 2: Verify all registered canonical Bybit accounts exist
                 $bybitAccounts = DB::table('paper_accounts')->where('exchange_id', 'bybit')->where('is_primary', true)->get();
-                if ($bybitAccounts->count() !== count((array) config('paper.primary_strategies', []))) {
+                if ($bybitAccounts->count() !== count(PrimaryStrategies::ids('bybit'))) {
                     // Populate/ensure Bybit primary accounts
                     $this->accounts->allPrimaryAccounts('bybit');
                     $bybitAccounts = DB::table('paper_accounts')->where('exchange_id', 'bybit')->where('is_primary', true)->get();
-                    if ($bybitAccounts->count() !== count((array) config('paper.primary_strategies', []))) {
+                    if ($bybitAccounts->count() !== count(PrimaryStrategies::ids('bybit'))) {
                         throw new RuntimeException('Bybit canonical primary account population is incomplete.');
                     }
                 }
@@ -98,7 +99,7 @@ final class BinanceDeploymentInitializer
                     'snapshot_repair' => $repairResult,
                     'reconciliation' => $reconcileReport,
                     'bybit_history_preserved' => true,
-                    'canonical_accounts_count' => count((array) config('exchanges.enabled', [])) * count((array) config('paper.primary_strategies', [])),
+                    'canonical_accounts_count' => array_sum(array_map('count', PrimaryStrategies::byExchange((array) config('exchanges.enabled', [])))),
                 ];
             }, attempts: 1);
         } finally {

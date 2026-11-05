@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Exchanges\Binance;
 
 use App\PaperTrading\Infrastructure\Persistence\PaperAccountRecord;
+use App\StrategyBuilder\PrimaryStrategies;
 use Brick\Math\BigDecimal;
 use DomainException;
 use Illuminate\Support\Facades\DB;
@@ -27,7 +28,7 @@ final class BinancePaperCapital
         }
 
         return DB::transaction(static function () use ($amount, $approvalReference): array {
-            $strategies = (array) config('paper.primary_strategies', []);
+            $strategies = PrimaryStrategies::ids('binance');
             $accounts = PaperAccountRecord::query()->where('exchange_id', 'binance')->where('is_primary', true)
                 ->lockForUpdate()->get()->keyBy('primary_strategy_id');
             if ($strategies === [] || count($strategies) !== count(array_unique($strategies)) || $accounts->count() !== count($strategies)) {

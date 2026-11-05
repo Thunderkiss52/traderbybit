@@ -8,6 +8,7 @@ use App\Exchanges\Binance\BinancePaperProvisioner;
 use App\Exchanges\ExchangeRegistry;
 use App\PaperTrading\Infrastructure\Persistence\PaperAccountRecord;
 use App\Strategy\Application\StrategyRegistry;
+use App\StrategyBuilder\PrimaryStrategies;
 use Illuminate\Contracts\Cache\Factory as CacheFactory;
 use Illuminate\Support\Facades\DB;
 use Ramsey\Uuid\Uuid;
@@ -30,7 +31,7 @@ final readonly class PaperTopologySynchronizer
 
     public function sync(bool $apply = false): array
     {
-        $strategyIds = array_values((array) config('paper.primary_strategies', []));
+        $strategyIds = array_values(PrimaryStrategies::ids());
         $approvedDbExchanges = DB::table('exchanges')->where('paper_approved', true)->pluck('id')->all();
         $exchangeIds = array_values(array_unique(array_merge((array) config('exchanges.enabled', []), $approvedDbExchanges)));
         if ($strategyIds === [] || $exchangeIds === [] || count($strategyIds) !== count(array_unique($strategyIds))
@@ -48,19 +49,20 @@ final readonly class PaperTopologySynchronizer
             // A public-data adapter may be registered before PAPER readiness.
             // All non-Bybit/Binance accounts will remain unfunded and BLOCKED.
         }
+        $scopes = PrimaryStrategies::byExchange($exchangeIds);
         // A dry-run must not write a distributed cache lock or change PAPER state.
         $lock = $apply ? $this->cache->lock('paper:topology-sync', 120) : null;
         if ($lock !== null && ! $lock->get()) {
             throw new RuntimeException('PAPER topology synchronization is already running.');
         }
         try {
-            return DB::transaction(function () use ($strategyIds, $exchangeIds, $apply): array {
+            return DB::transaction(function () use ($exchangeIds, $apply, $scopes): array {
                 $existing = PaperAccountRecord::query()->where('is_primary', true)->get();
                 $pairs = [];
                 foreach ($existing as $account) {
                     $key = $account->exchange_id.'|'.$account->primary_strategy_id;
                     if (isset($pairs[$key]) || ! in_array($account->exchange_id, $exchangeIds, true)
-                        || ! in_array($account->primary_strategy_id, $strategyIds, true)
+                        || ! in_array($account->primary_strategy_id, $scopes[$account->exchange_id] ?? [], true)
                         || $account->strategy_id !== $account->primary_strategy_id
                         || $account->research_experiment_id !== null) {
                         throw new RuntimeException('Unexpected or inconsistent PRIMARY account; owner reconciliation required.');
@@ -70,7 +72,7 @@ final readonly class PaperTopologySynchronizer
 
                 $missing = [];
                 foreach ($exchangeIds as $exchange) {
-                    foreach ($strategyIds as $strategy) {
+                    foreach ($scopes[$exchange] as $strategy) {
                         if (! isset($pairs[$exchange.'|'.$strategy])) {
                             $missing[] = ['exchange_id' => $exchange, 'strategy_id' => $strategy];
                         }
@@ -79,7 +81,7 @@ final readonly class PaperTopologySynchronizer
                 $binanceApproved = config('exchanges.binance_paper_provisioning_approved') === true;
                 if (! $apply) {
                     return [
-                        'mode' => 'DRY_RUN', 'expected_pairs' => count($exchangeIds) * count($strategyIds),
+                        'mode' => 'DRY_RUN', 'expected_pairs' => array_sum(array_map('count', $scopes)),
                         'existing_pairs' => count($pairs), 'missing_pairs' => $missing,
                         'binance_provisioning_approved' => $binanceApproved,
                         'paper_orders' => 'NEVER_REAL',
@@ -87,7 +89,7 @@ final readonly class PaperTopologySynchronizer
                 }
                 $createdBybit = 0;
                 if (in_array('bybit', $exchangeIds, true)) {
-                    foreach ($strategyIds as $id) {
+                    foreach ($scopes['bybit'] as $id) {
                         $missingBybit = ! isset($pairs['bybit|'.$id]);
                         $account = $this->accounts->primaryAccount($id, 'bybit');
                         if ($missingBybit) {
@@ -105,7 +107,7 @@ final readonly class PaperTopologySynchronizer
                     if (in_array($exchange, ['bybit', 'binance'], true)) {
                         continue;
                     }
-                    foreach ($strategyIds as $id) {
+                    foreach ($scopes[$exchange] as $id) {
                         if (isset($pairs[$exchange.'|'.$id])) {
                             continue;
                         }
@@ -136,7 +138,7 @@ final readonly class PaperTopologySynchronizer
                 }
 
                 return [
-                    'mode' => 'APPLIED', 'expected_pairs' => count($exchangeIds) * count($strategyIds),
+                    'mode' => 'APPLIED', 'expected_pairs' => array_sum(array_map('count', $scopes)),
                     'created_bybit' => $createdBybit, 'created_binance_blocked_unfunded' => $createdBinance,
                     'created_other_blocked_unfunded' => $createdOther,
                     'binance_pending_approval' => in_array('binance', $exchangeIds, true) && ! $binanceApproved,

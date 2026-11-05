@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Exchanges\Binance;
 
 use App\PaperTrading\Infrastructure\Persistence\PaperAccountRecord;
+use App\StrategyBuilder\PrimaryStrategies;
 use Brick\Math\BigDecimal;
 use DomainException;
 
@@ -14,7 +15,7 @@ final class BinancePaperSafety
     public static function assertProvenance(PaperAccountRecord $account): void
     {
         if ($account->exchange_id !== 'binance' || ! $account->is_primary || $account->research_experiment_id !== null
-            || ! in_array($account->primary_strategy_id, (array) config('paper.primary_strategies', []), true)
+            || ! in_array($account->primary_strategy_id, PrimaryStrategies::ids('binance'), true)
             || $account->primary_strategy_id !== $account->strategy_id) {
             throw new DomainException('Binance PRIMARY account provenance is not verified.');
         }

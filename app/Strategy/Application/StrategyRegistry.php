@@ -19,6 +19,9 @@ use App\Strategy\Research\SupportResistanceBounceStrategy;
 use App\Strategy\Research\SupportResistanceBreakoutStrategy;
 use App\Strategy\Research\TrendPullbackStrategy;
 use App\Strategy\Research\VolatilityCompressionBreakoutStrategy;
+use App\StrategyBuilder\ForwardEvaluator;
+use App\StrategyBuilder\PaperDslStrategy;
+use App\StrategyBuilder\PrimaryStrategies;
 use Illuminate\Support\Arr;
 
 final readonly class StrategyRegistry
@@ -28,7 +31,7 @@ final readonly class StrategyRegistry
 
     public function all(): array
     {
-        return $this->strategies;
+        return array_merge($this->strategies, array_map(fn ($row) => $this->dsl($row), PrimaryStrategies::registrations()));
     }
 
     public function get(string $id): StrategyInterface
@@ -38,11 +41,26 @@ final readonly class StrategyRegistry
                 return $strategy;
             }
         }
+        if (str_starts_with($id, 'user_')) {
+            foreach (PrimaryStrategies::registrations() as $row) {
+                if ($row->strategy_id === $id) {
+                    return $this->dsl($row);
+                }
+            }
+        }
         throw new \InvalidArgumentException("Unknown strategy: {$id}");
     }
 
     public function make(string $id, array $parameters): StrategyInterface
     {
+        if (str_starts_with($id, 'user_')) {
+            $strategy = $this->get($id);
+            if (self::hash($parameters) !== self::hash($strategy->parameters())) {
+                throw new \InvalidArgumentException('User strategy parameters are immutable; publish and approve another version.');
+            }
+
+            return $strategy;
+        }
         if ($id === 'baseline') {
             $overrides = Arr::undot($parameters);
             unset($overrides['_research_strategy_id'], $overrides['_research_parameters'], $overrides['_research_optimization']);
@@ -83,13 +101,18 @@ final readonly class StrategyRegistry
 
         return array_map(fn (StrategyInterface $s) => ['id' => $s->id(), 'version' => $s->version(), 'description' => $s->description(),
             'timeframes' => ['trend' => '1h', 'setup' => '30m', 'entry' => '15m', 'confirmation' => '5m'],
-            'execution_eligible' => ! in_array($s->id(), $signalOnly, true),
-            'configuration_hash' => $this->hash($s->parameters()), 'parameters' => $s->parameters()], $this->strategies);
+            'execution_eligible' => ! in_array($s->id(), $signalOnly, true) && (! $s instanceof PaperDslStrategy || $s->isEnabled()),
+            'configuration_hash' => $this->hash($s->parameters()), 'parameters' => $s->parameters()], $this->all());
     }
 
     public function configurationHash(string $id): string
     {
         return self::hash($this->get($id)->parameters());
+    }
+
+    private function dsl(object $row): StrategyInterface
+    {
+        return new PaperDslStrategy(json_decode($row->definition, true, flags: JSON_THROW_ON_ERROR), (string) $row->engine_checksum, (bool) $row->enabled, $row->active_from === null ? null : new \DateTimeImmutable($row->active_from), app(ForwardEvaluator::class));
     }
 
     public static function hash(array $parameters): string

@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Research\Application;
 
 use App\Research\Infrastructure\Persistence\LearningCandidateStrategyRecord;
+use App\StrategyBuilder\PrimaryStrategies;
 use Illuminate\Support\Arr;
 use Illuminate\Support\Str;
 
@@ -40,7 +41,7 @@ final class StrategyEvolutionService
         if (! in_array($exchange, ['bybit', 'binance'], true)) {
             throw new \InvalidArgumentException('Unsupported candidate exchange.');
         }
-        if (! in_array($parentStrategyId, (array) config('paper.primary_strategies', []), true)
+        if (! in_array($parentStrategyId, PrimaryStrategies::ids(), true)
             || ! in_array($parentStrategyId, $this->families(), true)) {
             throw new \InvalidArgumentException("Unknown strategy family: {$parentStrategyId}");
         }

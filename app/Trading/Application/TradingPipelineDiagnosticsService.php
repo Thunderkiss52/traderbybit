@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Trading\Application;
 
 use App\Strategy\Infrastructure\Persistence\StrategyObservationRecord;
+use App\StrategyBuilder\PrimaryStrategies;
 use App\Trading\Infrastructure\Persistence\TradingPipelineEventRecord;
 use Illuminate\Support\Facades\DB;
 
@@ -19,7 +20,7 @@ final class TradingPipelineDiagnosticsService
     {
         $exchange = strtolower($exchange);
         $symbol = strtoupper($symbol);
-        $canonicalStrategies = (array) config('paper.primary_strategies', []);
+        $canonicalStrategies = PrimaryStrategies::ids();
         $canonicalCount = count($canonicalStrategies);
 
         $events = TradingPipelineEventRecord::query()

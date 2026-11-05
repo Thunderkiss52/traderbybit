@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\PaperTrading\Application;
 
+use App\StrategyBuilder\PrimaryStrategies;
 use Brick\Math\BigDecimal;
 use Brick\Math\RoundingMode;
 use Illuminate\Support\Facades\DB;
@@ -30,7 +31,7 @@ final class GlobalPaperCapitalGuard
             }
             $approvedDbExchanges = DB::table('exchanges')->where('paper_approved', true)->pluck('id')->all();
             $exchanges = array_values(array_unique(array_merge((array) config('exchanges.enabled', ['bybit', 'binance']), $approvedDbExchanges)));
-            $strategies = (array) config('paper.primary_strategies', []);
+            $strategies = PrimaryStrategies::ids();
             if ($exchanges === [] || $strategies === [] || count($exchanges) !== count(array_unique($exchanges))
                 || count($strategies) !== count(array_unique($strategies))) {
                 return 'global_capital_topology_unverified';
@@ -38,6 +39,7 @@ final class GlobalPaperCapitalGuard
             $accounts = DB::table('paper_accounts')->where('is_primary', true)->get();
             $starting = BigDecimal::zero();
             $peakTotal = BigDecimal::zero();
+            $protectedPeak = BigDecimal::zero();
             $equity = BigDecimal::zero();
             $reserved = BigDecimal::zero();
             $fundedCount = 0;
@@ -74,7 +76,10 @@ final class GlobalPaperCapitalGuard
 
                     continue;
                 }
-                $starting = $starting->plus($base);
+                if (! str_starts_with($account->strategy_id, 'user_')) {
+                    $starting = $starting->plus($base);
+                    $protectedPeak = $protectedPeak->plus($peak);
+                }
                 $peakTotal = $peakTotal->plus($peak);
                 $equity = $equity->plus($current);
                 $reserved = $reserved->plus($accountRisk);
@@ -84,7 +89,7 @@ final class GlobalPaperCapitalGuard
                 return 'global_capital_valuation_unverified';
             }
             $loss = $peakTotal->minus($equity);
-            if ($loss->isGreaterThanOrEqualTo($peakTotal->multipliedBy($cap)->dividedBy(100, 24, RoundingMode::HalfEven))) {
+            if ($loss->isGreaterThanOrEqualTo($protectedPeak->multipliedBy($cap)->dividedBy(100, 24, RoundingMode::HalfEven))) {
                 return 'global_capital_loss_limit_exceeded';
             }
             if ($proposedRiskCapital !== null) {

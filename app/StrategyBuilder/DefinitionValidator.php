@@ -15,7 +15,7 @@ final class DefinitionValidator
     public function validate(array $definition): array
     {
         Validator::make($definition, [
-            'schema_version' => 'required|integer|in:1',
+            'schema_version' => 'required|integer|in:1,2',
             'id' => 'required|string|regex:/^user_[a-z0-9_]{1,48}$/D',
             'version' => 'required|integer|min:1|max:1000000',
             'symbols' => 'required|array|list|min:1|max:20', 'symbols.*' => 'required|string|regex:/^[A-Z0-9]{3,24}$/D|distinct',

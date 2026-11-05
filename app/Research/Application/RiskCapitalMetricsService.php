@@ -13,6 +13,7 @@ use App\Research\Domain\ResearchGenerationRecord;
 use App\Research\Domain\SlippageAttributionRecord;
 use App\Research\Domain\StrategyRiskMetricRecord;
 use App\Research\Exceptions\IdempotencyConflictException;
+use App\StrategyBuilder\PrimaryStrategies;
 use Brick\Math\BigDecimal;
 use Brick\Math\RoundingMode;
 use Carbon\CarbonImmutable;
@@ -55,7 +56,7 @@ final class RiskCapitalMetricsService
     /** @return list<string> */
     private function primaryStrategies(): array
     {
-        return array_values((array) config('paper.primary_strategies', ['baseline']));
+        return array_values(PrimaryStrategies::ids());
     }
 
     /**

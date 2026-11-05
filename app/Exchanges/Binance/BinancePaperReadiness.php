@@ -9,6 +9,7 @@ use App\MarketData\Infrastructure\Persistence\CandleRecord;
 use App\PaperTrading\Infrastructure\Persistence\MarketFundingEventRecord;
 use App\PaperTrading\Infrastructure\Persistence\PaperAccountRecord;
 use App\Strategy\Infrastructure\Persistence\MarketContextRecord;
+use App\StrategyBuilder\PrimaryStrategies;
 use Brick\Math\BigDecimal;
 use DateTimeImmutable;
 use Illuminate\Support\Facades\DB;
@@ -67,7 +68,7 @@ final class BinancePaperReadiness
         }
 
         // 3. 13-Account Census and Funding
-        $primaryStrategies = (array) config('paper.primary_strategies', []);
+        $primaryStrategies = PrimaryStrategies::ids('binance');
         $accounts = PaperAccountRecord::query()
             ->where('exchange_id', 'binance')
             ->where('is_primary', true)
