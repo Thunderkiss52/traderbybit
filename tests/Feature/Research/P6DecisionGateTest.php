@@ -127,6 +127,7 @@ final class P6DecisionGateTest extends TestCase
         ];
 
         $first = $this->service()->evaluate($payload);
+        $this->travel(2)->seconds();
         $second = $this->service()->evaluate($payload);
 
         self::assertSame($first['generation_id'], $second['generation_id']);

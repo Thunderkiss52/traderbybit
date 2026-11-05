@@ -56,8 +56,9 @@ final class DecisionEvidenceService
     {
         $claimType = (string) ($request['claim_type'] ?? '');
         $accountingScope = (string) ($request['accounting_scope'] ?? 'FULL_LIFECYCLE');
-        $asOf = isset($request['as_of']) ? CarbonImmutable::parse((string) $request['as_of'], 'UTC') : CarbonImmutable::now('UTC');
         $idempotencyKey = (string) ($request['idempotency_key'] ?? Uuid::uuid4()->toString());
+        $existingGeneration = ResearchGenerationRecord::query()->where('idempotency_key', $idempotencyKey)->first();
+        $asOf = isset($request['as_of']) ? CarbonImmutable::parse((string) $request['as_of'], 'UTC') : ($existingGeneration?->as_of ?? CarbonImmutable::now('UTC'));
 
         $normalizedParams = [
             'package_code' => self::PACKAGE_CODE,
@@ -73,7 +74,6 @@ final class DecisionEvidenceService
         ];
         $payloadHash = hash('sha256', json_encode($normalizedParams, JSON_THROW_ON_ERROR));
 
-        $existingGeneration = ResearchGenerationRecord::query()->where('idempotency_key', $idempotencyKey)->first();
         if ($existingGeneration !== null) {
             if ($existingGeneration->request_payload_hash !== $payloadHash) {
                 throw new IdempotencyConflictException(
