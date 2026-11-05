@@ -1,5 +1,7 @@
 # VECTOR Continuation Checkpoint — Universal Exchange Onboarding & Extensible Research Ingestion
 
+Current strategy-builder continuation: see [STRATEGY_BUILDER_COMPLETION_20261105.md](STRATEGY_BUILDER_COMPLETION_20261105.md). Durable authoring, advanced Go research, bounded optimization and explicit custom PAPER governance extend the onboarding implementation below. Do not reapply historical patches or rerun provisioning against production.
+
 **Date & Time:** 2026-11-04T22:15:00+03:00
 **Repository Working Directory:** `/home/thunder/work/traderbybit`
 **Base Commit / Upstream:** `origin/main` (`129c33c`)

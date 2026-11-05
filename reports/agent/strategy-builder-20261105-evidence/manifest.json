@@ -1,0 +1,220 @@
+{
+  "recorded_at": "2026-11-05T08:01:32.530400+00:00",
+  "source_head": "6637bbd77ca0d8f75294ae9e0a78800c1d94fb70",
+  "source_fingerprint": "502fb38916960c9f9c72e22bc80e22b7dcdf25c7c17d2547a6edd198ebd5d5fe",
+  "continuation_base": "115edd935f8e66439c30ce3584863e9cb1ad28d3",
+  "environment": {
+    "php": "8.5.12 (vector-agent-php85-test:local)",
+    "postgres": "17 task-owned vector-builder-pg-20261104, 127.0.0.1:26432, bybit_test and separate bybit_builder_browser",
+    "redis": "7.4 task-owned vector-builder-redis, 127.0.0.1:26479",
+    "node": "24.19.0",
+    "go": "1.27.3",
+    "browser": "system Google Chrome headless via Playwright Core",
+    "storage": "separate /tmp/vector-builder-test-storage-v2 and /tmp/vector-builder-browser-storage; original journals untouched"
+  },
+  "results": [
+    {
+      "check": "laravel_full",
+      "command": "vendor/bin/phpunit --display-skipped --log-junit /app/storage/logs/strategy-builder-final.xml",
+      "exit_code": 0,
+      "log": "laravel_full.log",
+      "sha256": "1876470134ff4a510dd56988bc4aa40a6aba73689b3ddf13d6211bb59bbc7177"
+    },
+    {
+      "check": "latest_strategy",
+      "command": "vendor/bin/phpunit tests/Feature/StrategyBuilder tests/Unit/StrategyBuilder",
+      "exit_code": 0,
+      "log": "latest_strategy.log",
+      "sha256": "95f2455d3a318539c81a26cb41f73cd344256d7e2776e854e7ff9aa525226ff5"
+    },
+    {
+      "check": "go_worker",
+      "command": "vendor/bin/phpunit tests/Integration/GoResearchWorkerIntegrationTest.php",
+      "exit_code": 0,
+      "log": "go_worker.log",
+      "sha256": "cb772bff549ad66e093140513bc3bbbec2b8e8a937e5ba5791666c0d0d0cdad0"
+    },
+    {
+      "check": "compose",
+      "command": "vendor/bin/phpunit tests/Unit/DevOps/DockerComposeImageResolutionTest.php (read-only CLI and loader mounts; no Docker socket)",
+      "exit_code": 0,
+      "log": "compose.log",
+      "sha256": "9997c5e2eacaa6bcc3e3321ea71df99f1f07bbc1ecd0badea6a722da736b46c5"
+    },
+    {
+      "check": "frontend",
+      "command": "npm test (Node 24.19.0)",
+      "exit_code": 0,
+      "log": "frontend.log",
+      "sha256": "8b3ef40cbbd5b361c3615f7131207e6560bc867d0a573100c57669b1d4cfd6a5"
+    },
+    {
+      "check": "typecheck_build",
+      "command": "npm run build (vue-tsc --noEmit && vite build)",
+      "exit_code": 0,
+      "log": "typecheck_build.log",
+      "sha256": "579407e82b39169318148d6906a5b0f897009c0ea6caba8528943a6106cec27a"
+    },
+    {
+      "check": "browser",
+      "command": "PLAYWRIGHT_MODULE=/tmp/vector-builder-browser/node_modules/playwright-core/index.mjs node scripts/browser/strategy_builder.mjs",
+      "exit_code": 0,
+      "log": "browser.log",
+      "sha256": "65d67a607a3b46496578ae9029e7387f2e273458e94068cfc314e7920a1d21ad"
+    },
+    {
+      "check": "pint",
+      "command": "vendor/bin/pint --test",
+      "exit_code": 0,
+      "log": "pint.log",
+      "sha256": "93bed75ebd7544ba93f58bcc849808f10d2e703f622eb6b39144e3304bfe8872"
+    },
+    {
+      "check": "php_lint",
+      "command": "find app config database routes tests scripts/browser -name *.php | xargs php -l",
+      "exit_code": 0,
+      "log": "php_lint.log",
+      "sha256": "43669004550095a349e58959e3721ce90984bbfcd3d2558c937280d226b54c8c"
+    },
+    {
+      "check": "go_race",
+      "command": "DB_HOST=127.0.0.1 DB_PORT=26432 DB_DATABASE=bybit_test DB_USERNAME=postgres DB_PASSWORD=testpass go test -race ./...",
+      "exit_code": 0,
+      "log": "go_race.log",
+      "sha256": "728d65330b729a09e4faddffb17c261e499a5c6c2ce18dbcba2a173f8c638ce9"
+    },
+    {
+      "check": "go_vet",
+      "command": "go vet ./...",
+      "exit_code": 0,
+      "log": "go_vet.log",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "check": "docker_go_stage",
+      "command": "docker build --target strategy-dsl -f docker/php/Dockerfile -t vector-builder-dsl-v2:local .",
+      "exit_code": 0,
+      "log": "docker_go_stage.log",
+      "sha256": "39c7e720981216252619f5b51a4bbe579fbdc3d16187360acfb93d785ccefab2"
+    },
+    {
+      "check": "tracker",
+      "command": "python3 scripts/vector_progress.py --strict --base-ref 115edd935f8e66439c30ce3584863e9cb1ad28d3",
+      "exit_code": 0,
+      "log": "tracker.log",
+      "sha256": "f7c1cd5b263fe75d0b062ae90e1a5d98aa85b38887dcee61f0bc2ad714b2a671"
+    },
+    {
+      "check": "tracker_unit",
+      "command": "python3 -m unittest scripts.tests.test_vector_progress",
+      "exit_code": 0,
+      "log": "tracker_unit.log",
+      "sha256": "d1c49b687141d1fecc9689a85440f0471adbe6b973e6959f4443cb3d8525e9ec"
+    },
+    {
+      "check": "initial_regression_failures",
+      "command": "vendor/bin/phpunit (before compatibility and time-default corrections)",
+      "exit_code": 2,
+      "log": "initial_regression_failures.log",
+      "sha256": "da9db887ed2ab2385dd0155c4a537223935a05c58090bcedd0fa3ef2e63869b5"
+    }
+  ],
+  "artifacts": [
+    {
+      "path": "full-junit.xml",
+      "sha256": "d54adbec63e35c7bf47be43f059ad7f60a3e38d25eca0a622e56ad245ccfdac4",
+      "bytes": 468861
+    },
+    {
+      "path": "browser.png",
+      "sha256": "26b7da24e3b62f8c58ecc4d56df7cd86c5974b0c1c2ef4add4335235117dd71f",
+      "bytes": 780813
+    },
+    {
+      "path": "synthetic-example-run.json",
+      "sha256": "c47bfa6d791e4bb22b76237ea77d75631709cf5204d2e3c6e1c1163b05ae3303",
+      "bytes": 9856
+    }
+  ],
+  "commits": [
+    {
+      "sha": "6637bbd77ca0d8f75294ae9e0a78800c1d94fb70",
+      "subject": "feat(strategy): expose complete authoring research and PAPER approval workflows"
+    },
+    {
+      "sha": "a3c0176f70b1098a960b89d71f167dbf96ca409e",
+      "subject": "fix(strategy): harden authoring research retries and account version governance"
+    },
+    {
+      "sha": "471d99e4371e60f6e8c443d0000d043cfa28fa63",
+      "subject": "fix(research): preserve implicit as-of across idempotent decision retries"
+    },
+    {
+      "sha": "1fefe73b9983b34ea35b5040b5aeea5efe3eaa36",
+      "subject": "feat(strategy): integrate bounded research and owner-approved Go PAPER execution"
+    },
+    {
+      "sha": "905ae2381116335c4543e16550e227c90f77eae6",
+      "subject": "feat(strategy): execute advanced rules partial exits and pinned funding in Go"
+    },
+    {
+      "sha": "45f4d1b62ef619ccdfa53786770f2f2b6fecc9f6",
+      "subject": "feat(strategy): persist authoring drafts and gate hosted interpretation"
+    },
+    {
+      "sha": "115edd935f8e66439c30ce3584863e9cb1ad28d3",
+      "subject": "docs(strategy): record builder evidence and remaining mission gaps"
+    },
+    {
+      "sha": "70a989493ac20dc192fa194662d0ae8973b2a217",
+      "subject": "fix(strategy): reject associative instrument and exchange lists"
+    },
+    {
+      "sha": "7e5683187f69ab6781759f9289fb15dcc568573e",
+      "subject": "test(market-data): freeze recovery window across immutable retries"
+    },
+    {
+      "sha": "6b33a0398d2e1c1109bc64c2bb7f5b53e4cf4ddd",
+      "subject": "build(strategy): package Go interpreter and verify browser research flow"
+    },
+    {
+      "sha": "01eb837aad98663a507faa900caa19c150358dea",
+      "subject": "test(strategy): isolate onboarding journals from research regression"
+    },
+    {
+      "sha": "99eaa696f58ceff7fc0aabe7a1b5bdfc678d130b",
+      "subject": "fix(strategy): fence research snapshots and preserve PAPER governance"
+    },
+    {
+      "sha": "010eca054f0e5f454789f2a1f8ec92ef5fe9753a",
+      "subject": "feat(strategy): integrate authorized management and pinned Go backtests"
+    },
+    {
+      "sha": "ad269ce4ce383c7c6cf2dc23c1a586912a300124",
+      "subject": "feat(strategy): add bilingual authoring and visual EMA RSI builder"
+    },
+    {
+      "sha": "d6edcfd1bdd505277ac525ca62330ebcb4b72703",
+      "subject": "feat(strategy): execute causal DSL research through Go"
+    },
+    {
+      "sha": "2d15997683daa595dba6fe8e54efc519241be27c",
+      "subject": "feat(strategy): validate and persist immutable DSL versions"
+    },
+    {
+      "sha": "a07946d9a2c52cb10d5bcff0d753a8bc8023d22f",
+      "subject": "docs(strategy): map builder compatibility and safety boundaries"
+    }
+  ],
+  "notes": [
+    "The full 1271-test regression passed with 11981 assertions, 6 PHPUnit notices and 8 skips. The latest 21 strategy tests passed separately with 146 assertions after the final additions; no aggregate full-1274 execution is claimed.",
+    "Four Compose tests and three Go-worker tests skipped by the full container run were subsequently executed successfully in their complete files (6/23 and 4/59 tests/assertions respectively). Only the opt-in public Bybit integration call remains unexecuted.",
+    "Hosted JSON provider transport is verified using HTTP fakes; no paid remote model inference or secret-bearing authoring request was sent.",
+    "Browser and PAPER fills use synthetic isolated fixtures. No production account census or performance data was collected.",
+    "This manifest records code commits through source_head. Its documentation/evidence commit is the successor identified in the final response."
+  ],
+  "executables": {
+    "research-go/bin/strategy-dsl": "d8e43daa9e0c934715d69d6fcfaaccecbbdc7a99b92545ad696ebf95cdb1ec04",
+    "bin/research-worker": "e7308082fb521e88d3a160616ef0f8273d35db0c1d0ecaf284a7e5f82636714f"
+  }
+}

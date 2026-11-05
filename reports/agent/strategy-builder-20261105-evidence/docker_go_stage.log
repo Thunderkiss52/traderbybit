@@ -1,0 +1,50 @@
+#0 building with "default" instance using docker driver
+
+#1 [internal] load build definition from Dockerfile
+#1 DONE 0.0s
+
+#1 [internal] load build definition from Dockerfile
+#1 transferring dockerfile: 4.01kB done
+#1 DONE 0.0s
+
+#2 resolve image config for docker-image://docker.io/docker/dockerfile:1.7
+#2 DONE 1.6s
+
+#3 docker-image://docker.io/docker/dockerfile:1.7@sha256:a57df69d0ea827fb7266491f2813635de6f17269be881f696fbfdf2d83dda33e
+#3 CACHED
+
+#4 [internal] load metadata for docker.io/library/golang:1.27.3-alpine3.24
+#4 DONE 0.0s
+
+#5 [internal] load .dockerignore
+#5 transferring context: 422B done
+#5 DONE 0.0s
+
+#6 [strategy-dsl 1/6] FROM docker.io/library/golang:1.27.3-alpine3.24
+#6 DONE 0.0s
+
+#7 [internal] load build context
+#7 transferring context: 3.19MB 0.0s done
+#7 DONE 0.1s
+
+#8 [strategy-dsl 2/6] WORKDIR /build
+#8 CACHED
+
+#9 [strategy-dsl 3/6] COPY research-go/go.mod research-go/go.sum ./
+#9 CACHED
+
+#10 [strategy-dsl 4/6] RUN go mod download
+#10 CACHED
+
+#11 [strategy-dsl 5/6] COPY research-go/ ./
+#11 DONE 0.1s
+
+#12 [strategy-dsl 6/6] RUN CGO_ENABLED=0 go build -trimpath -ldflags="-s -w" -o /strategy-dsl ./cmd/strategy-dsl
+#12 DONE 6.8s
+
+#13 exporting to image
+#13 exporting layers
+#13 exporting layers 0.3s done
+#13 writing image sha256:5895897472ee9392fbc33f3636b9f69173cd470628b55117e93399218ad40027 done
+#13 naming to docker.io/library/vector-builder-dsl-v2:local done
+#13 DONE 0.3s

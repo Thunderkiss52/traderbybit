@@ -1,0 +1,62 @@
+
+> build
+> vue-tsc --noEmit && vite build
+
+vite v7.3.7 building client environment for production...
+transforming...
+✓ 969 modules transformed.
+rendering chunks...
+computing gzip size...
+dist/index.html                                                                  0.39 kB │ gzip:   0.20 kB
+dist/assets/flUhRq6tzZclQEJ-Vdg-IuiaDsNcIhQ8tQ-D-x-0Q06.woff2                  128.62 kB
+dist/assets/flUhRq6tzZclQEJ-Vdg-IuiaDsNa-OUIwM9U8.woff                         175.41 kB
+dist/assets/TablePage-BsB6pMdJ.css                                               0.13 kB │ gzip:   0.11 kB
+dist/assets/ResearchOpportunitiesPage-DKTIDCBm.css                               0.17 kB │ gzip:   0.15 kB
+dist/assets/ResearchCalibrationPage-COeKYDg_.css                                 0.17 kB │ gzip:   0.15 kB
+dist/assets/ResearchLearningPage-PeVdenVt.css                                    0.17 kB │ gzip:   0.15 kB
+dist/assets/ProfitabilityResearchPage-B19H1TPG.css                               0.17 kB │ gzip:   0.14 kB
+dist/assets/StrategiesPage-DCD4Ehax.css                                          0.18 kB │ gzip:   0.16 kB
+dist/assets/ExchangesPage-hHDr9h8F.css                                           0.25 kB │ gzip:   0.18 kB
+dist/assets/ResearchReplayPage-BRfSXOF5.css                                      0.28 kB │ gzip:   0.22 kB
+dist/assets/ResearchMonitoringPage-CREhw8AL.css                                  0.32 kB │ gzip:   0.23 kB
+dist/assets/QuoteIntegrityPage-BdK7lSyz.css                                      0.41 kB │ gzip:   0.23 kB
+dist/assets/index-D_ls-rCD.css                                                   3.35 kB │ gzip:   1.32 kB
+dist/assets/quasar-DH_Tr-ug.css                                                213.71 kB │ gzip:  36.68 kB
+dist/assets/charts-p0UO1Vr3.js                                                   0.10 kB │ gzip:   0.11 kB
+dist/assets/EmptyState-D0kJbiAF.js                                               0.34 kB │ gzip:   0.27 kB
+dist/assets/usePolling-CZuttYv-.js                                               0.51 kB │ gzip:   0.34 kB
+dist/assets/MetricCard.vue_vue_type_script_setup_true_lang-CTOoHlrd.js           0.65 kB │ gzip:   0.46 kB
+dist/assets/EquityChart.vue_vue_type_script_setup_true_lang-CzKM0EJv.js          1.41 kB │ gzip:   0.81 kB
+dist/assets/api-COc65mfT.js                                                      1.44 kB │ gzip:   0.66 kB
+dist/assets/SettingsPage-DlsNW6V_.js                                             1.83 kB │ gzip:   0.75 kB
+dist/assets/PerformanceCharts.vue_vue_type_script_setup_true_lang-XulS7GE1.js    1.96 kB │ gzip:   1.03 kB
+dist/assets/RiskPage-BfegYQhQ.js                                                 3.83 kB │ gzip:   1.82 kB
+dist/assets/BacktestsPage-BygWw6kc.js                                            4.19 kB │ gzip:   1.77 kB
+dist/assets/JournalPage-PfAGhiuN.js                                              4.64 kB │ gzip:   2.06 kB
+dist/assets/RecordDetailPage-BALQD5mR.js                                         4.76 kB │ gzip:   1.96 kB
+dist/assets/AuditPage-Ca7OENjT.js                                                5.05 kB │ gzip:   2.08 kB
+dist/assets/ResearchCalibrationPage-BvOLROqp.js                                  5.36 kB │ gzip:   2.02 kB
+dist/assets/ResearchReplayPage-BWcpev11.js                                       5.58 kB │ gzip:   2.11 kB
+dist/assets/BacktestDetailPage-g8fObLdp.js                                       5.65 kB │ gzip:   2.14 kB
+dist/assets/StatisticsPage-CW7K-qPB.js                                           7.72 kB │ gzip:   3.25 kB
+dist/assets/ResearchPage-Clb8gNFJ.js                                             8.25 kB │ gzip:   3.32 kB
+dist/assets/TablePage-HqxuKmm3.js                                                8.52 kB │ gzip:   3.28 kB
+dist/assets/ResearchHealthPage-CZKlLKLV.js                                       8.84 kB │ gzip:   3.15 kB
+dist/assets/MarketPage-lbVywj5b.js                                               8.89 kB │ gzip:   3.68 kB
+dist/assets/ResearchOpportunitiesPage-BLQ74kda.js                                9.22 kB │ gzip:   2.90 kB
+dist/assets/index-D6fEzM9B.js                                                   12.16 kB │ gzip:   4.68 kB
+dist/assets/PatternsPage-u2qnnQag.js                                            16.36 kB │ gzip:   5.39 kB
+dist/assets/ResearchLearningPage-Cd7AWzKC.js                                    16.84 kB │ gzip:   4.96 kB
+dist/assets/DashboardPage-D6fOU9qz.js                                           21.20 kB │ gzip:   7.04 kB
+dist/assets/ResearchMonitoringPage-ugHhNONA.js                                  21.69 kB │ gzip:   6.36 kB
+dist/assets/QuoteIntegrityPage-CasMWWtH.js                                      22.78 kB │ gzip:   7.16 kB
+dist/assets/ExchangesPage-JOY3KsLD.js                                           25.90 kB │ gzip:   7.48 kB
+dist/assets/ProfitabilityResearchPage-503DZs9X.js                               29.05 kB │ gzip:   8.20 kB
+dist/assets/StrategiesPage-DSTcWY3c.js                                          35.45 kB │ gzip:  10.39 kB
+dist/assets/index-BCn5QfZZ.js                                                   51.44 kB │ gzip:  19.49 kB
+dist/assets/vue-vendor-XuvBRvWx.js                                             167.06 kB │ gzip:  61.64 kB
+dist/assets/zrender-CrzwNTfZ.js                                                175.93 kB │ gzip:  58.56 kB
+dist/assets/lightweight-charts-BwFsYrSP.js                                     180.26 kB │ gzip:  58.27 kB
+dist/assets/quasar-BdnOr9VF.js                                                 260.80 kB │ gzip:  86.90 kB
+dist/assets/echarts-DuKtSdDE.js                                                362.20 kB │ gzip: 124.75 kB
+✓ built in 9.30s

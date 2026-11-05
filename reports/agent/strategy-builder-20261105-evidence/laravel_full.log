@@ -1,0 +1,71 @@
+PHPUnit 12.5.40 by Sebastian Bergmann and contributors.
+
+Runtime:       PHP 8.5.12
+Configuration: /app/phpunit.xml
+
+...........[33;1mN[0m[33;1mN[0m[33;1mN[0m[33;1mN[0m[33;1mN[0m.[33;1mN[0m...............[36;1mS[0m[36;1mS[0m[36;1mS[0m[36;1mS[0m........................   61 / 1271 (  4%)
+.............................................................  122 / 1271 (  9%)
+.............................................................  183 / 1271 ( 14%)
+.............................................................  244 / 1271 ( 19%)
+.............................................................  305 / 1271 ( 23%)
+.............................................................  366 / 1271 ( 28%)
+.............................................................  427 / 1271 ( 33%)
+.............................................................  488 / 1271 ( 38%)
+.............................................................  549 / 1271 ( 43%)
+.............................................................  610 / 1271 ( 47%)
+.............................................................  671 / 1271 ( 52%)
+.............................................................  732 / 1271 ( 57%)
+.............................................................  793 / 1271 ( 62%)
+.............................................................  854 / 1271 ( 67%)
+.............................................................  915 / 1271 ( 71%)
+.............................................................  976 / 1271 ( 76%)
+............................................................. 1037 / 1271 ( 81%)
+............................................................. 1098 / 1271 ( 86%)
+............................................................. 1159 / 1271 ( 91%)
+....{"durability":"VERIFIED","main_pid":7032,"observer_pid":7033,"outer_rollback":false,"quarantine":false,"committed_conflicts":1}
+.{"durability":"VERIFIED","main_pid":7037,"observer_pid":7038,"outer_rollback":false,"quarantine":true,"committed_conflicts":1}
+.{"durability":"VERIFIED","main_pid":7042,"observer_pid":7043,"outer_rollback":true,"quarantine":false,"committed_conflicts":1}
+.{"durability":"VERIFIED","main_pid":7047,"observer_pid":7048,"outer_rollback":true,"quarantine":true,"committed_conflicts":1}
+...............[36;1mS[0m{"recovery_durability":"VERIFIED","main_pid":7139,"observer_pid":7140,"after_outer_rollback":true,"count":1}
+.{"recovery_concurrency":"VERIFIED","independent_pids":["7153","7152","7150","7151"],"count":1}
+.{"recovery_crash":"crash-after-claim","committed_before_kill":{"state":"IN_PROGRESS","writer_pid":7164},"exit":137,"final_count":1,"final_attempts":2}
+.{"recovery_crash":"crash-during-apply","committed_before_kill":{"state":"IN_PROGRESS","uncommitted_count":1},"exit":137,"final_count":1,"final_attempts":2}
+.{"recovery_crash":"crash-after-commit","committed_before_kill":{"state":"RECOVERED","writer_pid":7180},"exit":137,"final_count":1,"final_attempts":1}
+......................[36;1mS[0m[36;1mS[0m[36;1mS[0m......... 1220 / 1271 ( 95%)
+...........................{"fresh_process_integrity":"VERIFIED","parent_pid":1,"worker":{"status":"UNAVAILABLE","reason_code":"CANDLE_JOURNAL_PENDING","pid":587,"db_pid":7356}}
+........................           1271 / 1271 (100%)
+
+Time: 07:30.870, Memory: 70.00 MB
+
+There were 8 skipped tests:
+
+1) Tests\Unit\DevOps\DockerComposeImageResolutionTest::test_docker_compose_config_resolves_all_services_with_sha_tagged_ghcr_images
+Docker is not available in the execution environment
+
+2) Tests\Unit\DevOps\DockerComposeImageResolutionTest::test_docker_compose_config_fails_when_research_worker_image_missing
+Docker is not available in the execution environment
+
+3) Tests\Unit\DevOps\DockerComposeImageResolutionTest::test_docker_compose_config_fails_when_app_image_missing
+Docker is not available in the execution environment
+
+4) Tests\Unit\DevOps\DockerComposeImageResolutionTest::test_docker_compose_config_fails_when_web_image_missing
+Docker is not available in the execution environment
+
+5) Tests\Integration\BybitPublicApiIntegrationTest::test_public_linear_market_endpoints_match_the_documented_contract
+Set RUN_BYBIT_INTEGRATION=1 to call the public Bybit API.
+
+6) Tests\Integration\GoResearchWorkerIntegrationTest::test_scheduler_queue_go_worker_persists_succeeded_result
+Go compiler unavailable to build research-worker binary: go: downloading github.com/lib/pq v1.10.9
+error obtaining VCS status: exit status 128
+	Use -buildvcs=false to disable VCS stamping.
+
+7) Tests\Integration\GoResearchWorkerIntegrationTest::test_go_worker_persists_failure_and_sanitized_error_when_job_invalid
+Go compiler unavailable to build research-worker binary: error obtaining VCS status: exit status 128
+	Use -buildvcs=false to disable VCS stamping.
+
+8) Tests\Integration\GoResearchWorkerIntegrationTest::test_go_worker_requeues_job_when_retries_remain
+Go compiler unavailable to build research-worker binary: error obtaining VCS status: exit status 128
+	Use -buildvcs=false to disable VCS stamping.
+
+[30;43mOK, but there were issues![0m
+[30;43mTests: 1271[0m[30;43m, Assertions: 11981[0m[30;43m, PHPUnit Notices: 6[0m[30;43m, Skipped: 8[0m[30;43m.[0m

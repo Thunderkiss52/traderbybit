@@ -1,0 +1,20 @@
+?   	github.com/traderbybit/research-go/cmd/research-bench	[no test files]
+?   	github.com/traderbybit/research-go/cmd/research-candidates	[no test files]
+?   	github.com/traderbybit/research-go/cmd/research-worker	[no test files]
+?   	github.com/traderbybit/research-go/cmd/strategy-dsl	[no test files]
+ok  	github.com/traderbybit/research-go/internal/algorithms	(cached)
+ok  	github.com/traderbybit/research-go/internal/auditdata	(cached)
+ok  	github.com/traderbybit/research-go/internal/backtest	(cached)
+ok  	github.com/traderbybit/research-go/internal/candidates	(cached)
+?   	github.com/traderbybit/research-go/internal/contracts	[no test files]
+?   	github.com/traderbybit/research-go/internal/datasets	[no test files]
+ok  	github.com/traderbybit/research-go/internal/decimal	(cached)
+ok  	github.com/traderbybit/research-go/internal/jobrunner	0.118s
+ok  	github.com/traderbybit/research-go/internal/jobscope	(cached)
+ok  	github.com/traderbybit/research-go/internal/patterns	(cached)
+ok  	github.com/traderbybit/research-go/internal/replay	(cached)
+ok  	github.com/traderbybit/research-go/internal/simulation	(cached)
+ok  	github.com/traderbybit/research-go/internal/strategydsl	0.722s
+?   	github.com/traderbybit/research-go/internal/telemetry	[no test files]
+ok  	github.com/traderbybit/research-go/internal/walkforward	(cached)
+ok  	github.com/traderbybit/research-go/tests/golden	(cached)

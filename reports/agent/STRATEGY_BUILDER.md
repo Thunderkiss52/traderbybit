@@ -1,5 +1,7 @@
 # Universal strategy builder evidence
 
+Historical v1 checkpoint. The current implementation and remaining capability limits are documented in [the November 5 completion report](STRATEGY_BUILDER_COMPLETION_20261105.md).
+
 Baseline: `37777f2c03fddcbcbb4cb4688e222a7267ef62d8`, local workspace, 2026-11-04.
 
 ## Stage 1: compatibility mapping
