@@ -67,7 +67,9 @@
       "command": "vendor/bin/pint --test",
       "exit_code": 0,
       "log": "pint.log",
-      "sha256": "93bed75ebd7544ba93f58bcc849808f10d2e703f622eb6b39144e3304bfe8872"
+      "sha256": "77e5bc4b618dc09dac1b9047918143f92c05d0dde4c86b5b0c40bdd85f7da0d4",
+      "normalization": "Trailing whitespace removed for repository hygiene; exact stdout retained in pint-original.log.gz.",
+      "original_stdout_sha256": "93bed75ebd7544ba93f58bcc849808f10d2e703f622eb6b39144e3304bfe8872"
     },
     {
       "check": "php_lint",
@@ -134,6 +136,11 @@
       "path": "synthetic-example-run.json",
       "sha256": "c47bfa6d791e4bb22b76237ea77d75631709cf5204d2e3c6e1c1163b05ae3303",
       "bytes": 9856
+    },
+    {
+      "path": "pint-original.log.gz",
+      "sha256": "3377b380bcf410ff1a8183867a32e308a9336c255658aa9e3eaaca3726cf55aa",
+      "bytes": 78
     }
   ],
   "commits": [
