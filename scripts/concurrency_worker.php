@@ -8,6 +8,10 @@ use Illuminate\Contracts\Console\Kernel;
 use Illuminate\Support\Facades\DB;
 use Ramsey\Uuid\Uuid;
 
+if (getenv('APP_ENV') !== 'testing') {
+    throw new RuntimeException('Concurrency fixtures require APP_ENV=testing.');
+}
+
 require __DIR__.'/../vendor/autoload.php';
 
 $app = require_once __DIR__.'/../bootstrap/app.php';
@@ -48,6 +52,15 @@ config([
 ]);
 DB::purge('pgsql');
 DB::reconnect('pgsql');
+
+if (! $app->environment('testing') || $testDb !== 'bybit_test'
+    || ! in_array($testHost, ['127.0.0.1', 'localhost', '::1'], true)
+    || (string) env('DB_URL', '') !== ''
+    || DB::scalar('SELECT current_database()') !== 'bybit_test') {
+    throw new RuntimeException('Concurrency fixtures require isolated testing PostgreSQL.');
+}
+// The quarantined legacy engine is exercised only inside this isolated test fixture.
+config(['research.counterfactual.legacy_analysis_enabled' => true]);
 
 $pid = getmypid();
 $decisionTime = CarbonImmutable::parse($decisionTimeStr, 'UTC');

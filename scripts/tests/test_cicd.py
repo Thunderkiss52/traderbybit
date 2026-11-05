@@ -33,6 +33,12 @@ def images():
 
 
 class RequiredGateTests(unittest.TestCase):
+    def test_standalone_concurrency_fixtures_reject_production_before_bootstrap(self):
+        for script in ("scripts/concurrency_worker.php", "scripts/test_p1_postgres_concurrency.php"):
+            result = subprocess.run(["php", str(ROOT / script)], env={**os.environ, "APP_ENV": "production"}, capture_output=True, text=True)
+            self.assertNotEqual(0, result.returncode)
+            self.assertIn("Concurrency fixtures require APP_ENV=testing", result.stderr)
+
     def test_actual_workflow_gates_every_job_and_cd_contains_no_build_or_test_commands(self):
         ci = (ROOT / ".github/workflows/ci.yml").read_text().split("jobs:\n", 1)[1]
         jobs = set(re.findall(r"^  ([a-z][a-z0-9-]*):$", ci, re.M))

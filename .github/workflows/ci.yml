@@ -375,9 +375,25 @@ jobs:
           /tmp/actionlint -shellcheck=''
       - name: Engineering and deployment regression checks
         run: |
+          set -o pipefail
+          php scripts/tests/binance_contract_smoke.php
+          php scripts/verify-a2-standalone.php
+          php scripts/verify-gate6-standalone.php
+          php scripts/test_p1_postgres_concurrency.php | tee p1-concurrency.log
+          grep -q '^OVERALL VERDICT: PASS$' p1-concurrency.log
+          python3 scripts/verify-audit-log-redaction.py
           python3 -m unittest discover -s scripts/tests -p 'test_*.py' -v
           for script in scripts/tests/test_*.sh scripts/test_deployment_recovery_matrix.sh scripts/test_same_sha_configuration_refresh.sh; do bash "$script"; done
           git diff --check
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: workflow-check-results
+          path: |
+            p1-concurrency.log
+            reports/evidence/p1_concurrency_proof.json
+          if-no-files-found: error
+          overwrite: true
 
   publish-images:
     # Images are candidates until CI required succeeds; no dependency on verification jobs.

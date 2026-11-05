@@ -11,6 +11,13 @@ use App\Exchanges\Binance\BinanceCandleWindow;
 use App\Exchanges\Binance\BinancePublicAdapter;
 use App\Exchanges\Binance\BinanceSourceIdentity;
 
+if (! function_exists('config')) {
+    function config(string $key, mixed $default = null): mixed
+    {
+        return $default;
+    }
+}
+
 $checks = 0;
 $check = static function (bool $condition, string $message) use (&$checks): void {
     if (! $condition) {

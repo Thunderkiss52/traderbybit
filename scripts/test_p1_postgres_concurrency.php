@@ -5,6 +5,10 @@ declare(strict_types=1);
 use Carbon\CarbonImmutable;
 use Illuminate\Contracts\Console\Kernel;
 
+if (getenv('APP_ENV') !== 'testing') {
+    throw new RuntimeException('Concurrency fixtures require APP_ENV=testing.');
+}
+
 require __DIR__.'/../vendor/autoload.php';
 
 $app = require_once __DIR__.'/../bootstrap/app.php';
@@ -22,8 +26,10 @@ $pdo = new PDO("pgsql:host={$testHost};port={$testPort};dbname={$testDb}", $test
 ]);
 
 $currentDb = $pdo->query('SELECT current_database()')->fetchColumn();
-if ($currentDb !== 'bybit_test') {
-    fwrite(STDERR, "FATAL: Must run against bybit_test, got: {$currentDb}\n");
+if (! $app->environment('testing') || $currentDb !== 'bybit_test'
+    || ! in_array($testHost, ['127.0.0.1', 'localhost', '::1'], true)
+    || (string) env('DB_URL', '') !== '') {
+    fwrite(STDERR, "FATAL: Isolated testing PostgreSQL on loopback without a DB URL override is required.\n");
     exit(1);
 }
 
