@@ -1,39 +1,45 @@
-# Remaining Defects and Technical Debt Register
+# VECTOR — Remaining Defects, Residual Risks & Environmental Disclosures
 
-**Date:** 2026-11-04T19:21:00+03:00  
-**Current Authority:** Git HEAD `bcd5411`  
-**Audit Scope:** Independent Release Readiness Audit & Production Preflight  
-
----
-
-## 1. Resolved Historical & Technical Findings
-
-| Item | Focus / Description | Resolution Details & Verified Evidence | Status |
-|---|---|---|---|
-| **R1** | Audit patch & historical export | ALREADY_PRESENT across 23 paths; CSV escaping and streaming ZIP verified (`4ac1044`). Verified by `BacktestHistoricalAuditR8Test` (3 passed). | **RESOLVED** |
-| **R2** | Cumulative hardening | SUPERSEDED by modular architecture and typed domain records. | **RESOLVED** |
-| **R3** | Worker lease, active-job uniqueness, fencing | Advisory lock and partial unique index (`b273ab7`). Clock lease expiry (`lease_expires_at > clock_timestamp()` in Go and `lease_expires_at > $now` in Laravel), failJob transaction locking, CAS stale lease reconciliation, secret sanitization (`1764922`). Verified by `GoResearchWorkerIntegrationTest` (4 passed) and `ResearchJobServiceTest` (22 passed). | **RESOLVED** |
-| **R4** | PAPER safety guards and risk ceilings | Integrated owner-approval resume journal, blocked account persistence, unknown drawdown rejection, and hard risk ceilings (`cd3a1da`). Verified by `AccountSafetyRegressionTest` (10 passed). | **RESOLVED** |
-| **R5** | Approved research experiment eligibility & candidate starvation | Added support for approved COMPLETED `ResearchExperimentRecord` instances in `PaperExecutionEligibilityService` (`3c58b98`). Removed candidate starvation loop in `ProcessAutonomousLearningJob`. Verified by `CentralExecutionEligibilityTest` (9 passed). | **RESOLVED** |
-| **R6** | Global capital guard & topology synchronizer | Implemented `GlobalPaperCapitalGuard` (5% portfolio loss cap and entry risk ceiling with `pg_advisory_xact_lock(20261103, 50001)`) and `PaperTopologySynchronizer` (`0b17010`). Verified by `GlobalCapitalAndTopologyR6Test` (4 passed), `ConcurrentPaperEntryGlobalRiskPostgresIntegrationTest` (2 passed), and `TwentySixPaperAccountsVerificationTest` (6 passed). | **RESOLVED** |
-| **R7** | Continuous learning & shadow evaluation | Guaranteed risk-blocked accounts continue offline research without interruption; candidate starvation loop eliminated (`3c58b98`). Real exchange execution gate firmly kept disabled. Verified by `AutonomousLearningPipelineTest` (3 passed). | **RESOLVED** |
-| **R8** | Historical backtest audit export subsystem | Implemented streaming ZIP export, CSV injection protection, credential redaction, and `PaperSizingSettings` with 10,000 USDT virtual capital policy (`4ac1044`). Verified by `AuditExportTest` (8 passed). | **RESOLVED** |
-| **R9** | Temporal boundaries & candidate starvation | Verified aligned UTC scopes, continuity verification, lead-lag peer inclusion, right-boundary event handling, and starvation fix. Verified by `TemporalIntegrityAndCausalityTest` (8 passed). | **RESOLVED** |
-| **E2E-01** | Vite preview API proxy & Playwright 13-strategy assertions | Configured `preview.proxy` in `frontend/vite.config.ts` and expanded strategy assertions in `scripts/run-browser-e2e.py` to all 13 primary strategies (`bcd5411`). Verified by automated headless Chrome Playwright run (4 scenarios passed). | **RESOLVED** |
+**Date:** 2026-11-05  
+**Engineering Ownership:** Principal Quantitative Software Architect  
 
 ---
 
-## 2. Active Technical Debt / Operational Residuals
+## 1. Disclosures on Real Data Acquisition & Network Bandwidth
 
-1. **Parquet Direct Ingestion:**
-   - *Status:* Parquet parsing currently utilizes Go research worker pipelines. Direct database Parquet loading is supported via export/import tooling.
-   - *Impact:* Low; does not affect live paper trading or current backtests.
-2. **Production Preflight Active Research Job Census:**
-   - *Status:* Prior to applying migration `2026_11_04_000000_add_active_research_job_idempotency_index.php` on the live production database, the operator must execute the read-only census query specified in `PHASE0_PRODUCTION_PREFLIGHT.md`.
-   - *Impact:* Operational gate; safely prevents migration failure on duplicate active jobs.
+### 1.1 Full 240-Archive Acquisition Deferred to Operator Action
+- **Planned Scope:** 2 instruments (BTCUSDT, ETHUSDT) × 5 timeframes (1m, 5m, 15m, 30m, 1h) × 24 months = 240 ZIP archives covering 731 UTC days (~2.77 million candles).
+- **Residual Invariant:** In compliance with explicit project rules, the full 240-archive dataset was **not** downloaded during automated test runs to prevent host network saturation and uncontrolled disk consumption.
+- **Verification Performed:** Tested on licensed fixtures, official checksum validators, and boundary sample downloads.
+- **Operator Next Step:** Run `php artisan historical:acquire --preset=binance-2024-2025` on the target host when ready to acquire the full 2-year archive.
 
 ---
 
-## 3. Summary Assessment
+## 2. Inactive & Risk-Blocked Account Preservation
 
-There are **zero unresolved local blocking defects**. All local release gates have passed with verified, authentic evidence. The repository is in an operational, release-ready state for owner preflight.
+### 2.1 Preserved Canonical PAPER Accounts
+- All 26 canonical PAPER accounts (13 Bybit + 13 Binance) have been preserved without modification.
+- Accounts previously placed in `BLOCKED` status due to drawdown limits (5% entry block / 10% halt) remain strictly `BLOCKED`.
+- No automated script has unblocked accounts or loosened risk limits.
+
+### 2.2 Preserved Untracked Historical Artifacts
+- `VECTOR_INDEPENDENT_AUDIT_20261031.md` and `VECTOR_RELEASE_HARDENING.patch` were preserved untouched in the working directory as required by repository safety protocols.
+
+---
+
+## 3. Operational Environment Boundaries
+
+### 3.1 External Live Trading Order Capability: Strictly Prohibited
+- Live order routing remains completely disabled.
+- API keys are restricted to read-only public market data ingestion.
+- The UI explicitly renders the mandatory disclaimer:
+  `VIRTUAL PAPER TRADING ONLY — NOT FINANCIAL ADVICE — REAL ORDERING DISABLED`.
+
+### 3.2 Deployment & Remote Git Prohibition
+- No `git push` was executed.
+- No VPS deployment or SSH command was executed.
+- No GitHub Actions workflows were triggered.
+- All code changes are committed to local Git commit `7445eab`.
+
+### 3.3 Econom Group Resource Boundary
+- Verified: `econom-group` and all its containers, networks, volumes, and files remained completely untouched throughout the entire development lifecycle.
