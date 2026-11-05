@@ -152,6 +152,11 @@ final class AuditExportService
         $workingDir = storage_path('app/private/audit_exports/.tmp-'.$id);
         try {
             $export = AuditExportRecord::query()->findOrFail($id);
+            if (Schema::hasTable('historical_download_entries') && DB::table('historical_download_entries')->where('family', 'klines')->where('checkpoint', '>', 0)->where('requested_from', '<', $export->to_at)->where('requested_to', '>', $export->from_at)->exists()) {
+                $this->failed($id, 'RESTRICTED_SOURCE_EXPORT_BLOCKED');
+
+                return;
+            }
             if ($export->status === 'COMPLETED') {
                 return;
             }

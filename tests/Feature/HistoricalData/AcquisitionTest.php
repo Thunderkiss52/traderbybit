@@ -8,11 +8,14 @@ use App\HistoricalData\AcquisitionFailure;
 use App\HistoricalData\AcquisitionWorker;
 use App\HistoricalData\BatchControl;
 use App\HistoricalData\BatchRepository;
+use App\HistoricalData\CoverageValidator;
 use App\HistoricalData\OfficialTransport;
+use App\HistoricalData\SourcePolicy;
 use App\PaperTrading\Application\PaperTopologySynchronizer;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Http;
+use Illuminate\Validation\ValidationException;
 use Tests\TestCase;
 
 final class AcquisitionTest extends TestCase
@@ -62,7 +65,22 @@ final class AcquisitionTest extends TestCase
             self::assertTrue($worker->once($batch->id));
         }
         self::assertSame('IMPORTED', DB::table('historical_download_batches')->find($batch->id)->status);
-        self::assertSame(12, DB::table('market_candles')->where('exchange', 'binance')->count());
+        $quality = app(CoverageValidator::class)->validate($batch->id);
+        self::assertSame('VALIDATED', $quality['status']);
+        self::assertTrue($quality['funding_complete']);
+        self::assertTrue($quality['series'][0]['complete']);
+        try {
+            app(SourcePolicy::class)->assertMarketUse('binance', 'BTCUSDT', new \DateTimeImmutable('2024-01-15T00:00:00Z'), new \DateTimeImmutable('2024-01-15T01:00:00Z'), 'FORWARD_PAPER');
+            self::fail('Restricted source reached forward PAPER');
+        } catch (ValidationException) {
+            self::assertTrue(true);
+        }
+        DB::table('market_candles')->where('exchange', 'binance')->where('interval', '5')->where('open_time', '2024-01-15T00:30:00Z')->delete();
+        $gap = app(CoverageValidator::class)->validate($batch->id);
+        self::assertFalse($gap['research_ready']);
+        self::assertSame(1, $gap['series'][0]['missing']);
+
+        self::assertSame(11, DB::table('market_candles')->where('exchange', 'binance')->count());
         self::assertSame(2, DB::table('historical_funding_observations')->count());
         self::assertSame(0, DB::table('market_funding_events')->count());
         self::assertSame(0, DB::table('virtual_positions')->count());
@@ -75,7 +93,7 @@ final class AcquisitionTest extends TestCase
             $worker->once($other->id);
         }
         self::assertSame(12, DB::table('market_candles')->where('exchange', 'binance')->count());
-        self::assertSame(12, (int) DB::table('historical_download_entries')->where('batch_id', $other->id)->where('family', 'klines')->value('duplicate_rows'));
+        self::assertSame(11, (int) DB::table('historical_download_entries')->where('batch_id', $other->id)->where('family', 'klines')->value('duplicate_rows'));
         Http::assertNothingSent();
     }
 
@@ -126,6 +144,6 @@ final class AcquisitionTest extends TestCase
         $this->app->instance(OfficialTransport::class, $http);
         app(AcquisitionWorker::class)->once($missing->id);
         self::assertSame(1, DB::table('historical_download_entries')->where('batch_id', $missing->id)->where('status', 'SUPERSEDED_DAILY')->count());
-        self::assertSame(1, DB::table('historical_download_entries')->where('batch_id', $missing->id)->where('granularity', 'daily')->where('status','PLANNED')->count());
+        self::assertSame(1, DB::table('historical_download_entries')->where('batch_id', $missing->id)->where('granularity', 'daily')->where('status', 'PLANNED')->count());
     }
 }

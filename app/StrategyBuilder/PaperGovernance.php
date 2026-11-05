@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\StrategyBuilder;
 
 use App\Backtest\Application\DatasetInspector;
+use App\HistoricalData\SourcePolicy;
 use App\PaperTrading\Application\GlobalPaperCapitalGuard;
 use App\PaperTrading\Application\PaperTopologySynchronizer;
 use App\PaperTrading\Infrastructure\Persistence\PaperAccountRecord;
@@ -34,6 +35,7 @@ final readonly class PaperGovernance
         }
         $this->executables->resolve($row->engine_checksum);
         $this->datasets->verifyPin($metadata['dataset_pin']['id']);
+        app(SourcePolicy::class)->assertMarketUse($metadata['scope']['exchange'], $metadata['scope']['symbol'], new DateTimeImmutable($metadata['scope']['from']), new DateTimeImmutable($metadata['scope']['to']), 'PAPER_PROMOTION');
         $signals = $result['signals'];
         if ($signals === []) {
             throw ValidationException::withMessages(['evidence' => 'No actionable signal is available for a real Go/PAPER parity probe; select another complete research window.']);

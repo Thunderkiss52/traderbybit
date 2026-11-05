@@ -122,6 +122,9 @@ func (s *mockStmt) Exec(args []driver.Value) (driver.Result, error) {
 }
 
 func (s *mockStmt) Query(args []driver.Value) (driver.Rows, error) {
+	if strings.Contains(s.query, "to_regclass('historical_download_entries')") {
+		return &policyRows{}, nil
+	}
 	s.conn.driver.mu.Lock()
 	qErr := s.conn.driver.queryErr
 	genToken := s.conn.driver.overrideGenToken
@@ -451,4 +454,18 @@ func TestLeaseExpiryGuardsAllWorkerStateTransitions(t *testing.T) {
 		})
 	}
 	mockDrv.reset()
+}
+
+// policyRows models a schema predating historical acquisition; no restricted sources exist.
+type policyRows struct{ done bool }
+
+func (r *policyRows) Columns() []string { return []string{"installed"} }
+func (r *policyRows) Close() error      { return nil }
+func (r *policyRows) Next(dest []driver.Value) error {
+	if r.done {
+		return io.EOF
+	}
+	r.done = true
+	dest[0] = false
+	return nil
 }

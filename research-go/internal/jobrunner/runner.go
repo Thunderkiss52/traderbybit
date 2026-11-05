@@ -471,7 +471,8 @@ func (r *Runner) ExecuteJob(ctx context.Context, req *contracts.JobRequest, fenc
 		return err
 	}
 
-	candles, err := datasets.LoadCandlesFromDB(r.db, exchange, category, symbol, interval, fromTime, toTime, maxRows)
+	intendedUse, _ := req.Payload["intended_use"].(string)
+	candles, err := datasets.LoadCandlesFromDBForUse(r.db, exchange, category, symbol, interval, fromTime, toTime, maxRows, intendedUse)
 	if err != nil {
 		_ = r.FailJob(ctx, req.JobID, fencingToken, err)
 		return fmt.Errorf("failed to load candles: %w", err)

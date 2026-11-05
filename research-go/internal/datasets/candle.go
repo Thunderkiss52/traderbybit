@@ -39,6 +39,27 @@ func ComputeDatasetHash(candles []Candle) string {
 
 // LoadCandlesFromDB streams closed candles with strict ordering and keyset bounds
 func LoadCandlesFromDB(db *sql.DB, exchange, category, symbol, interval string, from, to time.Time, limit int) ([]Candle, error) {
+	return LoadCandlesFromDBForUse(db, exchange, category, symbol, interval, from, to, limit, "UNDECLARED")
+}
+
+// LoadCandlesFromDBForUse enforces recorded source permissions before reading restricted history.
+func LoadCandlesFromDBForUse(db *sql.DB, exchange, category, symbol, interval string, from, to time.Time, limit int, intendedUse string) ([]Candle, error) {
+	if exchange == "binance" {
+		var installed bool
+		if err := db.QueryRow("SELECT to_regclass('historical_download_entries') IS NOT NULL").Scan(&installed); err != nil {
+			return nil, fmt.Errorf("source policy lookup unavailable")
+		}
+		if installed {
+			var restricted, prohibited bool
+			query := `SELECT EXISTS(SELECT 1 FROM historical_download_entries e WHERE e.family='klines' AND e.symbol=$1 AND e.checkpoint>0 AND e.requested_from<$3 AND e.requested_to>$2), EXISTS(SELECT 1 FROM historical_download_entries e JOIN historical_download_batches b ON b.id=e.batch_id WHERE e.family='klines' AND e.symbol=$1 AND e.checkpoint>0 AND e.requested_from<$3 AND e.requested_to>$2 AND (b.acknowledged_at IS NULL OR NOT (b.license->'permitted_uses' ? $4)))`
+			if err := db.QueryRow(query, symbol, from, to, intendedUse).Scan(&restricted, &prohibited); err != nil {
+				return nil, fmt.Errorf("source policy evidence unavailable")
+			}
+			if restricted && (prohibited || (intendedUse != "NONCOMMERCIAL_RESEARCH" && intendedUse != "NONCOMMERCIAL_LEARNING")) {
+				return nil, fmt.Errorf("source license use blocked")
+			}
+		}
+	}
 	if limit <= 0 || limit > 1000000 {
 		limit = 100000
 	}

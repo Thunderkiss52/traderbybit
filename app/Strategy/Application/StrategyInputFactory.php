@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Strategy\Application;
 
+use App\HistoricalData\SourcePolicy;
 use App\Indicators\Application\IndicatorEngine;
 use App\Indicators\Exceptions\InvalidSeriesException;
 use App\MarketData\Application\MarketCandleConflictService;
@@ -17,6 +18,7 @@ use App\Strategy\Domain\StrategyInputIntegrityException;
 use App\Strategy\Domain\TimeframeState;
 use DateTimeImmutable;
 use DateTimeInterface;
+use Illuminate\Validation\ValidationException;
 
 final readonly class StrategyInputFactory
 {
@@ -43,12 +45,19 @@ final readonly class StrategyInputFactory
         return $record === null ? null : $record->open_time->toDateTimeImmutable()->modify('+15 minutes');
     }
 
-    public function make(string $exchange, string $category, string $symbol, DateTimeImmutable $at, ?string $peerSymbol = null): StrategyInput
+    public function make(string $exchange, string $category, string $symbol, DateTimeImmutable $at, ?string $peerSymbol = null, string $intendedUse = 'FORWARD_PAPER'): StrategyInput
     {
         foreach (array_filter([$symbol, $peerSymbol], static fn ($value): bool => $value !== null) as $inputSymbol) {
             if (! in_array($exchange, (array) config('exchanges.enabled', []), true) || $category !== 'linear'
                 || ! preg_match('/^[A-Z0-9]{4,32}$/D', $inputSymbol) || ! in_array($inputSymbol, (array) config('market_data.symbols', []), true)) {
                 throw new StrategyInputIntegrityException('CANDLE_SCOPE_UNSUPPORTED', 'UNAVAILABLE', compact('exchange', 'category', 'symbol'));
+            }
+        }
+        foreach (array_filter([$symbol, $peerSymbol]) as $inputSymbol) {
+            try {
+                app(SourcePolicy::class)->assertMarketUse($exchange, $inputSymbol, $at->modify('-'.((int) $this->config['history_limit'] * 3600).' seconds'), $at, $intendedUse);
+            } catch (ValidationException) {
+                throw new StrategyInputIntegrityException('SOURCE_LICENSE_USE_BLOCKED', 'UNAVAILABLE', compact('exchange', 'symbol', 'intendedUse'));
             }
         }
         $states = [];

@@ -58,7 +58,7 @@ final class StrategySignalEvaluator implements ResettableHistoricalSignalEvaluat
             if (count($this->inputCache) >= self::MAX_CACHED_INPUTS) {
                 $this->resetInputCache();
             }
-            $this->inputCache[$cacheKey] = $this->inputs->make($exchange, 'linear', $symbol, $at, $peer);
+            $this->inputCache[$cacheKey] = $this->inputs->make($exchange, 'linear', $symbol, $at, $peer, 'NONCOMMERCIAL_RESEARCH');
         }
         $input = $this->inputCache[$cacheKey];
         if ($id === null || $id === 'baseline') {

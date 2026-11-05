@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\StrategyBuilder;
 
+use App\HistoricalData\SourcePolicy;
 use App\Strategy\Contracts\StrategyInterface;
 use App\Strategy\Domain\PricePlan;
 use App\Strategy\Domain\QualityClass;
@@ -63,6 +64,7 @@ final readonly class PaperDslStrategy implements StrategyInterface
             $reasons[] = 'market_context_unavailable_or_stale';
         } else {
             try {
+                app(SourcePolicy::class)->assertMarketUse($input->exchange, $input->symbol, $input->decisionTime->modify('-'.((EvaluationProfile::window($this->definition) + 2) * 3600).' seconds'), $input->decisionTime, 'FORWARD_PAPER');
                 $result = $this->go->evaluate($this->definition, $input->exchange, $input->symbol, $input->decisionTime, $this->engineChecksum);
                 $signal = $result['signals'][0] ?? null;
                 if ($signal === null) {
