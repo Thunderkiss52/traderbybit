@@ -110,7 +110,13 @@ jobs:
             command: 'vendor/bin/phpunit tests/Feature/Exchanges --colors=never'
           - lane: feature-market
             name: 'Feature: Market Data & Strategy'
-            command: 'vendor/bin/phpunit tests/Feature/MarketData tests/Feature/Strategy tests/Feature/Api tests/Feature/Security tests/Feature/Audit tests/Feature/Indicators tests/Feature/QuoteIntegrity --colors=never'
+            command: 'vendor/bin/phpunit tests/Feature/MarketData tests/Feature/Strategy tests/Feature/Api tests/Feature/Security tests/Feature/Audit tests/Feature/Indicators tests/Feature/QuoteIntegrity tests/Feature/AuditExportTest.php tests/Feature/ExampleTest.php --colors=never'
+          - lane: feature-historical-data
+            name: 'Feature: Historical Data'
+            command: 'vendor/bin/phpunit tests/Feature/HistoricalData --colors=never'
+          - lane: feature-strategy-builder
+            name: 'Feature: Strategy Builder'
+            command: 'vendor/bin/phpunit tests/Feature/StrategyBuilder --colors=never'
     name: PHP Tests (${{ matrix.name }})
     services:
       postgres:
@@ -151,6 +157,18 @@ jobs:
       XDEBUG_MODE: off
     steps:
       - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version: '1.27.3'
+          cache-dependency-path: research-go/go.sum
+      - name: Build Go research binaries
+        run: |
+          mkdir -p research-go/bin
+          cd research-go
+          go build -o bin/research-worker ./cmd/research-worker
+          go build -o bin/historical-import ./cmd/historical-import
+          go build -o bin/historical-replay ./cmd/historical-replay
+          go build -o bin/strategy-dsl ./cmd/strategy-dsl
       - uses: shivammathur/setup-php@v2
         with:
           php-version: '8.5.12'
