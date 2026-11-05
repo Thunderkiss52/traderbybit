@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Tests\Integration;
 
 use App\MarketData\Infrastructure\Persistence\CandleRecord;
+use App\PaperTrading\Application\PaperAccountService;
 use App\PaperTrading\Infrastructure\Persistence\PaperAccountRecord;
 use App\PaperTrading\Infrastructure\Persistence\PaperSignalStateRecord;
 use App\PaperTrading\Infrastructure\Persistence\RiskDecisionRecord;
@@ -33,6 +34,7 @@ final class SlotIntegrityAndRiskFunnelPostgresIntegrationTest extends TestCase
     {
         parent::setUp();
         $this->ensurePostgresTestDatabaseReady('signals');
+        app(PaperAccountService::class)->primaryAccount('baseline');
     }
 
     protected function tearDown(): void

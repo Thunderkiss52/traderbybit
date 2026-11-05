@@ -58,6 +58,8 @@ final readonly class StrategyInputFactory
                 app(SourcePolicy::class)->assertMarketUse($exchange, $inputSymbol, $at->modify('-'.((int) $this->config['history_limit'] * 3600).' seconds'), $at, $intendedUse);
             } catch (ValidationException) {
                 throw new StrategyInputIntegrityException('SOURCE_LICENSE_USE_BLOCKED', 'UNAVAILABLE', compact('exchange', 'symbol', 'intendedUse'));
+            } catch (\PDOException) {
+                throw new StrategyInputIntegrityException('CANDLE_STORAGE_UNAVAILABLE', 'UNAVAILABLE', compact('exchange', 'category', 'symbol'));
             }
         }
         $states = [];

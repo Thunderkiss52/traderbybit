@@ -33,11 +33,11 @@ final class IntelligenceReadOnlyTest extends TestCase
         foreach (['SYNTHETIC_SECRET', 'private-host', 'password=', '/private/path'] as $sensitive) {
             self::assertStringNotContainsString($sensitive, $response->getContent());
         }
-        Log::shouldHaveReceived('warning')->once()->with('Research queue health unavailable.', [
+        Log::shouldHaveReceived('warning')->with('Research queue health unavailable.', [
             'code' => 'QUEUE_HEALTH_UNAVAILABLE',
             'exception' => \RuntimeException::class,
             'request_id' => $response->headers->get('X-Request-ID'),
-        ]);
+        ])->once();
     }
 
     public function test_health_and_autonomy_reads_do_not_initialize_or_persist_records(): void

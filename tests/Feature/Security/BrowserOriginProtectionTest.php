@@ -16,6 +16,8 @@ final class BrowserOriginProtectionTest extends TestCase
     {
         parent::setUp();
 
+        config(['app.url' => 'http://127.0.0.1']);
+        $this->app['url']->forceRootUrl('http://127.0.0.1');
         Bus::fake();
     }
 
