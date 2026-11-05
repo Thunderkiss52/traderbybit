@@ -43,7 +43,7 @@ $app->instance(OfficialTransport::class, new class extends OfficialTransport
 });
 if (PHP_SAPI !== 'cli-server') {
     if (($argv[1] ?? '') === 'work') {
-        $app->make(Kernel::class)->call('queue:work', ['connection' => 'database', '--queue' => 'research', '--stop-when-empty' => true, '--max-time' => 45, '--sleep' => 1, '--tries' => 1, '--timeout' => 1600]);
+        $app->make(Kernel::class)->call('queue:work', ['connection' => 'database', '--queue' => 'research', '--max-time' => 45, '--sleep' => 1, '--tries' => 1, '--timeout' => 1600]);
     } elseif (($argv[1] ?? '') === 'snapshot') {
         echo DB::selectOne("SELECT md5(string_agg(row_to_json(p)::text, '' ORDER BY p.id)) || '|' || count(*) || '|' || count(*) filter (where status='BLOCKED') AS snapshot FROM paper_accounts p")->snapshot;
     } elseif (($argv[1] ?? '') === 'seed') {

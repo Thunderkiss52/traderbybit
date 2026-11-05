@@ -14,7 +14,16 @@ const errors = []; page.on('pageerror', e => errors.push(e.message));
 const button = name => page.getByRole('button', { name, exact: true });
 const response = (end, method = 'POST') => page.waitForResponse(r => r.url().includes('/historical/') && r.url().endsWith(end) && r.request().method() === method, { timeout: 45000 });
 const accept = async p => { const r = await p; assert.ok(r.ok(), `${r.status()} ${await r.text()}`); return (await r.json()).data; };
-const click = async (name, suffix, method = 'POST') => { console.log('STEP', name); const p = response(suffix, method); await button(name).click(); return accept(p); };
+const idle = () => page.waitForFunction(() => !document.querySelector('.q-btn__content--hidden'));
+const click = async (name, suffix, method = 'POST') => {
+  await idle();
+  console.log('STEP', name);
+  const p = response(suffix, method);
+  await button(name).click();
+  const data = await accept(p);
+  await idle();
+  return data;
+};
 try {
   await page.route('**/api/**', async route => { const url = new URL(route.request().url()); url.host = new URL(api).host; const r = await route.fetch({ url: url.toString(), timeout: 180000 }); await route.fulfill({ response: r }); });
   await page.goto(`${base}/exchanges/binance/historical`);

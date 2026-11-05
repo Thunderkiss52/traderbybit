@@ -65,6 +65,7 @@ def run_browser_verification():
             headless=True,
             args=["--no-sandbox", "--disable-dev-shm-usage", "--disable-gpu"]
         )
+        browser_version = browser.version
         context = browser.new_context(viewport={"width": 1440, "height": 900})
         page = context.new_page()
 
@@ -423,7 +424,7 @@ def run_browser_verification():
             "timestamp": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
             "obligations": results,
             "all_passed": all_passed,
-            "browser": "Chromium 138 (Headless)",
+            "browser": f"Chromium {browser_version} (Headless)",
             "frontend_host": f"http://127.0.0.1:{PORT}"
         }, f, indent=2)
     print(f"Summary written to {summary_path}")

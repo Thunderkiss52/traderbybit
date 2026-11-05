@@ -4,10 +4,12 @@ import argparse
 from concurrent.futures import ThreadPoolExecutor
 import io
 import json
+import os
 from pathlib import Path
 import shutil
 import subprocess
 import tarfile
+import threading
 import time
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -31,6 +33,18 @@ def main():
     snapshot = subprocess.check_output(["git", "archive", a.ref], cwd=ROOT)
     lanes = json.loads((a.plan / "plan.json").read_text())["lanes"]
     task = f"vector-ci-bench-{int(time.time())}-{a.workers}"
+    stop_sampling = threading.Event()
+
+    def sample_resources():
+        with (a.output / "resources.jsonl").open("w") as stream:
+            while not stop_sampling.is_set():
+                ids = command(["docker", "ps", "--filter", f"label=vector.task={task}", "-q"]).split()
+                if ids:
+                    result = subprocess.run(["docker", "stats", "--no-stream", "--format", "{{json .}}", *ids], capture_output=True, text=True)
+                    stream.write(json.dumps(dict(timestamp=time.time(), exit_code=result.returncode,
+                                                 containers=[json.loads(line) for line in result.stdout.splitlines() if line.startswith("{")])) + "\n")
+                    stream.flush()
+                stop_sampling.wait(3)
 
     def run(lane):
         start = time.monotonic()
@@ -84,16 +98,23 @@ def main():
             # Evidence remains outside the container even after test failure.
         finally:
             for name in names:
-                subprocess.run(["docker", "rm", "-f", name], stdout=log, stderr=log)
+                subprocess.run(["docker", "rm", "-f", "-v", name], stdout=log, stderr=log)
             log.close()
             result["elapsed_seconds"] = time.monotonic() - start
             print(json.dumps(result), flush=True)
         return result
 
     start = time.monotonic()
-    with ThreadPoolExecutor(max_workers=a.workers) as executor:
-        results = list(executor.map(run, lanes))
-    (a.output / "benchmark.json").write_text(json.dumps(dict(workers=a.workers, elapsed_seconds=time.monotonic() - start, lanes=results), indent=2) + "\n")
+    sampler = threading.Thread(target=sample_resources, daemon=True)
+    sampler.start()
+    try:
+        with ThreadPoolExecutor(max_workers=a.workers) as executor:
+            results = list(executor.map(run, lanes))
+    finally:
+        stop_sampling.set()
+        sampler.join()
+    (a.output / "benchmark.json").write_text(json.dumps(dict(workers=a.workers, host_cpus=os.cpu_count(), php_cpus_per_lane=2,
+                                                           elapsed_seconds=time.monotonic() - start, lanes=results), indent=2) + "\n")
     raise SystemExit(1 if any(r["exit_code"] for r in results) else 0)
 
 

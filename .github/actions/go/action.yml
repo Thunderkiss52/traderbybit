@@ -1,0 +1,34 @@
+name: Go toolchain and caches
+description: Share locked module downloads while keeping normal and race build caches independent
+inputs:
+  kind:
+    description: Verification kind used to isolate compiled cache keys
+    required: true
+runs:
+  using: composite
+  steps:
+    - uses: actions/setup-go@v5
+      with:
+        go-version: '1.27.3'
+        cache: false
+    - id: paths
+      shell: bash
+      run: |
+        echo "modules=$(go env GOMODCACHE)" >> "$GITHUB_OUTPUT"
+        echo "build=$(go env GOCACHE)" >> "$GITHUB_OUTPUT"
+    - uses: actions/cache@v4
+      if: inputs.kind != 'format'
+      with:
+        path: ${{ steps.paths.outputs.modules }}
+        key: ${{ runner.os }}-go-1.27.3-modules-${{ hashFiles('research-go/go.sum') }}
+    - uses: actions/cache@v4
+      if: inputs.kind != 'format' && inputs.kind != 'modules'
+      with:
+        path: ${{ steps.paths.outputs.build }}
+        key: ${{ runner.os }}-go-1.27.3-${{ inputs.kind }}-${{ hashFiles('research-go/go.sum', 'research-go/**/*.go') }}
+        restore-keys: ${{ runner.os }}-go-1.27.3-${{ inputs.kind }}-
+    - name: Populate the locked module cache before any job can save it
+      if: inputs.kind != 'format'
+      shell: bash
+      working-directory: research-go
+      run: go mod download
