@@ -42,6 +42,7 @@ reports/*.xml
 reports/*.png
 reports/evidence-manifest.json
 storage/latency_benchmark.json
+ci-browser/
 
 # Windows WSL metadata
 *:Zone.Identifier

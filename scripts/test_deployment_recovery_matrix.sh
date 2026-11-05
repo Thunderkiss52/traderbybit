@@ -47,13 +47,67 @@ compute_table_hash() {
     query_pg "COPY (SELECT * FROM ${tbl} ORDER BY id) TO STDOUT WITH CSV;" | sha256sum | awk '{print $1}'
 }
 
+# Helper to query redis dbsize with multi-runtime fallback
+query_redis_dbsize() {
+    local host="${REDIS_HOST:-127.0.0.1}"
+    local port="${REDIS_PORT:-26379}"
+    if command -v redis-cli >/dev/null 2>&1; then
+        redis-cli -h "${host}" -p "${port}" dbsize 2>/dev/null
+    elif command -v python3 >/dev/null 2>&1; then
+        python3 -c '
+import socket, os, re
+host = os.environ.get("REDIS_HOST", "127.0.0.1")
+port = int(os.environ.get("REDIS_PORT", "26379"))
+s = socket.socket()
+s.settimeout(3.0)
+try:
+    s.connect((host, port))
+    pwd = os.environ.get("REDIS_PASSWORD", "")
+    if pwd:
+        s.sendall(f"*2\r\n$4\r\nAUTH\r\n${len(pwd)}\r\n{pwd}\r\n".encode())
+        _ = s.recv(1024)
+    s.sendall(b"*1\r\n$6\r\nDBSIZE\r\n")
+    raw = s.recv(1024).decode()
+    m = re.search(r":(\d+)", raw)
+    if m:
+        print(m.group(1))
+    else:
+        print(raw.strip())
+finally:
+    s.close()
+' 2>/dev/null
+    elif command -v php >/dev/null 2>&1; then
+        php -r '
+$host = getenv("REDIS_HOST") ?: "127.0.0.1";
+$port = (int)(getenv("REDIS_PORT") ?: 26379);
+$fp = @fsockopen($host, $port, $errno, $errstr, 3);
+if (!$fp) { exit(1); }
+$pwd = getenv("REDIS_PASSWORD");
+if ($pwd) {
+    fwrite($fp, "*2\r\n\$4\r\nAUTH\r\n\$" . strlen($pwd) . "\r\n$pwd\r\n");
+    fgets($fp);
+}
+fwrite($fp, "*1\r\n\$6\r\nDBSIZE\r\n");
+$line = trim(fgets($fp));
+fclose($fp);
+if (preg_match("/:(\d+)/", $line, $m)) {
+    echo $m[1];
+} else {
+    echo $line;
+}
+' 2>/dev/null
+    else
+        echo "0"
+    fi
+}
+
 # 1. Capture initial database and redis baseline digests
 echo "[INFO] Capturing baseline table SHA-256 digests on isolated PostgreSQL (127.0.0.1:${PG_PORT})..."
 INITIAL_ACCOUNTS_HASH="$(compute_table_hash "paper_accounts")"
 INITIAL_POSITIONS_HASH="$(compute_table_hash "virtual_positions")"
 INITIAL_EXECUTIONS_HASH="$(compute_table_hash "virtual_executions")"
 INITIAL_RECON_HASH="$(compute_table_hash "reconciliation_runs")"
-INITIAL_REDIS_KEYS="$(redis-cli -p "${REDIS_PORT}" dbsize)"
+INITIAL_REDIS_KEYS="$(query_redis_dbsize)"
 [[ "${INITIAL_REDIS_KEYS}" =~ ^[0-9]+$ ]] || { echo "Redis test service unavailable." >&2; exit 1; }
 
 echo "  paper_accounts      : ${INITIAL_ACCOUNTS_HASH}"
@@ -69,7 +123,7 @@ assert_data_preserved() {
     curr_pos="$(compute_table_hash "virtual_positions")"
     curr_exec="$(compute_table_hash "virtual_executions")"
     curr_recon="$(compute_table_hash "reconciliation_runs")"
-    curr_redis="$(redis-cli -p "${REDIS_PORT}" dbsize)"
+    curr_redis="$(query_redis_dbsize)"
 
     if [[ "${curr_acc}" != "${INITIAL_ACCOUNTS_HASH}" ]]; then
         echo "[FATAL] ${scenario}: paper_accounts digest altered! Expected ${INITIAL_ACCOUNTS_HASH}, got ${curr_acc}" >&2

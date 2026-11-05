@@ -11,14 +11,20 @@ export PLAYWRIGHT_MODULE="$PWD/frontend/node_modules/playwright-core/index.mjs"
 export CACHE_STORE=array QUEUE_CONNECTION=database SESSION_DRIVER=array
 backend_pid='' frontend_pid=''
 cleanup() {
-    if [[ -n "$backend_pid" ]]; then kill "$backend_pid" 2>/dev/null || true; fi
-    if [[ -n "$frontend_pid" ]]; then kill "$frontend_pid" 2>/dev/null || true; fi
+    local pids=()
+    [[ -n "${backend_pid:-}" ]] && pids+=("$backend_pid")
+    [[ -n "${frontend_pid:-}" ]] && pids+=("$frontend_pid")
+    if ((${#pids[@]} > 0)); then
+        kill -TERM "${pids[@]}" 2>/dev/null || true
+        sleep 0.2
+        kill -9 "${pids[@]}" 2>/dev/null || true
+    fi
+    pkill -P $$ 2>/dev/null || true
 }
 trap cleanup EXIT
 
 if [[ "$suite" == phase0 ]]; then
-    python3 scripts/verify-browser-phase0.py > ci-browser/phase0.log 2>&1
-    cat ci-browser/phase0.log
+    python3 -u scripts/verify-browser-phase0.py 2>&1 | tee ci-browser/phase0.log
     exit
 fi
 [[ "$DB_HOST" == 127.0.0.1 && "$DB_DATABASE" == bybit_test && "$APP_ENV" == testing ]]
@@ -44,20 +50,20 @@ case "$suite" in
         ;;
     *) echo "Unknown browser suite: $suite" >&2; exit 2 ;;
 esac
+export PHP_CLI_SERVER_WORKERS=4
 "$VECTOR_BROWSER_PHP" -S 127.0.0.1:8000 -t public "$router" > ci-browser/backend.log 2>&1 &
 backend_pid=$!
 (cd frontend && exec node node_modules/vite/bin/vite.js preview --host 127.0.0.1 --port 4173 --strictPort) > ci-browser/frontend.log 2>&1 &
 frontend_pid=$!
 for attempt in {1..100}; do
     kill -0 "$backend_pid" "$frontend_pid"
-    if curl --fail --silent http://127.0.0.1:8000/up >/dev/null && curl --fail --silent http://127.0.0.1:4173/ >/dev/null; then break; fi
+    if curl --fail --silent --connect-timeout 1 http://127.0.0.1:8000/up >/dev/null && curl --fail --silent --connect-timeout 1 http://127.0.0.1:4173/ >/dev/null; then break; fi
     sleep 0.2
 done
-curl --fail --silent http://127.0.0.1:8000/up >/dev/null
-curl --fail --silent http://127.0.0.1:4173/ >/dev/null
+curl --fail --silent --connect-timeout 1 http://127.0.0.1:8000/up >/dev/null
+curl --fail --silent --connect-timeout 1 http://127.0.0.1:4173/ >/dev/null
 case "$suite" in
-    dashboard) python3 scripts/run-browser-e2e.py > ci-browser/dashboard.log 2>&1 ;;
-    builder) node scripts/browser/strategy_builder.mjs > ci-browser/builder.log 2>&1 ;;
-    historical) node scripts/browser/historical_data.mjs > ci-browser/historical.log 2>&1 ;;
+    dashboard) python3 -u scripts/run-browser-e2e.py 2>&1 | tee ci-browser/dashboard.log ;;
+    builder) node scripts/browser/strategy_builder.mjs 2>&1 | tee ci-browser/builder.log ;;
+    historical) node scripts/browser/historical_data.mjs 2>&1 | tee ci-browser/historical.log ;;
 esac
-cat "ci-browser/${suite}.log"

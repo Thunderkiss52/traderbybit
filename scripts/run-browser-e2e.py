@@ -69,9 +69,9 @@ def main():
             # -------------------------------------------------------------
             # TEST 1: Dashboard Navigation & Strategy Accounts
             # -------------------------------------------------------------
-            print("[E2E] Test 1: Navigating to Dashboard ...")
-            page.goto(f"{BASE_URL}/dashboard", wait_until="networkidle", timeout=15000)
-            page.wait_for_selector("#app", timeout=5000)
+            print(f"[{time.strftime('%H:%M:%S')}] [E2E] Test 1: Navigating to Dashboard ...")
+            page.goto(f"{BASE_URL}/dashboard", wait_until="domcontentloaded", timeout=15000)
+            page.wait_for_selector("#app", timeout=10000)
 
             # Allow Vue hydration & API response rendering
             time.sleep(2)
@@ -127,8 +127,9 @@ def main():
             # -------------------------------------------------------------
             # TEST 2: Strategy Research Lab
             # -------------------------------------------------------------
-            print("\n[E2E] Test 2: Navigating to Strategy Research Lab ...")
-            page.goto(f"{BASE_URL}/research", wait_until="networkidle", timeout=15000)
+            print(f"\n[{time.strftime('%H:%M:%S')}] [E2E] Test 2: Navigating to Strategy Research Lab ...")
+            page.goto(f"{BASE_URL}/research", wait_until="domcontentloaded", timeout=15000)
+            page.wait_for_selector("#app", timeout=10000)
             time.sleep(1)
 
             research_content = page.content()
@@ -141,10 +142,15 @@ def main():
             )
             print("  [PASS] 4-timeframe hierarchy declaration verified")
 
-            # Verify strategy select contains all 8 strategies
+            # Verify strategy select contains all strategies by opening dropdown
+            page.locator(".q-select").first.click()
+            page.wait_for_selector(".q-menu", timeout=5000)
+            select_menu_content = page.content()
             for s in expected_strategies:
-                assert s in research_content, f"Strategy '{s}' not present in Research Lab"
+                assert s in select_menu_content, f"Strategy '{s}' not present in Research Lab select"
             print(f"  [PASS] All {len(expected_strategies)} strategies declared in Research Lab select")
+            page.keyboard.press("Escape")
+            time.sleep(0.5)
 
             research_shot = os.path.join(reports_dir, "e2e_research.png")
             page.screenshot(path=research_shot, full_page=True)
@@ -153,8 +159,9 @@ def main():
             # -------------------------------------------------------------
             # TEST 3: Statistics Page
             # -------------------------------------------------------------
-            print("\n[E2E] Test 3: Navigating to Statistics Page ...")
-            page.goto(f"{BASE_URL}/statistics", wait_until="networkidle", timeout=15000)
+            print(f"\n[{time.strftime('%H:%M:%S')}] [E2E] Test 3: Navigating to Statistics Page ...")
+            page.goto(f"{BASE_URL}/statistics", wait_until="domcontentloaded", timeout=15000)
+            page.wait_for_selector("#app", timeout=10000)
             time.sleep(1)
 
             stats_content = page.content()
@@ -168,7 +175,7 @@ def main():
             # -------------------------------------------------------------
             # TEST 4: Error Inspection
             # -------------------------------------------------------------
-            print("\n[E2E] Test 4: Checking Page Exceptions & Network Health ...")
+            print(f"\n[{time.strftime('%H:%M:%S')}] [E2E] Test 4: Checking Page Exceptions & Network Health ...")
             if page_errors:
                 print(f"  [FAIL] Uncaught browser page errors detected ({len(page_errors)}):", file=sys.stderr)
                 for pe in page_errors:
@@ -190,7 +197,18 @@ def main():
                 print("  [PASS] Zero failed critical API / asset requests")
 
         finally:
-            browser.close()
+            try:
+                page.close()
+            except Exception:
+                pass
+            try:
+                context.close()
+            except Exception:
+                pass
+            try:
+                browser.close()
+            except Exception:
+                pass
 
     print("=" * 70)
     if all_passed:

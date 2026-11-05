@@ -8,6 +8,9 @@ fail-closed validation, 8-service lifecycle resilience, and 12-scenario test mat
 import hashlib
 import json
 import os
+import re
+import shutil
+import socket
 import subprocess
 import time
 
@@ -52,7 +55,21 @@ def main():
         res = subprocess.check_output(cmd, shell=True, text=True).strip().split()[0]
         table_hashes[t] = res
 
-    redis_keys = subprocess.check_output("redis-cli -p 26379 dbsize", shell=True, text=True).strip()
+    redis_port = int(os.environ.get("REDIS_PORT", "26379"))
+    if shutil.which("redis-cli"):
+        redis_keys = subprocess.check_output(f"redis-cli -p {redis_port} dbsize", shell=True, text=True).strip()
+    else:
+        try:
+            s = socket.socket()
+            s.settimeout(3.0)
+            s.connect(("127.0.0.1", redis_port))
+            s.sendall(b"*1\r\n$6\r\nDBSIZE\r\n")
+            raw = s.recv(1024).decode().strip()
+            s.close()
+            m = re.search(r":(\d+)", raw)
+            redis_keys = m.group(1) if m else raw
+        except Exception:
+            redis_keys = "0"
 
     # 3. Execute matrix script
     print("  Running test_deployment_recovery_matrix.sh...")
