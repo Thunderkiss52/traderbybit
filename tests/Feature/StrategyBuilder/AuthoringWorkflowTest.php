@@ -49,4 +49,19 @@ final class AuthoringWorkflowTest extends TestCase
         $this->postJson('/api/v1/strategies/parse', ['description' => 'My strategy', 'provider' => 'hosted', 'consent' => true])->assertUnprocessable();
         self::assertSame(0, DB::table('strategy_definitions')->count());
     }
+
+    public function test_chat_provider_is_authoring_only_and_rejects_truncated_output(): void
+    {
+        config(['services.research_api_token' => 'owner', 'strategy_builder.hosted.enabled' => true, 'strategy_builder.hosted.driver' => 'chat_completions', 'strategy_builder.hosted.url' => 'https://api.openai.com/v1/chat/completions', 'strategy_builder.hosted.model' => 'configured-json-model', 'strategy_builder.hosted.token' => 'provider-test-token']);
+        $content = json_encode(['definition' => DefinitionTest::example(), 'ambiguities' => []]);
+        Http::preventStrayRequests();
+        Http::fake(['api.openai.com/*' => Http::sequence()->push(['choices' => [['finish_reason' => 'stop', 'message' => ['content' => $content]]]])->push(['choices' => [['finish_reason' => 'length', 'message' => ['content' => $content]]]])]);
+        $this->withHeader('X-Research-Token', 'owner');
+        $request = ['description' => 'Owner-authored rules only', 'provider' => 'hosted', 'consent' => true];
+        $this->postJson('/api/v1/strategies/parse', $request)->assertOk();
+        Http::assertSent(fn ($r) => $r['store'] === false && $r['response_format']['type'] === 'json_object' && $r['messages'][1] === ['role' => 'user', 'content' => $request['description']] && ! isset($r['tools']) && count($r['messages']) === 2);
+        $this->postJson('/api/v1/strategies/parse', $request)->assertUnprocessable();
+        self::assertSame(0, DB::table('strategy_definitions')->count());
+        self::assertSame(0, DB::table('paper_accounts')->count());
+    }
 }

@@ -13,6 +13,7 @@ use App\Strategy\Domain\StrategyInput;
 use Brick\Math\BigDecimal;
 use Brick\Math\RoundingMode;
 use DateTimeImmutable;
+use Illuminate\Support\Facades\Log;
 use Ramsey\Uuid\Uuid;
 
 final readonly class PaperDslStrategy implements StrategyInterface
@@ -78,6 +79,7 @@ final readonly class PaperDslStrategy implements StrategyInterface
                     $reasons[] = 'go_dsl_v2_closed_candle_rules_matched';
                 }
             } catch (\Throwable $e) {
+                Log::warning('Go DSL PAPER evaluation unavailable.', ['strategy_id' => $this->id(), 'exchange' => $input->exchange, 'symbol' => $input->symbol, 'exception_type' => $e::class]);
                 $side = SignalSide::Skip;
                 $plan = null;
                 $reasons = ['go_dsl_evaluation_unavailable'];

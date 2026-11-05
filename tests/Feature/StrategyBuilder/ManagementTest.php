@@ -43,6 +43,7 @@ final class ManagementTest extends TestCase
     {
         config(['services.research_api_token' => 'test-owner']);
         $this->getJson('/api/v1/strategies')->assertUnauthorized();
+        $this->postJson('/api/v1/strategies/1/activate-paper', ['confirm_activation' => true])->assertUnauthorized();
         $this->withHeader('X-Research-Token', 'invalid')->postJson('/api/v1/strategies', ['definition' => DefinitionTest::example(), 'interpretation_confirmed' => true])->assertForbidden();
         $this->withHeader('X-Research-Token', 'test-owner')->postJson('/api/v1/strategies', ['definition' => DefinitionTest::example()])->assertUnprocessable();
         $id = $this->postJson('/api/v1/strategies', ['definition' => DefinitionTest::example(), 'interpretation_confirmed' => true])->assertCreated()->json('data.id');
@@ -77,6 +78,10 @@ final class ManagementTest extends TestCase
         self::assertFalse(json_decode($one['result'], true)['paper_eligible']);
         self::assertGreaterThan(0, json_decode($one['result'], true)['report']['total_trades']);
         self::assertSame(1, DB::table('strategy_definition_runs')->count());
+        $pin = json_decode($one['metadata'], true)['dataset_pin']['id'];
+        $this->getJson('/api/v1/strategies/datasets?exchange=bybit')->assertOk()->assertJsonPath('data.data.0.id', $pin);
+        $this->postJson("/api/v1/strategies/{$d->id}/backtests", $scope + ['dataset_pin_id' => $pin])->assertOk();
+        $this->postJson("/api/v1/strategies/{$d->id}/backtests", $scope + ['dataset_pin_id' => '00000000-0000-4000-8000-000000000000'])->assertUnprocessable();
         CandleRecord::query()->where('interval', '15')->where('open_time', '2026-01-15T12:00:00Z')->delete();
         $this->postJson("/api/v1/strategies/{$d->id}/backtests", $scope)->assertUnprocessable();
     }

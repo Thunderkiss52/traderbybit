@@ -60,6 +60,8 @@ final readonly class OptimizationService
                 return null;
             }
             if ($row->attempts >= 2) {
+                DB::table('strategy_optimization_experiments')->where('id', $id)->update(['status' => 'FAILED', 'error' => 'EVALUATION_ATTEMPTS_EXHAUSTED', 'lease_until' => null, 'updated_at' => now('UTC')]);
+
                 return null;
             }
             DB::table('strategy_optimization_experiments')->where('id', $id)->update(['status' => 'RUNNING', 'attempts' => $row->attempts + 1, 'lease_until' => now('UTC')->addSeconds(1900), 'updated_at' => now('UTC')]);
@@ -170,7 +172,7 @@ final readonly class OptimizationService
 
     private function guard(string $id): void
     {
-        if (! $this->autonomy->isAllowed('tune_parameters') || DB::table('strategy_optimization_experiments')->where('id', $id)->value('status') === 'CANCEL_REQUESTED') {
+        if (! $this->autonomy->isAllowed('tune_parameters') || DB::table('strategy_optimization_experiments')->where('id', $id)->value('status') !== 'RUNNING') {
             throw new \RuntimeException('Research stopped by owner or kill switch.');
         }
     }
@@ -188,7 +190,7 @@ final readonly class OptimizationService
             }
             for ($n = 0; $n <= $steps; $n++) {
                 $value = $range['min'] + $n * $range['step'];
-                $values[] = is_int(Arr::get($definition, $path)) ? (int) $value : $value;
+                $values[] = preg_match('/^(?:timeout_bars|cooldown_bars|indicators\.[a-z][a-z0-9_]*\.(?:period|slow_period|signal_period))$/D', $path) ? (int) $value : $value;
             }
             $next = [];
             foreach ($variants as $variant) {

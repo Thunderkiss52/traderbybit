@@ -63,6 +63,9 @@ final readonly class HistoricalResearch
         try {
             $this->assertIntegrity($scope, $from, $to, $warmup);
             $pin = $this->datasets->pin([$scope['symbol']], $from, $to, $warmup, $scope['exchange']);
+            if (isset($scope['dataset_pin_id']) && $scope['dataset_pin_id'] !== $pin['id']) {
+                throw new \RuntimeException('Selected dataset pin does not match this exchange, instrument, range and required warmup.');
+            }
             foreach ($pin['warnings'] as $warning) {
                 if (str_starts_with($warning, 'insufficient_warmup:')) {
                     throw new \RuntimeException('Complete indicator warmup is required: '.$warning);

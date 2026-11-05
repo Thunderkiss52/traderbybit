@@ -6,6 +6,7 @@ namespace Tests\Feature\StrategyBuilder;
 
 use App\Research\Application\AutonomyPermissionService;
 use App\StrategyBuilder\DefinitionStore;
+use App\StrategyBuilder\OptimizationJob;
 use App\StrategyBuilder\OptimizationService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
@@ -24,7 +25,8 @@ final class OptimizationTest extends TestCase
         $d['schema_version'] = 2;
         $d['timeout_bars'] = 2;
         $d['entry'] = ['BUY' => ['op' => 'gt', 'left' => 'fast', 'right' => 0]];
-        $d['parameters'] = ['indicators.fast.period' => ['default' => 20, 'min' => 19, 'max' => 20, 'step' => 1]];
+        $d['stop_atr'] = 1;
+        $d['parameters'] = ['stop_atr' => ['default' => 1, 'min' => 1, 'max' => 1.5, 'step' => 0.5]];
         $base = app(DefinitionStore::class)->save($d, 'owner');
         $scope = ['exchange' => 'bybit', 'symbol' => 'BTCUSDT', 'from' => '2026-01-15T00:00:00Z', 'to' => '2026-01-16T00:00:00Z', 'capital' => '10000'];
         $service = app(OptimizationService::class);
@@ -39,6 +41,12 @@ final class OptimizationTest extends TestCase
         self::assertSame(0, DB::table('paper_accounts')->count());
         $service->run($experiment->id);
         self::assertSame($done->results, DB::table('strategy_optimization_experiments')->find($experiment->id)->results);
+        (new OptimizationJob($experiment->id))->failed(new \RuntimeException('late duplicate'));
+        self::assertSame('COMPLETED', DB::table('strategy_optimization_experiments')->find($experiment->id)->status);
+        $queued = $service->create($base->id, $scope, ['seed' => 1, 'train_hours' => 6, 'validation_hours' => 3, 'test_hours' => 3, 'step_hours' => 6, 'max_windows' => 1, 'max_candidates' => 2]);
+        (new OptimizationJob($queued->id))->failed(new \RuntimeException('worker timeout'));
+        self::assertSame('FAILED', DB::table('strategy_optimization_experiments')->find($queued->id)->status);
+        self::assertNull(DB::table('strategy_optimization_experiments')->find($queued->id)->lease_until);
     }
 
     public function test_kill_switch_blocks_new_optimization(): void

@@ -53,6 +53,13 @@ final class ManagementController
         return response()->json(['data' => $drafts->publish($draft, $data['revision'], $data['checksum'])], 201);
     }
 
+    public function datasets(Request $request): JsonResponse
+    {
+        $data = $request->validate(['exchange' => 'sometimes|string|max:32']);
+
+        return response()->json(['data' => DB::table('historical_dataset_pins')->when(isset($data['exchange']), fn ($q) => $q->where('exchange', $data['exchange']))->orderByDesc('pinned_at')->orderBy('id')->paginate(25)]);
+    }
+
     public function schema(): JsonResponse
     {
         return response()->json(['data' => DefinitionSchema::document(), 'hosted_enabled' => config('strategy_builder.hosted.enabled') === true]);
@@ -143,7 +150,7 @@ final class ManagementController
 
     public function backtest(Request $request, int $id, HistoricalResearch $research): JsonResponse
     {
-        $data = $request->validate(['exchange' => 'required|string|max:32', 'symbol' => 'required|string|max:24', 'from' => 'required|date', 'to' => 'required|date|after:from', 'capital' => 'required|string|regex:/^[0-9]{1,9}(\\.[0-9]{1,8})?$/D']);
+        $data = $request->validate(['exchange' => 'required|string|max:32', 'symbol' => 'required|string|max:24', 'from' => 'required|date', 'to' => 'required|date|after:from', 'capital' => 'required|string|regex:/^[0-9]{1,9}(\\.[0-9]{1,8})?$/D', 'dataset_pin_id' => 'sometimes|uuid']);
 
         return response()->json(['data' => $research->run($id, $data)]);
     }

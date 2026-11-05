@@ -116,7 +116,7 @@ final class DefinitionValidator
                 $candidate = $definition;
                 unset($candidate['parameters']);
                 $value = $range[$edge];
-                if (is_int($current)) {
+                if (preg_match('/^(?:timeout_bars|cooldown_bars|indicators\.[a-z][a-z0-9_]*\.(?:period|slow_period|signal_period))$/D', $path)) {
                     if (floor($value) != $value || floor($range['step']) != $range['step']) {
                         $this->fail('Integer parameters require integer bounds and steps.');
                     } $value = (int) $value;

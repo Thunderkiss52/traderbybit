@@ -8,6 +8,7 @@ use App\Research\Application\AutonomyPermissionService;
 use App\Strategy\Application\StrategyRegistry;
 use App\Strategy\Domain\StrategyInput;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Schema;
 
 /** Forward signal observations only: no account, order, balance or ledger authority. */
@@ -68,6 +69,7 @@ final readonly class ShadowService
                 $result = $this->forward->evaluate($d, $input->exchange, $input->symbol, $input->decisionTime, $subscription->engine_checksum);
                 $status = $result['signals'] === [] ? 'SKIP' : 'OBSERVED';
             } catch (\Throwable $e) {
+                Log::warning('Go DSL shadow evaluation unavailable.', ['definition_id' => $subscription->definition_id, 'exchange' => $input->exchange, 'symbol' => $input->symbol, 'exception_type' => $e::class]);
                 $result = ['reason' => 'FORWARD_DATA_OR_ENGINE_UNAVAILABLE', 'performance' => 'UNVERIFIED'];
                 $status = 'UNKNOWN';
             }

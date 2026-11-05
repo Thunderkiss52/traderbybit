@@ -9,6 +9,7 @@ return [
     'max_active_optimizations' => 2,
     'hosted' => [
         'enabled' => env('STRATEGY_AUTHORING_HOSTED_ENABLED', false),
+        'driver' => env('STRATEGY_AUTHORING_HOSTED_DRIVER', 'gateway'),
         'url' => env('STRATEGY_AUTHORING_HOSTED_URL', ''),
         'token' => env('STRATEGY_AUTHORING_HOSTED_TOKEN', ''),
         'model' => env('STRATEGY_AUTHORING_HOSTED_MODEL', ''),

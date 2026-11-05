@@ -22,6 +22,7 @@ Route::prefix('v1')->middleware('throttle:api')->group(function () {
         Route::get('/', [$controller, 'index']);
         Route::post('/parse', [$controller, 'parse']);
         Route::get('/schema', [$controller, 'schema']);
+        Route::get('/datasets', [$controller, 'datasets']);
         Route::get('/drafts', [$controller, 'drafts']);
         Route::post('/drafts', [$controller, 'saveDraft']);
         Route::get('/drafts/{draft}', [$controller, 'draft'])->whereUuid('draft');

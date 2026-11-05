@@ -198,8 +198,8 @@ final readonly class PaperAccountService
                 'primary_strategy_id' => $strategyId,
                 'is_primary' => true,
                 'strategy_version' => $version,
-                'configuration_hash' => $hash,
-                'strategy_parameters' => $parameters,
+                'configuration_hash' => str_starts_with($strategyId, 'user_') ? $hash : null,
+                'strategy_parameters' => str_starts_with($strategyId, 'user_') ? $parameters : null,
             ]);
 
             if (! $account->is_primary || $account->primary_strategy_id !== $strategyId || $account->research_experiment_id !== null || $account->exchange_id !== $exchangeId) {
