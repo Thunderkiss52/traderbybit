@@ -6,6 +6,7 @@ import importlib.util
 import io
 import json
 import os
+import re
 from pathlib import Path
 import tempfile
 import subprocess
@@ -32,6 +33,21 @@ def images():
 
 
 class RequiredGateTests(unittest.TestCase):
+    def test_actual_workflow_gates_every_job_and_cd_contains_no_build_or_test_commands(self):
+        ci = (ROOT / ".github/workflows/ci.yml").read_text().split("jobs:\n", 1)[1]
+        jobs = set(re.findall(r"^  ([a-z][a-z0-9-]*):$", ci, re.M))
+        self.assertEqual(JOBS, jobs - {"ci-required"})
+        gate = ci.split("  ci-required:\n", 1)[1]
+        needs = re.search(r"^    needs: \[(.+)\]$", gate, re.M)
+        self.assertEqual(JOBS, {name.strip() for name in needs[1].split(",")})
+        self.assertIn("    if: always()", gate)
+        self.assertNotIn("continue-on-error", ci)
+        cd = (ROOT / ".github/workflows/deploy.yml").read_text()
+        self.assertIn("group: bybit-signals-production", cd)
+        self.assertIn("cancel-in-progress: false", cd)
+        self.assertNotRegex(cd, r"\b(?:phpunit|npm (?:ci|install|run build)|composer install|go (?:test|build)|docker build\b)")
+        self.assertNotIn("./.github/actions/php", cd)
+
     def test_every_dependency_must_succeed(self):
         needs = {job: {"result": "success"} for job in JOBS}
         check_jobs(needs)

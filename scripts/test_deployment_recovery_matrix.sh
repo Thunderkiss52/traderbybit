@@ -53,7 +53,8 @@ INITIAL_ACCOUNTS_HASH="$(compute_table_hash "paper_accounts")"
 INITIAL_POSITIONS_HASH="$(compute_table_hash "virtual_positions")"
 INITIAL_EXECUTIONS_HASH="$(compute_table_hash "virtual_executions")"
 INITIAL_RECON_HASH="$(compute_table_hash "reconciliation_runs")"
-INITIAL_REDIS_KEYS="$(redis-cli -p "${REDIS_PORT}" dbsize 2>/dev/null || echo "1")"
+INITIAL_REDIS_KEYS="$(redis-cli -p "${REDIS_PORT}" dbsize)"
+[[ "${INITIAL_REDIS_KEYS}" =~ ^[0-9]+$ ]] || { echo "Redis test service unavailable." >&2; exit 1; }
 
 echo "  paper_accounts      : ${INITIAL_ACCOUNTS_HASH}"
 echo "  virtual_positions   : ${INITIAL_POSITIONS_HASH}"
@@ -68,7 +69,7 @@ assert_data_preserved() {
     curr_pos="$(compute_table_hash "virtual_positions")"
     curr_exec="$(compute_table_hash "virtual_executions")"
     curr_recon="$(compute_table_hash "reconciliation_runs")"
-    curr_redis="$(redis-cli -p "${REDIS_PORT}" dbsize 2>/dev/null || echo "1")"
+    curr_redis="$(redis-cli -p "${REDIS_PORT}" dbsize)"
 
     if [[ "${curr_acc}" != "${INITIAL_ACCOUNTS_HASH}" ]]; then
         echo "[FATAL] ${scenario}: paper_accounts digest altered! Expected ${INITIAL_ACCOUNTS_HASH}, got ${curr_acc}" >&2
@@ -84,6 +85,10 @@ assert_data_preserved() {
     fi
     if [[ "${curr_recon}" != "${INITIAL_RECON_HASH}" ]]; then
         echo "[FATAL] ${scenario}: reconciliation_runs digest altered! Expected ${INITIAL_RECON_HASH}, got ${curr_recon}" >&2
+        exit 1
+    fi
+    if [[ "${curr_redis}" != "${INITIAL_REDIS_KEYS}" ]]; then
+        echo "[FATAL] ${scenario}: isolated Redis key count changed." >&2
         exit 1
     fi
     echo "  [DATA PRESERVATION VERIFIED: All 4 table digests & Redis keys remain identical]"
