@@ -35,6 +35,7 @@ final readonly class ResearchService
             'fee' => 'required|string|regex:/^0(?:\.[0-9]{1,8})?$/D', 'slippage' => 'required|string|regex:/^0(?:\.[0-9]{1,8})?$/D', 'risk_percent' => 'required|string|regex:/^0(?:\.[0-9]{1,4})?$/D',
             'funding' => 'required|in:EXACT,DISABLED', 'intended_use' => 'required|in:NONCOMMERCIAL_RESEARCH,NONCOMMERCIAL_LEARNING',
         ])->validate();
+        abort_if(array_diff(array_keys($input), array_keys($data)) !== [], 422, 'Unknown research fields are prohibited.');
         abort_unless(BigDecimal::of($data['capital'])->isPositive() && BigDecimal::of($data['risk_percent'])->isPositive() && BigDecimal::of($data['risk_percent'])->isLessThanOrEqualTo('0.5') && BigDecimal::of($data['fee'])->isLessThan('0.1') && BigDecimal::of($data['slippage'])->isLessThan('0.1'), 422, 'Invalid bounded execution assumptions.');
         $from = CarbonImmutable::parse($data['from'])->utc();
         $to = CarbonImmutable::parse($data['to'])->utc();

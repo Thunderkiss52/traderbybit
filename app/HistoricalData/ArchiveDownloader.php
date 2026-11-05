@@ -22,7 +22,7 @@ final readonly class ArchiveDownloader
         }
         $download = $this->http->fetch($entry->url, $part, (int) config('historical_data.max_archive_bytes'), $tick);
         if (! hash_equals(strtolower($m[1]), $download['sha256'])) {
-            throw new AcquisitionFailure('CHECKSUM_MISMATCH');
+            throw new AcquisitionFailure('CHECKSUM_MISMATCH', diagnostics: ['expected_sha256' => strtolower($m[1]), 'actual_sha256' => $download['sha256'], 'bytes' => $download['bytes']]);
         }
         if (! rename($part, $zip)) {
             throw new AcquisitionFailure('STAGING_RENAME_FAILED');

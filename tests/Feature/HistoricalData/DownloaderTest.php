@@ -6,6 +6,7 @@ namespace Tests\Feature\HistoricalData;
 
 use App\HistoricalData\AcquisitionFailure;
 use App\HistoricalData\ArchiveDownloader;
+use App\HistoricalData\DownloadPlanner;
 use App\HistoricalData\OfficialTransport;
 use Tests\TestCase;
 
@@ -36,6 +37,19 @@ final class DownloaderTest extends TestCase
                 unlink($file);
             }rmdir($dir);
         }
+    }
+
+    public function test_all_planned_official_archive_and_checksum_urls_are_accepted(): void
+    {
+        $transport = new OfficialTransport;
+        foreach (app(DownloadPlanner::class)->plan(PlannerTest::preset() + ['mark_prices' => true])['entries'] as $entry) {
+            $transport->assertUrl($entry['url']);
+            if ($entry['checksum_url'] !== null) {
+                $transport->assertUrl($entry['checksum_url']);
+            }
+        }
+        $transport->assertUrl('https://data.binance.vision/data/futures/um/daily/klines/BTCUSDT/5m/BTCUSDT-5m-2025-01-01.zip.CHECKSUM');
+        self::assertTrue(true);
     }
 
     public function test_only_official_strict_https_source_paths_are_allowed(): void

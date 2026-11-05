@@ -18,6 +18,7 @@ export const router = createRouter({
         { path: 'positions/:id', component: () => import('../pages/RecordDetailPage.vue'), meta: { title: 'Paper Position', endpoint: '/positions' } },
         { path: 'journal', component: () => import('../pages/JournalPage.vue') },
         { path: 'audit', component: () => import('../pages/AuditPage.vue') },
+        { path: 'exchanges/binance/historical', component: () => import('../pages/HistoricalDataPage.vue') },
         { path: 'exchanges', component: () => import('../pages/ExchangesPage.vue'), meta: { title: 'Exchanges' } },
         { path: 'statistics', component: () => import('../pages/StatisticsPage.vue') },
         { path: 'research', component: () => import('../pages/ResearchPage.vue') },

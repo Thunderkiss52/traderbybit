@@ -39,7 +39,7 @@ final readonly class AcquisitionWorker
             } else {
                 $download = $this->downloads->download($entry, $directory, $tick);
                 $sha = $download['sha256'];
-                $this->update($entry, ['status' => 'CHECKSUM_VERIFIED', 'download_status' => 'DOWNLOADED', 'download_bytes' => $download['bytes'], 'downloaded_at' => now('UTC'), 'verification_status' => 'CHECKSUM_VERIFIED', 'verified_at' => now('UTC')]);
+                $this->update($entry, ['status' => 'CHECKSUM_VERIFIED', 'download_status' => 'DOWNLOADED', 'download_bytes' => $download['bytes'], 'downloaded_at' => now('UTC'), 'verification_status' => 'CHECKSUM_VERIFIED', 'sha256' => $entry->sha256 ?? $sha, 'verified_at' => now('UTC')]);
                 $parsed = $this->parser->parse($entry, $download['file'], $directory, $tick);
             }
             $revision = StrategyRegistry::hash([$entry->id, $entry->url, $sha]);
@@ -95,7 +95,7 @@ final readonly class AcquisitionWorker
                 $retry = $e->retryable && $entry->attempts < (int) config('historical_data.max_attempts');
                 $delay = max($e->retryAfter ?? 0, min(3600, 5 * (2 ** ($entry->attempts - 1))) + random_int(0, 5));
                 $state = $retry ? 'PLANNED' : (in_array($e->reason, ['CHECKSUM_MISMATCH', 'CHECKSUM_FORMAT_INVALID', 'ARCHIVE_VALIDATION_FAILED', 'SOURCE_REVISION_CHANGED'], true) ? 'QUARANTINED' : ($e->reason === 'SOURCE_UNAVAILABLE' ? 'UNAVAILABLE' : 'FAILED'));
-                $this->updateIfOwned($entry, ['status' => $state, 'error_code' => $e->reason, 'diagnostics' => json_encode($e->diagnostics, JSON_THROW_ON_ERROR), 'available_at' => now('UTC')->addSeconds($delay), 'lease_owner' => null, 'lease_until' => null]);
+                $this->updateIfOwned($entry, ['status' => $state, ...($e->reason === 'CHECKSUM_MISMATCH' ? ['verification_status' => 'REJECTED', 'download_status' => 'DOWNLOADED'] : []), 'error_code' => $e->reason, 'diagnostics' => json_encode($e->diagnostics, JSON_THROW_ON_ERROR), 'available_at' => now('UTC')->addSeconds($delay), 'lease_owner' => null, 'lease_until' => null]);
                 $this->attempt($entry, $state, $e->reason);
             }
         } catch (\Throwable $e) {

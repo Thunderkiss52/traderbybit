@@ -287,6 +287,7 @@ onMounted(() => {
 
 <template>
   <q-page class="q-pa-md">
+    <q-btn to="/exchanges/binance/historical" icon="download" label="Binance historical data" class="q-mb-md" />
     <!-- Header -->
     <div class="row items-center justify-between q-mb-md">
       <div>

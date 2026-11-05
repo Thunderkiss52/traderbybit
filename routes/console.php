@@ -13,6 +13,7 @@ use App\Exchanges\Binance\BinancePaperReadiness;
 use App\Exchanges\Binance\BinancePortabilityMatrix;
 use App\Exchanges\Binance\BinanceResearchCycle;
 use App\Exchanges\Binance\ExchangePaperReconciliation;
+use App\HistoricalData\Recovery;
 use App\MarketData\Domain\CandleIntegrityUnavailable;
 use App\MarketData\Jobs\CheckMarketDataFreshnessJob;
 use App\MarketData\Jobs\EnsureStrategyHistoryJob;
@@ -419,3 +420,6 @@ if (config('paper.topology.auto_sync_enabled', true)) {
     Schedule::command('paper:sync-topology --apply')->everyFiveMinutes()
         ->name('paper:sync-topology')->withoutOverlapping();
 }
+
+// Recovery only dispatches work whose owner authorization is already persisted.
+Schedule::call(fn () => app(Recovery::class)->dispatch())->everyMinute()->name('historical:recover')->withoutOverlapping();

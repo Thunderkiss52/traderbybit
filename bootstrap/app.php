@@ -5,6 +5,8 @@ use App\Backtest\Console\CancelBacktestCommand;
 use App\Backtest\Console\CompareBacktestsCommand;
 use App\Backtest\Console\RunBacktestCommand;
 use App\Backtest\Console\WalkForwardCommand;
+use App\HistoricalData\AcquisitionFailure;
+use App\HistoricalData\HistoricalCommand;
 use App\Http\Middleware\ApiRequestDiagnostics;
 use App\Http\Middleware\EnsureQuoteIntegrityEnabled;
 use App\Http\Middleware\RequireResearchToken;
@@ -33,6 +35,7 @@ use Illuminate\Http\Exceptions\HttpResponseException;
 use Illuminate\Http\Request;
 use Illuminate\Validation\ValidationException;
 use Symfony\Component\HttpFoundation\Response;
+use Symfony\Component\HttpKernel\Exception\HttpException;
 use Symfony\Component\HttpKernel\Exception\HttpExceptionInterface;
 
 return Application::configure(basePath: dirname(__DIR__))
@@ -50,6 +53,7 @@ return Application::configure(basePath: dirname(__DIR__))
         ]);
     })
     ->withCommands([
+        HistoricalCommand::class,
         SyncCandlesCommand::class,
         StreamCandlesCommand::class,
         GenerateSignalsCommand::class,
@@ -70,6 +74,21 @@ return Application::configure(basePath: dirname(__DIR__))
         QimPurgeExpiredCommand::class,
     ])
     ->withExceptions(function (Exceptions $exceptions): void {
+        $exceptions->render(function (ValidationException $e, Request $request) {
+            if ($request->is('api/v1/historical/*')) {
+                return response()->json(['error' => ['code' => 'HISTORICAL_VALIDATION_FAILED', 'message' => 'Historical request validation failed.', 'fields' => $e->errors()]], 422);
+            }
+        });
+        $exceptions->render(function (HttpException $e, Request $request) {
+            if ($request->is('api/v1/historical/*')) {
+                return response()->json(['error' => ['code' => 'HISTORICAL_REQUEST_REFUSED', 'message' => $e->getMessage() ?: 'Historical request refused.']], $e->getStatusCode());
+            }
+        });
+        $exceptions->render(function (AcquisitionFailure $e, Request $request) {
+            if ($request->is('api/*')) {
+                return response()->json(['error' => ['code' => $e->reason, 'message' => 'Historical acquisition refused: '.$e->reason, 'retryable' => $e->retryable]], 422);
+            }
+        });
         $exceptions->shouldRenderJsonWhen(
             fn (Request $request) => $request->is('api/*') || $request->expectsJson(),
         );

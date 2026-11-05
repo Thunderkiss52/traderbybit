@@ -18,7 +18,7 @@ class OfficialTransport
             throw new AcquisitionFailure('UNSAFE_SOURCE_URL');
         }
         $path = $p['path'] ?? '';
-        $archive = preg_match('~^/data/futures/um/(monthly|daily)/(klines|markPriceKlines|fundingRate)/[A-Z0-9]{3,24}/(?:(?:1m|5m|15m|30m|1h)/)?[A-Z0-9-]+\.zip(?:\.CHECKSUM)?$~D', $path);
+        $archive = preg_match('~^/data/futures/um/(monthly|daily)/(klines|markPriceKlines|fundingRate)/[A-Z0-9]{3,24}/(?:(?:1m|5m|15m|30m|1h)/)?[A-Z0-9]{3,24}-(?:(?:1m|5m|15m|30m|1h)|fundingRate)-[0-9]{4}-[0-9]{2}(?:-[0-9]{2})?\.zip(?:\.CHECKSUM)?$~D', $path);
         if (($p['host'] === 'data.binance.vision' && (! $archive || isset($p['query']))) || ($p['host'] === 'fapi.binance.com' && $path !== '/fapi/v1/fundingRate')) {
             throw new AcquisitionFailure('UNSAFE_SOURCE_URL');
         }

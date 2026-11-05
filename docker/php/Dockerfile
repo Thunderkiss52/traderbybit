@@ -5,7 +5,9 @@ WORKDIR /build
 COPY research-go/go.mod research-go/go.sum ./
 RUN go mod download
 COPY research-go/ ./
-RUN CGO_ENABLED=0 go build -trimpath -ldflags="-s -w" -o /strategy-dsl ./cmd/strategy-dsl
+RUN CGO_ENABLED=0 go build -trimpath -ldflags="-s -w" -o /strategy-dsl ./cmd/strategy-dsl \
+    && CGO_ENABLED=0 go build -trimpath -ldflags="-s -w" -o /historical-import ./cmd/historical-import \
+    && CGO_ENABLED=0 go build -trimpath -ldflags="-s -w" -o /historical-replay ./cmd/historical-replay
 
 FROM node:22-alpine AS frontend
 WORKDIR /build/frontend
@@ -57,6 +59,9 @@ ARG BUILD_COMMIT=unknown
 ARG BUILD_TIMESTAMP=unknown
 ENV APP_ENV=production
 ENV STRATEGY_DSL_BINARY=/usr/local/bin/vector-strategy-dsl
+ENV HISTORICAL_IMPORT_BINARY=/usr/local/bin/vector-historical-import HISTORICAL_REPLAY_BINARY=/usr/local/bin/vector-historical-replay
+COPY --from=strategy-dsl /historical-import /usr/local/bin/vector-historical-import
+COPY --from=strategy-dsl /historical-replay /usr/local/bin/vector-historical-replay
 COPY --from=strategy-dsl /strategy-dsl /usr/local/bin/vector-strategy-dsl
 LABEL io.bybit-signals.component="app"
 COPY --chown=app:app app ./app
