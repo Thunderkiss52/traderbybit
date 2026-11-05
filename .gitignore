@@ -65,3 +65,5 @@ VECTOR_UNIFIED_13_PRIMARY_26_PAPER_MULTI_EXCHANGE_SPEC_V2_4_EN.md
 # Python bytecode and cache
 __pycache__/
 *.py[cod]
+
+/research-go/bin/historical-import

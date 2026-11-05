@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace App\HistoricalData;
 
+use Carbon\CarbonImmutable;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Http;
 use Psr\Http\Message\ResponseInterface;
 
@@ -26,6 +28,20 @@ class OfficialTransport
     {
         $this->assertUrl($url);
         $host = parse_url($url, PHP_URL_HOST);
+        $reserved = DB::transaction(function () use ($host) {
+            $now = CarbonImmutable::now('UTC');
+            DB::table('historical_provider_windows')->insertOrIgnore(['host' => $host, 'next_at' => $now]);
+            $row = DB::table('historical_provider_windows')->where('host', $host)->lockForUpdate()->first();
+            $at = CarbonImmutable::parse($row->next_at)->max($now);
+            DB::table('historical_provider_windows')->where('host', $host)->update(['next_at' => $at->addSecond()]);
+
+            return $at;
+        }, 3);
+        $deadline = microtime(true) + max(0, ($reserved->getTimestampMs() - (int) floor(microtime(true) * 1000)) / 1000);
+        while (microtime(true) < $deadline) {
+            $tick();
+            usleep(100000);
+        }
         $addresses = gethostbynamel($host);
         if (! $addresses) {
             throw new AcquisitionFailure('SOURCE_DNS_FAILED', true);
@@ -77,6 +93,6 @@ class OfficialTransport
         }
         $tick();
 
-        return ['bytes' => $size, 'sha256' => hash_file('sha256',$target)];
+        return ['bytes' => $size, 'sha256' => hash_file('sha256', $target)];
     }
 }

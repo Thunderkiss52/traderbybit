@@ -17,7 +17,7 @@ final class GoArchiveParser
         }
         $output = $directory.'/validated.ndjson';
         $request = ['path' => $zip, 'output' => $output, 'filename' => $entry->filename, 'family' => $entry->family, 'interval' => $entry->interval ?? '', 'source_from' => CarbonImmutable::parse($entry->source_from)->getTimestampMs(), 'source_to' => CarbonImmutable::parse($entry->source_to)->getTimestampMs(), 'from' => CarbonImmutable::parse($entry->requested_from)->getTimestampMs(), 'to' => CarbonImmutable::parse($entry->requested_to)->getTimestampMs(), 'max_bytes' => (int) config('historical_data.max_expanded_bytes'), 'max_file_bytes' => (int) config('historical_data.max_file_bytes'), 'max_entries' => (int) config('historical_data.max_entries')];
-        $process = new Process([$binary]);
+        $process = new Process([$binary], null, ['GOMAXPROCS' => '1', 'GOMEMLIMIT' => '192MiB']);
         $process->setInput(json_encode($request, JSON_THROW_ON_ERROR));
         $process->setTimeout((int) config('historical_data.decompression_seconds'));
         $process->start();

@@ -16,7 +16,7 @@ final class StagingStorage
             throw new AcquisitionFailure('STAGING_SYMLINK_REJECTED');
         }
 
-return $root;
+        return $root;
     }
 
     public function admit(int $databaseEstimate = 0): array
@@ -40,6 +40,19 @@ return $root;
         return ['free_bytes' => (int) $free, 'required_bytes' => $required, 'staged_bytes' => $used];
     }
 
+    public function clearExpiredFor(string $entry, string $currentLease): void
+    {
+        foreach (new \DirectoryIterator($this->root()) as $directory) {
+            if ($directory->isDot() || ! str_starts_with($directory->getFilename(), $entry.'-') || $directory->getFilename() === $entry.'-'.$currentLease) {
+                continue;
+            }
+            if (! preg_match('/^[a-f0-9-]{36}-[a-f0-9-]{36}$/D', $directory->getFilename())) {
+                throw new AcquisitionFailure('UNSAFE_CLEANUP_ENTRY');
+            }
+            $this->clear($directory->getPathname());
+        }
+    }
+
     public function directory(string $entry, string $lease): string
     {
         foreach ([$entry, $lease] as $id) {
@@ -54,7 +67,7 @@ return $root;
             throw new AcquisitionFailure('STAGING_SYMLINK_REJECTED');
         }
 
-return $dir;
+        return $dir;
     }
 
     public function clear(string $directory): void

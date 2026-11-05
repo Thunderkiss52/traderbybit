@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Exchanges\Binance;
 
+use App\HistoricalData\DownloadPlanner;
 use App\MarketData\Application\MarketCandleConflictService;
 use App\MarketData\Domain\CandleIntegrityUnavailable;
 use App\MarketData\Domain\Interval;
@@ -66,6 +67,16 @@ final readonly class BinanceCandleIngestion
         return $this->persist($rows, $symbol, $interval, $quarantineConflicts);
     }
 
+    /** Historical acquisition shares the immutable writer but cannot dispatch trading events. */
+    public function persistHistoricalBatch(array $rows, string $symbol, string $interval): array
+    {
+        if (! in_array($symbol, (array) config('historical_data.symbols'), true) || ! isset(DownloadPlanner::INTERVALS[$interval]) || count($rows) > 5000) {
+            throw new InvalidArgumentException('Invalid bounded historical source scope.');
+        }
+
+        return $this->persist($rows, $symbol, $interval, true, true);
+    }
+
     private function assertScope(string $symbol, string $interval): void
     {
         if (! in_array($symbol, (array) config('market_data.symbols', ['BTCUSDT', 'ETHUSDT']), true)) {
@@ -76,15 +87,15 @@ final readonly class BinanceCandleIngestion
         }
     }
 
-    private function persist(array $rows, string $symbol, string $interval, bool $quarantineConflicts): array
+    private function persist(array $rows, string $symbol, string $interval, bool $quarantineConflicts, bool $historical = false): array
     {
-        $map = ['5m' => '5', '15m' => '15', '30m' => '30', '1h' => '60', '4h' => '240'];
+        $map = ['1m' => '1', '5m' => '5', '15m' => '15', '30m' => '30', '1h' => '60', '4h' => '240'];
         $scope = ['exchange' => 'binance', 'category' => 'linear', 'symbol' => $symbol, 'interval' => $map[$interval]];
 
         $conflictsToRecord = [];
         $integrityFailure = null;
 
-        $inserted = DB::transaction(function () use ($rows, $symbol, $interval, $scope, $quarantineConflicts, &$conflictsToRecord, &$integrityFailure): int {
+        $inserted = DB::transaction(function () use ($rows, $symbol, $interval, $scope, $quarantineConflicts, &$conflictsToRecord, &$integrityFailure, $historical): int {
             $batch = [];
             $now = gmdate('Y-m-d H:i:s.uP');
             foreach ($rows as $candle) {
@@ -115,7 +126,7 @@ final readonly class BinanceCandleIngestion
                 $missing = [];
                 foreach ($chunk as $key => $candle) {
                     if (isset($existing[$key])) {
-                        $conflict = $this->observeConflict($existing[$key], $candle, $quarantineConflicts, $integrityFailure);
+                        $conflict = $this->observeConflict($existing[$key], $candle, $quarantineConflicts, $integrityFailure, $historical ? 'binance_vision_archive' : 'binance_public_rest');
                         if ($conflict !== null) {
                             $conflictsToRecord[] = ['candle' => $candle, 'conflict' => $conflict];
                         }
@@ -138,7 +149,7 @@ final readonly class BinanceCandleIngestion
                         if (! isset($reloaded[$key])) {
                             throw new DomainException('Binance candle insertion was ignored without matching identity.');
                         }
-                        $conflict = $this->observeConflict($reloaded[$key], $candle, $quarantineConflicts, $integrityFailure);
+                        $conflict = $this->observeConflict($reloaded[$key], $candle, $quarantineConflicts, $integrityFailure, $historical ? 'binance_vision_archive' : 'binance_public_rest');
                         if ($conflict !== null) {
                             $conflictsToRecord[] = ['candle' => $candle, 'conflict' => $conflict];
                         }
@@ -174,7 +185,7 @@ final readonly class BinanceCandleIngestion
             throw new CandleIntegrityUnavailable('CANDLE_INTEGRITY_UNAVAILABLE: quarantine evidence not acknowledged.', previous: $integrityFailure, ingestionReport: $report);
         }
 
-        if ($interval === '15m' && config('trading.pipeline_mode') === 'EVENT_DRIVEN' && in_array($symbol, (array) config('trading.symbols', ['BTCUSDT', 'ETHUSDT']), true)) {
+        if (! $historical && $interval === '15m' && config('trading.pipeline_mode') === 'EVENT_DRIVEN' && in_array($symbol, (array) config('trading.symbols', ['BTCUSDT', 'ETHUSDT']), true)) {
             try {
                 $latestCloseTs = 0;
                 foreach ($rows as $candle) {
@@ -287,7 +298,7 @@ final readonly class BinanceCandleIngestion
         }
     }
 
-    private function observeConflict(object $stored, array $incoming, bool $quarantine, ?CandleIntegrityUnavailable &$failure): ?array
+    private function observeConflict(object $stored, array $incoming, bool $quarantine, ?CandleIntegrityUnavailable &$failure, string $provenance = 'binance_public_rest'): ?array
     {
         $conflict = BinanceSourceIdentity::findCandleConflict($stored, $incoming);
         if ($conflict === null) {
@@ -296,7 +307,7 @@ final readonly class BinanceCandleIngestion
         try {
             $this->conflictService->recordConflict(
                 $incoming['exchange'], $incoming['category'], $incoming['symbol'], $incoming['interval'],
-                $incoming['open_time'], (array) $stored, $incoming, $conflict['column'], $conflict['error']
+                $incoming['open_time'], (array) $stored, $incoming, $conflict['column'], $conflict['error'], $provenance
             );
         } catch (CandleIntegrityUnavailable $e) {
             if (! $quarantine) {

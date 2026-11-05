@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 return [
     'symbols' => ['BTCUSDT', 'ETHUSDT'],
-    'queue' => 'historical-import',
+    'queue' => 'research',
     'concurrency' => 1,
     'max_attempts' => 4,
     'lease_seconds' => 300,
