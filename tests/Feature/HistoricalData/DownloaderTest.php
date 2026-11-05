@@ -16,7 +16,7 @@ final class DownloaderTest extends TestCase
     {
         $dir = sys_get_temp_dir().'/vector-download-'.bin2hex(random_bytes(8));
         mkdir($dir);
-        $transport = $this->createMock(OfficialTransport::class);
+        $transport = $this->createStub(OfficialTransport::class);
         $transport->method('assertUrl');
         $transport->method('fetch')->willReturnCallback(function ($url, $path) {
             file_put_contents($path, str_ends_with($url, '.CHECKSUM') ? str_repeat('a', 64).'  BTCUSDT-1m-2024-01.zip' : 'zip fixture');

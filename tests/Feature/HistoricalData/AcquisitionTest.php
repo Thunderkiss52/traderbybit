@@ -29,7 +29,7 @@ final class AcquisitionTest extends TestCase
 
     private function fixtureTransport(): void
     {
-        $http = $this->createMock(OfficialTransport::class);
+        $http = $this->createStub(OfficialTransport::class);
         $http->method('assertUrl');
         $http->method('fetch')->willReturnCallback(function ($url, $target, $maximum, $tick): array {
             $tick();
@@ -124,7 +124,7 @@ final class AcquisitionTest extends TestCase
         $plan['funding'] = false;
         $batch = app(BatchRepository::class)->create($plan, 'retry-budget');
         app(BatchControl::class)->change($batch->id, 'start', 'TEST-OWNER-ACK', config('historical_data.license.version'));
-        $http = $this->createMock(OfficialTransport::class);
+        $http = $this->createStub(OfficialTransport::class);
         $http->method('assertUrl');
         $http->method('fetch')->willThrowException(new AcquisitionFailure('RATE_LIMITED', true, 60));
         $this->app->instance(OfficialTransport::class, $http);
@@ -138,7 +138,7 @@ final class AcquisitionTest extends TestCase
         self::assertSame(0, DB::table('market_candles')->count());
         $missing = app(BatchRepository::class)->create($plan, 'missing-month');
         app(BatchControl::class)->change($missing->id, 'start', 'TEST-OWNER-ACK', config('historical_data.license.version'));
-        $http = $this->createMock(OfficialTransport::class);
+        $http = $this->createStub(OfficialTransport::class);
         $http->method('assertUrl');
         $http->method('fetch')->willThrowException(new AcquisitionFailure('SOURCE_UNAVAILABLE'));
         $this->app->instance(OfficialTransport::class, $http);

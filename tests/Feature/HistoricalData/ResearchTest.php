@@ -27,7 +27,7 @@ final class ResearchTest extends TestCase
     private function imported(): object
     {
         config(['historical_data.reserve_disk_bytes' => 0, 'historical_data.max_staging_bytes' => 104857600]);
-        $http = $this->createMock(OfficialTransport::class);
+        $http = $this->createStub(OfficialTransport::class);
         $http->method('assertUrl');
         $http->method('fetch')->willReturnCallback(function ($url, $file, $max, $tick): array {
             $tick();
