@@ -1,0 +1,21 @@
+name: PHP dependencies
+description: Install the locked PHP dependencies with a download cache
+runs:
+  using: composite
+  steps:
+    - uses: shivammathur/setup-php@v2
+      with:
+        php-version: '8.5.12'
+        tools: composer:v2
+        extensions: mbstring, dom, xml, xmlwriter, pdo_sqlite, sqlite3, pdo_pgsql, intl, pcntl, zip, bcmath, redis, opcache
+        coverage: none
+    - id: cache
+      shell: bash
+      run: echo "dir=$(composer config cache-files-dir)" >> "$GITHUB_OUTPUT"
+    - uses: actions/cache@v4
+      with:
+        path: ${{ steps.cache.outputs.dir }}
+        key: ${{ runner.os }}-composer-${{ hashFiles('composer.lock') }}
+        restore-keys: ${{ runner.os }}-composer-
+    - shell: bash
+      run: composer install --no-interaction --prefer-dist --no-progress
