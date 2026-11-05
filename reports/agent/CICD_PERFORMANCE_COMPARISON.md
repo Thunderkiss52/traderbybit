@@ -53,3 +53,12 @@ python3 scripts/ci/benchmark_php.py --plan /tmp/ci-plan --binaries /tmp/ci-binar
 The plan is generated with `vendor/bin/phpunit --list-tests-xml /tmp/discovery.xml` and `python3 scripts/ci/php_shards.py plan /tmp/discovery.xml /tmp/ci-plan`. Use PHP 8.5.12 and the required extensions. The benchmark creates only uniquely named task-owned services; final cleanup removes only those containers/anonymous volumes. Earlier exploratory anonymous volumes were not globally pruned because ownership after container removal was not retained.
 
 After an explicitly authorized hosted run, use `GH_TOKEN` with `scripts/ci/collect_timings.py --repository OWNER/REPO --run-id ID --output timings.json`. The aggregate uploads in-progress job/step timings; a post-completion invocation captures completed wall time. BuildKit summaries provide build/export details. Separate publishing/network and production pull/migration/backup/readiness durations still require actual hosted/operator-authorized evidence. Thirty-second CD acceptance remains unverified; the backup, image pulls, storage ownership checks, migrations and graceful worker shutdown remain on the approved execution path.
+
+Retry the blocked image checks locally after dependency connectivity is available (repository root; local tags only):
+
+```sh
+docker buildx build --load -f docker/php/Dockerfile --target app --build-arg BUILD_COMMIT="$(git rev-parse HEAD)" -t vector-ci-app:check .
+docker buildx build --load -f docker/php/Dockerfile --target web -t vector-ci-web:check .
+```
+
+These commands do not publish or deploy. Successful hosted CI and digest artifacts remain separate acceptance requirements.
