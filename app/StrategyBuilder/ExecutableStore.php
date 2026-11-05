@@ -6,9 +6,9 @@ namespace App\StrategyBuilder;
 
 final class ExecutableStore
 {
-    public function capture(): string
+    public function capture(?string $serverSource = null): string
     {
-        $source = (string) config('strategy_builder.go_binary');
+        $source = $serverSource ?? (string) config('strategy_builder.go_binary');
         if (! is_executable($source)) {
             throw new \RuntimeException('Build the server-controlled Go DSL executable before publishing v2.');
         }

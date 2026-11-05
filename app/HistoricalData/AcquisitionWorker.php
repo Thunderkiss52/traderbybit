@@ -42,7 +42,7 @@ final readonly class AcquisitionWorker
                 $this->update($entry, ['status' => 'CHECKSUM_VERIFIED', 'download_status' => 'DOWNLOADED', 'download_bytes' => $download['bytes'], 'downloaded_at' => now('UTC'), 'verification_status' => 'CHECKSUM_VERIFIED', 'verified_at' => now('UTC')]);
                 $parsed = $this->parser->parse($entry, $download['file'], $directory, $tick);
             }
-            $revision = StrategyRegistry::hash([$entry->url, $sha]);
+            $revision = StrategyRegistry::hash([$entry->id, $entry->url, $sha]);
             $revisionChanged = DB::transaction(function () use ($entry, $revision, $sha, $parsed): bool {
                 $this->guard($entry, true);
                 $batch = DB::table('historical_download_batches')->find($entry->batch_id);
@@ -95,7 +95,7 @@ final readonly class AcquisitionWorker
                 $retry = $e->retryable && $entry->attempts < (int) config('historical_data.max_attempts');
                 $delay = max($e->retryAfter ?? 0, min(3600, 5 * (2 ** ($entry->attempts - 1))) + random_int(0, 5));
                 $state = $retry ? 'PLANNED' : (in_array($e->reason, ['CHECKSUM_MISMATCH', 'CHECKSUM_FORMAT_INVALID', 'ARCHIVE_VALIDATION_FAILED', 'SOURCE_REVISION_CHANGED'], true) ? 'QUARANTINED' : ($e->reason === 'SOURCE_UNAVAILABLE' ? 'UNAVAILABLE' : 'FAILED'));
-                $this->updateIfOwned($entry, ['status' => $state, 'error_code' => $e->reason, 'available_at' => now('UTC')->addSeconds($delay), 'lease_owner' => null, 'lease_until' => null]);
+                $this->updateIfOwned($entry, ['status' => $state, 'error_code' => $e->reason, 'diagnostics' => json_encode($e->diagnostics, JSON_THROW_ON_ERROR), 'available_at' => now('UTC')->addSeconds($delay), 'lease_owner' => null, 'lease_until' => null]);
                 $this->attempt($entry, $state, $e->reason);
             }
         } catch (\Throwable $e) {
@@ -118,7 +118,7 @@ final readonly class AcquisitionWorker
             if ($batch === null || $batch->status !== 'ACTIVE') {
                 return null;
             }
-            if (DB::table('historical_download_entries')->whereNotNull('lease_owner')->where('lease_until', '>', now('UTC'))->count() >= (int) config('historical_data.concurrency')) {
+            if (DB::table('historical_research_runs')->whereNotNull('lease_owner')->where('lease_until', '>', now('UTC'))->exists() || DB::table('historical_download_entries')->whereNotNull('lease_owner')->where('lease_until', '>', now('UTC'))->count() >= (int) config('historical_data.concurrency')) {
                 return null;
             }
             DB::table('historical_download_entries')->where('batch_id', $batchId)->whereNotNull('lease_owner')->where('lease_until', '<=', now('UTC'))->where('attempts', '>=', (int) config('historical_data.max_attempts'))->update(['status' => 'FAILED', 'error_code' => 'WORKER_ATTEMPTS_EXHAUSTED', 'lease_owner' => null, 'lease_until' => null]);

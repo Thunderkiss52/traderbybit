@@ -74,3 +74,14 @@ func TestLastBarEntriesCloseWithoutUnreportedExposure(t *testing.T) {
 		t.Fatal(report)
 	}
 }
+
+func TestExactFundingDoesNotTruncateSubEightDecimalRatesToZero(t *testing.T) {
+	event := FundingEvent{Rate: decimal.Zero(), Mark: decimal.FromInt64(100000), RateExact: "0.000000000001", MarkExact: "100000.000000000001"}
+	amount, err := exactFundingAmount(event, decimal.FromInt64(1))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if amount.Cmp(decimal.MustFromString("0.00000010")) != 0 {
+		t.Fatalf("source precision lost: %s", amount.String())
+	}
+}

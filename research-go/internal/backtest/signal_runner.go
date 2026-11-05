@@ -17,13 +17,16 @@ import (
 // must be strictly greater than DecisionBar, so no fill price is ever known at
 // decision time.
 type Signal struct {
-	Side         string          `json:"side"`
-	DecisionTime time.Time       `json:"decision_time"`
-	DecisionBar  int             `json:"decision_bar"`
-	EntryBar     int             `json:"entry_bar"`
-	StopLoss     decimal.Decimal `json:"stop_loss"`
-	TakeProfit   decimal.Decimal `json:"take_profit"`
-	Reason       string          `json:"reason"`
+	Partial      *PartialTarget     `json:"partial,omitempty"`
+	RiskRate     *decimal.Decimal   `json:"risk_rate,omitempty"`
+	Features     map[string]float64 `json:"features,omitempty"`
+	Side         string             `json:"side"`
+	DecisionTime time.Time          `json:"decision_time"`
+	DecisionBar  int                `json:"decision_bar"`
+	EntryBar     int                `json:"entry_bar"`
+	StopLoss     decimal.Decimal    `json:"stop_loss"`
+	TakeProfit   decimal.Decimal    `json:"take_profit"`
+	Reason       string             `json:"reason"`
 }
 
 // RunSignals replays externally generated signals over closed candles.
@@ -58,6 +61,9 @@ func (e *Engine) runSignals(candles []datasets.Candle, signals []Signal, strateg
 
 	byEntryBar := make(map[int]Signal, len(signals))
 	for _, s := range signals {
+		if s.RiskRate != nil && (!s.RiskRate.IsPositive() || s.RiskRate.Cmp(e.config.RiskPerTradeRate) > 0) {
+			return nil, fmt.Errorf("signal risk exceeds explicit execution bound")
+		}
 		if s.Side != "BUY" && s.Side != "SELL" {
 			continue
 		}
@@ -96,6 +102,17 @@ func (e *Engine) runSignals(candles []datasets.Candle, signals []Signal, strateg
 		grossPnL := legProfit(pos.side, pos.quantity, pos.entryPrice, exitPrice)
 		netPnL := grossPnL.Sub(totalFees)
 		if policy != nil {
+			raw := c.Close
+			switch exitReason {
+			case "STOP_LOSS":
+				raw = pos.stopLoss
+			case "TAKE_PROFIT":
+				raw = pos.takeProfit
+			case "RULE_EXIT":
+				raw = c.Open
+			}
+			legSlippage := absoluteReplayDecimal(exitPrice.Sub(raw)).Mul(pos.quantity)
+			detail.slippage = detail.slippage.Add(legSlippage)
 			equity = equity.Add(grossPnL).Sub(exitFee)
 			grossPnL = grossPnL.Add(detail.gross)
 			totalFees = detail.fees.Add(exitFee)
@@ -110,7 +127,12 @@ func (e *Engine) runSignals(candles []datasets.Candle, signals []Signal, strateg
 			rMult = netPnL.Float64() / pos.riskAmount.Float64()
 		}
 
-		trades = append(trades, Trade{
+		var fundingPointer, slippagePointer *decimal.Decimal
+		if policy != nil {
+			fundingPointer = &detail.funding
+			slippagePointer = &detail.slippage
+		}
+		trades = append(trades, Trade{Funding: fundingPointer, Slippage: slippagePointer,
 			ID:         tradeCounter,
 			Symbol:     c.Symbol,
 			Side:       pos.side,
@@ -132,12 +154,21 @@ func (e *Engine) runSignals(candles []datasets.Candle, signals []Signal, strateg
 		pos = nil
 	}
 
+	fundingByTime := map[int64][]FundingEvent{}
+	if policy != nil {
+		for _, event := range policy.Funding {
+			fundingByTime[event.At.UnixNano()] = append(fundingByTime[event.At.UnixNano()], event)
+		}
+	}
 	for i := 0; i < n; i++ {
 		c := candles[i]
 		if policy != nil && pos != nil {
-			for _, event := range policy.Funding {
+			for _, event := range fundingByTime[c.OpenTime.UnixNano()] {
 				if event.At.Equal(c.OpenTime) && event.At.After(pos.entryTime) {
-					amount := pos.quantity.Mul(event.Mark).Mul(event.Rate)
+					amount, amountError := exactFundingAmount(event, pos.quantity)
+					if amountError != nil {
+						return nil, amountError
+					}
 					if pos.side == "BUY" {
 						amount = amount.Neg()
 					}
@@ -153,6 +184,9 @@ func (e *Engine) runSignals(candles []datasets.Candle, signals []Signal, strateg
 			barsHeld := i - pos.entryBar
 			exitPrice, exitReason, ambiguous, hasExit := e.evaluateExit(pos, c, barsHeld)
 			if policy != nil {
+				if exitReason == "TIMEOUT" {
+					exitPrice = e.exitSlip(c.Close, pos.side)
+				}
 				if policy.ExitAtOpen[i][pos.side] {
 					exitPrice = e.exitSlip(c.Open, pos.side)
 					exitReason = "RULE_EXIT"
@@ -176,6 +210,7 @@ func (e *Engine) runSignals(candles []datasets.Candle, signals []Signal, strateg
 							price := e.exitSlip(t.Price, pos.side)
 							fee := qty.Mul(price).Mul(e.config.TakerFeeRate)
 							gross := legProfit(pos.side, qty, pos.entryPrice, price)
+							detail.slippage = detail.slippage.Add(absoluteReplayDecimal(price.Sub(t.Price)).Mul(qty))
 							detail.gross = detail.gross.Add(gross)
 							detail.fees = detail.fees.Add(fee)
 							pos.quantity = pos.quantity.Sub(qty)
@@ -246,7 +281,11 @@ func (e *Engine) runSignals(candles []datasets.Candle, signals []Signal, strateg
 						}
 					}
 
-					opened := e.openPosition(s.Side, fillPrice, slDistance, equity, c.OpenTime, i)
+					entryEngine := *e
+					if s.RiskRate != nil {
+						entryEngine.config.RiskPerTradeRate = *s.RiskRate
+					}
+					opened := entryEngine.openPosition(s.Side, fillPrice, slDistance, equity, c.OpenTime, i)
 					if opened != nil {
 						opened.stopLoss = stopLoss
 						opened.takeProfit = takeProfit
@@ -261,6 +300,9 @@ func (e *Engine) runSignals(candles []datasets.Candle, signals []Signal, strateg
 							executions = append(executions, ReplayExecution{Kind: "ENTRY", At: c.OpenTime, Side: pos.side, Price: fillPrice, Quantity: pos.quantity, Fee: opened.entryFee, Funding: decimal.Zero()})
 						}
 						detail = newReplayPosition(opened.quantity, opened.entryFee, partial)
+						if policy != nil {
+							detail.slippage = absoluteReplayDecimal(fillPrice.Sub(c.Open)).Mul(opened.quantity)
+						}
 					}
 				}
 			}

@@ -2,6 +2,7 @@
 package strategydsl
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"math"
@@ -68,18 +69,21 @@ type ParameterRange struct {
 	Step    float64 `json:"step"`
 }
 type Request struct {
-	Seed       int64                        `json:"seed,omitempty"`
-	Definition Definition                   `json:"definition"`
-	Mode       string                       `json:"mode,omitempty"`
-	Funding    []backtest.FundingEvent      `json:"funding,omitempty"`
-	Exchange   string                       `json:"exchange"`
-	Symbol     string                       `json:"symbol"`
-	Series     map[string][]datasets.Candle `json:"series"`
-	AsOf       time.Time                    `json:"as_of"`
-	From       time.Time                    `json:"from"`
-	Capital    decimal.Decimal              `json:"capital"`
-	Fee        decimal.Decimal              `json:"fee"`
-	Slippage   decimal.Decimal              `json:"slippage"`
+	Context                context.Context              `json:"-"`
+	PublishedFundingEvents bool                         `json:"published_funding_events,omitempty"`
+	IncludeFeatures        bool                         `json:"include_features,omitempty"`
+	Seed                   int64                        `json:"seed,omitempty"`
+	Definition             Definition                   `json:"definition"`
+	Mode                   string                       `json:"mode,omitempty"`
+	Funding                []backtest.FundingEvent      `json:"funding,omitempty"`
+	Exchange               string                       `json:"exchange"`
+	Symbol                 string                       `json:"symbol"`
+	Series                 map[string][]datasets.Candle `json:"series"`
+	AsOf                   time.Time                    `json:"as_of"`
+	From                   time.Time                    `json:"from"`
+	Capital                decimal.Decimal              `json:"capital"`
+	Fee                    decimal.Decimal              `json:"fee"`
+	Slippage               decimal.Decimal              `json:"slippage"`
 }
 type Result struct {
 	Signals       []backtest.Signal        `json:"signals"`
@@ -383,6 +387,9 @@ func bandDeviation(ind Indicator) float64 {
 }
 
 func Run(req Request) (*Result, error) {
+	if req.Context == nil {
+		req.Context = context.Background()
+	}
 	d := req.Definition
 	if req.Mode != "" && req.Mode != "backtest" && req.Mode != "signal" && req.Mode != "validate" {
 		return nil, fmt.Errorf("unsupported execution mode")
@@ -442,6 +449,11 @@ func Run(req Request) (*Result, error) {
 	if d.SchemaVersion == 2 {
 		atr = make([]*decimal.Decimal, len(candles))
 		for i := range candles {
+			if i%256 == 0 {
+				if err := req.Context.Err(); err != nil {
+					return nil, err
+				}
+			}
 			if i >= window-1 {
 				atr[i] = boundedValue(candles, Indicator{Type: "ATR", Period: 14, Timeframe: d.Timeframe}, i, window)
 			}
@@ -454,6 +466,11 @@ func Run(req Request) (*Result, error) {
 	}
 	policy := backtest.ReplayPolicy{ExitAtOpen: map[int]map[string]bool{}, PartialTargets: map[int]backtest.PartialTarget{}, Funding: req.Funding}
 	for bar, c := range candles {
+		if bar%256 == 0 {
+			if err := req.Context.Err(); err != nil {
+				return nil, err
+			}
+		}
 		decision := c.OpenTime.Add(time.Duration(frame(d.Timeframe)) * time.Second)
 		if decision.Before(req.From) || (bar+1 >= len(candles) && req.Mode != "signal") || atr[bar] == nil || !atr[bar].IsPositive() {
 			continue
@@ -523,7 +540,19 @@ func Run(req Request) (*Result, error) {
 		if !stop.IsPositive() || !take.IsPositive() {
 			continue
 		}
-		signals = append(signals, backtest.Signal{Side: side, DecisionTime: decision, DecisionBar: bar, EntryBar: bar + 1, StopLoss: stop, TakeProfit: take, Reason: d.ID + "@" + strconv.Itoa(d.Version)})
+		if req.IncludeFeatures && (len(signals)+1)*len(d.Indicators) > 500000 {
+			return nil, fmt.Errorf("signal feature resource bound exceeded; choose a smaller explicit research window")
+		}
+		var features map[string]float64
+		if req.IncludeFeatures {
+			features = map[string]float64{}
+			for name, value := range vs {
+				if value.ready {
+					features[name] = value.now
+				}
+			}
+		}
+		signals = append(signals, backtest.Signal{Features: features, Side: side, DecisionTime: decision, DecisionBar: bar, EntryBar: bar + 1, StopLoss: stop, TakeProfit: take, Reason: d.ID + "@" + strconv.Itoa(d.Version)})
 		if d.PartialExit != nil {
 			policy.PartialTargets[bar] = backtest.PartialTarget{Price: c.Close.Add(atr[bar].Mul(decimal.FromFloat64(d.PartialExit.ATR)).Mul(sign)), Fraction: decimal.FromFloat64(d.PartialExit.Fraction)}
 		}
@@ -532,6 +561,12 @@ func Run(req Request) (*Result, error) {
 	limitations := []string{}
 	if d.Funding == nil || !d.Funding.Enabled {
 		limitations = append(limitations, "FUNDING_NOT_MODELED")
+	} else if req.PublishedFundingEvents && req.Mode != "signal" {
+		for i, event := range req.Funding {
+			if !event.At.After(req.From) || !event.At.Before(req.AsOf) || i > 0 && !event.At.After(req.Funding[i-1].At) || !event.Mark.IsPositive() {
+				return nil, fmt.Errorf("invalid published funding event")
+			}
+		}
 	} else if req.Mode != "signal" {
 		seconds := int64(d.Funding.IntervalHours * 3600)
 		expected := map[int64]bool{}

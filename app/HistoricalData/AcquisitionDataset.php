@@ -5,13 +5,14 @@ declare(strict_types=1);
 namespace App\HistoricalData;
 
 use App\Backtest\Application\DatasetInspector;
+use App\MarketData\Application\MarketCandleConflictService;
 use App\Strategy\Application\StrategyRegistry;
 use Carbon\CarbonImmutable;
 use Illuminate\Support\Facades\DB;
 
 final readonly class AcquisitionDataset
 {
-    public function __construct(private DatasetInspector $canonical, private CoverageValidator $coverage, private SourcePolicy $policy) {}
+    public function __construct(private DatasetInspector $canonical, private CoverageValidator $coverage, private SourcePolicy $policy, private MarketCandleConflictService $integrity) {}
 
     public function pin(string $batchId, array $scope, int $warmup): object
     {
@@ -26,6 +27,7 @@ final readonly class AcquisitionDataset
             $from = CarbonImmutable::parse($scope['from'])->utc();
             $to = CarbonImmutable::parse($scope['to'])->utc();
             abort_unless($scope['exchange'] === 'binance' && array_diff($scope['symbols'], $plan['input']['symbols']) === [] && $from >= CarbonImmutable::parse($plan['from']) && $to <= CarbonImmutable::parse($plan['to_exclusive']) && $from < $to, 422, 'Research scope is outside imported dataset coverage.');
+            $this->assertIntegrity($scope, $warmup);
             $pin = $this->canonical->pin($scope['symbols'], $from, $to, $warmup, 'binance');
             foreach ($pin['warnings'] as $warning) {
                 abort_if(str_starts_with($warning, 'insufficient_warmup:'), 422, 'Complete research warmup is required.');
@@ -54,6 +56,9 @@ final readonly class AcquisitionDataset
         abort_if($pin === null, 404);
         $scope = json_decode($pin->scope, true);
         $this->policy->assertUse($scope['intended_use'], json_decode($pin->license, true));
+        $canonical = DB::table('historical_dataset_pins')->find($pin->canonical_pin_id);
+        abort_if($canonical === null, 422, 'Canonical dataset pin unavailable.');
+        $this->assertIntegrity($scope, (int) $canonical->warmup_bars);
         $this->canonical->verifyPin($pin->canonical_pin_id);
         $hash = $this->supplemental($pin->batch_id, $scope['symbols'], CarbonImmutable::parse($scope['from']), CarbonImmutable::parse($scope['to']));
         if (! hash_equals($pin->supplemental_sha256, $hash) || StrategyRegistry::hash($this->sources($pin->batch_id)) !== StrategyRegistry::hash(json_decode($pin->provenance, true))) {
@@ -64,6 +69,19 @@ final readonly class AcquisitionDataset
         }
 
         return $pin;
+    }
+
+    private function assertIntegrity(array $scope, int $warmup): void
+    {
+        foreach ($scope['symbols'] as $symbol) {
+            foreach (['5', '15', '30', '60'] as $tf) {
+                $from = CarbonImmutable::parse($scope['from'])->subMinutes(($warmup + 1) * (int) $tf);
+                $report = $this->integrity->integrityReport('binance', $symbol, $tf, $from, CarbonImmutable::parse($scope['to']));
+                if ($report['status'] !== 'VALID') {
+                    throw new AcquisitionFailure('ACQUISITION_CANDLE_INTEGRITY_BLOCKED');
+                }
+            }
+        }
     }
 
     private function sources(string $batch): array

@@ -3,6 +3,7 @@ package backtest
 import (
 	"fmt"
 	"github.com/traderbybit/research-go/internal/decimal"
+	"math/big"
 	"time"
 )
 
@@ -17,11 +18,14 @@ type PartialTarget struct {
 	Fraction decimal.Decimal
 }
 type FundingEvent struct {
-	At   time.Time       `json:"at"`
-	Rate decimal.Decimal `json:"rate"`
-	Mark decimal.Decimal `json:"mark"`
+	RateExact string          `json:"rate_exact,omitempty"`
+	MarkExact string          `json:"mark_exact,omitempty"`
+	At        time.Time       `json:"at"`
+	Rate      decimal.Decimal `json:"rate"`
+	Mark      decimal.Decimal `json:"mark"`
 }
 type ReplayExecution struct {
+	Slippage decimal.Decimal `json:"slippage"`
 	Kind     string          `json:"kind"`
 	At       time.Time       `json:"at"`
 	Side     string          `json:"side"`
@@ -31,13 +35,13 @@ type ReplayExecution struct {
 	Funding  decimal.Decimal `json:"funding"`
 }
 type replayPosition struct {
-	initial, gross, fees, funding decimal.Decimal
-	partial                       *PartialTarget
-	partialDone                   bool
+	initial, gross, fees, funding, slippage decimal.Decimal
+	partial                                 *PartialTarget
+	partialDone                             bool
 }
 
 func newReplayPosition(quantity, fee decimal.Decimal, partial *PartialTarget) *replayPosition {
-	return &replayPosition{initial: quantity, gross: decimal.Zero(), fees: fee, funding: decimal.Zero(), partial: partial}
+	return &replayPosition{initial: quantity, gross: decimal.Zero(), fees: fee, funding: decimal.Zero(), slippage: decimal.Zero(), partial: partial}
 }
 func (e *Engine) exitSlip(price decimal.Decimal, side string) decimal.Decimal {
 	if side == "BUY" {
@@ -53,6 +57,11 @@ func legProfit(side string, quantity, entry, exit decimal.Decimal) decimal.Decim
 }
 func (p *ReplayPolicy) validate() error {
 	for i, event := range p.Funding {
+		if event.RateExact != "" || event.MarkExact != "" {
+			if _, err := exactFundingAmount(event, decimal.FromInt64(1)); err != nil {
+				return err
+			}
+		}
 		if event.At.IsZero() || !event.Mark.IsPositive() || event.Rate.Cmp(decimal.MustFromString("0.1")) > 0 || event.Rate.Cmp(decimal.MustFromString("-0.1")) < 0 || i > 0 && !event.At.After(p.Funding[i-1].At) {
 			return fmt.Errorf("invalid or duplicate funding event")
 		}
@@ -63,4 +72,42 @@ func (p *ReplayPolicy) validate() error {
 		}
 	}
 	return nil
+}
+
+func absoluteReplayDecimal(value decimal.Decimal) decimal.Decimal {
+	if value.IsNegative() {
+		return value.Neg()
+	}
+	return value
+}
+
+func exactFundingAmount(event FundingEvent, quantity decimal.Decimal) (decimal.Decimal, error) {
+	rate, mark := event.Rate.String(), event.Mark.String()
+	if event.RateExact != "" {
+		rate = event.RateExact
+	}
+	if event.MarkExact != "" {
+		mark = event.MarkExact
+	}
+	r, ok := new(big.Rat).SetString(rate)
+	if !ok {
+		return decimal.Zero(), fmt.Errorf("invalid exact funding rate")
+	}
+	m, ok := new(big.Rat).SetString(mark)
+	if !ok || m.Sign() <= 0 {
+		return decimal.Zero(), fmt.Errorf("invalid exact funding mark")
+	}
+	convertedRate, err := decimal.FromString(rate)
+	if err != nil || convertedRate.Cmp(event.Rate) != 0 {
+		return decimal.Zero(), fmt.Errorf("conflicting exact funding rate")
+	}
+	convertedMark, err := decimal.FromString(mark)
+	if err != nil || convertedMark.Cmp(event.Mark) != 0 {
+		return decimal.Zero(), fmt.Errorf("conflicting exact funding mark")
+	}
+	q, ok := new(big.Rat).SetString(quantity.String())
+	if !ok {
+		return decimal.Zero(), fmt.Errorf("invalid funding quantity")
+	}
+	return decimal.FromRational(new(big.Rat).Mul(new(big.Rat).Mul(q, m), r)), nil
 }

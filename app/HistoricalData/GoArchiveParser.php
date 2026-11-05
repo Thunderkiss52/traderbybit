@@ -30,7 +30,9 @@ final class GoArchiveParser
             $lines = explode("\n", $data);
             $result = json_decode(end($lines), true, flags: JSON_THROW_ON_ERROR);
             if (! $process->isSuccessful() || ! isset($result['result'])) {
-                throw new AcquisitionFailure('ARCHIVE_VALIDATION_FAILED');
+                $error = (string) ($result['error'] ?? '');
+                $safe = preg_match('/^(?:CSV line [0-9]+|unsafe ZIP|unexpected archive|archive expansion|empty requested|ZIP expanded size)/', $error) ? substr($error, 0, 300) : 'ARCHIVE_REJECTED';
+                throw new AcquisitionFailure('ARCHIVE_VALIDATION_FAILED', diagnostics: ['parser_reason' => $safe]);
             }
 
             return $result['result'] + ['output' => $output, 'engine_sha256' => hash_file('sha256', $binary)];

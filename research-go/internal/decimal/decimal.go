@@ -233,3 +233,9 @@ func (d *Decimal) UnmarshalJSON(data []byte) error {
 	*d = parsed
 	return nil
 }
+
+// FromRational preserves source precision until the explicit fixed-point cash boundary.
+func FromRational(value *big.Rat) Decimal {
+	scaled := new(big.Int).Mul(value.Num(), scaleMultiplier)
+	return Decimal{value: new(big.Int).Quo(scaled, value.Denom())}
+}

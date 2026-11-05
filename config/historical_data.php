@@ -5,6 +5,8 @@ declare(strict_types=1);
 return [
     'symbols' => ['BTCUSDT', 'ETHUSDT'],
     'queue' => 'research',
+    'queue_connection' => env('HISTORICAL_QUEUE_CONNECTION', 'redis'),
+    'replay_binary' => env('HISTORICAL_REPLAY_BINARY', base_path('research-go/bin/historical-replay')),
     'concurrency' => 1,
     'max_attempts' => 4,
     'lease_seconds' => 300,

@@ -26,6 +26,10 @@ final class AcquisitionJob implements ShouldBeUniqueUntilProcessing, ShouldQueue
 
     public function __construct(public readonly string $batchId)
     {
+        if (config('historical_data.queue_connection') === 'sync') {
+            throw new \RuntimeException('Historical acquisition requires an asynchronous queue.');
+        }
+        $this->onConnection((string) config('historical_data.queue_connection'));
         $this->onQueue((string) config('historical_data.queue'));
     }
 

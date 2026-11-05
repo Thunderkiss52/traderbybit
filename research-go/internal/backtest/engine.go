@@ -31,22 +31,24 @@ func DefaultConfig() BacktestConfig {
 }
 
 type Trade struct {
-	ID         int             `json:"id"`
-	Symbol     string          `json:"symbol"`
-	Side       string          `json:"side"` // "BUY" or "SELL"
-	EntryTime  time.Time       `json:"entry_time"`
-	ExitTime   time.Time       `json:"exit_time"`
-	EntryPrice decimal.Decimal `json:"entry_price"`
-	ExitPrice  decimal.Decimal `json:"exit_price"`
-	Quantity   decimal.Decimal `json:"quantity"`
-	StopLoss   decimal.Decimal `json:"stop_loss"`
-	TakeProfit decimal.Decimal `json:"take_profit"`
-	GrossPnL   decimal.Decimal `json:"gross_pnl"`
-	Fees       decimal.Decimal `json:"fees"`
-	NetPnL     decimal.Decimal `json:"net_pnl"`
-	RMultiple  float64         `json:"r_multiple"`
-	ExitReason string          `json:"exit_reason"` // "TAKE_PROFIT", "STOP_LOSS", "TIMEOUT"
-	Ambiguous  bool            `json:"ambiguous"`
+	Funding    *decimal.Decimal `json:"funding,omitempty"`
+	Slippage   *decimal.Decimal `json:"slippage,omitempty"`
+	ID         int              `json:"id"`
+	Symbol     string           `json:"symbol"`
+	Side       string           `json:"side"` // "BUY" or "SELL"
+	EntryTime  time.Time        `json:"entry_time"`
+	ExitTime   time.Time        `json:"exit_time"`
+	EntryPrice decimal.Decimal  `json:"entry_price"`
+	ExitPrice  decimal.Decimal  `json:"exit_price"`
+	Quantity   decimal.Decimal  `json:"quantity"`
+	StopLoss   decimal.Decimal  `json:"stop_loss"`
+	TakeProfit decimal.Decimal  `json:"take_profit"`
+	GrossPnL   decimal.Decimal  `json:"gross_pnl"`
+	Fees       decimal.Decimal  `json:"fees"`
+	NetPnL     decimal.Decimal  `json:"net_pnl"`
+	RMultiple  float64          `json:"r_multiple"`
+	ExitReason string           `json:"exit_reason"` // "TAKE_PROFIT", "STOP_LOSS", "TIMEOUT"
+	Ambiguous  bool             `json:"ambiguous"`
 }
 
 type EquityPoint struct {

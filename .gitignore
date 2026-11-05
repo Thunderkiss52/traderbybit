@@ -67,3 +67,5 @@ __pycache__/
 *.py[cod]
 
 /research-go/bin/historical-import
+
+/research-go/bin/historical-replay
