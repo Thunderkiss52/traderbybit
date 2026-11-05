@@ -11,6 +11,7 @@ vendor
 node_modules
 frontend/node_modules
 frontend/dist
+research-go/bin
 bootstrap/cache/*.php
 storage/logs/*
 storage/logs/*

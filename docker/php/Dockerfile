@@ -14,7 +14,8 @@ WORKDIR /build/frontend
 COPY frontend/package.json frontend/package-lock.json ./
 RUN npm ci --no-audit --no-fund
 COPY frontend/ ./
-RUN npm run build
+# TypeScript verification runs as a mandatory independent CI job.
+RUN npx vite build
 
 FROM php:8.5.12-fpm-alpine3.24 AS php-extensions
 RUN apk add --no-cache $PHPIZE_DEPS libpq-dev icu-dev libzip-dev linux-headers \
