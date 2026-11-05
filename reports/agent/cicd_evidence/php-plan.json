@@ -1,0 +1,2071 @@
+{
+  "files": {
+    "tests/Unit/Audit/BacktestAuditCsvR8Test.php": [
+      "Tests\\Unit\\Audit\\BacktestAuditCsvR8Test::test_spreadsheet_injection_is_escaped_but_negative_financial_values_remain_numbers"
+    ],
+    "tests/Unit/Audit/BacktestAuditRedactorR8Test.php": [
+      "Tests\\Unit\\Audit\\BacktestAuditRedactorR8Test::test_nested_credentials_are_not_exported_in_configuration"
+    ],
+    "tests/Unit/Backtest/ChronologicalSplitterTest.php": [
+      "Tests\\Unit\\Backtest\\ChronologicalSplitterTest::test_split_is_chronological_and_never_shuffled",
+      "Tests\\Unit\\Backtest\\ChronologicalSplitterTest::test_walk_forward_uses_independent_six_two_two_month_windows",
+      "Tests\\Unit\\Backtest\\ChronologicalSplitterTest::test_walk_forward_supports_minute_units"
+    ],
+    "tests/Unit/Backtest/GridOptimizerTest.php": [
+      "Tests\\Unit\\Backtest\\GridOptimizerTest::test_grid_is_deterministic_and_resource_capped"
+    ],
+    "tests/Unit/Backtest/PerformanceMetricCalculatorTest.php": [
+      "Tests\\Unit\\Backtest\\PerformanceMetricCalculatorTest::test_known_trade_and_equity_metrics_are_exact",
+      "Tests\\Unit\\Backtest\\PerformanceMetricCalculatorTest::test_profit_factor_is_null_when_there_are_no_losses"
+    ],
+    "tests/Unit/Backtest/StrategySignalEvaluatorCacheLifecycleTest.php": [
+      "Tests\\Unit\\Backtest\\StrategySignalEvaluatorCacheLifecycleTest::test_reset_clears_a_cache_on_a_reused_evaluator"
+    ],
+    "tests/Unit/Database/PostgresTestDatabaseIsolationGuardTest.php": [
+      "Tests\\Unit\\Database\\PostgresTestDatabaseIsolationGuardTest::test_rejects_production_environment",
+      "Tests\\Unit\\Database\\PostgresTestDatabaseIsolationGuardTest::test_rejects_staging_environment",
+      "Tests\\Unit\\Database\\PostgresTestDatabaseIsolationGuardTest::test_rejects_non_pgsql_driver",
+      "Tests\\Unit\\Database\\PostgresTestDatabaseIsolationGuardTest::test_rejects_production_database_name",
+      "Tests\\Unit\\Database\\PostgresTestDatabaseIsolationGuardTest::test_rejects_unsafe_remote_host",
+      "Tests\\Unit\\Database\\PostgresTestDatabaseIsolationGuardTest::test_rejects_dangerous_database_url_override",
+      "Tests\\Unit\\Database\\PostgresTestDatabaseIsolationGuardTest::test_rejects_server_side_database_identity_mismatch",
+      "Tests\\Unit\\Database\\PostgresTestDatabaseIsolationGuardTest::test_accepts_verified_local_wsl_loopback_topology",
+      "Tests\\Unit\\Database\\PostgresTestDatabaseIsolationGuardTest::test_accepts_verified_ci_container_topology",
+      "Tests\\Unit\\Database\\PostgresTestDatabaseIsolationGuardTest::test_is_safe_test_host_recognizes_valid_topologies"
+    ],
+    "tests/Unit/DeploymentStateValidationAndRecoveryTest.php": [
+      "Tests\\Unit\\DeploymentStateValidationAndRecoveryTest::test_clean_state_validation_passes",
+      "Tests\\Unit\\DeploymentStateValidationAndRecoveryTest::test_corrupted_duplicate_tags_fails_closed_in_pre_deploy",
+      "Tests\\Unit\\DeploymentStateValidationAndRecoveryTest::test_corrupted_state_blocks_rollback",
+      "Tests\\Unit\\DeploymentStateValidationAndRecoveryTest::test_missing_release_metadata_fails_closed",
+      "Tests\\Unit\\DeploymentStateValidationAndRecoveryTest::test_inspect_mode_detects_corrupted_state",
+      "Tests\\Unit\\DeploymentStateValidationAndRecoveryTest::test_recovery_refuses_silent_inference_on_conflicting_state",
+      "Tests\\Unit\\DeploymentStateValidationAndRecoveryTest::test_recovery_succeeds_with_explicit_targets_and_deterministic_sha_resolution",
+      "Tests\\Unit\\DeploymentStateValidationAndRecoveryTest::test_deployment_lock_allows_nested_reentrancy_and_never_unlinks",
+      "Tests\\Unit\\DeploymentStateValidationAndRecoveryTest::test_competing_independent_process_blocked_by_lock",
+      "Tests\\Unit\\DeploymentStateValidationAndRecoveryTest::test_auto_recover_on_deploy_heals_duplicate_state_automatically",
+      "Tests\\Unit\\DeploymentStateValidationAndRecoveryTest::test_same_sha_reconcile_state_preserves_distinct_previous_state",
+      "Tests\\Unit\\DeploymentStateValidationAndRecoveryTest::test_same_sha_wrapper_preserves_previous_release_directory"
+    ],
+    "tests/Unit/DevOps/DockerComposeImageResolutionTest.php": [
+      "Tests\\Unit\\DevOps\\DockerComposeImageResolutionTest::test_compose_yaml_enforces_required_image_environment_variables",
+      "Tests\\Unit\\DevOps\\DockerComposeImageResolutionTest::test_compose_yaml_does_not_contain_fallback_local_image_names",
+      "Tests\\Unit\\DevOps\\DockerComposeImageResolutionTest::test_docker_compose_config_resolves_all_services_with_sha_tagged_ghcr_images",
+      "Tests\\Unit\\DevOps\\DockerComposeImageResolutionTest::test_docker_compose_config_fails_when_research_worker_image_missing",
+      "Tests\\Unit\\DevOps\\DockerComposeImageResolutionTest::test_docker_compose_config_fails_when_app_image_missing",
+      "Tests\\Unit\\DevOps\\DockerComposeImageResolutionTest::test_docker_compose_config_fails_when_web_image_missing"
+    ],
+    "tests/Unit/ExampleTest.php": [
+      "Tests\\Unit\\ExampleTest::test_that_true_is_true"
+    ],
+    "tests/Unit/Exchanges/BinanceCandleWindowTest.php": [
+      "Tests\\Unit\\Exchanges\\BinanceCandleWindowTest::test_contiguous_closed_history_is_ready",
+      "Tests\\Unit\\Exchanges\\BinanceCandleWindowTest::test_unclosed_or_future_dated_bars_are_rejected",
+      "Tests\\Unit\\Exchanges\\BinanceCandleWindowTest::test_gaps_and_duplicate_timestamps_fail_closed",
+      "Tests\\Unit\\Exchanges\\BinanceCandleWindowTest::test_off_grid_but_contiguous_candles_are_not_considered_ready",
+      "Tests\\Unit\\Exchanges\\BinanceCandleWindowTest::test_219_candles_never_satisfy_220_candle_requirement"
+    ],
+    "tests/Unit/Exchanges/BinanceContextCaptureTest.php": [
+      "Tests\\Unit\\Exchanges\\BinanceContextCaptureTest::test_real_public_oi_history_reaches_context_without_forward_execution"
+    ],
+    "tests/Unit/Exchanges/BinanceOpenInterestWindowTest.php": [
+      "Tests\\Unit\\Exchanges\\BinanceOpenInterestWindowTest::test_only_published_contiguous_samples_contribute_to_oi_change",
+      "Tests\\Unit\\Exchanges\\BinanceOpenInterestWindowTest::test_gapped_stale_missing_and_zero_denominator_remain_unavailable",
+      "Tests\\Unit\\Exchanges\\BinanceOpenInterestWindowTest::test_cross_exchange_rows_are_never_reused"
+    ],
+    "tests/Unit/Exchanges/BinancePaperSafetyTest.php": [
+      "Tests\\Unit\\Exchanges\\BinancePaperSafetyTest::test_explicit_cost_and_activation_evidence_are_required",
+      "Tests\\Unit\\Exchanges\\BinancePaperSafetyTest::test_bybit_or_nonprimary_account_must_never_execute_on_binance"
+    ],
+    "tests/Unit/Exchanges/BinancePublicAdapterTest.php": [
+      "Tests\\Unit\\Exchanges\\BinancePublicAdapterTest::test_public_futures_candle_preserves_precise_decimal_strings_without_authentication",
+      "Tests\\Unit\\Exchanges\\BinancePublicAdapterTest::test_funding_and_open_interest_preserve_signed_and_nullable_values",
+      "Tests\\Unit\\Exchanges\\BinancePublicAdapterTest::test_negative_open_interest_or_nonpositive_funding_mark_price_is_rejected",
+      "Tests\\Unit\\Exchanges\\BinancePublicAdapterTest::test_malformed_candle_and_invalid_symbol_are_rejected",
+      "Tests\\Unit\\Exchanges\\BinancePublicAdapterTest::test_invalid_ohlc_negative_volume_and_duplicate_candles_fail_closed",
+      "Tests\\Unit\\Exchanges\\BinancePublicAdapterTest::test_misaligned_or_wrong_duration_candles_are_rejected",
+      "Tests\\Unit\\Exchanges\\BinancePublicAdapterTest::test_real_public_book_context_is_rejected_if_crossed_or_invalid",
+      "Tests\\Unit\\Exchanges\\BinancePublicAdapterTest::test_symbols_missing_exchange_precision_are_not_fabricated"
+    ],
+    "tests/Unit/Exchanges/BinancePublicTransportTest.php": [
+      "Tests\\Unit\\Exchanges\\BinancePublicTransportTest::test_transient_public_get_recovers_with_bounded_backoff",
+      "Tests\\Unit\\Exchanges\\BinancePublicTransportTest::test_retry_after_is_respected_for_short_rate_limit",
+      "Tests\\Unit\\Exchanges\\BinancePublicTransportTest::test_bans_long_or_unknown_rate_limits_and_permanent_errors_are_not_retried",
+      "Tests\\Unit\\Exchanges\\BinancePublicTransportTest::test_retry_budget_is_finite",
+      "Tests\\Unit\\Exchanges\\BinancePublicTransportTest::test_connection_failure_is_bounded_and_redacted",
+      "Tests\\Unit\\Exchanges\\BinancePublicTransportTest::test_redirect_following_is_disabled",
+      "Tests\\Unit\\Exchanges\\BinancePublicTransportTest::test_success_status_with_exchange_error_payload_fails_closed"
+    ],
+    "tests/Unit/Exchanges/BinanceSourceIdentityTest.php": [
+      "Tests\\Unit\\Exchanges\\BinanceSourceIdentityTest::test_equivalent_exact_decimals_do_not_cause_false_conflicts",
+      "Tests\\Unit\\Exchanges\\BinanceSourceIdentityTest::test_replayed_conflicting_candle_is_rejected",
+      "Tests\\Unit\\Exchanges\\BinanceSourceIdentityTest::test_replayed_conflicting_funding_is_rejected",
+      "Tests\\Unit\\Exchanges\\BinanceSourceIdentityTest::test_nonrepresentable_fraction_fails_before_persistence"
+    ],
+    "tests/Unit/Exchanges/BinanceSymbolInventoryTest.php": [
+      "Tests\\Unit\\Exchanges\\BinanceSymbolInventoryTest::test_unsupported_unrelated_symbols_do_not_disable_supported_contracts"
+    ],
+    "tests/Unit/Indicators/MovingMomentumIndicatorsTest.php": [
+      "Tests\\Unit\\Indicators\\MovingMomentumIndicatorsTest::test_sma_uses_a_complete_rolling_window",
+      "Tests\\Unit\\Indicators\\MovingMomentumIndicatorsTest::test_ema_is_seeded_with_sma_and_then_uses_recursive_smoothing",
+      "Tests\\Unit\\Indicators\\MovingMomentumIndicatorsTest::test_rsi_matches_wilders_reference_series",
+      "Tests\\Unit\\Indicators\\MovingMomentumIndicatorsTest::test_rsi_flat_series_is_neutral_and_rising_series_is_one_hundred",
+      "Tests\\Unit\\Indicators\\MovingMomentumIndicatorsTest::test_macd_aligns_signal_and_histogram_with_original_series"
+    ],
+    "tests/Unit/Indicators/VolatilityTrendIndicatorsTest.php": [
+      "Tests\\Unit\\Indicators\\VolatilityTrendIndicatorsTest::test_atr_uses_true_range_and_wilders_smoothing",
+      "Tests\\Unit\\Indicators\\VolatilityTrendIndicatorsTest::test_bollinger_bands_use_population_standard_deviation",
+      "Tests\\Unit\\Indicators\\VolatilityTrendIndicatorsTest::test_adx_warmup_and_directional_values_on_a_strong_monotonic_trend"
+    ],
+    "tests/Unit/Indicators/VolumeLevelsIndicatorsTest.php": [
+      "Tests\\Unit\\Indicators\\VolumeLevelsIndicatorsTest::test_rolling_vwap_weights_typical_price_by_volume",
+      "Tests\\Unit\\Indicators\\VolumeLevelsIndicatorsTest::test_volume_returns_sma_relative_volume_and_turnover_sma",
+      "Tests\\Unit\\Indicators\\VolumeLevelsIndicatorsTest::test_support_and_resistance_use_only_confirmed_pivots"
+    ],
+    "tests/Unit/Indicators/WarmupPolicyTest.php": [
+      "Tests\\Unit\\Indicators\\WarmupPolicyTest::test_required_history_is_the_maximum_of_every_indicator_warmup"
+    ],
+    "tests/Unit/MarketData/BybitRestClientTest.php": [
+      "Tests\\Unit\\MarketData\\BybitRestClientTest::test_funding_mark_uses_exact_boundary_open_not_future_close",
+      "Tests\\Unit\\MarketData\\BybitRestClientTest::test_funding_mark_rejects_wrong_boundary_and_forming_candle",
+      "Tests\\Unit\\MarketData\\BybitRestClientTest::test_it_parses_sorts_utc_and_marks_only_closed_rest_candles",
+      "Tests\\Unit\\MarketData\\BybitRestClientTest::test_it_paginates_backwards_and_deduplicates_rows",
+      "Tests\\Unit\\MarketData\\BybitRestClientTest::test_it_retries_rate_limits#HTTP 429",
+      "Tests\\Unit\\MarketData\\BybitRestClientTest::test_it_retries_rate_limits#retCode 10006",
+      "Tests\\Unit\\MarketData\\BybitRestClientTest::test_it_rejects_incomplete_api_payload",
+      "Tests\\Unit\\MarketData\\BybitRestClientTest::test_it_reads_tick_size_from_instrument_info",
+      "Tests\\Unit\\MarketData\\BybitRestClientTest::test_it_retries_a_network_transport_failure"
+    ],
+    "tests/Unit/MarketData/CandleConflictJournalTest.php": [
+      "Tests\\Unit\\MarketData\\CandleConflictJournalTest::test_invalid_records_never_certify_affected_scopes_and_are_not_rewritten#array symbol",
+      "Tests\\Unit\\MarketData\\CandleConflictJournalTest::test_invalid_records_never_certify_affected_scopes_and_are_not_rewritten#integer symbol",
+      "Tests\\Unit\\MarketData\\CandleConflictJournalTest::test_invalid_records_never_certify_affected_scopes_and_are_not_rewritten#boolean symbol",
+      "Tests\\Unit\\MarketData\\CandleConflictJournalTest::test_invalid_records_never_certify_affected_scopes_and_are_not_rewritten#null symbol",
+      "Tests\\Unit\\MarketData\\CandleConflictJournalTest::test_invalid_records_never_certify_affected_scopes_and_are_not_rewritten#missing symbol",
+      "Tests\\Unit\\MarketData\\CandleConflictJournalTest::test_invalid_records_never_certify_affected_scopes_and_are_not_rewritten#empty symbol",
+      "Tests\\Unit\\MarketData\\CandleConflictJournalTest::test_invalid_records_never_certify_affected_scopes_and_are_not_rewritten#lowercase symbol",
+      "Tests\\Unit\\MarketData\\CandleConflictJournalTest::test_invalid_records_never_certify_affected_scopes_and_are_not_rewritten#whitespace symbol",
+      "Tests\\Unit\\MarketData\\CandleConflictJournalTest::test_invalid_records_never_certify_affected_scopes_and_are_not_rewritten#invalid alphabet",
+      "Tests\\Unit\\MarketData\\CandleConflictJournalTest::test_invalid_records_never_certify_affected_scopes_and_are_not_rewritten#unsupported symbol",
+      "Tests\\Unit\\MarketData\\CandleConflictJournalTest::test_invalid_records_never_certify_affected_scopes_and_are_not_rewritten#unsupported exchange",
+      "Tests\\Unit\\MarketData\\CandleConflictJournalTest::test_invalid_records_never_certify_affected_scopes_and_are_not_rewritten#array exchange",
+      "Tests\\Unit\\MarketData\\CandleConflictJournalTest::test_invalid_records_never_certify_affected_scopes_and_are_not_rewritten#unsupported market",
+      "Tests\\Unit\\MarketData\\CandleConflictJournalTest::test_invalid_records_never_certify_affected_scopes_and_are_not_rewritten#null interval",
+      "Tests\\Unit\\MarketData\\CandleConflictJournalTest::test_invalid_records_never_certify_affected_scopes_and_are_not_rewritten#unsupported interval",
+      "Tests\\Unit\\MarketData\\CandleConflictJournalTest::test_invalid_records_never_certify_affected_scopes_and_are_not_rewritten#invalid timestamp",
+      "Tests\\Unit\\MarketData\\CandleConflictJournalTest::test_invalid_records_never_certify_affected_scopes_and_are_not_rewritten#missing observation",
+      "Tests\\Unit\\MarketData\\CandleConflictJournalTest::test_invalid_records_never_certify_affected_scopes_and_are_not_rewritten#wrong observation type",
+      "Tests\\Unit\\MarketData\\CandleConflictJournalTest::test_invalid_records_never_certify_affected_scopes_and_are_not_rewritten#fingerprint mismatch",
+      "Tests\\Unit\\MarketData\\CandleConflictJournalTest::test_invalid_records_never_certify_affected_scopes_and_are_not_rewritten#missing event id",
+      "Tests\\Unit\\MarketData\\CandleConflictJournalTest::test_invalid_records_never_certify_affected_scopes_and_are_not_rewritten#unknown version",
+      "Tests\\Unit\\MarketData\\CandleConflictJournalTest::test_invalid_records_never_certify_affected_scopes_and_are_not_rewritten#invalid count",
+      "Tests\\Unit\\MarketData\\CandleConflictJournalTest::test_invalid_records_never_certify_affected_scopes_and_are_not_rewritten#invalid status",
+      "Tests\\Unit\\MarketData\\CandleConflictJournalTest::test_valid_pending_evidence_is_scoped_and_legacy_bytes_remain_readable",
+      "Tests\\Unit\\MarketData\\CandleConflictJournalTest::test_invalid_producer_evidence_is_preserved_before_explicit_failure"
+    ],
+    "tests/Unit/MarketData/GapDetectorTest.php": [
+      "Tests\\Unit\\MarketData\\GapDetectorTest::test_it_detects_missing_closed_slots_and_groups_ranges",
+      "Tests\\Unit\\MarketData\\GapDetectorTest::test_it_never_marks_the_current_open_candle_as_a_gap"
+    ],
+    "tests/Unit/MarketData/IntervalTest.php": [
+      "Tests\\Unit\\MarketData\\IntervalTest::test_all_supported_intervals_parse_correctly",
+      "Tests\\Unit\\MarketData\\IntervalTest::test_milliseconds_and_seconds_match_timeframe_durations",
+      "Tests\\Unit\\MarketData\\IntervalTest::test_floor_aligns_to_interval_boundaries",
+      "Tests\\Unit\\MarketData\\IntervalTest::test_unsupported_interval_throws"
+    ],
+    "tests/Unit/MarketData/PhrityWebSocketConnectionTest.php": [
+      "Tests\\Unit\\MarketData\\PhrityWebSocketConnectionTest::test_receive_returns_null_on_connection_timeout",
+      "Tests\\Unit\\MarketData\\PhrityWebSocketConnectionTest::test_receive_returns_content_on_successful_message",
+      "Tests\\Unit\\MarketData\\PhrityWebSocketConnectionTest::test_receive_throws_terminal_runtime_exception_on_eof",
+      "Tests\\Unit\\MarketData\\PhrityWebSocketConnectionTest::test_receive_throws_on_connection_failure",
+      "Tests\\Unit\\MarketData\\PhrityWebSocketConnectionTest::test_receive_throws_on_close_frame",
+      "Tests\\Unit\\MarketData\\PhrityWebSocketConnectionTest::test_receive_throws_when_not_connected",
+      "Tests\\Unit\\MarketData\\PhrityWebSocketConnectionTest::test_filtered_logger_demotes_timed_out_empty_read_to_debug",
+      "Tests\\Unit\\MarketData\\PhrityWebSocketConnectionTest::test_filtered_logger_preserves_real_error_logs"
+    ],
+    "tests/Unit/MarketData/WebSocketParserTest.php": [
+      "Tests\\Unit\\MarketData\\WebSocketParserTest::test_it_ignores_unconfirmed_candles_and_control_messages",
+      "Tests\\Unit\\MarketData\\WebSocketParserTest::test_it_parses_only_confirmed_closed_candles",
+      "Tests\\Unit\\MarketData\\WebSocketParserTest::test_it_parses_30m_closed_candles",
+      "Tests\\Unit\\MarketData\\WebSocketParserTest::test_it_rejects_incomplete_events"
+    ],
+    "tests/Unit/Middleware/RequireResearchTokenTest.php": [
+      "Tests\\Unit\\Middleware\\RequireResearchTokenTest::test_returns_500_when_token_is_not_configured",
+      "Tests\\Unit\\Middleware\\RequireResearchTokenTest::test_returns_500_when_token_is_configured_as_empty_string",
+      "Tests\\Unit\\Middleware\\RequireResearchTokenTest::test_returns_401_when_token_header_is_missing",
+      "Tests\\Unit\\Middleware\\RequireResearchTokenTest::test_returns_403_when_token_is_invalid",
+      "Tests\\Unit\\Middleware\\RequireResearchTokenTest::test_allows_request_when_x_research_token_is_valid",
+      "Tests\\Unit\\Middleware\\RequireResearchTokenTest::test_allows_request_when_bearer_token_is_valid"
+    ],
+    "tests/Unit/PaperTrading/ExchangePositionSizingTest.php": [
+      "Tests\\Unit\\PaperTrading\\ExchangePositionSizingTest::test_explicit_execution_costs_reduce_quantity_without_changing_legacy_defaults",
+      "Tests\\Unit\\PaperTrading\\ExchangePositionSizingTest::test_incomplete_or_inexact_explicit_costs_never_fall_back_to_bybit"
+    ],
+    "tests/Unit/PaperTrading/ExecutionEngineTest.php": [
+      "Tests\\Unit\\PaperTrading\\ExecutionEngineTest::test_entry_uses_side_specific_quote_and_slippage",
+      "Tests\\Unit\\PaperTrading\\ExecutionEngineTest::test_ohlc_collision_is_ambiguous_and_stop_is_conservative_first",
+      "Tests\\Unit\\PaperTrading\\ExecutionEngineTest::test_fees_slippage_pnl_and_funding_use_decimal_arithmetic",
+      "Tests\\Unit\\PaperTrading\\ExecutionEngineTest::test_state_machines_reject_impossible_transitions",
+      "Tests\\Unit\\PaperTrading\\ExecutionEngineTest::test_execution_result_is_deterministic_and_risk_closure_is_explicit"
+    ],
+    "tests/Unit/PaperTrading/R8CapitalPolicyTest.php": [
+      "Tests\\Unit\\PaperTrading\\R8CapitalPolicyTest::test_default_virtual_starting_balance_is_10000",
+      "Tests\\Unit\\PaperTrading\\R8CapitalPolicyTest::test_strategy_specific_configuration_override",
+      "Tests\\Unit\\PaperTrading\\R8CapitalPolicyTest::test_rejects_zero_or_negative_starting_balance",
+      "Tests\\Unit\\PaperTrading\\R8CapitalPolicyTest::test_rejects_malformed_starting_balance"
+    ],
+    "tests/Unit/PaperTrading/R8SizingSettingsTest.php": [
+      "Tests\\Unit\\PaperTrading\\R8SizingSettingsTest::test_normalize_null_and_risk_percent",
+      "Tests\\Unit\\PaperTrading\\R8SizingSettingsTest::test_normalize_fixed_notional",
+      "Tests\\Unit\\PaperTrading\\R8SizingSettingsTest::test_normalize_fixed_margin",
+      "Tests\\Unit\\PaperTrading\\R8SizingSettingsTest::test_normalize_rejects_unsupported_mode",
+      "Tests\\Unit\\PaperTrading\\R8SizingSettingsTest::test_normalize_rejects_unexpected_keys",
+      "Tests\\Unit\\PaperTrading\\R8SizingSettingsTest::test_normalize_rejects_invalid_amount",
+      "Tests\\Unit\\PaperTrading\\R8SizingSettingsTest::test_normalize_rejects_excessive_leverage",
+      "Tests\\Unit\\PaperTrading\\R8SizingSettingsTest::test_calculate_with_fixed_notional",
+      "Tests\\Unit\\PaperTrading\\R8SizingSettingsTest::test_calculate_with_fixed_notional_exceeding_risk_ceiling_is_rejected",
+      "Tests\\Unit\\PaperTrading\\R8SizingSettingsTest::test_calculate_with_fixed_margin_leverage",
+      "Tests\\Unit\\PaperTrading\\R8SizingSettingsTest::test_calculate_with_invalid_settings_fails_gracefully"
+    ],
+    "tests/Unit/PaperTrading/RiskAndSizingTest.php": [
+      "Tests\\Unit\\PaperTrading\\RiskAndSizingTest::test_position_size_includes_fees_slippage_and_rounds_down_to_qty_step",
+      "Tests\\Unit\\PaperTrading\\RiskAndSizingTest::test_position_size_rejects_minimum_notional_and_exposure_limit",
+      "Tests\\Unit\\PaperTrading\\RiskAndSizingTest::test_risk_engine_rejects_portfolio_guards#zero equity",
+      "Tests\\Unit\\PaperTrading\\RiskAndSizingTest::test_risk_engine_rejects_portfolio_guards#negative equity",
+      "Tests\\Unit\\PaperTrading\\RiskAndSizingTest::test_risk_engine_rejects_portfolio_guards#exhausted capital",
+      "Tests\\Unit\\PaperTrading\\RiskAndSizingTest::test_risk_engine_rejects_portfolio_guards#class A excess",
+      "Tests\\Unit\\PaperTrading\\RiskAndSizingTest::test_risk_engine_rejects_portfolio_guards#class B excess",
+      "Tests\\Unit\\PaperTrading\\RiskAndSizingTest::test_risk_engine_rejects_portfolio_guards#class C excess",
+      "Tests\\Unit\\PaperTrading\\RiskAndSizingTest::test_risk_engine_rejects_portfolio_guards#notional excess",
+      "Tests\\Unit\\PaperTrading\\RiskAndSizingTest::test_risk_engine_rejects_portfolio_guards#zero risk",
+      "Tests\\Unit\\PaperTrading\\RiskAndSizingTest::test_risk_engine_rejects_portfolio_guards#negative risk",
+      "Tests\\Unit\\PaperTrading\\RiskAndSizingTest::test_risk_engine_rejects_portfolio_guards#maximum positions",
+      "Tests\\Unit\\PaperTrading\\RiskAndSizingTest::test_risk_engine_rejects_portfolio_guards#portfolio risk",
+      "Tests\\Unit\\PaperTrading\\RiskAndSizingTest::test_risk_engine_rejects_portfolio_guards#negative open risk",
+      "Tests\\Unit\\PaperTrading\\RiskAndSizingTest::test_risk_engine_rejects_portfolio_guards#negative drawdown",
+      "Tests\\Unit\\PaperTrading\\RiskAndSizingTest::test_risk_engine_rejects_portfolio_guards#unknown quality",
+      "Tests\\Unit\\PaperTrading\\RiskAndSizingTest::test_risk_engine_rejects_portfolio_guards#correlation",
+      "Tests\\Unit\\PaperTrading\\RiskAndSizingTest::test_risk_engine_rejects_portfolio_guards#missing correlation",
+      "Tests\\Unit\\PaperTrading\\RiskAndSizingTest::test_risk_engine_rejects_portfolio_guards#drawdown block",
+      "Tests\\Unit\\PaperTrading\\RiskAndSizingTest::test_risk_engine_rejects_portfolio_guards#drawdown halt",
+      "Tests\\Unit\\PaperTrading\\RiskAndSizingTest::test_risk_engine_rejects_portfolio_guards#cooldown",
+      "Tests\\Unit\\PaperTrading\\RiskAndSizingTest::test_risk_engine_rejects_portfolio_guards#market safety",
+      "Tests\\Unit\\PaperTrading\\RiskAndSizingTest::test_exact_risk_boundaries_remain_allowed#A limit",
+      "Tests\\Unit\\PaperTrading\\RiskAndSizingTest::test_exact_risk_boundaries_remain_allowed#B limit",
+      "Tests\\Unit\\PaperTrading\\RiskAndSizingTest::test_exact_risk_boundaries_remain_allowed#C limit",
+      "Tests\\Unit\\PaperTrading\\RiskAndSizingTest::test_exact_risk_boundaries_remain_allowed#portfolio risk limit",
+      "Tests\\Unit\\PaperTrading\\RiskAndSizingTest::test_exact_risk_boundaries_remain_allowed#portfolio notional limit",
+      "Tests\\Unit\\PaperTrading\\RiskAndSizingTest::test_exact_risk_boundaries_remain_allowed#position below limit",
+      "Tests\\Unit\\PaperTrading\\RiskAndSizingTest::test_exact_risk_boundaries_remain_allowed#drawdown below block",
+      "Tests\\Unit\\PaperTrading\\RiskAndSizingTest::test_exact_risk_boundaries_remain_allowed#cooldown expires now",
+      "Tests\\Unit\\PaperTrading\\RiskAndSizingTest::test_pearson_correlation_is_deterministic",
+      "Tests\\Unit\\PaperTrading\\RiskAndSizingTest::test_config_cannot_relax_paper_risk_ceiling",
+      "Tests\\Unit\\PaperTrading\\RiskAndSizingTest::test_sizing_rejects_unsafe_inputs_even_when_config_is_relaxed"
+    ],
+    "tests/Unit/PatternDiscovery/CandlestickPatternDetectorTest.php": [
+      "Tests\\Unit\\PatternDiscovery\\CandlestickPatternDetectorTest::test_detects_single_candle_geometry_patterns",
+      "Tests\\Unit\\PatternDiscovery\\CandlestickPatternDetectorTest::test_detects_two_and_three_candle_patterns_only_after_confirmation_bar"
+    ],
+    "tests/Unit/PatternDiscovery/MarketStructurePatternDetectorTest.php": [
+      "Tests\\Unit\\PatternDiscovery\\MarketStructurePatternDetectorTest::test_detects_double_top_only_when_second_pivot_is_confirmed",
+      "Tests\\Unit\\PatternDiscovery\\MarketStructurePatternDetectorTest::test_detects_false_breakout_and_liquidity_sweep_without_future_bars"
+    ],
+    "tests/Unit/PatternDiscovery/PatternDiscoveryTest.php": [
+      "Tests\\Unit\\PatternDiscovery\\PatternDiscoveryTest::test_future_features_are_rejected",
+      "Tests\\Unit\\PatternDiscovery\\PatternDiscoveryTest::test_missing_values_do_not_become_artificial_features",
+      "Tests\\Unit\\PatternDiscovery\\PatternDiscoveryTest::test_previous_signal_can_only_influence_later_decision",
+      "Tests\\Unit\\PatternDiscovery\\PatternDiscoveryTest::test_same_bar_tp_and_sl_is_ambiguously_scored_as_stop",
+      "Tests\\Unit\\PatternDiscovery\\PatternDiscoveryTest::test_adverse_gap_uses_the_worse_open_price",
+      "Tests\\Unit\\PatternDiscovery\\PatternDiscoveryTest::test_missing_candle_is_not_an_execution",
+      "Tests\\Unit\\PatternDiscovery\\PatternDiscoveryTest::test_conservative_timeout_includes_costs",
+      "Tests\\Unit\\PatternDiscovery\\PatternDiscoveryTest::test_insufficient_independent_holdouts_never_validate",
+      "Tests\\Unit\\PatternDiscovery\\PatternDiscoveryTest::test_sequence_and_context_use_only_past_information",
+      "Tests\\Unit\\PatternDiscovery\\PatternDiscoveryTest::test_pattern_matching_does_not_emit_order"
+    ],
+    "tests/Unit/QuoteIntegrity/QimComparisonEngineTest.php": [
+      "Tests\\Unit\\QuoteIntegrity\\QimComparisonEngineTest::test_matched_when_prices_agree_within_tolerance",
+      "Tests\\Unit\\QuoteIntegrity\\QimComparisonEngineTest::test_channel_inconsistency_when_prices_differ_beyond_tolerance",
+      "Tests\\Unit\\QuoteIntegrity\\QimComparisonEngineTest::test_stale_data_when_observation_exceeds_max_data_age",
+      "Tests\\Unit\\QuoteIntegrity\\QimComparisonEngineTest::test_clock_sync_unknown_when_clock_is_not_verified",
+      "Tests\\Unit\\QuoteIntegrity\\QimComparisonEngineTest::test_timestamp_unreliable_when_clock_is_unreliable",
+      "Tests\\Unit\\QuoteIntegrity\\QimComparisonEngineTest::test_insufficient_evidence_when_rest_missing",
+      "Tests\\Unit\\QuoteIntegrity\\QimComparisonEngineTest::test_insufficient_evidence_when_ws_not_confirmed",
+      "Tests\\Unit\\QuoteIntegrity\\QimComparisonEngineTest::test_insufficient_evidence_when_rest_sampled_before_grace_window"
+    ],
+    "tests/Unit/QuoteIntegrity/QimGapRecorderTest.php": [
+      "Tests\\Unit\\QuoteIntegrity\\QimGapRecorderTest::test_records_detected_and_recovered_events_sharing_detection_id",
+      "Tests\\Unit\\QuoteIntegrity\\QimGapRecorderTest::test_records_recovery_failed_event",
+      "Tests\\Unit\\QuoteIntegrity\\QimGapRecorderTest::test_no_op_when_feature_flag_is_disabled"
+    ],
+    "tests/Unit/QuoteIntegrity/QimIncidentLifecycleTest.php": [
+      "Tests\\Unit\\QuoteIntegrity\\QimIncidentLifecycleTest::test_initial_incident_starts_in_new_status_with_audit_event",
+      "Tests\\Unit\\QuoteIntegrity\\QimIncidentLifecycleTest::test_valid_lifecycle_transitions_are_append_only",
+      "Tests\\Unit\\QuoteIntegrity\\QimIncidentLifecycleTest::test_rejects_transition_without_explanation",
+      "Tests\\Unit\\QuoteIntegrity\\QimIncidentLifecycleTest::test_rejects_illegal_state_transition"
+    ],
+    "tests/Unit/QuoteIntegrity/QimMeasurementGuardTest.php": [
+      "Tests\\Unit\\QuoteIntegrity\\QimMeasurementGuardTest::test_validate_measurement_limits_throws_when_limits_unset",
+      "Tests\\Unit\\QuoteIntegrity\\QimMeasurementGuardTest::test_validate_measurement_limits_throws_when_values_non_positive",
+      "Tests\\Unit\\QuoteIntegrity\\QimMeasurementGuardTest::test_validate_measurement_limits_succeeds_with_positive_limits",
+      "Tests\\Unit\\QuoteIntegrity\\QimMeasurementGuardTest::test_disk_cap_breach_stops_qim_capture_and_records_critical_incident"
+    ],
+    "tests/Unit/QuoteIntegrity/QimNonBlockingHooksTest.php": [
+      "Tests\\Unit\\QuoteIntegrity\\QimNonBlockingHooksTest::test_closed_candle_ingestor_is_not_blocked_when_qim_observer_throws",
+      "Tests\\Unit\\QuoteIntegrity\\QimNonBlockingHooksTest::test_closed_candle_ingestor_captures_duplicate_attempt_before_idempotency_lock_refusal",
+      "Tests\\Unit\\QuoteIntegrity\\QimNonBlockingHooksTest::test_candle_synchronizer_is_not_blocked_when_qim_observer_throws"
+    ],
+    "tests/Unit/QuoteIntegrity/QimObservationServiceTest.php": [
+      "Tests\\Unit\\QuoteIntegrity\\QimObservationServiceTest::test_computes_logical_key_as_uuidv5_and_sha256_from_raw_bytes",
+      "Tests\\Unit\\QuoteIntegrity\\QimObservationServiceTest::test_detects_duplicate_exact",
+      "Tests\\Unit\\QuoteIntegrity\\QimObservationServiceTest::test_detects_duplicate_conflicting_and_preserves_both_versions",
+      "Tests\\Unit\\QuoteIntegrity\\QimObservationServiceTest::test_detects_duplicate_identity_config_when_rule_version_differs",
+      "Tests\\Unit\\QuoteIntegrity\\QimObservationServiceTest::test_no_op_when_feature_flag_is_disabled"
+    ],
+    "tests/Unit/Research/Autonomy/AutonomyControlTest.php": [
+      "Tests\\Unit\\Research\\Autonomy\\AutonomyControlTest::test_the_rollback_triggers_are_precommitted_and_immutable",
+      "Tests\\Unit\\Research\\Autonomy\\AutonomyControlTest::test_a_breached_trigger_requires_a_rollback",
+      "Tests\\Unit\\Research\\Autonomy\\AutonomyControlTest::test_missing_monitoring_evidence_is_incomplete_not_safe",
+      "Tests\\Unit\\Research\\Autonomy\\AutonomyControlTest::test_json_boolean_revocation_is_evaluated_fail_closed",
+      "Tests\\Unit\\Research\\Autonomy\\AutonomyControlTest::test_ambiguous_or_invalid_revocation_values_are_rejected",
+      "Tests\\Unit\\Research\\Autonomy\\AutonomyControlTest::test_non_finite_or_malformed_numeric_metrics_are_rejected",
+      "Tests\\Unit\\Research\\Autonomy\\AutonomyControlTest::test_a_genuine_zero_is_observed_and_not_confused_with_missing_evidence",
+      "Tests\\Unit\\Research\\Autonomy\\AutonomyControlTest::test_a_breach_is_preserved_when_other_evidence_is_missing",
+      "Tests\\Unit\\Research\\Autonomy\\AutonomyControlTest::test_the_approval_content_carries_the_source_ids_and_the_rollback_triggers",
+      "Tests\\Unit\\Research\\Autonomy\\AutonomyControlTest::test_promotion_refuses_malformed_or_nonfinite_risk_evidence",
+      "Tests\\Unit\\Research\\Autonomy\\AutonomyControlTest::test_the_kill_switch_blocks_an_otherwise_eligible_promotion",
+      "Tests\\Unit\\Research\\Autonomy\\AutonomyControlTest::test_the_correlation_cluster_cap_limits_a_duplicated_exposure",
+      "Tests\\Unit\\Research\\Autonomy\\AutonomyControlTest::test_an_uncorrelated_book_is_not_cluster_capped",
+      "Tests\\Unit\\Research\\Autonomy\\AutonomyControlTest::test_the_cluster_cap_never_increases_the_total_risk"
+    ],
+    "tests/Unit/Research/Autonomy/AutonomyDomainTest.php": [
+      "Tests\\Unit\\Research\\Autonomy\\AutonomyDomainTest::test_the_registry_is_immutable_deterministic_and_complete",
+      "Tests\\Unit\\Research\\Autonomy\\AutonomyDomainTest::test_every_candidate_declares_the_required_registration_fields",
+      "Tests\\Unit\\Research\\Autonomy\\AutonomyDomainTest::test_the_lead_lag_candidate_is_registered_but_not_executable",
+      "Tests\\Unit\\Research\\Autonomy\\AutonomyDomainTest::test_data_sufficiency_fails_closed_on_a_missing_observation",
+      "Tests\\Unit\\Research\\Autonomy\\AutonomyDomainTest::test_data_sufficiency_passes_only_when_every_requirement_is_met",
+      "Tests\\Unit\\Research\\Autonomy\\AutonomyDomainTest::test_data_sufficiency_rejects_invalid_numbers_and_missing_gates",
+      "Tests\\Unit\\Research\\Autonomy\\AutonomyDomainTest::test_the_experiment_cannot_skip_the_data_check",
+      "Tests\\Unit\\Research\\Autonomy\\AutonomyDomainTest::test_the_experiment_cannot_be_registered_without_a_preregistration_hash",
+      "Tests\\Unit\\Research\\Autonomy\\AutonomyDomainTest::test_the_experiment_cannot_be_registered_after_the_oos_result_was_seen",
+      "Tests\\Unit\\Research\\Autonomy\\AutonomyDomainTest::test_the_data_check_requires_a_registered_candidate",
+      "Tests\\Unit\\Research\\Autonomy\\AutonomyDomainTest::test_the_promotion_state_requires_a_positive_promotion_verdict"
+    ],
+    "tests/Unit/Research/Autonomy/AutonomyPromotionTest.php": [
+      "Tests\\Unit\\Research\\Autonomy\\AutonomyPromotionTest::test_the_promotion_is_blocked_while_the_feature_flag_is_off",
+      "Tests\\Unit\\Research\\Autonomy\\AutonomyPromotionTest::test_the_missing_shadow_history_yields_not_eligible",
+      "Tests\\Unit\\Research\\Autonomy\\AutonomyPromotionTest::test_a_negative_net_improvement_blocks_the_promotion",
+      "Tests\\Unit\\Research\\Autonomy\\AutonomyPromotionTest::test_a_drawdown_or_concentration_degradation_blocks_the_promotion",
+      "Tests\\Unit\\Research\\Autonomy\\AutonomyPromotionTest::test_only_a_complete_and_positive_evidence_set_is_eligible",
+      "Tests\\Unit\\Research\\Autonomy\\AutonomyPromotionTest::test_the_allocation_proposal_never_increases_the_total_risk",
+      "Tests\\Unit\\Research\\Autonomy\\AutonomyPromotionTest::test_the_allocation_proposal_respects_the_per_strategy_cap"
+    ],
+    "tests/Unit/Research/AutonomyPermissionServiceTest.php": [
+      "Tests\\Unit\\Research\\AutonomyPermissionServiceTest::test_autonomy_defaults_and_hard_invariants",
+      "Tests\\Unit\\Research\\AutonomyPermissionServiceTest::test_kill_switch_immediately_blocks_all_autonomy"
+    ],
+    "tests/Unit/Research/ChampionChallengerLifecycleTest.php": [
+      "Tests\\Unit\\Research\\ChampionChallengerLifecycleTest::test_train_model_returns_null_when_under_sample_size_threshold",
+      "Tests\\Unit\\Research\\ChampionChallengerLifecycleTest::test_initial_champion_model_is_promoted_when_validation_passes",
+      "Tests\\Unit\\Research\\ChampionChallengerLifecycleTest::test_challenger_is_evaluated_against_active_champion",
+      "Tests\\Unit\\Research\\ChampionChallengerLifecycleTest::test_concept_drift_detection",
+      "Tests\\Unit\\Research\\ChampionChallengerLifecycleTest::test_training_respects_permission_and_both_kill_switches"
+    ],
+    "tests/Unit/Research/Concentration/ConcentrationAnalyzerTest.php": [
+      "Tests\\Unit\\Research\\Concentration\\ConcentrationAnalyzerTest::test_share_of_total_is_null_with_a_reason_when_total_net_pnl_is_not_positive",
+      "Tests\\Unit\\Research\\Concentration\\ConcentrationAnalyzerTest::test_top_k_ranks_clusters_by_net_pnl_and_traces_members_to_position_ids",
+      "Tests\\Unit\\Research\\Concentration\\ConcentrationAnalyzerTest::test_open_positions_contribute_no_realized_pnl_but_report_unrealized_separately",
+      "Tests\\Unit\\Research\\Concentration\\ConcentrationAnalyzerTest::test_day_block_counts_are_reported_for_positions_and_clusters"
+    ],
+    "tests/Unit/Research/Concentration/EquityAlignmentTest.php": [
+      "Tests\\Unit\\Research\\Concentration\\EquityAlignmentTest::test_alignment_is_not_comparable_when_a_snapshot_is_missing_beyond_the_max_carry_forward_age",
+      "Tests\\Unit\\Research\\Concentration\\EquityAlignmentTest::test_simultaneous_drawdown_periods_are_detected_without_netting_accounts",
+      "Tests\\Unit\\Research\\Concentration\\EquityAlignmentTest::test_missing_snapshots_never_become_zero_return_observations",
+      "Tests\\Unit\\Research\\Concentration\\EquityAlignmentTest::test_single_account_population_is_not_comparable_for_cross_account_comparison"
+    ],
+    "tests/Unit/Research/Concentration/OverlapClusterBuilderTest.php": [
+      "Tests\\Unit\\Research\\Concentration\\OverlapClusterBuilderTest::test_same_side_clusters_merge_only_overlapping_positions_of_the_same_symbol_and_side",
+      "Tests\\Unit\\Research\\Concentration\\OverlapClusterBuilderTest::test_same_side_membership_is_transitive_within_a_side",
+      "Tests\\Unit\\Research\\Concentration\\OverlapClusterBuilderTest::test_opposite_side_view_is_a_bipartite_graph_without_same_side_edges",
+      "Tests\\Unit\\Research\\Concentration\\OverlapClusterBuilderTest::test_half_open_intervals_that_only_touch_do_not_overlap",
+      "Tests\\Unit\\Research\\Concentration\\OverlapClusterBuilderTest::test_cluster_ids_are_content_addressed_and_stable_under_input_reordering",
+      "Tests\\Unit\\Research\\Concentration\\OverlapClusterBuilderTest::test_cluster_net_pnl_is_the_exact_decimal_sum_of_members"
+    ],
+    "tests/Unit/Research/CostMfe/CostAttributionTest.php": [
+      "Tests\\Unit\\Research\\CostMfe\\CostAttributionTest::test_cost_is_attributed_by_strategy_symbol_account_and_fill_role",
+      "Tests\\Unit\\Research\\CostMfe\\CostAttributionTest::test_slippage_drag_uses_quantity_and_reference_notional_without_double_deduction",
+      "Tests\\Unit\\Research\\CostMfe\\CostAttributionTest::test_undefined_ratios_are_null_with_a_reason_instead_of_zero",
+      "Tests\\Unit\\Research\\CostMfe\\CostAttributionTest::test_gross_positive_positions_that_end_net_negative_are_counted",
+      "Tests\\Unit\\Research\\CostMfe\\CostAttributionTest::test_ambiguous_executions_are_counted_and_partial_exits_use_their_own_fill_role",
+      "Tests\\Unit\\Research\\CostMfe\\CostAttributionTest::test_positions_without_execution_rows_are_reported_as_missing_cost_records"
+    ],
+    "tests/Unit/Research/CostMfe/MfeMaeCalculatorTest.php": [
+      "Tests\\Unit\\Research\\CostMfe\\MfeMaeCalculatorTest::test_buy_position_mfe_and_mae_use_only_candles_inside_the_holding_interval",
+      "Tests\\Unit\\Research\\CostMfe\\MfeMaeCalculatorTest::test_sell_position_mirrors_the_excursion_directions",
+      "Tests\\Unit\\Research\\CostMfe\\MfeMaeCalculatorTest::test_excursions_are_clamped_at_zero_when_the_price_never_moved_against_the_position",
+      "Tests\\Unit\\Research\\CostMfe\\MfeMaeCalculatorTest::test_a_favourable_excursion_never_becomes_negative_when_the_price_never_reached_the_entry",
+      "Tests\\Unit\\Research\\CostMfe\\MfeMaeCalculatorTest::test_no_eligible_candles_yield_null_metrics_and_never_zero",
+      "Tests\\Unit\\Research\\CostMfe\\MfeMaeCalculatorTest::test_r_multiples_are_null_with_a_reason_when_the_stop_is_missing_or_invalid",
+      "Tests\\Unit\\Research\\CostMfe\\MfeMaeCalculatorTest::test_a_candle_spanning_stop_and_target_is_flagged_as_ambiguous",
+      "Tests\\Unit\\Research\\CostMfe\\MfeMaeCalculatorTest::test_candles_after_the_as_of_boundary_are_never_used",
+      "Tests\\Unit\\Research\\CostMfe\\MfeMaeCalculatorTest::test_calculation_is_deterministic_for_identical_input"
+    ],
+    "tests/Unit/Research/CostMfe/PreEntryMfeEstimatorTest.php": [
+      "Tests\\Unit\\Research\\CostMfe\\PreEntryMfeEstimatorTest::test_estimator_reports_insufficient_data_when_no_observation_had_matured",
+      "Tests\\Unit\\Research\\CostMfe\\PreEntryMfeEstimatorTest::test_observations_that_matured_after_the_candidate_entry_are_excluded",
+      "Tests\\Unit\\Research\\CostMfe\\PreEntryMfeEstimatorTest::test_observations_whose_source_candles_reach_past_the_entry_are_excluded",
+      "Tests\\Unit\\Research\\CostMfe\\PreEntryMfeEstimatorTest::test_distribution_uses_nearest_rank_percentiles_of_the_observed_mfe",
+      "Tests\\Unit\\Research\\CostMfe\\PreEntryMfeEstimatorTest::test_lookback_start_excludes_observations_older_than_the_window"
+    ],
+    "tests/Unit/Research/CounterfactualAccurateRCalculationTest.php": [
+      "Tests\\Unit\\Research\\CounterfactualAccurateRCalculationTest::test_buy_take_profit_calculates_accurate_net_r_with_execution_costs",
+      "Tests\\Unit\\Research\\CounterfactualAccurateRCalculationTest::test_sell_stop_loss_calculates_accurate_net_r_with_execution_costs",
+      "Tests\\Unit\\Research\\CounterfactualAccurateRCalculationTest::test_timeout_resolution_uses_last_candle_close"
+    ],
+    "tests/Unit/Research/CounterfactualAnalyzerServiceTest.php": [
+      "Tests\\Unit\\Research\\CounterfactualAnalyzerServiceTest::test_creates_and_resolves_counterfactual_evaluation",
+      "Tests\\Unit\\Research\\CounterfactualAnalyzerServiceTest::test_analyze_and_resolve_is_idempotent",
+      "Tests\\Unit\\Research\\CounterfactualAnalyzerServiceTest::test_counterfactual_links_to_matching_signal_id_when_signal_exists",
+      "Tests\\Unit\\Research\\CounterfactualAnalyzerServiceTest::test_counterfactual_rejects_ambiguous_signal_matches_and_leaves_signal_id_null",
+      "Tests\\Unit\\Research\\CounterfactualAnalyzerServiceTest::test_counterfactual_leaves_signal_id_null_when_no_signal_record_exists"
+    ],
+    "tests/Unit/Research/CounterfactualLegacyQuarantineTest.php": [
+      "Tests\\Unit\\Research\\CounterfactualLegacyQuarantineTest::test_disabled_engine_does_not_create_evaluations_from_mature_skips",
+      "Tests\\Unit\\Research\\CounterfactualLegacyQuarantineTest::test_disabled_engine_does_not_resolve_pending_rows",
+      "Tests\\Unit\\Research\\CounterfactualLegacyQuarantineTest::test_report_marks_legacy_rows_read_only",
+      "Tests\\Unit\\Research\\CounterfactualLegacyQuarantineTest::test_configuration_cannot_enable_replay_in_operational_mode",
+      "Tests\\Unit\\Research\\CounterfactualLegacyQuarantineTest::test_legacy_metric_signs_include_recorded_timeouts_and_exclude_missing_r"
+    ],
+    "tests/Unit/Research/CounterfactualNoHindsightTest.php": [
+      "Tests\\Unit\\Research\\CounterfactualNoHindsightTest::test_non_evaluable_skip_is_flagged_as_non_evaluable",
+      "Tests\\Unit\\Research\\CounterfactualNoHindsightTest::test_direction_is_strictly_derived_at_decision_time_without_future_knowledge",
+      "Tests\\Unit\\Research\\CounterfactualNoHindsightTest::test_resolved_tp_incorporates_realistic_trading_costs"
+    ],
+    "tests/Unit/Research/Decision/DecisionGateTest.php": [
+      "Tests\\Unit\\Research\\Decision\\DecisionGateTest::test_unknown_claim_type_is_refused",
+      "Tests\\Unit\\Research\\Decision\\DecisionGateTest::test_missing_required_package_blocks_the_conclusion",
+      "Tests\\Unit\\Research\\Decision\\DecisionGateTest::test_scope_mixed_inputs_are_refused",
+      "Tests\\Unit\\Research\\Decision\\DecisionGateTest::test_partial_input_generation_asks_for_more_data",
+      "Tests\\Unit\\Research\\Decision\\DecisionGateTest::test_failed_input_generation_is_insufficient_evidence",
+      "Tests\\Unit\\Research\\Decision\\DecisionGateTest::test_unreconciled_attribution_input_is_refused",
+      "Tests\\Unit\\Research\\Decision\\DecisionGateTest::test_attribution_package_without_a_declared_reconciliation_is_refused",
+      "Tests\\Unit\\Research\\Decision\\DecisionGateTest::test_stale_input_asks_for_more_data",
+      "Tests\\Unit\\Research\\Decision\\DecisionGateTest::test_insufficient_p2_sample_asks_for_more_data",
+      "Tests\\Unit\\Research\\Decision\\DecisionGateTest::test_undeclared_p2_sample_asks_for_more_data",
+      "Tests\\Unit\\Research\\Decision\\DecisionGateTest::test_inferential_package_without_a_declared_sample_requirement_asks_for_more_data",
+      "Tests\\Unit\\Research\\Decision\\DecisionGateTest::test_inferential_package_with_an_insufficient_sample_asks_for_more_data",
+      "Tests\\Unit\\Research\\Decision\\DecisionGateTest::test_missing_preregistration_blocks_the_conclusion",
+      "Tests\\Unit\\Research\\Decision\\DecisionGateTest::test_missing_evidence_bundle_blocks_the_conclusion",
+      "Tests\\Unit\\Research\\Decision\\DecisionGateTest::test_all_gates_passed_produces_the_owner_review_state_only",
+      "Tests\\Unit\\Research\\Decision\\DecisionGateTest::test_attribution_package_is_not_imbued_with_an_ess_requirement",
+      "Tests\\Unit\\Research\\Decision\\DecisionGateTest::test_registered_test_outcome_can_reject_the_hypothesis",
+      "Tests\\Unit\\Research\\Decision\\DecisionGateTest::test_registered_test_outcome_can_report_negative_evidence",
+      "Tests\\Unit\\Research\\Decision\\DecisionGateTest::test_unknown_test_outcome_is_refused",
+      "Tests\\Unit\\Research\\Decision\\DecisionGateTest::test_p3_input_is_refused",
+      "Tests\\Unit\\Research\\Decision\\DecisionGateTest::test_risk_rejected_opportunity_claim_is_refused",
+      "Tests\\Unit\\Research\\Decision\\DecisionGateTest::test_owner_authorisation_requires_a_previous_eligible_state",
+      "Tests\\Unit\\Research\\Decision\\DecisionGateTest::test_owner_authorisation_on_top_of_an_eligible_state_is_recorded",
+      "Tests\\Unit\\Research\\Decision\\DecisionGateTest::test_illegal_transition_is_reported_and_not_silently_applied"
+    ],
+    "tests/Unit/Research/Decision/HypothesisPriorityTest.php": [
+      "Tests\\Unit\\Research\\Decision\\HypothesisPriorityTest::test_historical_recovery_is_scaled_to_one_hundred_trades_and_marked_hypothetical",
+      "Tests\\Unit\\Research\\Decision\\HypothesisPriorityTest::test_an_untested_hypothesis_gets_no_point_estimate",
+      "Tests\\Unit\\Research\\Decision\\HypothesisPriorityTest::test_forward_estimate_requires_a_sufficient_oos_sample",
+      "Tests\\Unit\\Research\\Decision\\HypothesisPriorityTest::test_forward_estimate_is_reported_for_a_sufficient_oos_sample",
+      "Tests\\Unit\\Research\\Decision\\HypothesisPriorityTest::test_rows_are_sorted_by_the_conservative_lower_bound_and_untested_ideas_come_last",
+      "Tests\\Unit\\Research\\Decision\\HypothesisPriorityTest::test_the_dimensions_are_kept_separate_and_no_composite_score_is_produced"
+    ],
+    "tests/Unit/Research/DecisionReplayServiceTest.php": [
+      "Tests\\Unit\\Research\\DecisionReplayServiceTest::test_replays_decision_deterministically"
+    ],
+    "tests/Unit/Research/LearningFeatureStoreServiceTest.php": [
+      "Tests\\Unit\\Research\\LearningFeatureStoreServiceTest::test_assembles_point_in_time_snapshot_and_matures_label",
+      "Tests\\Unit\\Research\\LearningFeatureStoreServiceTest::test_f17_learning_feature_store_isolates_exchanges_without_cross_contamination"
+    ],
+    "tests/Unit/Research/LearningPredictorServiceTest.php": [
+      "Tests\\Unit\\Research\\LearningPredictorServiceTest::test_trains_model_and_predicts_calibrated_probability"
+    ],
+    "tests/Unit/Research/LedgerReconciliationServiceTest.php": [
+      "Tests\\Unit\\Research\\LedgerReconciliationServiceTest::test_reconciliation_passes_on_clean_account",
+      "Tests\\Unit\\Research\\LedgerReconciliationServiceTest::test_missing_history_is_incomplete_and_higher_historical_drawdown_is_not_corruption",
+      "Tests\\Unit\\Research\\LedgerReconciliationServiceTest::test_observed_drawdown_above_stored_maximum_is_reported_without_rewriting_account",
+      "Tests\\Unit\\Research\\LedgerReconciliationServiceTest::test_orphan_execution_is_reported_globally_without_inventing_account_ownership",
+      "Tests\\Unit\\Research\\LedgerReconciliationServiceTest::test_reconciliation_detects_injected_discrepancies",
+      "Tests\\Unit\\Research\\LedgerReconciliationServiceTest::test_reconciliation_verifies_executions_with_partial_and_full_exits_and_funding"
+    ],
+    "tests/Unit/Research/LogisticRegressionTrainingTest.php": [
+      "Tests\\Unit\\Research\\LogisticRegressionTrainingTest::test_train_model_optimizes_weights_via_gradient_descent_not_hardcoded",
+      "Tests\\Unit\\Research\\LogisticRegressionTrainingTest::test_train_model_fails_closed_when_data_is_insufficient",
+      "Tests\\Unit\\Research\\LogisticRegressionTrainingTest::test_training_rejects_one_class_labels_without_division_by_zero_or_artifact",
+      "Tests\\Unit\\Research\\LogisticRegressionTrainingTest::test_matured_labels_never_cross_exchange_boundaries",
+      "Tests\\Unit\\Research\\LogisticRegressionTrainingTest::test_missing_exchange_provenance_is_not_assumed_bybit"
+    ],
+    "tests/Unit/Research/MetricRegistryTest.php": [
+      "Tests\\Unit\\Research\\MetricRegistryTest::test_metric_registry_contains_mandatory_economic_metrics",
+      "Tests\\Unit\\Research\\MetricRegistryTest::test_slippage_is_defined_as_price_delta_and_prohibits_second_deduction",
+      "Tests\\Unit\\Research\\MetricRegistryTest::test_profit_factor_and_payoff_ratio_require_null_on_zero_losses",
+      "Tests\\Unit\\Research\\MetricRegistryTest::test_margin_metric_is_explicitly_flagged_as_not_recorded_in_ledger",
+      "Tests\\Unit\\Research\\MetricRegistryTest::test_metric_registry_service_catalog_enforces_scope_prohibitions"
+    ],
+    "tests/Unit/Research/ModelAdvisoryIntegrationTest.php": [
+      "Tests\\Unit\\Research\\ModelAdvisoryIntegrationTest::test_shadow_mode_records_predictions_without_altering_trading_decisions",
+      "Tests\\Unit\\Research\\ModelAdvisoryIntegrationTest::test_active_mode_vetoes_low_probability_trades_to_skip",
+      "Tests\\Unit\\Research\\ModelAdvisoryIntegrationTest::test_active_mode_allows_high_probability_trades"
+    ],
+    "tests/Unit/Research/P1ArchiveEvaluationTest.php": [
+      "Tests\\Unit\\Research\\P1ArchiveEvaluationTest::test_valid_fixture_produces_verified_counterfactual",
+      "Tests\\Unit\\Research\\P1ArchiveEvaluationTest::test_missing_manifest_checksum_is_rejected",
+      "Tests\\Unit\\Research\\P1ArchiveEvaluationTest::test_checksum_mismatch_is_rejected",
+      "Tests\\Unit\\Research\\P1ArchiveEvaluationTest::test_unknown_execution_type_is_rejected",
+      "Tests\\Unit\\Research\\P1ArchiveEvaluationTest::test_position_without_executions_is_not_silently_excluded",
+      "Tests\\Unit\\Research\\P1ArchiveEvaluationTest::test_malformed_row_shape_is_rejected",
+      "Tests\\Unit\\Research\\P1ArchiveEvaluationTest::test_non_numeric_values_are_rejected",
+      "Tests\\Unit\\Research\\P1ArchiveEvaluationTest::test_as_of_override_is_rejected",
+      "Tests\\Unit\\Research\\P1ArchiveEvaluationTest::test_partial_close_archive_marks_counterfactual_unverified"
+    ],
+    "tests/Unit/Research/PortfolioCorrelationServiceTest.php": [
+      "Tests\\Unit\\Research\\PortfolioCorrelationServiceTest::test_computes_portfolio_correlation_and_overlap",
+      "Tests\\Unit\\Research\\PortfolioCorrelationServiceTest::test_f15_real_lifecycle_closed_and_partially_closed_positions_are_included",
+      "Tests\\Unit\\Research\\PortfolioCorrelationServiceTest::test_f15_portfolio_correlation_aligns_time_observations_without_pairing_by_row_order"
+    ],
+    "tests/Unit/Research/ProbabilityCalibrationServiceTest.php": [
+      "Tests\\Unit\\Research\\ProbabilityCalibrationServiceTest::test_computes_brier_ece_and_reliability_bins",
+      "Tests\\Unit\\Research\\ProbabilityCalibrationServiceTest::test_handles_success_failure_outcomes_and_filters_null_probabilities",
+      "Tests\\Unit\\Research\\ProbabilityCalibrationServiceTest::test_returns_insufficient_data_when_fewer_than_five_matured_forecasts"
+    ],
+    "tests/Unit/Research/PromotionPolicyFailClosedTest.php": [
+      "Tests\\Unit\\Research\\PromotionPolicyFailClosedTest::test_candidate_without_validation_run_fails_closed",
+      "Tests\\Unit\\Research\\PromotionPolicyFailClosedTest::test_candidate_with_uncompleted_backtest_run_fails_closed",
+      "Tests\\Unit\\Research\\PromotionPolicyFailClosedTest::test_candidate_with_failing_metrics_fails_gates",
+      "Tests\\Unit\\Research\\PromotionPolicyFailClosedTest::test_profitable_backtest_does_not_replace_forward_evidence",
+      "Tests\\Unit\\Research\\PromotionPolicyFailClosedTest::test_adversarial_attempt_to_promote_rejected_candidate_throws"
+    ],
+    "tests/Unit/Research/PromotionPolicyServiceTest.php": [
+      "Tests\\Unit\\Research\\PromotionPolicyServiceTest::test_promoted_candidate_cannot_be_falsely_marked_rolled_back",
+      "Tests\\Unit\\Research\\PromotionPolicyServiceTest::test_forged_stored_verdict_cannot_allocate_an_account",
+      "Tests\\Unit\\Research\\PromotionPolicyServiceTest::test_kill_switch_blocks_operator_promotion",
+      "Tests\\Unit\\Research\\PromotionPolicyServiceTest::test_feature_flag_blocks_autonomous_promotion_even_with_explicit_permission",
+      "Tests\\Unit\\Research\\PromotionPolicyServiceTest::test_evaluates_gates_and_promotes_with_operator_approval",
+      "Tests\\Unit\\Research\\PromotionPolicyServiceTest::test_gates_evaluation_and_promotion_flow",
+      "Tests\\Unit\\Research\\PromotionPolicyServiceTest::test_rejects_candidate_without_out_of_sample_validation",
+      "Tests\\Unit\\Research\\PromotionPolicyServiceTest::test_calibration_gate_is_not_applicable_to_strategy_candidates"
+    ],
+    "tests/Unit/Research/ResearchJobServiceTest.php": [
+      "Tests\\Unit\\Research\\ResearchJobServiceTest::test_can_submit_valid_research_job",
+      "Tests\\Unit\\Research\\ResearchJobServiceTest::test_rejects_invalid_job_kind",
+      "Tests\\Unit\\Research\\ResearchJobServiceTest::test_deduplicates_active_job_with_same_idempotency_key",
+      "Tests\\Unit\\Research\\ResearchJobServiceTest::test_can_claim_and_start_job",
+      "Tests\\Unit\\Research\\ResearchJobServiceTest::test_heartbeat_updates_progress_and_lease",
+      "Tests\\Unit\\Research\\ResearchJobServiceTest::test_complete_job_persists_manifest_and_stats",
+      "Tests\\Unit\\Research\\ResearchJobServiceTest::test_fail_job_retries_then_fails",
+      "Tests\\Unit\\Research\\ResearchJobServiceTest::test_cancelled_job_cannot_be_requeued_by_stale_worker_failure",
+      "Tests\\Unit\\Research\\ResearchJobServiceTest::test_expired_lease_cannot_be_revived_or_completed",
+      "Tests\\Unit\\Research\\ResearchJobServiceTest::test_reconcile_stale_leases",
+      "Tests\\Unit\\Research\\ResearchJobServiceTest::test_rejects_go_kind_missing_exchange",
+      "Tests\\Unit\\Research\\ResearchJobServiceTest::test_accepts_binance_exchange_provenance",
+      "Tests\\Unit\\Research\\ResearchJobServiceTest::test_accepts_dataset_exchange_provenance",
+      "Tests\\Unit\\Research\\ResearchJobServiceTest::test_accepts_dataset_exchange_top_level_alias",
+      "Tests\\Unit\\Research\\ResearchJobServiceTest::test_rejects_conflicting_exchange_identities",
+      "Tests\\Unit\\Research\\ResearchJobServiceTest::test_rejects_conflicting_dataset_exchange",
+      "Tests\\Unit\\Research\\ResearchJobServiceTest::test_rejects_unsupported_exchange_identity",
+      "Tests\\Unit\\Research\\ResearchJobServiceTest::test_rejects_empty_or_non_string_exchange",
+      "Tests\\Unit\\Research\\ResearchJobServiceTest::test_idempotency_key_cannot_conflate_bybit_and_binance_jobs",
+      "Tests\\Unit\\Research\\ResearchJobServiceTest::test_auto_generated_idempotency_keys_differ_between_exchanges",
+      "Tests\\Unit\\Research\\ResearchJobServiceTest::test_capability_routing_reflects_actual_worker_presence",
+      "Tests\\Unit\\Research\\ResearchJobServiceTest::test_f21_worker_capability_map_reports_compatible_workers_and_unavailable_reasons"
+    ],
+    "tests/Unit/Research/ResearchRecommendationServiceTest.php": [
+      "Tests\\Unit\\Research\\ResearchRecommendationServiceTest::test_legacy_counterfactuals_cannot_generate_recommendations"
+    ],
+    "tests/Unit/Research/ResearchReportServiceTest.php": [
+      "Tests\\Unit\\Research\\ResearchReportServiceTest::test_generates_comprehensive_research_report"
+    ],
+    "tests/Unit/Research/RiskCapitalMetricsServiceTest.php": [
+      "Tests\\Unit\\Research\\RiskCapitalMetricsServiceTest::test_bartlett_ess_handles_short_series",
+      "Tests\\Unit\\Research\\RiskCapitalMetricsServiceTest::test_bartlett_ess_clamps_on_negative_denom_or_high_autocorrelation",
+      "Tests\\Unit\\Research\\RiskCapitalMetricsServiceTest::test_bartlett_ess_returns_null_for_empty",
+      "Tests\\Unit\\Research\\RiskCapitalMetricsServiceTest::test_bartlett_ess_matches_independently_calculated_reference",
+      "Tests\\Unit\\Research\\RiskCapitalMetricsServiceTest::test_bartlett_ess_of_uncorrelated_series_is_clamped_to_sample_size",
+      "Tests\\Unit\\Research\\RiskCapitalMetricsServiceTest::test_bartlett_ess_of_mildly_autocorrelated_series_is_below_sample_size",
+      "Tests\\Unit\\Research\\RiskCapitalMetricsServiceTest::test_bartlett_ess_reports_clamped_for_constant_series"
+    ],
+    "tests/Unit/Research/ShadowExperimentServiceTest.php": [
+      "Tests\\Unit\\Research\\ShadowExperimentServiceTest::test_shadow_experiment_lifecycle_and_capacity_limits"
+    ],
+    "tests/Unit/Research/SlippageAllocationTest.php": [
+      "Tests\\Unit\\Research\\SlippageAllocationTest::test_fully_closed_position_realizes_its_whole_drag",
+      "Tests\\Unit\\Research\\SlippageAllocationTest::test_partially_closed_position_allocates_entry_drag_proportionally_but_pnl_scope_stays_unresolved",
+      "Tests\\Unit\\Research\\SlippageAllocationTest::test_open_position_does_not_realize_any_entry_drag",
+      "Tests\\Unit\\Research\\SlippageAllocationTest::test_population_mismatch_is_not_verified",
+      "Tests\\Unit\\Research\\SlippageAllocationTest::test_empty_population_is_not_verified",
+      "Tests\\Unit\\Research\\SlippageAllocationTest::test_invalid_quantities_are_not_verified",
+      "Tests\\Unit\\Research\\SlippageAllocationTest::test_remaining_quantity_above_initial_quantity_is_not_verified",
+      "Tests\\Unit\\Research\\SlippageAllocationTest::test_negative_remaining_quantity_is_not_verified",
+      "Tests\\Unit\\Research\\SlippageAllocationTest::test_non_numeric_and_negative_drags_are_invalid",
+      "Tests\\Unit\\Research\\SlippageAllocationTest::test_missing_values_are_invalid_not_zero",
+      "Tests\\Unit\\Research\\SlippageAllocationTest::test_mixed_population_never_presents_a_partial_close_counterfactual"
+    ],
+    "tests/Unit/Research/SlippageAttributionServiceTest.php": [
+      "Tests\\Unit\\Research\\SlippageAttributionServiceTest::test_signed_adverse_drag_mathematical_identity",
+      "Tests\\Unit\\Research\\SlippageAttributionServiceTest::test_returns_no_generation_available_when_table_empty",
+      "Tests\\Unit\\Research\\SlippageAttributionServiceTest::test_generate_computes_attribution_and_stores_immutable_generation",
+      "Tests\\Unit\\Research\\SlippageAttributionServiceTest::test_get_latest_summary_computes_counterfactual_without_double_deduction",
+      "Tests\\Unit\\Research\\SlippageAttributionServiceTest::test_invalid_position_with_matching_population_keeps_counterfactual_null",
+      "Tests\\Unit\\Research\\SlippageAttributionServiceTest::test_partial_close_service_counterfactual_fails_closed"
+    ],
+    "tests/Unit/Research/StrategyDegradationServiceTest.php": [
+      "Tests\\Unit\\Research\\StrategyDegradationServiceTest::test_evaluates_degradation_with_insufficient_data",
+      "Tests\\Unit\\Research\\StrategyDegradationServiceTest::test_detects_regime_mismatch_degradation",
+      "Tests\\Unit\\Research\\StrategyDegradationServiceTest::test_detects_closed_positions_with_enum_statuses",
+      "Tests\\Unit\\Research\\StrategyDegradationServiceTest::test_f16_strategy_degradation_isolates_exchanges_without_cross_pollution"
+    ],
+    "tests/Unit/Research/StrategyEvolutionServiceTest.php": [
+      "Tests\\Unit\\Research\\StrategyEvolutionServiceTest::test_generates_bounded_candidate_with_reproducible_seed",
+      "Tests\\Unit\\Research\\StrategyEvolutionServiceTest::test_generates_candidates_for_every_family"
+    ],
+    "tests/Unit/Research/StrategyHealthServiceTest.php": [
+      "Tests\\Unit\\Research\\StrategyHealthServiceTest::test_evaluates_strategy_health_and_builds_funnel",
+      "Tests\\Unit\\Research\\StrategyHealthServiceTest::test_identifies_insufficient_data_status"
+    ],
+    "tests/Unit/Research/SystemFreshnessServiceTest.php": [
+      "Tests\\Unit\\Research\\SystemFreshnessServiceTest::test_freshness_check_detects_lag_and_generates_alerts",
+      "Tests\\Unit\\Research\\SystemFreshnessServiceTest::test_frozen_clock_timestamp_and_checked_at_represent_actual_current_utc_time_and_are_not_mutated",
+      "Tests\\Unit\\Research\\SystemFreshnessServiceTest::test_execution_failures_24h_window_boundary_exactness_without_timestamp_mutation",
+      "Tests\\Unit\\Research\\SystemFreshnessServiceTest::test_bybit_and_binance_freshness_isolation",
+      "Tests\\Unit\\Research\\SystemFreshnessServiceTest::test_missing_stale_conflicted_and_healthy_intervals_produce_correct_statuses_and_alerts",
+      "Tests\\Unit\\Research\\SystemFreshnessServiceTest::test_api_contract_backward_compatibility"
+    ],
+    "tests/Unit/Strategy/CandidateStrategiesTest.php": [
+      "Tests\\Unit\\Strategy\\CandidateStrategiesTest::test_registry_exposes_all_thirteen_primary_strategies_as_execution_eligible",
+      "Tests\\Unit\\Strategy\\CandidateStrategiesTest::test_funding_open_interest_squeeze_emits_reversal_in_both_directions_and_skips_without_crowding",
+      "Tests\\Unit\\Strategy\\CandidateStrategiesTest::test_liquidity_sweep_reversal_requires_a_sweep_and_close_recapture",
+      "Tests\\Unit\\Strategy\\CandidateStrategiesTest::test_volatility_compression_breakout_requires_prior_compression_and_close_breakout",
+      "Tests\\Unit\\Strategy\\CandidateStrategiesTest::test_multi_timeframe_trend_following_requires_htf_direction_and_ltf_cross",
+      "Tests\\Unit\\Strategy\\CandidateStrategiesTest::test_btc_eth_lead_lag_uses_only_known_peer_history_and_skips_without_peer",
+      "Tests\\Unit\\Strategy\\CandidateStrategiesTest::test_candidate_rejects_a_future_candle"
+    ],
+    "tests/Unit/Strategy/MarketContextCollectorTest.php": [
+      "Tests\\Unit\\Strategy\\MarketContextCollectorTest::test_it_builds_a_timestamped_context_and_deterministic_oi_change"
+    ],
+    "tests/Unit/Strategy/ResearchStrategiesTest.php": [
+      "Tests\\Unit\\Strategy\\ResearchStrategiesTest::test_trend_pullback_emits_buy_and_sell_without_changing_baseline_rules",
+      "Tests\\Unit\\Strategy\\ResearchStrategiesTest::test_mean_reversion_requires_prior_outside_close_and_current_reentry",
+      "Tests\\Unit\\Strategy\\ResearchStrategiesTest::test_donchian_excludes_breakout_candle_and_rejects_future_data",
+      "Tests\\Unit\\Strategy\\ResearchStrategiesTest::test_regime_classifier_is_causal_and_identifies_trend_range_and_high_volatility",
+      "Tests\\Unit\\Strategy\\ResearchStrategiesTest::test_momentum_strategy_operates_independently_for_long_and_short_setups"
+    ],
+    "tests/Unit/Strategy/SignalQualityPolicyTest.php": [
+      "Tests\\Unit\\Strategy\\SignalQualityPolicyTest::test_pure_skip_decision_without_plan_is_graded_unrated_and_not_eligible",
+      "Tests\\Unit\\Strategy\\SignalQualityPolicyTest::test_skip_with_candidate_plan_preserves_technical_grade_with_skipped_status",
+      "Tests\\Unit\\Strategy\\SignalQualityPolicyTest::test_grade_a_requires_both_conservative_expectancy_and_score",
+      "Tests\\Unit\\Strategy\\SignalQualityPolicyTest::test_uncertainty_reduces_conservative_expectancy",
+      "Tests\\Unit\\Strategy\\SignalQualityPolicyTest::test_small_sample_size_yields_unrated"
+    ],
+    "tests/Unit/Strategy/StrategyEngineTest.php": [
+      "Tests\\Unit\\Strategy\\StrategyEngineTest::test_buy_contains_all_triggers_prices_and_a_quality",
+      "Tests\\Unit\\Strategy\\StrategyEngineTest::test_sell_is_mirrored_and_rounded_to_tick",
+      "Tests\\Unit\\Strategy\\StrategyEngineTest::test_neutral_trend_warmup_gap_and_staleness_are_specific_skips",
+      "Tests\\Unit\\Strategy\\StrategyEngineTest::test_strong_support_rejection_with_momentum_can_enter_during_neutral_hourly_trend",
+      "Tests\\Unit\\Strategy\\StrategyEngineTest::test_conflicting_confirmation_spread_and_extreme_atr_are_skips",
+      "Tests\\Unit\\Strategy\\StrategyEngineTest::test_opposite_level_rejects_insufficient_risk_reward",
+      "Tests\\Unit\\Strategy\\StrategyEngineTest::test_quality_classes_follow_configured_thresholds_without_duplicate_points",
+      "Tests\\Unit\\Strategy\\StrategyEngineTest::test_json_contract_is_deterministic_and_research_only",
+      "Tests\\Unit\\Strategy\\StrategyEngineTest::test_missing_historical_context_and_tick_size_cannot_emit_signal",
+      "Tests\\Unit\\Strategy\\StrategyEngineTest::test_future_candle_is_rejected_by_the_pure_engine"
+    ],
+    "tests/Unit/StrategyBuilder/ExecutableStoreTest.php": [
+      "Tests\\Unit\\StrategyBuilder\\ExecutableStoreTest::test_pinned_engine_survives_configured_binary_replacement",
+      "Tests\\Unit\\StrategyBuilder\\ExecutableStoreTest::test_a_modified_archive_is_rejected_before_execution"
+    ],
+    "tests/Unit/Trading/TradingQueueIsolationTest.php": [
+      "Tests\\Unit\\Trading\\TradingQueueIsolationTest::test_trading_configuration_declares_isolated_queue_names",
+      "Tests\\Unit\\Trading\\TradingQueueIsolationTest::test_compose_yaml_configures_independent_workers_for_bybit_and_binance",
+      "Tests\\Unit\\Trading\\TradingQueueIsolationTest::test_vps_resource_limits_are_bounded_for_all_queue_workers"
+    ],
+    "tests/Feature/Api/CompleteApiEndpointAuditTest.php": [
+      "Tests\\Feature\\Api\\CompleteApiEndpointAuditTest::test_all_registered_api_endpoints_are_discovered_and_tested",
+      "Tests\\Feature\\Api\\CompleteApiEndpointAuditTest::test_research_write_routes_do_not_require_local_token_when_authenticated",
+      "Tests\\Feature\\Api\\CompleteApiEndpointAuditTest::test_signals_endpoint_annotates_latest_matching_scoped_risk_decision"
+    ],
+    "tests/Feature/Api/MultiAccountSelectionTest.php": [
+      "Tests\\Feature\\Api\\MultiAccountSelectionTest::test_dashboard_returns_aggregate_portfolio_when_all_is_selected",
+      "Tests\\Feature\\Api\\MultiAccountSelectionTest::test_dashboard_returns_account_scoped_portfolio_when_specific_account_requested",
+      "Tests\\Feature\\Api\\MultiAccountSelectionTest::test_statistics_accepts_account_param_and_returns_account_provenance",
+      "Tests\\Feature\\Api\\MultiAccountSelectionTest::test_risk_accepts_account_param_and_scopes_decisions",
+      "Tests\\Feature\\Api\\MultiAccountSelectionTest::test_paper_accounts_endpoint_returns_accounts_with_exchange_filtering",
+      "Tests\\Feature\\Api\\MultiAccountSelectionTest::test_f09_twenty_six_account_census_all_selectable_with_distinct_balances_and_foreign_rejection"
+    ],
+    "tests/Feature/Api/ReadOnlyGetEndpointsTest.php": [
+      "Tests\\Feature\\Api\\ReadOnlyGetEndpointsTest::test_all_registered_get_endpoints_are_read_only"
+    ],
+    "tests/Feature/Api/ResearchApiTest.php": [
+      "Tests\\Feature\\Api\\ResearchApiTest::test_dashboard_contract_and_empty_state",
+      "Tests\\Feature\\Api\\ResearchApiTest::test_dashboard_reports_each_strategy_observation_stream",
+      "Tests\\Feature\\Api\\ResearchApiTest::test_dashboard_returns_performance_for_an_existing_paper_account",
+      "Tests\\Feature\\Api\\ResearchApiTest::test_dashboard_exposes_bounded_level_and_momentum_analysis",
+      "Tests\\Feature\\Api\\ResearchApiTest::test_invalid_symbol_and_series_limit_are_rejected",
+      "Tests\\Feature\\Api\\ResearchApiTest::test_empty_indicator_series_is_a_valid_missing_data_response",
+      "Tests\\Feature\\Api\\ResearchApiTest::test_market_analysis_combines_bounded_initial_payload",
+      "Tests\\Feature\\Api\\ResearchApiTest::test_backtest_creation_dispatches_only_research_job",
+      "Tests\\Feature\\Api\\ResearchApiTest::test_backtest_validation_rejects_unknown_symbol",
+      "Tests\\Feature\\Api\\ResearchApiTest::test_backtest_rejects_client_side_model_overrides",
+      "Tests\\Feature\\Api\\ResearchApiTest::test_api_routes_are_rate_limited",
+      "Tests\\Feature\\Api\\ResearchApiTest::test_server_errors_are_structured_and_have_request_ids",
+      "Tests\\Feature\\Api\\ResearchApiTest::test_signal_list_is_paginated_and_excludes_heavy_json_snapshots",
+      "Tests\\Feature\\Api\\ResearchApiTest::test_other_ledgers_have_small_default_pages",
+      "Tests\\Feature\\Api\\ResearchApiTest::test_statistics_cache_contains_portable_arrays_not_domain_objects",
+      "Tests\\Feature\\Api\\ResearchApiTest::test_list_page_size_is_capped_at_one_hundred",
+      "Tests\\Feature\\Api\\ResearchApiTest::test_no_trade_or_order_routes_exist",
+      "Tests\\Feature\\Api\\ResearchApiTest::test_system_version_endpoint_returns_valid_metadata",
+      "Tests\\Feature\\Api\\ResearchApiTest::test_dashboard_cold_and_warm_cache_performance"
+    ],
+    "tests/Feature/Audit/AuditInvariantTest.php": [
+      "Tests\\Feature\\Audit\\AuditInvariantTest::test_peak_equity_never_falls_below_starting_balance_and_drawdown_is_positive_on_loss",
+      "Tests\\Feature\\Audit\\AuditInvariantTest::test_mark_to_market_drawdown_is_positive_on_unrealized_loss",
+      "Tests\\Feature\\Audit\\AuditInvariantTest::test_late_signals_create_terminal_state_and_do_not_starve_query",
+      "Tests\\Feature\\Audit\\AuditInvariantTest::test_process_paper_trading_job_processes_all_active_strategy_accounts",
+      "Tests\\Feature\\Audit\\AuditInvariantTest::test_audit_csv_momentum_account_drawdown_recalculation"
+    ],
+    "tests/Feature/Audit/BacktestHistoricalAuditR8Test.php": [
+      "Tests\\Feature\\Audit\\BacktestHistoricalAuditR8Test::test_only_completed_simulations_can_enqueue_idempotent_zip_audits",
+      "Tests\\Feature\\Audit\\BacktestHistoricalAuditR8Test::test_pending_backtest_cannot_export_as_completed_history",
+      "Tests\\Feature\\Audit\\BacktestHistoricalAuditR8Test::test_audit_job_builds_archive_and_signed_download_streams_zip"
+    ],
+    "tests/Feature/AuditExportTest.php": [
+      "Tests\\Feature\\AuditExportTest::test_paper_state_export_uses_half_open_adjacent_windows",
+      "Tests\\Feature\\AuditExportTest::test_audit_window_uses_real_request_time_without_quarter_hour_rounding",
+      "Tests\\Feature\\AuditExportTest::test_exports_deduplicate_repeated_clicks",
+      "Tests\\Feature\\AuditExportTest::test_export_contains_manifest_csv_and_rejects_anonymous_download",
+      "Tests\\Feature\\AuditExportTest::test_archive_verification_rejects_payload_changed_after_checksum_capture",
+      "Tests\\Feature\\AuditExportTest::test_all_four_export_periods_generate_successfully_with_learning_and_health_datasets",
+      "Tests\\Feature\\AuditExportTest::test_f07_audit_zip_csv_headers_match_declared_dataset_schema",
+      "Tests\\Feature\\AuditExportTest::test_f08_audit_export_strategy_funnel_cohorts_match_scoped_source_queries"
+    ],
+    "tests/Feature/Backtest/BacktestCurveServiceTest.php": [
+      "Tests\\Feature\\Backtest\\BacktestCurveServiceTest::test_large_curve_is_bounded_and_preserves_bucket_extrema"
+    ],
+    "tests/Feature/Backtest/BacktestExchangeDispatchTest.php": [
+      "Tests\\Feature\\Backtest\\BacktestExchangeDispatchTest::test_worker_passes_exchange_to_run_service",
+      "Tests\\Feature\\Backtest\\BacktestExchangeDispatchTest::test_commands_preserve_exchange_and_walk_forward_selection",
+      "Tests\\Feature\\Backtest\\BacktestExchangeDispatchTest::test_default_and_legacy_queued_jobs_remain_bybit",
+      "Tests\\Feature\\Backtest\\BacktestExchangeDispatchTest::test_invalid_exchange_is_rejected_before_dispatch"
+    ],
+    "tests/Feature/Backtest/BacktestRunServiceTest.php": [
+      "Tests\\Feature\\Backtest\\BacktestRunServiceTest::test_completed_run_is_persisted_idempotently_without_touching_paper_state",
+      "Tests\\Feature\\Backtest\\BacktestRunServiceTest::test_binance_run_optimization_and_reports_are_isolated_and_idempotent",
+      "Tests\\Feature\\Backtest\\BacktestRunServiceTest::test_binance_run_rejects_missing_costs_before_persisting_a_run",
+      "Tests\\Feature\\Backtest\\BacktestRunServiceTest::test_binance_walk_forward_run_persists_exchange_and_walk_type",
+      "Tests\\Feature\\Backtest\\BacktestRunServiceTest::test_lead_lag_run_rejects_missing_peer_history_before_persisting",
+      "Tests\\Feature\\Backtest\\BacktestRunServiceTest::test_changed_source_during_run_fails_before_completion"
+    ],
+    "tests/Feature/Backtest/BacktestSimulationTest.php": [
+      "Tests\\Feature\\Backtest\\BacktestSimulationTest::test_reused_engine_clears_input_cache_before_each_simulation",
+      "Tests\\Feature\\Backtest\\BacktestSimulationTest::test_binance_simulation_never_uses_bybit_candles",
+      "Tests\\Feature\\Backtest\\BacktestSimulationTest::test_buy_tp1_tp2_is_deterministic_and_isolated_from_paper_tables",
+      "Tests\\Feature\\Backtest\\BacktestSimulationTest::test_expired_pending_position_does_not_crash_or_reprocess",
+      "Tests\\Feature\\Backtest\\BacktestSimulationTest::test_apply_funding_never_builds_a_nullable_comparison_operand",
+      "Tests\\Feature\\Backtest\\BacktestSimulationTest::test_no_signals_produces_zero_trades_and_no_writes",
+      "Tests\\Feature\\Backtest\\BacktestSimulationTest::test_open_position_is_closed_at_segment_boundary_without_lookahead"
+    ],
+    "tests/Feature/Backtest/DatasetInspectorTest.php": [
+      "Tests\\Feature\\Backtest\\DatasetInspectorTest::test_checksum_is_deterministic_for_complete_closed_history",
+      "Tests\\Feature\\Backtest\\DatasetInspectorTest::test_gap_is_rejected_instead_of_fabricating_a_price",
+      "Tests\\Feature\\Backtest\\DatasetInspectorTest::test_binance_does_not_use_bybit_history",
+      "Tests\\Feature\\Backtest\\DatasetInspectorTest::test_configured_thirty_minute_history_is_required_and_hashed",
+      "Tests\\Feature\\Backtest\\DatasetInspectorTest::test_prior_context_and_subsecond_observation_time_affect_checksum",
+      "Tests\\Feature\\Backtest\\DatasetInspectorTest::test_close_boundary_context_and_funding_are_hashed_but_later_events_are_not",
+      "Tests\\Feature\\Backtest\\DatasetInspectorTest::test_subsecond_right_boundary_does_not_pass_as_complete",
+      "Tests\\Feature\\Backtest\\DatasetInspectorTest::test_partial_higher_timeframe_end_and_non_hour_start_use_only_fully_closed_bars",
+      "Tests\\Feature\\Backtest\\DatasetInspectorTest::test_utc_offsets_resolve_to_the_same_window_and_warmup_is_hashed",
+      "Tests\\Feature\\Backtest\\DatasetInspectorTest::test_prior_hourly_bar_is_hashed_even_with_zero_requested_warmup",
+      "Tests\\Feature\\Backtest\\DatasetInspectorTest::test_candle_at_to_is_excluded_and_missing_from_is_rejected",
+      "Tests\\Feature\\Backtest\\DatasetInspectorTest::test_context_and_funding_preserve_offset_and_millisecond_precision",
+      "Tests\\Feature\\Backtest\\DatasetInspectorTest::test_dataset_pinning_is_idempotent_and_creates_immutable_record",
+      "Tests\\Feature\\Backtest\\DatasetInspectorTest::test_dataset_pinning_rejects_conflicting_historical_mutation"
+    ],
+    "tests/Feature/Backtest/HistoricalStrategyParityTest.php": [
+      "Tests\\Feature\\Backtest\\HistoricalStrategyParityTest::test_all_thirteen_match_registered_logic_on_closed_warm_history_for_both_exchanges",
+      "Tests\\Feature\\Backtest\\HistoricalStrategyParityTest::test_all_primary_strategies_fail_closed_without_history"
+    ],
+    "tests/Feature/ExampleTest.php": [
+      "Tests\\Feature\\ExampleTest::test_the_application_returns_a_successful_response"
+    ],
+    "tests/Feature/Exchanges/BinanceActivationCommandTest.php": [
+      "Tests\\Feature\\Exchanges\\BinanceActivationCommandTest::test_activation_command_fails_without_approve_flag",
+      "Tests\\Feature\\Exchanges\\BinanceActivationCommandTest::test_activation_fails_when_fee_or_slippage_evidence_is_missing",
+      "Tests\\Feature\\Exchanges\\BinanceActivationCommandTest::test_activation_succeeds_under_documented_order_and_is_idempotent",
+      "Tests\\Feature\\Exchanges\\BinanceActivationCommandTest::test_activation_reflects_approved_execution_readiness_when_flag_enabled"
+    ],
+    "tests/Feature/Exchanges/BinanceBackfillCommandSafetyTest.php": [
+      "Tests\\Feature\\Exchanges\\BinanceBackfillCommandSafetyTest::test_default_command_is_a_real_dry_run_without_market_or_paper_writes",
+      "Tests\\Feature\\Exchanges\\BinanceBackfillCommandSafetyTest::test_automatic_historical_recovery_is_disabled_by_default"
+    ],
+    "tests/Feature/Exchanges/BinanceBatchCandleIngestionTest.php": [
+      "Tests\\Feature\\Exchanges\\BinanceBatchCandleIngestionTest::test_maximum_batch_inserts_once_and_repeated_duplicates_issue_no_writes",
+      "Tests\\Feature\\Exchanges\\BinanceBatchCandleIngestionTest::test_mixed_batch_only_inserts_missing_identities",
+      "Tests\\Feature\\Exchanges\\BinanceBatchCandleIngestionTest::test_each_exact_ohlcv_conflict_fails_closed_and_can_be_retried#open",
+      "Tests\\Feature\\Exchanges\\BinanceBatchCandleIngestionTest::test_each_exact_ohlcv_conflict_fails_closed_and_can_be_retried#high",
+      "Tests\\Feature\\Exchanges\\BinanceBatchCandleIngestionTest::test_each_exact_ohlcv_conflict_fails_closed_and_can_be_retried#low",
+      "Tests\\Feature\\Exchanges\\BinanceBatchCandleIngestionTest::test_each_exact_ohlcv_conflict_fails_closed_and_can_be_retried#close",
+      "Tests\\Feature\\Exchanges\\BinanceBatchCandleIngestionTest::test_each_exact_ohlcv_conflict_fails_closed_and_can_be_retried#volume",
+      "Tests\\Feature\\Exchanges\\BinanceBatchCandleIngestionTest::test_each_exact_ohlcv_conflict_fails_closed_and_can_be_retried#turnover",
+      "Tests\\Feature\\Exchanges\\BinanceBatchCandleIngestionTest::test_full_identity_scope_preserves_other_exchanges_categories_symbols_and_intervals",
+      "Tests\\Feature\\Exchanges\\BinanceBatchCandleIngestionTest::test_unclosed_stored_identity_is_never_overwritten",
+      "Tests\\Feature\\Exchanges\\BinanceBatchCandleIngestionTest::test_empty_and_unclosed_source_batches_do_not_write",
+      "Tests\\Feature\\Exchanges\\BinanceBatchCandleIngestionTest::test_nonrepresentable_decimal_rejects_entire_batch_before_insertion",
+      "Tests\\Feature\\Exchanges\\BinanceBatchCandleIngestionTest::test_later_chunk_conflict_rolls_back_earlier_chunk_and_retry_succeeds",
+      "Tests\\Feature\\Exchanges\\BinanceBatchCandleIngestionTest::test_ignored_insert_without_matching_identity_rolls_back_the_batch"
+    ],
+    "tests/Feature/Exchanges/BinanceCandleConflictQuarantineTest.php": [
+      "Tests\\Feature\\Exchanges\\BinanceCandleConflictQuarantineTest::test_strict_mode_rolls_back_candles_but_persists_durable_conflict_record",
+      "Tests\\Feature\\Exchanges\\BinanceCandleConflictQuarantineTest::test_quarantine_mode_commits_valid_candles_and_quarantines_conflicting_bar",
+      "Tests\\Feature\\Exchanges\\BinanceCandleConflictQuarantineTest::test_scoped_fail_closed_gate_blocks_only_overlapping_candle_window"
+    ],
+    "tests/Feature/Exchanges/BinanceDeploymentInitializationTest.php": [
+      "Tests\\Feature\\Exchanges\\BinanceDeploymentInitializationTest::test_binance_deployment_initializer_is_idempotent_and_preserves_bybit_history",
+      "Tests\\Feature\\Exchanges\\BinanceDeploymentInitializationTest::test_m9_failure_rolls_back_binance_provisioning_capital_and_snapshots",
+      "Tests\\Feature\\Exchanges\\BinanceDeploymentInitializationTest::test_retry_refuses_to_rewrite_existing_binance_checkpoint",
+      "Tests\\Feature\\Exchanges\\BinanceDeploymentInitializationTest::test_retry_completes_previously_provisioned_unfunded_binance_cohort_once",
+      "Tests\\Feature\\Exchanges\\BinanceDeploymentInitializationTest::test_six_m9_mismatches_preserve_previously_committed_binance_cohort",
+      "Tests\\Feature\\Exchanges\\BinanceDeploymentInitializationTest::test_deployment_initialization_is_idempotent_after_binance_activation_and_trading_history",
+      "Tests\\Feature\\Exchanges\\BinanceDeploymentInitializationTest::test_deployment_initializer_succeeds_with_historical_bybit_strategy_namespaced_account_ids"
+    ],
+    "tests/Feature/Exchanges/BinanceEmergencyDisableMaintenanceTest.php": [
+      "Tests\\Feature\\Exchanges\\BinanceEmergencyDisableMaintenanceTest::test_emergency_disable_of_binance_paper_execution_maintains_open_positions_and_funding_while_blocking_new_entries",
+      "Tests\\Feature\\Exchanges\\BinanceEmergencyDisableMaintenanceTest::test_failing_account_does_not_abort_servicing_of_subsequent_accounts_in_scheduled_cycle"
+    ],
+    "tests/Feature/Exchanges/BinanceGapRecoveryTest.php": [
+      "Tests\\Feature\\Exchanges\\BinanceGapRecoveryTest::test_automatic_binance_recovery_requires_explicit_opt_in",
+      "Tests\\Feature\\Exchanges\\BinanceGapRecoveryTest::test_failed_scope_does_not_skip_other_scopes_and_retry_preserves_completed_rows",
+      "Tests\\Feature\\Exchanges\\BinanceGapRecoveryTest::test_immutable_conflict_remains_failed_on_retry_without_rewriting_history"
+    ],
+    "tests/Feature/Exchanges/BinanceHtfScheduleTest.php": [
+      "Tests\\Feature\\Exchanges\\BinanceHtfScheduleTest::test_real_scheduler_reports_command_failures_and_preserves_logging_and_mutex#0",
+      "Tests\\Feature\\Exchanges\\BinanceHtfScheduleTest::test_real_scheduler_reports_command_failures_and_preserves_logging_and_mutex#1",
+      "Tests\\Feature\\Exchanges\\BinanceHtfScheduleTest::test_real_scheduler_reports_command_failures_and_preserves_logging_and_mutex#2",
+      "Tests\\Feature\\Exchanges\\BinanceHtfScheduleTest::test_real_scheduler_reports_command_failures_and_preserves_logging_and_mutex#3",
+      "Tests\\Feature\\Exchanges\\BinanceHtfScheduleTest::test_one_failed_htf_scope_does_not_prevent_other_scheduled_intervals"
+    ],
+    "tests/Feature/Exchanges/BinanceImmutableMarketIngestionTest.php": [
+      "Tests\\Feature\\Exchanges\\BinanceImmutableMarketIngestionTest::test_candle_replay_is_idempotent_and_conflicting_batch_rolls_back",
+      "Tests\\Feature\\Exchanges\\BinanceImmutableMarketIngestionTest::test_funding_conflict_rolls_back_new_settlements_without_altering_existing"
+    ],
+    "tests/Feature/Exchanges/BinancePaperIsolationTest.php": [
+      "Tests\\Feature\\Exchanges\\BinancePaperIsolationTest::test_all_twenty_six_accounts_are_isolated_and_owner_allocation_cannot_change_bybit",
+      "Tests\\Feature\\Exchanges\\BinancePaperIsolationTest::test_funded_binance_account_cannot_be_activated_by_an_equity_recalculation",
+      "Tests\\Feature\\Exchanges\\BinancePaperIsolationTest::test_m9_rejects_primary_accounts_with_unknown_exchange_even_if_all_26_pairs_exist",
+      "Tests\\Feature\\Exchanges\\BinancePaperIsolationTest::test_m9_rejects_foreign_capital_events_on_an_otherwise_valid_binance_account",
+      "Tests\\Feature\\Exchanges\\BinancePaperIsolationTest::test_m9_rejects_capital_events_even_on_zero_balance_binance_accounts",
+      "Tests\\Feature\\Exchanges\\BinancePaperIsolationTest::test_m9_reconciles_execution_quantity_and_gross_pnl_against_position",
+      "Tests\\Feature\\Exchanges\\BinancePaperIsolationTest::test_missing_accounts_must_make_m9_reconciliation_fail",
+      "Tests\\Feature\\Exchanges\\BinancePaperIsolationTest::test_provisioner_accepts_historical_strategy_namespaced_bybit_account_ids"
+    ],
+    "tests/Feature/Exchanges/BinancePaperReadinessTest.php": [
+      "Tests\\Feature\\Exchanges\\BinancePaperReadinessTest::test_readiness_fails_when_cost_configuration_is_missing",
+      "Tests\\Feature\\Exchanges\\BinancePaperReadinessTest::test_readiness_fails_when_cost_rate_is_out_of_bounds",
+      "Tests\\Feature\\Exchanges\\BinancePaperReadinessTest::test_readiness_fails_when_accounts_are_missing_or_not_funded",
+      "Tests\\Feature\\Exchanges\\BinancePaperReadinessTest::test_readiness_fails_when_candles_are_incomplete",
+      "Tests\\Feature\\Exchanges\\BinancePaperReadinessTest::test_readiness_fails_when_market_context_is_stale_or_missing",
+      "Tests\\Feature\\Exchanges\\BinancePaperReadinessTest::test_readiness_fails_when_funding_is_stale_or_missing",
+      "Tests\\Feature\\Exchanges\\BinancePaperReadinessTest::test_readiness_fails_when_research_cycle_is_stale_or_missing",
+      "Tests\\Feature\\Exchanges\\BinancePaperReadinessTest::test_readiness_reports_ready_for_activation_when_execution_not_approved",
+      "Tests\\Feature\\Exchanges\\BinancePaperReadinessTest::test_readiness_reports_ready_for_paper_execution_when_execution_approved",
+      "Tests\\Feature\\Exchanges\\BinancePaperReadinessTest::test_readiness_fails_when_require_execution_option_set_and_approval_is_false",
+      "Tests\\Feature\\Exchanges\\BinancePaperReadinessTest::test_readiness_reports_all_13_strategies_eligible_for_paper_execution"
+    ],
+    "tests/Feature/Exchanges/BinanceResearchCycleTest.php": [
+      "Tests\\Feature\\Exchanges\\BinanceResearchCycleTest::test_unconfigured_binance_symbol_throws_domain_exception",
+      "Tests\\Feature\\Exchanges\\BinanceResearchCycleTest::test_missing_closed_decision_candle_returns_operational_blocker",
+      "Tests\\Feature\\Exchanges\\BinanceResearchCycleTest::test_stale_decision_candle_returns_operational_blocker",
+      "Tests\\Feature\\Exchanges\\BinanceResearchCycleTest::test_future_decision_candle_returns_operational_blocker",
+      "Tests\\Feature\\Exchanges\\BinanceResearchCycleTest::test_cycle_evaluates_all_thirteen_binance_strategies_and_persists_observations",
+      "Tests\\Feature\\Exchanges\\BinanceResearchCycleTest::test_cycle_is_slot_idempotent_on_repeat_invocation",
+      "Tests\\Feature\\Exchanges\\BinanceResearchCycleTest::test_paper_execution_without_explicit_approval_fails_closed",
+      "Tests\\Feature\\Exchanges\\BinanceResearchCycleTest::test_binance_scheduler_registers_all_expected_research_tasks"
+    ],
+    "tests/Feature/Exchanges/BootstrapEquityIntegrityTest.php": [
+      "Tests\\Feature\\Exchanges\\BootstrapEquityIntegrityTest::test_new_capitalized_accounts_have_one_real_performance_baseline",
+      "Tests\\Feature\\Exchanges\\BootstrapEquityIntegrityTest::test_historical_unfunded_checkpoint_is_not_a_loss_after_capital_allocation",
+      "Tests\\Feature\\Exchanges\\BootstrapEquityIntegrityTest::test_legacy_bootstrap_is_readable_but_not_a_loss_and_real_zero_remains_a_loss"
+    ],
+    "tests/Feature/Exchanges/ExchangeOnboardingTest.php": [
+      "Tests\\Feature\\Exchanges\\ExchangeOnboardingTest::test_list_exchanges_returns_bybit_and_binance_with_capabilities",
+      "Tests\\Feature\\Exchanges\\ExchangeOnboardingTest::test_register_new_exchange_succeeds_with_offline_data_source_lifecycle",
+      "Tests\\Feature\\Exchanges\\ExchangeOnboardingTest::test_register_duplicate_exchange_is_rejected",
+      "Tests\\Feature\\Exchanges\\ExchangeOnboardingTest::test_register_invalid_exchange_id_is_rejected",
+      "Tests\\Feature\\Exchanges\\ExchangeOnboardingTest::test_csv_upload_validates_ohlcv_and_inserts_candles",
+      "Tests\\Feature\\Exchanges\\ExchangeOnboardingTest::test_csv_upload_detects_duplicates_idempotently",
+      "Tests\\Feature\\Exchanges\\ExchangeOnboardingTest::test_csv_upload_detects_and_records_conflicts_without_corruption",
+      "Tests\\Feature\\Exchanges\\ExchangeOnboardingTest::test_csv_upload_rejects_malformed_and_non_monotonic_data",
+      "Tests\\Feature\\Exchanges\\ExchangeOnboardingTest::test_transition_to_research_enabled_requires_candle_history",
+      "Tests\\Feature\\Exchanges\\ExchangeOnboardingTest::test_paper_activation_rejected_without_required_capabilities",
+      "Tests\\Feature\\Exchanges\\ExchangeOnboardingTest::test_show_and_coverage_diagnostics",
+      "Tests\\Feature\\Exchanges\\ExchangeOnboardingTest::test_topology_sync_preserves_blocked_accounts_and_global_risk_budget"
+    ],
+    "tests/Feature/Exchanges/ExchangeRiskSizingTest.php": [
+      "Tests\\Feature\\Exchanges\\ExchangeRiskSizingTest::test_exchange_costs_drive_risk_and_fill_sizing_and_reconcile_after_retry",
+      "Tests\\Feature\\Exchanges\\ExchangeRiskSizingTest::test_missing_binance_costs_fail_before_any_risk_or_fill_writes"
+    ],
+    "tests/Feature/Exchanges/ExchangeStrategyCompatibilityTest.php": [
+      "Tests\\Feature\\Exchanges\\ExchangeStrategyCompatibilityTest::test_reconcile_all_evaluates_all_canonical_strategies",
+      "Tests\\Feature\\Exchanges\\ExchangeStrategyCompatibilityTest::test_offline_historical_exchange_without_live_adapter_is_research_eligible_when_data_exists",
+      "Tests\\Feature\\Exchanges\\ExchangeStrategyCompatibilityTest::test_registering_exchange_automatically_reconciles_compatibility",
+      "Tests\\Feature\\Exchanges\\ExchangeStrategyCompatibilityTest::test_saving_custom_strategy_automatically_reconciles_against_all_exchanges",
+      "Tests\\Feature\\Exchanges\\ExchangeStrategyCompatibilityTest::test_api_endpoints_for_compatibility_matrix_and_exchange_strategies",
+      "Tests\\Feature\\Exchanges\\ExchangeStrategyCompatibilityTest::test_cli_compatibility_reconcile_command_runs_successfully"
+    ],
+    "tests/Feature/Exchanges/MultiExchangeComparisonTest.php": [
+      "Tests\\Feature\\Exchanges\\MultiExchangeComparisonTest::test_all_thirteen_primary_strategies_are_visible_on_both_exchanges_without_merging",
+      "Tests\\Feature\\Exchanges\\MultiExchangeComparisonTest::test_missing_candle_history_is_not_hidden_by_signal_only_execution_limitations",
+      "Tests\\Feature\\Exchanges\\MultiExchangeComparisonTest::test_account_lookups_remain_bybit_scoped",
+      "Tests\\Feature\\Exchanges\\MultiExchangeComparisonTest::test_missing_account_values_are_null_not_invented_balance"
+    ],
+    "tests/Feature/HistoricalData/AcquisitionTest.php": [
+      "Tests\\Feature\\HistoricalData\\AcquisitionTest::test_official_zip_to_postgres_is_resumable_and_does_not_touch_any_paper_records",
+      "Tests\\Feature\\HistoricalData\\AcquisitionTest::test_claims_are_fenced_and_pause_prevents_claiming_or_downloading",
+      "Tests\\Feature\\HistoricalData\\AcquisitionTest::test_rate_limit_retries_are_bounded_and_missing_monthly_files_plan_daily_fallback"
+    ],
+    "tests/Feature/HistoricalData/ApiTest.php": [
+      "Tests\\Feature\\HistoricalData\\ApiTest::test_owner_controls_are_authenticated_durable_idempotent_audited_and_paginated",
+      "Tests\\Feature\\HistoricalData\\ApiTest::test_no_urls_or_commercial_use_can_be_injected_and_cli_help_and_plan_do_not_download"
+    ],
+    "tests/Feature/HistoricalData/DatasetPinTest.php": [
+      "Tests\\Feature\\HistoricalData\\DatasetPinTest::test_acquisition_pin_rejects_later_supplemental_mutation_and_disallowed_use",
+      "Tests\\Feature\\HistoricalData\\DatasetPinTest::test_source_policy_cannot_authorize_commercial_or_export_use_by_default"
+    ],
+    "tests/Feature/HistoricalData/DownloaderTest.php": [
+      "Tests\\Feature\\HistoricalData\\DownloaderTest::test_checksum_is_mandatory_and_mismatch_never_publishes_an_archive",
+      "Tests\\Feature\\HistoricalData\\DownloaderTest::test_all_planned_official_archive_and_checksum_urls_are_accepted",
+      "Tests\\Feature\\HistoricalData\\DownloaderTest::test_only_official_strict_https_source_paths_are_allowed"
+    ],
+    "tests/Feature/HistoricalData/PlannerTest.php": [
+      "Tests\\Feature\\HistoricalData\\PlannerTest::test_default_plan_has_240_candle_archives_and_leap_day_exact_counts_without_downloads",
+      "Tests\\Feature\\HistoricalData\\PlannerTest::test_unsafe_urls_or_namespaces_are_rejected"
+    ],
+    "tests/Feature/HistoricalData/ResearchTest.php": [
+      "Tests\\Feature\\HistoricalData\\ResearchTest::test_verified_archives_pin_to_deterministic_go_research_trades_without_paper_writes",
+      "Tests\\Feature\\HistoricalData\\ResearchTest::test_incomplete_180_day_scope_is_rejected_without_lowering_coverage"
+    ],
+    "tests/Feature/Indicators/IndicatorEngineTest.php": [
+      "Tests\\Feature\\Indicators\\IndicatorEngineTest::test_warmup_blocks_signal_readiness_until_all_mandatory_indicators_are_ready",
+      "Tests\\Feature\\Indicators\\IndicatorEngineTest::test_same_closed_history_produces_byte_identical_indicator_values",
+      "Tests\\Feature\\Indicators\\IndicatorEngineTest::test_engine_rejects_an_open_candle",
+      "Tests\\Feature\\Indicators\\IndicatorEngineTest::test_engine_rejects_gaps_or_unsorted_history"
+    ],
+    "tests/Feature/MarketData/CandlePersistenceTest.php": [
+      "Tests\\Feature\\MarketData\\CandlePersistenceTest::test_upsert_prevents_duplicate_candles",
+      "Tests\\Feature\\MarketData\\CandlePersistenceTest::test_duplicate_websocket_events_remain_idempotent",
+      "Tests\\Feature\\MarketData\\CandlePersistenceTest::test_large_history_is_upserted_in_database_safe_batches"
+    ],
+    "tests/Feature/MarketData/CandleSynchronizerTest.php": [
+      "Tests\\Feature\\MarketData\\CandleSynchronizerTest::test_it_filters_open_candles_detects_gap_and_backfills_it",
+      "Tests\\Feature\\MarketData\\CandleSynchronizerTest::test_it_reports_history_that_bybit_does_not_return"
+    ],
+    "tests/Feature/MarketData/EnsureStrategyHistoryTest.php": [
+      "Tests\\Feature\\MarketData\\EnsureStrategyHistoryTest::test_missing_history_is_queued_for_every_symbol_and_timeframe",
+      "Tests\\Feature\\MarketData\\EnsureStrategyHistoryTest::test_a_contiguous_warmup_window_is_not_queued_again",
+      "Tests\\Feature\\MarketData\\EnsureStrategyHistoryTest::test_automatic_research_requests_evaluation_history_plus_warmup"
+    ],
+    "tests/Feature/MarketData/FundingHistorySynchronizerTest.php": [
+      "Tests\\Feature\\MarketData\\FundingHistorySynchronizerTest::test_trade_candle_is_not_a_verified_settlement_mark",
+      "Tests\\Feature\\MarketData\\FundingHistorySynchronizerTest::test_boundary_mark_price_is_persisted_idempotently_without_trade_price_substitution",
+      "Tests\\Feature\\MarketData\\FundingHistorySynchronizerTest::test_missing_closed_mark_candle_does_not_fabricate_funding_price"
+    ],
+    "tests/Feature/MarketData/MarketCacheSerializationTest.php": [
+      "Tests\\Feature\\MarketData\\MarketCacheSerializationTest::test_candles_endpoint_survives_restricted_cache_round_trip",
+      "Tests\\Feature\\MarketData\\MarketCacheSerializationTest::test_indicators_endpoint_survives_restricted_cache_round_trip",
+      "Tests\\Feature\\MarketData\\MarketCacheSerializationTest::test_analysis_endpoint_survives_restricted_cache_round_trip",
+      "Tests\\Feature\\MarketData\\MarketCacheSerializationTest::test_cached_market_payloads_contain_no_objects"
+    ],
+    "tests/Feature/MarketData/MarketCommandsTest.php": [
+      "Tests\\Feature\\MarketData\\MarketCommandsTest::test_market_data_commands_are_registered"
+    ],
+    "tests/Feature/MarketData/MarketExchangeIsolationTest.php": [
+      "Tests\\Feature\\MarketData\\MarketExchangeIsolationTest::test_candles_endpoint_is_isolated_by_exchange_and_caches_are_distinct",
+      "Tests\\Feature\\MarketData\\MarketExchangeIsolationTest::test_context_endpoint_scopes_by_exchange",
+      "Tests\\Feature\\MarketData\\MarketExchangeIsolationTest::test_dashboard_does_not_fabricate_active_or_equity_for_unprovisioned_accounts",
+      "Tests\\Feature\\MarketData\\MarketExchangeIsolationTest::test_dashboard_system_status_reflects_actual_operational_health_dimensions"
+    ],
+    "tests/Feature/MarketData/MarketStreamSupervisorTest.php": [
+      "Tests\\Feature\\MarketData\\MarketStreamSupervisorTest::test_it_reconnects_and_runs_rest_recovery_each_time",
+      "Tests\\Feature\\MarketData\\MarketStreamSupervisorTest::test_it_sends_subscription_and_proactive_heartbeat_on_connect",
+      "Tests\\Feature\\MarketData\\MarketStreamSupervisorTest::test_repeated_empty_read_terminates_receive_loop_without_busy_loop_on_same_socket",
+      "Tests\\Feature\\MarketData\\MarketStreamSupervisorTest::test_dead_socket_detection_followed_by_cleanup",
+      "Tests\\Feature\\MarketData\\MarketStreamSupervisorTest::test_successful_reconnect_with_new_connection_and_automatic_resubscription",
+      "Tests\\Feature\\MarketData\\MarketStreamSupervisorTest::test_recovery_after_slow_rest_backfill",
+      "Tests\\Feature\\MarketData\\MarketStreamSupervisorTest::test_ping_pong_timeout_detects_dead_socket_and_reconnects",
+      "Tests\\Feature\\MarketData\\MarketStreamSupervisorTest::test_network_outages_with_bounded_backoff_and_no_busy_loop",
+      "Tests\\Feature\\MarketData\\MarketStreamSupervisorTest::test_repeated_disconnect_and_reconnect_cycles",
+      "Tests\\Feature\\MarketData\\MarketStreamSupervisorTest::test_duplicate_candle_replay_is_idempotent",
+      "Tests\\Feature\\MarketData\\MarketStreamSupervisorTest::test_graceful_shutdown_during_backoff",
+      "Tests\\Feature\\MarketData\\MarketStreamSupervisorTest::test_preserves_bybit_paper_accounts_and_financial_invariants"
+    ],
+    "tests/Feature/MarketData/MarketTodayFilterTest.php": [
+      "Tests\\Feature\\MarketData\\MarketTodayFilterTest::test_market_today_mode_bounds_strictly_to_trading_day_timestamps",
+      "Tests\\Feature\\MarketData\\MarketTodayFilterTest::test_bounded_7d_view_obeys_maximum_limit"
+    ],
+    "tests/Feature/MarketData/OpenInterestHistorySynchronizerTest.php": [
+      "Tests\\Feature\\MarketData\\OpenInterestHistorySynchronizerTest::test_pages_persist_idempotently_and_exclude_future_observations",
+      "Tests\\Feature\\MarketData\\OpenInterestHistorySynchronizerTest::test_research_context_uses_only_events_available_at_decision_time"
+    ],
+    "tests/Feature/PaperTrading/AccountSafetyRegressionTest.php": [
+      "Tests\\Feature\\PaperTrading\\AccountSafetyRegressionTest::test_five_percent_valuation_drawdown_persists_block_and_rejects_new_entries",
+      "Tests\\Feature\\PaperTrading\\AccountSafetyRegressionTest::test_equity_recovery_does_not_reactivate_blocked_bybit_account_without_owner_approval",
+      "Tests\\Feature\\PaperTrading\\AccountSafetyRegressionTest::test_unverified_or_negative_drawdown_blocks_new_entries",
+      "Tests\\Feature\\PaperTrading\\AccountSafetyRegressionTest::test_owner_flag_cannot_reactivate_an_account_with_negative_drawdown",
+      "Tests\\Feature\\PaperTrading\\AccountSafetyRegressionTest::test_resume_keeps_hard_drawdown_limits_and_cannot_override_cooldown",
+      "Tests\\Feature\\PaperTrading\\AccountSafetyRegressionTest::test_forward_accounts_are_version_and_configuration_isolated_without_resetting_history",
+      "Tests\\Feature\\PaperTrading\\AccountSafetyRegressionTest::test_drawdown_metrics_include_starting_equity"
+    ],
+    "tests/Feature/PaperTrading/AllThirteenStrategiesExecutionTest.php": [
+      "Tests\\Feature\\PaperTrading\\AllThirteenStrategiesExecutionTest::test_all_thirteen_strategies_are_execution_eligible_in_registry_and_eligibility_service",
+      "Tests\\Feature\\PaperTrading\\AllThirteenStrategiesExecutionTest::test_binance_activation_activates_all_13_strategies_when_approved",
+      "Tests\\Feature\\PaperTrading\\AllThirteenStrategiesExecutionTest::test_btc_eth_lead_lag_and_funding_squeeze_execute_simulated_paper_positions_on_bybit",
+      "Tests\\Feature\\PaperTrading\\AllThirteenStrategiesExecutionTest::test_all_thirteen_strategies_execute_simulated_paper_positions_on_binance_when_approved",
+      "Tests\\Feature\\PaperTrading\\AllThirteenStrategiesExecutionTest::test_risk_control_rejects_oversized_orders_for_previously_signal_only_strategies",
+      "Tests\\Feature\\PaperTrading\\AllThirteenStrategiesExecutionTest::test_isolation_between_bybit_and_binance_is_strictly_enforced_for_all_strategies"
+    ],
+    "tests/Feature/PaperTrading/CentralExecutionEligibilityTest.php": [
+      "Tests\\Feature\\PaperTrading\\CentralExecutionEligibilityTest::test_signal_only_strategy_is_rejected_and_never_fills_even_when_job_runs",
+      "Tests\\Feature\\PaperTrading\\CentralExecutionEligibilityTest::test_missing_or_mismatched_configuration_hash_rejects_entry",
+      "Tests\\Feature\\PaperTrading\\CentralExecutionEligibilityTest::test_unpromoted_research_candidate_rejects_entry",
+      "Tests\\Feature\\PaperTrading\\CentralExecutionEligibilityTest::test_approved_completed_research_experiment_is_eligible",
+      "Tests\\Feature\\PaperTrading\\CentralExecutionEligibilityTest::test_inactive_account_rejects_new_entries_while_processing",
+      "Tests\\Feature\\PaperTrading\\CentralExecutionEligibilityTest::test_safe_prospective_hash_binding_for_canonical_primary_account_with_history",
+      "Tests\\Feature\\PaperTrading\\CentralExecutionEligibilityTest::test_audit_export_primary_coverage_requires_non_null_configuration_hash",
+      "Tests\\Feature\\PaperTrading\\CentralExecutionEligibilityTest::test_paper_processing_auto_adopts_canonical_bybit_primary_account_under_lock_and_preserves_provenance",
+      "Tests\\Feature\\PaperTrading\\CentralExecutionEligibilityTest::test_f27_blocked_drawdown_account_ingests_and_rejects_signals_with_audit_lineage"
+    ],
+    "tests/Feature/PaperTrading/DailyPerformanceTest.php": [
+      "Tests\\Feature\\PaperTrading\\DailyPerformanceTest::test_daily_equity_returns_are_paginated_and_use_the_selected_timezone",
+      "Tests\\Feature\\PaperTrading\\DailyPerformanceTest::test_symbol_filter_does_not_fabricate_historical_mark_to_market_returns",
+      "Tests\\Feature\\PaperTrading\\DailyPerformanceTest::test_invalid_timezone_is_rejected",
+      "Tests\\Feature\\PaperTrading\\DailyPerformanceTest::test_large_snapshot_history_returns_only_ten_server_aggregated_days_under_payload_limit",
+      "Tests\\Feature\\PaperTrading\\DailyPerformanceTest::test_aggregates_exact_fees_funding_windows_and_symbol_metrics_without_n_plus_one",
+      "Tests\\Feature\\PaperTrading\\DailyPerformanceTest::test_missing_opening_is_not_cumulative_daily_profit_and_csv_semantics_match",
+      "Tests\\Feature\\PaperTrading\\DailyPerformanceTest::test_account_inception_is_a_justified_opening_boundary",
+      "Tests\\Feature\\PaperTrading\\DailyPerformanceTest::test_f23_pagination_across_pages_guarantees_stable_order_and_zero_loss"
+    ],
+    "tests/Feature/PaperTrading/EquitySnapshotCrossExchangeIntegrityTest.php": [
+      "Tests\\Feature\\PaperTrading\\EquitySnapshotCrossExchangeIntegrityTest::test_01_snapshot_creation_assigns_correct_exchange_id_from_authoritative_accounts",
+      "Tests\\Feature\\PaperTrading\\EquitySnapshotCrossExchangeIntegrityTest::test_02_reproduction_of_production_defect_causes_m9_reconciliation_failure",
+      "Tests\\Feature\\PaperTrading\\EquitySnapshotCrossExchangeIntegrityTest::test_03_repair_dry_run_detects_candidates_and_mutates_zero_rows",
+      "Tests\\Feature\\PaperTrading\\EquitySnapshotCrossExchangeIntegrityTest::test_04_apply_repair_updates_precisely_thirteen_rows_without_side_effects",
+      "Tests\\Feature\\PaperTrading\\EquitySnapshotCrossExchangeIntegrityTest::test_05_repair_is_idempotent",
+      "Tests\\Feature\\PaperTrading\\EquitySnapshotCrossExchangeIntegrityTest::test_06_m9_reconciliation_passes_after_repair",
+      "Tests\\Feature\\PaperTrading\\EquitySnapshotCrossExchangeIntegrityTest::test_07_unrelated_bybit_snapshots_and_records_are_preserved",
+      "Tests\\Feature\\PaperTrading\\EquitySnapshotCrossExchangeIntegrityTest::test_08_scheduler_recurrence_maintains_clean_snapshots_and_m9_pass",
+      "Tests\\Feature\\PaperTrading\\EquitySnapshotCrossExchangeIntegrityTest::test_09_concurrency_and_retries_do_not_duplicate_or_corrupt_snapshots"
+    ],
+    "tests/Feature/PaperTrading/ExchangeIngestionAndValuationStageCTest.php": [
+      "Tests\\Feature\\PaperTrading\\ExchangeIngestionAndValuationStageCTest::test_gap_recovery_routes_strictly_to_binance_ingestion_for_binance_exchange",
+      "Tests\\Feature\\PaperTrading\\ExchangeIngestionAndValuationStageCTest::test_gap_recovery_routes_to_bybit_sync_candles_job_for_bybit_exchange",
+      "Tests\\Feature\\PaperTrading\\ExchangeIngestionAndValuationStageCTest::test_flat_account_checkpoint_is_verified_complete_with_flat_verified_valuation",
+      "Tests\\Feature\\PaperTrading\\ExchangeIngestionAndValuationStageCTest::test_account_with_stale_market_valuation_is_flagged_as_stale_and_incomplete"
+    ],
+    "tests/Feature/PaperTrading/FullPaperTradingPipelineE2ETest.php": [
+      "Tests\\Feature\\PaperTrading\\FullPaperTradingPipelineE2ETest::test_e2e_complete_trading_lifecycle_bybit_and_binance_with_tp1_tp2_funding_and_reconciliation",
+      "Tests\\Feature\\PaperTrading\\FullPaperTradingPipelineE2ETest::test_e2e_stop_loss_exit_with_realized_loss_and_double_entry_journaling",
+      "Tests\\Feature\\PaperTrading\\FullPaperTradingPipelineE2ETest::test_e2e_timeout_exit_when_maximum_holding_time_exceeded",
+      "Tests\\Feature\\PaperTrading\\FullPaperTradingPipelineE2ETest::test_defensive_zero_sized_tp1_prevented_without_corrupting_position_state",
+      "Tests\\Feature\\PaperTrading\\FullPaperTradingPipelineE2ETest::test_defensive_min_notional_rejection_at_position_sizing",
+      "Tests\\Feature\\PaperTrading\\FullPaperTradingPipelineE2ETest::test_pipeline_idempotency_duplicate_signals_and_duplicate_processing_ticks",
+      "Tests\\Feature\\PaperTrading\\FullPaperTradingPipelineE2ETest::test_concurrent_position_openings_enforce_global_capital_guard_5_percent_limit"
+    ],
+    "tests/Feature/PaperTrading/FundingScheduleSafetyTest.php": [
+      "Tests\\Feature\\PaperTrading\\FundingScheduleSafetyTest::test_boundaries_are_utc_even_when_caller_supplies_local_offset",
+      "Tests\\Feature\\PaperTrading\\FundingScheduleSafetyTest::test_expected_funding_boundaries_returns_null_when_exchange_or_symbol_is_uncertified",
+      "Tests\\Feature\\PaperTrading\\FundingScheduleSafetyTest::test_expected_funding_boundaries_resolves_standard_eight_hour_schedule",
+      "Tests\\Feature\\PaperTrading\\FundingScheduleSafetyTest::test_expected_funding_boundaries_resolves_dynamic_four_hour_schedule_from_continuous_events",
+      "Tests\\Feature\\PaperTrading\\FundingScheduleSafetyTest::test_evaluate_funding_completeness_fails_closed_when_schedule_is_uncertified",
+      "Tests\\Feature\\PaperTrading\\FundingScheduleSafetyTest::test_evaluate_funding_completeness_rejects_arbitrary_thirty_minute_offset"
+    ],
+    "tests/Feature/PaperTrading/GlobalCapitalAndTopologyR6Test.php": [
+      "Tests\\Feature\\PaperTrading\\GlobalCapitalAndTopologyR6Test::test_topology_sync_is_safe_idempotent_and_approval_gated",
+      "Tests\\Feature\\PaperTrading\\GlobalCapitalAndTopologyR6Test::test_new_strategy_is_added_to_both_exchanges_without_activating_it_or_mutating_existing_accounts",
+      "Tests\\Feature\\PaperTrading\\GlobalCapitalAndTopologyR6Test::test_new_public_exchange_gets_only_blocked_unfunded_placeholders",
+      "Tests\\Feature\\PaperTrading\\GlobalCapitalAndTopologyR6Test::test_global_five_percent_drawdown_and_reserved_risk_budget_are_independent_fail_closed_gates"
+    ],
+    "tests/Feature/PaperTrading/PaperLifecycleTest.php": [
+      "Tests\\Feature\\PaperTrading\\PaperLifecycleTest::test_automatic_forward_paper_does_not_replay_signals_before_account_creation",
+      "Tests\\Feature\\PaperTrading\\PaperLifecycleTest::test_blocked_account_still_closes_existing_paper_position",
+      "Tests\\Feature\\PaperTrading\\PaperLifecycleTest::test_late_backfilled_signal_cannot_create_forward_entry",
+      "Tests\\Feature\\PaperTrading\\PaperLifecycleTest::test_complete_buy_lifecycle_entry_tp1_tp2_is_idempotent_and_journaled",
+      "Tests\\Feature\\PaperTrading\\PaperLifecycleTest::test_non_baseline_actionable_signal_reaches_isolated_paper_execution",
+      "Tests\\Feature\\PaperTrading\\PaperLifecycleTest::test_spot_sell_is_risk_rejected_and_never_opens_a_short",
+      "Tests\\Feature\\PaperTrading\\PaperLifecycleTest::test_spot_buy_is_rejected_by_linear_paper_with_an_audited_reason",
+      "Tests\\Feature\\PaperTrading\\PaperLifecycleTest::test_extreme_funding_and_open_interest_are_hard_risk_rejections",
+      "Tests\\Feature\\PaperTrading\\PaperLifecycleTest::test_buy_and_sell_close_at_stop#0",
+      "Tests\\Feature\\PaperTrading\\PaperLifecycleTest::test_buy_and_sell_close_at_stop#1",
+      "Tests\\Feature\\PaperTrading\\PaperLifecycleTest::test_sell_can_take_tp1_then_stop_remaining_quantity",
+      "Tests\\Feature\\PaperTrading\\PaperLifecycleTest::test_pending_signal_expires_and_missing_metadata_is_risk_rejected",
+      "Tests\\Feature\\PaperTrading\\PaperLifecycleTest::test_skip_ingestion_is_bounded_and_idempotently_marked_complete",
+      "Tests\\Feature\\PaperTrading\\PaperLifecycleTest::test_timeout_waits_for_next_available_closed_bar_without_lookahead",
+      "Tests\\Feature\\PaperTrading\\PaperLifecycleTest::test_gap_stops_processing_and_marks_position_waiting_for_data",
+      "Tests\\Feature\\PaperTrading\\PaperLifecycleTest::test_funding_event_is_applied_once",
+      "Tests\\Feature\\PaperTrading\\PaperLifecycleTest::test_three_completed_losses_start_a_sixty_minute_cooldown",
+      "Tests\\Feature\\PaperTrading\\PaperLifecycleTest::test_losing_streak_cooldown_is_monotonic_and_resilient_to_out_of_order_signal_states",
+      "Tests\\Feature\\PaperTrading\\PaperLifecycleTest::test_recorded_execution_and_risk_decision_are_immutable_across_configuration_changes",
+      "Tests\\Feature\\PaperTrading\\PaperLifecycleTest::test_default_account_and_artisan_commands_work"
+    ],
+    "tests/Feature/PaperTrading/PaperReconcileFundingCommandTest.php": [
+      "Tests\\Feature\\PaperTrading\\PaperReconcileFundingCommandTest::test_paper_reconcile_funding_command_dry_run_previews_without_mutating"
+    ],
+    "tests/Feature/PaperTrading/PerformanceStatisticsTest.php": [
+      "Tests\\Feature\\PaperTrading\\PerformanceStatisticsTest::test_win_rate_profit_factor_average_r_and_equity_drawdown",
+      "Tests\\Feature\\PaperTrading\\PerformanceStatisticsTest::test_profit_factor_is_null_with_explicit_reason_when_there_are_no_losses_and_filters_isolate_portfolios",
+      "Tests\\Feature\\PaperTrading\\PerformanceStatisticsTest::test_closed_trade_fees_exclude_open_position_economics",
+      "Tests\\Feature\\PaperTrading\\PerformanceStatisticsTest::test_legitimate_historical_maximum_survives_partial_snapshot_history"
+    ],
+    "tests/Feature/PaperTrading/Phase0DiagnosticPackageTest.php": [
+      "Tests\\Feature\\PaperTrading\\Phase0DiagnosticPackageTest::test_all_diagnostic_queries_execute_and_census_includes_legacy_baseline",
+      "Tests\\Feature\\PaperTrading\\Phase0DiagnosticPackageTest::test_evidence_closure_queries_execute_read_only_with_bounded_pages",
+      "Tests\\Feature\\PaperTrading\\Phase0DiagnosticPackageTest::test_checklist_maps_exactly_45_frozen_v2_obligations",
+      "Tests\\Feature\\PaperTrading\\Phase0DiagnosticPackageTest::test_export_queries_execute_read_only_and_return_valid_json"
+    ],
+    "tests/Feature/PaperTrading/PositionLifecycleStageBTest.php": [
+      "Tests\\Feature\\PaperTrading\\PositionLifecycleStageBTest::test_tp1_zero_quantity_is_safely_skipped_without_creating_execution",
+      "Tests\\Feature\\PaperTrading\\PositionLifecycleStageBTest::test_standard_tp1_and_tp2_execute_correct_fractions_and_preserve_identities",
+      "Tests\\Feature\\PaperTrading\\PositionLifecycleStageBTest::test_late_arriving_funding_settles_on_closed_position_with_correct_historical_quantity",
+      "Tests\\Feature\\PaperTrading\\PositionLifecycleStageBTest::test_funding_completeness_evaluates_correctly_for_zero_settlement_lifetime",
+      "Tests\\Feature\\PaperTrading\\PositionLifecycleStageBTest::test_out_of_order_funding_preserves_prior_settlements_and_execution_history"
+    ],
+    "tests/Feature/PaperTrading/PrimaryAccountMigrationRehearsalTest.php": [
+      "Tests\\Feature\\PaperTrading\\PrimaryAccountMigrationRehearsalTest::test_migration_rehearsal_preserves_eight_accounts_and_adds_five_without_history_loss"
+    ],
+    "tests/Feature/PaperTrading/PrimaryStrategyReadinessTest.php": [
+      "Tests\\Feature\\PaperTrading\\PrimaryStrategyReadinessTest::test_all_primary_strategies_are_registered_scheduled_and_eligible",
+      "Tests\\Feature\\PaperTrading\\PrimaryStrategyReadinessTest::test_each_primary_strategy_produces_a_causal_decision",
+      "Tests\\Feature\\PaperTrading\\PrimaryStrategyReadinessTest::test_primary_accounts_are_individually_visible_through_apis_and_accounting_is_isolated"
+    ],
+    "tests/Feature/PaperTrading/ProductionDrawdownReconciliationTest.php": [
+      "Tests\\Feature\\PaperTrading\\ProductionDrawdownReconciliationTest::test_bybit_baseline_production_case_with_legacy_unverified_snapshot_preserves_blocked_status_and_reconciles_without_false_discrepancy",
+      "Tests\\Feature\\PaperTrading\\ProductionDrawdownReconciliationTest::test_bybit_momentum_production_case_with_legacy_unverified_snapshot_preserves_blocked_status_and_reconciles_without_false_discrepancy",
+      "Tests\\Feature\\PaperTrading\\ProductionDrawdownReconciliationTest::test_verified_fresh_snapshot_peak_correctly_triggers_understated_drawdown_discrepancy",
+      "Tests\\Feature\\PaperTrading\\ProductionDrawdownReconciliationTest::test_stale_market_valuation_snapshot_never_elevates_peak"
+    ],
+    "tests/Feature/PaperTrading/StatisticsPayloadSerializationRegressionTest.php": [
+      "Tests\\Feature\\PaperTrading\\StatisticsPayloadSerializationRegressionTest::test_legacy_corrupted_redis_cache_is_superseded_by_v5_and_does_not_crash",
+      "Tests\\Feature\\PaperTrading\\StatisticsPayloadSerializationRegressionTest::test_empty_statistics_dataset_returns_strictly_sequential_arrays_not_objects",
+      "Tests\\Feature\\PaperTrading\\StatisticsPayloadSerializationRegressionTest::test_populated_statistics_with_multiple_symbols_and_sides_serializes_clean_dtos",
+      "Tests\\Feature\\PaperTrading\\StatisticsPayloadSerializationRegressionTest::test_all_primary_strategy_accounts_generate_valid_statistics_dtos"
+    ],
+    "tests/Feature/PaperTrading/StrategyPipelineFunnelVerificationTest.php": [
+      "Tests\\Feature\\PaperTrading\\StrategyPipelineFunnelVerificationTest::test_all_26_primary_pipelines_are_registered_and_configured",
+      "Tests\\Feature\\PaperTrading\\StrategyPipelineFunnelVerificationTest::test_bollinger_mean_reversion_skips_when_trending_adx_or_no_boundary_reentry",
+      "Tests\\Feature\\PaperTrading\\StrategyPipelineFunnelVerificationTest::test_support_resistance_bounce_and_breakout_statistically_gated_when_sample_under_30",
+      "Tests\\Feature\\PaperTrading\\StrategyPipelineFunnelVerificationTest::test_binance_directional_signals_blocked_at_prerisk_when_execution_unapproved",
+      "Tests\\Feature\\PaperTrading\\StrategyPipelineFunnelVerificationTest::test_diagnostic_sql_script_is_strictly_read_only_and_executable"
+    ],
+    "tests/Feature/PaperTrading/TemporalIntegrityAndCausalityTest.php": [
+      "Tests\\Feature\\PaperTrading\\TemporalIntegrityAndCausalityTest::test_exact_production_incident_prevents_retrospective_fill",
+      "Tests\\Feature\\PaperTrading\\TemporalIntegrityAndCausalityTest::test_forward_paper_never_fills_on_candle_closed_before_state_creation",
+      "Tests\\Feature\\PaperTrading\\TemporalIntegrityAndCausalityTest::test_forward_paper_never_fills_on_candle_exceeding_max_forward_fill_lag",
+      "Tests\\Feature\\PaperTrading\\TemporalIntegrityAndCausalityTest::test_signal_expired_during_pending_entry_is_marked_expired",
+      "Tests\\Feature\\PaperTrading\\TemporalIntegrityAndCausalityTest::test_risk_decision_decided_at_reflects_actual_evaluation_timestamp_in_forward_mode",
+      "Tests\\Feature\\PaperTrading\\TemporalIntegrityAndCausalityTest::test_historical_mode_preserves_deterministic_backtest_replay",
+      "Tests\\Feature\\PaperTrading\\TemporalIntegrityAndCausalityTest::test_idempotent_processing_under_duplicate_runs_and_retries",
+      "Tests\\Feature\\PaperTrading\\TemporalIntegrityAndCausalityTest::test_all_thirteen_binance_strategies_enforce_temporal_integrity"
+    ],
+    "tests/Feature/PaperTrading/ThirteenPrimaryAccountsTest.php": [
+      "Tests\\Feature\\PaperTrading\\ThirteenPrimaryAccountsTest::test_existing_candidate_is_never_reclassified_as_primary",
+      "Tests\\Feature\\PaperTrading\\ThirteenPrimaryAccountsTest::test_all_thirteen_primary_accounts_are_independent_and_fully_funded",
+      "Tests\\Feature\\PaperTrading\\ThirteenPrimaryAccountsTest::test_strategy_forward_adopts_a_migration_primary_account_and_backfills_its_configuration"
+    ],
+    "tests/Feature/PaperTrading/TwentySixPaperAccountsVerificationTest.php": [
+      "Tests\\Feature\\PaperTrading\\TwentySixPaperAccountsVerificationTest::test_scenario_a_twenty_six_primary_accounts_isolated_and_funded",
+      "Tests\\Feature\\PaperTrading\\TwentySixPaperAccountsVerificationTest::test_scenario_b_register_additional_strategy_onboards_compatibly_without_mutating_existing",
+      "Tests\\Feature\\PaperTrading\\TwentySixPaperAccountsVerificationTest::test_scenario_c_research_only_exchange_onboards_with_zero_capital_and_blocked_status",
+      "Tests\\Feature\\PaperTrading\\TwentySixPaperAccountsVerificationTest::test_scenario_d_repeated_synchronization_requests_are_strictly_idempotent",
+      "Tests\\Feature\\PaperTrading\\TwentySixPaperAccountsVerificationTest::test_scenario_e_custom_opening_balance_policy_for_new_primary_account",
+      "Tests\\Feature\\PaperTrading\\TwentySixPaperAccountsVerificationTest::test_sizing_options_and_limits_across_accounts"
+    ],
+    "tests/Feature/PatternDiscovery/PatternMatchServiceTest.php": [
+      "Tests\\Feature\\PatternDiscovery\\PatternMatchServiceTest::test_validated_current_pattern_is_persisted_once_without_trading_action"
+    ],
+    "tests/Feature/PatternDiscovery/PatternOccurrenceOutcomeTest.php": [
+      "Tests\\Feature\\PatternDiscovery\\PatternOccurrenceOutcomeTest::test_outcome_is_resolved_only_after_complete_contiguous_future_horizon"
+    ],
+    "tests/Feature/QuoteIntegrity/QimApiAuthTest.php": [
+      "Tests\\Feature\\QuoteIntegrity\\QimApiAuthTest::test_post_evidence_rejects_missing_token_with_no_side_effects",
+      "Tests\\Feature\\QuoteIntegrity\\QimApiAuthTest::test_post_evidence_rejects_invalid_token_with_no_side_effects",
+      "Tests\\Feature\\QuoteIntegrity\\QimApiAuthTest::test_incident_transition_rejects_missing_token_with_no_state_change",
+      "Tests\\Feature\\QuoteIntegrity\\QimApiAuthTest::test_incident_transition_succeeds_with_valid_token"
+    ],
+    "tests/Feature/QuoteIntegrity/QimApiStatusTest.php": [
+      "Tests\\Feature\\QuoteIntegrity\\QimApiStatusTest::test_all_endpoints_return_503_feature_disabled_when_flag_is_off",
+      "Tests\\Feature\\QuoteIntegrity\\QimApiStatusTest::test_status_endpoint_returns_expected_structure_when_enabled",
+      "Tests\\Feature\\QuoteIntegrity\\QimApiStatusTest::test_summary_endpoint_returns_aggregates_when_enabled",
+      "Tests\\Feature\\QuoteIntegrity\\QimApiStatusTest::test_incidents_detail_returns_404_when_not_found"
+    ],
+    "tests/Feature/QuoteIntegrity/QimEvidenceImportTest.php": [
+      "Tests\\Feature\\QuoteIntegrity\\QimEvidenceImportTest::test_rejects_file_exceeding_size_limit_with_413",
+      "Tests\\Feature\\QuoteIntegrity\\QimEvidenceImportTest::test_rejects_disallowed_extension_with_415",
+      "Tests\\Feature\\QuoteIntegrity\\QimEvidenceImportTest::test_successful_import_does_not_auto_promote_status",
+      "Tests\\Feature\\QuoteIntegrity\\QimEvidenceImportTest::test_download_evidence_requires_research_token"
+    ],
+    "tests/Feature/QuoteIntegrity/QimFeatureFlagOffTest.php": [
+      "Tests\\Feature\\QuoteIntegrity\\QimFeatureFlagOffTest::test_all_qim_endpoints_return_503_when_flag_is_off",
+      "Tests\\Feature\\QuoteIntegrity\\QimFeatureFlagOffTest::test_no_qim_records_created_during_ingestion_when_flag_is_off"
+    ],
+    "tests/Feature/Research/AdaptiveTimeframeResearchTest.php": [
+      "Tests\\Feature\\Research\\AdaptiveTimeframeResearchTest::test_all_seven_supported_intervals_are_analyzed_causally",
+      "Tests\\Feature\\Research\\AdaptiveTimeframeResearchTest::test_timeframe_hierarchy_validation"
+    ],
+    "tests/Feature/Research/AutonomousLearningApiTest.php": [
+      "Tests\\Feature\\Research\\AutonomousLearningApiTest::test_learning_overview_and_autonomy_settings_endpoints",
+      "Tests\\Feature\\Research\\AutonomousLearningApiTest::test_candidate_lifecycle_api_endpoints",
+      "Tests\\Feature\\Research\\AutonomousLearningApiTest::test_models_endpoint",
+      "Tests\\Feature\\Research\\AutonomousLearningApiTest::test_f14_research_report_freshness_shapes_and_stale_reasons"
+    ],
+    "tests/Feature/Research/AutonomousLearningPipelineTest.php": [
+      "Tests\\Feature\\Research\\AutonomousLearningPipelineTest::test_full_autonomous_learning_pipeline_execution",
+      "Tests\\Feature\\Research\\AutonomousLearningPipelineTest::test_candidate_generation_rotates_fairly_across_all_families",
+      "Tests\\Feature\\Research\\AutonomousLearningPipelineTest::test_f18_training_purging_fallback_activates_without_future_label_leakage"
+    ],
+    "tests/Feature/Research/AutonomyResearchTest.php": [
+      "Tests\\Feature\\Research\\AutonomyResearchTest::test_the_registry_endpoint_exposes_the_candidates_and_keeps_the_flag_off",
+      "Tests\\Feature\\Research\\AutonomyResearchTest::test_registering_a_hypothesis_is_idempotent_and_the_record_is_append_only",
+      "Tests\\Feature\\Research\\AutonomyResearchTest::test_an_experiment_cannot_skip_the_data_check",
+      "Tests\\Feature\\Research\\AutonomyResearchTest::test_a_registered_experiment_records_its_transitions",
+      "Tests\\Feature\\Research\\AutonomyResearchTest::test_the_promotion_is_not_eligible_without_a_shadow_history",
+      "Tests\\Feature\\Research\\AutonomyResearchTest::test_the_promotion_is_blocked_while_the_feature_flag_is_off",
+      "Tests\\Feature\\Research\\AutonomyResearchTest::test_a_recorded_promotion_decision_is_never_applied",
+      "Tests\\Feature\\Research\\AutonomyResearchTest::test_the_autonomy_packages_never_touch_the_paper_ledger",
+      "Tests\\Feature\\Research\\AutonomyResearchTest::test_the_write_endpoints_require_the_research_token",
+      "Tests\\Feature\\Research\\AutonomyResearchTest::test_the_experiment_endpoint_records_and_refuses_transitions",
+      "Tests\\Feature\\Research\\AutonomyResearchTest::test_the_allocation_proposal_is_research_only",
+      "Tests\\Feature\\Research\\AutonomyResearchTest::test_the_kill_switch_blocks_the_promotion_and_is_recorded",
+      "Tests\\Feature\\Research\\AutonomyResearchTest::test_the_kill_switch_release_is_refused_by_default",
+      "Tests\\Feature\\Research\\AutonomyResearchTest::test_the_kill_switch_release_requires_the_explicit_authorisation_flag",
+      "Tests\\Feature\\Research\\AutonomyResearchTest::test_a_rollback_is_refused_when_operational_restoration_is_unsupported",
+      "Tests\\Feature\\Research\\AutonomyResearchTest::test_repeated_rollback_requests_are_idempotent_and_never_claim_success",
+      "Tests\\Feature\\Research\\AutonomyResearchTest::test_a_rollback_of_an_unknown_decision_is_refused",
+      "Tests\\Feature\\Research\\AutonomyResearchTest::test_a_malformed_promotion_decision_id_is_refused_without_a_uuid_query",
+      "Tests\\Feature\\Research\\AutonomyResearchTest::test_the_rollback_endpoint_reports_unsupported_restoration_as_a_conflict",
+      "Tests\\Feature\\Research\\AutonomyResearchTest::test_the_control_endpoints_are_readable_and_write_protected",
+      "Tests\\Feature\\Research\\AutonomyResearchTest::test_the_kill_switch_endpoint_activates_and_refuses_the_release",
+      "Tests\\Feature\\Research\\AutonomyResearchTest::test_f19_autonomy_settings_reports_raw_flags_beside_effective_permissions_and_reasons",
+      "Tests\\Feature\\Research\\AutonomyResearchTest::test_f20_dual_kill_switch_matrix_blocks_effectively_and_reports_both_authorities_without_writes"
+    ],
+    "tests/Feature/Research/CandidateExchangeTest.php": [
+      "Tests\\Feature\\Research\\CandidateExchangeTest::test_candidate_api_persists_exchange_and_rejects_unknown_identity",
+      "Tests\\Feature\\Research\\CandidateExchangeTest::test_binance_candidate_passes_exchange_and_rejects_foreign_run",
+      "Tests\\Feature\\Research\\CandidateExchangeTest::test_binance_candidate_cannot_provision_a_default_exchange_account",
+      "Tests\\Feature\\Research\\CandidateExchangeTest::test_direct_candidate_evaluate_endpoint_rejects_foreign_exchange_backtest_run"
+    ],
+    "tests/Feature/Research/CandidateLabValidationLifecycleTest.php": [
+      "Tests\\Feature\\Research\\CandidateLabValidationLifecycleTest::test_candidate_without_run_id_marks_missing_evidence_and_allows_validation_scheduling",
+      "Tests\\Feature\\Research\\CandidateLabValidationLifecycleTest::test_candidate_validation_scheduling_is_bounded_and_idempotent",
+      "Tests\\Feature\\Research\\CandidateLabValidationLifecycleTest::test_candidate_validation_scheduling_fails_closed_when_kill_switch_active",
+      "Tests\\Feature\\Research\\CandidateLabValidationLifecycleTest::test_candidate_evaluates_with_completed_backtest_evidence_and_records_rejection_reasons",
+      "Tests\\Feature\\Research\\CandidateLabValidationLifecycleTest::test_f25_evaluate_strategy_candidate_job_durable_backtest_linkage_with_competing_unrelated_run#0",
+      "Tests\\Feature\\Research\\CandidateLabValidationLifecycleTest::test_f25_evaluate_strategy_candidate_job_durable_backtest_linkage_with_competing_unrelated_run#1"
+    ],
+    "tests/Feature/Research/ExitHorizonResearchTest.php": [
+      "Tests\\Feature\\Research\\ExitHorizonResearchTest::test_exit_horizon_analysis_evaluates_fixed_intervals_and_benchmark",
+      "Tests\\Feature\\Research\\ExitHorizonResearchTest::test_exit_horizon_endpoint_returns_json"
+    ],
+    "tests/Feature/Research/Gate6PromotionPolicyTest.php": [
+      "Tests\\Feature\\Research\\Gate6PromotionPolicyTest::test_gate6_rejects_absent_paired_observations_even_with_optimistic_standard_error",
+      "Tests\\Feature\\Research\\Gate6PromotionPolicyTest::test_gate6_rejects_missing_or_non_finite_financial_risk_evidence",
+      "Tests\\Feature\\Research\\Gate6PromotionPolicyTest::test_gate6_rejects_bad_paired_values_and_missing_champion",
+      "Tests\\Feature\\Research\\Gate6PromotionPolicyTest::test_gate6_reports_actual_oos_sample_count",
+      "Tests\\Feature\\Research\\Gate6PromotionPolicyTest::test_multiplicity_adjusted_lcb_rejects_insignificant_improvement_under_multiple_trials",
+      "Tests\\Feature\\Research\\Gate6PromotionPolicyTest::test_multiplicity_adjusted_lcb_passes_for_strong_and_consistent_challenger",
+      "Tests\\Feature\\Research\\Gate6PromotionPolicyTest::test_candidate_rejected_on_insufficient_training_samples",
+      "Tests\\Feature\\Research\\Gate6PromotionPolicyTest::test_candidate_rejected_on_insufficient_oos_samples",
+      "Tests\\Feature\\Research\\Gate6PromotionPolicyTest::test_candidate_rejected_on_insufficient_shadow_samples",
+      "Tests\\Feature\\Research\\Gate6PromotionPolicyTest::test_candidate_rejected_on_premature_challenger_duration",
+      "Tests\\Feature\\Research\\Gate6PromotionPolicyTest::test_candidate_rejected_on_insufficient_challenger_samples",
+      "Tests\\Feature\\Research\\Gate6PromotionPolicyTest::test_candidate_rejected_on_drawdown_breach",
+      "Tests\\Feature\\Research\\Gate6PromotionPolicyTest::test_candidate_rejected_in_forward_production_without_genuine_forward_evidence",
+      "Tests\\Feature\\Research\\Gate6PromotionPolicyTest::test_candidate_passes_all_gate6_requirements_with_immutable_hash",
+      "Tests\\Feature\\Research\\Gate6PromotionPolicyTest::test_hac_variance_inflates_under_positively_autocorrelated_overlapping_returns",
+      "Tests\\Feature\\Research\\Gate6PromotionPolicyTest::test_authoritative_candidate_pool_prevents_caller_underestimation",
+      "Tests\\Feature\\Research\\Gate6PromotionPolicyTest::test_f26_promotion_rejection_records_audit_trail_event"
+    ],
+    "tests/Feature/Research/IntelligenceReadOnlyTest.php": [
+      "Tests\\Feature\\Research\\IntelligenceReadOnlyTest::test_queue_health_failure_is_redacted_and_reported_as_degraded",
+      "Tests\\Feature\\Research\\IntelligenceReadOnlyTest::test_health_and_autonomy_reads_do_not_initialize_or_persist_records",
+      "Tests\\Feature\\Research\\IntelligenceReadOnlyTest::test_autonomy_reads_preserve_saved_policy_and_explicit_writers_still_persist",
+      "Tests\\Feature\\Research\\IntelligenceReadOnlyTest::test_repeated_intelligence_reads_do_not_write_to_the_database",
+      "Tests\\Feature\\Research\\IntelligenceReadOnlyTest::test_production_errors_redact_internal_details_and_keep_request_ids",
+      "Tests\\Feature\\Research\\IntelligenceReadOnlyTest::test_missing_build_metadata_is_explicitly_unknown",
+      "Tests\\Feature\\Research\\IntelligenceReadOnlyTest::test_generation_requires_research_authorization"
+    ],
+    "tests/Feature/Research/LearningPredictorRollbackTest.php": [
+      "Tests\\Feature\\Research\\LearningPredictorRollbackTest::test_model_rollback_restores_previous_champion",
+      "Tests\\Feature\\Research\\LearningPredictorRollbackTest::test_model_rollback_without_previous_champion_gracefully_retires"
+    ],
+    "tests/Feature/Research/LegacyActiveModelSafetyTest.php": [
+      "Tests\\Feature\\Research\\LegacyActiveModelSafetyTest::test_ineligible_legacy_active_model_under_fail_closed_skip_converts_to_skip",
+      "Tests\\Feature\\Research\\LegacyActiveModelSafetyTest::test_ineligible_legacy_active_model_under_allow_unfiltered_proceeds_to_risk_gate",
+      "Tests\\Feature\\Research\\LegacyActiveModelSafetyTest::test_missing_model_under_mandatory_active_ml_converts_to_skip",
+      "Tests\\Feature\\Research\\LegacyActiveModelSafetyTest::test_missing_model_under_deterministic_only_strategy_proceeds_normally",
+      "Tests\\Feature\\Research\\LegacyActiveModelSafetyTest::test_inference_exception_under_fail_closed_skip_converts_to_skip",
+      "Tests\\Feature\\Research\\LegacyActiveModelSafetyTest::test_invalid_model_artifact_gates_breached_under_fail_closed_skip",
+      "Tests\\Feature\\Research\\LegacyActiveModelSafetyTest::test_rolled_back_model_cannot_influence_new_decisions",
+      "Tests\\Feature\\Research\\LegacyActiveModelSafetyTest::test_existing_position_management_continues_when_model_is_missing",
+      "Tests\\Feature\\Research\\LegacyActiveModelSafetyTest::test_disallowed_trade_under_risk_gate_remains_rejected_even_with_allow_unfiltered",
+      "Tests\\Feature\\Research\\LegacyActiveModelSafetyTest::test_duplicate_paper_processing_event_does_not_mutate_ledger_or_create_duplicate_positions"
+    ],
+    "tests/Feature/Research/MetaLabelingResearchTest.php": [
+      "Tests\\Feature\\Research\\MetaLabelingResearchTest::test_paired_policy_comparison_demonstrates_meta_labeling_filter_advantage",
+      "Tests\\Feature\\Research\\MetaLabelingResearchTest::test_direction_invariance_detects_illicit_side_flip"
+    ],
+    "tests/Feature/Research/ModelAdvisoryDecisionVetoTest.php": [
+      "Tests\\Feature\\Research\\ModelAdvisoryDecisionVetoTest::test_active_model_vetoes_buy_to_skip_and_respects_fail_closed_and_authorized_fallback",
+      "Tests\\Feature\\Research\\ModelAdvisoryDecisionVetoTest::test_champion_rollback_restores_previous_champion_if_available"
+    ],
+    "tests/Feature/Research/P2RiskCapitalMetricsTest.php": [
+      "Tests\\Feature\\Research\\P2RiskCapitalMetricsTest::test_generation_reports_all_primary_accounts_separately_and_never_provisions_accounts",
+      "Tests\\Feature\\Research\\P2RiskCapitalMetricsTest::test_profit_factor_win_rate_and_payoff_use_exact_decimal_arithmetic",
+      "Tests\\Feature\\Research\\P2RiskCapitalMetricsTest::test_undefined_profit_factor_is_null_with_reason_when_there_are_no_losses",
+      "Tests\\Feature\\Research\\P2RiskCapitalMetricsTest::test_win_rate_is_null_with_reason_when_there_are_no_wins_or_losses",
+      "Tests\\Feature\\Research\\P2RiskCapitalMetricsTest::test_position_closed_after_the_cutoff_is_excluded_from_a_point_in_time_result",
+      "Tests\\Feature\\Research\\P2RiskCapitalMetricsTest::test_open_position_is_excluded_with_an_explicit_reason",
+      "Tests\\Feature\\Research\\P2RiskCapitalMetricsTest::test_partially_closed_position_is_excluded_from_the_lifecycle_population",
+      "Tests\\Feature\\Research\\P2RiskCapitalMetricsTest::test_window_scope_allocates_risk_capital_proportionally_to_the_closed_quantity",
+      "Tests\\Feature\\Research\\P2RiskCapitalMetricsTest::test_cost_to_risk_ratio_requires_matched_scope_p1_attribution",
+      "Tests\\Feature\\Research\\P2RiskCapitalMetricsTest::test_daily_realized_net_r_allocates_risk_capital_to_the_quantity_actually_closed",
+      "Tests\\Feature\\Research\\P2RiskCapitalMetricsTest::test_twae_caps_long_intervals_and_records_the_uncovered_gap",
+      "Tests\\Feature\\Research\\P2RiskCapitalMetricsTest::test_max_drawdown_is_derived_from_the_equity_snapshot_series",
+      "Tests\\Feature\\Research\\P2RiskCapitalMetricsTest::test_sample_sufficiency_is_insufficient_for_a_short_history",
+      "Tests\\Feature\\Research\\P2RiskCapitalMetricsTest::test_generation_is_idempotent_and_rejects_a_conflicting_payload",
+      "Tests\\Feature\\Research\\P2RiskCapitalMetricsTest::test_unsupported_accounting_scope_is_rejected",
+      "Tests\\Feature\\Research\\P2RiskCapitalMetricsTest::test_window_flow_scope_requires_a_half_open_interval"
+    ],
+    "tests/Feature/Research/P4CostMfeMaeApiTest.php": [
+      "Tests\\Feature\\Research\\P4CostMfeMaeApiTest::test_read_endpoint_reports_no_generation_before_any_run",
+      "Tests\\Feature\\Research\\P4CostMfeMaeApiTest::test_generation_endpoint_requires_the_research_token",
+      "Tests\\Feature\\Research\\P4CostMfeMaeApiTest::test_generation_endpoint_is_idempotent_and_the_read_endpoint_is_purely_read_only"
+    ],
+    "tests/Feature/Research/P4CostMfeMaeTest.php": [
+      "Tests\\Feature\\Research\\P4CostMfeMaeTest::test_generation_is_idempotent_and_never_mutates_the_paper_ledger",
+      "Tests\\Feature\\Research\\P4CostMfeMaeTest::test_observed_mfe_and_mae_use_closed_candles_of_the_holding_interval_only",
+      "Tests\\Feature\\Research\\P4CostMfeMaeTest::test_pre_entry_distribution_excludes_observations_that_matured_after_the_entry",
+      "Tests\\Feature\\Research\\P4CostMfeMaeTest::test_cost_attribution_reconciles_gross_minus_fees_plus_funding",
+      "Tests\\Feature\\Research\\P4CostMfeMaeTest::test_a_position_without_candles_is_reported_as_null_metrics_not_zero"
+    ],
+    "tests/Feature/Research/P5ConcentrationApiTest.php": [
+      "Tests\\Feature\\Research\\P5ConcentrationApiTest::test_read_endpoint_reports_no_generation_before_any_run",
+      "Tests\\Feature\\Research\\P5ConcentrationApiTest::test_generation_endpoint_requires_the_research_token",
+      "Tests\\Feature\\Research\\P5ConcentrationApiTest::test_generation_endpoint_is_idempotent_and_exposes_the_read_model"
+    ],
+    "tests/Feature/Research/P5DependenceConcentrationTest.php": [
+      "Tests\\Feature\\Research\\P5DependenceConcentrationTest::test_generation_is_idempotent_and_never_mutates_the_paper_ledger",
+      "Tests\\Feature\\Research\\P5DependenceConcentrationTest::test_same_side_and_opposite_side_clusters_are_distinct_and_traceable_to_position_ids",
+      "Tests\\Feature\\Research\\P5DependenceConcentrationTest::test_open_position_is_clipped_to_the_cutoff_and_keeps_only_realized_pnl_in_concentration",
+      "Tests\\Feature\\Research\\P5DependenceConcentrationTest::test_partial_close_does_not_end_the_position_interval",
+      "Tests\\Feature\\Research\\P5DependenceConcentrationTest::test_cluster_ids_are_deterministic_across_runs",
+      "Tests\\Feature\\Research\\P5DependenceConcentrationTest::test_cross_symbol_exposure_is_reported_gross_without_netting",
+      "Tests\\Feature\\Research\\P5DependenceConcentrationTest::test_missing_equity_snapshots_make_the_cross_account_view_not_comparable",
+      "Tests\\Feature\\Research\\P5DependenceConcentrationTest::test_top_k_concentration_is_traceable_to_source_position_ids",
+      "Tests\\Feature\\Research\\P5DependenceConcentrationTest::test_generation_without_positions_is_reported_as_insufficient_data"
+    ],
+    "tests/Feature/Research/P6DecisionGateApiTest.php": [
+      "Tests\\Feature\\Research\\P6DecisionGateApiTest::test_read_endpoint_reports_no_decision_before_any_run",
+      "Tests\\Feature\\Research\\P6DecisionGateApiTest::test_generation_endpoint_requires_the_research_token",
+      "Tests\\Feature\\Research\\P6DecisionGateApiTest::test_generation_endpoint_appends_a_fail_closed_decision_and_is_idempotent",
+      "Tests\\Feature\\Research\\P6DecisionGateApiTest::test_read_endpoint_returns_the_decision_after_a_generation"
+    ],
+    "tests/Feature/Research/P6DecisionGateTest.php": [
+      "Tests\\Feature\\Research\\P6DecisionGateTest::test_the_gate_fails_closed_when_no_accepted_generation_exists",
+      "Tests\\Feature\\Research\\P6DecisionGateTest::test_a_decision_record_is_appended_and_never_updated_or_deleted",
+      "Tests\\Feature\\Research\\P6DecisionGateTest::test_the_service_never_changes_a_strategy_and_never_creates_an_order",
+      "Tests\\Feature\\Research\\P6DecisionGateTest::test_an_insufficient_p2_sample_blocks_an_owner_review_conclusion",
+      "Tests\\Feature\\Research\\P6DecisionGateTest::test_generation_is_idempotent_and_a_conflicting_payload_is_rejected",
+      "Tests\\Feature\\Research\\P6DecisionGateTest::test_the_read_model_returns_the_latest_decision_without_writing",
+      "Tests\\Feature\\Research\\P6DecisionGateTest::test_a_registered_negative_test_outcome_produces_a_negative_state"
+    ],
+    "tests/Feature/Research/ProfitabilityResearchApiTest.php": [
+      "Tests\\Feature\\Research\\ProfitabilityResearchApiTest::test_profitability_summary_returns_separated_accounting_scopes_and_gated_placeholders",
+      "Tests\\Feature\\Research\\ProfitabilityResearchApiTest::test_profitability_strategies_lists_all_primary_accounts",
+      "Tests\\Feature\\Research\\ProfitabilityResearchApiTest::test_profitability_strategy_detail_returns_specific_strategy",
+      "Tests\\Feature\\Research\\ProfitabilityResearchApiTest::test_profitability_strategy_detail_returns_404_on_unknown_strategy",
+      "Tests\\Feature\\Research\\ProfitabilityResearchApiTest::test_metric_registry_endpoint_returns_catalog",
+      "Tests\\Feature\\Research\\ProfitabilityResearchApiTest::test_profitability_reads_do_not_reprovision_missing_primary_accounts",
+      "Tests\\Feature\\Research\\ProfitabilityResearchApiTest::test_persisted_discrepancies_and_missing_reconciliation_are_not_reported_as_clean",
+      "Tests\\Feature\\Research\\ProfitabilityResearchApiTest::test_profitability_get_endpoints_are_strictly_read_only",
+      "Tests\\Feature\\Research\\ProfitabilityResearchApiTest::test_f02_profitability_response_envelope_chain_for_success_and_errors",
+      "Tests\\Feature\\Research\\ProfitabilityResearchApiTest::test_f03_null_vs_real_zero_distinction_preserved_without_fabrication",
+      "Tests\\Feature\\Research\\ProfitabilityResearchApiTest::test_f05_gated_module_statuses_consistent_with_evidence_and_prohibitions"
+    ],
+    "tests/Feature/Research/PromotedCandidateExecutionTest.php": [
+      "Tests\\Feature\\Research\\PromotedCandidateExecutionTest::test_promoted_strategy_candidate_receives_signals_and_virtual_executions"
+    ],
+    "tests/Feature/Research/ReconcileLedgerJobExecutionPathTest.php": [
+      "Tests\\Feature\\Research\\ReconcileLedgerJobExecutionPathTest::test_scheduler_registers_reconcile_ledger_job_on_expected_cron",
+      "Tests\\Feature\\Research\\ReconcileLedgerJobExecutionPathTest::test_reconcile_ledger_job_dispatches_to_audit_queue",
+      "Tests\\Feature\\Research\\ReconcileLedgerJobExecutionPathTest::test_compose_yaml_configures_audit_worker_for_audit_queue",
+      "Tests\\Feature\\Research\\ReconcileLedgerJobExecutionPathTest::test_worker_execution_persists_actual_reconciliation_runs_with_ledger_integrity",
+      "Tests\\Feature\\Research\\ReconcileLedgerJobExecutionPathTest::test_reconcile_ledger_job_handles_worker_failure_reporting"
+    ],
+    "tests/Feature/Research/ResearchBenchmarkCommandTest.php": [
+      "Tests\\Feature\\Research\\ResearchBenchmarkCommandTest::test_can_run_research_benchmark_command"
+    ],
+    "tests/Feature/Research/ResearchHealthApiTest.php": [
+      "Tests\\Feature\\Research\\ResearchHealthApiTest::test_health_overview_endpoint_returns_strategy_funnel_and_status",
+      "Tests\\Feature\\Research\\ResearchHealthApiTest::test_data_freshness_endpoint_returns_candle_and_queue_health",
+      "Tests\\Feature\\Research\\ResearchHealthApiTest::test_reconcile_and_reconciliation_runs_endpoints"
+    ],
+    "tests/Feature/Research/ResearchJobApiTest.php": [
+      "Tests\\Feature\\Research\\ResearchJobApiTest::test_can_list_research_jobs",
+      "Tests\\Feature\\Research\\ResearchJobApiTest::test_can_submit_research_job",
+      "Tests\\Feature\\Research\\ResearchJobApiTest::test_rejects_go_job_submission_without_exchange_provenance",
+      "Tests\\Feature\\Research\\ResearchJobApiTest::test_rejects_go_job_submission_with_conflicting_exchange",
+      "Tests\\Feature\\Research\\ResearchJobApiTest::test_rejects_go_job_submission_with_unsupported_exchange",
+      "Tests\\Feature\\Research\\ResearchJobApiTest::test_accepts_go_job_submission_with_binance_and_dataset_provenance",
+      "Tests\\Feature\\Research\\ResearchJobApiTest::test_can_show_single_research_job",
+      "Tests\\Feature\\Research\\ResearchJobApiTest::test_can_cancel_queued_research_job",
+      "Tests\\Feature\\Research\\ResearchJobApiTest::test_returns_capabilities_routing"
+    ],
+    "tests/Feature/Research/ResearchUiRemediationTest.php": [
+      "Tests\\Feature\\Research\\ResearchUiRemediationTest::test_invalid_uuid_endpoints_return_contract_correct_404_not_500",
+      "Tests\\Feature\\Research\\ResearchUiRemediationTest::test_recommendations_endpoint_is_paginated_and_ordered_deterministically"
+    ],
+    "tests/Feature/Research/ScheduledResearchJobsTest.php": [
+      "Tests\\Feature\\Research\\ScheduledResearchJobsTest::test_process_counterfactual_analysis_job_runs_on_research_queue",
+      "Tests\\Feature\\Research\\ScheduledResearchJobsTest::test_reconcile_ledger_job_runs_on_audit_queue_and_creates_records",
+      "Tests\\Feature\\Research\\ScheduledResearchJobsTest::test_scheduled_events_exclude_quarantined_counterfactual_analysis",
+      "Tests\\Feature\\Research\\ScheduledResearchJobsTest::test_counterfactual_job_is_a_no_op_while_quarantined"
+    ],
+    "tests/Feature/Research/SlippageAttributionApiTest.php": [
+      "Tests\\Feature\\Research\\SlippageAttributionApiTest::test_get_slippage_attribution_is_purely_read_only",
+      "Tests\\Feature\\Research\\SlippageAttributionApiTest::test_position_slippage_attribution_endpoint_read_only_and_not_found",
+      "Tests\\Feature\\Research\\SlippageAttributionApiTest::test_post_generations_requires_auth_and_rejects_idempotency_conflicts",
+      "Tests\\Feature\\Research\\SlippageAttributionApiTest::test_f24_slippage_position_trace_scopes_accounts_and_exchanges_without_foreign_fills"
+    ],
+    "tests/Feature/Research/StageThreeApiTest.php": [
+      "Tests\\Feature\\Research\\StageThreeApiTest::test_degradation_endpoint",
+      "Tests\\Feature\\Research\\StageThreeApiTest::test_correlations_endpoint",
+      "Tests\\Feature\\Research\\StageThreeApiTest::test_recommendations_and_lifecycle_endpoints",
+      "Tests\\Feature\\Research\\StageThreeApiTest::test_report_endpoint_returns_signed_audit_manifest"
+    ],
+    "tests/Feature/Research/StageTwoApiTest.php": [
+      "Tests\\Feature\\Research\\StageTwoApiTest::test_opportunities_and_detail_endpoints",
+      "Tests\\Feature\\Research\\StageTwoApiTest::test_replay_endpoint",
+      "Tests\\Feature\\Research\\StageTwoApiTest::test_calibration_endpoint",
+      "Tests\\Feature\\Research\\StageTwoApiTest::test_shadow_experiment_start_and_stop_endpoints"
+    ],
+    "tests/Feature/Security/BrowserOriginProtectionTest.php": [
+      "Tests\\Feature\\Security\\BrowserOriginProtectionTest::test_cross_site_state_changing_requests_are_rejected",
+      "Tests\\Feature\\Security\\BrowserOriginProtectionTest::test_same_site_state_changing_requests_are_rejected",
+      "Tests\\Feature\\Security\\BrowserOriginProtectionTest::test_foreign_origin_without_browser_hints_is_rejected",
+      "Tests\\Feature\\Security\\BrowserOriginProtectionTest::test_non_browser_clients_without_origin_headers_are_allowed",
+      "Tests\\Feature\\Security\\BrowserOriginProtectionTest::test_same_origin_requests_reach_the_application",
+      "Tests\\Feature\\Security\\BrowserOriginProtectionTest::test_configured_cors_origins_may_submit_state_changing_requests",
+      "Tests\\Feature\\Security\\BrowserOriginProtectionTest::test_cross_origin_reads_are_not_rejected",
+      "Tests\\Feature\\Security\\BrowserOriginProtectionTest::test_origin_checks_do_not_bypass_the_research_token"
+    ],
+    "tests/Feature/Security/RuntimeHardeningConfigTest.php": [
+      "Tests\\Feature\\Security\\RuntimeHardeningConfigTest::test_php_runtime_hardening_directives_are_shipped",
+      "Tests\\Feature\\Security\\RuntimeHardeningConfigTest::test_transport_limits_exceed_the_application_upload_limit",
+      "Tests\\Feature\\Security\\RuntimeHardeningConfigTest::test_nginx_ships_security_headers_for_every_response"
+    ],
+    "tests/Feature/Strategy/LevelProbabilityBootstrapLifecycleTest.php": [
+      "Tests\\Feature\\Strategy\\LevelProbabilityBootstrapLifecycleTest::test_forecast_creation_is_autonomous_and_decoupled_from_strategy_execution",
+      "Tests\\Feature\\Strategy\\LevelProbabilityBootstrapLifecycleTest::test_outcome_maturation_occurs_via_price_bars_without_trading_activity",
+      "Tests\\Feature\\Strategy\\LevelProbabilityBootstrapLifecycleTest::test_statistical_gating_transitions_to_active_trading_at_thirty_samples",
+      "Tests\\Feature\\Strategy\\LevelProbabilityBootstrapLifecycleTest::test_exchange_isolation_prevents_cross_contamination_of_sample_populations",
+      "Tests\\Feature\\Strategy\\LevelProbabilityBootstrapLifecycleTest::test_forecast_accumulation_proceeds_identically_when_paper_execution_is_unapproved"
+    ],
+    "tests/Feature/Strategy/LevelProbabilityTest.php": [
+      "Tests\\Feature\\Strategy\\LevelProbabilityTest::test_forecast_uses_only_prior_resolved_observations_and_reports_smoothed_probabilities"
+    ],
+    "tests/Feature/Strategy/MarketScannerServiceTest.php": [
+      "Tests\\Feature\\Strategy\\MarketScannerServiceTest::test_scanner_evaluates_all_registered_strategies_across_both_symbols_and_is_idempotent"
+    ],
+    "tests/Feature/Strategy/PatternResearchApiTest.php": [
+      "Tests\\Feature\\Strategy\\PatternResearchApiTest::test_pattern_list_and_runs_are_empty_and_paginated",
+      "Tests\\Feature\\Strategy\\PatternResearchApiTest::test_pattern_detail_returns_the_persisted_research_definition",
+      "Tests\\Feature\\Strategy\\PatternResearchApiTest::test_discovery_queues_one_bounded_job_without_token",
+      "Tests\\Feature\\Strategy\\PatternResearchApiTest::test_invalid_symbol_and_future_range_are_rejected",
+      "Tests\\Feature\\Strategy\\PatternResearchApiTest::test_latest_matches_handles_missing_symbol_parameter_safely"
+    ],
+    "tests/Feature/Strategy/ResearchApiTest.php": [
+      "Tests\\Feature\\Strategy\\ResearchApiTest::test_strategy_catalog_and_empty_leaderboard_are_bounded_and_do_not_fabricate_metrics",
+      "Tests\\Feature\\Strategy\\ResearchApiTest::test_authorized_experiment_is_persisted_and_queued_on_dedicated_worker",
+      "Tests\\Feature\\Strategy\\ResearchApiTest::test_lists_default_to_ten_rows_and_reject_unknown_strategy",
+      "Tests\\Feature\\Strategy\\ResearchApiTest::test_forward_research_job_bootstraps_enabled_isolated_strategy_accounts",
+      "Tests\\Feature\\Strategy\\ResearchApiTest::test_leaderboard_uses_only_experiments_for_the_current_strategy_identity",
+      "Tests\\Feature\\Strategy\\ResearchApiTest::test_completed_experiment_requires_explicit_approval_and_creates_an_isolated_forward_portfolio"
+    ],
+    "tests/Feature/Strategy/ResearchBootstrapTest.php": [
+      "Tests\\Feature\\Strategy\\ResearchBootstrapTest::test_complete_closed_history_queues_each_strategy_once",
+      "Tests\\Feature\\Strategy\\ResearchBootstrapTest::test_sufficient_forward_decisions_queue_one_pattern_run_per_symbol_once",
+      "Tests\\Feature\\Strategy\\ResearchBootstrapTest::test_queued_experiment_is_superseded_when_its_immutable_strategy_identity_is_stale"
+    ],
+    "tests/Feature/Strategy/SignalGenerationTest.php": [
+      "Tests\\Feature\\Strategy\\SignalGenerationTest::test_repository_is_idempotent_and_never_rewrites_an_old_strategy_result",
+      "Tests\\Feature\\Strategy\\SignalGenerationTest::test_time_alignment_excludes_future_context_and_open_candles",
+      "Tests\\Feature\\Strategy\\SignalGenerationTest::test_gap_is_detected_and_saved_as_skip",
+      "Tests\\Feature\\Strategy\\SignalGenerationTest::test_command_and_queue_job_persist_one_result_per_strategy",
+      "Tests\\Feature\\Strategy\\SignalGenerationTest::test_all_registered_strategies_are_observed_once_per_closed_candle",
+      "Tests\\Feature\\Strategy\\SignalGenerationTest::test_recent_observation_backfill_populates_all_strategies_without_duplicates",
+      "Tests\\Feature\\Strategy\\SignalGenerationTest::test_no_trading_endpoint_is_present_in_application_source"
+    ],
+    "tests/Feature/Strategy/SignalOnlyStrategyExecutionTest.php": [
+      "Tests\\Feature\\Strategy\\SignalOnlyStrategyExecutionTest::test_lead_lag_publishes_a_signal_but_never_simulates_a_fill",
+      "Tests\\Feature\\Strategy\\SignalOnlyStrategyExecutionTest::test_observation_service_and_forward_portfolio_share_the_peer_aware_signal"
+    ],
+    "tests/Feature/Strategy/StrategyScheduleTest.php": [
+      "Tests\\Feature\\Strategy\\StrategyScheduleTest::test_market_context_is_captured_before_candle_close_and_signal_generation"
+    ],
+    "tests/Feature/Strategy/SupportResistanceStrategiesTest.php": [
+      "Tests\\Feature\\Strategy\\SupportResistanceStrategiesTest::test_all_primary_accounts_exist_and_are_isolated",
+      "Tests\\Feature\\Strategy\\SupportResistanceStrategiesTest::test_sr_bounce_and_breakout_skip_when_sample_size_is_under_thirty",
+      "Tests\\Feature\\Strategy\\SupportResistanceStrategiesTest::test_sr_breakout_emits_buy_with_sufficient_resolved_forecasts",
+      "Tests\\Feature\\Strategy\\SupportResistanceStrategiesTest::test_sr_bounce_emits_buy_on_support_rejection_with_sufficient_data",
+      "Tests\\Feature\\Strategy\\SupportResistanceStrategiesTest::test_sr_signals_execute_in_isolated_strategy_paper_account",
+      "Tests\\Feature\\Strategy\\SupportResistanceStrategiesTest::test_one_way_position_conflict_rejects_opposite_signal"
+    ],
+    "tests/Feature/StrategyBuilder/AdvancedDefinitionTest.php": [
+      "Tests\\Feature\\StrategyBuilder\\AdvancedDefinitionTest::test_advanced_features_and_typed_optimization_ranges_are_validated"
+    ],
+    "tests/Feature/StrategyBuilder/AuthoringTest.php": [
+      "Tests\\Feature\\StrategyBuilder\\AuthoringTest::test_russian_and_english_produce_identical_definitions_without_llm",
+      "Tests\\Feature\\StrategyBuilder\\AuthoringTest::test_ambiguous_description_is_rejected",
+      "Tests\\Feature\\StrategyBuilder\\AuthoringTest::test_explicit_higher_timeframe_and_short_rules_parse_without_invented_confirmations"
+    ],
+    "tests/Feature/StrategyBuilder/AuthoringWorkflowTest.php": [
+      "Tests\\Feature\\StrategyBuilder\\AuthoringWorkflowTest::test_drafts_survive_reload_use_revision_checks_and_publish_immutable_versions",
+      "Tests\\Feature\\StrategyBuilder\\AuthoringWorkflowTest::test_hosted_authoring_requires_consent_and_validates_untrusted_output_without_private_context",
+      "Tests\\Feature\\StrategyBuilder\\AuthoringWorkflowTest::test_chat_provider_is_authoring_only_and_rejects_truncated_output"
+    ],
+    "tests/Feature/StrategyBuilder/DefinitionTest.php": [
+      "Tests\\Feature\\StrategyBuilder\\DefinitionTest::test_versions_are_immutable_idempotent_and_never_provision_accounts",
+      "Tests\\Feature\\StrategyBuilder\\DefinitionTest::test_rejects_unsafe_or_unsupported_definitions"
+    ],
+    "tests/Feature/StrategyBuilder/FundingResearchTest.php": [
+      "Tests\\Feature\\StrategyBuilder\\FundingResearchTest::test_funding_costs_are_pinned_and_missing_event_prevents_backtest",
+      "Tests\\Feature\\StrategyBuilder\\FundingResearchTest::test_equivalent_english_and_russian_rules_produce_identical_actual_go_signals"
+    ],
+    "tests/Feature/StrategyBuilder/ManagementTest.php": [
+      "Tests\\Feature\\StrategyBuilder\\ManagementTest::test_authoring_and_rejected_approval_preserve_all_26_accounts_and_global_guard",
+      "Tests\\Feature\\StrategyBuilder\\ManagementTest::test_management_requires_owner_token_and_confirmation",
+      "Tests\\Feature\\StrategyBuilder\\ManagementTest::test_real_go_backtest_is_pinned_reproducible_and_rejects_gaps"
+    ],
+    "tests/Feature/StrategyBuilder/OptimizationTest.php": [
+      "Tests\\Feature\\StrategyBuilder\\OptimizationTest::test_bounded_walk_forward_preserves_original_and_records_experimental_versions",
+      "Tests\\Feature\\StrategyBuilder\\OptimizationTest::test_kill_switch_blocks_new_optimization"
+    ],
+    "tests/Feature/StrategyBuilder/PaperExecutionTest.php": [
+      "Tests\\Feature\\StrategyBuilder\\PaperExecutionTest::test_owner_can_fund_and_authorize_only_the_new_strategy_then_forward_paper_executes"
+    ],
+    "tests/Feature/StrategyBuilder/PaperGovernanceTest.php": [
+      "Tests\\Feature\\StrategyBuilder\\PaperGovernanceTest::test_approved_fourteenth_strategy_is_unfunded_blocked_and_never_expands_budget"
+    ],
+    "tests/Feature/StrategyBuilder/ShadowTest.php": [
+      "Tests\\Feature\\StrategyBuilder\\ShadowTest::test_shadow_is_forward_only_idempotent_and_kill_switch_gated_without_accounts"
+    ],
+    "tests/Feature/Trading/BinanceObservationContentionTest.php": [
+      "Tests\\Feature\\Trading\\BinanceObservationContentionTest::test_contended_binance_decision_remains_pending_and_is_redispatched_while_fresh",
+      "Tests\\Feature\\Trading\\BinanceObservationContentionTest::test_explicit_observation_job_surfaces_lock_contention_for_bounded_queue_retry",
+      "Tests\\Feature\\Trading\\BinanceObservationContentionTest::test_delayed_duplicate_cannot_downgrade_terminal_pipeline_status",
+      "Tests\\Feature\\Trading\\BinanceObservationContentionTest::test_simultaneous_job_reuses_completed_canonical_observations_and_advances_pipeline",
+      "Tests\\Feature\\Trading\\BinanceObservationContentionTest::test_retry_exhaustion_past_freshness_window_marks_event_stale_without_trade_execution",
+      "Tests\\Feature\\Trading\\BinanceObservationContentionTest::test_duplicate_candle_closed_registration_and_processing_is_strictly_idempotent",
+      "Tests\\Feature\\Trading\\BinanceObservationContentionTest::test_paper_pipeline_per_account_failure_isolation_and_partial_upstream_terminalization",
+      "Tests\\Feature\\Trading\\BinanceObservationContentionTest::test_scheduled_signals_cycle_skips_when_event_driven_pipeline_is_in_flight"
+    ],
+    "tests/Feature/Trading/BinancePipelineFreshnessAndConcurrencyTest.php": [
+      "Tests\\Feature\\Trading\\BinancePipelineFreshnessAndConcurrencyTest::test_freshness_boundary_conditions_at_299_300_and_301_seconds",
+      "Tests\\Feature\\Trading\\BinancePipelineFreshnessAndConcurrencyTest::test_idempotent_repeated_candle_events_do_not_duplicate_or_redispatch",
+      "Tests\\Feature\\Trading\\BinancePipelineFreshnessAndConcurrencyTest::test_binance_candle_ingestion_dispatches_15m_event_upon_persistence",
+      "Tests\\Feature\\Trading\\BinancePipelineFreshnessAndConcurrencyTest::test_process_closed_candle_event_reuses_existing_canonical_observations",
+      "Tests\\Feature\\Trading\\BinancePipelineFreshnessAndConcurrencyTest::test_observation_lock_contention_preserves_pending_state",
+      "Tests\\Feature\\Trading\\BinancePipelineFreshnessAndConcurrencyTest::test_downstream_paper_stale_acknowledges_upstream_without_orders",
+      "Tests\\Feature\\Trading\\BinancePipelineFreshnessAndConcurrencyTest::test_recovery_terminalizes_candle_closed_when_signals_already_evaluated",
+      "Tests\\Feature\\Trading\\BinancePipelineFreshnessAndConcurrencyTest::test_is_decision_already_serviced_detects_existing_observations",
+      "Tests\\Feature\\Trading\\BinancePipelineFreshnessAndConcurrencyTest::test_scheduler_cadence_and_isolation_for_binance_tasks",
+      "Tests\\Feature\\Trading\\BinancePipelineFreshnessAndConcurrencyTest::test_btcusdt_and_ethusdt_scheduling_and_pipeline_isolation",
+      "Tests\\Feature\\Trading\\BinancePipelineFreshnessAndConcurrencyTest::test_no_retroactive_paper_execution_for_expired_signals",
+      "Tests\\Feature\\Trading\\BinancePipelineFreshnessAndConcurrencyTest::test_bybit_pipeline_and_blocked_accounts_remain_intact"
+    ],
+    "tests/Feature/Trading/EventDrivenTradingPipelineChainTest.php": [
+      "Tests\\Feature\\Trading\\EventDrivenTradingPipelineChainTest::test_bybit_complete_candle_to_signal_to_paper_event_chain",
+      "Tests\\Feature\\Trading\\EventDrivenTradingPipelineChainTest::test_binance_complete_candle_to_signal_to_paper_event_chain"
+    ],
+    "tests/Feature/Trading/TradingPipelineConcurrencyAndSafetyTest.php": [
+      "Tests\\Feature\\Trading\\TradingPipelineConcurrencyAndSafetyTest::test_concurrent_workers_processing_same_event_are_fenced_and_idempotent",
+      "Tests\\Feature\\Trading\\TradingPipelineConcurrencyAndSafetyTest::test_duplicate_paper_jobs_do_not_produce_duplicate_positions_or_financial_writes",
+      "Tests\\Feature\\Trading\\TradingPipelineConcurrencyAndSafetyTest::test_temporal_causality_guards_prevent_retroactive_fills",
+      "Tests\\Feature\\Trading\\TradingPipelineConcurrencyAndSafetyTest::test_existing_open_positions_continue_lifecycle_even_when_new_entries_are_blocked",
+      "Tests\\Feature\\Trading\\TradingPipelineConcurrencyAndSafetyTest::test_paper_execution_ownership_preserves_ledger_integrity_and_reconciliation"
+    ],
+    "tests/Feature/Trading/TradingPipelineDiagnosticsTest.php": [
+      "Tests\\Feature\\Trading\\TradingPipelineDiagnosticsTest::test_diagnostics_correctly_classifies_status_anomalies_vs_genuinely_stale"
+    ],
+    "tests/Feature/Trading/TradingPipelineEventContractTest.php": [
+      "Tests\\Feature\\Trading\\TradingPipelineEventContractTest::test_record_candle_closed_dispatches_to_isolated_bybit_queue",
+      "Tests\\Feature\\Trading\\TradingPipelineEventContractTest::test_record_candle_closed_dispatches_to_isolated_binance_queue",
+      "Tests\\Feature\\Trading\\TradingPipelineEventContractTest::test_duplicate_candle_closure_is_strictly_idempotent",
+      "Tests\\Feature\\Trading\\TradingPipelineEventContractTest::test_scheduled_mode_suppresses_queue_dispatch_and_keeps_event_pending",
+      "Tests\\Feature\\Trading\\TradingPipelineEventContractTest::test_stale_candle_closure_is_rejected_and_marked_stale",
+      "Tests\\Feature\\Trading\\TradingPipelineEventContractTest::test_signals_evaluated_dispatches_paper_trading_on_isolated_queue"
+    ],
+    "tests/Feature/Trading/TradingPipelineForwardCausalityTest.php": [
+      "Tests\\Feature\\Trading\\TradingPipelineForwardCausalityTest::test_forward_paper_does_not_fill_a_bar_that_closed_before_order_activation",
+      "Tests\\Feature\\Trading\\TradingPipelineForwardCausalityTest::test_forward_paper_rejects_a_pending_fill_older_than_the_freshness_window",
+      "Tests\\Feature\\Trading\\TradingPipelineForwardCausalityTest::test_ambiguous_entry_bar_does_not_exit_before_the_next_closed_bar",
+      "Tests\\Feature\\Trading\\TradingPipelineForwardCausalityTest::test_event_driven_paper_never_ingests_signals_created_before_the_account",
+      "Tests\\Feature\\Trading\\TradingPipelineForwardCausalityTest::test_stale_event_does_not_block_scheduled_management_of_existing_position",
+      "Tests\\Feature\\Trading\\TradingPipelineForwardCausalityTest::test_binance_event_driven_virtual_fill_is_forward_only_and_reconciles_26_accounts"
+    ],
+    "tests/Feature/Trading/TradingPipelineRecoveryAndRollbackTest.php": [
+      "Tests\\Feature\\Trading\\TradingPipelineRecoveryAndRollbackTest::test_recovery_redispatches_fresh_uncompleted_events",
+      "Tests\\Feature\\Trading\\TradingPipelineRecoveryAndRollbackTest::test_recovery_marks_expired_events_as_stale_without_dispatching",
+      "Tests\\Feature\\Trading\\TradingPipelineRecoveryAndRollbackTest::test_scheduled_job_skips_when_event_driven_pipeline_already_serviced_decision",
+      "Tests\\Feature\\Trading\\TradingPipelineRecoveryAndRollbackTest::test_feature_flag_rollback_switches_cleanly_without_duplicate_writers"
+    ],
+    "tests/Feature/Trading/TradingPipelineStageATest.php": [
+      "Tests\\Feature\\Trading\\TradingPipelineStageATest::test_record_paper_processed_terminalizes_signals_evaluated_to_completed",
+      "Tests\\Feature\\Trading\\TradingPipelineStageATest::test_record_paper_processed_terminalizes_5m_candle_closed_to_completed",
+      "Tests\\Feature\\Trading\\TradingPipelineStageATest::test_record_paper_processed_marks_partial_on_failures",
+      "Tests\\Feature\\Trading\\TradingPipelineStageATest::test_recovery_reconciles_unacknowledged_upstream_event_from_completed_paper",
+      "Tests\\Feature\\Trading\\TradingPipelineStageATest::test_binance_provenance_failure_on_one_account_does_not_abort_others",
+      "Tests\\Feature\\Trading\\TradingPipelineStageATest::test_process_paper_pipeline_job_supports_targeted_retry_with_only_account_ids",
+      "Tests\\Feature\\Trading\\TradingPipelineStageATest::test_record_paper_processed_marks_failed_when_all_accounts_fail_and_terminalizes_upstream",
+      "Tests\\Feature\\Trading\\TradingPipelineStageATest::test_recovery_retry_only_retries_failed_accounts_without_repeating_successes",
+      "Tests\\Feature\\Trading\\TradingPipelineStageATest::test_expired_paper_delivery_acknowledges_upstream_without_fills",
+      "Tests\\Feature\\Trading\\TradingPipelineStageATest::test_recovery_dispatches_only_failed_account_identities_for_fresh_partial_batch",
+      "Tests\\Feature\\Trading\\TradingPipelineStageATest::test_duplicate_delivery_preserves_completed_batch_and_never_replays_peer",
+      "Tests\\Feature\\Trading\\TradingPipelineStageATest::test_crash_checkpoint_recovers_only_unacknowledged_accounts"
+    ],
+    "tests/Integration/BinanceCandleBackfillIntegrationTest.php": [
+      "Tests\\Integration\\BinanceCandleBackfillIntegrationTest::test_exactly_31_missing_30m_candles_are_recovered_for_each_symbol_without_paper_effects",
+      "Tests\\Integration\\BinanceCandleBackfillIntegrationTest::test_repeated_backfill_preserves_every_existing_candle",
+      "Tests\\Integration\\BinanceCandleBackfillIntegrationTest::test_501_candles_use_two_bounded_api_windows_without_loss",
+      "Tests\\Integration\\BinanceCandleBackfillIntegrationTest::test_current_unclosed_candle_is_never_persisted",
+      "Tests\\Integration\\BinanceCandleBackfillIntegrationTest::test_no_progress_reports_the_exact_missing_slots",
+      "Tests\\Integration\\BinanceCandleBackfillIntegrationTest::test_conflicting_observation_is_quarantined_and_original_candle_is_immutable",
+      "Tests\\Integration\\BinanceCandleBackfillIntegrationTest::test_partial_api_failure_retains_committed_candles_and_resume_fills_only_missing_slots",
+      "Tests\\Integration\\BinanceCandleBackfillIntegrationTest::test_failed_response_and_out_of_range_response_write_no_history",
+      "Tests\\Integration\\BinanceCandleBackfillIntegrationTest::test_oversized_or_unaligned_range_is_rejected_before_an_api_request"
+    ],
+    "tests/Integration/BinanceCandleConflictDurabilityTest.php": [
+      "Tests\\Integration\\BinanceCandleConflictDurabilityTest::test_conflict_survives_ingestion_and_enclosing_transaction_rollback#0",
+      "Tests\\Integration\\BinanceCandleConflictDurabilityTest::test_conflict_survives_ingestion_and_enclosing_transaction_rollback#1",
+      "Tests\\Integration\\BinanceCandleConflictDurabilityTest::test_conflict_survives_ingestion_and_enclosing_transaction_rollback#2",
+      "Tests\\Integration\\BinanceCandleConflictDurabilityTest::test_conflict_survives_ingestion_and_enclosing_transaction_rollback#3",
+      "Tests\\Integration\\BinanceCandleConflictDurabilityTest::test_failed_persistence_leaves_durable_scoped_unavailable_evidence_and_preserves_quarantined_valid_candles#0",
+      "Tests\\Integration\\BinanceCandleConflictDurabilityTest::test_failed_persistence_leaves_durable_scoped_unavailable_evidence_and_preserves_quarantined_valid_candles#1",
+      "Tests\\Integration\\BinanceCandleConflictDurabilityTest::test_all_integrity_reads_and_consumers_fail_closed#0",
+      "Tests\\Integration\\BinanceCandleConflictDurabilityTest::test_all_integrity_reads_and_consumers_fail_closed#1",
+      "Tests\\Integration\\BinanceCandleConflictDurabilityTest::test_resolved_conflict_reopens_and_atomic_concurrent_upserts_preserve_counts_and_provenance#0",
+      "Tests\\Integration\\BinanceCandleConflictDurabilityTest::test_resolved_conflict_reopens_and_atomic_concurrent_upserts_preserve_counts_and_provenance#1",
+      "Tests\\Integration\\BinanceCandleConflictDurabilityTest::test_unavailable_journal_storage_prevents_ready_and_successful_persistence_claims",
+      "Tests\\Integration\\BinanceCandleConflictDurabilityTest::test_database_connection_failure_is_unavailable_and_leaves_evidence_after_recovery",
+      "Tests\\Integration\\BinanceCandleConflictDurabilityTest::test_contended_conflict_row_has_a_bounded_timeout_and_preserves_pending_evidence"
+    ],
+    "tests/Integration/BinanceCandleInsertionRaceTest.php": [
+      "Tests\\Integration\\BinanceCandleInsertionRaceTest::test_concurrent_insert_reloads_every_identity_and_preserves_winning_rows#identical subset",
+      "Tests\\Integration\\BinanceCandleInsertionRaceTest::test_concurrent_insert_reloads_every_identity_and_preserves_winning_rows#conflicting final identity",
+      "Tests\\Integration\\BinanceCandleInsertionRaceTest::test_concurrent_insert_reloads_every_identity_and_preserves_winning_rows#identical complete batch",
+      "Tests\\Integration\\BinanceCandleInsertionRaceTest::test_concurrent_insert_reloads_every_identity_and_preserves_winning_rows#conflicting complete batch"
+    ],
+    "tests/Integration/BinanceObservationRedisLockIntegrationTest.php": [
+      "Tests\\Integration\\BinanceObservationRedisLockIntegrationTest::test_killed_worker_lock_expires_and_pending_event_is_recoverable"
+    ],
+    "tests/Integration/BybitPublicApiIntegrationTest.php": [
+      "Tests\\Integration\\BybitPublicApiIntegrationTest::test_public_linear_market_endpoints_match_the_documented_contract"
+    ],
+    "tests/Integration/CandleConflictRecoveryTest.php": [
+      "Tests\\Integration\\CandleConflictRecoveryTest::test_replay_and_duplicate_delivery_have_one_durable_effect_and_archive_the_original",
+      "Tests\\Integration\\CandleConflictRecoveryTest::test_four_independent_processes_cannot_apply_one_event_twice",
+      "Tests\\Integration\\CandleConflictRecoveryTest::test_real_process_termination_is_recoverable_at_both_committed_boundaries#0",
+      "Tests\\Integration\\CandleConflictRecoveryTest::test_real_process_termination_is_recoverable_at_both_committed_boundaries#1",
+      "Tests\\Integration\\CandleConflictRecoveryTest::test_real_process_termination_is_recoverable_at_both_committed_boundaries#2",
+      "Tests\\Integration\\CandleConflictRecoveryTest::test_permanently_failed_receipt_is_not_retried_or_acknowledged",
+      "Tests\\Integration\\CandleConflictRecoveryTest::test_failed_failure_state_write_retains_a_fenced_claim_and_pending_source",
+      "Tests\\Integration\\CandleConflictRecoveryTest::test_failed_recovery_remains_observable_and_retry_commits_once",
+      "Tests\\Integration\\CandleConflictRecoveryTest::test_archive_failure_after_commit_retries_acknowledgement_without_reapplying",
+      "Tests\\Integration\\CandleConflictRecoveryTest::test_identity_collision_cannot_change_receipt_or_discard_conflicting_bytes",
+      "Tests\\Integration\\CandleConflictRecoveryTest::test_legacy_complete_v2_file_recovers_without_rewriting_its_bytes",
+      "Tests\\Integration\\CandleConflictRecoveryTest::test_pending_source_cannot_be_acknowledged_without_an_independently_committed_receipt",
+      "Tests\\Integration\\CandleConflictRecoveryTest::test_out_of_order_recovery_preserves_latest_observation_and_forensic_events",
+      "Tests\\Integration\\CandleConflictRecoveryTest::test_cli_reports_completed_evidence_without_resolving_the_conflict",
+      "Tests\\Integration\\CandleConflictRecoveryTest::test_receipt_insert_failure_preserves_source_for_a_later_retry",
+      "Tests\\Integration\\CandleConflictRecoveryTest::test_invalid_observation_from_a_producer_cannot_lose_the_only_conflict_evidence"
+    ],
+    "tests/Integration/ConcurrentPaperEntryGlobalRiskPostgresIntegrationTest.php": [
+      "Tests\\Integration\\ConcurrentPaperEntryGlobalRiskPostgresIntegrationTest::test_entry_decision_lock_serializes_concurrent_postgresql_transactions",
+      "Tests\\Integration\\ConcurrentPaperEntryGlobalRiskPostgresIntegrationTest::test_two_concurrent_entries_across_different_accounts_reject_excess_risk"
+    ],
+    "tests/Integration/CounterfactualSlotIdempotencyPostgresIntegrationTest.php": [
+      "Tests\\Integration\\CounterfactualSlotIdempotencyPostgresIntegrationTest::test_sequential_rerun_returns_canonical_evaluation_without_duplicate",
+      "Tests\\Integration\\CounterfactualSlotIdempotencyPostgresIntegrationTest::test_distinct_strategy_versions_preserve_separate_evaluations",
+      "Tests\\Integration\\CounterfactualSlotIdempotencyPostgresIntegrationTest::test_negative_control_duplicate_direct_insert_rejected_by_postgresql_unique_constraint",
+      "Tests\\Integration\\CounterfactualSlotIdempotencyPostgresIntegrationTest::test_historical_golden_replay_resolves_eight_raw_to_four_canonical",
+      "Tests\\Integration\\CounterfactualSlotIdempotencyPostgresIntegrationTest::test_negative_control_duplicate_observation_rejected_by_slot_unique_constraint"
+    ],
+    "tests/Integration/FinancialAccountingAndReconciliationPostgresIntegrationTest.php": [
+      "Tests\\Integration\\FinancialAccountingAndReconciliationPostgresIntegrationTest::test_golden_positions_lifecycle_accounting_identities",
+      "Tests\\Integration\\FinancialAccountingAndReconciliationPostgresIntegrationTest::test_window_reconciliation_detects_boundary_fills_and_matches_fee_gap",
+      "Tests\\Integration\\FinancialAccountingAndReconciliationPostgresIntegrationTest::test_negative_control_inverted_funding_sign_fails_reconciliation"
+    ],
+    "tests/Integration/GoResearchWorkerIntegrationTest.php": [
+      "Tests\\Integration\\GoResearchWorkerIntegrationTest::test_scheduler_queue_go_worker_persists_succeeded_result",
+      "Tests\\Integration\\GoResearchWorkerIntegrationTest::test_go_worker_persists_failure_and_sanitized_error_when_job_invalid",
+      "Tests\\Integration\\GoResearchWorkerIntegrationTest::test_go_worker_requeues_job_when_retries_remain",
+      "Tests\\Integration\\GoResearchWorkerIntegrationTest::test_worker_lifecycle_e2e_superseded_worker_rejected_and_cannot_persist_result"
+    ],
+    "tests/Integration/LedgerReconciliationPostgresIntegrationTest.php": [
+      "Tests\\Integration\\LedgerReconciliationPostgresIntegrationTest::test_reconcile_all_primary_accounts_in_postgresql_succeeds_without_sql_error",
+      "Tests\\Integration\\LedgerReconciliationPostgresIntegrationTest::test_postgresql_financial_reconciliation_with_partial_and_full_exits_and_funding",
+      "Tests\\Integration\\LedgerReconciliationPostgresIntegrationTest::test_postgresql_reconciliation_detects_balance_discrepancy"
+    ],
+    "tests/Integration/M9SnapshotIsolationPostgresIntegrationTest.php": [
+      "Tests\\Integration\\M9SnapshotIsolationPostgresIntegrationTest::test_atomic_valuation_commit_during_m9_does_not_create_false_mismatch",
+      "Tests\\Integration\\M9SnapshotIsolationPostgresIntegrationTest::test_genuine_mismatch_remains_a_failing_diagnostic",
+      "Tests\\Integration\\M9SnapshotIsolationPostgresIntegrationTest::test_deployment_initializer_uses_one_snapshot_across_an_atomic_valuation_commit",
+      "Tests\\Integration\\M9SnapshotIsolationPostgresIntegrationTest::test_reconciliation_reports_multiple_real_financial_errors_and_accepts_blocked_status",
+      "Tests\\Integration\\M9SnapshotIsolationPostgresIntegrationTest::test_runtime_nested_read_committed_reconciliation_fails_closed"
+    ],
+    "tests/Integration/MlAuthorityAndProperScoringPostgresIntegrationTest.php": [
+      "Tests\\Integration\\MlAuthorityAndProperScoringPostgresIntegrationTest::test_legacy_active_model_lacks_authority_and_fails_closed_or_bypasses",
+      "Tests\\Integration\\MlAuthorityAndProperScoringPostgresIntegrationTest::test_proper_scoring_rule_training_prevalence_baseline_and_bss",
+      "Tests\\Integration\\MlAuthorityAndProperScoringPostgresIntegrationTest::test_gate6_full_funnel_validation",
+      "Tests\\Integration\\MlAuthorityAndProperScoringPostgresIntegrationTest::test_negative_mutation_unauthorized_promotion_rejected"
+    ],
+    "tests/Integration/PaperPipelineConcurrentWorkersIntegrationTest.php": [
+      "Tests\\Integration\\PaperPipelineConcurrentWorkersIntegrationTest::test_two_workers_commit_one_fill_and_one_financial_journal_sequence"
+    ],
+    "tests/Integration/Phase0ReleaseMigrationsPostgresIntegrationTest.php": [
+      "Tests\\Integration\\Phase0ReleaseMigrationsPostgresIntegrationTest::test_all_three_migrations_exist_and_apply_in_sequential_order",
+      "Tests\\Integration\\Phase0ReleaseMigrationsPostgresIntegrationTest::test_portfolio_correlation_snapshots_preserves_existing_data_and_allows_null",
+      "Tests\\Integration\\Phase0ReleaseMigrationsPostgresIntegrationTest::test_research_workers_preserves_data_and_enforces_default_generation_token"
+    ],
+    "tests/Integration/QuantPortfolioMetricsPostgresIntegrationTest.php": [
+      "Tests\\Integration\\QuantPortfolioMetricsPostgresIntegrationTest::test_complete_29_positions_population_economics",
+      "Tests\\Integration\\QuantPortfolioMetricsPostgresIntegrationTest::test_reconstruct_point_in_time_state_at_cutoff",
+      "Tests\\Integration\\QuantPortfolioMetricsPostgresIntegrationTest::test_shared_market_events_and_overlap_clusters",
+      "Tests\\Integration\\QuantPortfolioMetricsPostgresIntegrationTest::test_deterministic_reproducibility_proof",
+      "Tests\\Integration\\QuantPortfolioMetricsPostgresIntegrationTest::test_negative_control_source_variation_reacts_dynamically"
+    ],
+    "tests/Integration/QuoteIntegrity/QimImmutabilityTest.php": [
+      "Tests\\Integration\\QuoteIntegrity\\QimImmutabilityTest::test_bybit_signals_role_cannot_update_or_delete_qim_observations",
+      "Tests\\Integration\\QuoteIntegrity\\QimImmutabilityTest::test_bybit_signals_role_cannot_update_or_delete_qim_gap_events"
+    ],
+    "tests/Integration/ResearchJobSubmissionPostgresIntegrationTest.php": [
+      "Tests\\Integration\\ResearchJobSubmissionPostgresIntegrationTest::test_migration_refuses_existing_active_duplicates_without_changing_them",
+      "Tests\\Integration\\ResearchJobSubmissionPostgresIntegrationTest::test_active_uniqueness_and_terminal_key_reuse",
+      "Tests\\Integration\\ResearchJobSubmissionPostgresIntegrationTest::test_independent_submitters_serialize_on_the_same_key"
+    ],
+    "tests/Integration/ResearchWorkerConcurrencyPostgresIntegrationTest.php": [
+      "Tests\\Integration\\ResearchWorkerConcurrencyPostgresIntegrationTest::test_worker_generation_token_fencing_and_zombie_rejection",
+      "Tests\\Integration\\ResearchWorkerConcurrencyPostgresIntegrationTest::test_concurrent_independent_workers_registration_and_routing",
+      "Tests\\Integration\\ResearchWorkerConcurrencyPostgresIntegrationTest::test_real_concurrency_with_independent_pdo_connections"
+    ],
+    "tests/Integration/SlippageAttributionPostgresIntegrationTest.php": [
+      "Tests\\Integration\\SlippageAttributionPostgresIntegrationTest::test_postgres_slippage_generation_and_unique_constraints",
+      "Tests\\Integration\\SlippageAttributionPostgresIntegrationTest::test_postgres_unique_idempotency_key_constraint"
+    ],
+    "tests/Integration/SlotIntegrityAndRiskFunnelPostgresIntegrationTest.php": [
+      "Tests\\Integration\\SlotIntegrityAndRiskFunnelPostgresIntegrationTest::test_golden_risk_decisions_funnel_and_reason_multisets",
+      "Tests\\Integration\\SlotIntegrityAndRiskFunnelPostgresIntegrationTest::test_slot_integrity_cadence_detects_missing_unexplained_and_market_data_unavailable",
+      "Tests\\Integration\\SlotIntegrityAndRiskFunnelPostgresIntegrationTest::test_opportunity_tracer_separates_signal_opportunity_from_risk_decision_events",
+      "Tests\\Integration\\SlotIntegrityAndRiskFunnelPostgresIntegrationTest::test_negative_control_duplicate_risk_decision_rejected_by_unique_constraint"
+    ],
+    "tests/Integration/StrategyInputIntegrityTest.php": [
+      "Tests\\Integration\\StrategyInputIntegrityTest::test_pending_recovery_blocks_current_and_genuinely_fresh_php_processes",
+      "Tests\\Integration\\StrategyInputIntegrityTest::test_recovery_is_not_resolution_and_input_requires_independent_verified_clearance",
+      "Tests\\Integration\\StrategyInputIntegrityTest::test_malformed_evidence_blocks_input_health_readiness_and_recovery_without_modification#0",
+      "Tests\\Integration\\StrategyInputIntegrityTest::test_malformed_evidence_blocks_input_health_readiness_and_recovery_without_modification#1",
+      "Tests\\Integration\\StrategyInputIntegrityTest::test_malformed_evidence_blocks_input_health_readiness_and_recovery_without_modification#2",
+      "Tests\\Integration\\StrategyInputIntegrityTest::test_malformed_evidence_blocks_input_health_readiness_and_recovery_without_modification#3",
+      "Tests\\Integration\\StrategyInputIntegrityTest::test_malformed_evidence_blocks_input_health_readiness_and_recovery_without_modification#4",
+      "Tests\\Integration\\StrategyInputIntegrityTest::test_malformed_evidence_blocks_input_health_readiness_and_recovery_without_modification#5",
+      "Tests\\Integration\\StrategyInputIntegrityTest::test_final_boundary_recheck_observes_a_concurrent_process_change#0",
+      "Tests\\Integration\\StrategyInputIntegrityTest::test_final_boundary_recheck_observes_a_concurrent_process_change#1",
+      "Tests\\Integration\\StrategyInputIntegrityTest::test_peer_symbol_integrity_is_checked_using_its_actual_input_window",
+      "Tests\\Integration\\StrategyInputIntegrityTest::test_unrelated_symbol_interval_and_outside_warmup_scope_do_not_block_input",
+      "Tests\\Integration\\StrategyInputIntegrityTest::test_integrity_query_failure_blocks_input_and_returns_a_safe_machine_readable_api_error",
+      "Tests\\Integration\\StrategyInputIntegrityTest::test_unavailable_shared_filesystem_blocks_input",
+      "Tests\\Integration\\StrategyInputIntegrityTest::test_unavailable_postgres_connection_blocks_input_with_a_stable_reason",
+      "Tests\\Integration\\StrategyInputIntegrityTest::test_failed_durable_receipt_blocks_even_when_pending_file_visibility_is_lost",
+      "Tests\\Integration\\StrategyInputIntegrityTest::test_a_caller_repeatable_read_snapshot_cannot_hide_new_committed_conflicts",
+      "Tests\\Integration\\StrategyInputIntegrityTest::test_blocked_input_and_evidence_recovery_leave_paper_account_and_history_bytes_unchanged",
+      "Tests\\Integration\\StrategyInputIntegrityTest::test_research_and_signal_paths_do_not_write_observations_or_signals_while_blocked"
+    ],
+    "tests/Integration/StrategyObservationSlotMigrationPostgresIntegrationTest.php": [
+      "Tests\\Integration\\StrategyObservationSlotMigrationPostgresIntegrationTest::test_migration_canonicalizes_duplicate_slots_deterministically_and_preserves_all_rows",
+      "Tests\\Integration\\StrategyObservationSlotMigrationPostgresIntegrationTest::test_migration_creates_valid_unique_partial_index_verified_via_catalog",
+      "Tests\\Integration\\StrategyObservationSlotMigrationPostgresIntegrationTest::test_migration_is_safely_idempotent_on_repeated_runs",
+      "Tests\\Integration\\StrategyObservationSlotMigrationPostgresIntegrationTest::test_legacy_rollback_write_path_compatibility",
+      "Tests\\Integration\\StrategyObservationSlotMigrationPostgresIntegrationTest::test_negative_control_duplicate_canonical_direct_insert_rejected"
+    ]
+  },
+  "lanes": {
+    "unit-1": [
+      "tests/Unit/QuoteIntegrity/QimComparisonEngineTest.php",
+      "tests/Unit/Research/ResearchJobServiceTest.php",
+      "tests/Unit/Research/StrategyHealthServiceTest.php",
+      "tests/Unit/Research/PromotionPolicyServiceTest.php",
+      "tests/Unit/Research/LogisticRegressionTrainingTest.php",
+      "tests/Unit/Research/ResearchReportServiceTest.php",
+      "tests/Unit/Research/StrategyDegradationServiceTest.php",
+      "tests/Unit/QuoteIntegrity/QimObservationServiceTest.php",
+      "tests/Unit/Database/PostgresTestDatabaseIsolationGuardTest.php",
+      "tests/Unit/Research/LearningFeatureStoreServiceTest.php",
+      "tests/Unit/Research/CounterfactualNoHindsightTest.php",
+      "tests/Unit/Research/AutonomyPermissionServiceTest.php",
+      "tests/Unit/QuoteIntegrity/QimMeasurementGuardTest.php",
+      "tests/Unit/Research/StrategyEvolutionServiceTest.php",
+      "tests/Unit/StrategyBuilder/ExecutableStoreTest.php",
+      "tests/Unit/Research/LearningPredictorServiceTest.php",
+      "tests/Unit/Strategy/CandidateStrategiesTest.php",
+      "tests/Unit/Exchanges/BinancePaperSafetyTest.php",
+      "tests/Unit/Research/ShadowExperimentServiceTest.php",
+      "tests/Unit/Research/CostMfe/MfeMaeCalculatorTest.php",
+      "tests/Unit/Exchanges/BinancePublicAdapterTest.php",
+      "tests/Unit/Exchanges/BinancePublicTransportTest.php",
+      "tests/Unit/Research/CostMfe/CostAttributionTest.php",
+      "tests/Unit/Research/CostMfe/PreEntryMfeEstimatorTest.php",
+      "tests/Unit/PaperTrading/R8CapitalPolicyTest.php",
+      "tests/Unit/MarketData/PhrityWebSocketConnectionTest.php",
+      "tests/Unit/Strategy/StrategyEngineTest.php",
+      "tests/Unit/Backtest/GridOptimizerTest.php",
+      "tests/Unit/Research/Decision/DecisionGateTest.php",
+      "tests/Unit/Backtest/PerformanceMetricCalculatorTest.php",
+      "tests/Unit/PatternDiscovery/PatternDiscoveryTest.php",
+      "tests/Unit/Strategy/ResearchStrategiesTest.php",
+      "tests/Unit/Indicators/MovingMomentumIndicatorsTest.php",
+      "tests/Unit/Indicators/VolatilityTrendIndicatorsTest.php",
+      "tests/Unit/Research/Autonomy/AutonomyDomainTest.php",
+      "tests/Unit/PaperTrading/ExchangePositionSizingTest.php",
+      "tests/Unit/PatternDiscovery/MarketStructurePatternDetectorTest.php",
+      "tests/Unit/Research/Autonomy/AutonomyPromotionTest.php",
+      "tests/Unit/Exchanges/BinanceSourceIdentityTest.php",
+      "tests/Unit/Exchanges/BinanceCandleWindowTest.php",
+      "tests/Unit/Audit/BacktestAuditCsvR8Test.php",
+      "tests/Unit/Backtest/StrategySignalEvaluatorCacheLifecycleTest.php",
+      "tests/Unit/Strategy/MarketContextCollectorTest.php",
+      "tests/Unit/Audit/BacktestAuditRedactorR8Test.php",
+      "tests/Unit/ExampleTest.php"
+    ],
+    "unit-2": [
+      "tests/Unit/Research/SystemFreshnessServiceTest.php",
+      "tests/Unit/Research/SlippageAttributionServiceTest.php",
+      "tests/Unit/DeploymentStateValidationAndRecoveryTest.php",
+      "tests/Unit/Research/P1ArchiveEvaluationTest.php",
+      "tests/Unit/Research/LedgerReconciliationServiceTest.php",
+      "tests/Unit/Research/ChampionChallengerLifecycleTest.php",
+      "tests/Unit/Research/PromotionPolicyFailClosedTest.php",
+      "tests/Unit/Research/CounterfactualAnalyzerServiceTest.php",
+      "tests/Unit/Research/PortfolioCorrelationServiceTest.php",
+      "tests/Unit/Research/CounterfactualLegacyQuarantineTest.php",
+      "tests/Unit/QuoteIntegrity/QimIncidentLifecycleTest.php",
+      "tests/Unit/Research/CounterfactualAccurateRCalculationTest.php",
+      "tests/Unit/Research/ProbabilityCalibrationServiceTest.php",
+      "tests/Unit/Research/ModelAdvisoryIntegrationTest.php",
+      "tests/Unit/QuoteIntegrity/QimGapRecorderTest.php",
+      "tests/Unit/MarketData/CandleConflictJournalTest.php",
+      "tests/Unit/QuoteIntegrity/QimNonBlockingHooksTest.php",
+      "tests/Unit/Research/ResearchRecommendationServiceTest.php",
+      "tests/Unit/Research/DecisionReplayServiceTest.php",
+      "tests/Unit/Research/SlippageAllocationTest.php",
+      "tests/Unit/Middleware/RequireResearchTokenTest.php",
+      "tests/Unit/Research/Concentration/OverlapClusterBuilderTest.php",
+      "tests/Unit/Exchanges/BinanceContextCaptureTest.php",
+      "tests/Unit/Research/RiskCapitalMetricsServiceTest.php",
+      "tests/Unit/Research/Concentration/ConcentrationAnalyzerTest.php",
+      "tests/Unit/Research/MetricRegistryTest.php",
+      "tests/Unit/Research/Concentration/EquityAlignmentTest.php",
+      "tests/Unit/Exchanges/BinanceOpenInterestWindowTest.php",
+      "tests/Unit/PaperTrading/RiskAndSizingTest.php",
+      "tests/Unit/Research/Autonomy/AutonomyControlTest.php",
+      "tests/Unit/Exchanges/BinanceSymbolInventoryTest.php",
+      "tests/Unit/DevOps/DockerComposeImageResolutionTest.php",
+      "tests/Unit/MarketData/BybitRestClientTest.php",
+      "tests/Unit/PaperTrading/R8SizingSettingsTest.php",
+      "tests/Unit/PaperTrading/ExecutionEngineTest.php",
+      "tests/Unit/Indicators/VolumeLevelsIndicatorsTest.php",
+      "tests/Unit/Research/Decision/HypothesisPriorityTest.php",
+      "tests/Unit/MarketData/WebSocketParserTest.php",
+      "tests/Unit/PatternDiscovery/CandlestickPatternDetectorTest.php",
+      "tests/Unit/Strategy/SignalQualityPolicyTest.php",
+      "tests/Unit/Backtest/ChronologicalSplitterTest.php",
+      "tests/Unit/Trading/TradingQueueIsolationTest.php",
+      "tests/Unit/MarketData/GapDetectorTest.php",
+      "tests/Unit/Indicators/WarmupPolicyTest.php",
+      "tests/Unit/MarketData/IntervalTest.php"
+    ],
+    "feature-1": [
+      "tests/Feature/HistoricalData/ResearchTest.php",
+      "tests/Feature/HistoricalData/PlannerTest.php",
+      "tests/Feature/Backtest/BacktestCurveServiceTest.php",
+      "tests/Feature/PaperTrading/AccountSafetyRegressionTest.php",
+      "tests/Feature/Research/CandidateLabValidationLifecycleTest.php",
+      "tests/Feature/PaperTrading/PrimaryAccountMigrationRehearsalTest.php",
+      "tests/Feature/MarketData/MarketCacheSerializationTest.php",
+      "tests/Feature/Exchanges/BinanceImmutableMarketIngestionTest.php",
+      "tests/Feature/Trading/TradingPipelineRecoveryAndRollbackTest.php",
+      "tests/Feature/Indicators/IndicatorEngineTest.php",
+      "tests/Feature/QuoteIntegrity/QimApiStatusTest.php",
+      "tests/Feature/QuoteIntegrity/QimEvidenceImportTest.php",
+      "tests/Feature/MarketData/FundingHistorySynchronizerTest.php",
+      "tests/Feature/QuoteIntegrity/QimFeatureFlagOffTest.php",
+      "tests/Feature/PatternDiscovery/PatternOccurrenceOutcomeTest.php",
+      "tests/Feature/HistoricalData/DownloaderTest.php",
+      "tests/Feature/Security/RuntimeHardeningConfigTest.php"
+    ],
+    "feature-2": [
+      "tests/Feature/Exchanges/BinancePaperReadinessTest.php",
+      "tests/Feature/PaperTrading/TemporalIntegrityAndCausalityTest.php",
+      "tests/Feature/Backtest/HistoricalStrategyParityTest.php",
+      "tests/Feature/PaperTrading/FullPaperTradingPipelineE2ETest.php",
+      "tests/Feature/Trading/EventDrivenTradingPipelineChainTest.php",
+      "tests/Feature/Api/MultiAccountSelectionTest.php",
+      "tests/Feature/Research/AutonomyResearchTest.php",
+      "tests/Feature/Exchanges/BinanceHtfScheduleTest.php",
+      "tests/Feature/PaperTrading/DailyPerformanceTest.php",
+      "tests/Feature/Research/ProfitabilityResearchApiTest.php",
+      "tests/Feature/Api/ResearchApiTest.php",
+      "tests/Feature/MarketData/MarketExchangeIsolationTest.php",
+      "tests/Feature/PaperTrading/StrategyPipelineFunnelVerificationTest.php",
+      "tests/Feature/Exchanges/ExchangeStrategyCompatibilityTest.php",
+      "tests/Feature/Trading/BinanceObservationContentionTest.php",
+      "tests/Feature/Exchanges/BinanceEmergencyDisableMaintenanceTest.php",
+      "tests/Feature/PaperTrading/Phase0DiagnosticPackageTest.php",
+      "tests/Feature/Trading/TradingPipelineStageATest.php",
+      "tests/Feature/Research/P5DependenceConcentrationTest.php",
+      "tests/Feature/Research/AutonomousLearningPipelineTest.php",
+      "tests/Feature/Research/Gate6PromotionPolicyTest.php",
+      "tests/Feature/HistoricalData/ApiTest.php",
+      "tests/Feature/Research/StageThreeApiTest.php",
+      "tests/Feature/Research/P4CostMfeMaeApiTest.php",
+      "tests/Feature/Exchanges/BinanceCandleConflictQuarantineTest.php",
+      "tests/Feature/Research/P6DecisionGateTest.php",
+      "tests/Feature/Exchanges/MultiExchangeComparisonTest.php",
+      "tests/Feature/Research/AdaptiveTimeframeResearchTest.php",
+      "tests/Feature/PaperTrading/FundingScheduleSafetyTest.php",
+      "tests/Feature/Research/CandidateExchangeTest.php",
+      "tests/Feature/MarketData/CandlePersistenceTest.php",
+      "tests/Feature/Research/ScheduledResearchJobsTest.php",
+      "tests/Feature/Audit/BacktestHistoricalAuditR8Test.php",
+      "tests/Feature/Research/ExitHorizonResearchTest.php",
+      "tests/Feature/Exchanges/BinanceBackfillCommandSafetyTest.php",
+      "tests/Feature/Research/LearningPredictorRollbackTest.php",
+      "tests/Feature/MarketData/CandleSynchronizerTest.php",
+      "tests/Feature/Research/ResearchBenchmarkCommandTest.php",
+      "tests/Feature/ExampleTest.php"
+    ],
+    "feature-3": [
+      "tests/Feature/Strategy/SignalGenerationTest.php",
+      "tests/Feature/Exchanges/BinanceResearchCycleTest.php",
+      "tests/Feature/Backtest/BacktestRunServiceTest.php",
+      "tests/Feature/Exchanges/BinanceActivationCommandTest.php",
+      "tests/Feature/Exchanges/BinanceDeploymentInitializationTest.php",
+      "tests/Feature/Exchanges/BinanceGapRecoveryTest.php",
+      "tests/Feature/Exchanges/BinancePaperIsolationTest.php",
+      "tests/Feature/StrategyBuilder/PaperExecutionTest.php",
+      "tests/Feature/PaperTrading/PrimaryStrategyReadinessTest.php",
+      "tests/Feature/Api/ReadOnlyGetEndpointsTest.php",
+      "tests/Feature/AuditExportTest.php",
+      "tests/Feature/PaperTrading/TwentySixPaperAccountsVerificationTest.php",
+      "tests/Feature/StrategyBuilder/FundingResearchTest.php",
+      "tests/Feature/Research/IntelligenceReadOnlyTest.php",
+      "tests/Feature/Api/CompleteApiEndpointAuditTest.php",
+      "tests/Feature/Exchanges/ExchangeRiskSizingTest.php",
+      "tests/Feature/Backtest/DatasetInspectorTest.php",
+      "tests/Feature/Research/P4CostMfeMaeTest.php",
+      "tests/Feature/PaperTrading/PositionLifecycleStageBTest.php",
+      "tests/Feature/HistoricalData/DatasetPinTest.php",
+      "tests/Feature/MarketData/MarketStreamSupervisorTest.php",
+      "tests/Feature/Research/P6DecisionGateApiTest.php",
+      "tests/Feature/Audit/AuditInvariantTest.php",
+      "tests/Feature/Research/P5ConcentrationApiTest.php",
+      "tests/Feature/Security/BrowserOriginProtectionTest.php",
+      "tests/Feature/Research/ResearchHealthApiTest.php",
+      "tests/Feature/Backtest/BacktestSimulationTest.php",
+      "tests/Feature/Strategy/LevelProbabilityBootstrapLifecycleTest.php",
+      "tests/Feature/PaperTrading/PerformanceStatisticsTest.php",
+      "tests/Feature/Trading/TradingPipelineEventContractTest.php",
+      "tests/Feature/PaperTrading/ExchangeIngestionAndValuationStageCTest.php",
+      "tests/Feature/MarketData/MarketTodayFilterTest.php",
+      "tests/Feature/PaperTrading/PaperReconcileFundingCommandTest.php",
+      "tests/Feature/QuoteIntegrity/QimApiAuthTest.php",
+      "tests/Feature/StrategyBuilder/DefinitionTest.php",
+      "tests/Feature/Research/ModelAdvisoryDecisionVetoTest.php",
+      "tests/Feature/Trading/TradingPipelineDiagnosticsTest.php",
+      "tests/Feature/PatternDiscovery/PatternMatchServiceTest.php",
+      "tests/Feature/Backtest/BacktestExchangeDispatchTest.php",
+      "tests/Feature/MarketData/MarketCommandsTest.php",
+      "tests/Feature/Research/MetaLabelingResearchTest.php"
+    ],
+    "feature-4": [
+      "tests/Feature/PaperTrading/AllThirteenStrategiesExecutionTest.php",
+      "tests/Feature/StrategyBuilder/PaperGovernanceTest.php",
+      "tests/Feature/PaperTrading/EquitySnapshotCrossExchangeIntegrityTest.php",
+      "tests/Feature/Strategy/SignalOnlyStrategyExecutionTest.php",
+      "tests/Feature/StrategyBuilder/OptimizationTest.php",
+      "tests/Feature/PaperTrading/PaperLifecycleTest.php",
+      "tests/Feature/StrategyBuilder/ManagementTest.php",
+      "tests/Feature/Strategy/MarketScannerServiceTest.php",
+      "tests/Feature/Trading/TradingPipelineConcurrencyAndSafetyTest.php",
+      "tests/Feature/Exchanges/ExchangeOnboardingTest.php",
+      "tests/Feature/Trading/TradingPipelineForwardCausalityTest.php",
+      "tests/Feature/Research/P2RiskCapitalMetricsTest.php",
+      "tests/Feature/StrategyBuilder/ShadowTest.php",
+      "tests/Feature/Exchanges/BinanceBatchCandleIngestionTest.php",
+      "tests/Feature/PaperTrading/GlobalCapitalAndTopologyR6Test.php",
+      "tests/Feature/Exchanges/BootstrapEquityIntegrityTest.php",
+      "tests/Feature/Research/SlippageAttributionApiTest.php",
+      "tests/Feature/Research/AutonomousLearningApiTest.php",
+      "tests/Feature/HistoricalData/AcquisitionTest.php",
+      "tests/Feature/PaperTrading/StatisticsPayloadSerializationRegressionTest.php",
+      "tests/Feature/Strategy/SupportResistanceStrategiesTest.php",
+      "tests/Feature/Trading/BinancePipelineFreshnessAndConcurrencyTest.php",
+      "tests/Feature/PaperTrading/CentralExecutionEligibilityTest.php",
+      "tests/Feature/Strategy/ResearchApiTest.php",
+      "tests/Feature/Research/LegacyActiveModelSafetyTest.php",
+      "tests/Feature/PaperTrading/ProductionDrawdownReconciliationTest.php",
+      "tests/Feature/Research/ResearchJobApiTest.php",
+      "tests/Feature/PaperTrading/ThirteenPrimaryAccountsTest.php",
+      "tests/Feature/Strategy/ResearchBootstrapTest.php",
+      "tests/Feature/Research/ReconcileLedgerJobExecutionPathTest.php",
+      "tests/Feature/StrategyBuilder/AuthoringWorkflowTest.php",
+      "tests/Feature/Strategy/PatternResearchApiTest.php",
+      "tests/Feature/Research/StageTwoApiTest.php",
+      "tests/Feature/MarketData/EnsureStrategyHistoryTest.php",
+      "tests/Feature/Research/PromotedCandidateExecutionTest.php",
+      "tests/Feature/Research/ResearchUiRemediationTest.php",
+      "tests/Feature/Strategy/LevelProbabilityTest.php",
+      "tests/Feature/MarketData/OpenInterestHistorySynchronizerTest.php",
+      "tests/Feature/StrategyBuilder/AuthoringTest.php",
+      "tests/Feature/StrategyBuilder/AdvancedDefinitionTest.php",
+      "tests/Feature/Strategy/StrategyScheduleTest.php"
+    ],
+    "postgres-1": [
+      "tests/Integration/StrategyInputIntegrityTest.php",
+      "tests/Integration/M9SnapshotIsolationPostgresIntegrationTest.php",
+      "tests/Integration/BinanceCandleBackfillIntegrationTest.php",
+      "tests/Integration/ConcurrentPaperEntryGlobalRiskPostgresIntegrationTest.php",
+      "tests/Integration/CounterfactualSlotIdempotencyPostgresIntegrationTest.php",
+      "tests/Integration/FinancialAccountingAndReconciliationPostgresIntegrationTest.php",
+      "tests/Integration/ResearchWorkerConcurrencyPostgresIntegrationTest.php",
+      "tests/Integration/MlAuthorityAndProperScoringPostgresIntegrationTest.php",
+      "tests/Integration/QuantPortfolioMetricsPostgresIntegrationTest.php",
+      "tests/Integration/Phase0ReleaseMigrationsPostgresIntegrationTest.php"
+    ],
+    "postgres-2": [
+      "tests/Integration/BinanceCandleConflictDurabilityTest.php",
+      "tests/Integration/GoResearchWorkerIntegrationTest.php",
+      "tests/Integration/CandleConflictRecoveryTest.php",
+      "tests/Integration/LedgerReconciliationPostgresIntegrationTest.php",
+      "tests/Integration/ResearchJobSubmissionPostgresIntegrationTest.php",
+      "tests/Integration/BinanceCandleInsertionRaceTest.php",
+      "tests/Integration/SlippageAttributionPostgresIntegrationTest.php",
+      "tests/Integration/StrategyObservationSlotMigrationPostgresIntegrationTest.php",
+      "tests/Integration/SlotIntegrityAndRiskFunnelPostgresIntegrationTest.php",
+      "tests/Integration/QuoteIntegrity/QimImmutabilityTest.php",
+      "tests/Integration/BybitPublicApiIntegrationTest.php"
+    ],
+    "redis-1": [
+      "tests/Integration/BinanceObservationRedisLockIntegrationTest.php",
+      "tests/Integration/PaperPipelineConcurrentWorkersIntegrationTest.php"
+    ]
+  }
+}

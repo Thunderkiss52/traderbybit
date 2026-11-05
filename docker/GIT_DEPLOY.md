@@ -1,6 +1,6 @@
 # GitHub Actions deployment — one-time setup and checks
 
-The workflow `.github/workflows/deploy.yml` is **manual** (`Actions → Deploy Production → Run workflow`) and is restricted to the `main` branch. It runs backend/frontend tests, publishes versioned `app`, `web`, and `research-worker` images to GHCR, and connects to the VPS over SSH. The images are **not** built on the VPS.
+The workflow `.github/workflows/deploy.yml` is **manual** (`Actions → Deploy Production → Run workflow`) and is restricted to the `main` branch. The separate `.github/workflows/ci.yml` runs all verification and prepares SHA-tagged `app`, `web`, and `research-worker` candidates in parallel. Its **CI required** aggregate verifies every mandatory job, complete PHP case execution, isolated service identities and image digests. Production CD authorizes current `main` and downloads the verified manifest for that exact SHA. CD runs no tests, dependency installation, frontend/Go compilation or Docker builds.
 
 ## Before first click (one-time server setup)
 
@@ -11,12 +11,12 @@ The workflow **does not provision** SSH, the server deploy wrapper, or the produ
 3. The server must be able to pull all image packages from GHCR. Either make the GHCR packages public, or authenticate the server Docker daemon with a token limited to `read:packages`. Test pulling a previously published SHA tag before enabling regular releases. Do not put registry tokens in the repository.
 4. Create `/srv/bybit-signals/incoming`, `/srv/bybit-signals/releases`, and `/srv/bybit-signals/deploy-state`. Ensure the deploy user can upload archives to `incoming` and that the deploy wrapper can read those archives and the protected `.env.production`.
 5. Install `docker/scripts/production-deploy-wrapper.sh` from the reviewed repository as `/usr/local/sbin/bybit-signals-deploy`, owned by root and executable. The workflow runs `sudo -n /usr/local/sbin/bybit-signals-deploy <40-hex-commit-sha>`. Use a narrowly scoped `sudoers` entry for this exact script, not unrestricted sudo. A Docker-capable deployment user is effectively privileged: review this security boundary carefully.
-6. The wrapper expects an **already initialized** Docker Compose deployment because `update.sh` creates a PostgreSQL backup before updating. For a brand new server, bootstrap with the documented `docker/scripts/deploy.sh` process first, then enable GitHub deployment.
+6. The wrapper expects an **already initialized** Docker Compose deployment because `update.sh` creates a PostgreSQL backup before updating. New-server provisioning requires a separately approved workflow task; this workflow assumes the existing initialized stack. Do not bootstrap production through a manual deployment.
 7. Verify free disk space before the first release. No cleanup of other projects, and no global Docker prune, is allowed.
 
 ## GitHub repository settings
 
-Set GitHub Environment `production` and, preferably, require approval for this environment. The SSH server host key must be checked against an independently verified fingerprint.
+Require **CI required** in the main-branch protection/ruleset. Set GitHub Environment `production` and require the operator approval required by project policy. Repository settings and successful hosted execution still need operator verification. The SSH server host key must be checked against an independently verified fingerprint.
 
 | Environment secret | Meaning |
 | --- | --- |
@@ -31,13 +31,15 @@ For private GHCR packages, separately provision registry read credentials on the
 
 ## One-click workflow
 
-1. Commit and push the application updates to `main`.
-2. Open GitHub → Actions → **Deploy Production** → **Run workflow**, selecting `main`.
-3. The workflow tests the backend/frontend, builds/publishes `sha-<commit>` images, and transfers only a small source archive to the VPS.
+1. After review and explicit push authorization, publish the reviewed commit to `main`. Wait for **CI required** and the entire CI run to succeed for that exact SHA. A push does not authorize deployment.
+2. After explicit deployment approval, open GitHub → Actions → **Deploy Production** → **Run workflow**, selecting `main`. An optional full `commit_sha` must equal current main HEAD.
+3. CD verifies the latest exact-SHA trusted CI attempt, its successful aggregate, artifact provenance and all published image digests. It rechecks current main before transfer and before invoking the wrapper. The checksummed archive contains only Compose files, `docker/` deployment assets and `ci-release.json`; runtime code arrives in prebuilt images.
 4. The server deploy wrapper verifies the archive checksum, extracts into an isolated SHA release directory, backs up PostgreSQL, pulls immutable GHCR images, migrates, updates the Compose stack, runs healthchecks, and switches the `/srv/bybit-signals/current` symlink only after success.
-5. Existing databases and volumes are preserved. The current and previous application image tags are retained for rollback.
+5. Existing databases and volumes are preserved. All ten application/worker services use digest-pinned Compose overlays stored under `deploy-state/release-images/`. Current/previous local SHA aliases are retained for the existing scoped rollback-image cleanup. Backups, safe migrations, readiness checks, server locking and application rollback remain enabled; database migrations are not automatically reversed.
 
-The workflow can be rerun for the **same SHA**; `update.sh` recognizes the deployed image and verifies service health without inventing a non-existent image tag.
+The workflow can be rerun for the **same SHA** with the same approved image bits. `update.sh` reads the current dispatch manifest from its checksummed incoming archive even if the SHA release directory already exists. Conflicting image bits for an already pinned SHA fail closed before pull/transition. A new CI approval of identical bits does not rewrite the original immutable pin record. A changed registry tag is rejected; use a reviewed new commit rather than overwriting release records.
+
+The execution timer covers archive transfer and the approved remote deployment path. The 30-second target is conditional on image pulls, backup/migration costs, startup and graceful worker shutdown; it has not been verified in production. Full workflow time also includes queueing, environment approval and CI/image preflight. See [the performance report](../reports/agent/CICD_PERFORMANCE_COMPARISON.md).
 
 ## Diagnostics if the button fails
 
@@ -46,7 +48,8 @@ The workflow can be rerun for the **same SHA**; `update.sh` recognizes the deplo
 - **`No such file or directory: /srv/bybit-signals/incoming`**: create upload directory and permissions.
 - **`pull access denied` / `unauthorized`**: check `APP_IMAGE`/`WEB_IMAGE`/`RESEARCH_WORKER_IMAGE`, GHCR visibility and server `docker login`.
 - **Backup or migration failure**: ensure running PostgreSQL, stable persistent volumes, and compatible migrations. Do not auto-restore production DB.
-- **`Image is already deployed`**: expected on repeated clicks for the same commit.
+- **Missing/failed CI, missing aggregate or stale SHA**: CD rejects before connecting to production; obtain a successful complete CI run for current main.
+- **Missing digest, retagged image or conflicting release pin**: do not overwrite pins or bypass verification; investigate and publish a reviewed new SHA when bits change.
 - **Healthcheck failure**: inspect only `bybit-signals` Compose logs; investigate before attempting another deployment.
 
 Do not claim a working one-click deployment until a real GitHub Actions run has passed end-to-end on the VPS. This is an operational prerequisite, not something a local archive can prove.

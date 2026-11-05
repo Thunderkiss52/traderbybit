@@ -1,0 +1,17 @@
+[
+  {
+    "target": "app",
+    "seconds": 391.95703121899714,
+    "exit_code": 130
+  },
+  {
+    "target": "web",
+    "seconds": 391.9801910710012,
+    "exit_code": 130
+  },
+  {
+    "target": "research-worker",
+    "seconds": 15.152452006994281,
+    "exit_code": 0
+  }
+]

@@ -1,0 +1,42 @@
+Starting SPA server from /home/thunder/work/traderbybit/frontend/dist on http://127.0.0.1:8099...
+
+[1/9] Testing VEC-P0-102-V3 (Profitability Envelope Chain)...
+  ✓ VEC-P0-102-V3 passed. Screenshot saved.
+
+[2/9] Testing VEC-P0-103-V3 (Null vs Real Zero Representation)...
+  ✓ VEC-P0-103-V3 passed. Screenshot saved.
+
+[3/9] Testing VEC-P0-109-V3 (Multi-Account Selection Scope)...
+  ✓ VEC-P0-109-V3 passed. Screenshot saved.
+
+[4/9] Testing VEC-P0-114-V3 (Report Freshness Shapes)...
+  ✓ VEC-P0-114-V3 passed. Screenshot saved.
+
+[5/9] Testing VEC-P0-119-V3 (Autonomy Raw Flags vs Effective Permissions)...
+  ✓ VEC-P0-119-V3 passed. Screenshot saved.
+
+[6/9] Testing VEC-P0-120-V3 (Dual Kill-Switch Rendered Disabled Controls)...
+  ✓ VEC-P0-120-V3 passed. Screenshot saved.
+
+[7/9] Testing VEC-P0-122-V3 (Quote Integrity Error Banner & Stale State)...
+  ✓ VEC-P0-122-V3 passed. Screenshot saved.
+
+[8/9] Testing VEC-P0-123-V3 (UI Pagination Across Pages 1, 2, 3)...
+  ✓ VEC-P0-123-V3 passed. Screenshot saved.
+
+[9/9] Testing VEC-P0-125-V3 (Candidate Lab Backtest Linkage)...
+  ✓ VEC-P0-125-V3 passed. Screenshot saved.
+
+=======================================================
+BROWSER ACCEPTANCE SUITE EXECUTION SUMMARY:
+  - VEC-P0-102-V3: PASS
+  - VEC-P0-103-V3: PASS
+  - VEC-P0-109-V3: PASS
+  - VEC-P0-114-V3: PASS
+  - VEC-P0-119-V3: PASS
+  - VEC-P0-120-V3: PASS
+  - VEC-P0-122-V3: PASS
+  - VEC-P0-123-V3: PASS
+  - VEC-P0-125-V3: PASS
+=======================================================
+Summary written to /tmp/vector-cicd-20261105/after/browser-phase0/browser_verification_summary.json

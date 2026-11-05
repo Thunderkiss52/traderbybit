@@ -1,0 +1,10 @@
+VECTOR PROVISIONAL | 58350b4b16b519bb76447127f7e2ca0ff92cf89b | VECTOR-SCOPE-20261027-v1
+implementation: 0.0000% / verification: 0.0000% / product: 0.0000%
+Phase 0: 45 requirements | I=0.0 V=0.0 P=0.0
+Phase 1: 8 requirements | I=0.0 V=0.0 P=0.0
+Phase 2: 10 requirements | I=0.0 V=0.0 P=0.0
+Phase 3: 11 requirements | I=0.0 V=0.0 P=0.0
+Phase 4: 10 requirements | I=0.0 V=0.0 P=0.0
+Phase 5: 8 requirements | I=0.0 V=0.0 P=0.0
+Phase 6: 5 requirements | I=None V=0.0 P=0.0
+{"next_increment": "Phase 0 evidence closure", "phase0_blocker": "VEC-P0-001", "preventing_phase1": ["VEC-P0-001", "VEC-P0-002", "VEC-P0-003", "VEC-P0-004", "VEC-P0-005", "VEC-P0-006", "VEC-P0-007", "VEC-P0-008", "VEC-P0-009", "VEC-P0-101", "VEC-P0-102", "VEC-P0-103", "VEC-P0-104", "VEC-P0-105", "VEC-P0-106", "VEC-P0-107", "VEC-P0-108", "VEC-P0-109", "VEC-P0-110", "VEC-P0-111", "VEC-P0-112", "VEC-P0-113", "VEC-P0-114", "VEC-P0-115", "VEC-P0-116", "VEC-P0-117", "VEC-P0-118", "VEC-P0-119", "VEC-P0-120", "VEC-P0-121", "VEC-P0-122", "VEC-P0-123", "VEC-P0-124", "VEC-P0-125", "VEC-P0-126", "VEC-P0-127", "VEC-P0-201", "VEC-P0-202", "VEC-P0-203", "VEC-P0-204", "VEC-P0-205", "VEC-P0-206", "VEC-P0-207", "VEC-P0-208", "VEC-P0-209"], "unverified_implemented": null}

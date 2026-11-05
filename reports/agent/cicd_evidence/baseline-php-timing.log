@@ -1,0 +1,9 @@
+Isolated test database identity verified.
+
+real	0m0.081s
+user	0m0.022s
+sys	0m0.022s
+
+real	10m20.217s
+user	3m53.438s
+sys	0m16.657s

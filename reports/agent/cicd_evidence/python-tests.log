@@ -1,0 +1,65 @@
+test_acceptance_gate_dependency_driven (test_assess_phase0_evidence.AssessPhase0EvidenceTest) ... ok
+test_deployed_sha_validation_and_runtime_parameter (test_assess_phase0_evidence.AssessPhase0EvidenceTest) ... ok
+test_every_pass_has_complete_evidence_metadata (test_assess_phase0_evidence.AssessPhase0EvidenceTest) ... ok
+test_exact_45_obligations_loaded_from_requirements_json (test_assess_phase0_evidence.AssessPhase0EvidenceTest) ... ok
+test_funding_obligations_strictly_blocked_without_independent_rates (test_assess_phase0_evidence.AssessPhase0EvidenceTest) ... ok
+test_historical_partial_cycles_unresolved_forensics (test_assess_phase0_evidence.AssessPhase0EvidenceTest) ... ok
+test_markdown_table_structural_match_with_authoritative_matrix (test_assess_phase0_evidence.AssessPhase0EvidenceTest) ... ok
+test_mathematical_consistency_and_id_uniqueness (test_assess_phase0_evidence.AssessPhase0EvidenceTest) ... ok
+test_no_unjustified_pass_when_evidence_directory_empty (test_assess_phase0_evidence.AssessPhase0EvidenceTest) ... ok
+test_no_unjustified_pass_when_evidence_directory_missing (test_assess_phase0_evidence.AssessPhase0EvidenceTest) ... ok
+test_source_code_guarantees_require_runtime_production_evidence (test_assess_phase0_evidence.AssessPhase0EvidenceTest) ... ok
+test_all_ten_services_use_pinned_images_and_no_infrastructure_is_overridden (test_cicd.DigestDeploymentTests) ... ok
+test_cached_release_cannot_override_current_archive_or_change_approved_bits (test_cicd.DigestDeploymentTests) ... ok
+test_pinned_images_keep_sha_aliases_for_existing_rollback_retention (test_cicd.DigestDeploymentTests) ... ok
+test_real_compose_uses_digest_overlay_and_switches_for_rollback (test_cicd.DigestDeploymentTests) ... ok
+test_registry_mismatch_or_missing_digest_blocks_actual_cd_image_script (test_cicd.DigestDeploymentTests) ... ok
+test_manifest_must_come_from_exact_run_and_repository (test_cicd.ReleaseTests) ... ok
+test_no_failed_missing_wrong_sha_or_untrusted_ci_can_deploy (test_cicd.ReleaseTests) ... ok
+test_stale_main_and_rerun_attempt_pagination (test_cicd.ReleaseTests) ... ok
+test_successful_workflow_without_aggregate_is_rejected (test_cicd.ReleaseTests) ... ok
+test_actual_workflow_gates_every_job_and_cd_contains_no_build_or_test_commands (test_cicd.RequiredGateTests) ... ok
+test_all_image_records_need_correct_identity_and_digest (test_cicd.RequiredGateTests) ... ok
+test_every_dependency_must_succeed (test_cicd.RequiredGateTests) ... ok
+test_standalone_concurrency_fixtures_reject_production_before_bootstrap (test_cicd.RequiredGateTests) ... ok
+test_actual_postgres_and_redis_identities_must_be_distinct (test_cicd.ShardTests) ... ok
+test_files_partition_once_with_future_files_and_redis_concurrency_kept_together (test_cicd.ShardTests) ... ok
+test_missing_duplicate_failure_and_unexpected_skip_are_rejected (test_cicd.ShardTests) ... ok
+test_correct_incomplete_legacy_needs_migration_decision (test_phase0_funding_classifier.FundingClassificationTest) ... ok
+test_financial_discrepancy (test_phase0_funding_classifier.FundingClassificationTest) ... ok
+test_independently_reconciled_complete (test_phase0_funding_classifier.FundingClassificationTest) ... ok
+test_missing_interval (test_phase0_funding_classifier.FundingClassificationTest) ... ok
+test_missing_source_is_not_assumed_complete (test_phase0_funding_classifier.FundingClassificationTest) ... ok
+test_wrong_exchange_cannot_certify (test_phase0_funding_classifier.FundingClassificationTest) ... ok
+test_zero_payment_does_not_mean_missing_source (test_phase0_funding_classifier.FundingClassificationTest) ... ok
+test_accepted_evidence_expiry_decreases_score (test_vector_progress.ScorecardTest) ... ok
+test_accepted_requires_complete_evidence (test_vector_progress.ScorecardTest) ... ok
+test_artifact_tampering (test_vector_progress.ScorecardTest) ... ok
+test_atomic_output (test_vector_progress.ScorecardTest) ... ok
+test_cli_detects_manually_edited_markdown (test_vector_progress.ScorecardTest) ... ok
+test_cli_generate_strict_json_and_phase (test_vector_progress.ScorecardTest) ... ok
+test_cli_strict_requires_snapshot (test_vector_progress.ScorecardTest) ... ok
+test_cycle (test_vector_progress.ScorecardTest) ... ok
+test_dependency_change_decreases_both_scores (test_vector_progress.ScorecardTest) ... ok
+test_different_scope_has_no_delivery_delta (test_vector_progress.ScorecardTest) ... ok
+test_documentation_excluded_from_runtime (test_vector_progress.ScorecardTest) ... ok
+test_duplicate_ids_and_criteria (test_vector_progress.ScorecardTest) ... ok
+test_future_evidence_is_stale (test_vector_progress.ScorecardTest) ... ok
+test_historical_baseline_immutable (test_vector_progress.ScorecardTest) ... ok
+test_invalid_dependency (test_vector_progress.ScorecardTest) ... ok
+test_missing_skipped_failed_expired (test_vector_progress.ScorecardTest) ... ok
+test_no_false_operational_verification (test_vector_progress.ScorecardTest) ... ok
+test_path_escape_rejected (test_vector_progress.ScorecardTest) ... ok
+test_product_is_independent_and_requires_acceptance (test_vector_progress.ScorecardTest) ... ok
+test_scope_change_and_comparison (test_vector_progress.ScorecardTest) ... ok
+test_stable_json_markdown (test_vector_progress.ScorecardTest) ... ok
+test_verified_state_requires_evidence (test_vector_progress.ScorecardTest) ... ok
+test_watch_tree_addition_invalidates (test_vector_progress.ScorecardTest) ... ok
+test_weights_normalized (test_vector_progress.ScorecardTest) ... ok
+test_zero_and_partial (test_vector_progress.ScorecardTest) ... ok
+
+----------------------------------------------------------------------
+Ran 59 tests in 2.426s
+
+OK
+Verified 2 isolated PostgreSQL/Redis shard pairs

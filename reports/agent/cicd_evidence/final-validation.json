@@ -1,0 +1,36 @@
+[
+  {
+    "command": [
+      "python3",
+      "-m",
+      "unittest",
+      "discover",
+      "-s",
+      "scripts/tests",
+      "-p",
+      "test_vector_progress.py",
+      "-v"
+    ],
+    "exit_code": 0,
+    "seconds": 0.8505970420010271
+  },
+  {
+    "command": [
+      "python3",
+      "scripts/vector_progress.py",
+      "--strict",
+      "--base-ref",
+      "ad071513cd60307eebe2a0c3d929197693e09449"
+    ],
+    "exit_code": 0,
+    "seconds": 3.899588700005552
+  },
+  {
+    "command": [
+      "/tmp/vector-cicd-20261105/actionlint",
+      "-shellcheck="
+    ],
+    "exit_code": 0,
+    "seconds": 0.00431858999945689
+  }
+]

@@ -1,0 +1,18 @@
+{
+  "pg": {
+    "samples": 156,
+    "mean_cpu_percent": 24.92,
+    "maximum_cpu_percent": 94.38
+  },
+  "php": {
+    "samples": 150,
+    "mean_cpu_percent": 37.19,
+    "maximum_cpu_percent": 93.82
+  },
+  "redis": {
+    "samples": 152,
+    "mean_cpu_percent": 0.5,
+    "maximum_cpu_percent": 0.71
+  },
+  "maximum_sampled_total_cpu_percent": 306.57000000000005
+}

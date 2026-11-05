@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuites>
+  <testsuite name="/var/www/html/ci-plan/redis-1.xml" tests="2" assertions="24" errors="0" failures="0" skipped="0" time="6.207656">
+    <testsuite name="redis-1" tests="2" assertions="24" errors="0" failures="0" skipped="0" time="6.207656">
+      <testsuite name="Tests\Integration\BinanceObservationRedisLockIntegrationTest" file="/var/www/html/tests/Integration/BinanceObservationRedisLockIntegrationTest.php" tests="1" assertions="11" errors="0" failures="0" skipped="0" time="4.992966">
+        <testcase name="test_killed_worker_lock_expires_and_pending_event_is_recoverable" file="/var/www/html/tests/Integration/BinanceObservationRedisLockIntegrationTest.php" line="31" class="Tests\Integration\BinanceObservationRedisLockIntegrationTest" classname="Tests.Integration.BinanceObservationRedisLockIntegrationTest" assertions="11" time="4.992966"/>
+      </testsuite>
+      <testsuite name="Tests\Integration\PaperPipelineConcurrentWorkersIntegrationTest" file="/var/www/html/tests/Integration/PaperPipelineConcurrentWorkersIntegrationTest.php" tests="1" assertions="13" errors="0" failures="0" skipped="0" time="1.214690">
+        <testcase name="test_two_workers_commit_one_fill_and_one_financial_journal_sequence" file="/var/www/html/tests/Integration/PaperPipelineConcurrentWorkersIntegrationTest.php" line="22" class="Tests\Integration\PaperPipelineConcurrentWorkersIntegrationTest" classname="Tests.Integration.PaperPipelineConcurrentWorkersIntegrationTest" assertions="13" time="1.214690"/>
+      </testsuite>
+    </testsuite>
+  </testsuite>
+</testsuites>

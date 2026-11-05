@@ -1,0 +1,339 @@
+# CI/CD test inventory
+
+Baseline: `ad071513cd60307eebe2a0c3d929197693e09449`, main, captured before workflow edits on 2026-11-05. Clean original execution recorded 1,294 cases, 12,232 assertions, one error, three failures, five skips and six notices. Final isolated execution records 1,294 cases, 12,261 assertions, one unchanged optional skip and six notices. Two existing untracked audit files were preserved. Full discovered PHP IDs are retained in [baseline-discovery.xml](cicd_evidence/baseline-discovery.xml); the exact partition is [php-plan.json](cicd_evidence/php-plan.json). Every file is assigned once, with providers and methods kept together.
+
+| Inventory | Original | New required CI |
+|---|---:|---|
+| PHPUnit Unit | 501 cases / 90 files | Two balanced serial processes on independent services |
+| PHPUnit Feature | 676 cases / 138 files | Four balanced serial processes on independent services |
+| PHPUnit Integration | 117 cases / 23 files | Two PostgreSQL lanes and one Redis/concurrent-worker lane |
+| PHP total | 1,294 cases / 251 files | Same 1,294 discovered IDs; 1,293 pass, one original optional public-network skip |
+| Pest | 0 installed suites | No suite removed |
+| Go | 24 packages, 113 passing case/subcase IDs | All packages: normal tests, race tests, vet, formatting, module verification and package build |
+| Frontend Node | 76 cases / 9 files | Same exact 76 case IDs |
+| Vue TypeScript + Vite | Combined npm build | Separate mandatory typecheck and production-build jobs |
+| Browser | Four existing scripts, absent from original CI | Four mandatory isolated browser jobs |
+| Pint | Entire PHP tree | Entire tree, now 855 files, plus PHP syntax checks |
+| Dependency security | Go module verification only in original CI | Preserved, plus strict Composer validation/audit and npm audit |
+| Engineering scripts | Existing Python/shell suites outside original CI | All Python tests and deployment shell scenarios required |
+| Standalone PHP contracts | Four scripts outside original CI | 139 pure assertions plus five real PostgreSQL races and two variations |
+| Runtime/redaction checks | Existing standalone checks | Required PHP runtime/extension verification and source redaction check |
+
+The only permitted PHP skip is `BybitPublicApiIntegrationTest::test_public_linear_market_endpoints_match_the_documented_contract`, originally guarded by `RUN_BYBIT_INTEGRATION=1`. It remains discovered and scheduled; no mandatory PostgreSQL, Redis, Go or browser test may skip. Baseline container execution additionally skipped four Docker Compose checks because its CLI was missing; final runs provide Compose and execute all four. No SQLite substitution, exclusions, assertion deletions or coverage-filter shortcuts were introduced. No PHPStan/Psalm dependency/configuration was present; PHP syntax verification was added.
+
+[Inventory comparison](cicd_evidence/inventory-comparison.json) proves equality of PHP identities, normal/race Go identities and frontend identities. [Go runtime case inventory](cicd_evidence/go-case-inventory.json) retains every test/subtest name. Package-level Go “skip” events for packages without test files are distinguished from actual skipped test cases.
+
+Browser inventory:
+
+| Existing script | Required job | Existing checks retained |
+|---|---|---|
+| `scripts/run-browser-e2e.py` | dashboard | Dashboard/account coverage, research page, statistics, JS/network errors |
+| `scripts/browser/strategy_builder.mjs` | builder | Draft/publication, funded pinned replay, repeat/parity, BLOCKED zero-capital approval, optimization |
+| `scripts/browser/historical_data.mjs` | historical | Plan/cancel/pause/resume, official fixture acquisition, complete funding/candles, pinned replay, unchanged 26-account digest |
+| `scripts/verify-browser-phase0.py` | phase0 | Nine existing Phase 0 browser obligations |
+
+Only environment adapters, readiness waits and report metadata changed in browser scripts. Historical workers retain the original bounded 45-second run so delayed jobs execute. Each browser job owns its service instances; stateful scenarios stay serial within their script.
+
+Go source inventory:
+
+- `research-go/internal/algorithms/indicators_test.go`
+- `research-go/internal/algorithms/rsi_parity_test.go`
+- `research-go/internal/auditdata/loader_test.go`
+- `research-go/internal/backtest/engine_test.go`
+- `research-go/internal/backtest/replay_policy_test.go`
+- `research-go/internal/backtest/signal_runner_test.go`
+- `research-go/internal/candidates/candidates_test.go`
+- `research-go/internal/candidates/lookahead_test.go`
+- `research-go/internal/candidates/pipeline_test.go`
+- `research-go/internal/dataset/importer/archive_test.go`
+- `research-go/internal/decimal/decimal_test.go`
+- `research-go/internal/decimal/scaled_test.go`
+- `research-go/internal/historical/replay_test.go`
+- `research-go/internal/jobrunner/lifecycle_integration_test.go`
+- `research-go/internal/jobrunner/runner_test.go`
+- `research-go/internal/jobscope/exchange_test.go`
+- `research-go/internal/patterns/miner_test.go`
+- `research-go/internal/replay/replay_test.go`
+- `research-go/internal/simulation/montecarlo_test.go`
+- `research-go/internal/strategydsl/evaluate_test.go`
+- `research-go/internal/walkforward/wfo_test.go`
+- `research-go/tests/golden/golden_test.go`
+
+Frontend source inventory:
+
+- `frontend/tests/account_selection.test.js`
+- `frontend/tests/candidate_lab_lifecycle.test.js`
+- `frontend/tests/exchanges.test.js`
+- `frontend/tests/patterns.test.js`
+- `frontend/tests/profitability_research.test.js`
+- `frontend/tests/quote_integrity.test.js`
+- `frontend/tests/reliability_visibility.test.js`
+- `frontend/tests/strategyBuilder.test.js`
+- `frontend/tests/ui.test.js`
+
+PHP source inventory, original file checksums:
+
+| PHP file | Cases | SHA-256 |
+|---|---:|---|
+| `tests/Unit/Audit/BacktestAuditCsvR8Test.php` | 1 | `051b53b35214c196ae0154da2625f1c55960d79db7a3f3175930215e252a19e6` |
+| `tests/Unit/Audit/BacktestAuditRedactorR8Test.php` | 1 | `e5cda4a3b579d9dcf84843cb18a0624e85b6a0f519c561a4475e50d470954225` |
+| `tests/Unit/Backtest/ChronologicalSplitterTest.php` | 3 | `04e31bd0c3d3d6944e1bf082b1e066569fcb010ed832d21d99e3f73066bffca3` |
+| `tests/Unit/Backtest/GridOptimizerTest.php` | 1 | `0e5da9f5e1b6898b66f10eae0d31e07c455cd81994b653e8859c4958f2718adf` |
+| `tests/Unit/Backtest/PerformanceMetricCalculatorTest.php` | 2 | `e459dd4f30e9abb65daeba848e12ede399f670071163451fc9221122c97e6a89` |
+| `tests/Unit/Backtest/StrategySignalEvaluatorCacheLifecycleTest.php` | 1 | `a990f0b9b9aaaff8a5241398b82fa92c16edb231f8e9eac052c15d60a31e83c5` |
+| `tests/Unit/Database/PostgresTestDatabaseIsolationGuardTest.php` | 10 | `b1b365366228791bffae78f66b2e9faaf87b2b26ed27b0e171427cf53da1cf1a` |
+| `tests/Unit/DeploymentStateValidationAndRecoveryTest.php` | 12 | `8e293c5b5f09783fd5fa6a23ed5e147a2f3ec1e5a506070102ca904dcb9ea386` |
+| `tests/Unit/DevOps/DockerComposeImageResolutionTest.php` | 6 | `c69bcf47e89d1371b8da77d36d5bf7909527d55869ed607a2bad54052ce17da9` |
+| `tests/Unit/ExampleTest.php` | 1 | `ffacae5c1a2a44c809420af5b3b404910da1b12167d58764dac6d10b8ba8cfaf` |
+| `tests/Unit/Exchanges/BinanceCandleWindowTest.php` | 5 | `9682b069105c7f827f846962a8f3e8683eaadf6eee4ad3b3319e504f4342504f` |
+| `tests/Unit/Exchanges/BinanceContextCaptureTest.php` | 1 | `dd600a25a810d1df78e6b97cc80a936a90f2d3c328f33615fc4f621103f3129f` |
+| `tests/Unit/Exchanges/BinanceOpenInterestWindowTest.php` | 3 | `96291f6877f1cef6a8559e4fe2c33030efed701fe072ae4c4f773a94ab9544d1` |
+| `tests/Unit/Exchanges/BinancePaperSafetyTest.php` | 2 | `ac0ed598681a2387c5b1b6ab96f360541ee05bb13ed148014f12f910979b8fe7` |
+| `tests/Unit/Exchanges/BinancePublicAdapterTest.php` | 8 | `bce5cdf537cc6306e7c51b670d9462b77b11cb42a007937929e355cfde2bd146` |
+| `tests/Unit/Exchanges/BinancePublicTransportTest.php` | 7 | `30d75873d312236986d9876103095806804d8b2f1d4bb34c439ad3b505fb04b6` |
+| `tests/Unit/Exchanges/BinanceSourceIdentityTest.php` | 4 | `3441ee552c1cb00d632218f750a36ec4d49f3baa1eaf9d41b3e13fbccda9df12` |
+| `tests/Unit/Exchanges/BinanceSymbolInventoryTest.php` | 1 | `0e2ce182ce980e36d3070f50ca185da0c7fb747d6d48b692cd099c299d20afcb` |
+| `tests/Unit/Indicators/MovingMomentumIndicatorsTest.php` | 5 | `d87385d3343e78610480eccd6f84df3c918e120fc2249196f994f40fed5ddf3a` |
+| `tests/Unit/Indicators/VolatilityTrendIndicatorsTest.php` | 3 | `34ec4ab7c42d1ca1e2b9908f96725ec2fba92edb34b003f5722a03b228d29e75` |
+| `tests/Unit/Indicators/VolumeLevelsIndicatorsTest.php` | 3 | `ed8e16dcb42fdbb58bd08a5727e196d8b1ed67ae77cecd11b26606474b4f847f` |
+| `tests/Unit/Indicators/WarmupPolicyTest.php` | 1 | `3a38038dcd53deb28cae626d4662c09ef314b77733ee2e197ba640dc8443c4c2` |
+| `tests/Unit/MarketData/BybitRestClientTest.php` | 9 | `a2796069490554cf37437e29ee4218f35308ddc5fc7dba69d5b5749718e6b4e5` |
+| `tests/Unit/MarketData/CandleConflictJournalTest.php` | 25 | `6671a211174d0178305df7cdbfbf9f5cdb828ee050204351bd9a47ed8b09ea2b` |
+| `tests/Unit/MarketData/GapDetectorTest.php` | 2 | `0b0c818ae9e98fe08a4764ff92866c40ecb83a31470145c31bbcf8a01effe42d` |
+| `tests/Unit/MarketData/IntervalTest.php` | 4 | `f7050b0f72f707b70e3a9dca956395b0b0f9d9f8bbb13ad8dc05a581d6787857` |
+| `tests/Unit/MarketData/PhrityWebSocketConnectionTest.php` | 8 | `884dd00c160016c05dfe3f95b69d363e9cd3d9806c85523c2540f24dfc667f36` |
+| `tests/Unit/MarketData/WebSocketParserTest.php` | 4 | `baa2cf46324dfdb0a7562133e5cbf15a4c8164184cc02ee5bec4ec4ec4be3a9a` |
+| `tests/Unit/Middleware/RequireResearchTokenTest.php` | 6 | `88fc38a55d82d22d936ac8b91fb1800ee74a7264e91c150f4c707bb55d8f4320` |
+| `tests/Unit/PaperTrading/ExchangePositionSizingTest.php` | 2 | `ffc093e5881d9d225c6df7c0fda2a5b44ee1d82f68e3042211f8dc4065966188` |
+| `tests/Unit/PaperTrading/ExecutionEngineTest.php` | 5 | `6ba54e79592f3bc482bd1d65b03244354d1fc1ff8413ff2786c6ed954df87bad` |
+| `tests/Unit/PaperTrading/R8CapitalPolicyTest.php` | 4 | `049a5c979efeb5f41692a96825b4f38fb841427326ff3908028a227013ab844f` |
+| `tests/Unit/PaperTrading/R8SizingSettingsTest.php` | 11 | `69ecb73cec669d2ab62ad79fb6cfd89f471797c368555e40b3b599c39af4defc` |
+| `tests/Unit/PaperTrading/RiskAndSizingTest.php` | 33 | `74abe530ba7c32b6e6961a011b7cb6b8f110aeedeef41056834accc86bd81212` |
+| `tests/Unit/PatternDiscovery/CandlestickPatternDetectorTest.php` | 2 | `1464e04e93a6125c71cf771ec05e5c51345f833bf9c81255c0a92fa52ebd232a` |
+| `tests/Unit/PatternDiscovery/MarketStructurePatternDetectorTest.php` | 2 | `98e84cc25ca78fb0186418eaa427102eb2310e580bf4655c4ec45ec4516457dd` |
+| `tests/Unit/PatternDiscovery/PatternDiscoveryTest.php` | 10 | `4078720b78d91c0f8e7096c2cd2a463f85a61c9a191044f946cb256f04e38815` |
+| `tests/Unit/QuoteIntegrity/QimComparisonEngineTest.php` | 8 | `55790a1d34f47be3280807dd800143774cf484c5f3bd7ae912aa335e3a3db9dd` |
+| `tests/Unit/QuoteIntegrity/QimGapRecorderTest.php` | 3 | `f4895184f4026ac5e82ec532e56ed06bf6b6b1e0f9bf8eecf931e466642ec779` |
+| `tests/Unit/QuoteIntegrity/QimIncidentLifecycleTest.php` | 4 | `1b7941479358232be1e4d1cd6ee12acd2a26ce8cbe04ffdc981bbd1d3b1ce1c0` |
+| `tests/Unit/QuoteIntegrity/QimMeasurementGuardTest.php` | 4 | `590497693a098c00daa00a6848508f51b7255528360934cbb662c564ff07f15e` |
+| `tests/Unit/QuoteIntegrity/QimNonBlockingHooksTest.php` | 3 | `9eb806fa53de34c8742bd8a725b154104d222afa1137919619e5bb86be99e605` |
+| `tests/Unit/QuoteIntegrity/QimObservationServiceTest.php` | 5 | `2368fdd8a41a4dc1e657629e123c099ff45c492d56041aa3654360e4de74d7fd` |
+| `tests/Unit/Research/Autonomy/AutonomyControlTest.php` | 14 | `c48f21778567ca7bbb92b4f1939b36fac052a429a950b868d5d8ab0221259dee` |
+| `tests/Unit/Research/Autonomy/AutonomyDomainTest.php` | 11 | `d800ac0b891a215a7967be576972782340bd6557dd86c443ad272d11ca1771a9` |
+| `tests/Unit/Research/Autonomy/AutonomyPromotionTest.php` | 7 | `c501643a61975e7157799abc145de3fc59df75e2efc67aa4f5cdb11d94117595` |
+| `tests/Unit/Research/AutonomyPermissionServiceTest.php` | 2 | `58e1ec0d1f546c394ddda2affb310a644b744f139e43b6d1891e68b36051b257` |
+| `tests/Unit/Research/ChampionChallengerLifecycleTest.php` | 5 | `b899490c6a33a361599db2e6cb31f5f37f350fa6a290a3b4f53cd5e7f4c9535e` |
+| `tests/Unit/Research/Concentration/ConcentrationAnalyzerTest.php` | 4 | `9e3c659e7df5b6d271c79a94781c18224458cb5830e50a857c65baba659a633b` |
+| `tests/Unit/Research/Concentration/EquityAlignmentTest.php` | 4 | `8afe468e71ff625e08c7e35adb92eccf475f421aa16b44e9a250d0b11418e281` |
+| `tests/Unit/Research/Concentration/OverlapClusterBuilderTest.php` | 6 | `dac3072a4acdfdd49ec0e99193db5dc0507abb67b485e3fee79bc67deba0cf41` |
+| `tests/Unit/Research/CostMfe/CostAttributionTest.php` | 6 | `e62e8b44fd054267a27dafce821db573e1685a898f5cce67ec4d77943a261154` |
+| `tests/Unit/Research/CostMfe/MfeMaeCalculatorTest.php` | 9 | `52bd891eebca5b67809f7116b90b8168dd3096209c87a1df419ec572415f0242` |
+| `tests/Unit/Research/CostMfe/PreEntryMfeEstimatorTest.php` | 5 | `92f62dd1b86634bd989d979cdd007517330982d064ceac09702f131aa713eaef` |
+| `tests/Unit/Research/CounterfactualAccurateRCalculationTest.php` | 3 | `4b84f7c56bc018a408afc5ded634c3aa3dbeb78af2508e5495171a1ffeb937b7` |
+| `tests/Unit/Research/CounterfactualAnalyzerServiceTest.php` | 5 | `d42fa4cf5daf7791daf30a6a101c0c27e9c84ad2ff96f7a315f1503413fe0594` |
+| `tests/Unit/Research/CounterfactualLegacyQuarantineTest.php` | 5 | `7a5cbfd3a0dbccc9695af66bfd67ba2899890a17644496be9c410b06963f6b1d` |
+| `tests/Unit/Research/CounterfactualNoHindsightTest.php` | 3 | `ec207a412dde767421c2cbc280ffbb37d193db764a00b748bf86c0431055bf20` |
+| `tests/Unit/Research/Decision/DecisionGateTest.php` | 24 | `568c3be72589f5cc81d8d13e98a846e60842f0977ba00519fda22e717e7f9683` |
+| `tests/Unit/Research/Decision/HypothesisPriorityTest.php` | 6 | `3ad67bf5fbb42feeda4b26aedcb83a93eaee68125f68d1ba1b02b943ac9c9146` |
+| `tests/Unit/Research/DecisionReplayServiceTest.php` | 1 | `4f61311fb1fa24337964c6c52e5888c4219c96ee46fac4936089d501a7b88989` |
+| `tests/Unit/Research/LearningFeatureStoreServiceTest.php` | 2 | `604874314a4329fc1ecf274945033db6dd7acfc5dbfd1b6f917e0459041f8a08` |
+| `tests/Unit/Research/LearningPredictorServiceTest.php` | 1 | `77ecd1628d3044e9fa06a8c0d962a4ad9c628dbc175f9b2e69b7c44a66ce4fb9` |
+| `tests/Unit/Research/LedgerReconciliationServiceTest.php` | 6 | `fecd5fb3d51d70a649eeb2b5d5f2d805a7e030c05fc82d6dda4e295adc49bdca` |
+| `tests/Unit/Research/LogisticRegressionTrainingTest.php` | 5 | `d86f9e5124fc7d8510a0631fc86e4be0c27866229a7461772347555c85a018f3` |
+| `tests/Unit/Research/MetricRegistryTest.php` | 5 | `e6c35391ad9362cc74a3eccf89fc20d0bdd4571bb28d17cff581863867e48919` |
+| `tests/Unit/Research/ModelAdvisoryIntegrationTest.php` | 3 | `d9623585aecdadf71ece2442e206262e176eb5d3c38d675b53389f8e89d43033` |
+| `tests/Unit/Research/P1ArchiveEvaluationTest.php` | 9 | `b534530c711e37e01c5e93106f1a6e76a810f127b339d6037e63587ae29cfb5f` |
+| `tests/Unit/Research/PortfolioCorrelationServiceTest.php` | 3 | `ed93e5e686a4f88d2d349863cdbb6be7086f57308e2be65cddbd09f43b6ee154` |
+| `tests/Unit/Research/ProbabilityCalibrationServiceTest.php` | 3 | `f787393d856eec75d93deb288cc6038b8e9afdff60ebd001f0b971edcb6804e1` |
+| `tests/Unit/Research/PromotionPolicyFailClosedTest.php` | 5 | `2dd8fb6826c56d735a2c116e1141fe587bb73d80a170c86cd3fd710d1f85fcbd` |
+| `tests/Unit/Research/PromotionPolicyServiceTest.php` | 8 | `1bbe84b29454a5968d2f5b2a61a20417e5be9e401f64b756cdbe12c2c8cb6ca7` |
+| `tests/Unit/Research/ResearchJobServiceTest.php` | 22 | `ce9603d296746bc70fe4339ba46d7711aa9c47133e8dc61330dda70f14f1d731` |
+| `tests/Unit/Research/ResearchRecommendationServiceTest.php` | 1 | `e7b153fe1c5fc16e115c9d7416ffbdced695d7127b836ff9128d443d6ca85f11` |
+| `tests/Unit/Research/ResearchReportServiceTest.php` | 1 | `9d2f9c4d9d8775cf5f5cd3b9b91474da16c960c026203ae38ff7f750411ec924` |
+| `tests/Unit/Research/RiskCapitalMetricsServiceTest.php` | 7 | `3d17fbbf4ee009c9b9cddc41ed3d19b37ddff95e90da8c3b02115da95f290d66` |
+| `tests/Unit/Research/ShadowExperimentServiceTest.php` | 1 | `35686a45af69b5f4faa87a3ec1c20124318044671de633b7ceca744196238a2d` |
+| `tests/Unit/Research/SlippageAllocationTest.php` | 11 | `ff37399c5488efe6569d43bb2f03685580330c6e3558e180f0e8acc01e98894f` |
+| `tests/Unit/Research/SlippageAttributionServiceTest.php` | 6 | `95d886a262360b258e030ce6c5a6fb0beda93ab0de5ab7d5e581f6c188344809` |
+| `tests/Unit/Research/StrategyDegradationServiceTest.php` | 4 | `cffcc9bc4f524e2322d905eb93d5e188d330d8d406b3d86cfec64c3fd1b6c477` |
+| `tests/Unit/Research/StrategyEvolutionServiceTest.php` | 2 | `05e1474c51d6f40b9e1ab24c925273464f413b5d0d729b5a762bcc47b4c786c9` |
+| `tests/Unit/Research/StrategyHealthServiceTest.php` | 2 | `f58a5ed89ce4c372870d5fd418ef5aef0cd9a3b675e7c8f5df2ddd1bbd9edd1a` |
+| `tests/Unit/Research/SystemFreshnessServiceTest.php` | 6 | `24d34fc13b7afbcbd8582aeea9f93e28efa398679b40eaac18bd766218398722` |
+| `tests/Unit/Strategy/CandidateStrategiesTest.php` | 7 | `46c6541595be0109cc8c3d6c12e5ebf5eaa478c0deb508ba3b513fe212e7401d` |
+| `tests/Unit/Strategy/MarketContextCollectorTest.php` | 1 | `894fe322c3b2b2d41e8a6e9b8db88bf504e039058a4656ccf04b35adcb4471bc` |
+| `tests/Unit/Strategy/ResearchStrategiesTest.php` | 5 | `935ab2bf141d3ddd5524b0858ab6823002eb8f3a8f9c7fe54d4c815f8112ab8a` |
+| `tests/Unit/Strategy/SignalQualityPolicyTest.php` | 5 | `fcea2e4f9f7aee30b9e58303aea5df087f4a72d14a10090a2be99b50f9d513a6` |
+| `tests/Unit/Strategy/StrategyEngineTest.php` | 10 | `ba0fb5781e1dcdaaed8fb820adb743032b62b6dd7bd23787b32968196d9bae1f` |
+| `tests/Unit/StrategyBuilder/ExecutableStoreTest.php` | 2 | `7e6ddaf537efaacd5760674d5c0a53b24adb53d4a94ec98b815e8d28351b2e23` |
+| `tests/Unit/Trading/TradingQueueIsolationTest.php` | 3 | `a992dab1f8527b8cbef5bbd2c3efbe281ca3facc9998633056a367e97a05a211` |
+| `tests/Feature/Api/CompleteApiEndpointAuditTest.php` | 3 | `52f3c629c5289c69b122d414a09d692119dc0a839d3b9129d8de5c44ac82fd81` |
+| `tests/Feature/Api/MultiAccountSelectionTest.php` | 6 | `15bbe638391817efbfada573504a5cc8b75be82919e4aabd5a3e5cd848f423d0` |
+| `tests/Feature/Api/ReadOnlyGetEndpointsTest.php` | 1 | `91b1897012e6b7a2bceeb7591ac3e2c5268fdafc7c6bec705c0be635d2164700` |
+| `tests/Feature/Api/ResearchApiTest.php` | 19 | `bfe2a470848a356369965907da69fb8a9600381316675a1adb62b100d79b83e0` |
+| `tests/Feature/Audit/AuditInvariantTest.php` | 5 | `c79c31918d622d7ccd58890898b6e4b528e902f1da346be733e21cfaca4f0584` |
+| `tests/Feature/Audit/BacktestHistoricalAuditR8Test.php` | 3 | `7d2a5cf996c86cdc7a1f13d8d9f67772419dadf193ba31a322c9a71320000fb6` |
+| `tests/Feature/AuditExportTest.php` | 8 | `d11bc8bd1d00547c0ccac7447929a74fc35e0e6b63d51e96d71bc49a98271111` |
+| `tests/Feature/Backtest/BacktestCurveServiceTest.php` | 1 | `982d7b82b3e1bdb196628c222ee3a11f0ae29213118f0367dd0fcaeb0b7fd2c2` |
+| `tests/Feature/Backtest/BacktestExchangeDispatchTest.php` | 4 | `5025b24c59232a954f07f7deb46046bed7de9937c29b0937355a325b8e6dbca0` |
+| `tests/Feature/Backtest/BacktestRunServiceTest.php` | 6 | `246a7b462345cb2f867a431694a694ed110aec91b6e9479d2fdd47b5f8018359` |
+| `tests/Feature/Backtest/BacktestSimulationTest.php` | 7 | `4ec14a4de08d0792e2f9fcc51611fd752013fddfa048bebddd89c13ba009d099` |
+| `tests/Feature/Backtest/DatasetInspectorTest.php` | 14 | `143698022ec8c4b7e8b4c84fa86beb5cc68769d505e72372d0f167e912488c8a` |
+| `tests/Feature/Backtest/HistoricalStrategyParityTest.php` | 2 | `4375ecdb72539d0ee6d28c35255a53677420219e40bf017afb1ab64bf7f9c544` |
+| `tests/Feature/ExampleTest.php` | 1 | `aaa4a192fb4aa96d4e81eda06a29968da3d9a73b71026b87a67297e66dd985b8` |
+| `tests/Feature/Exchanges/BinanceActivationCommandTest.php` | 4 | `e60230258a671aa4f9382c79e6c8412d3f23e793c5800906aaf8997821c01474` |
+| `tests/Feature/Exchanges/BinanceBackfillCommandSafetyTest.php` | 2 | `fb5c5cc369c20f71bc2e6dcd4489ce65e5db69417b4b226f706b799e4a37a7c8` |
+| `tests/Feature/Exchanges/BinanceBatchCandleIngestionTest.php` | 14 | `8813e0d6ec854cdb41bec6437da0c63f6a347012cf2f8e3b97767c48fcfdff4b` |
+| `tests/Feature/Exchanges/BinanceCandleConflictQuarantineTest.php` | 3 | `502bba78de7e502f95f70fd91f4027dd58127ca0c78aa05db70d50fda1e7612d` |
+| `tests/Feature/Exchanges/BinanceDeploymentInitializationTest.php` | 7 | `9134e8436618ee050db5504f87db2167e23d8cb7cd48d52b924506250778d97f` |
+| `tests/Feature/Exchanges/BinanceEmergencyDisableMaintenanceTest.php` | 2 | `53dbad2aff2f2ece6a1ff073a50ca2142f84eb7552968bc6989a77f77660fad1` |
+| `tests/Feature/Exchanges/BinanceGapRecoveryTest.php` | 3 | `2e6294576223c74dbc1904cb5c726f345ec15d8a44ef1bf6956dc6954b04e6d1` |
+| `tests/Feature/Exchanges/BinanceHtfScheduleTest.php` | 5 | `89cb1bd424394bd4c08c6a151ab6b7c670e1d8dbd320aa56e1be4d83d5792eb4` |
+| `tests/Feature/Exchanges/BinanceImmutableMarketIngestionTest.php` | 2 | `f6717e91ef9421fb05898b94bab384e9e8c93d0c6f398b113b21085e22b206af` |
+| `tests/Feature/Exchanges/BinancePaperIsolationTest.php` | 8 | `09a5c78f24d9b5b04b3f2fb44211f1030dda10e05e72440b5c4175578aa93ab3` |
+| `tests/Feature/Exchanges/BinancePaperReadinessTest.php` | 11 | `13fb1f74bd675d6d47e3b093198340c3baab80da5b021df19d48fb94cee52513` |
+| `tests/Feature/Exchanges/BinanceResearchCycleTest.php` | 8 | `29933c6dacd362db0fd7551edc57e5b8708bc4cd2df59a491cc42f4609b6e0db` |
+| `tests/Feature/Exchanges/BootstrapEquityIntegrityTest.php` | 3 | `86097615840241130e8e5833c98ad67e273b3f02110d688b1913521528be17d8` |
+| `tests/Feature/Exchanges/ExchangeOnboardingTest.php` | 12 | `aa0618dd62a387b6862e4dc9129189a4612dde56a0fe01f2f006872ae2d998fe` |
+| `tests/Feature/Exchanges/ExchangeRiskSizingTest.php` | 2 | `eedc983c283c894e8cfe174961d42406e645340e0ca202cd86078af7e78c2bdd` |
+| `tests/Feature/Exchanges/ExchangeStrategyCompatibilityTest.php` | 6 | `5b7a696ad3705440925dadf4e92a0f2ce3dc8aea6c05f3d1cb09825b4e603c3d` |
+| `tests/Feature/Exchanges/MultiExchangeComparisonTest.php` | 4 | `417cff4045f9a7663b76baf8b606e1969c73e6ac10705db46c3fcb70e858b46b` |
+| `tests/Feature/HistoricalData/AcquisitionTest.php` | 3 | `aaad21a37a078eea06f4a739b15e2d90cb8185e2547eb4f0a503aa0a966bc990` |
+| `tests/Feature/HistoricalData/ApiTest.php` | 2 | `cc8f9ad8695fe495742406bef3c1c7e011b93bdaa847c323ad3e50f99ca93290` |
+| `tests/Feature/HistoricalData/DatasetPinTest.php` | 2 | `c0fd662483ee8f71fc63c8b56214e26f2cd2b294e418c6c27928960b94c1a559` |
+| `tests/Feature/HistoricalData/DownloaderTest.php` | 3 | `64546c08151b61912a5b69af8fc63f59f9dbe2f1a4646bcf6cb7740adbaa33cf` |
+| `tests/Feature/HistoricalData/PlannerTest.php` | 2 | `b52259e42643d7d7c66843485dd2d36b5ff0672467da557043f50ea33fc49fe9` |
+| `tests/Feature/HistoricalData/ResearchTest.php` | 2 | `3e5897636a2031ff869ec9f0759464814952115fc7e65637a88bb82e8ebe41c2` |
+| `tests/Feature/Indicators/IndicatorEngineTest.php` | 4 | `0a9deb8a5c57d159d494570502062200b0457c91c5f0999809ffd8795592b7b0` |
+| `tests/Feature/MarketData/CandlePersistenceTest.php` | 3 | `9a9d4d3af4b5db68470fa20747c03edfb58510cc765785636037ba7b433159bb` |
+| `tests/Feature/MarketData/CandleSynchronizerTest.php` | 2 | `158f9ebbcfa48aa2b2b6b10e22c1dba83f94a5cfd2f7fcd31d0881d92bdec788` |
+| `tests/Feature/MarketData/EnsureStrategyHistoryTest.php` | 3 | `3166eeb54a68cf8f14ebd13ba070268acd59e693a394e180d70a5642bcf560b1` |
+| `tests/Feature/MarketData/FundingHistorySynchronizerTest.php` | 3 | `9cce57aae59f7ede5185d32fd14f9162385e674d5c409c32b2c3a0068a12e01b` |
+| `tests/Feature/MarketData/MarketCacheSerializationTest.php` | 4 | `6d9507848e658ff072ac297b1d34b3ed8dcb1bd6a653140976166faa6556d2c5` |
+| `tests/Feature/MarketData/MarketCommandsTest.php` | 1 | `d0f6892ca63e5aa0c2563a52e5d3cadca55dffc2ff755bc6027e1a0140981322` |
+| `tests/Feature/MarketData/MarketExchangeIsolationTest.php` | 4 | `1923573fe0ceda2c588d133777e08a278459d543d8a83eeac25f107e8bf10314` |
+| `tests/Feature/MarketData/MarketStreamSupervisorTest.php` | 12 | `96c4b090903eb7e808e1d61e590bd6bd218ec4c8fd11cdf8f5cbce218e169972` |
+| `tests/Feature/MarketData/MarketTodayFilterTest.php` | 2 | `0177c925ca4f0d72365f4566a60560b35cd1350d0b826c9a806dfb7799f83040` |
+| `tests/Feature/MarketData/OpenInterestHistorySynchronizerTest.php` | 2 | `04e47a57ffec1df78b75afc5cedcc94e726ae48f684ec4e0b9d519aae006bbfb` |
+| `tests/Feature/PaperTrading/AccountSafetyRegressionTest.php` | 7 | `2dacf586296bf41fd757493fc925aa143d03e08171c76c78a1954d362b5796c6` |
+| `tests/Feature/PaperTrading/AllThirteenStrategiesExecutionTest.php` | 6 | `ff0f9602a0835a472cc8f38e6b04633a9b19ecb097798fd4be81cb80d093b538` |
+| `tests/Feature/PaperTrading/CentralExecutionEligibilityTest.php` | 9 | `6b2ef9e04fd003e21ea5a4b5dfd1dfad5b88beec6bae8a8582f14807c1078051` |
+| `tests/Feature/PaperTrading/DailyPerformanceTest.php` | 8 | `4f9a82f461ee6b5363e402750c2b3dc8f41fda619faeb0e10122cb9c9cd7bb3c` |
+| `tests/Feature/PaperTrading/EquitySnapshotCrossExchangeIntegrityTest.php` | 9 | `9465beab0719b9bf2e961bcb1ae581936a64d4c22cc836b421abbed4e45a5bbb` |
+| `tests/Feature/PaperTrading/ExchangeIngestionAndValuationStageCTest.php` | 4 | `9a73d362e4f470e3a8a54929bc0266b37fc53a650eb53dda941864a820d1ed47` |
+| `tests/Feature/PaperTrading/FullPaperTradingPipelineE2ETest.php` | 7 | `326042d96e2dfa7652b5dcda97a82f401322f51318aa6e52a4a37140e85e4cad` |
+| `tests/Feature/PaperTrading/FundingScheduleSafetyTest.php` | 6 | `8e669d8eb0ac341511954f738c2f0c530637b0cb34e9b743afd1492c4d53b315` |
+| `tests/Feature/PaperTrading/GlobalCapitalAndTopologyR6Test.php` | 4 | `7030416c33a54244f4ed7d0f20b4f243a77efe4ef2a2b114c96c5364bf6c32b2` |
+| `tests/Feature/PaperTrading/PaperLifecycleTest.php` | 20 | `596136c18ce73d8e2850124bf46a5bbdd1af2b7dffbb68dfda896dd1142940a3` |
+| `tests/Feature/PaperTrading/PaperReconcileFundingCommandTest.php` | 1 | `4dedd67cdbe50a2a737bf53e7c26210900c77a48aa8037196c58e84d186d1b54` |
+| `tests/Feature/PaperTrading/PerformanceStatisticsTest.php` | 4 | `c542eb0d2097ed478bb3e9be5720706391fcae30034f3104d5674ce19134aa09` |
+| `tests/Feature/PaperTrading/Phase0DiagnosticPackageTest.php` | 4 | `5578250e3f97e4ad49deebfc48aa94b6df8efc1d555b8c525da6b972220dc5ab` |
+| `tests/Feature/PaperTrading/PositionLifecycleStageBTest.php` | 5 | `ae86a6f9cb3897288da3ef667fffc47057602c133c1486e576c2816d0dcb1517` |
+| `tests/Feature/PaperTrading/PrimaryAccountMigrationRehearsalTest.php` | 1 | `e1d3bef5cb6efdc24ce4a6f662ef5ff479c9e19b9e639a7ce3138ba730aeb579` |
+| `tests/Feature/PaperTrading/PrimaryStrategyReadinessTest.php` | 3 | `7b3788130f712f2f2ce09ab6847bd09bc54bf7a16e3ab3c58ab0853a6cc0e8a0` |
+| `tests/Feature/PaperTrading/ProductionDrawdownReconciliationTest.php` | 4 | `66203f6f2bfbb29ff0d1a4bf1e1f1bc882c6140b3b5d025449571cb6eee9dd69` |
+| `tests/Feature/PaperTrading/StatisticsPayloadSerializationRegressionTest.php` | 4 | `5db83f2f64714e3a938d1d4a3fcb4d7f9c012676825b1b6f430849bec3b4eed1` |
+| `tests/Feature/PaperTrading/StrategyPipelineFunnelVerificationTest.php` | 5 | `8ced92461da07c0d53a7d8dbf5afe3aebba005a0a1a5f29469cb3b66a2faee07` |
+| `tests/Feature/PaperTrading/TemporalIntegrityAndCausalityTest.php` | 8 | `0e52531d5aa25038cb22e384f4db9abcfac0ef4de665c655666666dcba7e66fb` |
+| `tests/Feature/PaperTrading/ThirteenPrimaryAccountsTest.php` | 3 | `0b37eb2a9cd845b094591d3c7a963c20a64cf565f79434e919dc57f1d2fc8ce2` |
+| `tests/Feature/PaperTrading/TwentySixPaperAccountsVerificationTest.php` | 6 | `e5e08b69dcf3177f2b46b1a4e07218ed718819d9fea811178d83f27088dbc393` |
+| `tests/Feature/PatternDiscovery/PatternMatchServiceTest.php` | 1 | `4e3720fdf4cae672d767f0005e0d0c364059c3959694900da6f82a7a98207b0d` |
+| `tests/Feature/PatternDiscovery/PatternOccurrenceOutcomeTest.php` | 1 | `1176e168b4a341540a5a5dd08de55306515055ff322ea95e1ec8d5af9dc4e8d8` |
+| `tests/Feature/QuoteIntegrity/QimApiAuthTest.php` | 4 | `3c62cbc44cdee88c7d2d6445c9f17f37622870e6c39f4cf0013f118e1730ef07` |
+| `tests/Feature/QuoteIntegrity/QimApiStatusTest.php` | 4 | `797796923bcd49440a389c518847b0677622dde8ac0308e0d2a2646487852b16` |
+| `tests/Feature/QuoteIntegrity/QimEvidenceImportTest.php` | 4 | `4c62b00452300cb7366852d702cce341486a533579d5080ab03d4f5deda9ba39` |
+| `tests/Feature/QuoteIntegrity/QimFeatureFlagOffTest.php` | 2 | `0c9ca52985a94b4f389858b0dfe5d77abd32888dad6fb83ff6526a52d3c9a0ae` |
+| `tests/Feature/Research/AdaptiveTimeframeResearchTest.php` | 2 | `43c346dfee1481074d051fd95556e30d8fd395a00b5c5073f1e6bbbab9872091` |
+| `tests/Feature/Research/AutonomousLearningApiTest.php` | 4 | `63d5a94f6e798065afcb6e53382525b993b5dabe34f83b77a58f815f2bd6d119` |
+| `tests/Feature/Research/AutonomousLearningPipelineTest.php` | 3 | `071641b91129b4d6d83fbfdabf798816af5321a7bb22cee2c79aec8ffaaba47e` |
+| `tests/Feature/Research/AutonomyResearchTest.php` | 23 | `be1d4153780362e9fa7e97f55d79f9362d3a851cd5be22097970475d8d5d2199` |
+| `tests/Feature/Research/CandidateExchangeTest.php` | 4 | `54b777c6ac8098b3fbe173d950296800ad75793b3a3604f877c8319f2e24bc2a` |
+| `tests/Feature/Research/CandidateLabValidationLifecycleTest.php` | 6 | `a83f3d0d7dd2b947ee6e028fa17222e3217a5d1ebc12a04bfde04fd807d810cb` |
+| `tests/Feature/Research/ExitHorizonResearchTest.php` | 2 | `8d4e4d0b08c75c913b68082915ec24a3e13cd1457c442a6938ec3e7289c363dd` |
+| `tests/Feature/Research/Gate6PromotionPolicyTest.php` | 17 | `4292e7f6343f653953fdfb9c0984faa03e7a01f6dce3d7a35f3858b7b7a0f41b` |
+| `tests/Feature/Research/IntelligenceReadOnlyTest.php` | 7 | `8f0974d56427266b5586a98d630d221f48952d821f5b34f9b95d7f48a1bb335a` |
+| `tests/Feature/Research/LearningPredictorRollbackTest.php` | 2 | `ab19f0e21c12f4b1eadd256a1088c990abd589829c51ae5be43e96de94408751` |
+| `tests/Feature/Research/LegacyActiveModelSafetyTest.php` | 10 | `81adf2539e52531c75f21254ab6da56055d6cba27b0d3fc508096546eef69d1c` |
+| `tests/Feature/Research/MetaLabelingResearchTest.php` | 2 | `ddc56f2a28781f23c683916a3893f0be92d8ad36c91417e3f784579e1c444d01` |
+| `tests/Feature/Research/ModelAdvisoryDecisionVetoTest.php` | 2 | `6ccced4c6a0ef8e0ed6249dae3ef0740c481489bc23218755c44c420c08085d4` |
+| `tests/Feature/Research/P2RiskCapitalMetricsTest.php` | 16 | `d6e8cc6719b9225fd653a90d6f2febc4a43b2eefd0d86bacdcb659657daf2e2a` |
+| `tests/Feature/Research/P4CostMfeMaeApiTest.php` | 3 | `6a5712da9c129267442d042cb4d26feada3a9cbcf27409aa83db2b0794548f11` |
+| `tests/Feature/Research/P4CostMfeMaeTest.php` | 5 | `c3c89079f181d3a7e85c15a3651339a303cc19756f60e4e618a35035024107f6` |
+| `tests/Feature/Research/P5ConcentrationApiTest.php` | 3 | `c03755729179c5c211c26772f31f490c27f4e4c511870a9fe59aca1302c38763` |
+| `tests/Feature/Research/P5DependenceConcentrationTest.php` | 9 | `eb6e0d12026e7d75365bbbca5130332e11a12fe0ef8b40092aaf26771748e72f` |
+| `tests/Feature/Research/P6DecisionGateApiTest.php` | 4 | `bf15ba2eab8823f9eefcdc41ebbceb37cd7bf0caaad3bcb7625bb7a5085e816f` |
+| `tests/Feature/Research/P6DecisionGateTest.php` | 7 | `37a51992046bc5718072ecd296c711e298140c18fe2f8e636aba89e69d3d0524` |
+| `tests/Feature/Research/ProfitabilityResearchApiTest.php` | 11 | `ef37ab35311e2ecfae6f0ca79b2a3cf3912e2cc91a0dacdac7590a71117b797f` |
+| `tests/Feature/Research/PromotedCandidateExecutionTest.php` | 1 | `d55e0ea1e3f1714020cc10b25aff3b711410c957b5852e326d80a018414faf35` |
+| `tests/Feature/Research/ReconcileLedgerJobExecutionPathTest.php` | 5 | `4b5cb4586f1c9c85ee7e20548e93df5f8952c751b5de26e0d745b6d3dc557d4a` |
+| `tests/Feature/Research/ResearchBenchmarkCommandTest.php` | 1 | `98da986765e7c1422246fe2a33b1b5920eedad845a056769488844ee51cc3fae` |
+| `tests/Feature/Research/ResearchHealthApiTest.php` | 3 | `df7a7b5bab4b35e76128a93e1e3da64a5d365bd68e872fad77c180dfcb8133eb` |
+| `tests/Feature/Research/ResearchJobApiTest.php` | 9 | `a68e12e5d083f0cf23edb747c197ee35c7cb8f71e3bac3f44c00f16ead59e73c` |
+| `tests/Feature/Research/ResearchUiRemediationTest.php` | 2 | `73c2191cff640b2dd5cbe5bf856fcac32e9c52a6ba98263678d25bc42752539d` |
+| `tests/Feature/Research/ScheduledResearchJobsTest.php` | 4 | `0e0227567bb6950cb5acea356808ec3120d017531e32fc135160f7d9bcc79451` |
+| `tests/Feature/Research/SlippageAttributionApiTest.php` | 4 | `43da67809e244b3f1dd6a81f949864a38f8f183c793d730786b24972bfdf9bc1` |
+| `tests/Feature/Research/StageThreeApiTest.php` | 4 | `66ad34994457346cb7a76de36a6e2791cb2a13946ed5e7b4213ed7f1c41c31d2` |
+| `tests/Feature/Research/StageTwoApiTest.php` | 4 | `c79a278d837b58246d87ef30b19a12199cfffd0cce0793437a27aa47b23b0bbd` |
+| `tests/Feature/Security/BrowserOriginProtectionTest.php` | 8 | `6c5987e5c53d649bdf5d8aa5f5357a73b4b5bd99536ff1c912cf23a69d01167b` |
+| `tests/Feature/Security/RuntimeHardeningConfigTest.php` | 3 | `adc3ce8c7296961926a69b0b2d523d2b05c47f12adcb8c6f63269e942ed4f11f` |
+| `tests/Feature/Strategy/LevelProbabilityBootstrapLifecycleTest.php` | 5 | `d389b4ded6b64395b86e8d2b0514f2d2f0136a4c56a9c7d9251b31f362b3c4e6` |
+| `tests/Feature/Strategy/LevelProbabilityTest.php` | 1 | `f6a009ea75236cb6266c9e38b57f415e387fdaed2f8da7f66f588b82ce1c32a8` |
+| `tests/Feature/Strategy/MarketScannerServiceTest.php` | 1 | `e9b922eb126277fc9154ba5fe30f925cc26097d904f3c7aeb8167d0077efd9d2` |
+| `tests/Feature/Strategy/PatternResearchApiTest.php` | 5 | `c6bdf0f4490dcab8f7104b3f6a544e4065604da2566b1d9df22ca11511ef929b` |
+| `tests/Feature/Strategy/ResearchApiTest.php` | 6 | `15d36d54333656ed01306ae6bfed2b8be2ef2b2bbb7dfe5a720d6f97f5f0eefb` |
+| `tests/Feature/Strategy/ResearchBootstrapTest.php` | 3 | `ee1bcb84320783f3da80f48fb38ff662b737a76cd3ab387543e5e2fc6f0fb30f` |
+| `tests/Feature/Strategy/SignalGenerationTest.php` | 7 | `82b8671d40224a9a915717829d03f2a27985ce31f13e8e1127db74b6784d97b4` |
+| `tests/Feature/Strategy/SignalOnlyStrategyExecutionTest.php` | 2 | `c74cede8ebde7e69f652920409101a825902d3dd3289a46053b1103e9e606202` |
+| `tests/Feature/Strategy/StrategyScheduleTest.php` | 1 | `4a17a05cf27e5437cadac743bdd485776a3b163a7bd13374f8edf5c8c57084ed` |
+| `tests/Feature/Strategy/SupportResistanceStrategiesTest.php` | 6 | `0d125121208fdb06f2d2d9ff8f025481cfeb03a4f7354523e526ba728250d20d` |
+| `tests/Feature/StrategyBuilder/AdvancedDefinitionTest.php` | 1 | `0f122137cfd23cba6b1a3a90d5760aa8938b693a3f6c649c7850d6ba5d68a914` |
+| `tests/Feature/StrategyBuilder/AuthoringTest.php` | 3 | `853bf4c64236ae928848c678be7b02730922c39321adf29a4a619b6dc804b31c` |
+| `tests/Feature/StrategyBuilder/AuthoringWorkflowTest.php` | 3 | `698f5437ddd874c66e355c3170f7d43a65e5b234fe7e20a6b90086b1f29e2664` |
+| `tests/Feature/StrategyBuilder/DefinitionTest.php` | 2 | `85be3fc1fb2e1e0e36609c3f5faa7255c902a5715a349f9b8e4a4026b26f6ed1` |
+| `tests/Feature/StrategyBuilder/FundingResearchTest.php` | 2 | `ab564950cceae305e045881f2a5bb3d6f3449a2bbd6632988b23e9cf95060005` |
+| `tests/Feature/StrategyBuilder/ManagementTest.php` | 3 | `aefe9ea94edab5fbe6a2ed3448c7a6dd2ebedeb997bc8ba01859e1c06a69083c` |
+| `tests/Feature/StrategyBuilder/OptimizationTest.php` | 2 | `40384f307e1c4699f0406fe0e7580bf0f49f3bb9dbdc4c8d616b937b46259d46` |
+| `tests/Feature/StrategyBuilder/PaperExecutionTest.php` | 1 | `91e68076cd889ede18407f42b0b9b2f0c443b8d7a3c9425eb092d316e8a989c4` |
+| `tests/Feature/StrategyBuilder/PaperGovernanceTest.php` | 1 | `bc16540ba563b6bc5c1b993d8d7852462d1e94d46114935ecb1090598fb584c5` |
+| `tests/Feature/StrategyBuilder/ShadowTest.php` | 1 | `0b0ac470d4d239037f96c3847c7a7a1d27ddf9056ecebc7fca603f2b96d47e55` |
+| `tests/Feature/Trading/BinanceObservationContentionTest.php` | 8 | `6709ee0b51a5154cc59ef5ea4b043c845a6619b4a9c51337d21824156453a21c` |
+| `tests/Feature/Trading/BinancePipelineFreshnessAndConcurrencyTest.php` | 12 | `003818aa4bad2355d7a2a77a2bfe00e127381c4ac19558b98ea716a276a01353` |
+| `tests/Feature/Trading/EventDrivenTradingPipelineChainTest.php` | 2 | `22223e7090e6f0fe912d744071417a63d42eed327d7e9d6d834b455cfd89b0ed` |
+| `tests/Feature/Trading/TradingPipelineConcurrencyAndSafetyTest.php` | 5 | `8c26ddf496d2bb4600d2bf5dea85a4424f3272a0cc5d79604b9154849bb80eac` |
+| `tests/Feature/Trading/TradingPipelineDiagnosticsTest.php` | 1 | `f2aa36853c57e4c4accef14247df260a20f1fc185ad23feb612de0275b3d519a` |
+| `tests/Feature/Trading/TradingPipelineEventContractTest.php` | 6 | `eeaa5e60f46131bd297978d565cf3c3ffd3b3031e42e61fb48d6c4cd8cce0dbf` |
+| `tests/Feature/Trading/TradingPipelineForwardCausalityTest.php` | 6 | `b86f453a6354cb632bfc226d55fe8fd384dcd07b36bee00cdb9730856db6f9a8` |
+| `tests/Feature/Trading/TradingPipelineRecoveryAndRollbackTest.php` | 4 | `a7bb57cdc5a402090f7bd2c5ff27e0e54691040b8f318946897af19e0a8f0634` |
+| `tests/Feature/Trading/TradingPipelineStageATest.php` | 12 | `3d866fe91f5c354e32d84a50ed19066da6fc310d0510123346707454b656ace1` |
+| `tests/Integration/BinanceCandleBackfillIntegrationTest.php` | 9 | `4a62799ceb627e6a37936fbecc712293674bd09ccd88baaf67aba69609c3a174` |
+| `tests/Integration/BinanceCandleConflictDurabilityTest.php` | 13 | `e3af31cfa840ff6ae85c049fb791efb1d9db61ac8dec6b397df8f6a3227e3eb5` |
+| `tests/Integration/BinanceCandleInsertionRaceTest.php` | 4 | `bb68c76fa09c4031ef7d0438f6acdbb5fcfd9d5514d8e9bb2db299ed01e3cbff` |
+| `tests/Integration/BinanceObservationRedisLockIntegrationTest.php` | 1 | `fbf722e0e711a8a06a0f4ac4ed9915aaf77cf0fae7b564d32de3c1c21f5795f8` |
+| `tests/Integration/BybitPublicApiIntegrationTest.php` | 1 | `99fb0dd84e326cc67f9d4a37fdde6c9ca1cb6b7e044d8cbbd16f234324051b7a` |
+| `tests/Integration/CandleConflictRecoveryTest.php` | 16 | `073f1a4921755a0e46543640ce11d73d21dc40a6cb2e1b97b378ff2c503ff131` |
+| `tests/Integration/ConcurrentPaperEntryGlobalRiskPostgresIntegrationTest.php` | 2 | `06219fe5922d5849352bc713d8aa71769fed48f51e84e71b6b83cd87c0cf927b` |
+| `tests/Integration/CounterfactualSlotIdempotencyPostgresIntegrationTest.php` | 5 | `a2431d66b98fe3651f8cae98489b3365fab2addef933716af6e25db49aa77ed2` |
+| `tests/Integration/FinancialAccountingAndReconciliationPostgresIntegrationTest.php` | 3 | `eb69a02d86909d7f6377dfbc042215069f72b3695adf0f941e9b8ab7a11d7b4f` |
+| `tests/Integration/GoResearchWorkerIntegrationTest.php` | 4 | `7aadac3fdba3e581796569bb1c0bbf33fff69321364b8230b2ca50b3e6b47c50` |
+| `tests/Integration/LedgerReconciliationPostgresIntegrationTest.php` | 3 | `a3fe260e2ee294bc7a17f8caa5ddea7dea2d066ca2c5c4efc691cd8196519533` |
+| `tests/Integration/M9SnapshotIsolationPostgresIntegrationTest.php` | 5 | `35d1feaf1d4fccd28cad4424d84bff867ab908dc9e227918210a09d4c84bc15f` |
+| `tests/Integration/MlAuthorityAndProperScoringPostgresIntegrationTest.php` | 4 | `7417c15d8787612105ff6bdf573e98d478f8bfab601c07e6e2e56bc45e368876` |
+| `tests/Integration/PaperPipelineConcurrentWorkersIntegrationTest.php` | 1 | `c310aae6e9475034517be8ee1053c4bae2d617f75efefc05e4d6c0227337b274` |
+| `tests/Integration/Phase0ReleaseMigrationsPostgresIntegrationTest.php` | 3 | `67798841a236f067df1858de7a897dda646f824040a4467aa51d2c5f45a16683` |
+| `tests/Integration/QuantPortfolioMetricsPostgresIntegrationTest.php` | 5 | `76c773251be37ad6494ad377e26acec3460a7f563557f08821dc1cc56df245dd` |
+| `tests/Integration/QuoteIntegrity/QimImmutabilityTest.php` | 2 | `e207fcd16f558ead6177435577be2ed9d6bac5ce6da6c0330dac6a70484dc558` |
+| `tests/Integration/ResearchJobSubmissionPostgresIntegrationTest.php` | 3 | `8759179b318829697129f4bea080b227465d3ddc8e3d8f606780581ecbd45e9a` |
+| `tests/Integration/ResearchWorkerConcurrencyPostgresIntegrationTest.php` | 3 | `8e2b69cb328c4e7487073f01c4d8826a0bd674d266f161e937efef10bd5eebae` |
+| `tests/Integration/SlippageAttributionPostgresIntegrationTest.php` | 2 | `9244f818ad2835acb3b5b84898a2f5ec2f863418a3b02c9fdc54ec011f6573bd` |
+| `tests/Integration/SlotIntegrityAndRiskFunnelPostgresIntegrationTest.php` | 4 | `9c4f0be04d36d98af2986397329258db278331b08bde2d3f3b20e819805d049e` |
+| `tests/Integration/StrategyInputIntegrityTest.php` | 19 | `c7c78da07d613d775a0f499be39a5b70e9a357b383388d2e789f7bf00092ed10` |
+| `tests/Integration/StrategyObservationSlotMigrationPostgresIntegrationTest.php` | 5 | `a57929b62e22745f69b765744d70b97f095750dc842c2fb1737b16f4be03b19e` |
+
+Standalone inventory reconciliation (completed after the initial framework inventory):
+
+- `scripts/tests/binance_contract_smoke.php`: 47 assertions; restored its missing standalone configuration-default helper without changing assertions.
+- `scripts/verify-a2-standalone.php`: 24 assertions.
+- `scripts/verify-gate6-standalone.php`: 68 assertions.
+- `scripts/test_p1_postgres_concurrency.php` and its `concurrency_worker.php` fixture: five two-process advisory-barrier races, incompatible configuration hash detection and strategy-version isolation. Both now reject non-testing contexts before bootstrap; workers opt into the quarantined legacy test fixture only after verifying the isolated loopback database. Production configuration remains disabled. CI requires the final positive PASS marker as well as process success.
+- `scripts/verify-php-runtime.php`: actual PHP version/required extensions, required in every PHP setup.
+- `scripts/verify-audit-log-redaction.py`: source regression, required alongside runtime exception-injection tests.
+
+`verify-system.sh` and `run-browser-e2e.sh` are orchestration wrappers whose underlying test cases are included directly; running them again would duplicate verification. `scripts/smoke/remote-curl-audit.sh` and production diagnostics require operator-authorized runtime access and are not automatic CI fixtures. No previously mandatory production test was moved out of CI.

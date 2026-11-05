@@ -1,0 +1,6 @@
+{
+    "postgres_system_identifier": "7704739219611283490",
+    "database": "bybit_test",
+    "redis_run_id": "bc816e4e25a5b1b25bc0627fb082271c33bbd666",
+    "redis_prefix": "vector-ci-feature-4-"
+}

@@ -1,0 +1,84 @@
+[
+  {
+    "command": "original clean PHP full suite --log-junit baseline-junit.xml",
+    "exit_code": 2,
+    "result": "1 error, 3 failures, 5 skips, 1294 cases"
+  },
+  {
+    "command": "benchmark_php.py --workers 2 --ref ad071513... --plan balanced",
+    "exit_code": 0,
+    "result": "9 successful lane processes"
+  },
+  {
+    "command": "benchmark_php.py --workers 4 --ref ad071513... --plan balanced (final resource pass)",
+    "exit_code": 0,
+    "result": "9 successful lane processes"
+  },
+  {
+    "command": "php_shards.py verify php-plan.json <final reports>; check_isolation.py",
+    "exit_code": 0,
+    "result": "1294 identical IDs; 9 distinct PostgreSQL/Redis pairs"
+  },
+  {
+    "command": "go test -count=1 -json ./...; check_go_results.py",
+    "exit_code": 0,
+    "result": "113 passing case/subcase IDs, no test skips"
+  },
+  {
+    "command": "CGO_ENABLED=1 go test -race -count=1 -json ./...; check_go_results.py",
+    "exit_code": 0,
+    "result": "113 passing case/subcase IDs, no test skips"
+  },
+  {
+    "command": "go vet ./...; go mod verify; gofmt -l . empty; go build ./...",
+    "exit_code": 0
+  },
+  {
+    "command": "npm ci --no-audit --no-fund; npm test; vue-tsc --noEmit; vite build; npm audit --package-lock-only",
+    "exit_code": 0,
+    "result": "76 tests and full typecheck/build/audit"
+  },
+  {
+    "command": "run_browser.sh dashboard / builder / historical; verify-browser-phase0.py",
+    "exit_code": 0,
+    "result": "4 suites pass; 9 Phase 0 obligations"
+  },
+  {
+    "command": "pint --test; composer validate --strict; composer audit --locked",
+    "exit_code": 0,
+    "result": "855 PHP files; no advisories"
+  },
+  {
+    "command": "python3 -m unittest discover -s scripts/tests -p test_*.py -v",
+    "exit_code": 0,
+    "result": "59 tests"
+  },
+  {
+    "command": "PHPUnit DeploymentStateValidationAndRecoveryTest and Unit/DevOps",
+    "exit_code": 0,
+    "result": "18 tests, 69 assertions, no skips"
+  },
+  {
+    "command": "scripts/tests/test_*.sh; deployment recovery matrix; same-SHA Compose test",
+    "exit_code": 0
+  },
+  {
+    "command": "actionlint -shellcheck=; bash -n affected scripts; git diff --check",
+    "exit_code": 0
+  },
+  {
+    "command": "app/web BuildKit dependency-installation attempts",
+    "exit_code": 130,
+    "result": "Stopped stalled local builds; no successful build timing claimed"
+  },
+  {
+    "command": "research-worker BuildKit local build",
+    "exit_code": 0,
+    "seconds": 15.152452006994281
+  },
+  {
+    "command": "verify-php-runtime.php; standalone Binance/A2/Gate6; test_p1_postgres_concurrency.php; verify-audit-log-redaction.py",
+    "exit_code": 0,
+    "result": "139 pure assertions; 5 two-process PG races plus 2 variants; positive PASS marker; runtime/redaction pass"
+  }
+]

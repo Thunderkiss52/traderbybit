@@ -1,0 +1,28 @@
+[
+  {
+    "command": [
+      "python3",
+      "-m",
+      "unittest",
+      "discover",
+      "-s",
+      "scripts/tests",
+      "-p",
+      "test_vector_progress.py",
+      "-v"
+    ],
+    "exit_code": 0,
+    "seconds": 0.6984972049976932
+  },
+  {
+    "command": [
+      "python3",
+      "scripts/vector_progress.py",
+      "--strict",
+      "--base-ref",
+      "ad071513cd60307eebe2a0c3d929197693e09449"
+    ],
+    "exit_code": 0,
+    "seconds": 3.8801960429991595
+  }
+]

@@ -1,0 +1,53 @@
+[
+  {
+    "command": [
+      "python3",
+      "-m",
+      "unittest",
+      "discover",
+      "-s",
+      "scripts/tests",
+      "-p",
+      "test_*.py",
+      "-v"
+    ],
+    "exit_code": 0,
+    "seconds": 1.6758785519996309,
+    "log": "/tmp/vector-cicd-20261105/after/final-check-0.log"
+  },
+  {
+    "command": [
+      "/tmp/vector-cicd-20261105/actionlint",
+      "-shellcheck="
+    ],
+    "exit_code": 0,
+    "seconds": 0.00802072900114581,
+    "log": "/tmp/vector-cicd-20261105/after/final-check-1.log"
+  },
+  {
+    "command": [
+      "bash",
+      "-n",
+      "scripts/ci/prepare_test_environment.sh",
+      "scripts/ci/run_browser.sh",
+      "scripts/ci/verify_images.sh",
+      "docker/scripts/common.sh",
+      "docker/scripts/update.sh",
+      "docker/scripts/rollback.sh",
+      "docker/scripts/stage-release-manifest.sh"
+    ],
+    "exit_code": 0,
+    "seconds": 0.0024895530004869215,
+    "log": "/tmp/vector-cicd-20261105/after/final-check-2.log"
+  },
+  {
+    "command": [
+      "git",
+      "diff",
+      "--check"
+    ],
+    "exit_code": 0,
+    "seconds": 0.0059067959955427796,
+    "log": "/tmp/vector-cicd-20261105/after/final-check-3.log"
+  }
+]

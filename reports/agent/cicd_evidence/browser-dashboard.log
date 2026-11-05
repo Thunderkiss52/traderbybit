@@ -1,0 +1,27 @@
+======================================================================
+TRADERBYBIT V4 — HEADLESS BROWSER E2E TEST (PLAYWRIGHT)
+Timestamp: 2026-11-05T17:05:13Z
+======================================================================
+[E2E] Launching headless Chrome (/usr/bin/google-chrome) ...
+[E2E] Test 1: Navigating to Dashboard ...
+  [PASS] Header 'Quant Research' verified
+  [PASS] Research mode banner verified
+  [PASS] All 13 strategy accounts rendered on Dashboard
+  [PASS] BTCUSDT and ETHUSDT market contexts rendered
+  [PASS] Saved screenshot: /tmp/vector-cicd-20261105/browser/ci-browser/e2e_dashboard.png
+
+[E2E] Test 2: Navigating to Strategy Research Lab ...
+  [PASS] Research Lab title & subtitle verified
+  [PASS] 4-timeframe hierarchy declaration verified
+  [PASS] All 13 strategies declared in Research Lab select
+  [PASS] Saved screenshot: /tmp/vector-cicd-20261105/browser/ci-browser/e2e_research.png
+
+[E2E] Test 3: Navigating to Statistics Page ...
+  [PASS] Statistics page loaded successfully
+  [PASS] Saved screenshot: /tmp/vector-cicd-20261105/browser/ci-browser/e2e_statistics.png
+
+[E2E] Test 4: Checking Page Exceptions & Network Health ...
+  [PASS] Zero uncaught JavaScript errors detected
+  [PASS] Zero failed critical API / asset requests
+======================================================================
+[SUCCESS] ALL BROWSER E2E TESTS PASSED

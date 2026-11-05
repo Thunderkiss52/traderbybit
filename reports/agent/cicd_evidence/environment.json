@@ -1,0 +1,15 @@
+{
+  "kernel": "Linux 6.18.54.1-microsoft-standard-WSL2",
+  "node": "v22.23.4",
+  "go": "go version go1.27.3 linux/amd64",
+  "chrome": "Google Chrome 151.0.7922.71",
+  "postgres": "17.11",
+  "redis": "# Server\nredis_version:7.4.11\nredis_git_sha1:00000000\nredis_git_dirty:0\nredis_build_id:40ff01a501d8e4b6\nredis_mode:standalone\nos:Linux 6.18.54.1-microsoft-standard-WSL2 x86_64\narch_bits:64\nmonotonic_clock:POSIX clock_gettime\nmultiplexing_api:epoll\natomicvar_api:c11-builtin\ngcc_version:14.2.0\nprocess_id:1\nprocess_supervised:no\nrun_id:553e481c50e5da3d0ea7afcf3e30d3a4f6e4eeba\ntcp_port:6379\nserver_time_usec:1793899591525045\nuptime_in_seconds:2840\nuptime_in_days:0\nhz:10\nconfigured_hz:10\nlru_clock:15514695\nexecutable:/data/redis-server\nconfig_file:\nio_threads_active:0\nlistener0:name=tcp,bind=*,bind=-::*,port=6379",
+  "baseline_sha": "ad071513cd60307eebe2a0c3d929197693e09449",
+  "source_head": "58350b4b16b519bb76447127f7e2ca0ff92cf89b",
+  "php": "8.5.12 (vector-agent-php85-test:local)",
+  "host_cpus": 8,
+  "host_memory_gib": 31.35,
+  "docker_context": "default: unix:///var/run/docker.sock",
+  "shared_go_binaries": "CGO_ENABLED=0, linux/amd64, statically linked"
+}

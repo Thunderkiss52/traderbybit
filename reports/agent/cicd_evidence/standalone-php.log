@@ -1,0 +1,130 @@
+{
+    "php": "8.5.12",
+    "sapi": "cli",
+    "extensions": {
+        "bcmath": "8.5.12",
+        "ctype": "8.5.12",
+        "curl": "8.5.12",
+        "dom": "20031129",
+        "fileinfo": "8.5.12",
+        "filter": "8.5.12",
+        "intl": "8.5.12",
+        "mbstring": "8.5.12",
+        "openssl": "8.5.12",
+        "pcntl": "8.5.12",
+        "pdo_pgsql": "8.5.12",
+        "pdo_sqlite": "8.5.12",
+        "redis": "6.3.0",
+        "session": "8.5.12",
+        "sodium": "8.5.12",
+        "tokenizer": "8.5.12",
+        "xml": "8.5.12",
+        "xmlwriter": "8.5.12",
+        "zip": "1.22.8",
+        "Zend OPcache": "8.5.12"
+    },
+    "errors": []
+}
+PASS: 47 standalone Binance market-data and 13-primary assertions
+PASS: 24 standalone A0/A2/Gate6 assertions
+PASS: 68 Gate6 strict-evidence regression checks
+=== P1 PostgreSQL Multi-Iteration Concurrency & Slot Idempotency Proof ===
+Connected to bybit_test on 127.0.0.1:44620
+
+--- Iteration 1/5: Concurrent Race with Barrier Synchronization ---
+[Barrier] Releasing pg_advisory_lock(777111) to trigger simultaneous contention (jitter: 13990us)...
+  Worker A PID: 11, unblocked: 1793902744.428, action: SUCCESS
+  Worker B PID: 12, unblocked: 1793902744.4467, action: SUCCESS
+  Counts after iteration 1: strategy_observations=1, counterfactual_evaluations=1
+
+--- Iteration 2/5: Concurrent Race with Barrier Synchronization ---
+[Barrier] Releasing pg_advisory_lock(777111) to trigger simultaneous contention (jitter: 20482us)...
+  Worker A PID: 13, unblocked: 1793902744.8464, action: SUCCESS
+  Worker B PID: 14, unblocked: 1793902744.8482, action: SUCCESS
+  Counts after iteration 2: strategy_observations=1, counterfactual_evaluations=1
+
+--- Iteration 3/5: Concurrent Race with Barrier Synchronization ---
+[Barrier] Releasing pg_advisory_lock(777111) to trigger simultaneous contention (jitter: 7568us)...
+  Worker A PID: 15, unblocked: 1793902745.2399, action: SUCCESS
+  Worker B PID: 16, unblocked: 1793902745.2371, action: SUCCESS
+  Counts after iteration 3: strategy_observations=1, counterfactual_evaluations=1
+
+--- Iteration 4/5: Concurrent Race with Barrier Synchronization ---
+[Barrier] Releasing pg_advisory_lock(777111) to trigger simultaneous contention (jitter: 20834us)...
+  Worker A PID: 17, unblocked: 1793902745.6431, action: SUCCESS
+  Worker B PID: 18, unblocked: 1793902745.6727, action: SUCCESS
+  Counts after iteration 4: strategy_observations=1, counterfactual_evaluations=1
+
+--- Iteration 5/5: Concurrent Race with Barrier Synchronization ---
+[Barrier] Releasing pg_advisory_lock(777111) to trigger simultaneous contention (jitter: 19083us)...
+  Worker A PID: 19, unblocked: 1793902746.0997, action: SUCCESS
+  Worker B PID: 20, unblocked: 1793902746.1274, action: SUCCESS
+  Counts after iteration 5: strategy_observations=1, counterfactual_evaluations=1
+
+--- Testing Variation B: Incompatible configuration_hash change ---
+Worker Variation B Result: {
+    "worker_id": "worker_var_b",
+    "pid": 21,
+    "observation_id": "6063b231-b968-589c-bec7-df9f3832bde6",
+    "unblocked_at": 1793902746.546482,
+    "obs_finished_at": 1793902746.584901,
+    "eval_finished_at": 1793902746.636402,
+    "obs_duration_ms": 38.42,
+    "eval_duration_ms": 51.5,
+    "total_duration_ms": 89.92,
+    "evaluation_id": "6063b231-b968-589c-bec7-df9f3832bde6",
+    "action": "SUCCESS",
+    "error": null
+}
+Snapshot after conflicting config hash:
+{
+    "observation_id": "6063b231-b968-589c-bec7-df9f3832bde6",
+    "signal_id": null,
+    "configuration_hash": "hash_initial",
+    "ambiguous_signal_match": false,
+    "candidate_signal_ids": null,
+    "reasons": [
+        "five_minute_confirmation_conflicts"
+    ],
+    "analysis": {
+        "diagnostics": {
+            "decision": "SKIP"
+        },
+        "level_interaction": {
+            "selected_side": "BUY"
+        }
+    },
+    "candle_close": "2405.500000000000",
+    "is_evaluable": true,
+    "incompatible_payload_detected": true,
+    "conflicting_configuration_hashes": [
+        "hash_initial",
+        "hash_conflicting_b"
+    ]
+}
+ - strategy_observations canonical count after config variation: 1 (Expected: 1)
+ - counterfactual_evaluations canonical count after config variation: 1 (Expected: 1)
+ - Incompatible payload detected: YES (Expected: YES)
+ - Conflicting hashes recorded: ["hash_initial","hash_conflicting_b"]
+
+--- Testing Variation C: Legitimate strategy_version change (1.3.0) ---
+Worker Variation C Result: {
+    "worker_id": "worker_var_c",
+    "pid": 22,
+    "observation_id": "86e24c27-2241-5c3f-b3cb-1185e2a23154",
+    "unblocked_at": 1793902746.968051,
+    "obs_finished_at": 1793902747.007427,
+    "eval_finished_at": 1793902747.043355,
+    "obs_duration_ms": 39.38,
+    "eval_duration_ms": 35.93,
+    "total_duration_ms": 75.3,
+    "evaluation_id": "86e24c27-2241-5c3f-b3cb-1185e2a23154",
+    "action": "SUCCESS",
+    "error": null
+}
+ - Distinct evaluation ID for version 1.3.0: 86e24c27-2241-5c3f-b3cb-1185e2a23154 (Different from 1.2.0: YES)
+ - strategy_observations canonical count after version bump: 2 (Expected: 2)
+ - counterfactual_evaluations canonical count after version bump: 2 (Expected: 2)
+
+Evidence saved to reports/evidence/p1_concurrency_proof.json
+OVERALL VERDICT: PASS

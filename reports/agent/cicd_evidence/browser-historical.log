@@ -1,0 +1,15 @@
+SEEDED 26 BLOCKED accounts
+STEP Load batches
+STEP Preview download plan
+STEP Save plan without downloading
+STEP Cancel batch
+STEP Preview download plan
+STEP Save plan without downloading
+STEP Start / resume downloads
+STEP Pause downloads
+STEP Start / resume downloads
+STEP Refresh progress
+STEP Validate imported coverage
+STEP Run Historical Backtest
+STEP Refresh progress
+{"status":"PASS","batch":"adc84933-4ccf-5e63-8bc6-ffbe782be204","run":"da204e0070efaa7e2da2ab5181fecbbf8887d1a11678f3c17cc57d8d14ec5119","pin":"d67c9d2f49ad5bd19ff45cbb65ff782e576adf83af3e608615b0fc3afac818bc","trades":49,"coverage":{"download_complete":true,"candle_complete":true,"funding_requested":true,"funding_complete":true,"series":[{"symbol":"BTCUSDT","interval":"5m","expected":4044,"actual":4044,"missing":0,"gap_samples":[],"integrity":{"status":"VALID","reason_code":null},"complete":true},{"symbol":"BTCUSDT","interval":"15m","expected":1348,"actual":1348,"missing":0,"gap_samples":[],"integrity":{"status":"VALID","reason_code":null},"complete":true},{"symbol":"BTCUSDT","interval":"30m","expected":674,"actual":674,"missing":0,"gap_samples":[],"integrity":{"status":"VALID","reason_code":null},"complete":true},{"symbol":"BTCUSDT","interval":"1h","expected":337,"actual":337,"missing":0,"gap_samples":[],"integrity":{"status":"VALID","reason_code":null},"complete":true}],"funding":[{"symbol":"BTCUSDT","events":43,"missing_marks":0,"conflicting_events":0,"calendar_gaps":0,"calendar_source":"PUBLISHED_PER_EVENT_INTERVAL","published_api_response_complete":true,"mark_source":"BINANCE_FUNDING_SETTLEMENT_API","trade_candles_used_as_marks":false,"complete":true}],"unresolved_historical_conflicts":0,"errors":[],"status":"VALIDATED","research_ready":true,"full_fidelity_ready":true,"validated_at":"2026-11-05T17:16:09.185591Z"},"paper_before_after":"eebfc13d4273f6a80225103c081617bc|26|26","page_errors":[],"fixed_synthetic_fixture":true}

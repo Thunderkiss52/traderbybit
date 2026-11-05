@@ -1,0 +1,22 @@
+all modules verified
+
+real	0m0.011s
+user	0m0.013s
+sys	0m0.003s
+
+real	0m0.658s
+user	0m2.564s
+sys	0m0.672s
+
+real	0m2.242s
+user	0m6.793s
+sys	0m2.565s
+
+real	0m3.647s
+user	0m12.718s
+sys	0m4.089s
+go: -race requires cgo; enable cgo by setting CGO_ENABLED=1
+
+real	0m0.004s
+user	0m0.000s
+sys	0m0.005s

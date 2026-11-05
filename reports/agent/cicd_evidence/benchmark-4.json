@@ -1,0 +1,80 @@
+{
+  "workers": 4,
+  "host_cpus": 8,
+  "php_cpus_per_lane": 2,
+  "elapsed_seconds": 240.31505249800102,
+  "lanes": [
+    {
+      "lane": "unit-1",
+      "postgres_init_seconds": 2.6396334419987397,
+      "redis_init_seconds": 0.6527400990016758,
+      "exit_code": 0,
+      "php_and_migrations_seconds": 18.53492152299441,
+      "elapsed_seconds": 25.069809384003747
+    },
+    {
+      "lane": "unit-2",
+      "postgres_init_seconds": 2.4830886350027868,
+      "redis_init_seconds": 0.684665454995411,
+      "exit_code": 0,
+      "php_and_migrations_seconds": 22.340584044002753,
+      "elapsed_seconds": 28.887330403995293
+    },
+    {
+      "lane": "feature-1",
+      "postgres_init_seconds": 3.401648479994037,
+      "redis_init_seconds": 0.5437994870007969,
+      "exit_code": 0,
+      "php_and_migrations_seconds": 172.6455044930044,
+      "elapsed_seconds": 179.97352511399367
+    },
+    {
+      "lane": "feature-2",
+      "postgres_init_seconds": 3.4088595689972863,
+      "redis_init_seconds": 0.5018520510056987,
+      "exit_code": 0,
+      "php_and_migrations_seconds": 189.43821371899685,
+      "elapsed_seconds": 196.72968203599885
+    },
+    {
+      "lane": "feature-3",
+      "postgres_init_seconds": 2.676607774999866,
+      "redis_init_seconds": 0.6454746759991394,
+      "exit_code": 0,
+      "php_and_migrations_seconds": 188.91746247300034,
+      "elapsed_seconds": 193.6648319550004
+    },
+    {
+      "lane": "feature-4",
+      "postgres_init_seconds": 2.6069628940022085,
+      "redis_init_seconds": 0.6471498110040557,
+      "exit_code": 0,
+      "php_and_migrations_seconds": 184.0868943759997,
+      "elapsed_seconds": 188.81098812900018
+    },
+    {
+      "lane": "postgres-1",
+      "postgres_init_seconds": 2.636628232001385,
+      "redis_init_seconds": 0.6396926519955741,
+      "exit_code": 0,
+      "php_and_migrations_seconds": 52.24005907300307,
+      "elapsed_seconds": 56.904360665997956
+    },
+    {
+      "lane": "postgres-2",
+      "postgres_init_seconds": 2.6865792509997846,
+      "redis_init_seconds": 0.6193127570004435,
+      "exit_code": 0,
+      "php_and_migrations_seconds": 38.81615016000433,
+      "elapsed_seconds": 43.57935206399998
+    },
+    {
+      "lane": "redis-1",
+      "postgres_init_seconds": 2.2147955630061915,
+      "redis_init_seconds": 0.5881108739995398,
+      "exit_code": 0,
+      "php_and_migrations_seconds": 10.85583091499575,
+      "elapsed_seconds": 15.046249817998614
+    }
+  ]
+}

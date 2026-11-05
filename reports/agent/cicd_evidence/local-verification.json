@@ -1,0 +1,90 @@
+{
+  "baseline_sha": "ad071513cd60307eebe2a0c3d929197693e09449",
+  "reviewed_source_sha": "58350b4b16b519bb76447127f7e2ca0ff92cf89b",
+  "date": "2026-11-05",
+  "environment": "task-owned local synthetic services; no production access",
+  "php": {
+    "discovered": 1294,
+    "junit_entries": 1294,
+    "passed": 1293,
+    "optional_public_network_skips": 1,
+    "mandatory_skips": 0,
+    "assertions": 12261,
+    "notices": 6,
+    "omissions": 0,
+    "duplicates": 0,
+    "postgres_redis_pairs": 9
+  },
+  "go": {
+    "normal_passed_case_ids": 113,
+    "race_passed_case_ids": 113,
+    "same_original_ids": true,
+    "test_skips": 0,
+    "vet": "PASS",
+    "format": "PASS",
+    "module_verify": "PASS",
+    "package_build": "PASS"
+  },
+  "frontend": {
+    "unit_cases": 76,
+    "same_original_ids": true,
+    "unit": "PASS",
+    "typecheck": "PASS",
+    "production_build": "PASS"
+  },
+  "browser": {
+    "dashboard": "PASS",
+    "builder": "PASS",
+    "historical": "PASS",
+    "phase0": "PASS",
+    "phase0_obligations": 9,
+    "historical_accounts_before_after_equal": true,
+    "fixture_only": true
+  },
+  "quality": {
+    "pint_files": 855,
+    "pint": "PASS",
+    "php_lint": "PASS",
+    "python_tests": 59,
+    "deployment_php_tests": 18,
+    "actionlint": "PASS",
+    "dependency_advisories_after": 0
+  },
+  "local_php_seconds": {
+    "two_workers": 375.43010648999916,
+    "four_workers_initial": 280.4009895079944,
+    "four_workers_final": 240.31505249800102
+  },
+  "hosted_ci": "UNAVAILABLE: unauthenticated API 404; no push/trigger authorized",
+  "app_web_docker_builds": "UNVERIFIED: dependency installation stalled; aborted",
+  "ghcr_publication": "NOT_EXECUTED",
+  "production_cd": "NOT_EXECUTED",
+  "cd_30_seconds": "UNVERIFIED",
+  "requirements": {
+    "VEC-P0-007": {
+      "source": ".github/workflows/ci.yml backend/go/browser/workflow service definitions; scripts/ci/prepare_test_environment.sh; record-isolation.php",
+      "verification": "php-inventory-verdict.json and isolation-verdict.log; same full original case inventory on PostgreSQL 17.11",
+      "admission": "Local case evidence only; frozen registry workflow watch mapping and operational obligations are not silently changed"
+    },
+    "VEC-P0-008": {
+      "source": ".github/workflows/deploy.yml; scripts/ci/release_guard.py; required_gate.py; docker/scripts/update.sh",
+      "verification": "Actual-helper negative controls and deployment regression tests pass locally",
+      "admission": "Production acceptance remains UNAVAILABLE; no owner approval or operational evidence inferred"
+    },
+    "VEC-P0-009": {
+      "source": "scripts/ci/benchmark_php.py and php_timings.json",
+      "verification": "benchmark-2.json, benchmark-4.json, resources-4.jsonl",
+      "admission": "CI fixture timing only; does not clear the frozen ingestion/PAPER latency obligations"
+    }
+  },
+  "standalone": {
+    "binance_assertions": 47,
+    "a2_assertions": 24,
+    "gate6_assertions": 68,
+    "postgres_two_process_iterations": 5,
+    "postgres_additional_variations": 2,
+    "result": "PASS",
+    "runtime_extensions": "PASS",
+    "source_redaction": "PASS"
+  }
+}
