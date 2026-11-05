@@ -14,110 +14,101 @@ concurrency:
   group: ci-${{ github.ref }}
   cancel-in-progress: true
 
+env:
+  APP_ENV: testing
+  APP_KEY: base64:MDEyMzQ1Njc4OWFiY2RlZjAxMjM0NTY3ODlhYmNkZWY=
+  DB_CONNECTION: pgsql
+  DB_HOST: 127.0.0.1
+  DB_PORT: 25432
+  DB_DATABASE: bybit_test
+  DB_USERNAME: postgres
+  DB_PASSWORD: testpass
+  DB_URL: ''
+  TEST_DB_HOST: 127.0.0.1
+  TEST_DB_PORT: 25432
+  TEST_DB_DATABASE: bybit_test
+  TEST_DB_USERNAME: postgres
+  TEST_DB_PASSWORD: testpass
+  RUN_DB: bybit_test
+  REDIS_HOST: 127.0.0.1
+  REDIS_PORT: 6379
+  REDIS_URL: ''
+  REDIS_CLIENT: predis
+  XDEBUG_MODE: off
+
 jobs:
-  go-tests:
+  inventory:
     runs-on: ubuntu-latest
-    defaults:
-      run:
-        working-directory: research-go
+    outputs:
+      matrix: ${{ steps.plan.outputs.matrix }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/php
+      - name: Discover every PHP case and partition complete files
+        id: plan
+        run: |
+          mkdir ci-plan
+          vendor/bin/phpunit --list-tests-xml ci-plan/discovery.xml
+          matrix=$(python3 scripts/ci/php_shards.py plan ci-plan/discovery.xml ci-plan)
+          echo "matrix=$matrix" >> "$GITHUB_OUTPUT"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: php-plan
+          path: ci-plan/
+          if-no-files-found: error
+
+  go-build:
+    runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-go@v5
         with:
           go-version: '1.27.3'
           cache-dependency-path: research-go/go.sum
-      - name: Verify Go module
-        run: go mod verify
-      - name: Build Go packages
-        run: go build ./...
-      - name: Vet Go packages
-        run: go vet ./...
-      - name: Check Go formatting
+      - name: Build all packages and shared PHP integration binaries once
+        working-directory: research-go
         run: |
-          unformatted="$(gofmt -l .)"
-          if [ -n "$unformatted" ]; then
-            echo "Unformatted Go files:"
-            echo "$unformatted"
-            exit 1
-          fi
-      - name: Run Go tests
-        run: go test ./...
-      - name: Run Go race detector
-        run: go test -race ./...
-
-  frontend-tests:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+          go build ./...
+          mkdir -p bin
+          for command in research-worker historical-import historical-replay strategy-dsl; do
+            go build -trimpath -o "bin/$command" "./cmd/$command"
+          done
+      - uses: actions/upload-artifact@v4
         with:
-          node-version: '22'
-          cache: npm
-          cache-dependency-path: frontend/package-lock.json
-      - name: Install frontend dependencies
-        working-directory: frontend
-        run: npm ci --no-audit --no-fund
-      - name: Run frontend tests
-        working-directory: frontend
-        run: npm test
-      - name: Build frontend
-        working-directory: frontend
-        run: npm run build
+          name: research-binaries
+          path: research-go/bin/
+          if-no-files-found: error
 
-  php-format:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - uses: shivammathur/setup-php@v2
-        with:
-          php-version: '8.5.12'
-          tools: composer:v2
-          coverage: none
-      - name: Get Composer cache directory
-        id: composer-cache
-        run: echo "dir=$(composer config cache-files-dir)" >> "$GITHUB_OUTPUT"
-      - name: Cache Composer dependencies
-        uses: actions/cache@v4
-        with:
-          path: ${{ steps.composer-cache.outputs.dir }}
-          key: ${{ runner.os }}-composer-${{ hashFiles('**/composer.lock') }}
-          restore-keys: ${{ runner.os }}-composer-
-      - name: Install Composer dependencies
-        run: composer install --no-interaction --prefer-dist --no-progress
-      - name: Check PHP formatting
-        run: vendor/bin/pint --test
-
-  backend-tests:
+  go-static:
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
       matrix:
-        include:
-          - lane: unit
-            name: 'Unit Tests'
-            command: 'vendor/bin/phpunit --testsuite Unit --colors=never'
-          - lane: integration
-            name: 'Integration Tests'
-            command: 'vendor/bin/phpunit --testsuite Integration --colors=never'
-          - lane: feature-research
-            name: 'Feature: Research & Backtest'
-            command: 'vendor/bin/phpunit tests/Feature/Research tests/Feature/Backtest tests/Feature/PatternDiscovery --colors=never'
-          - lane: feature-paper
-            name: 'Feature: Paper & Trading'
-            command: 'vendor/bin/phpunit tests/Feature/PaperTrading tests/Feature/Trading --colors=never'
-          - lane: feature-exchanges
-            name: 'Feature: Exchanges'
-            command: 'vendor/bin/phpunit tests/Feature/Exchanges --colors=never'
-          - lane: feature-market
-            name: 'Feature: Market Data & Strategy'
-            command: 'vendor/bin/phpunit tests/Feature/MarketData tests/Feature/Strategy tests/Feature/Api tests/Feature/Security tests/Feature/Audit tests/Feature/Indicators tests/Feature/QuoteIntegrity tests/Feature/AuditExportTest.php tests/Feature/ExampleTest.php --colors=never'
-          - lane: feature-historical-data
-            name: 'Feature: Historical Data'
-            command: 'vendor/bin/phpunit tests/Feature/HistoricalData --colors=never'
-          - lane: feature-strategy-builder
-            name: 'Feature: Strategy Builder'
-            command: 'vendor/bin/phpunit tests/Feature/StrategyBuilder --colors=never'
-    name: PHP Tests (${{ matrix.name }})
+        check: [vet, format, modules]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version: '1.27.3'
+          cache-dependency-path: research-go/go.sum
+      - name: Go ${{ matrix.check }}
+        working-directory: research-go
+        env:
+          CHECK: ${{ matrix.check }}
+        run: |
+          case "$CHECK" in
+            vet) go vet ./... ;;
+            format) unformatted=$(gofmt -l .); test -z "$unformatted" || { echo "$unformatted"; exit 1; } ;;
+            modules) go mod verify ;;
+            *) exit 1 ;;
+          esac
+
+  go-checks:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        check: [tests, race]
     services:
       postgres:
         image: postgres:17-alpine
@@ -125,84 +116,269 @@ jobs:
           POSTGRES_DB: bybit_test
           POSTGRES_USER: postgres
           POSTGRES_PASSWORD: testpass
-        ports:
-          - 25432:5432
+        ports: ['25432:5432']
         options: >-
           --health-cmd "pg_isready -U postgres -d bybit_test"
-          --health-interval 5s --health-timeout 5s --health-retries 10
+          --health-interval 2s --health-timeout 5s --health-retries 30
       redis:
-        image: redis:7-alpine
-        ports:
-          - 6379:6379
+        image: redis:7.4-alpine
+        ports: ['6379:6379']
         options: >-
           --health-cmd "redis-cli ping"
-          --health-interval 5s --health-timeout 5s --health-retries 10
+          --health-interval 2s --health-timeout 5s --health-retries 30
     env:
-      APP_ENV: testing
-      DB_CONNECTION: pgsql
-      DB_DATABASE: bybit_test
-      DB_HOST: 127.0.0.1
-      DB_PORT: 25432
-      REDIS_HOST: 127.0.0.1
-      REDIS_PORT: 6379
-      DB_USERNAME: postgres
-      DB_PASSWORD: testpass
-      DB_URL: ''
-      TEST_DB_HOST: 127.0.0.1
-      TEST_DB_PORT: 25432
-      TEST_DB_DATABASE: bybit_test
-      TEST_DB_USERNAME: postgres
-      TEST_DB_PASSWORD: testpass
-      RUN_DB: bybit_test
-      XDEBUG_MODE: off
+      REDIS_PREFIX: vector-ci-go-${{ matrix.check }}-
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-go@v5
         with:
           go-version: '1.27.3'
           cache-dependency-path: research-go/go.sum
-      - name: Build Go research binaries
+      - uses: ./.github/actions/php
+      - name: Initialize isolated PostgreSQL 17 and Redis
+        run: bash scripts/ci/prepare_test_environment.sh
+      - name: Go ${{ matrix.check }} with genuine PostgreSQL lifecycle tests
+        working-directory: research-go
+        env:
+          CHECK: ${{ matrix.check }}
+          CGO_ENABLED: '1'
         run: |
-          mkdir -p research-go/bin
-          cd research-go
-          go build -o bin/research-worker ./cmd/research-worker
-          go build -o bin/historical-import ./cmd/historical-import
-          go build -o bin/historical-replay ./cmd/historical-replay
-          go build -o bin/strategy-dsl ./cmd/strategy-dsl
-      - uses: shivammathur/setup-php@v2
+          set -o pipefail
+          flags=()
+          if [[ "$CHECK" == race ]]; then flags+=(-race); fi
+          go test "${flags[@]}" -count=1 -json ./... | tee ../go-results.json
+          python3 ../scripts/ci/check_go_results.py ../go-results.json
+      - uses: actions/upload-artifact@v4
+        if: always()
         with:
-          php-version: '8.5.12'
-          tools: composer:v2
-          extensions: mbstring, dom, xml, xmlwriter, pdo_sqlite, sqlite3, pdo_pgsql, intl, pcntl, zip, bcmath, redis, opcache
-          coverage: none
-      - name: Get Composer cache directory
-        id: composer-cache
-        run: echo "dir=$(composer config cache-files-dir)" >> "$GITHUB_OUTPUT"
-      - name: Cache Composer dependencies
-        uses: actions/cache@v4
-        with:
-          path: ${{ steps.composer-cache.outputs.dir }}
-          key: ${{ runner.os }}-composer-${{ hashFiles('**/composer.lock') }}
-          restore-keys: ${{ runner.os }}-composer-
-      - name: Install Composer dependencies
-        run: composer install --no-interaction --prefer-dist --no-progress
-      - name: Prepare isolated testing environment
-        shell: bash
-        run: |
-          cp .env.example .env
-          chmod 600 .env
-      - name: Verify isolated PostgreSQL identity
-        run: php scripts/verify-test-database.php
-      - name: Migrate PostgreSQL test database
-        run: php artisan migrate --database=pgsql --force
-      - name: Run ${{ matrix.name }}
-        run: ${{ matrix.command }}
+          name: go-${{ matrix.check }}-results
+          path: go-results.json
+          if-no-files-found: error
 
-  publish-images:
-    needs: [go-tests, frontend-tests, php-format, backend-tests]
-    if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
+  backend-tests:
+    needs: [inventory, go-build]
+    runs-on: ubuntu-latest
+    name: PHP (${{ matrix.lane }})
+    strategy:
+      fail-fast: false
+      matrix: ${{ fromJSON(needs.inventory.outputs.matrix) }}
+    services:
+      postgres:
+        image: postgres:17-alpine
+        env:
+          POSTGRES_DB: bybit_test
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: testpass
+        ports: ['25432:5432']
+        options: >-
+          --health-cmd "pg_isready -U postgres -d bybit_test"
+          --health-interval 2s --health-timeout 5s --health-retries 30
+      redis:
+        image: redis:7.4-alpine
+        ports: ['6379:6379']
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 2s --health-timeout 5s --health-retries 30
+    env:
+      REDIS_PREFIX: vector-ci-${{ matrix.lane }}-
+      CACHE_PREFIX: vector-ci-${{ matrix.lane }}-
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/php
+      - uses: actions/download-artifact@v4
+        with:
+          name: research-binaries
+          path: research-go/bin
+      - name: Restore binary permissions and expected worker path
+        run: |
+          chmod +x research-go/bin/*
+          mkdir -p bin
+          cp research-go/bin/research-worker bin/research-worker
+      - uses: actions/download-artifact@v4
+        with:
+          name: php-plan
+          path: ci-plan
+      - name: Initialize isolated PostgreSQL 17 and Redis
+        run: bash scripts/ci/prepare_test_environment.sh
+      - name: Execute complete shard
+        env:
+          LANE: ${{ matrix.lane }}
+        run: |
+          php scripts/ci/record-isolation.php
+          mv ci-results/isolation.json "ci-results/${LANE}-isolation.json"
+          python3 scripts/ci/php_shards.py run "$LANE"
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: php-${{ matrix.lane }}-results
+          path: ci-results/
+          if-no-files-found: error
+
+  php-quality:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/php
+      - run: vendor/bin/pint --test
+      - name: PHP syntax verification
+        run: find app bootstrap config database routes tests scripts -name '*.php' -print0 | xargs -0 -n1 php -l > php-lint.log
+
+  frontend-checks:
     runs-on: ubuntu-latest
     strategy:
+      fail-fast: false
+      matrix:
+        check: [unit, typecheck, build]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/node
+      - name: Frontend ${{ matrix.check }}
+        working-directory: frontend
+        env:
+          CHECK: ${{ matrix.check }}
+        run: |
+          case "$CHECK" in
+            unit) npm test ;;
+            typecheck) npx vue-tsc --noEmit ;;
+            build) npx vite build ;;
+            *) exit 1 ;;
+          esac
+      - uses: actions/upload-artifact@v4
+        if: matrix.check == 'build'
+        with:
+          name: frontend-dist
+          path: frontend/dist/
+          if-no-files-found: error
+
+  browser-tests:
+    needs: [frontend-checks, go-build]
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        suite: [dashboard, builder, historical, phase0]
+    services:
+      postgres:
+        image: postgres:17-alpine
+        env:
+          POSTGRES_DB: bybit_test
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: testpass
+        ports: ['25432:5432']
+        options: >-
+          --health-cmd "pg_isready -U postgres -d bybit_test"
+          --health-interval 2s --health-timeout 5s --health-retries 30
+      redis:
+        image: redis:7.4-alpine
+        ports: ['6379:6379']
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 2s --health-timeout 5s --health-retries 30
+    env:
+      REDIS_PREFIX: vector-ci-browser-${{ matrix.suite }}-
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/php
+      - uses: ./.github/actions/node
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: pip install -r scripts/ci/browser-requirements.txt
+      - name: Install pinned Playwright Chrome
+        run: python3 -m playwright install --with-deps chrome
+      - uses: actions/download-artifact@v4
+        with:
+          name: frontend-dist
+          path: frontend/dist
+      - uses: actions/download-artifact@v4
+        with:
+          name: research-binaries
+          path: research-go/bin
+      - run: chmod +x research-go/bin/*
+      - name: Initialize isolated PostgreSQL 17 and Redis
+        run: bash scripts/ci/prepare_test_environment.sh
+      - name: Browser ${{ matrix.suite }}
+        env:
+          SUITE: ${{ matrix.suite }}
+        run: bash scripts/ci/run_browser.sh "$SUITE"
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: browser-${{ matrix.suite }}-results
+          path: ci-browser/
+          if-no-files-found: error
+
+  security:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        ecosystem: [composer, npm]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/php
+        if: matrix.ecosystem == 'composer'
+      - uses: actions/setup-node@v4
+        if: matrix.ecosystem == 'npm'
+        with:
+          node-version: '22'
+      - name: Locked dependency audit
+        env:
+          ECOSYSTEM: ${{ matrix.ecosystem }}
+        run: |
+          case "$ECOSYSTEM" in
+            composer) composer validate --strict; composer audit --locked ;;
+            npm) cd frontend; npm audit --package-lock-only ;;
+            *) exit 1 ;;
+          esac
+
+  workflow-checks:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:17-alpine
+        env:
+          POSTGRES_DB: bybit_test
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: testpass
+        ports: ['25432:5432']
+        options: >-
+          --health-cmd "pg_isready -U postgres -d bybit_test"
+          --health-interval 2s --health-timeout 5s --health-retries 30
+      redis:
+        image: redis:7.4-alpine
+        ports: ['6379:6379']
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 2s --health-timeout 5s --health-retries 30
+    env:
+      REDIS_PREFIX: vector-ci-workflows-
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: ./.github/actions/php
+      - name: Initialize isolated deployment regression services
+        run: bash scripts/ci/prepare_test_environment.sh
+      - name: Install pinned workflow validator
+        env:
+          ACTIONLINT_VERSION: '1.7.7'
+        run: |
+          curl --fail --silent --show-error --location "https://github.com/rhysd/actionlint/releases/download/v${ACTIONLINT_VERSION}/actionlint_${ACTIONLINT_VERSION}_linux_amd64.tar.gz" -o /tmp/actionlint.tar.gz
+          echo '023070a287cd8cccd71515fedc843f1985bf96c436b7effaecce67290e7e0757  /tmp/actionlint.tar.gz' | sha256sum -c -
+          tar -xzf /tmp/actionlint.tar.gz -C /tmp actionlint
+          /tmp/actionlint -shellcheck=''
+      - name: Engineering and deployment regression checks
+        run: |
+          python3 -m unittest discover -s scripts/tests -p 'test_*.py' -v
+          for script in scripts/tests/test_*.sh scripts/test_deployment_recovery_matrix.sh scripts/test_same_sha_configuration_refresh.sh; do bash "$script"; done
+          git diff --check
+
+  publish-images:
+    # Images are candidates until CI required succeeds; no dependency on verification jobs.
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
       matrix:
         include:
           - target: app
@@ -219,32 +395,107 @@ jobs:
       packages: write
     steps:
       - uses: actions/checkout@v4
-      - name: Determine GHCR image name
-        id: images
-        shell: bash
-        run: |
-          repo_lc="${GITHUB_REPOSITORY,,}"
-          echo "tag=ghcr.io/${repo_lc}/${{ matrix.target }}:sha-${{ github.sha }}" >> "$GITHUB_OUTPUT"
+      - name: Immutable candidate tag
+        id: image
+        run: echo "tag=ghcr.io/${GITHUB_REPOSITORY,,}/${{ matrix.target }}:sha-${GITHUB_SHA}" >> "$GITHUB_OUTPUT"
       - uses: docker/setup-buildx-action@v3
-      - name: Authenticate to GHCR
-        uses: docker/login-action@v3
+      - uses: docker/login-action@v3
+        if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
         with:
           registry: ghcr.io
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
-      - name: Capture immutable build metadata
-        id: build-metadata
+      - id: metadata
         run: echo "timestamp=$(date -u +%Y-%m-%dT%H:%M:%SZ)" >> "$GITHUB_OUTPUT"
-      - name: Build and publish ${{ matrix.target }}
-        uses: docker/build-push-action@v6
+      - uses: docker/build-push-action@v6
+        id: build
         with:
           context: .
           file: ${{ matrix.file }}
-          target: ${{ matrix.target_stage != '' && matrix.target_stage || '' }}
-          push: true
+          target: ${{ matrix.target_stage }}
+          push: ${{ github.ref == 'refs/heads/main' && github.event_name != 'pull_request' }}
+          load: ${{ github.ref != 'refs/heads/main' || github.event_name == 'pull_request' }}
+          tags: ${{ steps.image.outputs.tag }}
+          labels: org.opencontainers.image.revision=${{ github.sha }}
           build-args: |
             BUILD_COMMIT=${{ github.sha }}
-            BUILD_TIMESTAMP=${{ steps.build-metadata.outputs.timestamp }}
-          tags: ${{ steps.images.outputs.tag }}
+            BUILD_TIMESTAMP=${{ steps.metadata.outputs.timestamp }}
           cache-from: type=gha,scope=bybit-${{ matrix.target }}
           cache-to: type=gha,scope=bybit-${{ matrix.target }},mode=max
+      - name: Record image digest and source identity
+        env:
+          TARGET: ${{ matrix.target }}
+          IMAGE_TAG: ${{ steps.image.outputs.tag }}
+          DIGEST: ${{ steps.build.outputs.digest }}
+          PUBLISHED: ${{ github.ref == 'refs/heads/main' && github.event_name != 'pull_request' }}
+        run: |
+          mkdir image-record
+          python3 - <<'PYCODE'
+          import json, os
+          from pathlib import Path
+          r = dict(target=os.environ['TARGET'], tag=os.environ['IMAGE_TAG'], digest=os.environ['DIGEST'], sha=os.environ['GITHUB_SHA'], repository=os.environ['GITHUB_REPOSITORY'], published=os.environ['PUBLISHED'] == 'true')
+          Path('image-record/' + r['target'] + '.json').write_text(json.dumps(r) + '\n')
+          PYCODE
+      - uses: actions/upload-artifact@v4
+        with:
+          name: image-${{ matrix.target }}
+          path: image-record/
+          if-no-files-found: error
+
+  ci-required:
+    name: CI required
+    if: always()
+    needs: [inventory, backend-tests, go-build, go-static, go-checks, frontend-checks, browser-tests, php-quality, security, workflow-checks, publish-images]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      actions: read
+    steps:
+      - uses: actions/checkout@v4
+      - name: Reject every non-successful mandatory dependency
+        env:
+          NEEDS_JSON: ${{ toJSON(needs) }}
+        run: |
+          printf '%s' "$NEEDS_JSON" > needs.json
+          python3 -c 'import json; from scripts.ci.required_gate import check_jobs; check_jobs(json.load(open("needs.json")))'
+      - uses: actions/download-artifact@v4
+        with:
+          name: php-plan
+          path: ci-plan
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: php-*-results
+          path: ci-results
+          merge-multiple: true
+      - name: Prove complete PHP execution without omissions or duplicates
+        run: |
+          set -o pipefail
+          python3 scripts/ci/php_shards.py verify ci-plan/plan.json ci-results | tee php-inventory-verdict.json
+          python3 scripts/ci/check_isolation.py ci-plan/plan.json ci-results
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: image-*
+          path: image-record
+          merge-multiple: true
+      - name: Verify all candidate image artifacts and issue eligibility manifest
+        env:
+          PUBLISHED: ${{ github.ref == 'refs/heads/main' && github.event_name != 'pull_request' }}
+        run: python3 scripts/ci/required_gate.py needs.json image-record --sha "$GITHUB_SHA" --run-id "$GITHUB_RUN_ID" --published "$PUBLISHED" --output release-manifest.json
+      - uses: actions/upload-artifact@v4
+        with:
+          name: verified-release
+          path: |
+            release-manifest.json
+            php-inventory-verdict.json
+          if-no-files-found: error
+      - name: Capture actual hosted job and step timings
+        if: always()
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: python3 scripts/ci/collect_timings.py --output ci-timings.json
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: ci-timings
+          path: ci-timings.json
+          if-no-files-found: error

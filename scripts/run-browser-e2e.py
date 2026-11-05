@@ -14,7 +14,7 @@ import sys
 import time
 
 CHROME_BIN = "/usr/bin/google-chrome"
-BASE_URL = "http://127.0.0.1:4173"
+BASE_URL = os.environ.get("VECTOR_BROWSER_BASE_URL", "http://127.0.0.1:4173")
 
 def main():
     print("=" * 70)
@@ -33,7 +33,7 @@ def main():
         print(f"[FAIL] Playwright Python module not installed: {e}", file=sys.stderr)
         sys.exit(1)
 
-    reports_dir = os.path.abspath("reports")
+    reports_dir = os.path.abspath(os.environ.get("VECTOR_BROWSER_REPORT_DIR", "reports"))
     os.makedirs(reports_dir, exist_ok=True)
 
     page_errors = []

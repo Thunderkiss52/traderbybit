@@ -22,11 +22,10 @@ import sys
 import threading
 import time
 
-sys.path.insert(0, "/home/thunder/.local/lib/python3.10/site-packages")
 from playwright.sync_api import sync_playwright
 
-DIST_DIR = "/home/thunder/work/traderbybit/frontend/dist"
-SCREENSHOT_DIR = "/home/thunder/work/traderbybit/docs/progress/evidence/phase0-local-20261028/browser"
+DIST_DIR = os.path.abspath("frontend/dist")
+SCREENSHOT_DIR = os.environ.get("VECTOR_BROWSER_REPORT_DIR", os.path.abspath("ci-browser/phase0"))
 PORT = 8099
 
 os.makedirs(SCREENSHOT_DIR, exist_ok=True)

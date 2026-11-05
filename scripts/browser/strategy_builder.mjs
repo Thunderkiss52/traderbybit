@@ -16,7 +16,7 @@ try {
     await page.route("**/api/v1/**", async (route) => {
         const request = route.request();
         const url = new URL(request.url());
-        url.host = "127.0.0.1:18124";
+        url.host = new URL(process.env.VECTOR_BROWSER_API_URL || "http://127.0.0.1:8000").host;
         const response = await route.fetch({
             url: url.toString(),
             timeout: 180000,
@@ -142,23 +142,10 @@ try {
     await button("Request optimization").click();
     const experiment = await accept(pending);
     assert.equal(experiment.status, "QUEUED");
-    execFileSync(
-        "/home/thunder/.headroom/bin/rtk",
-        [
-            "proxy",
-            "docker",
-            "exec",
-            "vector-builder-browser-php",
-            "php",
-            "/app/artisan",
-            "queue:work",
-            "database",
-            "--queue=research",
-            "--stop-when-empty",
-            "--tries=2",
-        ],
-        { timeout: 180000, stdio: "pipe" },
-    );
+    execFileSync(process.env.VECTOR_BROWSER_PHP || "php", [
+        "artisan", "queue:work", "database", "--queue=research",
+        "--stop-when-empty", "--tries=2",
+    ], { timeout: 180000, stdio: "pipe" });
     let done;
     for (let attempt = 0; attempt < 30; attempt++) {
         pending = response("/optimizations?page=1", "GET");

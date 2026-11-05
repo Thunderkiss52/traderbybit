@@ -2,8 +2,10 @@ import assert from 'node:assert/strict';
 import { execFileSync, execFile } from 'node:child_process';
 import { promisify } from 'node:util';
 const { chromium } = await import(process.env.PLAYWRIGHT_MODULE || 'playwright-core');
-const rtk = '/home/thunder/.headroom/bin/rtk';
-const snapshot = () => execFileSync(rtk, ['proxy', 'docker', 'exec', 'vector-builder-pg-20261104', 'psql', '-U', 'postgres', '-d', 'bybit_vision_browser', '-Atc', `SELECT md5(string_agg(row_to_json(p)::text, '' ORDER BY p.id)),count(*),count(*) filter (where status='BLOCKED') FROM paper_accounts p`], { encoding: 'utf8' }).trim();
+const php = process.env.VECTOR_BROWSER_PHP || 'php';
+const api = process.env.VECTOR_BROWSER_API_URL || 'http://127.0.0.1:8000';
+const base = process.env.VECTOR_BROWSER_BASE_URL || 'http://127.0.0.1:4173';
+const snapshot = () => execFileSync(php, ['scripts/browser/historical_fixture.php', 'snapshot'], { encoding: 'utf8' }).trim();
 const before = snapshot();
 const browser = await chromium.launch({ executablePath: '/usr/bin/google-chrome', headless: true, args: ['--no-sandbox'] });
 const page = await browser.newPage({ viewport: { width: 1500, height: 1600 } });
@@ -14,8 +16,8 @@ const response = (end, method = 'POST') => page.waitForResponse(r => r.url().inc
 const accept = async p => { const r = await p; assert.ok(r.ok(), `${r.status()} ${await r.text()}`); return (await r.json()).data; };
 const click = async (name, suffix, method = 'POST') => { console.log('STEP', name); const p = response(suffix, method); await button(name).click(); return accept(p); };
 try {
-  await page.route('**/api/**', async route => { const url = new URL(route.request().url()); url.host = '127.0.0.1:18124'; const r = await route.fetch({ url: url.toString(), timeout: 180000 }); await route.fulfill({ response: r }); });
-  await page.goto('http://127.0.0.1:18125/exchanges/binance/historical');
+  await page.route('**/api/**', async route => { const url = new URL(route.request().url()); url.host = new URL(api).host; const r = await route.fetch({ url: url.toString(), timeout: 180000 }); await route.fulfill({ response: r }); });
+  await page.goto(`${base}/exchanges/binance/historical`);
   await page.getByLabel('Research owner token', { exact: true }).fill('vision-browser-test');
   await click('Load batches', '/batches?page=1', 'GET');
   const preset = await click('Preview download plan', '/preview');
@@ -38,7 +40,7 @@ try {
   await click('Pause downloads', '/pause');
   await click('Start / resume downloads', '/resume');
   const worker = promisify(execFile);
-  await worker(rtk, ['proxy', 'docker', 'exec', 'vector-vision-browser-php', 'php', '/app/scripts/browser/historical_fixture.php', 'work'], { timeout: 100000 });
+  await worker(php, ['scripts/browser/historical_fixture.php', 'work'], { timeout: 100000 });
   await click('Refresh progress', `/batches/${batch.id}`, 'GET');
   const quality = await click('Validate imported coverage', '/validate');
   assert.equal(quality.status, 'VALIDATED'); assert.equal(quality.funding_complete, true); assert.equal(quality.research_ready, true);
@@ -50,10 +52,10 @@ try {
   await page.getByLabel('Replay start UTC (warmup required)', { exact: true }).fill('2024-01-12T00:00:00Z');
   await page.getByLabel('Replay end UTC (exclusive)', { exact: true }).fill('2024-01-14T00:00:00Z');
   const run = await click('Run Historical Backtest', '/research'); assert.equal(run.status, 'QUEUED');
-  await worker(rtk, ['proxy', 'docker', 'exec', 'vector-vision-browser-php', 'php', '/app/scripts/browser/historical_fixture.php', 'work'], { timeout: 100000 });
+  await worker(php, ['scripts/browser/historical_fixture.php', 'work'], { timeout: 100000 });
   await click('Refresh progress', `/batches/${batch.id}`, 'GET');
   await page.getByTestId('history-run').getByText('Historical research · COMPLETED', { exact: true }).waitFor({ timeout: 30000 });
-  const final = await page.request.get(`http://127.0.0.1:18124/api/v1/historical/runs/${run.id}`, { headers: { 'X-Research-Token': 'vision-browser-test' } });
+  const final = await page.request.get(`${api}/api/v1/historical/runs/${run.id}`, { headers: { 'X-Research-Token': 'vision-browser-test' } });
   const result = await accept(Promise.resolve(final));
   assert.ok(result.result.report.total_trades > 0);
   assert.equal(snapshot(), before); assert.match(before, /\|26\|26$/);
