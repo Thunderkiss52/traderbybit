@@ -51,8 +51,14 @@ type Definition struct {
 	Exit          map[string]Condition      `json:"exit,omitempty"`
 	Regime        *Condition                `json:"regime,omitempty"`
 	PartialExit   *PartialExit              `json:"partial_exit,omitempty"`
+	TrailingStop  *TrailingStop             `json:"trailing_stop,omitempty"`
+	TrailingATR   float64                   `json:"trailing_atr,omitempty"`
 	Funding       *FundingConfig            `json:"funding,omitempty"`
 	Parameters    map[string]ParameterRange `json:"parameters,omitempty"`
+}
+type TrailingStop struct {
+	ActivationATR float64 `json:"activation_atr,omitempty"`
+	DistanceATR   float64 `json:"distance_atr"`
 }
 type PartialExit struct {
 	ATR      float64 `json:"atr"`
@@ -140,7 +146,7 @@ func (d Definition) Validate() error {
 		if !regexp.MustCompile(`^[a-z][a-z0-9_]{0,31}$`).MatchString(name) {
 			return fmt.Errorf("invalid indicator name")
 		}
-		if name == "" || i.Period < 2 || i.Period > 500 || frame(i.Timeframe) < frame(d.Timeframe) || !contains([]string{"SMA", "EMA", "RSI", "ATR", "VOLUME_SMA", "PRICE", "MACD", "BB_UPPER", "BB_LOWER", "DONCHIAN_HIGH", "DONCHIAN_LOW", "ADX", "MACD_SIGNAL", "MACD_HISTOGRAM", "OPEN", "HIGH", "LOW", "VOLUME", "TURNOVER", "BODY", "RANGE"}, i.Type) {
+		if name == "" || i.Period < 2 || i.Period > 500 || frame(i.Timeframe) < frame(d.Timeframe) || !contains([]string{"SMA", "EMA", "RSI", "ATR", "VOLUME_SMA", "PRICE", "MACD", "BB_UPPER", "BB_LOWER", "DONCHIAN_HIGH", "DONCHIAN_LOW", "ADX", "MACD_SIGNAL", "MACD_HISTOGRAM", "OPEN", "HIGH", "LOW", "VOLUME", "TURNOVER", "BODY", "RANGE", "ROC", "ZSCORE"}, i.Type) {
 			return fmt.Errorf("unsupported indicator %s", name)
 		}
 	}
@@ -154,6 +160,17 @@ func (d Definition) Validate() error {
 		if ind.Deviation != 0 && !(ind.Deviation > 0 && ind.Deviation <= 10) {
 			return fmt.Errorf("invalid band deviation")
 		}
+	}
+	if d.TrailingStop != nil {
+		if !(d.TrailingStop.DistanceATR > 0 && d.TrailingStop.DistanceATR <= 20) {
+			return fmt.Errorf("invalid trailing stop distance")
+		}
+		if d.TrailingStop.ActivationATR < 0 || d.TrailingStop.ActivationATR > 50 {
+			return fmt.Errorf("invalid trailing stop activation")
+		}
+	}
+	if d.TrailingATR != 0 && !(d.TrailingATR > 0 && d.TrailingATR <= 20) {
+		return fmt.Errorf("invalid trailing atr")
 	}
 	if d.PartialExit != nil && (!(d.PartialExit.ATR > 0 && d.PartialExit.ATR < d.TakeATR) || !(d.PartialExit.Fraction > 0 && d.PartialExit.Fraction < 1)) {
 		return fmt.Errorf("invalid partial exit")
@@ -464,7 +481,12 @@ func Run(req Request) (*Result, error) {
 	if len(req.Funding) > 0 && (d.Funding == nil || !d.Funding.Enabled) {
 		return nil, fmt.Errorf("funding data requires enabled funding configuration")
 	}
-	policy := backtest.ReplayPolicy{ExitAtOpen: map[int]map[string]bool{}, PartialTargets: map[int]backtest.PartialTarget{}, Funding: req.Funding}
+	policy := backtest.ReplayPolicy{
+		ExitAtOpen:      map[int]map[string]bool{},
+		PartialTargets:  map[int]backtest.PartialTarget{},
+		TrailingTargets: map[int]backtest.TrailingTarget{},
+		Funding:         req.Funding,
+	}
 	for bar, c := range candles {
 		if bar%256 == 0 {
 			if err := req.Context.Err(); err != nil {
@@ -556,6 +578,20 @@ func Run(req Request) (*Result, error) {
 		if d.PartialExit != nil {
 			policy.PartialTargets[bar] = backtest.PartialTarget{Price: c.Close.Add(atr[bar].Mul(decimal.FromFloat64(d.PartialExit.ATR)).Mul(sign)), Fraction: decimal.FromFloat64(d.PartialExit.Fraction)}
 		}
+		ts := d.TrailingStop
+		if ts == nil && d.TrailingATR > 0 {
+			ts = &TrailingStop{DistanceATR: d.TrailingATR}
+		}
+		if ts != nil {
+			var actPrice decimal.Decimal
+			if ts.ActivationATR > 0 {
+				actPrice = c.Close.Add(atr[bar].Mul(decimal.FromFloat64(ts.ActivationATR)).Mul(sign))
+			}
+			policy.TrailingTargets[bar] = backtest.TrailingTarget{
+				ActivationPrice: actPrice,
+				Distance:        atr[bar].Mul(decimal.FromFloat64(ts.DistanceATR)),
+			}
+		}
 		last = bar
 	}
 	limitations := []string{}
@@ -603,7 +639,7 @@ func Run(req Request) (*Result, error) {
 	cfg.MaxHoldingBars = d.TimeoutBars
 	var report *backtest.BacktestReport
 	var err error
-	if d.SchemaVersion == 1 && len(d.Exit) == 0 && d.PartialExit == nil && (d.Funding == nil || !d.Funding.Enabled) {
+	if d.SchemaVersion == 1 && len(d.Exit) == 0 && d.PartialExit == nil && d.TrailingStop == nil && d.TrailingATR == 0 && (d.Funding == nil || !d.Funding.Enabled) {
 		report, err = backtest.NewEngine(cfg).RunSignals(candles, signals, d.ID)
 	} else {
 		report, err = backtest.NewEngine(cfg).RunSignalsWithPolicy(candles, signals, d.ID, policy)

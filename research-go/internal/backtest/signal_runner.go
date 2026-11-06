@@ -224,6 +224,39 @@ func (e *Engine) runSignals(candles []datasets.Candle, signals []Signal, strateg
 
 			if hasExit {
 				finish(c, exitPrice, exitReason, ambiguous)
+			} else if policy != nil && detail != nil && detail.trailing != nil {
+				t := detail.trailing
+				if pos.side == "BUY" {
+					if c.High.Cmp(detail.extremePrice) > 0 {
+						detail.extremePrice = c.High
+					}
+					if !detail.trailingActive {
+						if t.ActivationPrice.IsZero() || detail.extremePrice.Cmp(t.ActivationPrice) >= 0 {
+							detail.trailingActive = true
+						}
+					}
+					if detail.trailingActive {
+						newSL := detail.extremePrice.Sub(t.Distance)
+						if newSL.Cmp(pos.stopLoss) > 0 {
+							pos.stopLoss = newSL
+						}
+					}
+				} else {
+					if c.Low.Cmp(detail.extremePrice) < 0 {
+						detail.extremePrice = c.Low
+					}
+					if !detail.trailingActive {
+						if t.ActivationPrice.IsZero() || detail.extremePrice.Cmp(t.ActivationPrice) <= 0 {
+							detail.trailingActive = true
+						}
+					}
+					if detail.trailingActive {
+						newSL := detail.extremePrice.Add(t.Distance)
+						if newSL.Cmp(pos.stopLoss) < 0 {
+							pos.stopLoss = newSL
+						}
+					}
+				}
 			}
 		}
 
@@ -291,17 +324,56 @@ func (e *Engine) runSignals(candles []datasets.Candle, signals []Signal, strateg
 						opened.takeProfit = takeProfit
 						pos = opened
 						var partial *PartialTarget
+						var trailing *TrailingTarget
 						if policy != nil {
 							if target, ok := policy.PartialTargets[s.DecisionBar]; ok {
 								copy := target
 								partial = &copy
 							}
+							if target, ok := policy.TrailingTargets[s.DecisionBar]; ok {
+								copy := target
+								trailing = &copy
+							}
 							equity = equity.Sub(opened.entryFee)
 							executions = append(executions, ReplayExecution{Kind: "ENTRY", At: c.OpenTime, Side: pos.side, Price: fillPrice, Quantity: pos.quantity, Fee: opened.entryFee, Funding: decimal.Zero()})
 						}
-						detail = newReplayPosition(opened.quantity, opened.entryFee, partial)
+						detail = newReplayPosition(opened.quantity, opened.entryFee, partial, trailing, fillPrice)
 						if policy != nil {
 							detail.slippage = absoluteReplayDecimal(fillPrice.Sub(c.Open)).Mul(opened.quantity)
+							if detail.trailing != nil {
+								t := detail.trailing
+								if pos.side == "BUY" {
+									if c.High.Cmp(detail.extremePrice) > 0 {
+										detail.extremePrice = c.High
+									}
+									if !detail.trailingActive {
+										if t.ActivationPrice.IsZero() || detail.extremePrice.Cmp(t.ActivationPrice) >= 0 {
+											detail.trailingActive = true
+										}
+									}
+									if detail.trailingActive {
+										newSL := detail.extremePrice.Sub(t.Distance)
+										if newSL.Cmp(pos.stopLoss) > 0 {
+											pos.stopLoss = newSL
+										}
+									}
+								} else {
+									if c.Low.Cmp(detail.extremePrice) < 0 {
+										detail.extremePrice = c.Low
+									}
+									if !detail.trailingActive {
+										if t.ActivationPrice.IsZero() || detail.extremePrice.Cmp(t.ActivationPrice) <= 0 {
+											detail.trailingActive = true
+										}
+									}
+									if detail.trailingActive {
+										newSL := detail.extremePrice.Add(t.Distance)
+										if newSL.Cmp(pos.stopLoss) < 0 {
+											pos.stopLoss = newSL
+										}
+									}
+								}
+							}
 						}
 					}
 				}

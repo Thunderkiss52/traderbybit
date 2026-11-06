@@ -9,13 +9,18 @@ import (
 
 // ReplayPolicy adds causal lifecycle instructions without changing the legacy runner contract.
 type ReplayPolicy struct {
-	ExitAtOpen     map[int]map[string]bool
-	PartialTargets map[int]PartialTarget
-	Funding        []FundingEvent
+	ExitAtOpen      map[int]map[string]bool
+	PartialTargets  map[int]PartialTarget
+	TrailingTargets map[int]TrailingTarget
+	Funding         []FundingEvent
 }
 type PartialTarget struct {
 	Price    decimal.Decimal
 	Fraction decimal.Decimal
+}
+type TrailingTarget struct {
+	ActivationPrice decimal.Decimal
+	Distance        decimal.Decimal
 }
 type FundingEvent struct {
 	RateExact string          `json:"rate_exact,omitempty"`
@@ -38,10 +43,24 @@ type replayPosition struct {
 	initial, gross, fees, funding, slippage decimal.Decimal
 	partial                                 *PartialTarget
 	partialDone                             bool
+	trailing                                *TrailingTarget
+	trailingActive                          bool
+	extremePrice                            decimal.Decimal
 }
 
-func newReplayPosition(quantity, fee decimal.Decimal, partial *PartialTarget) *replayPosition {
-	return &replayPosition{initial: quantity, gross: decimal.Zero(), fees: fee, funding: decimal.Zero(), slippage: decimal.Zero(), partial: partial}
+func newReplayPosition(quantity, fee decimal.Decimal, partial *PartialTarget, trailing *TrailingTarget, fillPrice decimal.Decimal) *replayPosition {
+	active := trailing != nil && trailing.ActivationPrice.IsZero()
+	return &replayPosition{
+		initial:        quantity,
+		gross:          decimal.Zero(),
+		fees:           fee,
+		funding:        decimal.Zero(),
+		slippage:       decimal.Zero(),
+		partial:        partial,
+		trailing:       trailing,
+		trailingActive: active,
+		extremePrice:   fillPrice,
+	}
 }
 func (e *Engine) exitSlip(price decimal.Decimal, side string) decimal.Decimal {
 	if side == "BUY" {
@@ -69,6 +88,11 @@ func (p *ReplayPolicy) validate() error {
 	for _, target := range p.PartialTargets {
 		if !target.Price.IsPositive() || !target.Fraction.IsPositive() || target.Fraction.Cmp(decimal.FromInt64(1)) >= 0 {
 			return fmt.Errorf("invalid partial target")
+		}
+	}
+	for _, target := range p.TrailingTargets {
+		if !target.Distance.IsPositive() {
+			return fmt.Errorf("invalid trailing target")
 		}
 	}
 	return nil

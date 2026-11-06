@@ -59,10 +59,64 @@ func adx(cs []datasets.Candle, period int) []*decimal.Decimal {
 	}
 	return out
 }
+func roc(closes []decimal.Decimal, period int) []*decimal.Decimal {
+	out := make([]*decimal.Decimal, len(closes))
+	if len(closes) <= period || period <= 0 {
+		return out
+	}
+	hundred := decimal.FromInt64(100)
+	for i := period; i < len(closes); i++ {
+		prev := closes[i-period]
+		if prev.IsZero() {
+			continue
+		}
+		diff := closes[i].Sub(prev)
+		val, err := diff.Mul(hundred).Div(prev)
+		if err == nil {
+			out[i] = &val
+		}
+	}
+	return out
+}
+
+func zscore(closes []decimal.Decimal, period int) []*decimal.Decimal {
+	out := make([]*decimal.Decimal, len(closes))
+	if len(closes) < period || period <= 0 {
+		return out
+	}
+	smas := algorithms.CalculateSMA(closes, period)
+	for i := period - 1; i < len(closes); i++ {
+		mid := smas[i]
+		if mid == nil {
+			continue
+		}
+		midFloat := mid.Float64()
+		var sumSq float64
+		for j := i - period + 1; j <= i; j++ {
+			diff := closes[j].Float64() - midFloat
+			sumSq += diff * diff
+		}
+		stdDev := math.Sqrt(sumSq / float64(period))
+		if stdDev == 0 {
+			zero := decimal.Zero()
+			out[i] = &zero
+		} else {
+			z := (closes[i].Float64() - midFloat) / stdDev
+			val := decimal.FromFloat64(z)
+			out[i] = &val
+		}
+	}
+	return out
+}
+
 func extendedValues(cs []datasets.Candle, ind Indicator, closes []decimal.Decimal) []*decimal.Decimal {
 	switch ind.Type {
 	case "ADX":
 		return adx(cs, ind.Period)
+	case "ROC":
+		return roc(closes, ind.Period)
+	case "ZSCORE":
+		return zscore(closes, ind.Period)
 	case "MACD_SIGNAL", "MACD_HISTOGRAM":
 		macd := values(cs, Indicator{Type: "MACD", Period: ind.Period, SlowPeriod: ind.SlowPeriod, Timeframe: ind.Timeframe})
 		start := 0

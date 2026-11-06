@@ -16,7 +16,7 @@ func validateParameters(d Definition) error {
 	var root map[string]interface{}
 	_ = json.Unmarshal(raw, &root)
 	for path, p := range d.Parameters {
-		if !regexp.MustCompile(`^(stop_atr|take_atr|risk_percent|timeout_bars|cooldown_bars|indicators\.[a-z][a-z0-9_]*\.(period|slow_period|signal_period|deviation))$`).MatchString(path) {
+		if !regexp.MustCompile(`^(stop_atr|take_atr|risk_percent|timeout_bars|cooldown_bars|trailing_atr|trailing_stop\.(activation_atr|distance_atr)|indicators\.[a-z][a-z0-9_]*\.(period|slow_period|signal_period|deviation))$`).MatchString(path) {
 			return fmt.Errorf("unsupported optimization path")
 		}
 		var current interface{} = root
