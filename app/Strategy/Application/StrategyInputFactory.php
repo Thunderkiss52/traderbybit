@@ -64,24 +64,63 @@ final readonly class StrategyInputFactory
         }
         $states = [];
         $errors = [];
+        $diagnostics = [];
         foreach ($this->config['timeframes'] as $role => $interval) {
+            $parsedInterval = Interval::parse((string) $interval);
+            $intervalSeconds = intdiv($parsedInterval->milliseconds(), 1000);
+            $expectedCloseTs = ((int) floor($at->getTimestamp() / $intervalSeconds)) * $intervalSeconds;
+            $expectedCloseTime = (new DateTimeImmutable('@'.$expectedCloseTs))->setTimezone(new \DateTimeZone('UTC'));
+            $maxLag = (int) ($this->config['freshness']['max_lag_seconds'][(string) $interval] ?? 0);
+
             try {
-                $states[$role] = $this->state($exchange, $category, $symbol, Interval::parse((string) $interval), $at);
+                $states[$role] = $this->state($exchange, $category, $symbol, $parsedInterval, $at);
                 $latest = $states[$role]->latest();
                 if ($latest === null) {
                     $errors[] = "missing_{$role}_history";
+                    $diagnostics[$role] = [
+                        'role' => $role,
+                        'interval' => (string) $interval,
+                        'expected_close_time' => $expectedCloseTime->format(DATE_ATOM),
+                        'actual_close_time' => null,
+                        'actual_availability_time' => null,
+                        'lag_seconds' => null,
+                        'max_lag_seconds' => $maxLag,
+                        'status' => 'MISSING_HISTORY',
+                    ];
 
                     continue;
                 }
                 $lag = $at->getTimestamp() - $latest->closeTime->getTimestamp();
-                if ($lag < 0) {
+                $isFuture = $lag < 0;
+                $isStale = $lag > $maxLag;
+                $diagnostics[$role] = [
+                    'role' => $role,
+                    'interval' => (string) $interval,
+                    'expected_close_time' => $expectedCloseTime->format(DATE_ATOM),
+                    'actual_close_time' => $latest->closeTime->format(DATE_ATOM),
+                    'actual_availability_time' => $latest->closeTime->format(DATE_ATOM),
+                    'lag_seconds' => $lag,
+                    'max_lag_seconds' => $maxLag,
+                    'status' => $isFuture ? 'FUTURE_CANDLE' : ($isStale ? 'STALE' : 'FRESH'),
+                ];
+                if ($isFuture) {
                     $errors[] = "future_{$role}_candle_rejected";
-                } elseif ($lag > (int) $this->config['freshness']['max_lag_seconds'][(string) $interval]) {
+                } elseif ($isStale) {
                     $errors[] = "stale_{$role}_data";
                 }
             } catch (InvalidSeriesException) {
                 $states[$role] = new TimeframeState((string) $interval, [], false);
                 $errors[] = "non_contiguous_{$role}_history";
+                $diagnostics[$role] = [
+                    'role' => $role,
+                    'interval' => (string) $interval,
+                    'expected_close_time' => $expectedCloseTime->format(DATE_ATOM),
+                    'actual_close_time' => null,
+                    'actual_availability_time' => null,
+                    'lag_seconds' => null,
+                    'max_lag_seconds' => $maxLag,
+                    'status' => 'NON_CONTIGUOUS',
+                ];
             } catch (\PDOException) {
                 throw new StrategyInputIntegrityException('CANDLE_STORAGE_UNAVAILABLE', 'UNAVAILABLE', compact('exchange', 'category', 'symbol', 'interval'));
             }
@@ -110,6 +149,7 @@ final readonly class StrategyInputFactory
             marketContext: $context,
             validationErrors: array_values(array_unique($errors)),
             peerEntry: $peer,
+            freshnessDiagnostics: $diagnostics,
         );
         // Recheck shared storage after all providers/computation, immediately before handing input to a caller.
         $this->assertIntegrity($exchange, $category, $symbol, $at, $states, $peerSymbol, $peer);

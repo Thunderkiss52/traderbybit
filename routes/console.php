@@ -333,7 +333,12 @@ if ((bool) config('exchanges.binance.research_cycle_enabled', false)) {
             ->cron('1,6,11,16,21,26,31,36,41,46,51,56 * * * *')
             ->name("binance:5m:{$symbol}")->withoutOverlapping();
         foreach (['15m', '30m', '1h', '4h'] as $interval) {
-            Schedule::command('binance:ingest-htf', [$symbol, $interval, '--limit' => 10, '--quarantine'])
+            Schedule::command('binance:ingest-htf', [
+                'symbol' => $symbol,
+                'interval' => $interval,
+                '--limit' => 10,
+                '--quarantine' => true,
+            ])
                 ->appendOutputTo(storage_path('logs/binance-htf-ingestion.log'))
                 ->cron('1,16,31,46 * * * *')->name("binance:htf:{$symbol}:{$interval}")->withoutOverlapping();
         }

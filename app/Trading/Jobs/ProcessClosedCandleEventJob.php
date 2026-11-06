@@ -177,6 +177,7 @@ final class ProcessClosedCandleEventJob implements ShouldQueue
 
         // 1. Ensure required market context is captured for the exchange.
         $this->ensureMarketContext($closeAt);
+        $this->ensureBinanceHtfCandles($this->symbol, $closeAt);
 
         // 2. Generate signals for all 13 strategies for this exchange and symbol.
         $canonicalStrategies = PrimaryStrategies::ids();
@@ -330,6 +331,44 @@ final class ProcessClosedCandleEventJob implements ShouldQueue
             }
         } catch (Throwable $e) {
             Log::warning("Market context capture non-fatal failure for {$this->exchange}:{$this->symbol}: ".$e->getMessage());
+        }
+    }
+
+    private function ensureBinanceHtfCandles(string $symbol, DateTimeImmutable $closeAt): void
+    {
+        if ($this->exchange !== 'binance') {
+            return;
+        }
+
+        try {
+            $ingestion = app(\App\Exchanges\Binance\BinanceCandleIngestion::class);
+            $ts = $closeAt->getTimestamp();
+
+            if ($ts % 1800 === 0) {
+                $open30m = $closeAt->modify('-30 minutes');
+                $has30m = \Illuminate\Support\Facades\DB::table('market_candles')
+                    ->where('exchange', 'binance')->where('category', 'linear')
+                    ->where('symbol', $symbol)->where('interval', '30')
+                    ->where('open_time', $open30m)->where('is_closed', true)
+                    ->exists();
+                if (! $has30m) {
+                    $ingestion->ingest($symbol, '30m', 5, quarantineConflicts: true);
+                }
+            }
+
+            if ($ts % 3600 === 0) {
+                $open60m = $closeAt->modify('-60 minutes');
+                $has60m = \Illuminate\Support\Facades\DB::table('market_candles')
+                    ->where('exchange', 'binance')->where('category', 'linear')
+                    ->where('symbol', $symbol)->where('interval', '60')
+                    ->where('open_time', $open60m)->where('is_closed', true)
+                    ->exists();
+                if (! $has60m) {
+                    $ingestion->ingest($symbol, '1h', 5, quarantineConflicts: true);
+                }
+            }
+        } catch (\Throwable $e) {
+            Log::warning("Binance HTF candle pre-synchronization non-fatal: {$e->getMessage()}");
         }
     }
 }

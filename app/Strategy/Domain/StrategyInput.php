@@ -21,5 +21,7 @@ final readonly class StrategyInput
         /** @var list<string> */
         public array $validationErrors = [],
         public ?TimeframeState $peerEntry = null,
+        /** @var array<string, array<string, mixed>> */
+        public array $freshnessDiagnostics = [],
     ) {}
 }

@@ -79,6 +79,8 @@ final readonly class BinanceResearchCycle
             }
         }
 
+        $this->ensureHtfCandles($symbol, $at);
+
         $observed = $this->observations->observe($symbol, $at, 'binance', 'linear');
         $pipelineService = $this->pipeline ?? (config('trading.pipeline_mode') === 'EVENT_DRIVEN' ? app(TradingPipelineEventService::class) : null);
         if ($pipelineService !== null && in_array($symbol, (array) config('trading.symbols', ['BTCUSDT', 'ETHUSDT']), true)) {
@@ -120,5 +122,39 @@ final readonly class BinanceResearchCycle
             'processed_events' => $processed,
             'strategy_signals' => $results,
         ];
+    }
+
+    private function ensureHtfCandles(string $symbol, DateTimeImmutable $at): void
+    {
+        try {
+            $ingestion = app(BinanceCandleIngestion::class);
+            $ts = $at->getTimestamp();
+
+            if ($ts % 1800 === 0) {
+                $open30m = $at->modify('-30 minutes');
+                $has30m = \Illuminate\Support\Facades\DB::table('market_candles')
+                    ->where('exchange', 'binance')->where('category', 'linear')
+                    ->where('symbol', $symbol)->where('interval', '30')
+                    ->where('open_time', $open30m)->where('is_closed', true)
+                    ->exists();
+                if (! $has30m) {
+                    $ingestion->ingest($symbol, '30m', 5, quarantineConflicts: true);
+                }
+            }
+
+            if ($ts % 3600 === 0) {
+                $open60m = $at->modify('-60 minutes');
+                $has60m = \Illuminate\Support\Facades\DB::table('market_candles')
+                    ->where('exchange', 'binance')->where('category', 'linear')
+                    ->where('symbol', $symbol)->where('interval', '60')
+                    ->where('open_time', $open60m)->where('is_closed', true)
+                    ->exists();
+                if (! $has60m) {
+                    $ingestion->ingest($symbol, '1h', 5, quarantineConflicts: true);
+                }
+            }
+        } catch (Throwable) {
+            // Non-fatal if fetch fails; StrategyInputFactory will evaluate actual lag
+        }
     }
 }

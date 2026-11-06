@@ -107,7 +107,7 @@ final readonly class StrategyObservationService
                 $analysis = [
                     'level_interaction' => $levelInteraction,
                     'indicator_snapshot' => $decision->indicatorSnapshot,
-                    'diagnostics' => $this->diagnostics($decision),
+                    'diagnostics' => $this->diagnostics($decision, $strategyInput),
                 ];
                 if ($decision->pricePlan !== null) {
                     $analysis['candidate_plan'] = [
@@ -195,7 +195,7 @@ final readonly class StrategyObservationService
                     $candAnalysis = [
                         'level_interaction' => $levelInteraction,
                         'indicator_snapshot' => $candDecision->indicatorSnapshot,
-                        'diagnostics' => $this->diagnostics($candDecision),
+                        'diagnostics' => $this->diagnostics($candDecision, $input),
                     ];
                     if ($candDecision->pricePlan !== null) {
                         $candAnalysis['candidate_plan'] = [
@@ -301,11 +301,11 @@ final readonly class StrategyObservationService
         }
     }
 
-    private function diagnostics(SignalDecision $decision): array
+    private function diagnostics(SignalDecision $decision, ?StrategyInput $input = null): array
     {
         $primary = $decision->side->value === 'SKIP' ? ($decision->reasons[0] ?? 'unspecified_strategy_rejection') : null;
 
-        return [
+        $diagnostics = [
             'decision' => $decision->side->value,
             'signal_score' => $decision->score / 100,
             'primary_rejection_reason' => $primary,
@@ -314,6 +314,12 @@ final readonly class StrategyObservationService
             'risk_approved' => null,
             'paper_execution' => $decision->side->value === 'SKIP' ? 'NOT_ATTEMPTED' : 'PENDING_RISK',
         ];
+
+        if ($input !== null && $input->freshnessDiagnostics !== []) {
+            $diagnostics['freshness_diagnostics'] = $input->freshnessDiagnostics;
+        }
+
+        return $diagnostics;
     }
 
     public function observeRecent(string $symbol, int $hours = 24, int $maximumCandles = 96, string $exchange = 'bybit', string $category = 'linear'): int
