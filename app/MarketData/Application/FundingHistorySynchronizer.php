@@ -15,7 +15,11 @@ use Illuminate\Support\Facades\Log;
 
 final readonly class FundingHistorySynchronizer
 {
-    public function __construct(private BybitMarketDataClient $marketData, private array $config) {}
+    public function __construct(
+        private BybitMarketDataClient $marketData,
+        private array $config,
+        private ?PositionLifecycleService $lifecycle = null,
+    ) {}
 
     public function sync(string $symbol, ?DateTimeImmutable $through = null): array
     {
@@ -24,8 +28,34 @@ final readonly class FundingHistorySynchronizer
             'exchange' => 'bybit', 'category' => 'linear', 'symbol' => $symbol,
         ])->latest('funding_at')->first(['funding_at']);
         $from = $latest?->funding_at?->toDateTimeImmutable()
-            ?? $through->modify('-'.max(1, (int) $this->config['initial_lookback_days']).' days');
-        $rows = $this->marketData->fundingRates('linear', $symbol, $this->milliseconds($from), $this->milliseconds($through));
+            ?? $through->modify('-'.max(1, (int) ($this->config['initial_lookback_days'] ?? 30)).' days');
+
+        $lifecycle = $this->lifecycle ?? (app()->has(PositionLifecycleService::class) ? app(PositionLifecycleService::class) : null);
+
+        try {
+            $rows = $this->marketData->fundingRates('linear', $symbol, $this->milliseconds($from), $this->milliseconds($through));
+        } catch (\Throwable $e) {
+            Log::warning("funding_gap_detected for bybit:{$symbol}: failed to fetch funding rates from API: {$e->getMessage()}", [
+                'diagnostic' => 'funding_gap_detected',
+                'exchange' => 'bybit',
+                'symbol' => $symbol,
+                'from' => $from->format(DATE_ATOM),
+                'through' => $through->format(DATE_ATOM),
+                'error' => $e->getMessage(),
+            ]);
+
+            return [
+                'received' => 0,
+                'inserted' => 0,
+                'missing_mark_price' => 0,
+                'diagnostic' => 'funding_gap_detected',
+                'funding_gap_detected' => true,
+                'missing_intervals' => [],
+                'from' => $from->format(DATE_ATOM),
+                'through' => $through->format(DATE_ATOM),
+            ];
+        }
+
         $inserted = 0;
         $missingMarkPrice = 0;
         $verified = 0;
@@ -45,6 +75,12 @@ final readonly class FundingHistorySynchronizer
                 : null;
             if ($mark === null) {
                 $missingMarkPrice++;
+                Log::warning("funding_gap_detected for bybit:{$symbol}: missing mark price at {$fundingAt->format(DATE_ATOM)}", [
+                    'diagnostic' => 'funding_gap_detected',
+                    'exchange' => 'bybit',
+                    'symbol' => $symbol,
+                    'funding_at' => $fundingAt->format(DATE_ATOM),
+                ]);
 
                 continue;
             }
@@ -66,16 +102,85 @@ final readonly class FundingHistorySynchronizer
             $verified++;
         }
 
-        if ($verified > 0) {
+        // Verify funding interval completeness
+        $gapDetected = false;
+        $missingBoundaries = [];
+
+        if ($missingMarkPrice > 0) {
+            $gapDetected = true;
+        }
+
+        if ($lifecycle !== null) {
+            if ($latest !== null) {
+                $checkFrom = $from;
+            } elseif (! empty($rows)) {
+                $validTimestamps = array_filter(
+                    array_column($rows, 'fundingRateTimestamp'),
+                    fn ($ts) => is_string($ts) && ctype_digit($ts)
+                );
+                if (! empty($validTimestamps)) {
+                    $minTs = min(array_map('intval', $validTimestamps));
+                    $checkFrom = $this->fromMilliseconds($minTs)->modify('-1 second');
+                } else {
+                    $checkFrom = $from;
+                }
+            } else {
+                $checkFrom = $from;
+            }
+
+            $expectedBoundaries = $lifecycle->expectedFundingBoundaries($checkFrom, $through, 'bybit', $symbol);
+            if ($expectedBoundaries !== null && ! empty($expectedBoundaries)) {
+                $existingEvents = MarketFundingEventRecord::query()
+                    ->where('exchange', 'bybit')
+                    ->where('category', 'linear')
+                    ->where('symbol', $symbol)
+                    ->where('funding_at', '>', $checkFrom)
+                    ->where('funding_at', '<=', $through)
+                    ->get();
+
+                foreach ($expectedBoundaries as $expected) {
+                    $matched = $existingEvents->contains(function (MarketFundingEventRecord $event) use ($expected): bool {
+                        return abs($event->funding_at->getTimestamp() - $expected->getTimestamp()) <= 60;
+                    });
+                    if (! $matched) {
+                        $missingBoundaries[] = $expected->format(DATE_ATOM);
+                        $gapDetected = true;
+                    }
+                }
+            }
+        }
+
+        $diagnostic = $gapDetected ? 'funding_gap_detected' : 'complete';
+
+        if ($gapDetected && $missingBoundaries !== []) {
+            Log::warning("funding_gap_detected for bybit:{$symbol}: missing expected funding intervals", [
+                'diagnostic' => 'funding_gap_detected',
+                'exchange' => 'bybit',
+                'symbol' => $symbol,
+                'missing_intervals' => $missingBoundaries,
+                'from' => $from->format(DATE_ATOM),
+                'through' => $through->format(DATE_ATOM),
+            ]);
+        }
+
+        if ($verified > 0 && ! $gapDetected) {
             try {
-                app(PositionLifecycleService::class)->reconcilePendingFunding('bybit', $symbol, $from);
+                $lifecycle?->reconcilePendingFunding('bybit', $symbol, $from);
             } catch (\Throwable $e) {
                 Log::warning("reconcilePendingFunding failed for bybit:{$symbol}: ".$e->getMessage());
             }
         }
 
-        return ['received' => count($rows), 'inserted' => $inserted, 'missing_mark_price' => $missingMarkPrice,
-            'from' => $from->format(DATE_ATOM), 'through' => $through->format(DATE_ATOM)];
+        return [
+            'received' => count($rows),
+            'inserted' => $inserted,
+            'missing_mark_price' => $missingMarkPrice,
+            'diagnostic' => $diagnostic,
+            'funding_gap_detected' => $gapDetected,
+            'missing_intervals' => $missingBoundaries,
+            'from' => $from->format(DATE_ATOM),
+            'through' => $through->format(DATE_ATOM),
+        ];
     }
 
     private function milliseconds(DateTimeImmutable $value): int

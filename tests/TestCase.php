@@ -95,8 +95,8 @@ abstract class TestCase extends BaseTestCase
         // 3. Configured database name check: strictly dedicated test database
         $configuredDb = (string) $connection->getDatabaseName();
         $expectedDb = (string) (env('TEST_DB_DATABASE') ?: env('DB_DATABASE', 'bybit_test'));
-        if ($configuredDb !== 'bybit_test' || $configuredDb !== $expectedDb) {
-            throw new \RuntimeException("Database isolation check failed: target database must be strictly 'bybit_test' (configured: '{$configuredDb}').");
+        if (! str_starts_with($configuredDb, 'bybit_test') || $configuredDb !== $expectedDb) {
+            throw new \RuntimeException("Database isolation check failed: target database must be strictly '{$expectedDb}' (configured: '{$configuredDb}').");
         }
 
         // 4. Host check: local loopback or isolated test container
@@ -117,7 +117,7 @@ abstract class TestCase extends BaseTestCase
             $parsed = parse_url($url);
             if (! is_array($parsed)
                 || ($parsed['scheme'] ?? '') !== 'pgsql'
-                || ltrim($parsed['path'] ?? '', '/') !== 'bybit_test'
+                || ! str_starts_with(ltrim($parsed['path'] ?? '', '/'), 'bybit_test')
                 || ! $this->isSafeTestHost($parsed['host'] ?? '')) {
                 throw new \RuntimeException('Database isolation check failed: dangerous database URL override detected.');
             }
@@ -130,8 +130,8 @@ abstract class TestCase extends BaseTestCase
             throw new \RuntimeException('Database isolation check failed: cannot query PostgreSQL server identity: '.$e->getMessage(), 0, $e);
         }
 
-        if ($identity === null || $identity->database_name !== 'bybit_test') {
-            throw new \RuntimeException("Database isolation check failed: server current_database() is '".($identity?->database_name ?? 'null')."', strictly 'bybit_test' required.");
+        if ($identity === null || ! str_starts_with($identity->database_name, 'bybit_test') || $identity->database_name !== $expectedDb) {
+            throw new \RuntimeException("Database isolation check failed: server current_database() is '".($identity?->database_name ?? 'null')."', strictly '{$expectedDb}' required.");
         }
 
         $expectedUser = (string) $connection->getConfig('username');

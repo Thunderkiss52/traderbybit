@@ -405,6 +405,13 @@ final readonly class PositionLifecycleService
 
                 if (! $hasMatchingEvent) {
                     // Gap detected: an expected funding boundary has no market funding event ingested!
+                    Log::warning("funding_gap_detected: position {$position->id} symbol {$position->symbol} missing boundary {$expectedBoundary->format(DATE_ATOM)}", [
+                        'diagnostic' => 'funding_gap_detected',
+                        'position_id' => $position->id,
+                        'symbol' => $position->symbol,
+                        'expected_boundary' => $expectedBoundary->format(DATE_ATOM),
+                    ]);
+
                     if ($position->funding_complete) {
                         $position->update(['funding_complete' => false]);
                     }

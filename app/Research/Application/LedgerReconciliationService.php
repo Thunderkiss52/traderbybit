@@ -5,7 +5,10 @@ declare(strict_types=1);
 namespace App\Research\Application;
 
 use App\PaperTrading\Application\PerformanceStatisticsService;
+use App\PaperTrading\Application\PositionLifecycleService;
+use App\PaperTrading\Domain\PositionStatus;
 use App\PaperTrading\Infrastructure\Persistence\EquitySnapshotRecord;
+use App\PaperTrading\Infrastructure\Persistence\MarketFundingEventRecord;
 use App\PaperTrading\Infrastructure\Persistence\PaperAccountRecord;
 use App\PaperTrading\Infrastructure\Persistence\PositionFundingEventRecord;
 use App\PaperTrading\Infrastructure\Persistence\VirtualExecutionRecord;
@@ -14,6 +17,7 @@ use App\Research\Infrastructure\Persistence\ReconciliationRunRecord;
 use Brick\Math\BigDecimal;
 use Carbon\CarbonImmutable;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
 
 final class LedgerReconciliationService
@@ -113,8 +117,62 @@ final class LedgerReconciliationService
         if ($missingEntries > 0) {
             $incompleteReasons[] = 'position_entry_executions_unavailable';
         }
-        if (VirtualPositionRecord::query()->where('paper_account_id', $accountId)->where('funding_complete', false)->exists()) {
+        $incompleteFundingPositions = VirtualPositionRecord::query()->where('paper_account_id', $accountId)->where('funding_complete', false)->get();
+        if ($incompleteFundingPositions->isNotEmpty()) {
             $incompleteReasons[] = 'funding_history_incomplete';
+        }
+
+        // Check for funding gaps across positions of this paper account
+        $accountPositions = VirtualPositionRecord::query()->where('paper_account_id', $accountId)->get();
+        $lifecycle = app(PositionLifecycleService::class);
+        $hasFundingGap = false;
+
+        foreach ($accountPositions as $pos) {
+            $status = PositionStatus::tryFrom($pos->status);
+            $toTime = ($status?->isClosed() && $pos->closed_at !== null)
+                ? $pos->closed_at->toDateTimeImmutable()
+                : now('UTC')->toDateTimeImmutable();
+
+            $expectedBoundaries = $lifecycle->expectedFundingBoundaries(
+                $pos->opened_at->toDateTimeImmutable(),
+                $toTime,
+                $pos->exchange_id,
+                $pos->symbol,
+            );
+
+            if (! empty($expectedBoundaries)) {
+                $events = MarketFundingEventRecord::query()
+                    ->where('exchange', $pos->exchange_id)
+                    ->where('category', 'linear')
+                    ->where('symbol', $pos->symbol)
+                    ->where('funding_at', '>', $pos->opened_at)
+                    ->where('funding_at', '<=', $toTime)
+                    ->get();
+
+                foreach ($expectedBoundaries as $expectedBoundary) {
+                    $hasMatching = $events->contains(function (MarketFundingEventRecord $ev) use ($expectedBoundary): bool {
+                        return abs($ev->funding_at->getTimestamp() - $expectedBoundary->getTimestamp()) <= 60;
+                    });
+                    if (! $hasMatching) {
+                        $hasFundingGap = true;
+                        if ($pos->funding_complete) {
+                            $pos->update(['funding_complete' => false]);
+                        }
+                        break 2;
+                    }
+                }
+            }
+        }
+
+        if ($hasFundingGap) {
+            if (! in_array('funding_history_incomplete', $incompleteReasons, true)) {
+                $incompleteReasons[] = 'funding_history_incomplete';
+            }
+            $incompleteReasons[] = 'funding_gap_detected';
+            Log::warning("funding_gap_detected during ledger reconciliation for account {$accountId}", [
+                'diagnostic' => 'funding_gap_detected',
+                'paper_account_id' => $accountId,
+            ]);
         }
 
         // Accounting identity:
