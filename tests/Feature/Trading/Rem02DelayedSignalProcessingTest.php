@@ -9,9 +9,8 @@ use App\PaperTrading\Domain\SignalLifecycle;
 use App\PaperTrading\Infrastructure\Persistence\PaperAccountRecord;
 use App\PaperTrading\Infrastructure\Persistence\PaperSignalStateRecord;
 use App\PaperTrading\Infrastructure\Persistence\RiskDecisionRecord;
-use App\Strategy\Infrastructure\Persistence\SignalRecord;
-use App\Trading\Application\TradingPipelineEventService;
-use App\Trading\Jobs\ProcessPaperPipelineJob;
+use App\PaperTrading\Jobs\ProcessPaperTradingJob;
+use App\Strategy\Application\StrategyRegistry;
 use Carbon\Carbon;
 use DateTimeImmutable;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -56,7 +55,7 @@ final class Rem02DelayedSignalProcessingTest extends TestCase
             'symbol' => 'BTCUSDT',
             'timeframe' => '15',
             'strategy_id' => 'baseline',
-            'strategy_version' => app(\App\Strategy\Application\StrategyRegistry::class)->get('baseline')->version(),
+            'strategy_version' => app(StrategyRegistry::class)->get('baseline')->version(),
             'decision_time' => $decisionTime,
             'candle_close_time' => $decisionTime,
             'side' => 'BUY',
@@ -130,7 +129,7 @@ final class Rem02DelayedSignalProcessingTest extends TestCase
             'symbol' => 'BTCUSDT',
             'timeframe' => '15',
             'strategy_id' => 'trend_pullback',
-            'strategy_version' => app(\App\Strategy\Application\StrategyRegistry::class)->get('trend_pullback')->version(),
+            'strategy_version' => app(StrategyRegistry::class)->get('trend_pullback')->version(),
             'decision_time' => $closeAt,
             'candle_close_time' => $closeAt,
             'side' => 'BUY',
@@ -156,7 +155,7 @@ final class Rem02DelayedSignalProcessingTest extends TestCase
         ]);
 
         $paperService = app(PaperProcessingService::class);
-        $job = new \App\PaperTrading\Jobs\ProcessPaperTradingJob($account->id, 'BTCUSDT');
+        $job = new ProcessPaperTradingJob($account->id, 'BTCUSDT');
         $job->handle($paperService);
 
         // Verify signal received terminal EXPIRED state
@@ -170,10 +169,10 @@ final class Rem02DelayedSignalProcessingTest extends TestCase
 
     private function createBybitAccount(string $strategyId): PaperAccountRecord
     {
-        $registry = app(\App\Strategy\Application\StrategyRegistry::class);
+        $registry = app(StrategyRegistry::class);
         $strategy = $registry->get($strategyId);
         $params = $strategy->parameters();
-        $hash = \App\Strategy\Application\StrategyRegistry::hash($params);
+        $hash = StrategyRegistry::hash($params);
         $id = $strategyId === 'baseline'
             ? Uuid::uuid5(Uuid::NAMESPACE_URL, 'traderbybit:paper:default')->toString()
             : Uuid::uuid5(Uuid::NAMESPACE_URL, "traderbybit:paper:primary:{$strategyId}")->toString();

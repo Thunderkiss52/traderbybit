@@ -4,8 +4,6 @@ declare(strict_types=1);
 
 namespace Tests\Feature\Strategy;
 
-use App\Exchanges\Binance\BinancePublicAdapter;
-use App\MarketData\Domain\Interval;
 use App\Strategy\Application\StrategyInputFactory;
 use App\Strategy\Domain\StrategyInput;
 use App\Strategy\Infrastructure\Persistence\MarketContextRecord;

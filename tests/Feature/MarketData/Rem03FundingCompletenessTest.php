@@ -8,7 +8,6 @@ use App\MarketData\Application\FundingHistorySynchronizer;
 use App\MarketData\Contracts\BybitMarketDataClient;
 use App\MarketData\Contracts\FundingMarkPriceProvider;
 use App\MarketData\Domain\CandleQuery;
-use App\PaperTrading\Application\PositionLifecycleService;
 use App\PaperTrading\Domain\ExecutionType;
 use App\PaperTrading\Domain\PositionStatus;
 use App\PaperTrading\Infrastructure\Persistence\EquitySnapshotRecord;
@@ -31,7 +30,8 @@ final class Rem03FundingCompletenessTest extends TestCase
 
     private function createStubClient(array $rates, array $markPrices = []): BybitMarketDataClient
     {
-        return new class($rates, $markPrices) implements BybitMarketDataClient, FundingMarkPriceProvider {
+        return new class($rates, $markPrices) implements BybitMarketDataClient, FundingMarkPriceProvider
+        {
             public function __construct(
                 private readonly array $rates,
                 private readonly array $markPrices,
@@ -192,7 +192,8 @@ final class Rem03FundingCompletenessTest extends TestCase
     {
         Log::spy();
 
-        $failingClient = new class implements BybitMarketDataClient {
+        $failingClient = new class implements BybitMarketDataClient
+        {
             public function fundingRates(string $category, string $symbol, ?int $fromMs = null, ?int $toMs = null): array
             {
                 throw new \RuntimeException('Bybit upstream API 503 service unavailable');
