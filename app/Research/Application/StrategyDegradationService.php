@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Research\Application;
 
 use App\PaperTrading\Infrastructure\Persistence\PaperAccountRecord;
+use App\PaperTrading\Infrastructure\Persistence\VirtualExecutionRecord;
 use App\PaperTrading\Infrastructure\Persistence\VirtualPositionRecord;
 use App\Research\Infrastructure\Persistence\StrategyDegradationSnapshotRecord;
 use App\Strategy\Infrastructure\Persistence\StrategyObservationRecord;
@@ -66,6 +67,10 @@ final class StrategyDegradationService
 
         $grossWins = 0.0;
         $grossLosses = 0.0;
+        $totalGross = 0.0;
+        $totalNet = 0.0;
+        $totalFees = 0.0;
+        $totalFunding = 0.0;
         $wins = 0;
         $rMultiples = [];
         $startingBalance = (float) (PaperAccountRecord::query()
@@ -78,11 +83,41 @@ final class StrategyDegradationService
         $peakEquity = $startingBalance;
         $maxDd = 0.0;
 
+        // Fetch execution-level slippage costs to isolate slippage drag
+        $positionIds = $positions->pluck('id')->all();
+        $slippageByPosition = [];
+        if (! empty($positionIds)) {
+            $executions = VirtualExecutionRecord::query()
+                ->whereIn('position_id', $positionIds)
+                ->get(['position_id', 'quantity', 'slippage']);
+
+            foreach ($executions as $exec) {
+                $qty = (float) ($exec->quantity ?? 0.0);
+                $slip = (float) ($exec->slippage ?? 0.0);
+                $cost = abs($qty * $slip);
+                $slippageByPosition[$exec->position_id] = ($slippageByPosition[$exec->position_id] ?? 0.0) + $cost;
+            }
+        }
+
+        $totalSlippage = 0.0;
+
         foreach ($positions as $pos) {
             $net = (float) $pos->net_pnl;
             $gross = (float) $pos->gross_pnl;
+            $fees = (float) ($pos->fees ?? 0.0);
+            $funding = (float) ($pos->funding ?? 0.0);
+            $posSlip = $slippageByPosition[$pos->id] ?? 0.0;
+
             $net = is_finite($net) ? $net : 0.0;
             $gross = is_finite($gross) ? $gross : 0.0;
+            $fees = is_finite($fees) ? $fees : 0.0;
+            $funding = is_finite($funding) ? $funding : 0.0;
+
+            $totalGross += $gross;
+            $totalNet += $net;
+            $totalFees += $fees;
+            $totalFunding += $funding;
+            $totalSlippage += $posSlip;
 
             if ($net > 0) {
                 $wins++;
@@ -123,6 +158,51 @@ final class StrategyDegradationService
         $ciLower = max(0.0, $center - $margin);
         $ciUpper = min(1.0, $center + $margin);
 
+        // Standard Error & 95% Confidence Interval for Expectancy (R)
+        $rVariance = 0.0;
+        if ($sampleSize > 1) {
+            $sumSqDiff = 0.0;
+            foreach ($rMultiples as $rVal) {
+                $diff = $rVal - $expectancyR;
+                $sumSqDiff += $diff * $diff;
+            }
+            $rVariance = $sumSqDiff / ($sampleSize - 1);
+        }
+        $expectancySe = $sampleSize > 0 ? sqrt($rVariance / $sampleSize) : 0.0;
+        $expectancyCiLower = $expectancyR - ($z * $expectancySe);
+        $expectancyCiUpper = $expectancyR + ($z * $expectancySe);
+
+        // Delta Method Standard Error & 95% Confidence Interval for Profit Factor
+        $profitFactorSe = 0.0;
+        if ($sampleSize > 1 && $grossLosses > 0) {
+            $sumU2 = 0.0;
+            foreach ($positions as $pos) {
+                $g = (float) $pos->gross_pnl;
+                $w = max(0.0, $g);
+                $l = max(0.0, -$g);
+                $u = $w - ($profitFactor * $l);
+                $sumU2 += $u * $u;
+            }
+            $varU = $sumU2 / ($sampleSize - 1);
+            $meanLoss = $grossLosses / $sampleSize;
+            if ($meanLoss > 0) {
+                $profitFactorSe = sqrt($varU / $sampleSize) / $meanLoss;
+            }
+        }
+        $profitFactorCiLower = max(0.0, $profitFactor - ($z * $profitFactorSe));
+        $profitFactorCiUpper = $profitFactor + ($z * $profitFactorSe);
+
+        // Sample Size Check ($N >= 30) for statistical significance
+        $isSampleSizeSufficient = ($sampleSize >= 30);
+        $confidenceRating = $isSampleSizeSufficient ? 'HIGH' : 'LOW';
+
+        // Fee Drag & Execution Cost Isolation
+        // If gross PnL >= 0 (or gross expectancy >= 0) but net PnL < 0, degradation is caused by fees/slippage rather than negative alpha
+        $grossExpectancyUsd = $sampleSize > 0 ? $totalGross / $sampleSize : 0.0;
+        $netExpectancyUsd = $sampleSize > 0 ? $totalNet / $sampleSize : 0.0;
+        $isFeeDrag = ($totalGross >= 0.0 && $totalNet < 0.0);
+        $structuralNegativeAlpha = ($grossExpectancyUsd < 0.0);
+
         // Analyze regime context from observations
         $recentObs = StrategyObservationRecord::query()
             ->where('strategy_id', $strategyId)
@@ -149,16 +229,46 @@ final class StrategyDegradationService
         // Determine Status & Degradation Type
         $status = 'STABLE';
         $degradationType = 'NONE';
+        $definitiveAlphaDecay = false;
 
         if ($maxDd >= 20.0) {
             $status = 'CRITICAL_DRAWDOWN';
-            $degradationType = $regimeMismatch ? 'REGIME_MISMATCH' : 'POSSIBLE_ALPHA_DECAY';
+            if ($regimeMismatch) {
+                $degradationType = 'REGIME_MISMATCH';
+            } elseif ($isFeeDrag) {
+                $degradationType = 'FEE_DRAG';
+            } elseif ($isSampleSizeSufficient && $structuralNegativeAlpha) {
+                $degradationType = 'ALPHA_DECAY';
+                $definitiveAlphaDecay = true;
+            } else {
+                $degradationType = 'POSSIBLE_ALPHA_DECAY';
+            }
         } elseif ($profitFactor < 0.85 || $expectancyR < -0.1 || $maxDd >= 12.0) {
-            $status = 'DEGRADING';
-            $degradationType = $regimeMismatch ? 'REGIME_MISMATCH' : 'POSSIBLE_ALPHA_DECAY';
+            if ($regimeMismatch) {
+                $status = 'DEGRADING';
+                $degradationType = 'REGIME_MISMATCH';
+            } elseif ($isFeeDrag) {
+                $status = 'DEGRADING';
+                $degradationType = 'FEE_DRAG';
+            } elseif ($isSampleSizeSufficient) {
+                $status = 'DEGRADING';
+                $degradationType = 'ALPHA_DECAY';
+                $definitiveAlphaDecay = true;
+            } else {
+                // Insufficient sample size (N < 30): flag with low confidence, cannot declare definitive alpha decay
+                $status = 'WATCH';
+                $degradationType = 'POSSIBLE_ALPHA_DECAY';
+                $definitiveAlphaDecay = false;
+            }
         } elseif ($profitFactor < 1.15 || $winRate < 0.40) {
             $status = 'WATCH';
-            $degradationType = $regimeMismatch ? 'REGIME_MISMATCH' : 'NONE';
+            if ($regimeMismatch) {
+                $degradationType = 'REGIME_MISMATCH';
+            } elseif ($isFeeDrag) {
+                $degradationType = 'FEE_DRAG';
+            } else {
+                $degradationType = 'NONE';
+            }
         }
 
         return StrategyDegradationSnapshotRecord::query()->{$method}([
@@ -178,6 +288,38 @@ final class StrategyDegradationService
             'degradation_type' => $degradationType,
             'diagnostics' => [
                 'exchange' => $exchange,
+                'sample_size' => $sampleSize,
+                'min_sample_size' => 30,
+                'sample_size_sufficient' => $isSampleSizeSufficient,
+                'insufficient_sample_size' => ! $isSampleSizeSufficient,
+                'confidence_rating' => $confidenceRating,
+                'definitive_alpha_decay' => $definitiveAlphaDecay,
+                'is_fee_drag' => $isFeeDrag,
+                'structural_negative_alpha' => $structuralNegativeAlpha,
+                'expectancy_confidence' => [
+                    'mean' => round($expectancyR, 4),
+                    'standard_error' => round($expectancySe, 4),
+                    'ci_lower' => round($expectancyCiLower, 4),
+                    'ci_upper' => round($expectancyCiUpper, 4),
+                    'confidence_level' => 0.95,
+                ],
+                'profit_factor_confidence' => [
+                    'value' => round($profitFactor, 4),
+                    'standard_error' => round($profitFactorSe, 4),
+                    'ci_lower' => round($profitFactorCiLower, 4),
+                    'ci_upper' => round($profitFactorCiUpper, 4),
+                    'confidence_level' => 0.95,
+                ],
+                'financial_breakdown' => [
+                    'gross_pnl' => round($totalGross, 4),
+                    'net_pnl' => round($totalNet, 4),
+                    'total_fees' => round($totalFees, 4),
+                    'total_slippage' => round($totalSlippage, 4),
+                    'total_execution_costs' => round($totalFees + $totalSlippage, 4),
+                    'total_funding' => round($totalFunding, 4),
+                    'gross_expectancy_usd' => round($grossExpectancyUsd, 4),
+                    'net_expectancy_usd' => round($netExpectancyUsd, 4),
+                ],
                 'ranging_observations' => $rangingCount,
                 'trending_observations' => $trendingCount,
                 'regime_mismatch' => $regimeMismatch,
@@ -185,6 +327,10 @@ final class StrategyDegradationService
                 'losses' => $sampleSize - $wins,
                 'gross_profit' => round($grossWins, 2),
                 'gross_loss' => round($grossLosses, 2),
+                'gross_pnl' => round($totalGross, 4),
+                'net_pnl' => round($totalNet, 4),
+                'fees' => round($totalFees, 4),
+                'slippage' => round($totalSlippage, 4),
             ],
             'as_of_time' => CarbonImmutable::now(),
         ]);
