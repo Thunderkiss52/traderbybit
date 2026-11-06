@@ -24,6 +24,7 @@ use Brick\Math\RoundingMode;
 use DateTimeImmutable;
 use Illuminate\Contracts\Cache\Factory as CacheFactory;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 use Ramsey\Uuid\Uuid;
 use Throwable;
 
@@ -123,8 +124,7 @@ final readonly class PaperProcessingService
             ->where('strategy_id', $account->strategy_id ?? 'baseline')
             ->when($account->mode === 'STRATEGY_FORWARD_PAPER',
                 fn ($q) => $q->where('strategy_version', $account->strategy_version))
-            ->when($forwardOnly, fn ($q) => $q->where('decision_time', '>=', $account->created_at)
-                ->whereColumn('created_at', '<=', 'expires_at'))
+            ->when($forwardOnly, fn ($q) => $q->where('decision_time', '>=', $account->created_at))
             ->when($symbol, fn ($q) => $q->where('symbol', $symbol))
             ->whereNotExists(fn ($query) => $query->selectRaw('1')->from('paper_signal_states')
                 ->whereColumn('paper_signal_states.signal_id', 'signals.id')
@@ -136,8 +136,26 @@ final readonly class PaperProcessingService
                 continue;
             }
 
-            if ($forwardOnly && $currentTime->getTimestamp() >= $signal->expires_at->getTimestamp()) {
-                DB::transaction(function () use ($account, $signal, $currentTime): void {
+            $isExpired = $forwardOnly
+                ? ($currentTime->getTimestamp() >= $signal->expires_at->getTimestamp() || $signal->created_at->getTimestamp() >= $signal->expires_at->getTimestamp())
+                : ($currentTime->getTimestamp() >= $signal->expires_at->getTimestamp());
+
+            if ($isExpired) {
+                $decisionLatencyMs = max(0, ($currentTime->getTimestamp() - $signal->decision_time->getTimestamp()) * 1000);
+                $creationLatencyMs = max(0, ($currentTime->getTimestamp() - $signal->created_at->getTimestamp()) * 1000);
+
+                Log::warning('PaperProcessingService: signal expired before ingestion', [
+                    'account_id' => $account->id,
+                    'signal_id' => $signal->id,
+                    'decision_time' => $signal->decision_time->format(DATE_ATOM),
+                    'created_at' => $signal->created_at->format(DATE_ATOM),
+                    'expires_at' => $signal->expires_at->format(DATE_ATOM),
+                    'ingested_at' => $currentTime->format(DATE_ATOM),
+                    'decision_to_processing_latency_ms' => $decisionLatencyMs,
+                    'creation_to_processing_latency_ms' => $creationLatencyMs,
+                ]);
+
+                DB::transaction(function () use ($account, $signal, $currentTime, $decisionLatencyMs, $creationLatencyMs): void {
                     $decisionId = Uuid::uuid5(Uuid::NAMESPACE_URL, "traderbybit:risk:{$account->id}:{$signal->id}:{$this->config['risk_version']}")->toString();
                     RiskDecisionRecord::query()->insertOrIgnore([[
                         'id' => $decisionId,
@@ -149,8 +167,11 @@ final readonly class PaperProcessingService
                         'snapshot' => json_encode([
                             'reason' => 'signal_expired_before_ingestion',
                             'decision_time' => $signal->decision_time->format(DATE_ATOM),
+                            'created_at' => $signal->created_at->format(DATE_ATOM),
                             'expires_at' => $signal->expires_at->format(DATE_ATOM),
                             'ingested_at' => $currentTime->format(DATE_ATOM),
+                            'decision_to_processing_latency_ms' => $decisionLatencyMs,
+                            'creation_to_processing_latency_ms' => $creationLatencyMs,
                         ], JSON_THROW_ON_ERROR),
                         'risk_version' => (string) $this->config['risk_version'],
                         'decided_at' => $currentTime,
@@ -176,13 +197,17 @@ final readonly class PaperProcessingService
                         [
                             'reason' => 'signal_expired_before_ingestion',
                             'decision_time' => $signal->decision_time->format(DATE_ATOM),
+                            'created_at' => $signal->created_at->format(DATE_ATOM),
                             'expires_at' => $signal->expires_at->format(DATE_ATOM),
+                            'decision_to_processing_latency_ms' => $decisionLatencyMs,
+                            'creation_to_processing_latency_ms' => $creationLatencyMs,
                         ],
                         "expired:{$account->id}:{$signal->id}"
                     );
                     $this->updateObservationDiagnostics($account, $signal, [
                         'risk_approved' => false,
                         'risk_rejection_reasons' => ['signal_expired_before_ingestion'],
+                        'decision_to_processing_latency_ms' => $decisionLatencyMs,
                         'paper_execution' => 'ENTRY_EXPIRED',
                     ]);
                 });
