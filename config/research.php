@@ -27,6 +27,10 @@ return [
         'minimum_pattern_decisions' => (int) env('RESEARCH_AUTO_PATTERN_MINIMUM_DECISIONS', 700),
         'pattern_retry_new_decisions' => (int) env('RESEARCH_AUTO_PATTERN_RETRY_NEW_DECISIONS', 120),
     ],
+    'candidate_evaluation' => [
+        'minimum_days' => (int) env('RESEARCH_CANDIDATE_EVALUATION_MINIMUM_DAYS', 30),
+        'target_days' => (int) env('RESEARCH_CANDIDATE_EVALUATION_TARGET_DAYS', 180),
+    ],
     'evolution' => [
         // Only explicitly bounded mutation spaces are eligible; all 13 PRIMARY families are covered.
         'families' => ['baseline', 'trend_pullback', 'bollinger_mean_reversion', 'donchian_atr_breakout', 'regime_switching', 'momentum', 'support_resistance_bounce', 'support_resistance_breakout', 'funding_open_interest_squeeze', 'liquidity_sweep_reversal', 'volatility_compression_breakout', 'btc_eth_lead_lag', 'multi_timeframe_trend_following'],
