@@ -1,0 +1,23 @@
+{
+  "baseline": "832de9b5c2ff5c25351c25fa2e110a78a5f574ca",
+  "source_commits": [
+    "d8211c75fce3ef1578b6fab0087d68e496b080c8 perf(deploy): reuse verified digest images and retain stage timing evidence",
+    "13dc72f0018522e3297b312a41b45033bb07143c fix(deploy): correct immutable image drift validation and rollback safety"
+  ],
+  "docker_engine": "29.7.1",
+  "compose": "5.4.0",
+  "php": "8.5.12 in vector-agent-php85-test:local, network none",
+  "node": "20.20.0 (CI Node 22 unverified)",
+  "production_access": false,
+  "push": false,
+  "deploy": false,
+  "actions_trigger": false,
+  "python_result": {
+    "passed": 82,
+    "skipped": 0,
+    "elapsed_seconds": 369.448
+  },
+  "external_change_preserved": "AGENTS.md; global unstaged diff whitespace failure is external",
+  "global_unstaged_diff_exit_code": 2,
+  "task_owned_baseline_diff_exit_code": 0
+}

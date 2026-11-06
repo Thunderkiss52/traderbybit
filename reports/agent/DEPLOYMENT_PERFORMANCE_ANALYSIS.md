@@ -16,7 +16,7 @@ Compose already reconciled changed image/configuration identities without `--for
 
 Real isolated Compose tests demonstrate unchanged container IDs for the same configuration; a research image change recreates only research-worker; an app artifact change recreates all eight app consumers while preserving web and research-worker. A separate real same-SHA configuration-refresh regression changes the affected service while retaining the unaffected database fixture. No filename-based change classifier was added. All ten service identities are still checked.
 
-The retained local Alpine sample measured 336 ms for no-op Compose reconciliation and an additional 1,513 ms for the redundant web restart. These are local synthetic-service measurements, not VPS or full-workflow timings; `deployment-remediation/transition-benchmark.json` is the authoritative current sample. Production graceful-stop limits were not reduced. Health polling uses actual running/healthy state and monotonic deadlines; restarting, paused, unhealthy and stopped containers do not pass readiness.
+The retained local Alpine sample measured 284 ms for no-op Compose reconciliation and an additional 1465 ms for the redundant web restart. These are local synthetic-service measurements, not VPS or full-workflow timings; `deployment-remediation/transition-benchmark.json` is the authoritative current sample. Production graceful-stop limits were not reduced. Health polling uses actual running/healthy state and monotonic deadlines; restarting, paused, unhealthy and stopped containers do not pass readiness.
 
 ## Digest-cache pull optimization
 

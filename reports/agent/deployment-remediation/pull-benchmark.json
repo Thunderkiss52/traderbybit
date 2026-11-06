@@ -1,0 +1,8 @@
+{
+  "synthetic": true,
+  "always_pull_ms": 301.43177299987656,
+  "cached_digest_pull_ms": 268.47177400031796,
+  "cached_with_registry_offline": "PASS",
+  "missing_digest_with_registry_offline": "REJECTED",
+  "scope": "local registry, cached Alpine artifacts; not GHCR/VPS"
+}

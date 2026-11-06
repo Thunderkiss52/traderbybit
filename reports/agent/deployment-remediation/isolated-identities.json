@@ -1,92 +1,92 @@
 [
   {
     "service": "app",
-    "expected": "127.0.0.1:56918/vector-drift-e50700cba2/app:sha-832de9b5c2ff5c25351c25fa2e110a78a5f574ca@sha256:14f08273677411a59a40f8e3281923df27c95ad272c2dca18cc37e5e2e6c2e2a",
-    "compose": "127.0.0.1:56918/vector-drift-e50700cba2/app:sha-832de9b5c2ff5c25351c25fa2e110a78a5f574ca@sha256:14f08273677411a59a40f8e3281923df27c95ad272c2dca18cc37e5e2e6c2e2a",
-    "config_image": "127.0.0.1:56918/vector-drift-e50700cba2/app:sha-832de9b5c2ff5c25351c25fa2e110a78a5f574ca@sha256:14f08273677411a59a40f8e3281923df27c95ad272c2dca18cc37e5e2e6c2e2a",
-    "image_id": "sha256:65fb5ff6ff6a079346dd8427a69ee201c7a587ed7ee0dd7ae467267322b455d6",
-    "old_suffix": "14f08273677411a59a40f8e3281923df27c95ad272c2dca18cc37e5e2e6c2e2a",
-    "expected_image_id": "sha256:65fb5ff6ff6a079346dd8427a69ee201c7a587ed7ee0dd7ae467267322b455d6"
+    "expected": "127.0.0.1:59866/vector-drift-be9e7b8649/app:sha-832de9b5c2ff5c25351c25fa2e110a78a5f574ca@sha256:6c6623d2592cdeb6bc0b2ffb84bfc55aeb3150f2bcc47298a7c0170c89195022",
+    "compose": "127.0.0.1:59866/vector-drift-be9e7b8649/app:sha-832de9b5c2ff5c25351c25fa2e110a78a5f574ca@sha256:6c6623d2592cdeb6bc0b2ffb84bfc55aeb3150f2bcc47298a7c0170c89195022",
+    "config_image": "127.0.0.1:59866/vector-drift-be9e7b8649/app:sha-832de9b5c2ff5c25351c25fa2e110a78a5f574ca@sha256:6c6623d2592cdeb6bc0b2ffb84bfc55aeb3150f2bcc47298a7c0170c89195022",
+    "image_id": "sha256:d80b64c2fe9ce3d0e9a24051b21d5c224a3e5aae2d38ab861a7f12dcb92d4120",
+    "old_suffix": "6c6623d2592cdeb6bc0b2ffb84bfc55aeb3150f2bcc47298a7c0170c89195022",
+    "expected_image_id": "sha256:d80b64c2fe9ce3d0e9a24051b21d5c224a3e5aae2d38ab861a7f12dcb92d4120"
   },
   {
     "service": "web",
-    "expected": "127.0.0.1:56918/vector-drift-e50700cba2/web:sha-832de9b5c2ff5c25351c25fa2e110a78a5f574ca@sha256:0e1dd4f0737b5fb847c55d9d61e500c8c01d91424c74481cd634b95174f45ec8",
-    "compose": "127.0.0.1:56918/vector-drift-e50700cba2/web:sha-832de9b5c2ff5c25351c25fa2e110a78a5f574ca@sha256:0e1dd4f0737b5fb847c55d9d61e500c8c01d91424c74481cd634b95174f45ec8",
-    "config_image": "127.0.0.1:56918/vector-drift-e50700cba2/web:sha-832de9b5c2ff5c25351c25fa2e110a78a5f574ca@sha256:0e1dd4f0737b5fb847c55d9d61e500c8c01d91424c74481cd634b95174f45ec8",
-    "image_id": "sha256:ee45b66b3f04bfcb46f46b353a4445d73e0430086b23ba147f61b529704f19f1",
-    "old_suffix": "0e1dd4f0737b5fb847c55d9d61e500c8c01d91424c74481cd634b95174f45ec8",
-    "expected_image_id": "sha256:ee45b66b3f04bfcb46f46b353a4445d73e0430086b23ba147f61b529704f19f1"
+    "expected": "127.0.0.1:59866/vector-drift-be9e7b8649/web:sha-832de9b5c2ff5c25351c25fa2e110a78a5f574ca@sha256:a294aa48e8117a47a05f3a022c30bba940f8a214a9b503b1c2044c3458522d29",
+    "compose": "127.0.0.1:59866/vector-drift-be9e7b8649/web:sha-832de9b5c2ff5c25351c25fa2e110a78a5f574ca@sha256:a294aa48e8117a47a05f3a022c30bba940f8a214a9b503b1c2044c3458522d29",
+    "config_image": "127.0.0.1:59866/vector-drift-be9e7b8649/web:sha-832de9b5c2ff5c25351c25fa2e110a78a5f574ca@sha256:a294aa48e8117a47a05f3a022c30bba940f8a214a9b503b1c2044c3458522d29",
+    "image_id": "sha256:a33c28225eb3d2596f1f168ecbaa7169a8a282b76e175df0dde9ebe6a0081512",
+    "old_suffix": "a294aa48e8117a47a05f3a022c30bba940f8a214a9b503b1c2044c3458522d29",
+    "expected_image_id": "sha256:a33c28225eb3d2596f1f168ecbaa7169a8a282b76e175df0dde9ebe6a0081512"
   },
   {
     "service": "queue",
-    "expected": "127.0.0.1:56918/vector-drift-e50700cba2/app:sha-832de9b5c2ff5c25351c25fa2e110a78a5f574ca@sha256:14f08273677411a59a40f8e3281923df27c95ad272c2dca18cc37e5e2e6c2e2a",
-    "compose": "127.0.0.1:56918/vector-drift-e50700cba2/app:sha-832de9b5c2ff5c25351c25fa2e110a78a5f574ca@sha256:14f08273677411a59a40f8e3281923df27c95ad272c2dca18cc37e5e2e6c2e2a",
-    "config_image": "127.0.0.1:56918/vector-drift-e50700cba2/app:sha-832de9b5c2ff5c25351c25fa2e110a78a5f574ca@sha256:14f08273677411a59a40f8e3281923df27c95ad272c2dca18cc37e5e2e6c2e2a",
-    "image_id": "sha256:65fb5ff6ff6a079346dd8427a69ee201c7a587ed7ee0dd7ae467267322b455d6",
-    "old_suffix": "14f08273677411a59a40f8e3281923df27c95ad272c2dca18cc37e5e2e6c2e2a",
-    "expected_image_id": "sha256:65fb5ff6ff6a079346dd8427a69ee201c7a587ed7ee0dd7ae467267322b455d6"
+    "expected": "127.0.0.1:59866/vector-drift-be9e7b8649/app:sha-832de9b5c2ff5c25351c25fa2e110a78a5f574ca@sha256:6c6623d2592cdeb6bc0b2ffb84bfc55aeb3150f2bcc47298a7c0170c89195022",
+    "compose": "127.0.0.1:59866/vector-drift-be9e7b8649/app:sha-832de9b5c2ff5c25351c25fa2e110a78a5f574ca@sha256:6c6623d2592cdeb6bc0b2ffb84bfc55aeb3150f2bcc47298a7c0170c89195022",
+    "config_image": "127.0.0.1:59866/vector-drift-be9e7b8649/app:sha-832de9b5c2ff5c25351c25fa2e110a78a5f574ca@sha256:6c6623d2592cdeb6bc0b2ffb84bfc55aeb3150f2bcc47298a7c0170c89195022",
+    "image_id": "sha256:d80b64c2fe9ce3d0e9a24051b21d5c224a3e5aae2d38ab861a7f12dcb92d4120",
+    "old_suffix": "6c6623d2592cdeb6bc0b2ffb84bfc55aeb3150f2bcc47298a7c0170c89195022",
+    "expected_image_id": "sha256:d80b64c2fe9ce3d0e9a24051b21d5c224a3e5aae2d38ab861a7f12dcb92d4120"
   },
   {
     "service": "queue-bybit",
-    "expected": "127.0.0.1:56918/vector-drift-e50700cba2/app:sha-832de9b5c2ff5c25351c25fa2e110a78a5f574ca@sha256:14f08273677411a59a40f8e3281923df27c95ad272c2dca18cc37e5e2e6c2e2a",
-    "compose": "127.0.0.1:56918/vector-drift-e50700cba2/app:sha-832de9b5c2ff5c25351c25fa2e110a78a5f574ca@sha256:14f08273677411a59a40f8e3281923df27c95ad272c2dca18cc37e5e2e6c2e2a",
-    "config_image": "127.0.0.1:56918/vector-drift-e50700cba2/app:sha-832de9b5c2ff5c25351c25fa2e110a78a5f574ca@sha256:14f08273677411a59a40f8e3281923df27c95ad272c2dca18cc37e5e2e6c2e2a",
-    "image_id": "sha256:65fb5ff6ff6a079346dd8427a69ee201c7a587ed7ee0dd7ae467267322b455d6",
-    "old_suffix": "14f08273677411a59a40f8e3281923df27c95ad272c2dca18cc37e5e2e6c2e2a",
-    "expected_image_id": "sha256:65fb5ff6ff6a079346dd8427a69ee201c7a587ed7ee0dd7ae467267322b455d6"
+    "expected": "127.0.0.1:59866/vector-drift-be9e7b8649/app:sha-832de9b5c2ff5c25351c25fa2e110a78a5f574ca@sha256:6c6623d2592cdeb6bc0b2ffb84bfc55aeb3150f2bcc47298a7c0170c89195022",
+    "compose": "127.0.0.1:59866/vector-drift-be9e7b8649/app:sha-832de9b5c2ff5c25351c25fa2e110a78a5f574ca@sha256:6c6623d2592cdeb6bc0b2ffb84bfc55aeb3150f2bcc47298a7c0170c89195022",
+    "config_image": "127.0.0.1:59866/vector-drift-be9e7b8649/app:sha-832de9b5c2ff5c25351c25fa2e110a78a5f574ca@sha256:6c6623d2592cdeb6bc0b2ffb84bfc55aeb3150f2bcc47298a7c0170c89195022",
+    "image_id": "sha256:d80b64c2fe9ce3d0e9a24051b21d5c224a3e5aae2d38ab861a7f12dcb92d4120",
+    "old_suffix": "6c6623d2592cdeb6bc0b2ffb84bfc55aeb3150f2bcc47298a7c0170c89195022",
+    "expected_image_id": "sha256:d80b64c2fe9ce3d0e9a24051b21d5c224a3e5aae2d38ab861a7f12dcb92d4120"
   },
   {
     "service": "queue-binance",
-    "expected": "127.0.0.1:56918/vector-drift-e50700cba2/app:sha-832de9b5c2ff5c25351c25fa2e110a78a5f574ca@sha256:14f08273677411a59a40f8e3281923df27c95ad272c2dca18cc37e5e2e6c2e2a",
-    "compose": "127.0.0.1:56918/vector-drift-e50700cba2/app:sha-832de9b5c2ff5c25351c25fa2e110a78a5f574ca@sha256:14f08273677411a59a40f8e3281923df27c95ad272c2dca18cc37e5e2e6c2e2a",
-    "config_image": "127.0.0.1:56918/vector-drift-e50700cba2/app:sha-832de9b5c2ff5c25351c25fa2e110a78a5f574ca@sha256:14f08273677411a59a40f8e3281923df27c95ad272c2dca18cc37e5e2e6c2e2a",
-    "image_id": "sha256:65fb5ff6ff6a079346dd8427a69ee201c7a587ed7ee0dd7ae467267322b455d6",
-    "old_suffix": "14f08273677411a59a40f8e3281923df27c95ad272c2dca18cc37e5e2e6c2e2a",
-    "expected_image_id": "sha256:65fb5ff6ff6a079346dd8427a69ee201c7a587ed7ee0dd7ae467267322b455d6"
+    "expected": "127.0.0.1:59866/vector-drift-be9e7b8649/app:sha-832de9b5c2ff5c25351c25fa2e110a78a5f574ca@sha256:6c6623d2592cdeb6bc0b2ffb84bfc55aeb3150f2bcc47298a7c0170c89195022",
+    "compose": "127.0.0.1:59866/vector-drift-be9e7b8649/app:sha-832de9b5c2ff5c25351c25fa2e110a78a5f574ca@sha256:6c6623d2592cdeb6bc0b2ffb84bfc55aeb3150f2bcc47298a7c0170c89195022",
+    "config_image": "127.0.0.1:59866/vector-drift-be9e7b8649/app:sha-832de9b5c2ff5c25351c25fa2e110a78a5f574ca@sha256:6c6623d2592cdeb6bc0b2ffb84bfc55aeb3150f2bcc47298a7c0170c89195022",
+    "image_id": "sha256:d80b64c2fe9ce3d0e9a24051b21d5c224a3e5aae2d38ab861a7f12dcb92d4120",
+    "old_suffix": "6c6623d2592cdeb6bc0b2ffb84bfc55aeb3150f2bcc47298a7c0170c89195022",
+    "expected_image_id": "sha256:d80b64c2fe9ce3d0e9a24051b21d5c224a3e5aae2d38ab861a7f12dcb92d4120"
   },
   {
     "service": "scheduler",
-    "expected": "127.0.0.1:56918/vector-drift-e50700cba2/app:sha-832de9b5c2ff5c25351c25fa2e110a78a5f574ca@sha256:14f08273677411a59a40f8e3281923df27c95ad272c2dca18cc37e5e2e6c2e2a",
-    "compose": "127.0.0.1:56918/vector-drift-e50700cba2/app:sha-832de9b5c2ff5c25351c25fa2e110a78a5f574ca@sha256:14f08273677411a59a40f8e3281923df27c95ad272c2dca18cc37e5e2e6c2e2a",
-    "config_image": "127.0.0.1:56918/vector-drift-e50700cba2/app:sha-832de9b5c2ff5c25351c25fa2e110a78a5f574ca@sha256:14f08273677411a59a40f8e3281923df27c95ad272c2dca18cc37e5e2e6c2e2a",
-    "image_id": "sha256:65fb5ff6ff6a079346dd8427a69ee201c7a587ed7ee0dd7ae467267322b455d6",
-    "old_suffix": "14f08273677411a59a40f8e3281923df27c95ad272c2dca18cc37e5e2e6c2e2a",
-    "expected_image_id": "sha256:65fb5ff6ff6a079346dd8427a69ee201c7a587ed7ee0dd7ae467267322b455d6"
+    "expected": "127.0.0.1:59866/vector-drift-be9e7b8649/app:sha-832de9b5c2ff5c25351c25fa2e110a78a5f574ca@sha256:6c6623d2592cdeb6bc0b2ffb84bfc55aeb3150f2bcc47298a7c0170c89195022",
+    "compose": "127.0.0.1:59866/vector-drift-be9e7b8649/app:sha-832de9b5c2ff5c25351c25fa2e110a78a5f574ca@sha256:6c6623d2592cdeb6bc0b2ffb84bfc55aeb3150f2bcc47298a7c0170c89195022",
+    "config_image": "127.0.0.1:59866/vector-drift-be9e7b8649/app:sha-832de9b5c2ff5c25351c25fa2e110a78a5f574ca@sha256:6c6623d2592cdeb6bc0b2ffb84bfc55aeb3150f2bcc47298a7c0170c89195022",
+    "image_id": "sha256:d80b64c2fe9ce3d0e9a24051b21d5c224a3e5aae2d38ab861a7f12dcb92d4120",
+    "old_suffix": "6c6623d2592cdeb6bc0b2ffb84bfc55aeb3150f2bcc47298a7c0170c89195022",
+    "expected_image_id": "sha256:d80b64c2fe9ce3d0e9a24051b21d5c224a3e5aae2d38ab861a7f12dcb92d4120"
   },
   {
     "service": "market-ws",
-    "expected": "127.0.0.1:56918/vector-drift-e50700cba2/app:sha-832de9b5c2ff5c25351c25fa2e110a78a5f574ca@sha256:14f08273677411a59a40f8e3281923df27c95ad272c2dca18cc37e5e2e6c2e2a",
-    "compose": "127.0.0.1:56918/vector-drift-e50700cba2/app:sha-832de9b5c2ff5c25351c25fa2e110a78a5f574ca@sha256:14f08273677411a59a40f8e3281923df27c95ad272c2dca18cc37e5e2e6c2e2a",
-    "config_image": "127.0.0.1:56918/vector-drift-e50700cba2/app:sha-832de9b5c2ff5c25351c25fa2e110a78a5f574ca@sha256:14f08273677411a59a40f8e3281923df27c95ad272c2dca18cc37e5e2e6c2e2a",
-    "image_id": "sha256:65fb5ff6ff6a079346dd8427a69ee201c7a587ed7ee0dd7ae467267322b455d6",
-    "old_suffix": "14f08273677411a59a40f8e3281923df27c95ad272c2dca18cc37e5e2e6c2e2a",
-    "expected_image_id": "sha256:65fb5ff6ff6a079346dd8427a69ee201c7a587ed7ee0dd7ae467267322b455d6"
+    "expected": "127.0.0.1:59866/vector-drift-be9e7b8649/app:sha-832de9b5c2ff5c25351c25fa2e110a78a5f574ca@sha256:6c6623d2592cdeb6bc0b2ffb84bfc55aeb3150f2bcc47298a7c0170c89195022",
+    "compose": "127.0.0.1:59866/vector-drift-be9e7b8649/app:sha-832de9b5c2ff5c25351c25fa2e110a78a5f574ca@sha256:6c6623d2592cdeb6bc0b2ffb84bfc55aeb3150f2bcc47298a7c0170c89195022",
+    "config_image": "127.0.0.1:59866/vector-drift-be9e7b8649/app:sha-832de9b5c2ff5c25351c25fa2e110a78a5f574ca@sha256:6c6623d2592cdeb6bc0b2ffb84bfc55aeb3150f2bcc47298a7c0170c89195022",
+    "image_id": "sha256:d80b64c2fe9ce3d0e9a24051b21d5c224a3e5aae2d38ab861a7f12dcb92d4120",
+    "old_suffix": "6c6623d2592cdeb6bc0b2ffb84bfc55aeb3150f2bcc47298a7c0170c89195022",
+    "expected_image_id": "sha256:d80b64c2fe9ce3d0e9a24051b21d5c224a3e5aae2d38ab861a7f12dcb92d4120"
   },
   {
     "service": "audit-worker",
-    "expected": "127.0.0.1:56918/vector-drift-e50700cba2/app:sha-832de9b5c2ff5c25351c25fa2e110a78a5f574ca@sha256:14f08273677411a59a40f8e3281923df27c95ad272c2dca18cc37e5e2e6c2e2a",
-    "compose": "127.0.0.1:56918/vector-drift-e50700cba2/app:sha-832de9b5c2ff5c25351c25fa2e110a78a5f574ca@sha256:14f08273677411a59a40f8e3281923df27c95ad272c2dca18cc37e5e2e6c2e2a",
-    "config_image": "127.0.0.1:56918/vector-drift-e50700cba2/app:sha-832de9b5c2ff5c25351c25fa2e110a78a5f574ca@sha256:14f08273677411a59a40f8e3281923df27c95ad272c2dca18cc37e5e2e6c2e2a",
-    "image_id": "sha256:65fb5ff6ff6a079346dd8427a69ee201c7a587ed7ee0dd7ae467267322b455d6",
-    "old_suffix": "14f08273677411a59a40f8e3281923df27c95ad272c2dca18cc37e5e2e6c2e2a",
-    "expected_image_id": "sha256:65fb5ff6ff6a079346dd8427a69ee201c7a587ed7ee0dd7ae467267322b455d6"
+    "expected": "127.0.0.1:59866/vector-drift-be9e7b8649/app:sha-832de9b5c2ff5c25351c25fa2e110a78a5f574ca@sha256:6c6623d2592cdeb6bc0b2ffb84bfc55aeb3150f2bcc47298a7c0170c89195022",
+    "compose": "127.0.0.1:59866/vector-drift-be9e7b8649/app:sha-832de9b5c2ff5c25351c25fa2e110a78a5f574ca@sha256:6c6623d2592cdeb6bc0b2ffb84bfc55aeb3150f2bcc47298a7c0170c89195022",
+    "config_image": "127.0.0.1:59866/vector-drift-be9e7b8649/app:sha-832de9b5c2ff5c25351c25fa2e110a78a5f574ca@sha256:6c6623d2592cdeb6bc0b2ffb84bfc55aeb3150f2bcc47298a7c0170c89195022",
+    "image_id": "sha256:d80b64c2fe9ce3d0e9a24051b21d5c224a3e5aae2d38ab861a7f12dcb92d4120",
+    "old_suffix": "6c6623d2592cdeb6bc0b2ffb84bfc55aeb3150f2bcc47298a7c0170c89195022",
+    "expected_image_id": "sha256:d80b64c2fe9ce3d0e9a24051b21d5c224a3e5aae2d38ab861a7f12dcb92d4120"
   },
   {
     "service": "backtest-worker",
-    "expected": "127.0.0.1:56918/vector-drift-e50700cba2/app:sha-832de9b5c2ff5c25351c25fa2e110a78a5f574ca@sha256:14f08273677411a59a40f8e3281923df27c95ad272c2dca18cc37e5e2e6c2e2a",
-    "compose": "127.0.0.1:56918/vector-drift-e50700cba2/app:sha-832de9b5c2ff5c25351c25fa2e110a78a5f574ca@sha256:14f08273677411a59a40f8e3281923df27c95ad272c2dca18cc37e5e2e6c2e2a",
-    "config_image": "127.0.0.1:56918/vector-drift-e50700cba2/app:sha-832de9b5c2ff5c25351c25fa2e110a78a5f574ca@sha256:14f08273677411a59a40f8e3281923df27c95ad272c2dca18cc37e5e2e6c2e2a",
-    "image_id": "sha256:65fb5ff6ff6a079346dd8427a69ee201c7a587ed7ee0dd7ae467267322b455d6",
-    "old_suffix": "14f08273677411a59a40f8e3281923df27c95ad272c2dca18cc37e5e2e6c2e2a",
-    "expected_image_id": "sha256:65fb5ff6ff6a079346dd8427a69ee201c7a587ed7ee0dd7ae467267322b455d6"
+    "expected": "127.0.0.1:59866/vector-drift-be9e7b8649/app:sha-832de9b5c2ff5c25351c25fa2e110a78a5f574ca@sha256:6c6623d2592cdeb6bc0b2ffb84bfc55aeb3150f2bcc47298a7c0170c89195022",
+    "compose": "127.0.0.1:59866/vector-drift-be9e7b8649/app:sha-832de9b5c2ff5c25351c25fa2e110a78a5f574ca@sha256:6c6623d2592cdeb6bc0b2ffb84bfc55aeb3150f2bcc47298a7c0170c89195022",
+    "config_image": "127.0.0.1:59866/vector-drift-be9e7b8649/app:sha-832de9b5c2ff5c25351c25fa2e110a78a5f574ca@sha256:6c6623d2592cdeb6bc0b2ffb84bfc55aeb3150f2bcc47298a7c0170c89195022",
+    "image_id": "sha256:d80b64c2fe9ce3d0e9a24051b21d5c224a3e5aae2d38ab861a7f12dcb92d4120",
+    "old_suffix": "6c6623d2592cdeb6bc0b2ffb84bfc55aeb3150f2bcc47298a7c0170c89195022",
+    "expected_image_id": "sha256:d80b64c2fe9ce3d0e9a24051b21d5c224a3e5aae2d38ab861a7f12dcb92d4120"
   },
   {
     "service": "research-worker",
-    "expected": "127.0.0.1:56918/vector-drift-e50700cba2/research-worker:sha-832de9b5c2ff5c25351c25fa2e110a78a5f574ca@sha256:d384b523391cc6b0c91f966f17d2be0e8f9607757f7aabdfdb724aa1a2e74d5f",
-    "compose": "127.0.0.1:56918/vector-drift-e50700cba2/research-worker:sha-832de9b5c2ff5c25351c25fa2e110a78a5f574ca@sha256:d384b523391cc6b0c91f966f17d2be0e8f9607757f7aabdfdb724aa1a2e74d5f",
-    "config_image": "127.0.0.1:56918/vector-drift-e50700cba2/research-worker:sha-832de9b5c2ff5c25351c25fa2e110a78a5f574ca@sha256:d384b523391cc6b0c91f966f17d2be0e8f9607757f7aabdfdb724aa1a2e74d5f",
-    "image_id": "sha256:76cc7cd96fb95dbdf17369bb4262da933d729854c5c096499d32ca57e495da10",
-    "old_suffix": "d384b523391cc6b0c91f966f17d2be0e8f9607757f7aabdfdb724aa1a2e74d5f",
-    "expected_image_id": "sha256:76cc7cd96fb95dbdf17369bb4262da933d729854c5c096499d32ca57e495da10"
+    "expected": "127.0.0.1:59866/vector-drift-be9e7b8649/research-worker:sha-832de9b5c2ff5c25351c25fa2e110a78a5f574ca@sha256:9951ae105e2686eaffda657db94dffd9be06d619bfaedcb6921e9efc63847668",
+    "compose": "127.0.0.1:59866/vector-drift-be9e7b8649/research-worker:sha-832de9b5c2ff5c25351c25fa2e110a78a5f574ca@sha256:9951ae105e2686eaffda657db94dffd9be06d619bfaedcb6921e9efc63847668",
+    "config_image": "127.0.0.1:59866/vector-drift-be9e7b8649/research-worker:sha-832de9b5c2ff5c25351c25fa2e110a78a5f574ca@sha256:9951ae105e2686eaffda657db94dffd9be06d619bfaedcb6921e9efc63847668",
+    "image_id": "sha256:dd71f0481cd7042faa606ac2034c50dc2a480188e0bf2fef0296166c70a6e584",
+    "old_suffix": "9951ae105e2686eaffda657db94dffd9be06d619bfaedcb6921e9efc63847668",
+    "expected_image_id": "sha256:dd71f0481cd7042faa606ac2034c50dc2a480188e0bf2fef0296166c70a6e584"
   }
 ]

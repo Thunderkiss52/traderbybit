@@ -8,7 +8,7 @@ The original `docker/scripts/validate-deployment-state.sh`, container inspection
 
 For `repository:sha-COMMIT@sha256:DIGEST`, that expansion returns **DIGEST**, not the SHA tag. The three application artifacts normally have three distinct registry digests. Eight app consumers share one suffix; web and research-worker supply the other two. Thus three correct component artifacts deterministically satisfy the fatal conditional. `recover-deployment-state.sh` duplicated the defect.
 
-The original validator has been executed against ten real, correct, isolated containers. Its fatal output is retained in `deployment-remediation/original-validator-reproduction.log`. The regression also independently compares every actual container image ID with Docker's resolution of its expected digest pin. This proves a defect sufficient to produce the reported failure; it does not establish whether additional drift coexisted in the historical production run.
+The original validator has been executed against ten real, correct, isolated containers. Its fatal output is retained in `deployment-remediation/original-validator-reproduction.log.gz`. The regression also independently compares every actual container image ID with Docker's resolution of its expected digest pin. This proves a defect sufficient to produce the reported failure; it does not establish whether additional drift coexisted in the historical production run.
 
 ## Execution path and identity contract
 
@@ -32,16 +32,16 @@ These are **isolated local values**, not historical production values. Each expe
 
 | Service | Expected = resolved Compose = actual Config.Image | Actual Docker image ID |
 |---|---|---|
-| app | `127.0.0.1:56918/vector-drift-e50700cba2/app:sha-832de9b5c2ff5c25351c25fa2e110a78a5f574ca@sha256:14f08273677411a59a40f8e3281923df27c95ad272c2dca18cc37e5e2e6c2e2a` | `sha256:65fb5ff6ff6a079346dd8427a69ee201c7a587ed7ee0dd7ae467267322b455d6` |
-| web | `127.0.0.1:56918/vector-drift-e50700cba2/web:sha-832de9b5c2ff5c25351c25fa2e110a78a5f574ca@sha256:0e1dd4f0737b5fb847c55d9d61e500c8c01d91424c74481cd634b95174f45ec8` | `sha256:ee45b66b3f04bfcb46f46b353a4445d73e0430086b23ba147f61b529704f19f1` |
-| queue | `127.0.0.1:56918/vector-drift-e50700cba2/app:sha-832de9b5c2ff5c25351c25fa2e110a78a5f574ca@sha256:14f08273677411a59a40f8e3281923df27c95ad272c2dca18cc37e5e2e6c2e2a` | `sha256:65fb5ff6ff6a079346dd8427a69ee201c7a587ed7ee0dd7ae467267322b455d6` |
-| queue-bybit | `127.0.0.1:56918/vector-drift-e50700cba2/app:sha-832de9b5c2ff5c25351c25fa2e110a78a5f574ca@sha256:14f08273677411a59a40f8e3281923df27c95ad272c2dca18cc37e5e2e6c2e2a` | `sha256:65fb5ff6ff6a079346dd8427a69ee201c7a587ed7ee0dd7ae467267322b455d6` |
-| queue-binance | `127.0.0.1:56918/vector-drift-e50700cba2/app:sha-832de9b5c2ff5c25351c25fa2e110a78a5f574ca@sha256:14f08273677411a59a40f8e3281923df27c95ad272c2dca18cc37e5e2e6c2e2a` | `sha256:65fb5ff6ff6a079346dd8427a69ee201c7a587ed7ee0dd7ae467267322b455d6` |
-| scheduler | `127.0.0.1:56918/vector-drift-e50700cba2/app:sha-832de9b5c2ff5c25351c25fa2e110a78a5f574ca@sha256:14f08273677411a59a40f8e3281923df27c95ad272c2dca18cc37e5e2e6c2e2a` | `sha256:65fb5ff6ff6a079346dd8427a69ee201c7a587ed7ee0dd7ae467267322b455d6` |
-| market-ws | `127.0.0.1:56918/vector-drift-e50700cba2/app:sha-832de9b5c2ff5c25351c25fa2e110a78a5f574ca@sha256:14f08273677411a59a40f8e3281923df27c95ad272c2dca18cc37e5e2e6c2e2a` | `sha256:65fb5ff6ff6a079346dd8427a69ee201c7a587ed7ee0dd7ae467267322b455d6` |
-| audit-worker | `127.0.0.1:56918/vector-drift-e50700cba2/app:sha-832de9b5c2ff5c25351c25fa2e110a78a5f574ca@sha256:14f08273677411a59a40f8e3281923df27c95ad272c2dca18cc37e5e2e6c2e2a` | `sha256:65fb5ff6ff6a079346dd8427a69ee201c7a587ed7ee0dd7ae467267322b455d6` |
-| backtest-worker | `127.0.0.1:56918/vector-drift-e50700cba2/app:sha-832de9b5c2ff5c25351c25fa2e110a78a5f574ca@sha256:14f08273677411a59a40f8e3281923df27c95ad272c2dca18cc37e5e2e6c2e2a` | `sha256:65fb5ff6ff6a079346dd8427a69ee201c7a587ed7ee0dd7ae467267322b455d6` |
-| research-worker | `127.0.0.1:56918/vector-drift-e50700cba2/research-worker:sha-832de9b5c2ff5c25351c25fa2e110a78a5f574ca@sha256:d384b523391cc6b0c91f966f17d2be0e8f9607757f7aabdfdb724aa1a2e74d5f` | `sha256:76cc7cd96fb95dbdf17369bb4262da933d729854c5c096499d32ca57e495da10` |
+| app | `127.0.0.1:59866/vector-drift-be9e7b8649/app:sha-832de9b5c2ff5c25351c25fa2e110a78a5f574ca@sha256:6c6623d2592cdeb6bc0b2ffb84bfc55aeb3150f2bcc47298a7c0170c89195022` | `sha256:d80b64c2fe9ce3d0e9a24051b21d5c224a3e5aae2d38ab861a7f12dcb92d4120` |
+| web | `127.0.0.1:59866/vector-drift-be9e7b8649/web:sha-832de9b5c2ff5c25351c25fa2e110a78a5f574ca@sha256:a294aa48e8117a47a05f3a022c30bba940f8a214a9b503b1c2044c3458522d29` | `sha256:a33c28225eb3d2596f1f168ecbaa7169a8a282b76e175df0dde9ebe6a0081512` |
+| queue | `127.0.0.1:59866/vector-drift-be9e7b8649/app:sha-832de9b5c2ff5c25351c25fa2e110a78a5f574ca@sha256:6c6623d2592cdeb6bc0b2ffb84bfc55aeb3150f2bcc47298a7c0170c89195022` | `sha256:d80b64c2fe9ce3d0e9a24051b21d5c224a3e5aae2d38ab861a7f12dcb92d4120` |
+| queue-bybit | `127.0.0.1:59866/vector-drift-be9e7b8649/app:sha-832de9b5c2ff5c25351c25fa2e110a78a5f574ca@sha256:6c6623d2592cdeb6bc0b2ffb84bfc55aeb3150f2bcc47298a7c0170c89195022` | `sha256:d80b64c2fe9ce3d0e9a24051b21d5c224a3e5aae2d38ab861a7f12dcb92d4120` |
+| queue-binance | `127.0.0.1:59866/vector-drift-be9e7b8649/app:sha-832de9b5c2ff5c25351c25fa2e110a78a5f574ca@sha256:6c6623d2592cdeb6bc0b2ffb84bfc55aeb3150f2bcc47298a7c0170c89195022` | `sha256:d80b64c2fe9ce3d0e9a24051b21d5c224a3e5aae2d38ab861a7f12dcb92d4120` |
+| scheduler | `127.0.0.1:59866/vector-drift-be9e7b8649/app:sha-832de9b5c2ff5c25351c25fa2e110a78a5f574ca@sha256:6c6623d2592cdeb6bc0b2ffb84bfc55aeb3150f2bcc47298a7c0170c89195022` | `sha256:d80b64c2fe9ce3d0e9a24051b21d5c224a3e5aae2d38ab861a7f12dcb92d4120` |
+| market-ws | `127.0.0.1:59866/vector-drift-be9e7b8649/app:sha-832de9b5c2ff5c25351c25fa2e110a78a5f574ca@sha256:6c6623d2592cdeb6bc0b2ffb84bfc55aeb3150f2bcc47298a7c0170c89195022` | `sha256:d80b64c2fe9ce3d0e9a24051b21d5c224a3e5aae2d38ab861a7f12dcb92d4120` |
+| audit-worker | `127.0.0.1:59866/vector-drift-be9e7b8649/app:sha-832de9b5c2ff5c25351c25fa2e110a78a5f574ca@sha256:6c6623d2592cdeb6bc0b2ffb84bfc55aeb3150f2bcc47298a7c0170c89195022` | `sha256:d80b64c2fe9ce3d0e9a24051b21d5c224a3e5aae2d38ab861a7f12dcb92d4120` |
+| backtest-worker | `127.0.0.1:59866/vector-drift-be9e7b8649/app:sha-832de9b5c2ff5c25351c25fa2e110a78a5f574ca@sha256:6c6623d2592cdeb6bc0b2ffb84bfc55aeb3150f2bcc47298a7c0170c89195022` | `sha256:d80b64c2fe9ce3d0e9a24051b21d5c224a3e5aae2d38ab861a7f12dcb92d4120` |
+| research-worker | `127.0.0.1:59866/vector-drift-be9e7b8649/research-worker:sha-832de9b5c2ff5c25351c25fa2e110a78a5f574ca@sha256:9951ae105e2686eaffda657db94dffd9be06d619bfaedcb6921e9efc63847668` | `sha256:dd71f0481cd7042faa606ac2034c50dc2a480188e0bf2fef0296166c70a6e584` |
 
 ## Historical production evidence boundary
 
