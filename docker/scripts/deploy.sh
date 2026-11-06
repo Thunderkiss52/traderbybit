@@ -41,7 +41,7 @@ if [[ "${DEPLOY_MODE:-pull}" == "pull" ]]; then
         fi
     done
     echo "Pulling immutable images (app, web, research-worker) for tag ${IMAGE_TAG:-latest}..."
-    if ! compose pull app web research-worker; then
+    if ! pull_release_images; then
         echo "Error: Failed to pull required immutable images for tag ${IMAGE_TAG:-latest}." >&2
         echo "Existing running containers are preserved." >&2
         exit 1

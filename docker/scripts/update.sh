@@ -87,7 +87,7 @@ if [[ "${DEPLOY_MODE:-pull}" == "pull" ]]; then
         fi
     done
     echo "Pulling immutable images (app, web, research-worker) for tag ${NEW_TAG}..."
-    if ! timing_run ghcr_image_pull compose pull app web research-worker; then
+    if ! timing_run ghcr_image_pull pull_release_images; then
         echo "Error: Failed to pull required immutable images for tag ${NEW_TAG}." >&2
         echo "Existing running containers are preserved." >&2
         exit 1

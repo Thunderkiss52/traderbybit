@@ -152,6 +152,24 @@ for s in services:
 '
 }
 
+pull_release_images() {
+    local overlay="${DEPLOY_STATE_DIR}/release-images/${IMAGE_TAG}.json" policy=always
+    # Only the final, complete exact-SHA digest overlay authorizes cache reuse.
+    # Legacy tag-only definitions retain registry verification on every pull.
+    if [[ -f "${overlay}" ]] && python3 - "${overlay}" "${IMAGE_TAG}" "${APPLICATION_SERVICES[@]}" <<'PYCODE'
+import json, re, sys
+services = json.load(open(sys.argv[1]))["services"]
+valid = set(services) == set(sys.argv[3:]) and all(
+    re.fullmatch(r".+:" + re.escape(sys.argv[2]) + r"@sha256:[a-f0-9]{64}", s.get("image", ""))
+    for s in services.values())
+sys.exit(0 if valid else 1)
+PYCODE
+    then
+        policy=missing
+    fi
+    compose pull --policy "${policy}" app web research-worker
+}
+
 retain_release_image() {
     local reference="$1"
     docker image inspect "${reference}" >/dev/null || return 1
@@ -242,7 +260,7 @@ stop_transition_observer() {
 transition_application_services() {
     local status
     TRANSITION_OBSERVER_FILE="$(mktemp "${DEPLOY_STATE_DIR}/transition.XXXXXX")"
-    python3 "${PROJECT_ROOT}/docker/scripts/observe-transition.py" "${COMPOSE_PROJECT_NAME}" "${TRANSITION_OBSERVER_FILE}" &
+    python3 "${PROJECT_ROOT}/docker/scripts/observe-transition.py" "${COMPOSE_PROJECT_NAME}" "${TRANSITION_OBSERVER_FILE}" 200>&- &
     TRANSITION_OBSERVER_PID=$!
     if compose up -d --no-build --no-deps "${APPLICATION_SERVICES[@]}"; then status=0; else status=$?; fi
     stop_transition_observer

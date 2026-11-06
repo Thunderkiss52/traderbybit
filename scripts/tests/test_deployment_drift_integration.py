@@ -3,6 +3,7 @@ import json
 import os
 from pathlib import Path
 import shutil
+import socket
 import subprocess
 import tempfile
 import time
@@ -26,6 +27,7 @@ class DeploymentDriftIntegrationTests(unittest.TestCase):
         cls.root = Path(cls.tmp.name)
         cls.project = 'vector-drift-' + uuid.uuid4().hex[:10]
         cls.registry = cls.project + '-registry'
+        (cls.root / '.dockerignore').write_text('*\n!Dockerfile\n')
         cls.refs = {}
         cls.owned_tags = []
         cls.addClassCleanup(cls.cleanup)
@@ -38,8 +40,13 @@ UI_BASIC_AUTH_USER=fixture
 UI_BASIC_AUTH_PASSWORD=fixture
 IMAGE_TAG=sha-{SHA}
 ''')
+        with socket.socket() as reservation:
+            reservation.bind(('127.0.0.1', 0))
+            registry_port = reservation.getsockname()[1]
+        (cls.root / 'registry-data').mkdir()
         (cls.root / 'registry.json').write_text(json.dumps({'services': {'registry': {
-            'image': 'registry:2', 'tmpfs': ['/var/lib/registry'], 'ports': ['127.0.0.1::5000'],
+            'image': 'registry:2', 'user': f'{os.getuid()}:{os.getgid()}',
+            'volumes': [f'{cls.root}/registry-data:/var/lib/registry'], 'ports': [f'127.0.0.1:{registry_port}:5000'],
             'labels': {'vector.fixture': cls.project}}}}))
         result = cls.registry_compose('up', '-d')
         if result.returncode:
@@ -158,6 +165,58 @@ CMD ["sleep", "3600"]
                     self.assertIn(service, result.stdout)
                 finally:
                     self.compose('up', '-d', '--wait', '--wait-timeout', '30', service, check=True)
+
+    def test_cached_digest_pull_avoids_registry_and_missing_content_fails(self):
+        start = time.monotonic()
+        result = self.compose('pull', '--policy', 'always', 'app', 'web', 'research-worker')
+        self.assertEqual(0, result.returncode, result.stdout)
+        baseline_ms = (time.monotonic() - start) * 1000
+        start = time.monotonic()
+        result = run('bash', '-c', 'source "$1"; pull_release_images', '_',
+                     str(self.root / 'docker/scripts/common.sh'), env=self.env)
+        self.assertEqual(0, result.returncode, result.stdout)
+        cached_ms = (time.monotonic() - start) * 1000
+        self.registry_compose('stop', 'registry')
+        try:
+            result = run('bash', '-c', 'source "$1"; pull_release_images', '_',
+                         str(self.root / 'docker/scripts/common.sh'), env=self.env)
+            self.assertEqual(0, result.returncode, result.stdout)
+            # A missing digest must still contact the registry and fail closed.
+            path = self.root / f'state/release-images/sha-{SHA}.json'
+            original = path.read_text()
+            legacy = json.loads(original)
+            for service in legacy['services'].values():
+                service['image'] = service['image'].split('@')[0]
+            path.write_text(json.dumps(legacy))
+            result = run('bash', '-c', 'source "$1"; pull_release_images', '_',
+                         str(self.root / 'docker/scripts/common.sh'), env=self.env)
+            self.assertNotEqual(0, result.returncode, result.stdout)
+            changed = json.loads(original)
+            changed['services']['research-worker']['image'] = self.refs['research-worker'].split('@')[0] + '@sha256:' + '0' * 64
+            path.write_text(json.dumps(changed))
+            try:
+                result = run('bash', '-c', 'source "$1"; pull_release_images', '_',
+                             str(self.root / 'docker/scripts/common.sh'), env=self.env)
+                self.assertNotEqual(0, result.returncode, result.stdout)
+            finally:
+                path.write_text(original)
+        finally:
+            self.registry_compose('start', 'registry')
+            import urllib.request
+            for _ in range(50):
+                try:
+                    urllib.request.urlopen('http://' + self.refs['app'].split('/')[0] + '/v2/', timeout=1).close()
+                    break
+                except OSError:
+                    time.sleep(.1)
+            else:
+                self.fail('Isolated registry did not recover after offline cache test')
+        evidence = os.environ.get('VECTOR_DEPLOY_EVIDENCE')
+        if evidence:
+            (Path(evidence) / 'pull-benchmark.json').write_text(json.dumps(dict(
+                synthetic=True, always_pull_ms=baseline_ms, cached_digest_pull_ms=cached_ms,
+                cached_with_registry_offline='PASS', missing_digest_with_registry_offline='REJECTED',
+                scope='local registry, cached Alpine artifacts; not GHCR/VPS'), indent=2) + '\n')
 
     def test_equivalent_tag_and_image_id_creation_references(self):
         ref = self.refs['app']

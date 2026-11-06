@@ -1,6 +1,8 @@
 #!/usr/bin/env python3
 """Measure observed worker shutdown using one host's monotonic clock."""
+import ctypes
 import json
+import os
 import signal
 import subprocess
 import sys
@@ -22,6 +24,12 @@ def stop(_signal, _frame):
 
 signal.signal(signal.SIGTERM, stop)
 signal.signal(signal.SIGINT, stop)
+# Linux: terminate the read-only event stream if the deployment shell is killed.
+parent = os.getppid()
+if ctypes.CDLL(None).prctl(1, signal.SIGTERM, 0, 0, 0) != 0:
+    stream.terminate()
+if os.getppid() != parent:
+    stream.terminate()
 try:
     for line in stream.stdout:
         event = json.loads(line)
@@ -35,8 +43,9 @@ try:
         elif action == 'die' and service in started:
             durations[service] = now - started[service]
 finally:
-    stream.wait()
+    status = stream.wait()
+    observation_status = 'OBSERVED' if durations else 'NO_SHUTDOWN_OBSERVED' if status in (0, -signal.SIGTERM, -signal.SIGINT) else 'UNAVAILABLE'
     with open(output, 'w') as out:
-        json.dump({'stage': 'worker_shutdown_grace', 'elapsed_ms': max(durations.values(), default=0),
+        json.dump({'stage': 'worker_shutdown_grace', 'elapsed_ms': max(durations.values(), default=None),
                    'services_ms': durations, 'observation': 'monotonic receipt of Docker kill/die events',
-                   'status': 'OBSERVED' if durations else 'NO_SHUTDOWN_OBSERVED'}, out)
+                   'status': observation_status}, out)
