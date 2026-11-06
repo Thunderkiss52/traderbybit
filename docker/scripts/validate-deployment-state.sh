@@ -139,7 +139,7 @@ fi
 # 2. Container Image Drift Inspection
 declare -A RUNNING_IMAGES
 declare -A SERVICE_STATUS
-UNIQUE_RUNNING_TAGS=()
+declare -A EXPECTED_IMAGES
 
 for svc in "${APPLICATION_SERVICES[@]}"; do
     RUNNING_IMAGES["${svc}"]="NOT_CHECKED"
@@ -147,28 +147,26 @@ for svc in "${APPLICATION_SERVICES[@]}"; do
 done
 
 if [[ "${SKIP_DOCKER_INSPECT:-0}" != "1" ]]; then
+    validation_tag="${VALIDATE_IMAGE_TAG:-${CURRENT_TAG:-${IMAGE_TAG}}}"
+    resolved_images="$(resolve_service_image_references "${validation_tag}")" || {
+        echo '[FATAL] Cannot resolve all ten application service images.' >&2; exit 1;
+    }
+    while IFS='=' read -r svc ref; do EXPECTED_IMAGES["${svc}"]="${ref}"; done <<< "${resolved_images}"
     for svc in "${APPLICATION_SERVICES[@]}"; do
         cid="$(compose ps -q "${svc}" 2>/dev/null || true)"
         if [[ -n "${cid}" ]]; then
             img="$(docker inspect --format '{{.Config.Image}}' "${cid}" 2>/dev/null || true)"
-            st="$(docker inspect --format '{{if .State.Health}}{{.State.Health.Status}}{{else}}{{.State.Status}}{{end}}' "${cid}" 2>/dev/null || true)"
+            st="$(docker inspect --format '{{if and .State.Running (not .State.Restarting) (not .State.Paused)}}{{if .State.Health}}{{.State.Health.Status}}{{else}}running{{end}}{{else}}{{.State.Status}}{{end}}' "${cid}" 2>/dev/null || true)"
             RUNNING_IMAGES["${svc}"]="${img}"
             SERVICE_STATUS["${svc}"]="${st}"
-            if [[ -n "${img}" ]]; then
-                tag_part="${img##*:}"
-                if [[ ! " ${UNIQUE_RUNNING_TAGS[*]:-} " =~ " ${tag_part} " ]]; then
-                    UNIQUE_RUNNING_TAGS+=("${tag_part}")
-                fi
-            fi
+            if ! verify_image_identity "${svc}" "${EXPECTED_IMAGES[${svc}]}"; then HAS_DRIFT=1; fi
+            if [[ "${MODE}" == "post-deploy" && "${st}" != healthy && "${st}" != running ]]; then HAS_DRIFT=1; fi
         else
             RUNNING_IMAGES["${svc}"]="NOT_RUNNING"
             SERVICE_STATUS["${svc}"]="STOPPED"
+            if [[ -n "${CURRENT_TAG}${VALIDATE_IMAGE_TAG:-}" ]]; then HAS_DRIFT=1; fi
         fi
     done
-
-    if (( ${#UNIQUE_RUNNING_TAGS[@]} > 1 )); then
-        HAS_DRIFT=1
-    fi
 fi
 
 # 3. Mode-specific verifications
@@ -250,7 +248,7 @@ case "${MODE}" in
         fi
 
         if [[ "${SKIP_DOCKER_INSPECT:-0}" != "1" ]]; then
-            # Validate that all 8 service images for PREVIOUS_TAG exist locally
+            # Validate that all ten service images for PREVIOUS_TAG exist locally
             echo "Verifying local Docker images for rollback target: ${PREVIOUS_TAG}..."
             resolved_images=$(resolve_service_image_references "${PREVIOUS_TAG}") || {
                 echo "[FATAL] Failed to resolve service images from compose configuration for ${PREVIOUS_TAG}." >&2
@@ -273,29 +271,8 @@ case "${MODE}" in
                 exit 2
             fi
 
-            if [[ -n "${PREVIOUS_RELEASE}" ]]; then
-                prev_release_dir="${PROJECT_ROOT}/releases/${PREVIOUS_RELEASE}"
-                if [[ -d "${prev_release_dir}" ]]; then
-                    echo "Verifying migration history compatibility with release ${PREVIOUS_RELEASE}..."
-                    # Check PostgreSQL connection and migrations
-                    if compose exec -T postgres pg_isready -U "${POSTGRES_USER}" -d "${POSTGRES_DB}" >/dev/null 2>&1; then
-                        applied_migs=$(compose exec -T postgres psql -U "${POSTGRES_USER}" -d "${POSTGRES_DB}" -Atc \
-                            "SELECT migration FROM migrations ORDER BY id ASC;" 2>/dev/null || true)
-                        while read -r mig; do
-                            [[ -n "${mig}" ]] || continue
-                            if [[ ! -f "${prev_release_dir}/database/migrations/${mig}.php" ]]; then
-                                echo "[WARN] Applied migration '${mig}' is not present in rollback candidate ${PREVIOUS_RELEASE}."
-                                # Verify if migration had breaking column/table drops
-                                if grep -Eqi 'dropTable|dropColumn' "database/migrations/${mig}.php" 2>/dev/null; then
-                                    echo "[FATAL] Applied migration '${mig}' dropped schema elements required by rollback target." >&2
-                                    echo "Rollback blocked fail-closed due to schema incompatibility." >&2
-                                    exit 2
-                                fi
-                            fi
-                        done <<< "${applied_migs}"
-                    fi
-                fi
-            fi
+            assert_rollback_migration_state "${PREVIOUS_TAG}" || exit 2
+
         fi
 
         echo "Pre-rollback validation passed for target ${PREVIOUS_TAG}."
@@ -303,6 +280,7 @@ case "${MODE}" in
         ;;
 
     post-deploy)
+        if (( IS_CORRUPTED )); then echo "[FATAL] ${CORRUPTION_REASON}" >&2; exit 1; fi
         if (( HAS_DRIFT )); then
             echo "[FATAL] Post-deployment check failed: container drift detected." >&2
             for svc in "${APPLICATION_SERVICES[@]}"; do

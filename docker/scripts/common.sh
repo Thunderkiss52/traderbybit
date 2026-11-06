@@ -3,6 +3,7 @@ set -Eeuo pipefail
 
 PROJECT_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 DEPLOY_STATE_DIR="${DEPLOY_STATE_DIR:-${PROJECT_ROOT}}"
+source "${PROJECT_ROOT}/docker/scripts/timing.sh"
 REQUESTED_ENV_FILE="${ENV_FILE:-${PROJECT_ROOT}/.env.production}"
 REQUESTED_IMAGE_TAG="${IMAGE_TAG:-}"
 ENV_FILE="${REQUESTED_ENV_FILE}"
@@ -113,11 +114,12 @@ assert_free_disk_space() {
 }
 
 wait_healthy() {
-    local service="$1" timeout="${2:-180}" elapsed=0 id status
-    while (( elapsed < timeout )); do
+    local service="$1" timeout="${2:-180}" start id status
+    start="$(monotonic_ms)"
+    while (( $(monotonic_ms) - start < timeout * 1000 )); do
         id="$(compose ps -q "${service}")"
         if [[ -n "${id}" ]]; then
-            status="$(docker inspect --format '{{if .State.Health}}{{.State.Health.Status}}{{else}}{{.State.Status}}{{end}}' "${id}")"
+            status="$(docker inspect --format '{{if and .State.Running (not .State.Restarting) (not .State.Paused)}}{{if .State.Health}}{{.State.Health.Status}}{{else}}running{{end}}{{else}}{{.State.Status}}{{end}}' "${id}")"
             if [[ "${status}" == "healthy" || "${status}" == "running" ]]; then
                 return 0
             fi
@@ -127,7 +129,6 @@ wait_healthy() {
             fi
         fi
         sleep 3
-        elapsed=$((elapsed + 3))
     done
     echo "Timed out waiting for ${service}." >&2
     compose logs --tail=100 "${service}" >&2
@@ -211,17 +212,48 @@ check_service_readiness() {
 }
 
 wait_service_ready() {
-    local service="$1" timeout="${2:-120}" elapsed=0
-    while (( elapsed < timeout )); do
+    local service="$1" timeout="${2:-120}" start
+    start="$(monotonic_ms)"
+    wait_healthy "${service}" "${timeout}" || return 1
+    while (( $(monotonic_ms) - start < timeout * 1000 )); do
         if check_service_readiness "${service}"; then
             return 0
         fi
         sleep 3
-        elapsed=$((elapsed + 3))
     done
     echo "Timed out waiting for readiness of ${service}." >&2
     compose logs --tail=100 "${service}" >&2
     return 1
+}
+
+stop_transition_observer() {
+    if [[ -n "${TRANSITION_OBSERVER_PID:-}" ]]; then
+        kill -TERM "${TRANSITION_OBSERVER_PID}" 2>/dev/null || true
+        wait "${TRANSITION_OBSERVER_PID}" 2>/dev/null || true
+        unset TRANSITION_OBSERVER_PID
+        if [[ -s "${TRANSITION_OBSERVER_FILE}" ]]; then
+            printf 'VECTOR_TIMING %s\n' "$(<"${TRANSITION_OBSERVER_FILE}")"
+            [[ -z "${DEPLOY_TIMING_FILE:-}" ]] || { cat "${TRANSITION_OBSERVER_FILE}" >>"${DEPLOY_TIMING_FILE}"; printf '\n' >>"${DEPLOY_TIMING_FILE}"; }
+        fi
+        rm -f -- "${TRANSITION_OBSERVER_FILE}"
+    fi
+}
+
+transition_application_services() {
+    local status
+    TRANSITION_OBSERVER_FILE="$(mktemp "${DEPLOY_STATE_DIR}/transition.XXXXXX")"
+    python3 "${PROJECT_ROOT}/docker/scripts/observe-transition.py" "${COMPOSE_PROJECT_NAME}" "${TRANSITION_OBSERVER_FILE}" &
+    TRANSITION_OBSERVER_PID=$!
+    if compose up -d --no-build --no-deps "${APPLICATION_SERVICES[@]}"; then status=0; else status=$?; fi
+    stop_transition_observer
+    return "${status}"
+}
+
+wait_for_application_services() {
+    local service
+    for service in "${APPLICATION_SERVICES[@]}"; do
+        wait_service_ready "${service}" 120 || return 1
+    done
 }
 
 is_ancestor_pid() {
@@ -251,7 +283,9 @@ acquire_deployment_lock() {
         echo "operation=${op}" >>"${lockfile}"
         echo "locked_at=$(date -u +%Y-%m-%dT%H:%M:%SZ)" >>"${lockfile}"
         export DEPLOYMENT_LOCK_OWNER_PID="$$"
-        trap release_deployment_lock EXIT INT TERM
+        trap release_deployment_lock EXIT
+        trap 'exit 130' INT
+        trap 'exit 143' TERM
         return 0
     fi
 
@@ -296,42 +330,71 @@ verify_image_identity() {
     expected_id="$(docker image inspect --format '{{.Id}}' "${expected_ref}" 2>/dev/null || true)"
     [[ -n "${expected_id}" ]] || { echo "[FATAL] Expected image '${expected_ref}' not found in Docker cache." >&2; return 1; }
 
-    # 1. Verify container image ID matches expected release artifact image ID (strip optional sha256: prefix)
-    if [[ "${actual_id#sha256:}" != "${expected_id#sha256:}" ]]; then
-        echo "[FATAL] Service '${service}' image ID mismatch! Running: ${actual_id}, Expected: ${expected_id}" >&2
+    # A registry index/manifest digest is not a Docker image config ID. Resolve the
+    # approved reference through Docker for this host platform, then compare IDs.
+    [[ "${actual_id}" =~ ^sha256:[0-9a-f]{64}$ && "${expected_id}" =~ ^sha256:[0-9a-f]{64}$ ]] || {
+        echo "[FATAL] Invalid Docker image identity for '${service}'." >&2; return 1;
+    }
+    if [[ "${actual_id}" != "${expected_id}" ]]; then
+        echo "[FATAL] Service '${service}' image ID mismatch! Running: ${actual_id} (${actual_img}), Expected: ${expected_id} (${expected_ref})" >&2
         return 1
     fi
-
-    # 2. Verify Config.Image matches expected reference or target tag
-    local exp_tag="${expected_ref##*:}"
-    if [[ "${actual_img}" != "${expected_ref}" && "${actual_img##*:}" != "${exp_tag}" ]]; then
-        echo "[FATAL] Service '${service}' Config.Image mismatch! Running: ${actual_img}, Expected: ${expected_ref}" >&2
-        return 1
-    fi
-
-    # 3. Compare RepoDigests when non-empty on both sides
-    local actual_digests expected_digests
-    actual_digests="$(docker image inspect --format '{{json .RepoDigests}}' "${actual_id}" 2>/dev/null || echo "[]")"
-    expected_digests="$(docker image inspect --format '{{json .RepoDigests}}' "${expected_ref}" 2>/dev/null || echo "[]")"
-    if [[ "${actual_digests}" != "[]" && "${actual_digests}" != "null" && -n "${actual_digests}" && \
-          "${expected_digests}" != "[]" && "${expected_digests}" != "null" && -n "${expected_digests}" ]]; then
-        local match_digest
-        match_digest="$(python3 -c "
-import json, sys
-try:
-    a = set(json.loads(sys.argv[1]))
-    e = set(json.loads(sys.argv[2]))
-    print('1' if (a & e) else '0')
-except Exception:
-    print('1')
-" "${actual_digests}" "${expected_digests}" 2>/dev/null || echo "1")"
-        if [[ "${match_digest}" == "0" ]]; then
-            echo "[FATAL] Service '${service}' RepoDigests mismatch! Running: ${actual_digests}, Expected: ${expected_digests}" >&2
-            return 1
-        fi
-    fi
+    verify_release_image "${expected_ref}" || return 1
+    echo "[IMAGE] service=${service} expected=${expected_ref} creation_ref=${actual_img} image_id=${actual_id} result=PASS"
 
     return 0
+}
+
+verify_release_image() {
+    local reference="$1" revision expected_sha
+    docker image inspect "${reference}" >/dev/null || return 1
+    if [[ "${reference}" == *@* ]]; then
+        [[ "${reference}" =~ :sha-([0-9a-f]{40})@sha256:[0-9a-f]{64}$ ]] || {
+            echo "[FATAL] Invalid immutable release reference: ${reference}" >&2; return 1;
+        }
+        expected_sha="${BASH_REMATCH[1]}"
+        revision="$(docker image inspect --format '{{index .Config.Labels "org.opencontainers.image.revision"}}' "${reference}")" || return 1
+        [[ "${revision}" == "${expected_sha}" ]] || {
+            echo "[FATAL] OCI revision mismatch for ${reference}: ${revision}" >&2; return 1;
+        }
+    fi
+}
+
+# Snapshot the migration ledger of a verified known-good release. Changed or
+# uncertain migration state never authorizes application rollback.
+migration_state() {
+    compose exec -T postgres psql -v ON_ERROR_STOP=1 -U "${POSTGRES_USER}" -d "${POSTGRES_DB}" -Atc \
+        'SELECT migration FROM migrations ORDER BY migration;'
+}
+
+schema_state() {
+    # pg_dump 17 emits random psql restriction keys. Exclude only those transport
+    # guards and comments; retain all executable schema DDL in the fingerprint.
+    compose exec -T postgres pg_dump -U "${POSTGRES_USER}" -d "${POSTGRES_DB}" \
+        --schema-only --no-owner --no-acl --no-comments --quote-all-identifiers \
+        | sed -E '/^\\(un)?restrict /d; /^--/d' | sha256sum | cut -d' ' -f1
+}
+
+assert_rollback_migration_state() {
+    local target="$1" actual actual_schema snapshot="${DEPLOY_STATE_DIR}/release-schemas/${1}.migrations"
+    [[ -s "${snapshot}" ]] || { echo "[BLOCKED] No known-good migration snapshot for ${target}." >&2; return 1; }
+    if [[ -f "${DEPLOY_STATE_DIR}/update-in-progress" ]] &&
+       grep -Eq 'MIGRATING|BLOCKED_SCHEMA_REVIEW|ROLLBACK_FAILED' "${DEPLOY_STATE_DIR}/update-in-progress"; then
+        echo '[BLOCKED] Incomplete migration/recovery journal; schema state is uncertain.' >&2
+        return 1
+    fi
+    [[ -s "${snapshot%.migrations}.schema.sha256" ]] || {
+        echo "[BLOCKED] No exact schema fingerprint for ${target}." >&2; return 1;
+    }
+    actual_schema="$(schema_state)" || return 1
+    [[ "${actual_schema}" == "$(<"${snapshot%.migrations}.schema.sha256")" ]] || {
+        echo '[BLOCKED] PostgreSQL schema differs from known-good release; no application rollback.' >&2; return 1;
+    }
+    actual="$(migration_state)" || return 1
+    [[ "${actual}" == "$(<"${snapshot}")" ]] || {
+        echo "[BLOCKED] Migration state changed since ${target}; backward compatibility requires explicit review. No automatic database reversal." >&2
+        return 1
+    }
 }
 
 atomic_write() {

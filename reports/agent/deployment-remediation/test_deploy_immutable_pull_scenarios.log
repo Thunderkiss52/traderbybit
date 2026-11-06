@@ -1,0 +1,8 @@
+PASS: All three images available -> deploy succeeds
+PASS: Research-worker image missing -> aborts, no build fallback, preserves containers
+PASS: App image missing -> aborts, no build fallback, preserves containers
+PASS: Image pull failure -> aborts fail-closed, preserves containers
+PASS: Failed health check during container transition -> triggers application rollback
+--- Summary ---
+Total passed: 5
+Total failed: 0

@@ -19,8 +19,22 @@ TARGET="${BACKUP_DIR}/${COMPOSE_PROJECT_NAME}-${POSTGRES_DB}-${STAMP}.dump"
 TMP="${TARGET}.partial"
 trap 'rm -f "${TMP}"' EXIT
 
-compose exec -T postgres pg_dump -U "${POSTGRES_USER}" -d "${POSTGRES_DB}" --format=custom --compress=9 --no-owner --no-acl >"${TMP}"
-compose exec -T postgres pg_restore --list <"${TMP}" >/dev/null
+backup_start="$(monotonic_ms)"
+if compose exec -T postgres pg_dump -U "${POSTGRES_USER}" -d "${POSTGRES_DB}" --format=custom --compress=9 --no-owner --no-acl >"${TMP}"; then
+    timing_record postgres_backup_creation "${backup_start}"
+else
+    status=$?
+    timing_record postgres_backup_creation "${backup_start}" "${status}"
+    exit "${status}"
+fi
+backup_verify_start="$(monotonic_ms)"
+if compose exec -T postgres pg_restore --list <"${TMP}" >/dev/null; then
+    timing_record postgres_backup_verification "${backup_verify_start}"
+else
+    status=$?
+    timing_record postgres_backup_verification "${backup_verify_start}" "${status}"
+    exit "${status}"
+fi
 mv "${TMP}" "${TARGET}"
 (cd "${BACKUP_DIR}" && sha256sum "$(basename "${TARGET}")" >"$(basename "${TARGET}").sha256")
 trap - EXIT

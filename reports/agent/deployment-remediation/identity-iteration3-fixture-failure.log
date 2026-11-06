@@ -1,0 +1,13 @@
+.......E.
+======================================================================
+ERROR: test_worker_shutdown_monotonic_observer (scripts.tests.test_deployment_drift_integration.DeploymentDriftIntegrationTests)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/home/thunder/work/traderbybit/scripts/tests/test_deployment_drift_integration.py", line 249, in test_worker_shutdown_monotonic_observer
+    finally:
+KeyError: 'research-worker'
+
+----------------------------------------------------------------------
+Ran 9 tests in 307.920s
+
+FAILED (errors=1)

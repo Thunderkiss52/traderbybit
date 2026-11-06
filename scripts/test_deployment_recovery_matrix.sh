@@ -231,12 +231,24 @@ if [[ "$*" =~ image.*inspect ]]; then
             exit 1
         fi
     fi
-    echo "sha256:1111222233334444555566667777888899990000aaaa11112222333344445555"
+    python3 -c 'import hashlib,sys; print("sha256:" + hashlib.sha256(sys.argv[1].encode()).hexdigest())' "${img}"
     exit 0
 fi
 
 if [[ "$*" =~ inspect.*--format.*Image ]]; then
-    echo "sha256:1111222233334444555566667777888899990000aaaa11112222333344445555"
+    target="${@: -1}"
+    svc="${target#cid_}"
+    python3 - "${STATE_FILE}" "${svc}" <<'PYCODE'
+import hashlib, json, sys
+try:
+    data = json.load(open(sys.argv[1]))
+except (OSError, ValueError):
+    data = {}
+service = sys.argv[2]
+component = service if service in ('web', 'research-worker') else 'app'
+ref = data.get('services', {}).get(service, {}).get('image', f'bybit-signals-{component}:sha-94c853458e5a38f4bc46f32c4f95c56f52216e6c')
+print('sha256:' + hashlib.sha256(ref.encode()).hexdigest())
+PYCODE
     exit 0
 fi
 

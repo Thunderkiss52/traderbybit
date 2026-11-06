@@ -1,0 +1,11 @@
+VECTOR_TIMING {"stage":"remote_deployment_lock","elapsed_ms":0,"exit_code":0}
+VECTOR_TIMING {"stage":"remote_update_total","elapsed_ms":90,"exit_code":1}
+VECTOR_TIMING_SUMMARY {"events": [{"stage": "remote_deployment_lock", "elapsed_ms": 0, "exit_code": 0}, {"stage": "remote_update_total", "elapsed_ms": 90, "exit_code": 1}]}
+Traceback (most recent call last):
+  File "/tmp/vector-update-3mf20m59/docker/scripts/release-images.py", line 54, in <module>
+    main()
+  File "/tmp/vector-update-3mf20m59/docker/scripts/release-images.py", line 34, in main
+    result = overlay(json.loads(manifest.read_text()), sha)
+  File "/tmp/vector-update-3mf20m59/docker/scripts/release-images.py", line 22, in overlay
+    raise ValueError("Invalid image digest")
+ValueError: Invalid image digest

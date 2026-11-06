@@ -1,11 +1,11 @@
 {
   "status": "PROVISIONAL",
-  "source_head": "58350b4b16b519bb76447127f7e2ca0ff92cf89b",
+  "source_head": "832de9b5c2ff5c25351c25fa2e110a78a5f574ca",
   "assessment_head": "5b674960adc8ff6591134537763dce7a5bb0bb3c",
-  "assessment_date": "2026-11-05",
+  "assessment_date": "2026-11-06",
   "scope_baseline": "VECTOR-SCOPE-20261027-v1",
   "scope_hash": "6d207a2bd441156d909b72e93166ea2fb932c152c32627fd6d06083668d71117",
-  "registry_hash": "8f9d54584260c6e81d1bd7eb961a2da030c5f304637a85a920b746dc2343dc7d",
+  "registry_hash": "e020031f765d9eb0548f5d8b28283cb633c25874f0da9d6e7be8cb72cfc2439b",
   "overall": {
     "implementation": 0.0,
     "verification": 0.0,

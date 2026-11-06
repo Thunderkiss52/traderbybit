@@ -1,0 +1,45 @@
+{
+  "project": "vector-deploy-regression-29a59385",
+  "synthetic": true,
+  "database": "minimal isolated schema; no production/account reconciliation claim",
+  "results": [
+    {
+      "command": "real PostgreSQL backup.sh + pg_restore --list",
+      "exit_code": 0
+    },
+    {
+      "command": "exact PostgreSQL schema/migration snapshot permits unchanged schema",
+      "exit_code": 0
+    },
+    {
+      "command": "real DDL with unchanged migration ledger blocks rollback",
+      "exit_code": 0,
+      "observed_exit_code": 1
+    },
+    {
+      "command": "bash scripts/tests/test_docker_compose_image_resolution.sh",
+      "exit_code": 0,
+      "elapsed_seconds": 1.567
+    },
+    {
+      "command": "bash scripts/tests/test_deploy_immutable_pull_scenarios.sh",
+      "exit_code": 0,
+      "elapsed_seconds": 0.093
+    },
+    {
+      "command": "bash scripts/tests/test_deploy_workflow_ci_verification.sh",
+      "exit_code": 0,
+      "elapsed_seconds": 0.271
+    },
+    {
+      "command": "bash scripts/test_deployment_recovery_matrix.sh",
+      "exit_code": 0,
+      "elapsed_seconds": 13.874
+    },
+    {
+      "command": "bash scripts/test_same_sha_configuration_refresh.sh",
+      "exit_code": 0,
+      "elapsed_seconds": 24.004
+    }
+  ]
+}

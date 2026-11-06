@@ -1222,7 +1222,7 @@
       ],
       "last_verified_commit": "e393304d14b07890870e560c07516eccfc033254",
       "last_verified_environment": "isolated_postgresql",
-      "last_evidence_update": "2026-11-05",
+      "last_evidence_update": "2026-11-06",
       "notes": [
         "No credit inferred from old pass counts. Runtime source atom credit does not prove integrated target behavior.",
         "2026-10-27 evidence closure: Workflow service declaration reviewed; fresh PostgreSQL 17 cluster identity verified before fixtures. Real child-process candle insertion races, uniqueness negatives, migration preservation/idempotency and PHP-to-Go persistence executed with zero PostgreSQL skips. Procedure: No additional local infrastructure test needed. Obtain the operator-approved deployed release/schema provenance separately; local execution does not prove GitHub Actions ran.",
@@ -1231,7 +1231,8 @@
         "Phase 0 Final Closure: Workflow service declaration reviewed; fresh PostgreSQL 17 cluster identity verified before fixtures. Real child-process candle insertion races, uniqueness negatives, migration preservation/idempotency and PHP-to-Go persistence executed with zero PostgreSQL skips.",
         "2026-10-30 P1 V4 local PostgreSQL recovery/concurrency evidence: docs/reports/P1_CANDLE_INTEGRITY_V4_20261030.md and docs/progress/evidence/p1-candle-integrity-v4-20261030/. This is task-specific regression evidence, not new credit for the complete frozen infrastructure obligation; production and product acceptance remain pending.",
         "2026-11-05 CI isolation stage: see docs/progress/evidence/cicd-20261105/local-verification.json and reports/agent/CICD_TEST_INVENTORY.md. All 1294 original PHP IDs remain scheduled; 1293 pass, the original optional public API case skips, no mandatory PostgreSQL/Redis case skips, and nine real server pairs have distinct identities. The frozen workflow watch mapping still references deploy.yml; no scope/watch revision or fresh platform credit is inferred from this CI-specific evidence.",
-        "2026-11-05 inventory completion: four standalone PHP harnesses, actual runtime/extension verification and source redaction checks are now required. Local evidence retains 139 pure assertions and five genuine PostgreSQL races plus configuration/version variants. Legacy analysis remains disabled in production; fixture entrypoints reject non-testing environments before bootstrap. No platform acceptance credit is inferred."
+        "2026-11-05 inventory completion: four standalone PHP harnesses, actual runtime/extension verification and source redaction checks are now required. Local evidence retains 139 pure assertions and five genuine PostgreSQL races plus configuration/version variants. Legacy analysis remains disabled in production; fixture entrypoints reject non-testing environments before bootstrap. No platform acceptance credit is inferred.",
+        "2026-11-06 deployment remediation: digest-suffix defect reproduced with original validator and real isolated registry/Compose; per-service image identity, deferred scoped retention, exact schema rollback guard and monotonic timing implemented. See reports/agent/DEPLOYMENT_DRIFT_ROOT_CAUSE.md and DEPLOYMENT_ROLLBACK_SAFETY.md. Local targeted and synthetic PostgreSQL checks do not satisfy frozen production obligations; no new acceptance credit, production access, push or deployment."
       ],
       "assessed_commit": "d9a0aeb5d14233fc95e9e5cc55d8748814362f59",
       "roadmap_reference": "docs/roadmap/VECTOR_POST_REMEDIATION_IMPLEMENTATION_ROADMAP.md",
@@ -1356,7 +1357,7 @@
       ],
       "last_verified_commit": null,
       "last_verified_environment": null,
-      "last_evidence_update": "2026-11-05",
+      "last_evidence_update": "2026-11-06",
       "notes": [
         "No credit inferred from old pass counts. Runtime source atom credit does not prove integrated target behavior.",
         "2026-10-27 evidence closure: Both atomic criteria require operator-authorized current-release evidence and independent acceptance. None was collected. Procedure: Collect the production packets below, map each acceptance ID, obtain explicit responsible-actor acceptance and retain authorization. Local fixtures cannot satisfy this obligation.",
@@ -1364,7 +1365,8 @@
         "2026-10-29 Phase 0 integrity remediation: see docs/progress/evidence/phase0-production-acceptance/REMEDIATION_20261029.md and VALIDATION_20261029.md. New local regressions do not certify the entire frozen obligation. All production V2 and product acceptance remain pending; no scores admitted from aggregate production counts.",
         "2026-10-30 P1 V4 local gate is ready for an authorized operator push after 8 known integrity guarantees passed. See docs/reports/P1_CANDLE_INTEGRITY_V4_20261030.md. The Phase 0 production acceptance obligation remains BLOCKED; no production, browser or product evidence was collected.",
         "2026-10-30 deployment attempt at 39ca806 failed M9 and application rolled back to 671f72f; additive migrations remain. Local 2deae21 prevents new partial Binance provisioning on an M9 failure, but production account rows and prior side effects remain unverified. Gate remains BLOCKED. See docs/reports/M9_DEPLOYMENT_FAILURE_20261030.md.",
-        "2026-11-05 CI/CD stage: exact-SHA/current-main aggregate/artifact/digest guards and rollback retention controls pass local negative tests. Hosted CI, branch rules, GHCR publication, production execution, owner approval and the 30-second target remain unverified. See docs/progress/evidence/cicd-20261105/local-verification.json and reports/agent/CICD_DEPLOYMENT_SAFETY.md. Existing production acceptance and product states remain unchanged."
+        "2026-11-05 CI/CD stage: exact-SHA/current-main aggregate/artifact/digest guards and rollback retention controls pass local negative tests. Hosted CI, branch rules, GHCR publication, production execution, owner approval and the 30-second target remain unverified. See docs/progress/evidence/cicd-20261105/local-verification.json and reports/agent/CICD_DEPLOYMENT_SAFETY.md. Existing production acceptance and product states remain unchanged.",
+        "2026-11-06 deployment remediation: digest-suffix defect reproduced with original validator and real isolated registry/Compose; per-service image identity, deferred scoped retention, exact schema rollback guard and monotonic timing implemented. See reports/agent/DEPLOYMENT_DRIFT_ROOT_CAUSE.md and DEPLOYMENT_ROLLBACK_SAFETY.md. Local targeted and synthetic PostgreSQL checks do not satisfy frozen production obligations; no new acceptance credit, production access, push or deployment."
       ],
       "assessed_commit": "d9a0aeb5d14233fc95e9e5cc55d8748814362f59",
       "roadmap_reference": "docs/roadmap/VECTOR_POST_REMEDIATION_IMPLEMENTATION_ROADMAP.md",

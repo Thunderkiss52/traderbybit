@@ -1,0 +1,6 @@
+{
+  "synthetic": true,
+  "no_op_compose_ms": 336.09545199988133,
+  "redundant_web_restart_ms": 1513.2832069998585,
+  "scope": "local Alpine fixture; excludes backup, transfer, pull and migrations"
+}

@@ -5,7 +5,22 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 source "${SCRIPT_DIR}/common.sh"
 
 export AUTO_RECOVER_ON_DEPLOY="${AUTO_RECOVER_ON_DEPLOY:-1}"
-acquire_deployment_lock "DEPLOYMENT"
+update_start="$(monotonic_ms)"
+export DEPLOY_TIMING_FILE="${DEPLOY_TIMING_FILE:-${DEPLOY_STATE_DIR}/timing-$(date -u +%Y%m%dT%H%M%S)-$$.jsonl}"
+timing_run remote_deployment_lock acquire_deployment_lock "DEPLOYMENT"
+finish_update() {
+    local status=$?
+    timing_record remote_update_total "${update_start}" "${status}"
+    timing_summary
+    release_deployment_lock
+}
+trap finish_update EXIT
+if [[ -f "${DEPLOY_STATE_DIR}/update-in-progress" ]] &&
+   ! grep -q ': ROLLED_BACK$' "${DEPLOY_STATE_DIR}/update-in-progress"; then
+    echo '[BLOCKED] An interrupted or schema-blocked update requires explicit recovery review.' >&2
+    cat "${DEPLOY_STATE_DIR}/update-in-progress" >&2
+    exit 1
+fi
 if [[ "${DEPLOY_MODE:-pull}" == pull && "${ALLOW_TEST_PROJECT:-0}" != 1 ]]; then
     [[ "${NEW_IMAGE_TAG:-}" =~ ^sha-[0-9a-f]{40}$ ]] || { echo 'Exact release SHA required.' >&2; exit 1; }
     incoming="$(dirname "${DEPLOY_STATE_DIR}")/incoming/${NEW_IMAGE_TAG#sha-}.tar.gz"
@@ -14,7 +29,7 @@ elif [[ -f "${PROJECT_ROOT}/ci-release.json" ]]; then
     [[ "${NEW_IMAGE_TAG:-}" =~ ^sha-[0-9a-f]{40}$ ]] || { echo 'Exact release SHA required.' >&2; exit 1; }
     python3 "${SCRIPT_DIR}/release-images.py" "${PROJECT_ROOT}/ci-release.json" "${DEPLOY_STATE_DIR}/release-images" "${NEW_IMAGE_TAG#sha-}"
 fi
-bash "${SCRIPT_DIR}/validate-deployment-state.sh" pre-deploy
+timing_run pre_deployment_state bash "${SCRIPT_DIR}/validate-deployment-state.sh" pre-deploy
 
 CURRENT_TAG="${IMAGE_TAG:-latest}"
 if [[ -f "${DEPLOY_STATE_DIR}/.deploy-current" ]]; then
@@ -27,7 +42,7 @@ fi
 if [[ -z "${PREVIOUS_TAG}" && -f "${DEPLOY_STATE_DIR}/deploy-state.json" ]]; then
     PREVIOUS_TAG="$(python3 -c "import json; data=json.load(open('${DEPLOY_STATE_DIR}/deploy-state.json')); print(data.get('previous_image_tag',''))" 2>/dev/null || true)"
 fi
-assert_free_disk_space
+timing_run disk_preflight assert_free_disk_space
 
 if [[ -n "${NEW_IMAGE_TAG:-}" ]]; then
     NEW_TAG="${NEW_IMAGE_TAG}"
@@ -53,7 +68,7 @@ if [[ "${NEW_TAG}" == "${CURRENT_TAG}" ]]; then
     fi
 fi
 
-bash "${PROJECT_ROOT}/docker/postgres/backup.sh"
+timing_run postgres_backup_total bash "${PROJECT_ROOT}/docker/postgres/backup.sh"
 
 export IMAGE_TAG="${NEW_TAG}"
 
@@ -72,54 +87,92 @@ if [[ "${DEPLOY_MODE:-pull}" == "pull" ]]; then
         fi
     done
     echo "Pulling immutable images (app, web, research-worker) for tag ${NEW_TAG}..."
-    if ! compose pull app web research-worker; then
+    if ! timing_run ghcr_image_pull compose pull app web research-worker; then
         echo "Error: Failed to pull required immutable images for tag ${NEW_TAG}." >&2
         echo "Existing running containers are preserved." >&2
         exit 1
     fi
     mapfile -t image_references < <(resolve_service_image_references "${NEW_TAG}" | cut -d= -f2 | sort -u)
     [[ "${#image_references[@]}" == 3 ]] || { echo 'Expected three resolved release images.' >&2; exit 1; }
+    image_verify_start="$(monotonic_ms)"
     for svc_img in "${image_references[@]}"; do
-        if ! retain_release_image "${svc_img}"; then
+        if ! verify_release_image "${svc_img}" || ! retain_release_image "${svc_img}"; then
             echo "Error: Required immutable image '${svc_img}' is missing after pull." >&2
             echo "Silent build fallback is prohibited in production. Existing running containers are preserved. Aborting deployment." >&2
             exit 1
         fi
     done
+    timing_record local_image_verification "${image_verify_start}"
     echo "Verified all required immutable images are present locally."
 else
     compose build --pull app web research-worker
 fi
-assert_free_disk_space
+timing_run disk_preflight assert_free_disk_space
 
-# Arm rollback trap only when state-mutating container operations begin
-rollback_application() {
-    local failure_code="$?"
-    trap - ERR
-    echo "Deployment failed during container transition; attempting application rollback to ${CURRENT_TAG}. Database migrations are not rolled back." >&2
-    export IMAGE_TAG="${CURRENT_TAG}"
-    compose up -d --no-build --no-deps "${APPLICATION_SERVICES[@]}" || true
-    compose restart web || true
-    bash "${SCRIPT_DIR}/healthcheck.sh" || true
-    exit "${failure_code}"
-}
-trap rollback_application ERR
-
-compose up -d postgres redis
+# PostgreSQL and Redis are existing persistent services. Never reconcile/recreate
+# them as part of an application update.
 wait_healthy postgres 180
 wait_healthy redis 120
-compose run --rm --no-deps app php artisan migrate --force --no-interaction
-compose run --rm --no-deps app php artisan binance:initialize-paper --force --no-interaction
-compose up -d --no-build --no-deps "${APPLICATION_SERVICES[@]}"
-compose restart web
+baseline_migrations="$(migration_state)"
+baseline_schema="$(schema_state)"
+[[ -n "${baseline_migrations}" ]] || { echo 'Missing migration baseline; update blocked.' >&2; exit 1; }
+mkdir -p "${DEPLOY_STATE_DIR}/release-schemas"
+if [[ ! -f "${DEPLOY_STATE_DIR}/release-schemas/${CURRENT_TAG}.migrations" ]]; then
+    atomic_write "${DEPLOY_STATE_DIR}/release-schemas/${CURRENT_TAG}.migrations" "${baseline_migrations}"
+    atomic_write "${DEPLOY_STATE_DIR}/release-schemas/${CURRENT_TAG}.schema.sha256" "${baseline_schema}"
+fi
+atomic_write "${DEPLOY_STATE_DIR}/update-in-progress" "${CURRENT_TAG} -> ${NEW_TAG}: MIGRATING"
+# A failed migration may have partial DDL without a migration-ledger record.
+# Do not arm application rollback until migration and initialization succeed.
+timing_run migrations compose run --rm --no-deps app php artisan migrate --force --no-interaction
+timing_run financial_initialization compose run --rm --no-deps app php artisan binance:initialize-paper --force --no-interaction
 
-for svc in "${APPLICATION_SERVICES[@]}"; do
-    wait_service_ready "${svc}" 120
-done
+rollback_application() {
+    local failure_code="${1:-$?}"
+    trap - ERR INT TERM
+    stop_transition_observer
+    rollback_start="$(monotonic_ms)"
+    echo "Deployment failed; evaluating application rollback to ${CURRENT_TAG}. Database migrations are never reversed." >&2
+    if ! assert_rollback_migration_state "${CURRENT_TAG}"; then
+        atomic_write "${DEPLOY_STATE_DIR}/update-in-progress" "${CURRENT_TAG} -> ${NEW_TAG}: BLOCKED_SCHEMA_REVIEW"
+        timing_record rollback "${rollback_start}" "${failure_code}"
+        echo '[BLOCKED] Automatic application rollback refused. Preserve images and obtain schema compatibility review.' >&2
+        exit "${failure_code}"
+    fi
+    export IMAGE_TAG="${CURRENT_TAG}"
+    if compose up -d --no-build --no-deps "${APPLICATION_SERVICES[@]}" &&
+       wait_for_application_services &&
+       bash "${SCRIPT_DIR}/healthcheck.sh" &&
+       VALIDATE_IMAGE_TAG="${CURRENT_TAG}" bash "${SCRIPT_DIR}/validate-deployment-state.sh" post-deploy; then
+        atomic_write "${DEPLOY_STATE_DIR}/update-in-progress" "${CURRENT_TAG}: ROLLED_BACK"
+    else
+        atomic_write "${DEPLOY_STATE_DIR}/update-in-progress" "${CURRENT_TAG}: ROLLBACK_FAILED"
+        echo '[FATAL] Application rollback did not pass verification.' >&2
+    fi
+    timing_record rollback "${rollback_start}" "${failure_code}"
+    exit "${failure_code}"
+}
+trap 'rollback_application $?' ERR
+trap 'rollback_application 130' INT
+trap 'rollback_application 143' TERM
+atomic_write "${DEPLOY_STATE_DIR}/update-in-progress" "${CURRENT_TAG} -> ${NEW_TAG}: TRANSITIONING"
+transition_start="$(monotonic_ms)"
+timing_run container_transition_including_worker_grace transition_application_services
+health_start="$(monotonic_ms)"
 
-bash "${SCRIPT_DIR}/healthcheck.sh"
+wait_for_application_services
 
-# Commit canonical state and projection files atomically only after healthcheck passes
+timing_run application_health bash "${SCRIPT_DIR}/healthcheck.sh"
+timing_record service_health_and_readiness "${health_start}"
+
+# Validate candidate images before advancing any successful release metadata.
+VALIDATE_IMAGE_TAG="${NEW_TAG}" timing_run post_deployment_validation bash "${SCRIPT_DIR}/validate-deployment-state.sh" post-deploy
+timing_record service_transition_to_acceptance "${transition_start}"
+candidate_migrations="$(migration_state)"
+candidate_schema="$(schema_state)"
+atomic_write "${DEPLOY_STATE_DIR}/release-schemas/${NEW_TAG}.migrations" "${candidate_migrations}"
+atomic_write "${DEPLOY_STATE_DIR}/release-schemas/${NEW_TAG}.schema.sha256" "${candidate_schema}"
+# Commit successful release metadata only after every acceptance gate passes.
 new_rel="${NEW_TAG#sha-}"
 if [[ "${IS_SAME_TAG_RECONCILE}" == "1" ]]; then
     prev_target_tag="${PREVIOUS_TAG}"
@@ -130,22 +183,26 @@ if [[ "${IS_SAME_TAG_RECONCILE}" == "1" ]]; then
         prev_target_rel="${prev_target_tag#sha-}"
     fi
     commit_deployment_state "${NEW_TAG}" "${prev_target_tag}" "${new_rel}" "${prev_target_rel}" "CONSISTENT"
-    CURRENT_IMAGE_TAG="${NEW_TAG}" PREVIOUS_IMAGE_TAG="${prev_target_tag:-${CURRENT_TAG}}" bash "${SCRIPT_DIR}/cleanup-project-images.sh"
+
 else
     curr_rel="${CURRENT_TAG#sha-}"
     commit_deployment_state "${NEW_TAG}" "${CURRENT_TAG}" "${new_rel}" "${curr_rel}" "CONSISTENT"
-    CURRENT_IMAGE_TAG="${NEW_TAG}" PREVIOUS_IMAGE_TAG="${CURRENT_TAG}" bash "${SCRIPT_DIR}/cleanup-project-images.sh"
+
 fi
-bash "${SCRIPT_DIR}/validate-deployment-state.sh" post-deploy
-
+rm -f -- "${DEPLOY_STATE_DIR}/update-in-progress"
 trap - ERR
+trap 'exit 130' INT
+trap 'exit 143' TERM
+# Cleanup failure cannot undo an accepted release. Retention remains fail-closed.
+CURRENT_IMAGE_TAG="${NEW_TAG}" PREVIOUS_IMAGE_TAG="${prev_target_tag:-${CURRENT_TAG}}" \
+    timing_run image_cleanup bash "${SCRIPT_DIR}/cleanup-project-images.sh" || echo '[WARN] Image cleanup failed; release retained.' >&2
 
-bash "${SCRIPT_DIR}/storage-report.sh"
+bash "${SCRIPT_DIR}/storage-report.sh" || echo '[WARN] Storage report unavailable; accepted release retained.' >&2
 
 if [[ "${IS_SAME_TAG_RECONCILE}" == "1" ]]; then
     echo "Reconciled deployment configuration for image tag ${NEW_TAG}."
 else
     echo "Updated from image tag ${CURRENT_TAG} to ${NEW_TAG}."
 fi
-echo "Application rollback: IMAGE_TAG=${CURRENT_TAG} SKIP_BUILD=1 ENV_FILE=${ENV_FILE} ${SCRIPT_DIR}/deploy.sh"
+echo "Application rollback requires pre-rollback schema validation through ${SCRIPT_DIR}/rollback.sh."
 echo "Database migrations must be backward-compatible; database rollback is intentionally not automatic."

@@ -95,7 +95,7 @@ fi
 # Inspect running container versions
 declare -A RUNNING_IMAGES
 declare -A SERVICE_STATUS
-UNIQUE_RUNNING_TAGS=()
+declare -A EXPECTED_IMAGES
 HAS_DRIFT=0
 
 for svc in "${APPLICATION_SERVICES[@]}"; do
@@ -104,27 +104,27 @@ for svc in "${APPLICATION_SERVICES[@]}"; do
 done
 
 if [[ "${SKIP_DOCKER_INSPECT:-0}" != "1" ]]; then
+    validation_tag="${VALIDATE_IMAGE_TAG:-${CURRENT_TAG:-${IMAGE_TAG}}}"
+    resolved_images="$(resolve_service_image_references "${validation_tag}")" || {
+        echo '[FATAL] Cannot resolve all ten application service images.' >&2; exit 1;
+    }
+    while IFS='=' read -r svc ref; do EXPECTED_IMAGES["${svc}"]="${ref}"; done <<< "${resolved_images}"
     for svc in "${APPLICATION_SERVICES[@]}"; do
         cid="$(compose ps -q "${svc}" 2>/dev/null || true)"
         if [[ -n "${cid}" ]]; then
             img="$(docker inspect --format '{{.Config.Image}}' "${cid}" 2>/dev/null || true)"
-            st="$(docker inspect --format '{{if .State.Health}}{{.State.Health.Status}}{{else}}{{.State.Status}}{{end}}' "${cid}" 2>/dev/null || true)"
+            st="$(docker inspect --format '{{if and .State.Running (not .State.Restarting) (not .State.Paused)}}{{if .State.Health}}{{.State.Health.Status}}{{else}}running{{end}}{{else}}{{.State.Status}}{{end}}' "${cid}" 2>/dev/null || true)"
             RUNNING_IMAGES["${svc}"]="${img}"
             SERVICE_STATUS["${svc}"]="${st}"
-            if [[ -n "${img}" ]]; then
-                tag_part="${img##*:}"
-                if [[ ! " ${UNIQUE_RUNNING_TAGS[*]:-} " =~ " ${tag_part} " ]]; then
-                    UNIQUE_RUNNING_TAGS+=("${tag_part}")
-                fi
-            fi
+            if ! verify_image_identity "${svc}" "${EXPECTED_IMAGES[${svc}]}"; then HAS_DRIFT=1; fi
+            if [[ "${MODE}" == "post-deploy" && "${st}" != healthy && "${st}" != running ]]; then HAS_DRIFT=1; fi
         else
             RUNNING_IMAGES["${svc}"]="NOT_RUNNING"
             SERVICE_STATUS["${svc}"]="STOPPED"
+            if [[ -n "${CURRENT_TAG}${VALIDATE_IMAGE_TAG:-}" ]]; then HAS_DRIFT=1; fi
         fi
     done
-    if (( ${#UNIQUE_RUNNING_TAGS[@]} > 1 )); then
-        HAS_DRIFT=1
-    fi
+
 fi
 
 if [[ "${MODE}" == "inspect" ]]; then
@@ -329,7 +329,8 @@ if (( REALIGN_CONTAINERS || HAS_DRIFT )); then
                 actual_img="$(docker inspect --format '{{.Config.Image}}' "${cid}" 2>/dev/null || true)"
             fi
 
-            if [[ "${actual_img}" =~ :${TARGET_TAG}$ ]]; then
+            expected_ref="$(resolve_service_image_references "${TARGET_TAG}" | sed -n "s/^${svc}=//p")"
+            if verify_image_identity "${svc}" "${expected_ref}"; then
                 echo "Service '${svc}' is already running ${TARGET_TAG}. Skipping restart."
                 update_journal "ALIGNING_SERVICES" "{\"service\": \"${svc}\", \"action\": \"SKIPPED_ALREADY_MATCHED\"}"
                 continue
@@ -337,7 +338,7 @@ if (( REALIGN_CONTAINERS || HAS_DRIFT )); then
 
             echo "Restarting service '${svc}' with IMAGE_TAG=${TARGET_TAG}..."
             update_journal "ALIGNING_SERVICES" "{\"service\": \"${svc}\", \"action\": \"RESTARTING\"}"
-            IMAGE_TAG="${TARGET_TAG}" compose up -d --no-deps "${svc}"
+            IMAGE_TAG="${TARGET_TAG}" compose up -d --no-build --no-deps "${svc}"
             update_journal "ALIGNING_SERVICES" "{\"service\": \"${svc}\", \"action\": \"ALIGNED\"}"
         done
     fi

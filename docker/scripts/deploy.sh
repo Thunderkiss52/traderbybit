@@ -46,15 +46,11 @@ if [[ "${DEPLOY_MODE:-pull}" == "pull" ]]; then
         echo "Existing running containers are preserved." >&2
         exit 1
     fi
-    for svc_img in "${APP_IMAGE}:${IMAGE_TAG:-latest}" \
-                   "${WEB_IMAGE}:${IMAGE_TAG:-latest}" \
-                   "${RESEARCH_WORKER_IMAGE}:${IMAGE_TAG:-latest}"; do
-        if ! docker image inspect "${svc_img}" >/dev/null 2>&1; then
-            echo "Error: Required immutable image '${svc_img}' is missing after pull." >&2
-            echo "Silent build fallback is prohibited in production. Existing running containers are preserved. Aborting deployment." >&2
-            exit 1
-        fi
-    done
+    references="$(resolve_service_image_references "${IMAGE_TAG}")"
+    while IFS='=' read -r service svc_img; do
+        verify_release_image "${svc_img}"
+        retain_release_image "${svc_img}"
+    done <<< "${references}"
     echo "Verified all required immutable images are present locally."
 elif [[ "${SKIP_BUILD:-0}" != "1" ]]; then
     compose build --pull app web research-worker
@@ -68,8 +64,7 @@ wait_healthy redis 120
 
 compose run --rm --no-deps app php artisan migrate --force --no-interaction
 compose run --rm --no-deps app php artisan binance:initialize-paper --force --no-interaction
-compose up -d --remove-orphans
-compose restart web
+compose up -d --no-build --no-deps "${APPLICATION_SERVICES[@]}"
 
 for svc in "${APPLICATION_SERVICES[@]}"; do
     wait_service_ready "${svc}" 120
@@ -79,7 +74,7 @@ bash "${SCRIPT_DIR}/healthcheck.sh"
 
 tag="${IMAGE_TAG:-latest}"
 rel="${tag#sha-}"
+VALIDATE_IMAGE_TAG="${tag}" bash "${SCRIPT_DIR}/validate-deployment-state.sh" post-deploy
 commit_deployment_state "${tag}" "" "${rel}" "" "CONSISTENT"
-bash "${SCRIPT_DIR}/validate-deployment-state.sh" post-deploy
 
 echo "Deployment completed on http://${WEB_BIND_IP}:${WEB_PORT} (Basic Auth protected)."

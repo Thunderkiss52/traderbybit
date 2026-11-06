@@ -1,0 +1,5 @@
+VECTOR_TIMING {"stage":"remote_deployment_lock","elapsed_ms":0,"exit_code":0}
+VECTOR_TIMING {"stage":"remote_update_total","elapsed_ms":10,"exit_code":1}
+VECTOR_TIMING_SUMMARY {"events": [{"stage": "remote_deployment_lock", "elapsed_ms": 0, "exit_code": 0}, {"stage": "remote_update_total", "elapsed_ms": 10, "exit_code": 1}]}
+[BLOCKED] An interrupted or schema-blocked update requires explicit recovery review.
+sha-1111111111111111111111111111111111111111 -> sha-2222222222222222222222222222222222222222: MIGRATING

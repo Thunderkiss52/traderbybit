@@ -22,6 +22,12 @@ jobs:
     runs-on: ubuntu-latest
     environment: production
     steps:
+      - name: Start runner wall clock
+        run: |
+          start_ms=$(python3 -c 'import time; print(time.clock_gettime_ns(time.CLOCK_BOOTTIME) // 1000000)')
+          echo "VECTOR_RUNNER_START_MS=$start_ms" >> "$GITHUB_ENV"
+          echo "DEPLOY_TIMING_FILE=$RUNNER_TEMP/vector-deploy-timing.jsonl" >> "$GITHUB_ENV"
+          echo "VECTOR_RUNNER_STARTED_AT=$(date -u +%Y-%m-%dT%H:%M:%SZ)" >> "$GITHUB_ENV"
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
@@ -33,6 +39,8 @@ jobs:
           REQUESTED_SHA: ${{ inputs.commit_sha }}
         run: |
           set -Eeuo pipefail
+          source docker/scripts/timing.sh
+          timing_record runner_preparation "$VECTOR_RUNNER_START_MS"
           [[ "$GITHUB_REF" == refs/heads/main ]] || { echo 'Deploy workflow must run from main'; exit 2; }
           target_sha="${REQUESTED_SHA:-$GITHUB_SHA}"
           [[ "$target_sha" =~ ^[a-f0-9]{40}$ ]] || { echo 'Full hexadecimal SHA required'; exit 2; }
@@ -44,7 +52,10 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           TARGET_SHA: ${{ steps.target.outputs.sha }}
-        run: python3 scripts/ci/release_guard.py authorize --sha "$TARGET_SHA" --repository "$GITHUB_REPOSITORY"
+        run: |
+          source docker/scripts/timing.sh
+          timing_run github_release_validation python3 scripts/ci/release_guard.py authorize --sha "$TARGET_SHA" --repository "$GITHUB_REPOSITORY"
+          echo "VECTOR_ARTIFACT_START_MS=$(monotonic_ms)" >> "$GITHUB_ENV"
 
       - uses: actions/download-artifact@v4
         with:
@@ -60,9 +71,11 @@ jobs:
           CI_RUN_ID: ${{ steps.ci.outputs.run_id }}
         run: |
           set -Eeuo pipefail
+          source docker/scripts/timing.sh
+          timing_record release_artifact_download "$VECTOR_ARTIFACT_START_MS"
           python3 scripts/ci/release_guard.py manifest --sha "$TARGET_SHA" --repository "$GITHUB_REPOSITORY" --run-id "$CI_RUN_ID" --manifest verified-release/release-manifest.json > image-refs.txt
           echo "$GH_TOKEN" | docker login ghcr.io -u "$GITHUB_ACTOR" --password-stdin
-          bash scripts/ci/verify_images.sh image-refs.txt
+          timing_run github_registry_verification bash scripts/ci/verify_images.sh image-refs.txt
 
       - name: Deploy preverified artifacts to production
         id: deploy-step
@@ -77,6 +90,8 @@ jobs:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           set -Eeuo pipefail
+          source docker/scripts/timing.sh
+          archive_start="$(monotonic_ms)"
           : "${DEPLOY_HOST:?DEPLOY_HOST is missing}"
           : "${DEPLOY_USER:?DEPLOY_USER is missing}"
           : "${DEPLOY_SSH_KEY:?DEPLOY_SSH_KEY is missing}"
@@ -102,18 +117,16 @@ jobs:
 
           # Recheck immediately before transfer; a queued dispatch cannot deploy stale main.
           python3 scripts/ci/release_guard.py current --sha "$DEPLOY_COMMIT_SHA" --repository "$GITHUB_REPOSITORY"
-          deploy_start="$(date +%s)"
+          timing_record archive_and_ssh_preparation "$archive_start"
+          deploy_start="$(monotonic_ms)"
           echo "Starting production deployment of preverified commit ${DEPLOY_COMMIT_SHA}..."
-          scp "${scp_options[@]}" "$archive" "${archive}.sha256" \
+          timing_run archive_transfer scp "${scp_options[@]}" "$archive" "${archive}.sha256" \
             "${DEPLOY_USER}@${DEPLOY_HOST}:/srv/bybit-signals/incoming/"
           python3 scripts/ci/release_guard.py current --sha "$DEPLOY_COMMIT_SHA" --repository "$GITHUB_REPOSITORY"
-          ssh "${ssh_options[@]}" "${DEPLOY_USER}@${DEPLOY_HOST}" \
+          timing_run remote_deployment_total ssh "${ssh_options[@]}" "${DEPLOY_USER}@${DEPLOY_HOST}" \
             "sudo -n /usr/local/sbin/bybit-signals-deploy ${DEPLOY_COMMIT_SHA}"
-          deploy_end="$(date +%s)"
-
-          elapsed=$((deploy_end - deploy_start))
-          echo "Deployment execution: ${elapsed}s; target: 30s when pull/migration/startup conditions permit."
-          printf 'Deployed SHA: `%s`\n\nExecution: %ss (target 30s).\n\n' "$DEPLOY_COMMIT_SHA" "$elapsed" >> "$GITHUB_STEP_SUMMARY"
+          timing_record transfer_and_remote_execution "$deploy_start"
+          printf 'Deployed SHA: `%s`\n\nRunner wall time and production transition are separate timing events.\n\n' "$DEPLOY_COMMIT_SHA" >> "$GITHUB_STEP_SUMMARY"
           cat image-refs.txt >> "$GITHUB_STEP_SUMMARY"
           cp verified-release/release-manifest.json deployed-release.json
       - uses: actions/upload-artifact@v4
@@ -121,3 +134,27 @@ jobs:
           name: deployed-release
           path: deployed-release.json
           if-no-files-found: error
+
+      - name: Record complete runner wall time
+        if: always()
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          if [[ -f docker/scripts/timing.sh ]]; then
+            source docker/scripts/timing.sh
+            # GitHub supplies workflow start/queue timestamps. The workflow's final
+            # duration remains the Actions run duration after this step completes.
+            python3 - <<'PYCODE'
+            import json, os, urllib.request, urllib.error
+            url = f"https://api.github.com/repos/{os.environ['GITHUB_REPOSITORY']}/actions/runs/{os.environ['GITHUB_RUN_ID']}"
+            request = urllib.request.Request(url, headers={"Authorization": "Bearer " + os.environ["GH_TOKEN"], "Accept": "application/vnd.github+json"})
+            try:
+                with urllib.request.urlopen(request, timeout=30) as response:
+                    run = json.load(response)
+                print("VECTOR_WORKFLOW_CLOCK " + json.dumps({key: run.get(key) for key in ("created_at", "run_started_at", "updated_at", "status")}))
+            except (OSError, ValueError) as error:
+                print("::warning::Workflow timestamp metadata unavailable: " + type(error).__name__)
+            PYCODE
+            timing_record runner_wall_to_final_reporting "$VECTOR_RUNNER_START_MS"
+            timing_summary | tee -a "$GITHUB_STEP_SUMMARY"
+          fi

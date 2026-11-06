@@ -17,7 +17,6 @@ previous="$(<"${DEPLOY_STATE_DIR}/.deploy-previous")"
 
 export IMAGE_TAG="${previous}"
 compose up -d --no-build --no-deps "${APPLICATION_SERVICES[@]}"
-compose restart web
 
 for svc in "${APPLICATION_SERVICES[@]}"; do
     wait_service_ready "${svc}" 120
@@ -27,7 +26,7 @@ bash "${SCRIPT_DIR}/healthcheck.sh"
 
 prev_rel="${previous#sha-}"
 curr_rel="${current#sha-}"
+VALIDATE_IMAGE_TAG="${previous}" bash "${SCRIPT_DIR}/validate-deployment-state.sh" post-deploy
 commit_deployment_state "${previous}" "${current}" "${prev_rel}" "${curr_rel}" "CONSISTENT"
-bash "${SCRIPT_DIR}/validate-deployment-state.sh" post-deploy
 
 echo "Application rolled back from ${current} to ${previous}. Database migrations were not changed."

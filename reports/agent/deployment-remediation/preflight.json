@@ -1,0 +1,12 @@
+{
+  "head": "832de9b5c2ff5c25351c25fa2e110a78a5f574ca",
+  "status": "?? VECTOR_INDEPENDENT_AUDIT_20261031.md\n?? VECTOR_RELEASE_HARDENING.patch\n",
+  "local_commits": "",
+  "docker": "29.7.1",
+  "incident_log_api": "404: no authenticated GitHub connector/gh available; no production access",
+  "plan": [
+    "Reproduce digest-suffix defect with actual validator and isolated Docker registry",
+    "Unify per-service identity, acceptance ordering, rollback schema guard and scoped retention; targeted regressions",
+    "Instrument monotonic timings; verify safe service reconciliation; full deployment regressions and local commits"
+  ]
+}
