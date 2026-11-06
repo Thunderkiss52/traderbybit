@@ -114,6 +114,10 @@ final class Phase0DiagnosticPackageTest extends TestCase
             }
 
             // Verify raw psql invocation silences transaction status lines and outputs direct parseable JSON
+            if (trim((string) shell_exec('command -v psql 2>/dev/null')) === '') {
+                continue;
+            }
+
             $cmd = sprintf(
                 'PGPASSWORD=%s psql -h %s -p %s -U %s -d %s -X -A -t -v ON_ERROR_STOP=1 -f %s',
                 escapeshellarg(config('database.connections.pgsql.password')),
