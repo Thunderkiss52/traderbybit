@@ -1,10 +1,12 @@
 import axios from 'axios';
 import type {
+  Envelope,
   Exchange,
   ExchangeCoverageReport,
   HistoricalCandleUploadResult,
   ExchangeStrategyCompatibilityRecord,
   CompatibilityMatrixResponse,
+  TradingMethod,
 } from '../types';
 
 export const api = axios.create({ baseURL: '/api/v1', timeout: 15000 });
@@ -119,3 +121,53 @@ export async function reconcileExchangeCompatibility(id: string): Promise<{
 }> {
   return (await api.post(`/exchanges/${id}/reconcile`)).data;
 }
+
+export async function getStrategyMethods(params?: {
+  category?: string;
+  type?: string;
+  status?: string;
+}): Promise<Envelope<{ data: TradingMethod[]; summary: any }>> {
+  const res = (await api.get('/strategy-methods', { params })).data;
+  if (Array.isArray(res.data) && res.summary) {
+    return {
+      schema_version: res.schema_version || 'v1',
+      research_mode: true,
+      data: {
+        data: res.data,
+        summary: res.summary,
+      },
+      summary: res.summary,
+      total: res.total,
+    };
+  }
+  return res;
+}
+
+export async function getStrategyMethod(id: string): Promise<Envelope<TradingMethod>> {
+  return (await api.get(`/strategy-methods/${id}`)).data;
+}
+
+export async function assignStrategyExchange(
+  strategyId: number,
+  exchangeId: string,
+  marketType?: string
+): Promise<Envelope<any>> {
+  return (await api.post(`/strategies/${strategyId}/assign-exchange`, {
+    exchange_id: exchangeId,
+    market_type: marketType || 'perpetual',
+  })).data;
+}
+
+export async function getExchangeCapabilities(exchangeId: string): Promise<Envelope<any>> {
+  return (await api.get(`/exchanges/${exchangeId}/capabilities`)).data;
+}
+
+export async function getExchangeInstruments(
+  exchangeId: string,
+  marketType?: string
+): Promise<Envelope<any>> {
+  return (await api.get(`/exchanges/${exchangeId}/instruments`, {
+    params: marketType ? { market_type: marketType } : undefined,
+  })).data;
+}
+

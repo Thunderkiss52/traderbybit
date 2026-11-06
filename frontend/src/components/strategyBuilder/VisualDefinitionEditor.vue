@@ -1,5 +1,6 @@
 <script setup lang="ts">
-import { computed } from "vue";
+import { computed, onMounted, ref, watch } from "vue";
+import { useQuasar } from "quasar";
 import ConditionEditor from "./ConditionEditor.vue";
 import {
     describeCondition,
@@ -8,9 +9,161 @@ import {
     type Condition,
     type ParameterRange,
 } from "../../strategyBuilder/definition.js";
+import { getStrategyMethods, assignStrategyExchange } from "../../services/api";
+import type { TradingMethod } from "../../types";
+
+const $q = useQuasar();
 const props = defineProps<{ modelValue: Definition }>();
 const emit = defineEmits<{ "update:modelValue": [value: Definition] }>();
 const names = computed(() => Object.keys(props.modelValue.indicators));
+
+// Target Exchanges & Markets in VECTOR
+const targetExchanges = [
+    { label: "Bybit (linear USDT-perpetual / spot)", value: "bybit" },
+    { label: "Binance (linear USDT-perpetual / spot)", value: "binance" },
+    { label: "Coinbase Exchange (spot)", value: "coinbase" },
+    { label: "OKX Global (perpetual / spot / futures / options)", value: "okx" },
+    { label: "Bitget Global (perpetual / spot / futures)", value: "bitget" },
+    { label: "Gate.io (perpetual / spot / futures / options)", value: "gate" },
+    { label: "KuCoin (perpetual / spot / futures)", value: "kucoin" },
+    { label: "Kraken (perpetual / spot / futures)", value: "kraken" },
+    { label: "HTX Huobi (perpetual / spot / futures)", value: "htx" },
+    { label: "Upbit Korea (spot)", value: "upbit" },
+];
+
+const marketTypes = [
+    { label: "USDT Perpetual (Linear)", value: "perpetual" },
+    { label: "Spot", value: "spot" },
+    { label: "Dated Futures", value: "futures" },
+    { label: "European Options", value: "options" },
+];
+
+const selectedTargetExchange = ref(props.modelValue.exchanges?.[0] || "bybit");
+const selectedMarketType = ref((props.modelValue as any).market_type || "perpetual");
+const assigningExchange = ref(false);
+const assignmentNotice = ref<string | null>(null);
+
+// Strategy Method Selection & Parameter Configuration
+const availableMethods = ref<TradingMethod[]>([]);
+const methodsLoading = ref(false);
+const selectedMethodId = ref<string>((props.modelValue as any).method_id || "");
+const configuredParams = ref<Record<string, any>>((props.modelValue as any).method_parameters || {});
+
+const selectedMethod = computed(() => {
+    return availableMethods.value.find((m) => m.id === selectedMethodId.value) || null;
+});
+
+async function loadAvailableMethods() {
+    methodsLoading.value = true;
+    try {
+        const res = await getStrategyMethods();
+        const list = res.data?.data || (Array.isArray(res.data) ? res.data : []);
+        if (Array.isArray(list) && list.length > 0) {
+            availableMethods.value = list;
+        }
+    } catch {
+        // standalone test fallback
+    } finally {
+        methodsLoading.value = false;
+    }
+}
+
+onMounted(() => {
+    loadAvailableMethods();
+});
+
+watch(
+    () => (props.modelValue as any).method_id,
+    (newId) => {
+        if (newId && newId !== selectedMethodId.value) {
+            selectedMethodId.value = newId;
+        }
+    }
+);
+
+function getMethodStatusColor(status: string) {
+    switch (status) {
+        case "RESEARCH_READY":
+        case "PAPER_READY":
+            return "positive";
+        case "SHADOW_READY":
+            return "cyan";
+        case "IMPLEMENTED":
+            return "teal";
+        case "BLOCKED_BY_DATA":
+            return "warning";
+        case "UNSUPPORTED":
+            return "negative";
+        case "CATALOGUED":
+        default:
+            return "grey-7";
+    }
+}
+
+function onSelectMethodId(methodId: string | null) {
+    if (!methodId) {
+        selectedMethodId.value = "";
+        update((d) => {
+            delete (d as any).method_id;
+            delete (d as any).method_parameters;
+        });
+        return;
+    }
+    const found = availableMethods.value.find((m) => m.id === methodId);
+    if (!found) return;
+
+    selectedMethodId.value = found.id;
+    const params: Record<string, any> = {};
+    if (Array.isArray(found.parameters)) {
+        for (const p of found.parameters) {
+            params[p.name] = p.default;
+        }
+    }
+    configuredParams.value = params;
+
+    update((d) => {
+        (d as any).method_id = found.id;
+        (d as any).method_parameters = params;
+    });
+}
+
+function updateMethodParam(name: string, value: any) {
+    configuredParams.value[name] = value;
+    update((d) => {
+        (d as any).method_parameters = { ...configuredParams.value };
+    });
+}
+
+async function handleAssignExchange() {
+    assigningExchange.value = true;
+    assignmentNotice.value = null;
+    try {
+        const ex = selectedTargetExchange.value;
+        const mt = selectedMarketType.value;
+        update((d) => {
+            d.exchanges = [ex];
+            (d as any).market_type = mt;
+        });
+
+        const numId = typeof props.modelValue.id === "number"
+            ? props.modelValue.id
+            : parseInt(String(props.modelValue.id).replace(/\D/g, ""), 10);
+        if (!isNaN(numId) && numId > 0) {
+            await assignStrategyExchange(numId, ex, mt);
+        }
+
+        assignmentNotice.value = `Explicitly assigned to ${ex.toUpperCase()} [${mt}]. Virtual PAPER mode only — real exchange orders strictly disabled.`;
+        $q.notify({
+            type: "positive",
+            message: `Strategy assigned to ${ex.toUpperCase()} (${mt}).`,
+        });
+    } catch (err: any) {
+        assignmentNotice.value = `Assignment updated locally. Backend notice: ${err.message || "Saved in draft."}`;
+    } finally {
+        assigningExchange.value = false;
+    }
+}
+
 const types = [
     "SMA",
     "EMA",
@@ -99,6 +252,188 @@ function addRange() {
 </script>
 <template>
     <div>
+        <!-- Explicit Exchange Assignment Card -->
+        <q-card bordered flat class="q-mb-md bg-grey-10">
+            <q-card-section>
+                <div class="row items-center justify-between q-mb-xs">
+                    <div class="text-subtitle2 text-weight-bold row items-center">
+                        <q-icon name="hub" class="q-mr-xs text-primary" size="18px" />
+                        Explicit Exchange Assignment (10 Target Venues)
+                    </div>
+                    <q-badge color="positive" outline label="Virtual PAPER Mode Only" />
+                </div>
+                <p class="text-caption text-grey-5 q-mb-sm">
+                    Bind this strategy definition to an explicit target exchange and market type.
+                    Real exchange trading is strictly disabled.
+                </p>
+                <div class="row q-col-gutter-sm items-center">
+                    <q-select
+                        class="col-12 col-md-5"
+                        v-model="selectedTargetExchange"
+                        :options="targetExchanges"
+                        emit-value
+                        map-options
+                        dense
+                        outlined
+                        label="Target Exchange"
+                        @update:model-value="update((d) => { d.exchanges = [$event]; })"
+                    />
+                    <q-select
+                        class="col-12 col-md-4"
+                        v-model="selectedMarketType"
+                        :options="marketTypes"
+                        emit-value
+                        map-options
+                        dense
+                        outlined
+                        label="Market Type"
+                        @update:model-value="update((d) => { (d as any).market_type = $event; })"
+                    />
+                    <div class="col-12 col-md-3">
+                        <q-btn
+                            unelevated
+                            color="primary"
+                            icon="assignment_turned_in"
+                            label="Assign Exchange"
+                            class="full-width"
+                            :loading="assigningExchange"
+                            @click="handleAssignExchange"
+                        />
+                    </div>
+                </div>
+                <q-banner
+                    v-if="assignmentNotice"
+                    dense
+                    rounded
+                    class="bg-blue-grey-9 text-white q-mt-sm text-caption"
+                >
+                    <template #avatar><q-icon name="verified_user" color="teal" size="16px" /></template>
+                    {{ assignmentNotice }}
+                </q-banner>
+            </q-card-section>
+        </q-card>
+
+        <!-- Strategy Method Selection & Parameter Configuration Card -->
+        <q-card bordered flat class="q-mb-md bg-grey-10">
+            <q-card-section>
+                <div class="row items-center justify-between q-mb-xs">
+                    <div class="text-subtitle2 text-weight-bold row items-center">
+                        <q-icon name="category" class="q-mr-xs text-secondary" size="18px" />
+                        Method Specification & Parameter Configuration
+                    </div>
+                    <q-badge
+                        v-if="selectedMethod"
+                        :color="getMethodStatusColor(selectedMethod.status)"
+                        :label="selectedMethod.status_display || selectedMethod.status"
+                    />
+                </div>
+                <div class="row q-col-gutter-sm items-center q-mb-sm">
+                    <q-select
+                        class="col-12 col-md-7"
+                        :model-value="selectedMethodId"
+                        :options="availableMethods"
+                        option-value="id"
+                        option-label="name"
+                        emit-value
+                        map-options
+                        dense
+                        outlined
+                        clearable
+                        label="Select Method from 50 Catalog"
+                        :loading="methodsLoading"
+                        @update:model-value="onSelectMethodId"
+                    >
+                        <template #option="scope">
+                            <q-item v-bind="scope.itemProps">
+                                <q-item-section>
+                                    <q-item-label>{{ scope.opt.name }}</q-item-label>
+                                    <q-item-label caption>
+                                        {{ scope.opt.category_display }} &bull; {{ scope.opt.type_display }}
+                                    </q-item-label>
+                                </q-item-section>
+                                <q-item-section side>
+                                    <q-badge
+                                        :color="getMethodStatusColor(scope.opt.status)"
+                                        :label="scope.opt.status"
+                                    />
+                                </q-item-section>
+                            </q-item>
+                        </template>
+                    </q-select>
+                    <div class="col-12 col-md-5 text-caption text-grey-5">
+                        {{ selectedMethod ? selectedMethod.description : "Select a method to configure schema parameters and required data feeds." }}
+                    </div>
+                </div>
+
+                <div v-if="selectedMethod" class="q-mt-sm">
+                    <div class="row q-gutter-xs q-mb-sm text-caption">
+                        <q-badge outline color="secondary" :label="selectedMethod.category_display" />
+                        <q-badge outline color="info" :label="selectedMethod.type_display" />
+                        <q-badge outline color="teal" :label="`${selectedMethod.parameters?.length || 0} Parameters`" />
+                        <q-badge v-if="selectedMethod.is_executable" color="positive" label="Executable Code" />
+                        <q-badge v-else color="grey-7" label="Specification Catalog" />
+                    </div>
+
+                    <q-banner
+                        v-if="selectedMethod.blocker_reason"
+                        dense
+                        rounded
+                        class="bg-orange-10 text-white q-mb-sm text-caption"
+                    >
+                        <template #avatar><q-icon name="warning" color="amber" size="18px" /></template>
+                        <strong>Data Dependency Blocker:</strong> {{ selectedMethod.blocker_reason }}
+                    </q-banner>
+
+                    <!-- Parameter Configuration Form -->
+                    <div v-if="selectedMethod.parameters && selectedMethod.parameters.length" class="q-mt-sm">
+                        <div class="text-caption text-weight-bold text-grey-4 q-mb-xs">
+                            Configured Method Parameters:
+                        </div>
+                        <div class="row q-col-gutter-sm">
+                            <div
+                                v-for="p in selectedMethod.parameters"
+                                :key="p.name"
+                                class="col-12 col-sm-6 col-md-4"
+                            >
+                                <q-input
+                                    v-if="p.type === 'integer' || p.type === 'float' || p.type === 'number'"
+                                    :model-value="configuredParams[p.name] ?? p.default"
+                                    :label="p.name"
+                                    type="number"
+                                    :min="p.min"
+                                    :max="p.max"
+                                    :step="p.step || (p.type === 'float' ? 0.1 : 1)"
+                                    dense
+                                    outlined
+                                    :hint="p.description"
+                                    @update:model-value="updateMethodParam(p.name, Number($event))"
+                                />
+                                <q-select
+                                    v-else-if="p.options && p.options.length"
+                                    :model-value="configuredParams[p.name] ?? p.default"
+                                    :options="p.options"
+                                    :label="p.name"
+                                    dense
+                                    outlined
+                                    :hint="p.description"
+                                    @update:model-value="updateMethodParam(p.name, $event)"
+                                />
+                                <q-input
+                                    v-else
+                                    :model-value="configuredParams[p.name] ?? p.default"
+                                    :label="p.name"
+                                    dense
+                                    outlined
+                                    :hint="p.description"
+                                    @update:model-value="updateMethodParam(p.name, $event)"
+                                />
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </q-card-section>
+        </q-card>
+
         <div class="row q-col-gutter-sm">
             <q-input
                 class="col-6"

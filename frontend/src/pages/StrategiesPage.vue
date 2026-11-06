@@ -1,6 +1,6 @@
 <script setup lang="ts">
-import { computed, nextTick, onBeforeUnmount, ref, watch } from "vue";
-import { api } from "../services/api";
+import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from "vue";
+import { api, getStrategyMethods, getStrategyMethod, assignStrategyExchange } from "../services/api";
 import VisualDefinitionEditor from "../components/strategyBuilder/VisualDefinitionEditor.vue";
 import StrategyRunResult from "../components/strategyBuilder/StrategyRunResult.vue";
 import {
@@ -8,6 +8,145 @@ import {
     definitionDiff,
     type Definition,
 } from "../strategyBuilder/definition.js";
+import type { TradingMethod, TradingMethodParameter } from "../types";
+
+// Active Tab
+const activeTab = ref("library");
+
+// 50 Strategy Method Library
+const catalogMethods = ref<TradingMethod[]>([]);
+const catalogLoading = ref(false);
+const catalogError = ref<string | null>(null);
+const catalogSummary = ref<any | null>(null);
+
+const selectedCategory = ref<string>("all");
+const selectedType = ref<string>("all");
+const searchFilter = ref<string>("");
+
+const detailDialogOpen = ref(false);
+const selectedMethod = ref<TradingMethod | null>(null);
+const detailLoading = ref(false);
+
+const categoryOptions = [
+    { label: "All Families (50 Methods)", value: "all" },
+    { label: "Family A: Trading Horizons and Direction", value: "trading_horizons" },
+    { label: "Family B: Price and Technical Analysis", value: "price_technical" },
+    { label: "Family C: Volatility and Volume", value: "volatility_volume" },
+    { label: "Family D: Automation and Relative Value", value: "automation_relative_value" },
+    { label: "Family E: Events and Alternative Data", value: "events_alternative_data" },
+    { label: "Family F: Trade Management and Risk", value: "trade_management_risk" },
+];
+
+const typeOptions = [
+    { label: "All Method Types", value: "all" },
+    { label: "Trading Style", value: "style" },
+    { label: "Signal Generator", value: "signal" },
+    { label: "Confirmation Filter", value: "filter" },
+    { label: "Market Regime Filter", value: "regime_filter" },
+    { label: "Position Sizing Model", value: "position_sizing" },
+    { label: "Portfolio Allocation", value: "portfolio_allocation" },
+    { label: "Execution Method", value: "execution" },
+    { label: "Position Management", value: "position_management" },
+    { label: "Alternative Data", value: "alternative_data" },
+];
+
+async function loadCatalog() {
+    catalogLoading.value = true;
+    catalogError.value = null;
+    try {
+        const params: { category?: string; type?: string } = {};
+        if (selectedCategory.value !== "all") params.category = selectedCategory.value;
+        if (selectedType.value !== "all") params.type = selectedType.value;
+        const res = await getStrategyMethods(params);
+        const list = res.data?.data || (Array.isArray(res.data) ? res.data : []);
+        catalogMethods.value = list;
+        catalogSummary.value = res.data?.summary || res.summary || null;
+    } catch (err: any) {
+        catalogError.value = err.message || "Failed to load strategy method library.";
+    } finally {
+        catalogLoading.value = false;
+    }
+}
+
+const filteredCatalog = computed(() => {
+    let list = catalogMethods.value;
+    if (selectedCategory.value !== "all") {
+        list = list.filter((m) => m.category === selectedCategory.value);
+    }
+    if (selectedType.value !== "all") {
+        list = list.filter((m) => m.type === selectedType.value);
+    }
+    const q = searchFilter.value.trim().toLowerCase();
+    if (q) {
+        list = list.filter((m) => {
+            const matchId = m.id.toLowerCase().includes(q);
+            const matchName = m.name.toLowerCase().includes(q);
+            const matchDesc = m.description.toLowerCase().includes(q);
+            const matchInd = m.required_indicators?.some((i) => i.toLowerCase().includes(q));
+            const matchData = m.required_input_data?.some((d) => d.toLowerCase().includes(q));
+            return matchId || matchName || matchDesc || matchInd || matchData;
+        });
+    }
+    return list;
+});
+
+function getMethodStatusBadgeColor(status: string) {
+    switch (status) {
+        case "RESEARCH_READY":
+        case "PAPER_READY":
+            return "positive";
+        case "SHADOW_READY":
+            return "cyan";
+        case "IMPLEMENTED":
+            return "teal";
+        case "BLOCKED_BY_DATA":
+            return "warning";
+        case "UNSUPPORTED":
+            return "negative";
+        case "CATALOGUED":
+        default:
+            return "grey-7";
+    }
+}
+
+async function openMethodDetails(method: TradingMethod) {
+    selectedMethod.value = method;
+    detailDialogOpen.value = true;
+    detailLoading.value = true;
+    try {
+        const res = await getStrategyMethod(method.id);
+        if (res.data) {
+            selectedMethod.value = res.data;
+        }
+    } catch {
+        // fallback to method
+    } finally {
+        detailLoading.value = false;
+    }
+}
+
+function loadMethodIntoBuilder(method: TradingMethod) {
+    detailDialogOpen.value = false;
+    activeTab.value = "builder";
+    if (preview.value) {
+        const updated = structuredClone(preview.value);
+        (updated as any).method_id = method.id;
+        const params: Record<string, any> = {};
+        if (Array.isArray(method.parameters)) {
+            for (const p of method.parameters) {
+                params[p.name] = p.default;
+            }
+        }
+        (updated as any).method_parameters = params;
+        edit(updated);
+    }
+    message.value = `Method '${method.name}' loaded into Visual Strategy Builder.`;
+}
+
+onMounted(() => {
+    loadCatalog();
+});
+
 interface Version {
     id: number;
     strategy_id: string;
@@ -565,6 +704,178 @@ async function lifecycle(status: string) {
         <q-banner v-if="message" class="bg-info q-my-md" role="status">{{
             message
         }}</q-banner>
+
+        <!-- Navigation Tabs -->
+        <q-tabs
+            v-model="activeTab"
+            dense
+            class="bg-grey-10 text-primary q-mb-md rounded-borders"
+            active-color="primary"
+            indicator-color="primary"
+            align="left"
+        >
+            <q-tab name="library" icon="menu_book" label="Strategy Method Library (50 Catalog)" />
+            <q-tab name="builder" icon="tune" label="Visual Strategy Builder" />
+            <q-tab name="custom" icon="history_edu" label="Drafts & Versions" />
+            <q-tab name="authoring" icon="translate" label="Language Authoring" />
+            <q-tab name="research" icon="analytics" label="Runs & Research" />
+        </q-tabs>
+
+        <q-tab-panels v-model="activeTab" animated class="bg-transparent">
+            <!-- TAB 1: Strategy Method Library (50-Method Catalog) -->
+            <q-tab-panel name="library" class="q-pa-none">
+                <div class="row items-center justify-between q-mb-md">
+                    <div>
+                        <div class="text-h5 text-weight-bold">Quantitative Trading Method Library</div>
+                        <div class="text-caption text-grey-5">
+                            Comprehensive catalog of 50 quantitative methods across Family A through F with formal parameter schemas and data dependencies.
+                        </div>
+                    </div>
+                    <div class="row q-gutter-sm items-center">
+                        <q-badge outline color="positive" :label="`${catalogSummary?.total_methods || 50} Methods Catalogued`" class="q-py-xs q-px-sm" />
+                        <q-btn outline color="primary" icon="refresh" label="Refresh" :loading="catalogLoading" @click="loadCatalog" />
+                    </div>
+                </div>
+
+                <!-- Filter Toolbar -->
+                <div class="row q-col-gutter-sm items-center q-mb-md">
+                    <q-select
+                        class="col-12 col-md-4"
+                        v-model="selectedCategory"
+                        :options="categoryOptions"
+                        emit-value
+                        map-options
+                        dense
+                        outlined
+                        label="Family Category"
+                        @update:model-value="loadCatalog"
+                    />
+                    <q-select
+                        class="col-12 col-md-3"
+                        v-model="selectedType"
+                        :options="typeOptions"
+                        emit-value
+                        map-options
+                        dense
+                        outlined
+                        label="Method Type"
+                        @update:model-value="loadCatalog"
+                    />
+                    <q-input
+                        class="col-12 col-md-5"
+                        v-model="searchFilter"
+                        dense
+                        outlined
+                        clearable
+                        placeholder="Search by ID, name, description, indicators, input data..."
+                    >
+                        <template #prepend><q-icon name="search" size="18px" /></template>
+                    </q-input>
+                </div>
+
+                <!-- Loading & Error states -->
+                <div v-if="catalogLoading" class="row justify-center q-pa-xl">
+                    <q-spinner color="primary" size="48px" />
+                </div>
+                <q-banner v-else-if="catalogError" dense rounded class="bg-negative text-white q-mb-md">
+                    {{ catalogError }}
+                </q-banner>
+
+                <!-- Method Cards Grid -->
+                <div v-else-if="filteredCatalog.length" class="row q-col-gutter-md">
+                    <div
+                        v-for="method in filteredCatalog"
+                        :key="method.id"
+                        class="col-12 col-md-6 col-lg-4"
+                    >
+                        <q-card
+                            bordered
+                            flat
+                            class="method-card full-height column justify-between"
+                        >
+                            <q-card-section>
+                                <div class="row items-center justify-between no-wrap q-mb-xs">
+                                    <div class="text-subtitle1 text-weight-bold ellipsis text-white">
+                                        {{ method.name }}
+                                    </div>
+                                    <q-badge
+                                        :color="getMethodStatusBadgeColor(method.status)"
+                                        :label="method.status_display || method.status"
+                                        class="q-px-xs"
+                                    />
+                                </div>
+                                <div class="text-caption text-grey-5 q-mb-sm">
+                                    <code>{{ method.id }}</code>
+                                </div>
+
+                                <div class="row q-gutter-xs q-mb-sm">
+                                    <q-badge outline color="secondary" :label="method.category_display" />
+                                    <q-badge outline color="info" :label="method.type_display" />
+                                    <q-badge outline color="teal" :label="`${method.parameters?.length || 0} params`" />
+                                </div>
+
+                                <p class="text-caption text-grey-4 q-mb-sm ellipsis-3-lines">
+                                    {{ method.description }}
+                                </p>
+
+                                <!-- Blocker Callout if any -->
+                                <q-banner
+                                    v-if="method.blocker_reason"
+                                    dense
+                                    rounded
+                                    class="bg-orange-10 text-white q-mt-xs text-caption"
+                                >
+                                    <template #avatar><q-icon name="warning" color="amber" size="16px" /></template>
+                                    <strong>Blocked by data:</strong> {{ method.blocker_reason }}
+                                </q-banner>
+
+                                <!-- Supported Markets Tags -->
+                                <div class="row q-gutter-xs q-mt-xs items-center">
+                                    <span class="text-caption text-grey-6">Markets:</span>
+                                    <q-badge
+                                        v-for="mkt in method.supported_market_types"
+                                        :key="mkt"
+                                        color="blue-grey-8"
+                                        :label="String(mkt).toUpperCase()"
+                                        dense
+                                    />
+                                </div>
+                            </q-card-section>
+
+                            <q-separator />
+
+                            <q-card-actions align="between" class="bg-grey-10 q-px-sm">
+                                <q-btn
+                                    flat
+                                    dense
+                                    size="sm"
+                                    color="primary"
+                                    icon="visibility"
+                                    label="Details & Schemas"
+                                    @click="openMethodDetails(method)"
+                                />
+                                <q-btn
+                                    flat
+                                    dense
+                                    size="sm"
+                                    color="secondary"
+                                    icon="tune"
+                                    label="Configure in Builder"
+                                    @click="loadMethodIntoBuilder(method)"
+                                />
+                            </q-card-actions>
+                        </q-card>
+                    </div>
+                </div>
+                <div v-else class="text-center text-grey-5 q-pa-xl">
+                    <q-icon name="filter_list_off" size="48px" class="q-mb-sm" />
+                    <div class="text-h6">No trading methods match your current filters.</div>
+                    <div class="text-caption">Try clearing search or switching Family / Type dropdowns.</div>
+                </div>
+            </q-tab-panel>
+
+            <!-- TAB 3: Drafts & Custom Versions -->
+            <q-tab-panel name="custom" class="q-pa-none">
         <q-expansion-item
             label="Built-in strategies (existing research UI preserved)"
         >
@@ -623,73 +934,105 @@ async function lifecycle(status: string) {
             :max="lastPage"
             @update:model-value="action(load)"
         />
-        <h2 class="text-h6">Visual rule builder</h2>
-        <VisualDefinitionEditor
-            v-if="preview"
-            :model-value="preview"
-            @update:model-value="edit"
-        />
-        <h2 class="text-h6">English / Russian authoring</h2>
-        <q-input
-            v-model="description"
-            type="textarea"
-            label="Supported grammar description"
-        />
-        <p>
-            Deterministic grammar supports EMA crossovers, an RSI threshold,
-            optional 1h EMA trend confirmation, ATR stop/target and explicit
-            risk. Unrecognized text fails validation.
-        </p>
-        <q-checkbox
-            v-model="hosted"
-            :disable="!hostedEnabled"
-            label="Use configured hosted authoring provider"
-        />
-        <q-checkbox
-            v-if="hosted"
-            v-model="hostedConsent"
-            label="I consent to send this description to the configured provider. Do not include secrets or private trading information."
-        />
-        <q-btn
-            label="Interpret description"
-            :disable="busy || (hosted && !hostedConsent)"
-            @click="parse"
-        />
-        <q-expansion-item label="Advanced versioned JSON"
-            ><q-input
-                v-model="text"
-                type="textarea"
-                autogrow
-                label="Versioned strategy JSON"
-                input-class="text-monospace"
-        /></q-expansion-item>
-        <q-btn
-            label="Save durable draft"
-            :disable="busy || !preview"
-            @click="saveDraft"
-        />
-        <q-checkbox
-            v-model="confirmed"
-            label="I confirm these interpreted rules and assumptions"
-        />
-        <q-btn label="Validate" :disable="busy || !preview" @click="validate" />
-        <q-btn
-            label="Publish confirmed draft"
-            :disable="
-                busy ||
-                !draft ||
-                dirtyDraft ||
-                draft.status !== 'DRAFT' ||
-                !confirmed ||
-                !validated
-            "
-            @click="publish"
-        />
-        <q-btn
-            label="Save immutable version"
-            :disable="busy || !confirmed || !validated"
-            @click="save"
-        />
+            </q-tab-panel>
+
+            <!-- TAB 2: Visual Strategy Builder -->
+            <q-tab-panel name="builder" class="q-pa-none">
+                <div class="row items-center justify-between q-mb-md">
+                    <div>
+                        <div class="text-h5 text-weight-bold">Visual Strategy Builder</div>
+                        <div class="text-caption text-grey-5">
+                            Compose rules, configure method parameter schemas, and assign target exchanges explicitly.
+                        </div>
+                    </div>
+                </div>
+
+                <VisualDefinitionEditor
+                    v-if="preview"
+                    :model-value="preview"
+                    @update:model-value="edit"
+                />
+
+                <q-expansion-item label="Advanced versioned JSON" class="q-mt-md"
+                    ><q-input
+                        v-model="text"
+                        type="textarea"
+                        autogrow
+                        label="Versioned strategy JSON"
+                        input-class="text-monospace"
+                /></q-expansion-item>
+                <div class="row q-gutter-sm items-center q-mt-md">
+                    <q-btn
+                        label="Save durable draft"
+                        color="secondary"
+                        outline
+                        :disable="busy || !preview"
+                        @click="saveDraft"
+                    />
+                    <q-checkbox
+                        v-model="confirmed"
+                        label="I confirm these interpreted rules and assumptions"
+                    />
+                    <q-btn label="Validate" color="info" outline :disable="busy || !preview" @click="validate" />
+                    <q-btn
+                        label="Publish confirmed draft"
+                        color="primary"
+                        outline
+                        :disable="
+                            busy ||
+                            !draft ||
+                            dirtyDraft ||
+                            draft.status !== 'DRAFT' ||
+                            !confirmed ||
+                            !validated
+                        "
+                        @click="publish"
+                    />
+                    <q-btn
+                        label="Save immutable version"
+                        color="positive"
+                        unelevated
+                        :disable="busy || !confirmed || !validated"
+                        @click="save"
+                    />
+                </div>
+            </q-tab-panel>
+
+            <!-- TAB 4: Language Authoring -->
+            <q-tab-panel name="authoring" class="q-pa-none">
+                <h2 class="text-h6">English / Russian authoring</h2>
+                <q-input
+                    v-model="description"
+                    type="textarea"
+                    label="Supported grammar description"
+                />
+                <p class="text-caption text-grey-5 q-mt-xs">
+                    Deterministic grammar supports EMA crossovers, an RSI threshold,
+                    optional 1h EMA trend confirmation, ATR stop/target and explicit
+                    risk. Unrecognized text fails validation.
+                </p>
+                <q-checkbox
+                    v-model="hosted"
+                    :disable="!hostedEnabled"
+                    label="Use configured hosted authoring provider"
+                />
+                <q-checkbox
+                    v-if="hosted"
+                    v-model="hostedConsent"
+                    label="I consent to send this description to the configured provider. Do not include secrets or private trading information."
+                />
+                <div class="q-mt-sm">
+                    <q-btn
+                        label="Interpret description"
+                        color="primary"
+                        :disable="busy || (hosted && !hostedConsent)"
+                        @click="parse"
+                    />
+                </div>
+            </q-tab-panel>
+
+            <!-- TAB 5: Runs & Research -->
+            <q-tab-panel name="research" class="q-pa-none">
         <template v-if="selected">
             <h2 class="text-h6">
                 Selected: {{ selected.strategy_id }} v{{ selected.version }}
@@ -948,6 +1291,172 @@ async function lifecycle(status: string) {
                 <pre>{{ JSON.stringify(history, null, 2) }}</pre>
             </q-expansion-item>
         </template>
+        <div v-else class="text-center text-grey-5 q-pa-xl">
+            <q-icon name="info" size="40px" class="q-mb-sm" />
+            <div>Select an immutable custom version in the 'Drafts & Versions' tab to inspect historical runs, backtests and eligibility.</div>
+        </div>
+            </q-tab-panel>
+        </q-tab-panels>
+
+        <!-- Method Details Dialog -->
+        <q-dialog v-model="detailDialogOpen" full-width>
+            <q-card class="bg-dark text-white" v-if="selectedMethod">
+                <q-card-section class="row items-center justify-between">
+                    <div class="row items-center q-gutter-sm">
+                        <q-avatar icon="menu_book" color="primary" text-color="black" />
+                        <div>
+                            <div class="text-h6 text-weight-bold">
+                                {{ selectedMethod.name }} (<code>{{ selectedMethod.id }}</code>)
+                            </div>
+                            <div class="text-caption text-grey-5">
+                                {{ selectedMethod.category_display }} &bull; {{ selectedMethod.type_display }}
+                            </div>
+                        </div>
+                    </div>
+                    <q-btn flat round dense icon="close" v-close-popup />
+                </q-card-section>
+
+                <!-- Mandatory Paper Mode Disclaimer -->
+                <q-banner dense rounded class="bg-blue-grey-10 text-white q-mx-md q-mb-sm text-caption">
+                    <template #avatar><q-icon name="security" color="primary" size="18px" /></template>
+                    <strong>RESEARCH & VIRTUAL PAPER MODE:</strong> Method specifications define algorithmic logic for simulation and backtesting.
+                    Zero live exchange orders or credentials are used.
+                </q-banner>
+
+                <q-card-section class="q-px-md q-pt-none">
+                    <!-- Blocker Banner if exists -->
+                    <q-banner
+                        v-if="selectedMethod.blocker_reason"
+                        dense
+                        rounded
+                        class="bg-orange-10 text-white q-mb-md text-caption"
+                    >
+                        <template #avatar><q-icon name="warning" color="amber" size="20px" /></template>
+                        <div class="text-weight-bold">Data Dependency Diagnostic / Blocker:</div>
+                        <div>{{ selectedMethod.blocker_reason }}</div>
+                    </q-banner>
+
+                    <!-- Status and Eligibility Badges -->
+                    <div class="row q-gutter-sm items-center q-mb-md">
+                        <q-badge
+                            :color="getMethodStatusBadgeColor(selectedMethod.status)"
+                            :label="`Status: ${selectedMethod.status_display || selectedMethod.status}`"
+                            class="q-pa-xs"
+                        />
+                        <q-badge
+                            :color="selectedMethod.is_executable ? 'positive' : 'grey-7'"
+                            :label="selectedMethod.is_executable ? 'Executable in Algorithm' : 'Specification Catalogued'"
+                            class="q-pa-xs"
+                        />
+                        <q-badge
+                            :color="selectedMethod.research_eligible ? 'positive' : 'grey-7'"
+                            :label="`Research Eligible: ${selectedMethod.research_eligible ? 'YES' : 'NO'}`"
+                            class="q-pa-xs"
+                        />
+                        <q-badge
+                            :color="selectedMethod.shadow_eligible ? 'cyan-8' : 'grey-7'"
+                            :label="`Shadow Eligible: ${selectedMethod.shadow_eligible ? 'YES' : 'NO'}`"
+                            class="q-pa-xs"
+                        />
+                        <q-badge
+                            :color="selectedMethod.paper_eligible ? 'positive' : 'grey-7'"
+                            :label="`PAPER Eligible: ${selectedMethod.paper_eligible ? 'YES' : 'NO'}`"
+                            class="q-pa-xs"
+                        />
+                    </div>
+
+                    <p class="text-body2 text-grey-3 q-mb-md">
+                        {{ selectedMethod.description }}
+                    </p>
+
+                    <!-- Input & Indicator Requirements -->
+                    <div class="row q-col-gutter-md q-mb-md">
+                        <div class="col-12 col-md-4">
+                            <div class="text-caption text-weight-bold text-grey-4 q-mb-xs">Required Input Feeds:</div>
+                            <div class="row q-gutter-xs">
+                                <q-badge
+                                    v-for="inp in selectedMethod.required_input_data"
+                                    :key="inp"
+                                    outline
+                                    color="info"
+                                    :label="inp"
+                                />
+                                <span v-if="!selectedMethod.required_input_data?.length" class="text-caption text-grey-6">None</span>
+                            </div>
+                        </div>
+                        <div class="col-12 col-md-4">
+                            <div class="text-caption text-weight-bold text-grey-4 q-mb-xs">Required Indicators:</div>
+                            <div class="row q-gutter-xs">
+                                <q-badge
+                                    v-for="ind in selectedMethod.required_indicators"
+                                    :key="ind"
+                                    outline
+                                    color="secondary"
+                                    :label="ind"
+                                />
+                                <span v-if="!selectedMethod.required_indicators?.length" class="text-caption text-grey-6">None</span>
+                            </div>
+                        </div>
+                        <div class="col-12 col-md-4">
+                            <div class="text-caption text-weight-bold text-grey-4 q-mb-xs">Supported Market Venues:</div>
+                            <div class="row q-gutter-xs">
+                                <q-badge
+                                    v-for="mkt in selectedMethod.supported_market_types"
+                                    :key="mkt"
+                                    outline
+                                    color="teal"
+                                    :label="String(mkt).toUpperCase()"
+                                />
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Parameter Schemas Table -->
+                    <div class="text-subtitle2 text-weight-bold text-primary q-mb-xs">Parameter Schemas:</div>
+                    <div v-if="selectedMethod.parameters && selectedMethod.parameters.length">
+                        <q-markup-table dense flat bordered class="bg-grey-10 text-caption">
+                            <thead>
+                                <tr>
+                                    <th class="text-left">Parameter</th>
+                                    <th class="text-center">Type</th>
+                                    <th class="text-center">Default</th>
+                                    <th class="text-center">Min</th>
+                                    <th class="text-center">Max</th>
+                                    <th class="text-center">Step</th>
+                                    <th class="text-left">Description</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr v-for="p in selectedMethod.parameters" :key="p.name">
+                                    <td class="text-weight-bold text-teal">{{ p.name }}</td>
+                                    <td class="text-center"><code>{{ p.type }}</code></td>
+                                    <td class="text-center">{{ p.default ?? '—' }}</td>
+                                    <td class="text-center">{{ p.min ?? '—' }}</td>
+                                    <td class="text-center">{{ p.max ?? '—' }}</td>
+                                    <td class="text-center">{{ p.step ?? '—' }}</td>
+                                    <td class="text-left">{{ p.description }} {{ p.options ? `[${p.options.join(', ')}]` : '' }}</td>
+                                </tr>
+                            </tbody>
+                        </q-markup-table>
+                    </div>
+                    <div v-else class="text-caption text-grey-5">
+                        No configurable scalar parameters defined for this method.
+                    </div>
+                </q-card-section>
+
+                <q-separator />
+                <q-card-actions align="between">
+                    <q-btn flat label="Close" color="grey-5" v-close-popup />
+                    <q-btn
+                        unelevated
+                        color="primary"
+                        icon="tune"
+                        label="Configure in Visual Builder"
+                        @click="loadMethodIntoBuilder(selectedMethod)"
+                    />
+                </q-card-actions>
+            </q-card>
+        </q-dialog>
     </q-page>
 </template>
 <style scoped>
@@ -956,5 +1465,13 @@ pre {
     overflow-wrap: anywhere;
     max-height: 600px;
     overflow: auto;
+}
+.method-card {
+    background: #181c24;
+    border-color: #2a313d;
+    transition: all 0.2s ease-in-out;
+}
+.method-card:hover {
+    border-color: #3f4b5e;
 }
 </style>

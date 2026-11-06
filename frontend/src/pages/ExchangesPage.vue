@@ -8,6 +8,8 @@ import {
   fetchExchangeDetail,
   fetchExchanges,
   fetchExchangeStrategies,
+  getExchangeCapabilities,
+  getExchangeInstruments,
   reconcileExchangeCompatibility,
   registerExchange,
   syncExchangeTopology,
@@ -81,6 +83,150 @@ const syncLoading = ref(false);
 const syncResult = ref<any | null>(null);
 
 const intervals = ['1m', '3m', '5m', '15m', '30m', '1h', '2h', '4h', '6h', '8h', '12h', '1d'];
+
+// Market Capabilities Matrix Inspector
+const capabilitiesDialogOpen = ref(false);
+const capabilitiesLoading = ref(false);
+const capabilitiesData = ref<any | null>(null);
+const selectedCapExchangeId = ref<string>('');
+
+async function openCapabilitiesInspector(exchangeId: string) {
+  selectedCapExchangeId.value = exchangeId;
+  capabilitiesDialogOpen.value = true;
+  capabilitiesLoading.value = true;
+  capabilitiesData.value = null;
+  try {
+    const res = await getExchangeCapabilities(exchangeId);
+    capabilitiesData.value = res.data;
+  } catch (err: any) {
+    $q.notify({
+      type: 'negative',
+      message: `Failed to load capabilities for ${exchangeId}: ${err.message}`,
+    });
+  } finally {
+    capabilitiesLoading.value = false;
+  }
+}
+
+const capabilityColumns = computed(() => {
+  if (!capabilitiesData.value?.capabilities) {
+    return ['candles', 'funding_history', 'open_interest', 'order_book_l2', 'ticker'];
+  }
+  const set = new Set<string>();
+  for (const mkt of Object.keys(capabilitiesData.value.capabilities)) {
+    for (const capKey of Object.keys(capabilitiesData.value.capabilities[mkt])) {
+      set.add(capKey);
+    }
+  }
+  return set.size ? Array.from(set) : ['candles', 'funding_history', 'open_interest', 'order_book_l2', 'ticker'];
+});
+
+function formatCapName(key: string): string {
+  return key.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
+}
+
+// Instrument Discovery Dialog
+const instrumentDialogOpen = ref(false);
+const instrumentExchangeId = ref<string>('');
+const instrumentMarketType = ref<string>('perpetual');
+const instrumentSearch = ref<string>('');
+const instrumentLoading = ref(false);
+const instrumentResults = ref<any[]>([]);
+const instrumentMessage = ref<string>('');
+
+function openInstrumentDiscovery(exchangeId: string) {
+  instrumentExchangeId.value = exchangeId;
+  const ex = exchanges.value.find(e => e.id === exchangeId);
+  const types = ex ? getMarketTypes(ex) : ['PERPETUAL'];
+  instrumentMarketType.value = types.includes('PERPETUAL') ? 'perpetual' : types[0]?.toLowerCase() || 'spot';
+  instrumentSearch.value = '';
+  instrumentResults.value = [];
+  instrumentMessage.value = '';
+  instrumentDialogOpen.value = true;
+  loadInstruments();
+}
+
+async function loadInstruments() {
+  if (!instrumentExchangeId.value) return;
+  instrumentLoading.value = true;
+  instrumentResults.value = [];
+  instrumentMessage.value = '';
+  try {
+    const res = await getExchangeInstruments(instrumentExchangeId.value, instrumentMarketType.value);
+    instrumentResults.value = res.data?.instruments || [];
+    instrumentMessage.value = res.data?.message || (instrumentResults.value.length === 0 ? 'No dynamic instruments discovered; venue catalog empty.' : '');
+  } catch (err: any) {
+    instrumentMessage.value = err.message || 'Failed to discover instruments.';
+  } finally {
+    instrumentLoading.value = false;
+  }
+}
+
+const filteredInstruments = computed(() => {
+  const q = instrumentSearch.value.trim().toLowerCase();
+  if (!q) return instrumentResults.value;
+  return instrumentResults.value.filter(item => {
+    const sym = String(item.symbol || item.name || item || '').toLowerCase();
+    const base = String(item.base_asset || item.base || '').toLowerCase();
+    const quote = String(item.quote_asset || item.quote || '').toLowerCase();
+    return sym.includes(q) || base.includes(q) || quote.includes(q);
+  });
+});
+
+function getMarketTypes(exchange: Exchange): string[] {
+  const rawList =
+    (exchange.capabilities as any)?.market_types ||
+    (exchange.capabilities as any)?.supported_market_types ||
+    [exchange.market_type];
+  const set = new Set<string>();
+  for (const item of rawList) {
+    const norm = String(item).toLowerCase();
+    if (norm.includes('spot')) set.add('SPOT');
+    if (norm.includes('perp')) set.add('PERPETUAL');
+    if (norm.includes('future')) set.add('FUTURES');
+    if (norm.includes('option')) set.add('OPTIONS');
+  }
+  if (exchange.id === 'bybit' || exchange.id === 'binance') {
+    set.add('SPOT');
+    set.add('PERPETUAL');
+  }
+  if (!set.size) set.add('SPOT');
+  return Array.from(set);
+}
+
+function getMarketTypeColor(type: string): string {
+  switch (type.toUpperCase()) {
+    case 'SPOT':
+      return 'teal';
+    case 'PERPETUAL':
+      return 'primary';
+    case 'FUTURES':
+      return 'deep-purple';
+    case 'OPTIONS':
+      return 'amber-9';
+    default:
+      return 'blue-grey';
+  }
+}
+
+function getCapabilityBadgeColor(status: string): string {
+  switch (status) {
+    case 'SUPPORTED':
+      return 'positive';
+    case 'PARTIALLY_SUPPORTED':
+      return 'amber-8';
+    case 'UNSUPPORTED':
+      return 'negative';
+    case 'BLOCKED_BY_DATA':
+      return 'orange-9';
+    case 'TEMPORARILY_UNAVAILABLE':
+      return 'purple';
+    case 'NOT_ASSESSED':
+    default:
+      return 'grey-7';
+  }
+}
+
 
 async function loadExchanges() {
   loading.value = true;
@@ -430,8 +576,20 @@ onMounted(() => {
               />
             </div>
 
-            <div class="text-caption text-grey-5 q-mb-sm">
+            <div class="text-caption text-grey-5 q-mb-xs">
               <code>{{ exchange.id }}</code> &bull; {{ exchange.market_type }}
+            </div>
+
+            <!-- Supported Market Type Badges -->
+            <div class="row q-gutter-xs q-mb-sm items-center">
+              <span class="text-caption text-grey-5 text-weight-medium">Markets:</span>
+              <q-badge
+                v-for="mkt in getMarketTypes(exchange)"
+                :key="mkt"
+                outline
+                :color="getMarketTypeColor(mkt)"
+                :label="mkt"
+              />
             </div>
 
             <p class="text-caption text-grey-4 q-mb-md ellipsis-2-lines">
@@ -483,15 +641,35 @@ onMounted(() => {
           <q-separator />
 
           <q-card-actions align="between" class="bg-grey-10 q-px-sm">
-            <q-btn
-              flat
-              dense
-              size="sm"
-              color="primary"
-              icon="query_stats"
-              label="Diagnostics"
-              @click="inspectExchange(exchange.id)"
-            />
+            <div class="row q-gutter-xs">
+              <q-btn
+                flat
+                dense
+                size="sm"
+                color="primary"
+                icon="query_stats"
+                label="Diagnostics"
+                @click="inspectExchange(exchange.id)"
+              />
+              <q-btn
+                flat
+                dense
+                size="sm"
+                color="amber-9"
+                icon="table_chart"
+                label="Capabilities"
+                @click="openCapabilitiesInspector(exchange.id)"
+              />
+              <q-btn
+                flat
+                dense
+                size="sm"
+                color="cyan-8"
+                icon="travel_explore"
+                label="Instruments"
+                @click="openInstrumentDiscovery(exchange.id)"
+              />
+            </div>
             <div class="row q-gutter-xs">
               <q-btn
                 flat
@@ -1152,6 +1330,214 @@ onMounted(() => {
                 </tr>
               </tbody>
             </q-markup-table>
+          </div>
+        </q-card-section>
+        <q-separator />
+        <q-card-actions align="right">
+          <q-btn flat label="Close" color="primary" v-close-popup />
+        </q-card-actions>
+      </q-card>
+    </q-dialog>
+
+    <!-- Market Capabilities Matrix Inspector Dialog -->
+    <q-dialog v-model="capabilitiesDialogOpen" full-width>
+      <q-card class="bg-dark text-white">
+        <q-card-section class="row items-center justify-between">
+          <div class="row items-center q-gutter-sm">
+            <q-avatar icon="table_chart" color="amber-9" text-color="black" />
+            <div>
+              <div class="text-h6 text-weight-bold">
+                {{ capabilitiesData?.name || selectedCapExchangeId.toUpperCase() }} Market Capabilities Matrix
+              </div>
+              <div class="text-caption text-grey-5">
+                Venue: <code>{{ selectedCapExchangeId }}</code> &bull;
+                Adapter: {{ capabilitiesData?.adapter_class || 'Static Model' }} &bull;
+                Status: {{ capabilitiesData?.lifecycle_status || 'ASSESSED' }}
+              </div>
+            </div>
+          </div>
+          <q-btn flat round dense icon="close" v-close-popup />
+        </q-card-section>
+
+        <!-- Mandatory Paper Trading Disclaimer -->
+        <q-banner dense rounded class="bg-blue-grey-10 text-white q-mx-md q-mb-sm text-caption">
+          <template #avatar><q-icon name="security" color="primary" size="18px" /></template>
+          <strong>VIRTUAL PAPER TRADING ONLY:</strong> Capabilities reflect public market data ingestion and simulated execution models.
+          Zero live order routing exists. All capabilities operate strictly under the global portfolio risk budget.
+        </q-banner>
+
+        <!-- Capability Status Legend -->
+        <div class="q-px-md q-py-xs row q-gutter-xs items-center text-caption">
+          <span class="text-grey-5 text-weight-bold q-mr-xs">Status Legend:</span>
+          <q-badge color="positive" label="SUPPORTED" class="q-mr-xs" />
+          <q-badge color="amber-8" label="PARTIALLY_SUPPORTED" class="q-mr-xs" />
+          <q-badge color="negative" label="UNSUPPORTED" class="q-mr-xs" />
+          <q-badge color="orange-9" label="BLOCKED_BY_DATA" class="q-mr-xs" />
+          <q-badge color="purple" label="TEMPORARILY_UNAVAILABLE" class="q-mr-xs" />
+          <q-badge color="grey-7" label="NOT_ASSESSED" />
+        </div>
+
+        <q-separator class="q-my-sm" />
+
+        <q-card-section class="q-pa-md">
+          <div v-if="capabilitiesLoading" class="row justify-center q-pa-lg">
+            <q-spinner color="amber-9" size="40px" />
+          </div>
+          <div v-else-if="capabilitiesData && capabilitiesData.capabilities">
+            <q-markup-table dense flat bordered class="bg-grey-10 text-caption">
+              <thead>
+                <tr>
+                  <th class="text-left">Market Type</th>
+                  <th
+                    v-for="capKey in capabilityColumns"
+                    :key="capKey"
+                    class="text-center"
+                  >
+                    {{ formatCapName(capKey) }}
+                  </th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr v-for="(caps, mType) in capabilitiesData.capabilities" :key="mType">
+                  <td class="text-left text-weight-bold">
+                    <q-badge
+                      :color="getMarketTypeColor(String(mType))"
+                      :label="String(mType).toUpperCase()"
+                    />
+                  </td>
+                  <td
+                    v-for="capKey in capabilityColumns"
+                    :key="capKey"
+                    class="text-center"
+                  >
+                    <q-badge
+                      :color="getCapabilityBadgeColor(caps[capKey] || 'NOT_ASSESSED')"
+                      :label="caps[capKey] || 'NOT_ASSESSED'"
+                    >
+                      <q-tooltip>
+                        {{ mType }} &bull; {{ formatCapName(capKey) }}: {{ caps[capKey] || 'NOT_ASSESSED' }}
+                      </q-tooltip>
+                    </q-badge>
+                  </td>
+                </tr>
+              </tbody>
+            </q-markup-table>
+          </div>
+          <div v-else class="text-center text-grey-5 q-pa-md">
+            No market capabilities assessed for this exchange.
+          </div>
+        </q-card-section>
+        <q-separator />
+        <q-card-actions align="right">
+          <q-btn flat label="Close" color="primary" v-close-popup />
+        </q-card-actions>
+      </q-card>
+    </q-dialog>
+
+    <!-- Instrument Discovery Dialog -->
+    <q-dialog v-model="instrumentDialogOpen" full-width>
+      <q-card class="bg-dark text-white">
+        <q-card-section class="row items-center justify-between">
+          <div class="row items-center q-gutter-sm">
+            <q-avatar icon="travel_explore" color="cyan-8" text-color="black" />
+            <div>
+              <div class="text-h6 text-weight-bold">
+                Instrument Discovery & Market Specification
+              </div>
+              <div class="text-caption text-grey-5">
+                Venue: <code>{{ instrumentExchangeId }}</code> &bull;
+                Discovered: {{ filteredInstruments.length }} of {{ instrumentResults.length }} instruments
+              </div>
+            </div>
+          </div>
+          <q-btn flat round dense icon="close" v-close-popup />
+        </q-card-section>
+
+        <!-- Mandatory Paper Trading Disclaimer -->
+        <q-banner dense rounded class="bg-blue-grey-10 text-white q-mx-md q-mb-sm text-caption">
+          <template #avatar><q-icon name="security" color="primary" size="18px" /></template>
+          <strong>DISCOVERY ONLY — NO REAL ORDERS:</strong> Discovered instruments are for public market data ingestion,
+          quantitative backtesting, and virtual paper trading simulations. Zero live exchange trading is permitted.
+        </q-banner>
+
+        <q-card-section class="q-pt-none q-px-md">
+          <div class="row q-col-gutter-sm items-center q-mb-md">
+            <q-select
+              class="col-12 col-md-4"
+              v-model="instrumentMarketType"
+              :options="['perpetual', 'spot', 'futures', 'options']"
+              dense
+              outlined
+              label="Market Type"
+              @update:model-value="loadInstruments"
+            />
+            <q-input
+              class="col-12 col-md-6"
+              v-model="instrumentSearch"
+              dense
+              outlined
+              clearable
+              placeholder="Filter by symbol, base or quote asset (e.g. BTC, ETH)..."
+            >
+              <template #prepend><q-icon name="search" size="18px" /></template>
+            </q-input>
+            <div class="col-12 col-md-2">
+              <q-btn
+                outline
+                color="cyan"
+                icon="refresh"
+                label="Reload"
+                class="full-width"
+                :loading="instrumentLoading"
+                @click="loadInstruments"
+              />
+            </div>
+          </div>
+
+          <div v-if="instrumentLoading" class="row justify-center q-pa-lg">
+            <q-spinner color="cyan" size="40px" />
+          </div>
+          <div v-else-if="filteredInstruments.length">
+            <q-markup-table dense flat bordered class="bg-grey-10 text-caption">
+              <thead>
+                <tr>
+                  <th class="text-left">Symbol</th>
+                  <th class="text-left">Base Asset</th>
+                  <th class="text-left">Quote Asset</th>
+                  <th class="text-center">Price Precision</th>
+                  <th class="text-center">Qty Precision</th>
+                  <th class="text-center">Min Qty</th>
+                  <th class="text-center">Min Notional</th>
+                  <th class="text-center">Status</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr v-for="inst in filteredInstruments.slice(0, 100)" :key="inst.symbol || inst">
+                  <td class="text-left text-weight-bold text-primary">
+                    {{ inst.symbol || inst }}
+                  </td>
+                  <td class="text-left">{{ inst.base_asset || '—' }}</td>
+                  <td class="text-left">{{ inst.quote_asset || '—' }}</td>
+                  <td class="text-center">{{ inst.price_precision ?? '—' }}</td>
+                  <td class="text-center">{{ inst.qty_precision ?? '—' }}</td>
+                  <td class="text-center">{{ inst.min_qty || '—' }}</td>
+                  <td class="text-center">{{ inst.min_notional || '—' }}</td>
+                  <td class="text-center">
+                    <q-badge
+                      :color="inst.status === 'TRADING' || inst.status === 'ENABLED' || inst.status === 'live' ? 'positive' : 'grey-7'"
+                      :label="inst.status || 'AVAILABLE'"
+                    />
+                  </td>
+                </tr>
+              </tbody>
+            </q-markup-table>
+            <div v-if="filteredInstruments.length > 100" class="text-caption text-grey-5 q-mt-xs">
+              Showing first 100 of {{ filteredInstruments.length }} discovered instruments. Use search filter above to narrow down.
+            </div>
+          </div>
+          <div v-else class="text-center text-grey-5 q-pa-lg">
+            <q-icon name="info" size="32px" class="q-mb-xs" />
+            <div>{{ instrumentMessage || 'No instruments discovered for this market type.' }}</div>
           </div>
         </q-card-section>
         <q-separator />

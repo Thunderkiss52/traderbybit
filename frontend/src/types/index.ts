@@ -18,9 +18,13 @@ export interface Signal {
 }
 
 export interface Envelope<T> {
-  schema_version: string;
-  research_mode: true;
+  schema_version?: string;
+  research_mode?: boolean;
   data: T;
+  summary?: any;
+  total?: number;
+  message?: string;
+  [key: string]: any;
 }
 
 export interface Page<T> {
@@ -190,4 +194,72 @@ export interface CompatibilityMatrixResponse {
   total_evaluations: number;
   updated_at: string;
 }
+
+export type MarketType = 'spot' | 'futures' | 'perpetual' | 'options';
+
+export type CapabilityStatus =
+  | 'SUPPORTED'
+  | 'PARTIALLY_SUPPORTED'
+  | 'UNSUPPORTED'
+  | 'TEMPORARILY_UNAVAILABLE'
+  | 'NOT_ASSESSED';
+
+export interface TradingMethodParameter {
+  name: string;
+  type: string;
+  default: any;
+  min?: number;
+  max?: number;
+  step?: number;
+  options?: string[];
+  description: string;
+}
+
+export interface TradingMethod {
+  id: string;
+  name: string;
+  description: string;
+  category: string;
+  category_display: string;
+  type: string;
+  type_display: string;
+  parameters: TradingMethodParameter[];
+  required_input_data: string[];
+  required_indicators: string[];
+  supported_market_types: MarketType[];
+  status: string;
+  status_display: string;
+  blocker_reason?: string | null;
+  is_executable: boolean;
+  research_eligible: boolean;
+  shadow_eligible: boolean;
+  paper_eligible: boolean;
+  timeframe_requirements?: string[];
+  compatible_categories?: string[];
+  composability_rules?: Record<string, any>;
+}
+
+export interface ExchangeMarketCapabilities {
+  exchange_id: string;
+  name: string;
+  lifecycle_status: string;
+  market_types: (MarketType | string)[];
+  capabilities: Record<string, Record<string, CapabilityStatus | string>>;
+  has_live_adapter: boolean;
+  adapter_class?: string | null;
+}
+
+export interface DiscoveredInstrument {
+  symbol: string;
+  base_asset?: string;
+  quote_asset?: string;
+  market_type?: string;
+  price_precision?: number;
+  qty_precision?: number;
+  min_qty?: string;
+  min_notional?: string;
+  status?: string;
+  [key: string]: any;
+}
+
 

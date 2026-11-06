@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\StrategyBuilder;
 
 use App\Exchanges\Application\ExchangeStrategyCompatibilityService;
+use App\Exchanges\Infrastructure\Persistence\ExchangeRecord;
 use App\Strategy\Application\StrategyRegistry;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -245,6 +246,86 @@ final class ManagementController
 
         return response()->json([
             'data' => $compatibility->reconcileStrategy((string) $strategyId),
+        ]);
+    }
+
+    /**
+     * Explicit owner assignment of a strategy to an exchange venue.
+     * Invariant: Never auto-activates strategies or spawns paper accounts.
+     */
+    public function assignExchange(int $id, Request $request, ExchangeStrategyCompatibilityService $compatibility): JsonResponse
+    {
+        $strategy = DB::table('strategy_definitions')->where('id', $id)->first();
+        abort_if($strategy === null, 404, 'Strategy definition not found.');
+
+        $validated = $request->validate([
+            'exchange_id' => 'required|string|exists:exchanges,id',
+            'market_type' => 'sometimes|string|in:spot,perpetual,futures,options',
+            'assigned_by' => 'sometimes|string|max:64',
+        ]);
+
+        $exchangeId = strtolower(trim($validated['exchange_id']));
+        $marketType = strtolower(trim($validated['market_type'] ?? 'perpetual'));
+        $assignedBy = trim($validated['assigned_by'] ?? 'owner');
+        $now = now('UTC')->format('Y-m-d H:i:s.uP');
+
+        DB::table('strategy_exchange_assignments')->updateOrInsert(
+            [
+                'strategy_id' => (string) $strategy->strategy_id,
+                'exchange_id' => $exchangeId,
+                'market_type' => $marketType,
+            ],
+            [
+                'assigned_by' => $assignedBy,
+                'assigned_at' => $now,
+                'is_active' => true,
+                'metadata' => json_encode(['definition_id' => $id, 'version' => $strategy->version], JSON_THROW_ON_ERROR),
+                'updated_at' => $now,
+                'created_at' => $now,
+            ]
+        );
+
+        // Run compatibility check for the assigned pair
+        $exchangeRecord = ExchangeRecord::query()->find($exchangeId);
+        $compatRecord = null;
+        if ($exchangeRecord) {
+            $compatRecord = $compatibility->evaluateAndPersist($exchangeRecord, [
+                'id' => $strategy->strategy_id,
+                'version' => 'v'.$strategy->version,
+                'definition' => json_decode($strategy->definition_json, true),
+            ]);
+        }
+
+        return response()->json([
+            'data' => [
+                'strategy_id' => $strategy->strategy_id,
+                'exchange_id' => $exchangeId,
+                'market_type' => $marketType,
+                'assigned_at' => $now,
+                'compatibility' => $compatRecord ? [
+                    'status' => $compatRecord->status,
+                    'reasons' => $compatRecord->reasons,
+                ] : null,
+                'message' => "Strategy '{$strategy->strategy_id}' explicitly assigned to {$exchangeId} ({$marketType}). Requires manual paper authorization before live paper trading.",
+            ],
+        ]);
+    }
+
+    /**
+     * List all explicit exchange assignments for a strategy.
+     */
+    public function assignedExchanges(int $id): JsonResponse
+    {
+        $strategy = DB::table('strategy_definitions')->where('id', $id)->first();
+        abort_if($strategy === null, 404, 'Strategy definition not found.');
+
+        $assignments = DB::table('strategy_exchange_assignments')
+            ->where('strategy_id', (string) $strategy->strategy_id)
+            ->where('is_active', true)
+            ->get();
+
+        return response()->json([
+            'data' => $assignments,
         ]);
     }
 }
