@@ -14,6 +14,7 @@ use App\StrategyBuilder\PrimaryStrategies;
 use App\Trading\Application\TradingPipelineEventService;
 use DateTimeImmutable;
 use DomainException;
+use Illuminate\Support\Facades\DB;
 use Throwable;
 
 /** Owner-operated PAPER/RESEARCH cycle; never places real exchange orders. */
@@ -132,7 +133,7 @@ final readonly class BinanceResearchCycle
 
             if ($ts % 1800 === 0) {
                 $open30m = $at->modify('-30 minutes');
-                $has30m = \Illuminate\Support\Facades\DB::table('market_candles')
+                $has30m = DB::table('market_candles')
                     ->where('exchange', 'binance')->where('category', 'linear')
                     ->where('symbol', $symbol)->where('interval', '30')
                     ->where('open_time', $open30m)->where('is_closed', true)
@@ -144,7 +145,7 @@ final readonly class BinanceResearchCycle
 
             if ($ts % 3600 === 0) {
                 $open60m = $at->modify('-60 minutes');
-                $has60m = \Illuminate\Support\Facades\DB::table('market_candles')
+                $has60m = DB::table('market_candles')
                     ->where('exchange', 'binance')->where('category', 'linear')
                     ->where('symbol', $symbol)->where('interval', '60')
                     ->where('open_time', $open60m)->where('is_closed', true)

@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Trading\Jobs;
 
+use App\Exchanges\Binance\BinanceCandleIngestion;
 use App\Exchanges\Binance\BinanceContextCapture;
 use App\Strategy\Application\MarketContextCollector;
 use App\Strategy\Application\MarketScannerService;
@@ -22,6 +23,7 @@ use Illuminate\Foundation\Bus\Dispatchable;
 use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\Middleware\WithoutOverlapping;
 use Illuminate\Queue\SerializesModels;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Throwable;
 
@@ -341,12 +343,12 @@ final class ProcessClosedCandleEventJob implements ShouldQueue
         }
 
         try {
-            $ingestion = app(\App\Exchanges\Binance\BinanceCandleIngestion::class);
+            $ingestion = app(BinanceCandleIngestion::class);
             $ts = $closeAt->getTimestamp();
 
             if ($ts % 1800 === 0) {
                 $open30m = $closeAt->modify('-30 minutes');
-                $has30m = \Illuminate\Support\Facades\DB::table('market_candles')
+                $has30m = DB::table('market_candles')
                     ->where('exchange', 'binance')->where('category', 'linear')
                     ->where('symbol', $symbol)->where('interval', '30')
                     ->where('open_time', $open30m)->where('is_closed', true)
@@ -358,7 +360,7 @@ final class ProcessClosedCandleEventJob implements ShouldQueue
 
             if ($ts % 3600 === 0) {
                 $open60m = $closeAt->modify('-60 minutes');
-                $has60m = \Illuminate\Support\Facades\DB::table('market_candles')
+                $has60m = DB::table('market_candles')
                     ->where('exchange', 'binance')->where('category', 'linear')
                     ->where('symbol', $symbol)->where('interval', '60')
                     ->where('open_time', $open60m)->where('is_closed', true)
@@ -367,7 +369,7 @@ final class ProcessClosedCandleEventJob implements ShouldQueue
                     $ingestion->ingest($symbol, '1h', 5, quarantineConflicts: true);
                 }
             }
-        } catch (\Throwable $e) {
+        } catch (Throwable $e) {
             Log::warning("Binance HTF candle pre-synchronization non-fatal: {$e->getMessage()}");
         }
     }

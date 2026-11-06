@@ -9,6 +9,7 @@ use App\Exchanges\Application\ExchangeStrategyCompatibilityService;
 use App\Exchanges\Infrastructure\Persistence\ExchangeRecord;
 use App\Exchanges\Infrastructure\Persistence\ExchangeStrategyCompatibilityRecord;
 use App\MarketData\Infrastructure\Persistence\CandleRecord;
+use App\PaperTrading\Infrastructure\Persistence\PaperAccountRecord;
 use App\StrategyBuilder\DefinitionStore;
 use Carbon\CarbonImmutable;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -145,7 +146,7 @@ final class ExchangeStrategyCompatibilityTest extends TestCase
 
         // Invariant: Compatibility discovery is strictly distinct from activation
         // Zero paper accounts created for kraken_futures
-        $paperAccountsCount = \App\PaperTrading\Infrastructure\Persistence\PaperAccountRecord::query()
+        $paperAccountsCount = PaperAccountRecord::query()
             ->where('exchange_id', 'kraken_futures')
             ->count();
         self::assertSame(0, $paperAccountsCount, 'Newly registered exchange must NOT automatically create paper accounts.');
