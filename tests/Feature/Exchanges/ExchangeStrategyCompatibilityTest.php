@@ -123,6 +123,39 @@ final class ExchangeStrategyCompatibilityTest extends TestCase
         self::assertGreaterThanOrEqual(13, $count, 'Registering exchange must auto-discover and evaluate all strategies.');
     }
 
+    public function test_newly_registered_exchange_evaluates_compatibility_without_activating_strategies_or_creating_paper_accounts(): void
+    {
+        $catalog = app(ExchangeCatalogService::class);
+        $service = app(ExchangeStrategyCompatibilityService::class);
+
+        $exchange = $catalog->register([
+            'id' => 'kraken_futures',
+            'name' => 'Kraken Futures',
+            'market_type' => 'linear_perpetual',
+        ]);
+
+        // Reconcile compatibility
+        $service->reconcileExchange('kraken_futures');
+
+        // Compatibility records were discovered and evaluated
+        $compatCount = ExchangeStrategyCompatibilityRecord::query()
+            ->where('exchange_id', 'kraken_futures')
+            ->count();
+        self::assertGreaterThanOrEqual(13, $compatCount);
+
+        // Invariant: Compatibility discovery is strictly distinct from activation
+        // Zero paper accounts created for kraken_futures
+        $paperAccountsCount = \App\PaperTrading\Infrastructure\Persistence\PaperAccountRecord::query()
+            ->where('exchange_id', 'kraken_futures')
+            ->count();
+        self::assertSame(0, $paperAccountsCount, 'Newly registered exchange must NOT automatically create paper accounts.');
+
+        // Invariant: Exchange lifecycle status remains unapproved for paper execution
+        $freshExchange = ExchangeRecord::query()->findOrFail('kraken_futures');
+        self::assertFalse($freshExchange->paper_approved, 'Newly registered exchange must NOT be paper approved automatically.');
+        self::assertNotSame('ACTIVE_PAPER', $freshExchange->lifecycle_status, 'Exchange must NOT be ACTIVE_PAPER upon discovery.');
+    }
+
     public function test_saving_custom_strategy_automatically_reconciles_against_all_exchanges(): void
     {
         $store = app(DefinitionStore::class);

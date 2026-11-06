@@ -21,7 +21,7 @@ final class ExecutableStore
         if (! is_file($target)) {
             $temporary = tempnam($directory, 'engine-');
             try {
-                if (! copy($source, $temporary) || hash_file('sha256', $temporary) !== $hash || ! chmod($temporary, 0550) || ! rename($temporary, $target)) {
+                if (! copy($source, $temporary) || hash_file('sha256', $temporary) !== $hash || ! chmod($temporary, 0555) || ! rename($temporary, $target)) {
                     throw new \RuntimeException('Executable archival failed.');
                 }
             } finally {
