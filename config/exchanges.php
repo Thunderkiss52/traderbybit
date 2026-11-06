@@ -3,7 +3,7 @@
 declare(strict_types=1);
 
 return [
-    'enabled' => ['bybit', 'binance'],
+    'enabled' => ['bybit', 'binance', 'coinbase', 'upbit', 'okx', 'bitget', 'gate', 'kucoin', 'kraken', 'htx'],
     'default' => 'bybit',
     'binance_paper_provisioning_approved' => env('VECTOR_BINANCE_PAPER_PROVISIONING_APPROVED', false),
     'binance' => [

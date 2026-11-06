@@ -9,6 +9,9 @@ use App\Exchanges\Application\ExchangeCatalogService;
 use App\Exchanges\Application\ExchangeCoverageService;
 use App\Exchanges\Application\ExchangeStrategyCompatibilityService;
 use App\Exchanges\Application\HistoricalCandleCsvImporter;
+use App\Exchanges\Contracts\ExtendedExchangeAdapter;
+use App\Exchanges\Domain\MarketType;
+use App\Exchanges\ExchangeRegistry;
 use App\PaperTrading\Application\PaperTopologySynchronizer;
 use DomainException;
 use Illuminate\Http\JsonResponse;
@@ -396,6 +399,99 @@ final class ExchangeManagementController extends Controller
     {
         return response()->json([
             'data' => $service->getMatrix(),
+        ]);
+    }
+
+    /**
+     * Detailed capability breakdown across market types for an exchange.
+     */
+    public function capabilities(string $id, ExchangeCatalogService $catalog, ExchangeRegistry $registry): JsonResponse
+    {
+        $exchange = $catalog->get($id);
+        $adapter = $registry->hasAdapter($id) ? $registry->resolve($id) : null;
+
+        $marketTypes = [];
+        $capabilitiesByMarket = [];
+
+        if ($adapter instanceof ExtendedExchangeAdapter) {
+            $types = $adapter->supportedMarketTypes();
+            foreach ($types as $type) {
+                $marketTypes[] = $type->value;
+                $caps = $adapter->getMarketCapabilities($type);
+                $capabilitiesByMarket[$type->value] = array_map(fn ($status) => $status->value, $caps);
+            }
+        } else {
+            $marketTypeStr = $exchange->market_type ?? 'spot';
+            $marketTypes = [$marketTypeStr];
+            $caps = (array) ($exchange->capabilities ?? []);
+            $capabilitiesByMarket[$marketTypeStr] = [
+                'candles' => ! empty($caps['has_candles']) ? 'SUPPORTED' : 'UNSUPPORTED',
+                'funding_history' => ! empty($caps['has_funding']) ? 'SUPPORTED' : 'UNSUPPORTED',
+                'open_interest' => ! empty($caps['has_open_interest']) ? 'SUPPORTED' : 'UNSUPPORTED',
+                'order_book_l2' => $adapter !== null ? 'SUPPORTED' : 'NOT_ASSESSED',
+                'ticker' => $adapter !== null ? 'SUPPORTED' : 'NOT_ASSESSED',
+            ];
+        }
+
+        return response()->json([
+            'data' => [
+                'exchange_id' => $exchange->id,
+                'name' => $exchange->name,
+                'lifecycle_status' => $exchange->lifecycle_status,
+                'market_types' => $marketTypes,
+                'capabilities' => $capabilitiesByMarket,
+                'has_live_adapter' => $adapter !== null,
+                'adapter_class' => $adapter !== null ? get_class($adapter) : null,
+            ],
+        ]);
+    }
+
+    /**
+     * Discover available instruments for an exchange and market type.
+     */
+    public function instruments(string $id, Request $request, ExchangeCatalogService $catalog, ExchangeRegistry $registry): JsonResponse
+    {
+        $exchange = $catalog->get($id);
+        $marketTypeStr = (string) $request->query('market_type', $exchange->market_type ?? 'perpetual');
+
+        if (! $registry->hasAdapter($id)) {
+            return response()->json([
+                'data' => [
+                    'exchange_id' => $exchange->id,
+                    'market_type' => $marketTypeStr,
+                    'count' => 0,
+                    'instruments' => [],
+                    'message' => 'No active adapter registered for this exchange; static catalog only.',
+                ],
+            ]);
+        }
+
+        $adapter = $registry->resolve($id);
+        $instruments = [];
+
+        try {
+            if ($adapter instanceof ExtendedExchangeAdapter) {
+                $marketType = MarketType::fromString($marketTypeStr);
+                $instruments = $adapter->fetchInstruments($marketType);
+            } else {
+                $instruments = $adapter->fetchSymbols();
+            }
+        } catch (Throwable $e) {
+            return response()->json([
+                'error' => [
+                    'code' => 'INSTRUMENT_DISCOVERY_FAILED',
+                    'message' => "Failed to discover instruments: {$e->getMessage()}",
+                ],
+            ], Response::HTTP_SERVICE_UNAVAILABLE);
+        }
+
+        return response()->json([
+            'data' => [
+                'exchange_id' => $exchange->id,
+                'market_type' => $marketTypeStr,
+                'count' => count($instruments),
+                'instruments' => $instruments,
+            ],
         ]);
     }
 }

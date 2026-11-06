@@ -13,8 +13,16 @@ use App\Backtest\Application\PerformanceMetricCalculator;
 use App\Backtest\Application\StrategySignalEvaluator;
 use App\Backtest\Contracts\HistoricalSignalEvaluator;
 use App\Exchanges\Binance\BinancePublicAdapter;
+use App\Exchanges\Bitget\BitgetAdapter;
 use App\Exchanges\Bybit\BybitAdapter;
+use App\Exchanges\Coinbase\CoinbaseAdapter;
 use App\Exchanges\ExchangeRegistry;
+use App\Exchanges\Gate\GateAdapter;
+use App\Exchanges\Htx\HtxAdapter;
+use App\Exchanges\Kraken\KrakenAdapter;
+use App\Exchanges\KuCoin\KuCoinAdapter;
+use App\Exchanges\Okx\OkxAdapter;
+use App\Exchanges\Upbit\UpbitAdapter;
 use App\Indicators\Application\IndicatorEngine;
 use App\Indicators\Application\WarmupPolicy;
 use App\Indicators\Domain\IndicatorParameters;
@@ -75,6 +83,7 @@ use App\Strategy\Contracts\MarketContextRepository;
 use App\Strategy\Contracts\SignalRepository;
 use App\Strategy\Infrastructure\Persistence\EloquentMarketContextRepository;
 use App\Strategy\Infrastructure\Persistence\EloquentSignalRepository;
+use App\Strategy\MethodRegistry;
 use App\Strategy\Research\BaselineStrategy;
 use App\Strategy\Research\BollingerMeanReversionStrategy;
 use App\Strategy\Research\BtcEthLeadLagStrategy;
@@ -101,10 +110,32 @@ class AppServiceProvider extends ServiceProvider
      */
     public function register(): void
     {
-        $this->app->singleton(ExchangeRegistry::class, fn ($app): ExchangeRegistry => new ExchangeRegistry([
-            'bybit' => $app->make(BybitAdapter::class),
-            'binance' => $app->make(BinancePublicAdapter::class),
-        ]));
+        $this->app->singleton(ExchangeRegistry::class, function ($app): ExchangeRegistry {
+            $adapters = [
+                'bybit' => $app->make(BybitAdapter::class),
+                'binance' => $app->make(BinancePublicAdapter::class),
+            ];
+
+            $adapterClasses = [
+                'coinbase' => CoinbaseAdapter::class,
+                'upbit' => UpbitAdapter::class,
+                'okx' => OkxAdapter::class,
+                'bitget' => BitgetAdapter::class,
+                'gate' => GateAdapter::class,
+                'kucoin' => KuCoinAdapter::class,
+                'kraken' => KrakenAdapter::class,
+                'htx' => HtxAdapter::class,
+            ];
+
+            foreach ($adapterClasses as $id => $class) {
+                if (class_exists($class)) {
+                    $adapters[$id] = $app->make($class);
+                }
+            }
+
+            return new ExchangeRegistry($adapters);
+        });
+        $this->app->singleton(MethodRegistry::class, fn (): MethodRegistry => new MethodRegistry);
         $this->app->singleton(Decimal::class, fn (): Decimal => new Decimal(
             internalScale: (int) config('indicators.internal_scale'),
             outputScale: (int) config('indicators.output_scale'),

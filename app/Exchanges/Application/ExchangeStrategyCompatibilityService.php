@@ -185,7 +185,11 @@ final readonly class ExchangeStrategyCompatibilityService
 
         // 1. Market type compatibility
         $strategyMarketType = (string) ($strategy['market_type'] ?? 'linear_perpetual');
-        $marketTypeCompatible = ($exchange->market_type === $strategyMarketType);
+        $supportedMarketTypes = (array) ($capabilities['market_types'] ?? [$exchange->market_type]);
+        $marketTypeCompatible = ($exchange->market_type === $strategyMarketType)
+            || in_array($strategyMarketType, $supportedMarketTypes, true)
+            || ($strategyMarketType === 'linear_perpetual' && in_array('perpetual', $supportedMarketTypes, true))
+            || ($strategyMarketType === 'perpetual' && $exchange->market_type === 'linear_perpetual');
 
         // 2. Instrument compatibility
         $requiredSymbols = (array) ($strategy['symbols'] ?? ['BTCUSDT']);

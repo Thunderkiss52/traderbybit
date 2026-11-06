@@ -14,6 +14,7 @@ use App\Http\Controllers\Api\V1\ResearchHealthController as H;
 use App\Http\Controllers\Api\V1\ResearchIntelligenceController as I;
 use App\Http\Controllers\Api\V1\ResearchJobController as J;
 use App\Http\Controllers\Api\V1\StrategyResearchController as R;
+use App\Strategy\Http\MethodCatalogController;
 use App\StrategyBuilder\ManagementController;
 use Illuminate\Support\Facades\Route;
 
@@ -47,6 +48,8 @@ Route::prefix('v1')->middleware('throttle:api')->group(function () {
         Route::post('/{id}/accounts/{account}/fund', [$controller, 'fund'])->whereNumber('id')->whereUuid('account');
         Route::post('/{id}/accounts/{account}/authorize', [$controller, 'authorizeAccount'])->whereNumber('id')->whereUuid('account');
         Route::get('/{id}/exchanges', [$controller, 'exchanges'])->whereNumber('id');
+        Route::post('/{id}/assign-exchange', [$controller, 'assignExchange'])->whereNumber('id');
+        Route::get('/{id}/assigned-exchanges', [$controller, 'assignedExchanges'])->whereNumber('id');
     });
     Route::prefix('historical')->middleware('research.token')->group(function () {
         $c = HistoricalController::class;
@@ -125,6 +128,8 @@ Route::prefix('v1')->middleware('throttle:api')->group(function () {
     Route::post('exchanges', [EMC::class, 'store']);
     Route::get('exchanges/matrix', [EMC::class, 'matrix']);
     Route::get('exchanges/{id}', [EMC::class, 'show']);
+    Route::get('exchanges/{id}/capabilities', [EMC::class, 'capabilities']);
+    Route::get('exchanges/{id}/instruments', [EMC::class, 'instruments']);
     Route::get('exchanges/{id}/coverage', [EMC::class, 'coverage']);
     Route::get('exchanges/{id}/strategies', [EMC::class, 'strategies']);
     Route::post('exchanges/{id}/reconcile', [EMC::class, 'reconcile']);
@@ -132,6 +137,8 @@ Route::prefix('v1')->middleware('throttle:api')->group(function () {
     Route::post('exchanges/{id}/lifecycle', [EMC::class, 'updateLifecycle']);
     Route::post('exchanges/{id}/approve-paper', [EMC::class, 'approvePaper']);
     Route::post('exchanges/{id}/sync-topology', [EMC::class, 'syncTopology']);
+    Route::get('strategy-methods', [MethodCatalogController::class, 'index']);
+    Route::get('strategy-methods/{id}', [MethodCatalogController::class, 'show']);
     Route::get('dashboard', [C::class, 'dashboard']);
     Route::get('market/{symbol}/candles', [C::class, 'candles']);
     Route::get('market/{symbol}/indicators', [C::class, 'indicators']);
