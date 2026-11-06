@@ -78,4 +78,38 @@ final class ShadowExperimentServiceTest extends TestCase
         $this->expectException(ValidationException::class);
         $service->startExperiment($exp3->id);
     }
+
+    public function test_shadow_experiment_stop_and_idempotent_restart(): void
+    {
+        $service = new ShadowExperimentService;
+
+        $exp = ResearchExperimentRecord::query()->create([
+            'id' => (string) Str::uuid(),
+            'strategy_id' => 'trend_pullback',
+            'strategy_version' => '1.0.0',
+            'configuration_hash' => 'hash_stop_test',
+            'parameters' => ['adx_threshold' => 25],
+            'symbols' => ['BTCUSDT'],
+            'from_at' => now('UTC')->subDays(7),
+            'to_at' => now('UTC'),
+            'evaluation_mode' => 'split',
+            'status' => 'DRAFT',
+            'shadow_status' => 'DRAFT',
+            'is_shadow' => true,
+            'resource_budget' => ['timeout_seconds' => 3600],
+        ]);
+
+        $started = $service->startExperiment($exp->id);
+        self::assertSame('RUNNING', $started->shadow_status);
+
+        // Calling start on already RUNNING returns existing record idempotently
+        $repeat = $service->startExperiment($exp->id);
+        self::assertSame('RUNNING', $repeat->shadow_status);
+
+        // Stop experiment transitions to PAUSED
+        $stopped = $service->stopExperiment($exp->id);
+        self::assertSame('PAUSED', $stopped->shadow_status);
+        self::assertSame('PAUSED', $stopped->status);
+        self::assertNotNull($stopped->completed_at);
+    }
 }

@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Tests\Feature\StrategyBuilder;
 
+use App\HistoricalData\SourcePolicy;
 use App\PaperTrading\Application\GlobalPaperCapitalGuard;
 use App\PaperTrading\Application\PaperTopologySynchronizer;
 use App\Strategy\Application\StrategyRegistry;
@@ -13,6 +14,7 @@ use App\StrategyBuilder\PaperGovernance;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Http;
+use Illuminate\Validation\ValidationException;
 use Tests\Concerns\SeedsDslHistory;
 use Tests\TestCase;
 
@@ -84,5 +86,23 @@ final class PaperGovernanceTest extends TestCase
         self::assertSame(28, DB::table('paper_accounts')->count());
         self::assertSame([], app(PaperTopologySynchronizer::class)->sync(false)['missing_pairs']);
         Http::assertNothingSent();
+    }
+
+    public function test_promotion_license_check(): void
+    {
+        $policy = app(SourcePolicy::class);
+        $from = new \DateTimeImmutable('2026-01-01T00:00:00Z');
+        $to = new \DateTimeImmutable('2026-01-02T00:00:00Z');
+
+        // Test direct assertUse: PAPER_PROMOTION is accepted under CC-BY-NC-SA-4.0
+        $license = [
+            'license' => 'CC-BY-NC-SA-4.0',
+            'permitted_uses' => ['NONCOMMERCIAL_RESEARCH', 'NONCOMMERCIAL_LEARNING'],
+        ];
+        $policy->assertUse('PAPER_PROMOTION', $license);
+
+        // Commercial use must throw ValidationException
+        $this->expectException(ValidationException::class);
+        $policy->assertUse('COMMERCIAL_PRODUCTION_TRADING', $license);
     }
 }

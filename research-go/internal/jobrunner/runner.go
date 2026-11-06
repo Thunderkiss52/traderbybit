@@ -65,6 +65,11 @@ func (r *Runner) ClaimNextJob(ctx context.Context, leaseDuration time.Duration) 
 		return nil, 0, errors.New("cannot claim job without a valid positive worker generation token")
 	}
 
+	// Auto-recover any orphaned jobs before claiming
+	if _, _, recErr := r.RecoverOrphanedJobs(ctx, 2*time.Minute); recErr != nil {
+		log.Printf("[jobrunner] Notice: RecoverOrphanedJobs encountered error: %v", recErr)
+	}
+
 	tx, err := r.db.BeginTx(ctx, nil)
 	if err != nil {
 		return nil, 0, fmt.Errorf("failed to begin tx: %w", err)
@@ -176,6 +181,110 @@ func (r *Runner) ClaimNextJob(ctx context.Context, leaseDuration time.Duration) 
 	}
 
 	return req, newFencingToken, nil
+}
+
+// RecoverOrphanedJobs finds jobs in CLAIMED or RUNNING status whose lease has expired
+// or whose heartbeat is stale, and recovers them back to QUEUED (if retry_count < max_retries)
+// or marks them FAILED (if max_retries reached).
+// Returns the count of recovered jobs, failed jobs, and any error encountered.
+func (r *Runner) RecoverOrphanedJobs(ctx context.Context, staleHeartbeatThreshold time.Duration) (int, int, error) {
+	if r.generationToken <= 0 {
+		return 0, 0, errors.New("cannot recover orphaned jobs without a valid positive worker generation token")
+	}
+
+	tx, err := r.db.BeginTx(ctx, nil)
+	if err != nil {
+		return 0, 0, fmt.Errorf("failed to begin tx for orphan recovery: %w", err)
+	}
+	defer tx.Rollback()
+
+	if err := r.verifyWorkerGenerationTx(ctx, tx); err != nil {
+		return 0, 0, err
+	}
+
+	now := time.Now().UTC()
+	staleHeartbeatCutoff := now.Add(-staleHeartbeatThreshold)
+
+	query := `
+		SELECT id, job_id, retry_count, max_retries, fencing_token
+		FROM research_jobs
+		WHERE status IN ('CLAIMED', 'RUNNING')
+		  AND (lease_expires_at < $1 OR (heartbeat_at IS NOT NULL AND heartbeat_at < $2))
+		ORDER BY requested_at_utc ASC
+		FOR UPDATE SKIP LOCKED
+		LIMIT 50
+	`
+
+	rows, err := tx.QueryContext(ctx, query, now, staleHeartbeatCutoff)
+	if err != nil {
+		return 0, 0, fmt.Errorf("failed to query orphaned jobs: %w", err)
+	}
+	defer rows.Close()
+
+	type orphanItem struct {
+		id           int64
+		jobID        string
+		retryCount   int
+		maxRetries   int
+		fencingToken int64
+	}
+	var orphans []orphanItem
+
+	for rows.Next() {
+		var item orphanItem
+		if err := rows.Scan(&item.id, &item.jobID, &item.retryCount, &item.maxRetries, &item.fencingToken); err != nil {
+			return 0, 0, fmt.Errorf("failed to scan orphan job row: %w", err)
+		}
+		orphans = append(orphans, item)
+	}
+	if err := rows.Err(); err != nil {
+		return 0, 0, fmt.Errorf("error reading orphan job rows: %w", err)
+	}
+
+	recovered := 0
+	failed := 0
+
+	for _, item := range orphans {
+		if item.retryCount < item.maxRetries {
+			updateQuery := `
+				UPDATE research_jobs
+				SET status = 'QUEUED',
+				    retry_count = retry_count + 1,
+				    lease_owner = NULL,
+				    lease_expires_at = NULL,
+				    heartbeat_at = NULL,
+				    fencing_token = $1,
+				    progress_message = 'Auto-recovered orphaned job after heartbeat/lease staleness'
+				WHERE id = $2
+			`
+			if _, err := tx.ExecContext(ctx, updateQuery, item.fencingToken+1, item.id); err != nil {
+				return recovered, failed, fmt.Errorf("failed to recover orphaned job %s: %w", item.jobID, err)
+			}
+			recovered++
+			log.Printf("[jobrunner] Auto-recovered orphaned job %s (attempt %d/%d)", item.jobID, item.retryCount+1, item.maxRetries)
+		} else {
+			failQuery := `
+				UPDATE research_jobs
+				SET status = 'FAILED',
+				    lease_owner = NULL,
+				    lease_expires_at = NULL,
+				    sanitized_error = 'Job failed: worker lease or heartbeat expired and retry limit reached',
+				    completed_at = $1
+				WHERE id = $2
+			`
+			if _, err := tx.ExecContext(ctx, failQuery, now, item.id); err != nil {
+				return recovered, failed, fmt.Errorf("failed to mark exhausted orphan job %s failed: %w", item.jobID, err)
+			}
+			failed++
+			log.Printf("[jobrunner] Marked exhausted orphaned job %s as FAILED (retries %d/%d)", item.jobID, item.retryCount, item.maxRetries)
+		}
+	}
+
+	if err := tx.Commit(); err != nil {
+		return 0, 0, fmt.Errorf("failed to commit orphan recovery tx: %w", err)
+	}
+
+	return recovered, failed, nil
 }
 
 // verifyWorkerGenerationTx acquires a FOR SHARE lock on the worker's record

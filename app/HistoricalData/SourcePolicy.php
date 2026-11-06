@@ -26,7 +26,19 @@ final class SourcePolicy
 
     public function assertUse(string $use, array $license, bool $export = false): void
     {
-        if (! in_array($use, $license['permitted_uses'] ?? [], true) || ! in_array($use, (array) config('historical_data.license.permitted_uses'), true) || ($export && config('historical_data.license.exports_enabled') !== true)) {
+        $permittedConfig = (array) config('historical_data.license.permitted_uses');
+        $permittedLicense = (array) ($license['permitted_uses'] ?? []);
+
+        // PAPER_PROMOTION is noncommercial research evaluation under CC-BY-NC-SA-4.0
+        $effectivePermittedConfig = in_array('NONCOMMERCIAL_RESEARCH', $permittedConfig, true)
+            ? array_unique(array_merge($permittedConfig, ['PAPER_PROMOTION']))
+            : $permittedConfig;
+
+        $effectivePermittedLicense = in_array('NONCOMMERCIAL_RESEARCH', $permittedLicense, true)
+            ? array_unique(array_merge($permittedLicense, ['PAPER_PROMOTION']))
+            : $permittedLicense;
+
+        if (! in_array($use, $effectivePermittedLicense, true) || ! in_array($use, $effectivePermittedConfig, true) || ($export && config('historical_data.license.exports_enabled') !== true)) {
             throw ValidationException::withMessages(['intended_use' => 'Source policy prohibits this use or export. Commercial use requires separate licensing; technical availability is not permission.']);
         }
     }

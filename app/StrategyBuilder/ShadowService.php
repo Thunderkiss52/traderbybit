@@ -27,6 +27,7 @@ final readonly class ShadowService
         }
 
         return DB::transaction(function () use ($id, $enabled): object {
+            DB::statement("SET LOCAL lock_timeout = '5000ms'");
             DB::select('SELECT pg_advisory_xact_lock(20261105, 10002)');
             $row = DB::table('strategy_shadow_subscriptions')->where('definition_id', $id)->lockForUpdate()->first();
             if ($row !== null && (bool) $row->enabled === $enabled) {
@@ -40,7 +41,7 @@ final readonly class ShadowService
             DB::table('strategy_workflow_events')->insert(['definition_id' => $id, 'action' => $enabled ? 'FORWARD_SHADOW_STARTED' : 'FORWARD_SHADOW_STOPPED', 'actor' => 'configured-research-owner', 'details' => json_encode(['account_created' => false, 'forward_only' => true]), 'created_at' => now('UTC')]);
 
             return DB::table('strategy_shadow_subscriptions')->where('definition_id', $id)->first();
-        }, 3);
+        }, 5);
     }
 
     public function observe(StrategyInput $input): array

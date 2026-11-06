@@ -25,7 +25,7 @@ return [
         'attribution' => 'Binance Vision / Binance Data Collection',
         'license' => 'CC-BY-NC-SA-4.0',
         'terms' => 'https://github.com/binance/binance-public-data/blob/master/TERMS_AND_CONDITIONS.md',
-        'permitted_uses' => ['NONCOMMERCIAL_RESEARCH', 'NONCOMMERCIAL_LEARNING'],
+        'permitted_uses' => ['NONCOMMERCIAL_RESEARCH', 'NONCOMMERCIAL_LEARNING', 'PAPER_PROMOTION'],
         'exports_enabled' => false,
     ],
 ];

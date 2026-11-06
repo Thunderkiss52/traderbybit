@@ -180,3 +180,99 @@ func TestWorkerLifecycle_SupersededWorkerRejectedByPostgres(t *testing.T) {
 		t.Fatalf("expected valid 64-char sha256 manifest, got %s", manifestSHA)
 	}
 }
+
+func TestRecoverOrphanedJobs_Integration(t *testing.T) {
+	db := getTestDB(t)
+	defer db.Close()
+
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+
+	workerID := fmt.Sprintf("test-worker-orphan-rec-%d", time.Now().UnixNano())
+	defer func() {
+		_, _ = db.Exec("DELETE FROM research_workers WHERE worker_id = $1", workerID)
+	}()
+
+	runner := jobrunner.NewRunner(db, workerID)
+	defer runner.UnregisterWorker(ctx)
+
+	if err := runner.RegisterWorker(ctx, "1.0.0", []string{"backtest"}, "localhost", 1002); err != nil {
+		t.Fatalf("failed to register worker: %v", err)
+	}
+
+	staleJobID1 := fmt.Sprintf("%08x-%04x-%04x-%04x-%012x", 0xa1b2c3d4, 0x1111, 0x4111, 0x8111, time.Now().UnixNano()%0xffffffffffff)
+	staleJobID2 := fmt.Sprintf("%08x-%04x-%04x-%04x-%012x", 0xa1b2c3d4, 0x2222, 0x4222, 0x8222, (time.Now().UnixNano()+1)%0xffffffffffff)
+	defer func() {
+		_, _ = db.Exec("DELETE FROM research_jobs WHERE job_id IN ($1, $2)", staleJobID1, staleJobID2)
+	}()
+
+	pastTime := time.Now().UTC().Add(-10 * time.Minute)
+
+	// Insert Job 1: RUNNING, lease expired in the past, retry_count=0, max_retries=3
+	insertQ1 := `
+		INSERT INTO research_jobs (
+			job_id, idempotency_key, kind, status, requested_at_utc,
+			lease_owner, lease_expires_at, heartbeat_at, fencing_token, retry_count, max_retries, created_at, updated_at
+		) VALUES (
+			$1, $2, 'BACKTEST', 'RUNNING', $3,
+			'dead-worker-1', $3, $3, 1, 0, 3, $3, $3
+		)
+	`
+	if _, err := db.ExecContext(ctx, insertQ1, staleJobID1, "idemp-"+staleJobID1, pastTime); err != nil {
+		t.Fatalf("failed to insert stale job 1: %v", err)
+	}
+
+	// Insert Job 2: CLAIMED, heartbeat stale in the past, retry_count=3, max_retries=3
+	insertQ2 := `
+		INSERT INTO research_jobs (
+			job_id, idempotency_key, kind, status, requested_at_utc,
+			lease_owner, lease_expires_at, heartbeat_at, fencing_token, retry_count, max_retries, created_at, updated_at
+		) VALUES (
+			$1, $2, 'BACKTEST', 'CLAIMED', $3,
+			'dead-worker-2', $3, $3, 1, 3, 3, $3, $3
+		)
+	`
+	if _, err := db.ExecContext(ctx, insertQ2, staleJobID2, "idemp-"+staleJobID2, pastTime); err != nil {
+		t.Fatalf("failed to insert stale job 2: %v", err)
+	}
+
+	// Run RecoverOrphanedJobs
+	recovered, failed, err := runner.RecoverOrphanedJobs(ctx, 2*time.Minute)
+	if err != nil {
+		t.Fatalf("RecoverOrphanedJobs failed: %v", err)
+	}
+	if recovered < 1 {
+		t.Fatalf("expected at least 1 recovered job, got %d", recovered)
+	}
+	if failed < 1 {
+		t.Fatalf("expected at least 1 failed job, got %d", failed)
+	}
+
+	// Verify Job 1 state: QUEUED, retry_count=1, lease_owner=NULL
+	var status1 string
+	var retries1 int
+	var leaseOwner1 sql.NullString
+	err = db.QueryRowContext(ctx, "SELECT status, retry_count, lease_owner FROM research_jobs WHERE job_id = $1", staleJobID1).Scan(&status1, &retries1, &leaseOwner1)
+	if err != nil {
+		t.Fatalf("querying job 1 failed: %v", err)
+	}
+	if status1 != "QUEUED" {
+		t.Errorf("expected job 1 status QUEUED, got %s", status1)
+	}
+	if retries1 != 1 {
+		t.Errorf("expected job 1 retry_count 1, got %d", retries1)
+	}
+	if leaseOwner1.Valid {
+		t.Errorf("expected job 1 lease_owner NULL, got %s", leaseOwner1.String)
+	}
+
+	// Verify Job 2 state: FAILED
+	var status2 string
+	err = db.QueryRowContext(ctx, "SELECT status FROM research_jobs WHERE job_id = $1", staleJobID2).Scan(&status2)
+	if err != nil {
+		t.Fatalf("querying job 2 failed: %v", err)
+	}
+	if status2 != "FAILED" {
+		t.Errorf("expected job 2 status FAILED, got %s", status2)
+	}
+}

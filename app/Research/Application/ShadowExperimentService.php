@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Research\Application;
 
 use App\Strategy\Infrastructure\Persistence\ResearchExperimentRecord;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
 
 final class ShadowExperimentService
@@ -20,45 +21,50 @@ final class ShadowExperimentService
      */
     public function startExperiment(string $experimentId): ResearchExperimentRecord
     {
-        $experiment = ResearchExperimentRecord::query()->findOrFail($experimentId);
+        return DB::transaction(function () use ($experimentId): ResearchExperimentRecord {
+            DB::statement("SET LOCAL lock_timeout = '5000ms'");
+            DB::select('SELECT pg_advisory_xact_lock(20261105, 10003)');
 
-        if ($experiment->shadow_status === 'RUNNING') {
-            return $experiment;
-        }
+            $experiment = ResearchExperimentRecord::query()->lockForUpdate()->findOrFail($experimentId);
 
-        // Check total active running shadow variants
-        $totalActive = ResearchExperimentRecord::query()
-            ->where('is_shadow', true)
-            ->where('shadow_status', 'RUNNING')
-            ->count();
+            if ($experiment->shadow_status === 'RUNNING') {
+                return $experiment;
+            }
 
-        if ($totalActive >= self::MAX_SHADOW_TOTAL) {
-            throw ValidationException::withMessages([
-                'capacity' => 'Server capacity limit reached: maximum '.self::MAX_SHADOW_TOTAL.' running shadow variants allowed globally.',
+            // Check total active running shadow variants
+            $totalActive = ResearchExperimentRecord::query()
+                ->where('is_shadow', true)
+                ->where('shadow_status', 'RUNNING')
+                ->count();
+
+            if ($totalActive >= self::MAX_SHADOW_TOTAL) {
+                throw ValidationException::withMessages([
+                    'capacity' => 'Server capacity limit reached: maximum '.self::MAX_SHADOW_TOTAL.' running shadow variants allowed globally.',
+                ]);
+            }
+
+            // Check per-strategy active running shadow variants
+            $strategyActive = ResearchExperimentRecord::query()
+                ->where('is_shadow', true)
+                ->where('strategy_id', $experiment->strategy_id)
+                ->where('shadow_status', 'RUNNING')
+                ->count();
+
+            if ($strategyActive >= self::MAX_SHADOW_PER_STRATEGY) {
+                throw ValidationException::withMessages([
+                    'strategy_capacity' => "Strategy {$experiment->strategy_id} capacity reached: maximum ".self::MAX_SHADOW_PER_STRATEGY.' running shadow variants allowed.',
+                ]);
+            }
+
+            $experiment->update([
+                'is_shadow' => true,
+                'shadow_status' => 'RUNNING',
+                'status' => 'RUNNING',
+                'started_at' => now('UTC'),
             ]);
-        }
 
-        // Check per-strategy active running shadow variants
-        $strategyActive = ResearchExperimentRecord::query()
-            ->where('is_shadow', true)
-            ->where('strategy_id', $experiment->strategy_id)
-            ->where('shadow_status', 'RUNNING')
-            ->count();
-
-        if ($strategyActive >= self::MAX_SHADOW_PER_STRATEGY) {
-            throw ValidationException::withMessages([
-                'strategy_capacity' => "Strategy {$experiment->strategy_id} capacity reached: maximum ".self::MAX_SHADOW_PER_STRATEGY.' running shadow variants allowed.',
-            ]);
-        }
-
-        $experiment->update([
-            'is_shadow' => true,
-            'shadow_status' => 'RUNNING',
-            'status' => 'RUNNING',
-            'started_at' => now('UTC'),
-        ]);
-
-        return $experiment->fresh();
+            return $experiment->fresh();
+        }, 5);
     }
 
     /**
@@ -66,14 +72,19 @@ final class ShadowExperimentService
      */
     public function stopExperiment(string $experimentId): ResearchExperimentRecord
     {
-        $experiment = ResearchExperimentRecord::query()->findOrFail($experimentId);
+        return DB::transaction(function () use ($experimentId): ResearchExperimentRecord {
+            DB::statement("SET LOCAL lock_timeout = '5000ms'");
+            DB::select('SELECT pg_advisory_xact_lock(20261105, 10003)');
 
-        $experiment->update([
-            'shadow_status' => 'PAUSED',
-            'status' => 'PAUSED',
-            'completed_at' => now('UTC'),
-        ]);
+            $experiment = ResearchExperimentRecord::query()->lockForUpdate()->findOrFail($experimentId);
 
-        return $experiment->fresh();
+            $experiment->update([
+                'shadow_status' => 'PAUSED',
+                'status' => 'PAUSED',
+                'completed_at' => now('UTC'),
+            ]);
+
+            return $experiment->fresh();
+        }, 5);
     }
 }
