@@ -1,5 +1,19 @@
 <?php
 
+spl_autoload_register(function (string $class): void {
+    if (str_starts_with($class, 'App\\')) {
+        $file = dirname(__DIR__) . '/app/' . str_replace('\\', '/', substr($class, 4)) . '.php';
+        if (file_exists($file)) {
+            require_once $file;
+        }
+    } elseif (str_starts_with($class, 'Tests\\')) {
+        $file = dirname(__DIR__) . '/tests/' . str_replace('\\', '/', substr($class, 6)) . '.php';
+        if (file_exists($file)) {
+            require_once $file;
+        }
+    }
+}, prepend: true);
+
 use App\Backtest\Console\BacktestReportCommand;
 use App\Backtest\Console\CancelBacktestCommand;
 use App\Backtest\Console\CompareBacktestsCommand;

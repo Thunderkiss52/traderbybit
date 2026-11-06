@@ -16,3 +16,17 @@ if (! is_file($environmentFile)) {
 }
 
 require $root.'/vendor/autoload.php';
+
+spl_autoload_register(function (string $class) use ($root): void {
+    if (str_starts_with($class, 'App\\')) {
+        $file = $root.'/app/'.str_replace('\\', '/', substr($class, 4)).'.php';
+        if (is_file($file)) {
+            require_once $file;
+        }
+    } elseif (str_starts_with($class, 'Tests\\')) {
+        $file = $root.'/tests/'.str_replace('\\', '/', substr($class, 6)).'.php';
+        if (is_file($file)) {
+            require_once $file;
+        }
+    }
+}, prepend: true);
