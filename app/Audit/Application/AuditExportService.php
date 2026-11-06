@@ -150,6 +150,7 @@ final class AuditExportService
             return;
         }
         $workingDir = storage_path('app/private/audit_exports/.tmp-'.$id);
+        $ownsTransaction = false;
         try {
             $export = AuditExportRecord::query()->findOrFail($id);
             if (Schema::hasTable('historical_download_entries') && DB::table('historical_download_entries')->where('family', 'klines')->where('checkpoint', '>', 0)->where('requested_from', '<', $export->to_at)->where('requested_to', '>', $export->from_at)->exists()) {
@@ -174,6 +175,27 @@ final class AuditExportService
                 DB::statement("SET statement_timeout TO '3000ms'");
                 DB::statement("SET lock_timeout TO '1000ms'");
             }
+
+            $ownsTransaction = false;
+            $snapshotWatermark = null;
+            $snapshotTxId = null;
+
+            if (DB::transactionLevel() === 0) {
+                DB::beginTransaction();
+                $ownsTransaction = true;
+                if (DB::getDriverName() === 'pgsql') {
+                    DB::statement('SET TRANSACTION ISOLATION LEVEL REPEATABLE READ');
+                }
+            }
+
+            if (DB::getDriverName() === 'pgsql') {
+                $snapshotRow = DB::selectOne('SELECT txid_current_snapshot()::text as snap, txid_current()::text as txid');
+                if ($snapshotRow !== null) {
+                    $snapshotWatermark = (string) $snapshotRow->snap;
+                    $snapshotTxId = (string) $snapshotRow->txid;
+                }
+            }
+
             $counts = [];
             $captureStarted = now('UTC')->toIso8601String();
             $entries = [];
@@ -194,7 +216,13 @@ final class AuditExportService
             // when their paper account has not yet been bootstrapped.
             $this->writePrimaryCoverage($workingDir.'/primary_strategy_coverage.csv', $counts, $entries);
             $this->writeDailySnapshots($export, $workingDir.'/daily_performance.csv', $counts, $entries);
-            $this->writeQuality($workingDir.'/data_quality.csv', $counts, $entries);
+            $this->writeQuality($workingDir.'/data_quality.csv', $counts, $entries, $snapshotWatermark);
+
+            if ($ownsTransaction && DB::transactionLevel() > 0) {
+                DB::commit();
+                $ownsTransaction = false;
+            }
+
             // V2.4 private Audit ZIP contains CSV ONLY. Keep existing payload CSV
             // names, with explicit CSV metadata, manifest and SHA-256 checksums.
             // The checksum list includes the finalized manifest but never itself.
@@ -206,17 +234,20 @@ final class AuditExportService
                 'window_end_utc' => $export->to_at->toIso8601String(),
                 'requested_at_utc' => $export->as_of->toIso8601String(),
                 'generated_at_utc' => now('UTC')->toIso8601String(),
-                'source_consistency' => 'BOUNDED_BEST_EFFORT_NOT_REPEATABLE_READ',
+                'source_consistency' => $snapshotWatermark !== null ? 'REPEATABLE_READ_SNAPSHOT' : 'BOUNDED_BEST_EFFORT',
+                'isolation_level' => 'REPEATABLE READ',
+                'snapshot_watermark' => $snapshotWatermark ?? 'N/A',
+                'snapshot_txid' => $snapshotTxId ?? 'N/A',
                 'capture_started_at_utc' => $captureStarted,
                 'capture_finished_at_utc' => now('UTC')->toIso8601String(),
                 'record_population' => 'FORWARD_PAPER_AND_RESEARCH_NO_HISTORICAL_BACKTEST',
                 'aggregation_scope' => 'PER_EXCHANGE_PER_STRATEGY',
                 'expected_primary_account_pairs' => '26',
                 'monetary_representation' => 'EXACT_DECIMAL_STRINGS',
-                'checksum_scope' => 'FILE_BYTES_NOT_TRANSACTIONAL_SNAPSHOT_PROOF',
+                'checksum_scope' => 'FILE_BYTES_AND_TRANSACTIONAL_SNAPSHOT_WATERMARK',
             ];
             $this->writeExportMetadata($workingDir.'/export_metadata.csv', $metadata, $counts, $entries);
-            $this->writeExportManifest($workingDir.'/manifest.csv', $entries, $export->id);
+            $this->writeExportManifest($workingDir.'/manifest.csv', $entries, $export->id, $snapshotWatermark);
             $this->writeExportChecksums($workingDir.'/checksums.csv', $workingDir, array_keys($entries));
             $expectedArchiveHashes = array_map(static fn (array $entry): string => $entry['sha256'], $entries);
             $expectedArchiveHashes['manifest.csv'] = hash_file('sha256', $workingDir.'/manifest.csv');
@@ -255,10 +286,23 @@ final class AuditExportService
                 'finished_at' => now('UTC'), 'expires_at' => now('UTC')->addHours((int) config('audit.retention_hours')),
             ]);
         } catch (Throwable $error) {
+            if ($ownsTransaction && DB::transactionLevel() > 0) {
+                try {
+                    DB::rollBack();
+                } catch (Throwable) {
+                }
+                $ownsTransaction = false;
+            }
             // Retrying from the beginning is safe: all outputs are temporary until final rename.
             $this->failed($id, 'audit_generation_failed');
             throw $error;
         } finally {
+            if ($ownsTransaction && DB::transactionLevel() > 0) {
+                try {
+                    DB::rollBack();
+                } catch (Throwable) {
+                }
+            }
             try {
                 if (DB::getDriverName() === 'pgsql') {
                     DB::statement('RESET statement_timeout');
@@ -291,18 +335,27 @@ final class AuditExportService
     }
 
     /** @param array<string,array{rows:int,sha256:string,bytes:int}> $entries */
-    private function writeExportManifest(string $file, array $entries, string $exportId): void
+    private function writeExportManifest(string $file, array $entries, string $exportId, ?string $snapshotWatermark = null): void
     {
         ksort($entries);
         $handle = fopen($file, 'wb');
         if ($handle === false) {
             throw new RuntimeException('audit_manifest_csv_unwritable');
         }
+        $sourceScope = $snapshotWatermark !== null ? 'REPEATABLE_READ_SNAPSHOT' : 'BOUNDED_BEST_EFFORT';
         try {
-            fputcsv($handle, ['file_name', 'schema_version', 'row_count', 'sha256', 'bytes', 'export_id', 'source_scope'], ',', '"', '');
+            fputcsv($handle, ['file_name', 'schema_version', 'row_count', 'sha256', 'bytes', 'export_id', 'source_scope', 'snapshot_watermark'], ',', '"', '');
             foreach ($entries as $name => $item) {
-                fputcsv($handle, [$name, (string) config('audit.schema_version'), $item['rows'],
-                    $item['sha256'], $item['bytes'], $exportId, 'BOUNDED_BEST_EFFORT'], ',', '"', '');
+                fputcsv($handle, [
+                    $name,
+                    (string) config('audit.schema_version'),
+                    $item['rows'],
+                    $item['sha256'],
+                    $item['bytes'],
+                    $exportId,
+                    $sourceScope,
+                    $snapshotWatermark ?? '',
+                ], ',', '"', '');
             }
         } finally {
             fclose($handle);
@@ -548,7 +601,7 @@ final class AuditExportService
         $this->track($file, $count, $counts, $entries);
     }
 
-    private function writeQuality(string $file, array &$counts, array &$entries): void
+    private function writeQuality(string $file, array &$counts, array &$entries, ?string $snapshotWatermark = null): void
     {
         $handle = fopen($file, 'wb');
         fputcsv($handle, ['paper_account_id', 'check', 'value', 'meaning'], ',', '"', '');
@@ -557,7 +610,11 @@ final class AuditExportService
             fputcsv($handle, $fields, ',', '"', '');
             $count++;
         };
-        $record($handle, ['', 'source_snapshot', 'BOUNDED_BEST_EFFORT', 'Not a repeatable-read transaction']);
+        $snapshotValue = $snapshotWatermark !== null ? 'REPEATABLE_READ_SNAPSHOT' : 'BOUNDED_BEST_EFFORT';
+        $snapshotMeaning = $snapshotWatermark !== null
+            ? 'Point-in-time repeatable-read transaction snapshot watermark: '.$snapshotWatermark
+            : 'Not a repeatable-read transaction';
+        $record($handle, ['', 'source_snapshot', $snapshotValue, $snapshotMeaning]);
         foreach (DB::table('paper_accounts')->select(['id', 'starting_balance', 'current_equity', 'realized_pnl', 'unrealized_pnl'])->cursor() as $account) {
             $snapshots = EquitySnapshotRecord::query()->where('paper_account_id', $account->id)
                 ->openingCapital()->exists();
