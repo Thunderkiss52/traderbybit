@@ -162,11 +162,12 @@ final class Rem08AuditExportConsistencyTest extends TestCase
             if (! $injectedAfterTableRead && str_contains($query->sql, 'paper_accounts')) {
                 $injectedAfterTableRead = true;
 
-                $testHost = env('TEST_DB_HOST') ?: config('database.connections.pgsql.host') ?: '127.0.0.1';
-                $testPort = env('TEST_DB_PORT') ?: config('database.connections.pgsql.port') ?: 26432;
-                $testDb = env('TEST_DB_DATABASE') ?: config('database.connections.pgsql.database') ?: 'bybit_test_f';
-                $testUser = env('TEST_DB_USERNAME') ?: config('database.connections.pgsql.username') ?: 'postgres';
-                $testPass = env('TEST_DB_PASSWORD') ?: config('database.connections.pgsql.password') ?: 'testpass';
+                $connConfig = DB::connection()->getConfig();
+                $testHost = $connConfig['host'] ?? '127.0.0.1';
+                $testPort = $connConfig['port'] ?? 26432;
+                $testDb = $connConfig['database'] ?? 'bybit_test';
+                $testUser = $connConfig['username'] ?? 'postgres';
+                $testPass = $connConfig['password'] ?? 'testpass';
 
                 $pdo = new PDO("pgsql:host={$testHost};port={$testPort};dbname={$testDb}", (string) $testUser, (string) $testPass, [
                     PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
