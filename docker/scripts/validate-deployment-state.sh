@@ -162,6 +162,11 @@ UNIFORM_RELEASE=""
 RUNNING_COUNT=0
 TOTAL_SERVICES=${#APPLICATION_SERVICES[@]}
 
+for svc in "${APPLICATION_SERVICES[@]}"; do
+    RUNNING_IMAGES["${svc}"]="NOT_CHECKED"
+    SERVICE_STATUS["${svc}"]="NOT_CHECKED"
+done
+
 if [[ "${SKIP_DOCKER_INSPECT:-0}" != "1" ]]; then
     validation_tag="${VALIDATE_IMAGE_TAG:-${CURRENT_TAG:-${IMAGE_TAG}}}"
     resolved_images="$(resolve_service_image_references "${validation_tag}")" || {
@@ -244,7 +249,7 @@ case "${MODE}" in
         fi
         echo "Running Services:"
         for svc in "${APPLICATION_SERVICES[@]}"; do
-            printf "  %-16s %-10s %s\n" "${svc}" "[${SERVICE_STATUS["${svc}"]}]" "${RUNNING_IMAGES["${svc}"]}"
+            printf "  %-16s %-10s %s\n" "${svc}" "[${SERVICE_STATUS["${svc}"]:-NOT_CHECKED}]" "${RUNNING_IMAGES["${svc}"]:-NOT_CHECKED}"
         done
         if (( IS_CORRUPTED || HAS_DRIFT )); then
             echo ""
@@ -284,7 +289,7 @@ case "${MODE}" in
         if (( HAS_DRIFT )); then
             echo "[WARN] Container version drift detected across application services:" >&2
             for svc in "${APPLICATION_SERVICES[@]}"; do
-                printf "  %-16s %s\n" "${svc}" "${RUNNING_IMAGES["${svc}"]}" >&2
+                printf "  %-16s %s\n" "${svc}" "${RUNNING_IMAGES["${svc}"]:-NOT_CHECKED}" >&2
             done
             if [[ "${ALLOW_CONTAINER_DRIFT:-0}" != "1" ]]; then
                 if (( IS_UNIFORM_MISMATCH )); then
@@ -375,7 +380,7 @@ case "${MODE}" in
         if (( HAS_DRIFT )); then
             echo "[FATAL] Post-deployment check failed: container drift detected." >&2
             for svc in "${APPLICATION_SERVICES[@]}"; do
-                printf "  %-16s %s\n" "${svc}" "${RUNNING_IMAGES["${svc}"]}" >&2
+                printf "  %-16s %s\n" "${svc}" "${RUNNING_IMAGES["${svc}"]:-NOT_CHECKED}" >&2
             done
             exit 1
         fi

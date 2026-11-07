@@ -392,4 +392,59 @@ BASH;
             file_get_contents($this->tempDir.'/release-previous')
         );
     }
+
+    public function test_inspect_mode_with_unpopulated_services_prints_complete_service_matrix(): void
+    {
+        file_put_contents($this->tempDir.'/.deploy-current', "sha-94c853458e5a38f4bc46f32c4f95c56f52216e6c\n");
+        file_put_contents($this->tempDir.'/.deploy-previous', "sha-37d30ee343b6305bc764281c4baa7f755863e2f5\n");
+        file_put_contents($this->tempDir.'/release-current', "94c853458e5a38f4bc46f32c4f95c56f52216e6c\n");
+        file_put_contents($this->tempDir.'/release-previous', "37d30ee343b6305bc764281c4baa7f755863e2f5\n");
+
+        $result = $this->runScript('validate-deployment-state.sh', ['inspect']);
+        $this->assertSame(0, $result['exitCode'], $result['output']);
+        $this->assertStringContainsString('Running Services:', $result['output']);
+
+        $expectedServices = [
+            'app', 'web', 'queue', 'queue-bybit', 'queue-binance',
+            'scheduler', 'market-ws', 'audit-worker', 'backtest-worker', 'research-worker',
+        ];
+        foreach ($expectedServices as $svc) {
+            $this->assertStringContainsString($svc, $result['output'], "Missing service '{$svc}' in inspect output.");
+            $this->assertStringContainsString('[NOT_CHECKED]', $result['output']);
+        }
+    }
+
+    public function test_corrupted_metadata_in_state_file_fails_closed(): void
+    {
+        $state = [
+            'status' => 'CORRUPTED',
+            'current_image_tag' => 'sha-94c853458e5a38f4bc46f32c4f95c56f52216e6c',
+            'previous_image_tag' => 'sha-37d30ee343b6305bc764281c4baa7f755863e2f5',
+            'current_release_sha' => '94c853458e5a38f4bc46f32c4f95c56f52216e6c',
+            'previous_release_sha' => '37d30ee343b6305bc764281c4baa7f755863e2f5',
+            'services' => [],
+        ];
+        file_put_contents($this->tempDir.'/deploy-state.json', json_encode($state, JSON_PRETTY_PRINT));
+
+        $result = $this->runScript('validate-deployment-state.sh', ['pre-deploy']);
+        $this->assertSame(1, $result['exitCode']);
+        $this->assertStringContainsString('deploy-state.json explicitly records status CORRUPTED', $result['output']);
+    }
+
+    public function test_rollback_failed_state_fails_closed_in_pre_deploy(): void
+    {
+        $state = [
+            'status' => 'ROLLBACK_FAILED',
+            'current_image_tag' => 'sha-94c853458e5a38f4bc46f32c4f95c56f52216e6c',
+            'previous_image_tag' => 'sha-37d30ee343b6305bc764281c4baa7f755863e2f5',
+            'current_release_sha' => '94c853458e5a38f4bc46f32c4f95c56f52216e6c',
+            'previous_release_sha' => '37d30ee343b6305bc764281c4baa7f755863e2f5',
+            'services' => [],
+        ];
+        file_put_contents($this->tempDir.'/deploy-state.json', json_encode($state, JSON_PRETTY_PRINT));
+
+        $result = $this->runScript('validate-deployment-state.sh', ['pre-deploy']);
+        $this->assertSame(1, $result['exitCode']);
+        $this->assertStringContainsString('prior rollback failed verification', $result['output']);
+    }
 }

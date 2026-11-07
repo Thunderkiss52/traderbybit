@@ -35,7 +35,7 @@ final class PostgresTestDatabaseIsolationGuardTest extends TestCase
 
     public function test_rejects_non_pgsql_driver(): void
     {
-        $mock = $this->createMock(Connection::class);
+        $mock = $this->createStub(Connection::class);
         $mock->method('getDriverName')->willReturn('sqlite');
 
         $this->expectException(\RuntimeException::class);
@@ -45,7 +45,7 @@ final class PostgresTestDatabaseIsolationGuardTest extends TestCase
 
     public function test_rejects_production_database_name(): void
     {
-        $mock = $this->createMock(Connection::class);
+        $mock = $this->createStub(Connection::class);
         $mock->method('getDriverName')->willReturn('pgsql');
         $mock->method('getDatabaseName')->willReturn('bybit_signals');
 
@@ -56,7 +56,7 @@ final class PostgresTestDatabaseIsolationGuardTest extends TestCase
 
     public function test_rejects_unsafe_remote_host(): void
     {
-        $mock = $this->createMock(Connection::class);
+        $mock = $this->createStub(Connection::class);
         $mock->method('getDriverName')->willReturn('pgsql');
         $mock->method('getDatabaseName')->willReturn('bybit_test');
         $mock->method('getConfig')->willReturnMap([
@@ -73,7 +73,7 @@ final class PostgresTestDatabaseIsolationGuardTest extends TestCase
 
     public function test_rejects_dangerous_database_url_override(): void
     {
-        $mock = $this->createMock(Connection::class);
+        $mock = $this->createStub(Connection::class);
         $mock->method('getDriverName')->willReturn('pgsql');
         $mock->method('getDatabaseName')->willReturn('bybit_test');
         $mock->method('getConfig')->willReturnMap([
@@ -90,7 +90,7 @@ final class PostgresTestDatabaseIsolationGuardTest extends TestCase
 
     public function test_rejects_server_side_database_identity_mismatch(): void
     {
-        $mock = $this->createMock(Connection::class);
+        $mock = $this->createStub(Connection::class);
         $mock->method('getDriverName')->willReturn('pgsql');
         $mock->method('getDatabaseName')->willReturn('bybit_test');
         $mock->method('getConfig')->willReturnMap([
@@ -118,7 +118,7 @@ final class PostgresTestDatabaseIsolationGuardTest extends TestCase
 
     public function test_accepts_verified_ci_container_topology(): void
     {
-        $mock = $this->createMock(Connection::class);
+        $mock = $this->createStub(Connection::class);
         $mock->method('getDriverName')->willReturn('pgsql');
         $mock->method('getDatabaseName')->willReturn('bybit_test');
         $mock->method('getConfig')->willReturnMap([

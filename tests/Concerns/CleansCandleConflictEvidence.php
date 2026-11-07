@@ -15,7 +15,8 @@ trait CleansCandleConflictEvidence
         // Registered after RefreshDatabase's rollback callback; never delete on a live fixture transaction.
         $this->beforeApplicationDestroyed(function () use ($path): void {
             $db = DB::connection();
-            if ($db->getDatabaseName() !== 'bybit_test' || $db->transactionLevel() !== 0) {
+            $expectedDb = (string) (env('TEST_DB_DATABASE') ?: env('DB_DATABASE', 'bybit_test'));
+            if ($db->getDatabaseName() !== $expectedDb || $db->transactionLevel() !== 0) {
                 throw new \RuntimeException('Conflict fixture cleanup requires isolated, rolled-back PostgreSQL.');
             }
             $db->table('market_candle_conflict_journal')->delete();
