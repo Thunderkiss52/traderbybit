@@ -27,7 +27,9 @@ use App\PaperTrading\Infrastructure\Persistence\PaperAccountRecord;
 use App\PaperTrading\Jobs\CapturePaperEquityJob;
 use App\PaperTrading\Jobs\ProcessPaperTradingJob;
 use App\Research\Application\ResearchJobService;
+use App\Research\Jobs\InvestigatePaperDrawdownJob;
 use App\Research\Jobs\ProcessAutonomousLearningJob;
+use App\Research\Jobs\ProcessPortfolioResearchLifecycleJob;
 use App\Research\Jobs\ReconcileLedgerJob;
 use App\Strategy\Jobs\CaptureMarketContextJob;
 use App\Strategy\Jobs\EnsureResearchCoverageJob;
@@ -333,12 +335,7 @@ if ((bool) config('exchanges.binance.research_cycle_enabled', false)) {
             ->cron('1,6,11,16,21,26,31,36,41,46,51,56 * * * *')
             ->name("binance:5m:{$symbol}")->withoutOverlapping();
         foreach (['15m', '30m', '1h', '4h'] as $interval) {
-            Schedule::command('binance:ingest-htf', [
-                'symbol' => $symbol,
-                'interval' => $interval,
-                '--limit' => 10,
-                '--quarantine' => true,
-            ])
+            Schedule::command("binance:ingest-htf {$symbol} {$interval} --limit=10 --quarantine")
                 ->appendOutputTo(storage_path('logs/binance-htf-ingestion.log'))
                 ->cron('1,16,31,46 * * * *')->name("binance:htf:{$symbol}:{$interval}")->withoutOverlapping();
         }
@@ -419,6 +416,13 @@ Schedule::call(fn () => app(TradingPipelineRecoveryService::class)->recover())
 // Execute continuous quantitative learning, model retraining, and challenger evaluation.
 Schedule::job(new ProcessAutonomousLearningJob)
     ->cron('9,24,39,54 * * * *')->name('research:autonomous-learning')->withoutOverlapping();
+
+Schedule::job(new ProcessPortfolioResearchLifecycleJob)
+    ->everyFiveMinutes()->name('research:portfolio-lifecycle')->withoutOverlapping();
+
+// Retry durable risk events after a lost dispatch or an interrupted investigation.
+Schedule::job(new InvestigatePaperDrawdownJob)
+    ->everyFiveMinutes()->name('research:drawdown-investigation')->withoutOverlapping();
 
 // Automatic account attachment for newly registered strategy families. Approval to trade is separate.
 if (config('paper.topology.auto_sync_enabled', true)) {

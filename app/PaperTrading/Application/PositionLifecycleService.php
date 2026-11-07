@@ -78,7 +78,7 @@ final readonly class PositionLifecycleService
             $realized = BigDecimal::of($lockedAccount->realized_pnl)->minus($fee);
             $portfolioUnrealized = $this->portfolioUnrealized($lockedAccount->id);
             $reservedRisk = BigDecimal::of($lockedAccount->reserved_risk)->plus($size->riskCapital);
-            $this->refreshAccountMetrics($lockedAccount, $realized, $portfolioUnrealized, $reservedRisk);
+            $this->refreshAccountMetrics($lockedAccount, $realized, $portfolioUnrealized, $reservedRisk, $at);
             $this->snapshot($lockedAccount->refresh(), $at, "entry:{$position->id}");
             $this->journal->append($account->id, $signal->id, $position->id, 'POSITION_OPENED', $at, [
                 'paper' => true, 'price' => $quote->price, 'quantity' => $quantity, 'fee' => $fee, 'slippage' => $quote->slippage,
@@ -179,7 +179,7 @@ final readonly class PositionLifecycleService
             $reservedRisk = ($closed && ! $hasOtherPositions)
                 ? BigDecimal::zero()
                 : BigDecimal::max(BigDecimal::of($account->reserved_risk)->minus($release)->toScale(12, RoundingMode::HalfEven), BigDecimal::zero());
-            $this->refreshAccountMetrics($account, $realized, $portfolioUnrealized, $reservedRisk);
+            $this->refreshAccountMetrics($account, $realized, $portfolioUnrealized, $reservedRisk, $at);
             if ($closed) {
                 SignalLifecycle::Active->transitionTo(SignalLifecycle::Completed);
                 PaperSignalStateRecord::query()->where('paper_account_id', $account->id)->where('signal_id', $locked->signal_id)->update(['status' => SignalLifecycle::Completed->value, 'processed_at' => $at]);
@@ -251,7 +251,7 @@ final readonly class PositionLifecycleService
                 $account = PaperAccountRecord::query()->lockForUpdate()->findOrFail($locked->paper_account_id);
                 $realized = BigDecimal::of($account->realized_pnl)->plus($amount);
                 $portfolioUnrealized = $this->portfolioUnrealized($account->id);
-                $this->refreshAccountMetrics($account, $realized, $portfolioUnrealized);
+                $this->refreshAccountMetrics($account, $realized, $portfolioUnrealized, at: now('UTC')->toDateTimeImmutable());
                 // Settlement economic time belongs to the funding ledger. This is
                 // current account equity observed when the adjustment was applied.
                 $this->snapshot($account->refresh(), now('UTC')->toDateTimeImmutable(), "funding:{$locked->id}:{$event->id}");
@@ -616,7 +616,7 @@ final readonly class PositionLifecycleService
             $locked->update(['unrealized_pnl' => $unrealized, 'last_processed_event_at' => $at, 'awaiting_market_data' => false]);
             $account = PaperAccountRecord::query()->lockForUpdate()->findOrFail($locked->paper_account_id);
             $portfolioUnrealized = $this->portfolioUnrealized($account->id);
-            $this->refreshAccountMetrics($account, BigDecimal::of($account->realized_pnl), $portfolioUnrealized);
+            $this->refreshAccountMetrics($account, BigDecimal::of($account->realized_pnl), $portfolioUnrealized, at: $at);
             $this->snapshot($account->refresh(), $at, "mark:{$locked->id}:{$at->format('U.u')}");
         });
     }
@@ -677,7 +677,8 @@ final readonly class PositionLifecycleService
         PaperAccountRecord $account,
         BigDecimal $realized,
         BigDecimal $portfolioUnrealized,
-        ?BigDecimal $reservedRisk = null
+        ?BigDecimal $reservedRisk = null,
+        ?DateTimeImmutable $at = null,
     ): void {
         $equity = BigDecimal::of($account->starting_balance)->plus($realized)->plus($portfolioUnrealized);
         $peak = BigDecimal::max(
@@ -714,6 +715,7 @@ final readonly class PositionLifecycleService
         }
 
         $account->update($payload);
+        app(DrawdownInvestigationService::class)->request($account, $at ?? now()->toDateTimeImmutable());
     }
 
     private function portfolioUnrealized(string $accountId): BigDecimal

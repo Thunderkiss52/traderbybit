@@ -318,6 +318,22 @@ final readonly class StrategyObservationService
         if ($input !== null && $input->freshnessDiagnostics !== []) {
             $diagnostics['freshness_diagnostics'] = $input->freshnessDiagnostics;
         }
+        if ($input !== null) {
+            $diagnostics['decision_time'] = $input->decisionTime->format(DATE_ATOM);
+            $diagnostics['validation_errors'] = $input->validationErrors;
+            foreach (['trend', 'setup', 'entry', 'confirmation'] as $role) {
+                $state = $input->{$role};
+                $latest = $state->latest();
+                $diagnostics['timeframes'][$role] = [
+                    'interval' => $state->interval,
+                    'warmup_ready' => $state->warmupReady,
+                    'bars_available' => count($state->bars),
+                    'latest_open' => $latest?->openTime->format(DATE_ATOM),
+                    'latest_close' => $latest?->closeTime->format(DATE_ATOM),
+                    'closed_as_of_decision' => $latest !== null && $latest->closeTime <= $input->decisionTime,
+                ];
+            }
+        }
 
         return $diagnostics;
     }

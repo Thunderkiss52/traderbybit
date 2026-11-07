@@ -13,6 +13,7 @@ final class IntervalTest extends TestCase
     public function test_all_supported_intervals_parse_correctly(): void
     {
         self::assertSame(Interval::OneMinute, Interval::parse('1'));
+        self::assertSame(Interval::ThreeMinutes, Interval::parse('3'));
         self::assertSame(Interval::FiveMinutes, Interval::parse('5'));
         self::assertSame(Interval::FifteenMinutes, Interval::parse('15'));
         self::assertSame(Interval::ThirtyMinutes, Interval::parse('30'));
@@ -25,6 +26,9 @@ final class IntervalTest extends TestCase
     {
         self::assertSame(60_000, Interval::OneMinute->milliseconds());
         self::assertSame(60, Interval::OneMinute->seconds());
+        self::assertSame(180_000, Interval::ThreeMinutes->milliseconds());
+        self::assertSame(180, Interval::ThreeMinutes->seconds());
+        self::assertSame(180_000, Interval::ThreeMinutes->floor(180_001));
 
         self::assertSame(300_000, Interval::FiveMinutes->milliseconds());
         self::assertSame(300, Interval::FiveMinutes->seconds());

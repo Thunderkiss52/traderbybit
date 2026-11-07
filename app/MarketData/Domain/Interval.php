@@ -9,6 +9,7 @@ use InvalidArgumentException;
 enum Interval: string
 {
     case OneMinute = '1';
+    case ThreeMinutes = '3';
     case FiveMinutes = '5';
     case FifteenMinutes = '15';
     case ThirtyMinutes = '30';
@@ -20,6 +21,7 @@ enum Interval: string
     {
         return match ($this) {
             self::OneMinute => 60_000,
+            self::ThreeMinutes => 180_000,
             self::FiveMinutes => 300_000,
             self::FifteenMinutes => 900_000,
             self::ThirtyMinutes => 1_800_000,
@@ -42,6 +44,6 @@ enum Interval: string
     public static function parse(string $value): self
     {
         return self::tryFrom($value)
-            ?? throw new InvalidArgumentException("Unsupported interval [{$value}]. Allowed: 1, 5, 15, 30, 60, 240, D.");
+            ?? throw new InvalidArgumentException("Unsupported interval [{$value}]. Allowed: 1, 3, 5, 15, 30, 60, 240, D.");
     }
 }
