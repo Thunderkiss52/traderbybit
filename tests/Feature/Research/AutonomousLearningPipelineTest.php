@@ -182,8 +182,12 @@ final class AutonomousLearningPipelineTest extends TestCase
         app()->call([$job, 'handle']);
         app()->call([$job, 'handle']);
 
-        $families = LearningCandidateStrategyRecord::query()->orderBy('created_at')->pluck('parent_strategy_id')->all();
+        // created_at has second precision; queue dispatch order is the scheduling contract.
+        $families = Queue::pushed(EvaluateStrategyCandidateJob::class)->map(
+            fn (EvaluateStrategyCandidateJob $queued) => LearningCandidateStrategyRecord::query()->findOrFail($queued->candidateId)->parent_strategy_id
+        )->all();
         $this->assertSame(['baseline', 'trend_pullback', 'bollinger_mean_reversion', 'donchian_atr_breakout'], $families);
+        $this->assertSame(4, LearningCandidateStrategyRecord::query()->count());
         Queue::assertPushed(EvaluateStrategyCandidateJob::class, 4);
     }
 

@@ -26,6 +26,7 @@ final class AutonomySettingRecord extends Model
             'max_promotions_per_week' => 'integer',
             'min_shadow_observation_days' => 'integer',
             'max_allowed_drawdown_percent' => 'decimal:4',
+            'paper_initial_capital' => 'decimal:12',
         ];
     }
 }

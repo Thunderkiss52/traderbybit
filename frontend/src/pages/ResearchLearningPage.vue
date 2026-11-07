@@ -21,6 +21,9 @@ const auditTotal = ref(0);
 const selectedStrategy = ref('trend_pullback');
 const generating = ref(false);
 const validatingId = ref<string | null>(null);
+const paperInitialCapital = ref('0');
+const automaticPaper = ref(false);
+const savingPolicy = ref(false);
 
 async function loadOverview() {
   loading.value = true;
@@ -29,6 +32,8 @@ async function loadOverview() {
     const res = await api.get('/research/learning/overview');
     overview.value = res.data.data;
     settings.value = res.data.data.settings;
+    paperInitialCapital.value = String(settings.value?.paper_initial_capital ?? '0');
+    automaticPaper.value = settings.value?.capabilities?.auto_promote_paper === true;
   } catch (err: any) {
     error.value = err.message || 'Failed to load learning overview';
   } finally {
@@ -149,6 +154,22 @@ async function toggleKillSwitch() {
     await loadOverview();
   } catch (err: any) {
     error.value = err.message || 'Failed to toggle kill switch';
+  }
+}
+
+async function savePaperPolicy() {
+  savingPolicy.value = true;
+  error.value = '';
+  try {
+    await api.post('/research/learning/autonomy-settings', {
+      capabilities: { auto_promote_paper: automaticPaper.value },
+      limits: { paper_initial_capital: paperInitialCapital.value },
+    });
+    await loadOverview();
+  } catch (err: unknown) {
+    error.value = err instanceof Error ? err.message : 'Failed to save PAPER policy';
+  } finally {
+    savingPolicy.value = false;
   }
 }
 
@@ -501,6 +522,15 @@ onMounted(() => {
 
     <!-- TAB 4: AUTONOMY SETTINGS -->
     <div v-if="activeTab === 'settings' && settings">
+      <q-card flat bordered class="q-mb-md">
+        <q-card-section>
+          <div class="text-subtitle1 text-bold">Global autonomous PAPER policy</div>
+          <p class="text-caption text-grey">Applies prospectively after verified Research, Shadow, execution and risk gates. Existing balances and risk-blocked accounts are preserved. Zero capital keeps new portfolios unfunded.</p>
+          <q-toggle v-model="automaticPaper" label="Allow automatic PAPER advancement when all gates pass" />
+          <q-input v-model="paperInitialCapital" outlined label="Initial virtual capital per newly eligible portfolio (USDT)" :rules="[(value: string) => /^(?:0|[1-9][0-9]{0,8})(?:\.[0-9]{1,12})?$/.test(value) || 'Enter a nonnegative decimal amount']" />
+          <q-btn color="primary" label="Save global PAPER policy" :loading="savingPolicy" @click="savePaperPolicy" />
+        </q-card-section>
+      </q-card>
       <q-card flat bordered class="q-mb-md">
         <q-card-section>
           <div class="text-subtitle1 text-bold">Persisted Capability Permissions & Governance</div>

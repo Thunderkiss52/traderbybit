@@ -4,9 +4,12 @@ declare(strict_types=1);
 
 namespace Tests\Unit\Research;
 
+use App\PaperTrading\Application\PaperAccountService;
 use App\Research\Application\AutonomyPermissionService;
 use App\Research\Infrastructure\Persistence\AutonomyApprovalEventRecord;
+use Brick\Math\BigDecimal;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\DB;
 use Tests\TestCase;
 
 final class AutonomyPermissionServiceTest extends TestCase
@@ -61,5 +64,19 @@ final class AutonomyPermissionServiceTest extends TestCase
 
         self::assertCount(1, $events);
         self::assertSame('ACTIVE', $events->first()->new_state);
+    }
+
+    public function test_paper_capital_policy_is_explicit_audited_and_does_not_fund_accounts(): void
+    {
+        $service = new AutonomyPermissionService;
+        self::assertSame('0.000000000000', $service->getSettings()->paper_initial_capital);
+        $account = app(PaperAccountService::class)->default();
+        $account->update(['status' => 'BLOCKED']);
+        self::assertTrue(BigDecimal::of((string) $account->starting_balance)->isPositive());
+        $before = DB::table('paper_accounts')->orderBy('id')->get()->toJson();
+        $settings = $service->updateSettings(['auto_promote_paper' => true], ['paper_initial_capital' => '1250.50']);
+        self::assertSame('1250.500000000000', $settings->paper_initial_capital);
+        self::assertSame($before, DB::table('paper_accounts')->orderBy('id')->get()->toJson());
+        self::assertSame('1250.50', AutonomyApprovalEventRecord::query()->where('action', 'PERMISSION_CHANGE')->firstOrFail()->evidence['limits']['paper_initial_capital']);
     }
 }

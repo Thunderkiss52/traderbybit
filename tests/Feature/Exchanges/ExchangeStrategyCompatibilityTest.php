@@ -11,6 +11,8 @@ use App\Exchanges\Infrastructure\Persistence\ExchangeStrategyCompatibilityRecord
 use App\MarketData\Infrastructure\Persistence\CandleRecord;
 use App\PaperTrading\Infrastructure\Persistence\PaperAccountRecord;
 use App\StrategyBuilder\DefinitionStore;
+use App\StrategyBuilder\PrimaryStrategies;
+use Brick\Math\BigDecimal;
 use Carbon\CarbonImmutable;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\Feature\StrategyBuilder\DefinitionTest;
@@ -71,24 +73,26 @@ final class ExchangeStrategyCompatibilityTest extends TestCase
         // 2. Insert 250 bars (>= 220 required) for BTCUSDT
         $now = CarbonImmutable::parse('2026-01-01 00:00:00', 'UTC');
         $rows = [];
-        for ($i = 0; $i < 250; $i++) {
-            $t = $now->addMinutes($i * 5)->format('Y-m-d H:i:s.uP');
-            $rows[] = [
-                'exchange' => 'okx_historical',
-                'category' => 'linear',
-                'symbol' => 'BTCUSDT',
-                'interval' => '5',
-                'open_time' => $t,
-                'open' => '100',
-                'high' => '105',
-                'low' => '95',
-                'close' => '102',
-                'volume' => '10',
-                'turnover' => '1000',
-                'is_closed' => true,
-                'created_at' => $t,
-                'updated_at' => $t,
-            ];
+        foreach (['5', '15', '30', '60'] as $interval) {
+            for ($i = 0; $i < 250; $i++) {
+                $t = $now->addMinutes($i * (int) $interval)->format('Y-m-d H:i:s.uP');
+                $rows[] = [
+                    'exchange' => 'okx_historical',
+                    'category' => 'linear',
+                    'symbol' => 'BTCUSDT',
+                    'interval' => $interval,
+                    'open_time' => $t,
+                    'open' => '100',
+                    'high' => '105',
+                    'low' => '95',
+                    'close' => '102',
+                    'volume' => '10',
+                    'turnover' => '1000',
+                    'is_closed' => true,
+                    'created_at' => $t,
+                    'updated_at' => $t,
+                ];
+            }
         }
         CandleRecord::query()->insert($rows);
 
@@ -124,7 +128,7 @@ final class ExchangeStrategyCompatibilityTest extends TestCase
         self::assertGreaterThanOrEqual(13, $count, 'Registering exchange must auto-discover and evaluate all strategies.');
     }
 
-    public function test_newly_registered_exchange_evaluates_compatibility_without_activating_strategies_or_creating_paper_accounts(): void
+    public function test_newly_registered_exchange_evaluates_compatibility_and_creates_unfunded_blocked_portfolios(): void
     {
         $catalog = app(ExchangeCatalogService::class);
         $service = app(ExchangeStrategyCompatibilityService::class);
@@ -145,11 +149,13 @@ final class ExchangeStrategyCompatibilityTest extends TestCase
         self::assertGreaterThanOrEqual(13, $compatCount);
 
         // Invariant: Compatibility discovery is strictly distinct from activation
-        // Zero paper accounts created for kraken_futures
+        // Portfolio registration is automatic; financial activation is independently gated.
         $paperAccountsCount = PaperAccountRecord::query()
             ->where('exchange_id', 'kraken_futures')
             ->count();
-        self::assertSame(0, $paperAccountsCount, 'Newly registered exchange must NOT automatically create paper accounts.');
+        self::assertSame(count(PrimaryStrategies::ids()), $paperAccountsCount);
+        self::assertSame(0, PaperAccountRecord::query()->where('exchange_id', 'kraken_futures')->where('status', '!=', 'BLOCKED')->count());
+        self::assertTrue(BigDecimal::of((string) PaperAccountRecord::query()->where('exchange_id', 'kraken_futures')->sum('starting_balance'))->isZero());
 
         // Invariant: Exchange lifecycle status remains unapproved for paper execution
         $freshExchange = ExchangeRecord::query()->findOrFail('kraken_futures');

@@ -4,10 +4,12 @@ declare(strict_types=1);
 
 namespace App\Research\Application;
 
+use App\PaperTrading\Application\NewPrimaryCapitalPolicy;
 use App\Research\Domain\ResearchPromotionControlRecord;
 use App\Research\Infrastructure\Persistence\AutonomyApprovalEventRecord;
 use App\Research\Infrastructure\Persistence\AutonomySettingRecord;
 use Carbon\CarbonImmutable;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 
 final class AutonomyPermissionService
@@ -38,6 +40,7 @@ final class AutonomyPermissionService
             'max_promotions_per_week' => 2,
             'min_shadow_observation_days' => 7,
             'max_allowed_drawdown_percent' => 12.0,
+            'paper_initial_capital' => '0',
         ];
 
         return $persist
@@ -82,34 +85,41 @@ final class AutonomyPermissionService
      */
     public function updateSettings(array $capabilities, array $limits = [], string $actor = 'USER_OPERATOR'): AutonomySettingRecord
     {
-        $settings = $this->getSettings();
+        $capital = array_key_exists('paper_initial_capital', $limits)
+            ? (new NewPrimaryCapitalPolicy)->activationBalance((string) $limits['paper_initial_capital']) : null;
 
-        // Ensure absolute invariants can never be enabled
-        $capabilities['change_hard_risk_limits'] = false;
-        $capabilities['live_exchange_trading'] = false;
+        return DB::transaction(function () use ($capabilities, $limits, $actor, $capital): AutonomySettingRecord {
+            $initial = $this->getSettings();
+            $settings = $initial->newQuery()->whereKey('default')->lockForUpdate()->firstOrFail();
 
-        $previous = $settings->capabilities;
-        $settings->update([
-            'capabilities' => array_merge((array) $settings->capabilities, $capabilities),
-            'max_active_shadow_experiments' => $limits['max_active_shadow_experiments'] ?? $settings->max_active_shadow_experiments,
-            'max_forward_paper_trials' => $limits['max_forward_paper_trials'] ?? $settings->max_forward_paper_trials,
-            'max_promotions_per_week' => $limits['max_promotions_per_week'] ?? $settings->max_promotions_per_week,
-            'min_shadow_observation_days' => $limits['min_shadow_observation_days'] ?? $settings->min_shadow_observation_days,
-            'max_allowed_drawdown_percent' => $limits['max_allowed_drawdown_percent'] ?? $settings->max_allowed_drawdown_percent,
-        ]);
+            // Ensure absolute invariants can never be enabled
+            $capabilities['change_hard_risk_limits'] = false;
+            $capabilities['live_exchange_trading'] = false;
 
-        $this->recordEvent(
-            actor: $actor,
-            action: 'PERMISSION_CHANGE',
-            targetType: 'AUTONOMY_SETTINGS',
-            targetId: 'default',
-            previousState: 'CONFIGURED',
-            newState: 'CONFIGURED',
-            reason: 'Autonomy permissions and resource limits updated.',
-            evidence: ['limits' => $limits, 'previous_capabilities' => $previous, 'capabilities' => $settings->capabilities]
-        );
+            $previous = $settings->capabilities;
+            $settings->update([
+                'capabilities' => array_merge((array) $settings->capabilities, $capabilities),
+                'max_active_shadow_experiments' => $limits['max_active_shadow_experiments'] ?? $settings->max_active_shadow_experiments,
+                'max_forward_paper_trials' => $limits['max_forward_paper_trials'] ?? $settings->max_forward_paper_trials,
+                'max_promotions_per_week' => $limits['max_promotions_per_week'] ?? $settings->max_promotions_per_week,
+                'min_shadow_observation_days' => $limits['min_shadow_observation_days'] ?? $settings->min_shadow_observation_days,
+                'max_allowed_drawdown_percent' => $limits['max_allowed_drawdown_percent'] ?? $settings->max_allowed_drawdown_percent,
+                'paper_initial_capital' => $capital ?? $settings->paper_initial_capital,
+            ]);
 
-        return $settings->fresh();
+            $this->recordEvent(
+                actor: $actor,
+                action: 'PERMISSION_CHANGE',
+                targetType: 'AUTONOMY_SETTINGS',
+                targetId: 'default',
+                previousState: 'CONFIGURED',
+                newState: 'CONFIGURED',
+                reason: 'Autonomy permissions and resource limits updated.',
+                evidence: ['limits' => $limits, 'previous_capabilities' => $previous, 'capabilities' => $settings->capabilities]
+            );
+
+            return $settings->fresh();
+        }, attempts: 3);
     }
 
     /**

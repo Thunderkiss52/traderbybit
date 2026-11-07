@@ -129,6 +129,12 @@ final class AutonomousLearningController extends Controller
 
     public function updateAutonomySettings(Request $request, AutonomyPermissionService $autonomy): ResearchResource|JsonResponse
     {
+        $request->validate([
+            'capabilities' => ['sometimes', 'array'],
+            'capabilities.*' => ['boolean'],
+            'limits' => ['sometimes', 'array'],
+            'limits.paper_initial_capital' => ['sometimes', 'string', 'regex:/^(?:0|[1-9][0-9]{0,8})(?:\.[0-9]{1,12})?$/D'],
+        ]);
         try {
             $capabilities = (array) $request->input('capabilities', []);
             $limits = (array) $request->input('limits', []);

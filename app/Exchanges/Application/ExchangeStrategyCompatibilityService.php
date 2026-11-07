@@ -7,15 +7,17 @@ namespace App\Exchanges\Application;
 use App\Exchanges\ExchangeRegistry;
 use App\Exchanges\Infrastructure\Persistence\ExchangeRecord;
 use App\Exchanges\Infrastructure\Persistence\ExchangeStrategyCompatibilityRecord;
+use App\HistoricalData\UniversalAcquisitionService;
 use App\MarketData\Infrastructure\Persistence\CandleRecord;
 use App\Strategy\Application\StrategyRegistry;
+use Carbon\CarbonImmutable;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
 use Throwable;
 
 final readonly class ExchangeStrategyCompatibilityService
 {
-    public const EVALUATION_VERSION = 'v1.0';
+    public const EVALUATION_VERSION = 'v1.1';
 
     public const MINIMUM_WARMUP_BARS = 220;
 
@@ -210,8 +212,8 @@ final readonly class ExchangeStrategyCompatibilityService
         }
 
         // 3. Timeframe compatibility
-        $requiredTimeframes = (array) ($strategy['timeframes'] ?? ['5', '15', '30', '60']);
-        $supportedTimeframes = (array) ($capabilities['supported_timeframes'] ?? ['5', '15', '30', '60']);
+        $requiredTimeframes = array_map(UniversalAcquisitionService::normalizeInterval(...), (array) ($strategy['timeframes'] ?? ['5', '15', '30', '60']));
+        $supportedTimeframes = array_map(UniversalAcquisitionService::normalizeInterval(...), (array) ($capabilities['supported_timeframes'] ?? []));
         $missingTimeframes = array_diff($requiredTimeframes, $supportedTimeframes);
         $timeframesCompatible = empty($missingTimeframes);
 
@@ -219,19 +221,31 @@ final readonly class ExchangeStrategyCompatibilityService
         $coverageInfo = [];
         $totalBars = 0;
         $historyCompatible = true;
+        $freshCandles = true;
         foreach ($requiredSymbols as $symbol) {
-            $bars = CandleRecord::query()
-                ->where('exchange', $exchange->id)
-                ->where('symbol', $symbol)
-                ->count();
-            $totalBars += $bars;
-            $coverageInfo[$symbol] = [
-                'bars' => $bars,
-                'min_required' => self::MINIMUM_WARMUP_BARS,
-                'sufficient' => $bars >= self::MINIMUM_WARMUP_BARS,
-            ];
-            if ($bars < self::MINIMUM_WARMUP_BARS) {
-                $historyCompatible = false;
+            foreach ($requiredTimeframes as $interval) {
+                $seconds = ctype_digit((string) $interval) ? (int) $interval * 60 : 0;
+                $times = $seconds > 0 ? CandleRecord::query()
+                    ->where('exchange', $exchange->id)->where('symbol', $symbol)
+                    ->where('category', $strategyMarketType === 'spot' ? 'spot' : 'linear')
+                    ->where('interval', (string) $interval)->where('is_closed', true)
+                    ->where('open_time', '<=', now('UTC')->subSeconds($seconds))
+                    ->orderByDesc('open_time')->limit(self::MINIMUM_WARMUP_BARS)->pluck('open_time') : collect();
+                $bars = $times->count();
+                $totalBars += $bars;
+                $contiguous = $bars >= self::MINIMUM_WARMUP_BARS;
+                $previous = null;
+                foreach ($times as $time) {
+                    $timestamp = CarbonImmutable::parse($time)->getTimestamp();
+                    if ($previous !== null && $previous - $timestamp !== $seconds) {
+                        $contiguous = false;
+                    }
+                    $previous = $timestamp;
+                }
+                $fresh = $bars > 0 && CarbonImmutable::parse($times->first())->addSeconds($seconds)->gte(now('UTC')->subSeconds(300));
+                $freshCandles = $freshCandles && $fresh;
+                $historyCompatible = $historyCompatible && $contiguous;
+                $coverageInfo[$symbol][(string) $interval] = ['bars' => $bars, 'min_required' => self::MINIMUM_WARMUP_BARS, 'sufficient' => $contiguous, 'fresh' => $fresh];
             }
         }
 
@@ -239,19 +253,19 @@ final readonly class ExchangeStrategyCompatibilityService
         $requiresFunding = (bool) ($strategy['requires_funding'] ?? false);
         $requiresOpenInterest = (bool) ($strategy['requires_open_interest'] ?? false);
 
-        $hasFunding = ! empty($capabilities['has_funding']);
-        if (! $hasFunding && Schema::hasTable('historical_funding_events')) {
-            $hasFunding = DB::table('historical_funding_events')
+        $hasFunding = DB::table('market_funding_events')->where('exchange', $exchange->id)
+            ->whereIn('symbol', $requiredSymbols)->where('funding_at', '<=', now('UTC'))->exists();
+        if (! $hasFunding && Schema::hasTable('historical_funding_observations')) {
+            $hasFunding = DB::table('historical_funding_observations')
                 ->where('exchange', $exchange->id)
+                ->whereIn('symbol', $requiredSymbols)->where('funding_at', '<=', now('UTC'))
+                ->where('status', 'VERIFIED_OBSERVATION')
                 ->exists();
         }
 
-        $hasOpenInterest = ! empty($capabilities['has_open_interest']);
-        if (! $hasOpenInterest && Schema::hasTable('open_interest_events')) {
-            $hasOpenInterest = DB::table('open_interest_events')
-                ->where('exchange', $exchange->id)
-                ->exists();
-        }
+        $hasOpenInterest = DB::table('market_context_snapshots')->where('exchange', $exchange->id)
+            ->whereIn('symbol', $requiredSymbols)->where('observed_at', '<=', now('UTC'))
+            ->whereNotNull('open_interest')->exists();
 
         $featuresCompatible = true;
         $featureBlockers = [];
@@ -265,13 +279,14 @@ final readonly class ExchangeStrategyCompatibilityService
         }
 
         // 6. Execution model compatibility
-        $hasTakerRate = ! empty($costModel['taker_rate']);
-        $hasSlippage = ! empty($costModel['slippage_rate']);
+        $validator = new ExchangeCapabilityValidator($this->exchangeRegistry);
+        $hasTakerRate = $validator->validRate($costModel['taker_rate'] ?? null);
+        $hasSlippage = $validator->validRate($costModel['slippage_rate'] ?? null);
         $executionModelCompatible = $hasTakerRate && $hasSlippage;
 
         // 7. Live adapter check
-        $hasLiveAdapter = $this->exchangeRegistry->hasAdapter($exchange->id)
-            || (! empty($capabilities['adapter_class']) && class_exists((string) $capabilities['adapter_class']));
+        $hasLiveAdapter = $this->exchangeRegistry->hasAdapter($exchange->id);
+        $execution = $validator->evaluate($exchange);
 
         // 8. Candle conflicts check
         $unresolvedConflicts = 0;
@@ -315,6 +330,13 @@ final readonly class ExchangeStrategyCompatibilityService
         if (! $hasPrecision) {
             $reasonsMissing[] = 'MISSING_PRECISION_SPECS: Price tick size and quantity step precision rules must be declared.';
         }
+        if (! $freshCandles) {
+            $reasonsMissing[] = 'STALE_REQUIRED_CANDLES: Fresh closed candles are required on every strategy timeframe for Shadow and PAPER.';
+        }
+        if (! empty($strategy['requires_streaming']) || ! empty($strategy['requires_order_book'])) {
+            $reasonsMissing[] = 'UNVERIFIED_STREAMING_INPUTS: Streaming and order-book strategies require a verified feed and strategy-specific latency evidence.';
+        }
+        $reasonsMissing = array_values(array_unique(array_merge($reasonsMissing, $execution['reasons_missing'])));
 
         // Eligibility determination:
         // Research: Historical data exists, intervals covered, features calculable, execution model defined.
@@ -329,10 +351,14 @@ final readonly class ExchangeStrategyCompatibilityService
         // Shadow: Public market data / adapter or live data available, features calculable, signals evaluable.
         $shadowEligible = $researchEligible
             && $hasLiveAdapter
+            && $freshCandles
+            && empty($strategy['requires_streaming'])
+            && empty($strategy['requires_order_book'])
             && in_array($exchange->lifecycle_status, ['CONNECTED_PUBLIC_DATA', 'RESEARCH_ENABLED', 'PAPER_ELIGIBLE', 'ACTIVE_PAPER'], true);
 
         // PAPER: Full technical eligibility including live adapter, cost model, 0 conflicts, precision, and exchange approved.
         $paperEligible = $shadowEligible
+            && $execution['eligible']
             && $zeroConflicts
             && $hasPrecision
             && in_array($exchange->lifecycle_status, ['PAPER_ELIGIBLE', 'ACTIVE_PAPER'], true);
@@ -362,6 +388,8 @@ final readonly class ExchangeStrategyCompatibilityService
             'has_live_adapter' => $hasLiveAdapter,
             'zero_candle_conflicts' => $zeroConflicts,
             'has_precision_specs' => $hasPrecision,
+            'fresh_required_candles' => $freshCandles,
+            'integrated_execution_model' => $execution['checks']['has_execution_model'],
         ];
 
         return [
@@ -387,32 +415,20 @@ final readonly class ExchangeStrategyCompatibilityService
     {
         $list = [];
 
-        // 1. Canonical PRIMARY compiled strategies
-        $canonical = [
-            'baseline' => ['name' => 'Baseline SMA/EMA Crossover', 'symbols' => ['BTCUSDT'], 'timeframes' => ['5', '15', '30', '60']],
-            'trend_pullback' => ['name' => 'Trend Pullback', 'symbols' => ['BTCUSDT'], 'timeframes' => ['5', '15', '30', '60']],
-            'bollinger_mean_reversion' => ['name' => 'Bollinger Mean Reversion', 'symbols' => ['BTCUSDT'], 'timeframes' => ['5', '15', '30', '60']],
-            'donchian_atr_breakout' => ['name' => 'Donchian ATR Breakout', 'symbols' => ['BTCUSDT'], 'timeframes' => ['5', '15', '30', '60']],
-            'regime_switching' => ['name' => 'Regime Switching', 'symbols' => ['BTCUSDT'], 'timeframes' => ['5', '15', '30', '60']],
-            'momentum' => ['name' => 'Momentum Breakout', 'symbols' => ['BTCUSDT'], 'timeframes' => ['5', '15', '30', '60']],
-            'support_resistance_bounce' => ['name' => 'Support / Resistance Bounce', 'symbols' => ['BTCUSDT'], 'timeframes' => ['5', '15', '30', '60']],
-            'support_resistance_breakout' => ['name' => 'Support / Resistance Breakout', 'symbols' => ['BTCUSDT'], 'timeframes' => ['5', '15', '30', '60']],
-            'funding_open_interest_squeeze' => ['name' => 'Funding & OI Squeeze', 'symbols' => ['BTCUSDT'], 'timeframes' => ['5', '15', '30', '60'], 'requires_funding' => true, 'requires_open_interest' => true],
-            'liquidity_sweep_reversal' => ['name' => 'Liquidity Sweep Reversal', 'symbols' => ['BTCUSDT'], 'timeframes' => ['5', '15', '30', '60']],
-            'volatility_compression_breakout' => ['name' => 'Volatility Compression Breakout', 'symbols' => ['BTCUSDT'], 'timeframes' => ['5', '15', '30', '60']],
-            'btc_eth_lead_lag' => ['name' => 'BTC-ETH Lead Lag', 'symbols' => ['BTCUSDT', 'ETHUSDT'], 'timeframes' => ['5', '15', '30', '60']],
-            'multi_timeframe_trend_following' => ['name' => 'Multi-Timeframe Trend Following', 'symbols' => ['BTCUSDT'], 'timeframes' => ['5', '15', '30', '60']],
-        ];
-
-        foreach ($canonical as $id => $meta) {
-            $list[] = array_merge([
+        // Portfolio identities come from the executable registry, never the method library.
+        foreach ($this->strategyRegistry->all() as $registered) {
+            $id = $registered->id();
+            $list[] = [
                 'id' => $id,
-                'version' => '1.0.0',
-                'kind' => 'COMPILED_PRIMARY',
+                'name' => $registered->description(),
+                'version' => $registered->version(),
+                'kind' => 'REGISTERED_PRIMARY',
                 'market_type' => 'linear_perpetual',
-                'requires_funding' => false,
-                'requires_open_interest' => false,
-            ], $meta);
+                'symbols' => $id === 'btc_eth_lead_lag' ? ['BTCUSDT', 'ETHUSDT'] : ['BTCUSDT'],
+                'timeframes' => ['5', '15', '30', '60'],
+                'requires_funding' => $id === 'funding_open_interest_squeeze',
+                'requires_open_interest' => $id === 'funding_open_interest_squeeze',
+            ];
         }
 
         // 2. Custom DSL Strategy definitions from DB
@@ -427,6 +443,9 @@ final readonly class ExchangeStrategyCompatibilityService
                     if (! is_array($json)) {
                         continue;
                     }
+                    if (in_array((string) $def->strategy_id, array_column($list, 'id'), true)) {
+                        continue;
+                    }
                     $list[] = [
                         'id' => (string) ($def->strategy_id ?? $json['id'] ?? 'user_custom_'.$def->id),
                         'name' => (string) ($json['id'] ?? 'Custom Strategy #'.$def->id),
@@ -434,7 +453,7 @@ final readonly class ExchangeStrategyCompatibilityService
                         'kind' => 'USER_DSL',
                         'market_type' => 'linear_perpetual',
                         'symbols' => (array) ($json['symbols'] ?? ['BTCUSDT']),
-                        'timeframes' => (array) ($json['timeframe'] ? [$json['timeframe']] : ['15', '60']),
+                        'timeframes' => (array) (isset($json['timeframe']) ? [$json['timeframe']] : ['15', '60']),
                         'requires_funding' => ! empty($json['funding']['enabled']),
                         'requires_open_interest' => false,
                         'definition_id' => $def->id,
