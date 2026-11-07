@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace Tests\Feature\HistoricalData;
 
+use App\HistoricalData\AcquisitionFailure;
+use App\HistoricalData\DiskSpaceProbe;
 use App\HistoricalData\OfficialTransport;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Artisan;
@@ -34,6 +36,10 @@ final class AcquireCommandTest extends TestCase
     {
         Http::preventStrayRequests();
 
+        $disk = $this->createStub(DiskSpaceProbe::class);
+        $disk->method('freeBytes')->willReturn(100_000_000_000.0);
+        $this->app->instance(DiskSpaceProbe::class, $disk);
+
         $http = $this->createStub(OfficialTransport::class);
         $http->method('assertUrl');
         $http->method('fetch')->willReturnCallback(function ($url, $target, $maximum, $tick): array {
@@ -62,5 +68,23 @@ final class AcquireCommandTest extends TestCase
         self::assertSame(336, DB::table('historical_download_entries')->count());
         $batch = DB::table('historical_download_batches')->first();
         self::assertContains($batch->status, ['PAUSED', 'FAILED', 'IMPORTED', 'VALIDATED']);
+    }
+
+    public function test_acquire_aborts_with_insufficient_safe_disk_space(): void
+    {
+        Http::preventStrayRequests();
+
+        $disk = $this->createStub(DiskSpaceProbe::class);
+        $disk->method('freeBytes')->willReturn(1024.0);
+        $this->app->instance(DiskSpaceProbe::class, $disk);
+
+        $this->expectException(AcquisitionFailure::class);
+        $this->expectExceptionMessage('INSUFFICIENT_SAFE_DISK_SPACE');
+
+        Artisan::call('historical:acquire', [
+            '--preset' => 'binance-2024-2025',
+            '--limit' => 2,
+            '--reference' => 'TEST-ACQUIRE-INSUFFICIENT-DISK',
+        ]);
     }
 }

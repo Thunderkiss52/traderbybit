@@ -298,12 +298,13 @@ final class EventDrivenTradingPipelineChainTest extends TestCase
             $min = $interval === '15' ? 2 : 1;
             for ($i = 220; $i >= $min; $i--) {
                 $openTime = $decisionTime->modify('-'.($i * $seconds).' seconds');
-                CandleRecord::query()->create([
+                CandleRecord::query()->updateOrCreate([
                     'exchange' => $exchange,
                     'category' => 'linear',
                     'symbol' => $symbol,
                     'interval' => $interval,
                     'open_time' => $openTime,
+                ], [
                     'open' => '100.0',
                     'high' => '102.0',
                     'low' => '99.0',

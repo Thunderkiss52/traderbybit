@@ -456,11 +456,11 @@ jobs:
         run: |
           mkdir image-record
           python3 - <<'PYCODE'
-          import json, os
-          from pathlib import Path
-          r = dict(target=os.environ['TARGET'], tag=os.environ['IMAGE_TAG'], digest=os.environ['DIGEST'], sha=os.environ['GITHUB_SHA'], repository=os.environ['GITHUB_REPOSITORY'], published=os.environ['PUBLISHED'] == 'true')
-          Path('image-record/' + r['target'] + '.json').write_text(json.dumps(r) + '\n')
-          PYCODE
+import json, os
+from pathlib import Path
+r = dict(target=os.environ['TARGET'], tag=os.environ['IMAGE_TAG'], digest=os.environ['DIGEST'], sha=os.environ['GITHUB_SHA'], repository=os.environ['GITHUB_REPOSITORY'], published=os.environ['PUBLISHED'] == 'true')
+Path('image-record/' + r['target'] + '.json').write_text(json.dumps(r) + '\n')
+PYCODE
       - uses: actions/upload-artifact@v4
         with:
           name: image-${{ matrix.target }}

@@ -154,20 +154,38 @@ for s in services:
 
 pull_release_images() {
     local overlay="${DEPLOY_STATE_DIR}/release-images/${IMAGE_TAG}.json" policy=always
+    local -a targets=(app web research-worker)
+    local -a pull_targets=()
+    local target_refs
     # Only the final, complete exact-SHA digest overlay authorizes cache reuse.
     # Legacy tag-only definitions retain registry verification on every pull.
-    if [[ -f "${overlay}" ]] && python3 - "${overlay}" "${IMAGE_TAG}" "${APPLICATION_SERVICES[@]}" <<'PYCODE'
+    if [[ -f "${overlay}" ]] && target_refs="$(python3 - "${overlay}" "${IMAGE_TAG}" "${APPLICATION_SERVICES[@]}" <<'PYCODE'
 import json, re, sys
 services = json.load(open(sys.argv[1]))["services"]
 valid = set(services) == set(sys.argv[3:]) and all(
     re.fullmatch(r".+:" + re.escape(sys.argv[2]) + r"@sha256:[a-f0-9]{64}", s.get("image", ""))
     for s in services.values())
-sys.exit(0 if valid else 1)
+if not valid:
+    sys.exit(1)
+for t in ("app", "web", "research-worker"):
+    print(f"{t}={services.get(t, {}).get('image', '')}")
 PYCODE
-    then
+)"; then
         policy=missing
+        while IFS='=' read -r target img; do
+            [[ -n "${target}" ]] || continue
+            if [[ -z "${img}" ]] || ! docker image inspect "${img}" >/dev/null 2>&1; then
+                pull_targets+=("${target}")
+            fi
+        done <<< "${target_refs}"
+
+        if [[ ${#pull_targets[@]} -eq 0 ]]; then
+            return 0
+        fi
+        compose pull --policy "${policy}" "${pull_targets[@]}"
+    else
+        compose pull --policy "${policy}" "${targets[@]}"
     fi
-    compose pull --policy "${policy}" app web research-worker
 }
 
 retain_release_image() {

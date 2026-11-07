@@ -6,6 +6,10 @@ namespace App\HistoricalData;
 
 final class StagingStorage
 {
+    public function __construct(
+        private readonly DiskSpaceProbe $diskProbe = new DiskSpaceProbe,
+    ) {}
+
     public function root(): string
     {
         $root = storage_path('app/historical-acquisition');
@@ -31,7 +35,7 @@ final class StagingStorage
                 $used += $file->getSize();
             }
         }
-        $free = disk_free_space($root);
+        $free = $this->diskProbe->freeBytes($root);
         $required = (int) config('historical_data.reserve_disk_bytes') + (int) config('historical_data.max_staging_bytes') + $databaseEstimate;
         if ($free === false || $free < $required || $used > (int) config('historical_data.max_staging_bytes')) {
             throw new AcquisitionFailure('INSUFFICIENT_SAFE_DISK_SPACE');
