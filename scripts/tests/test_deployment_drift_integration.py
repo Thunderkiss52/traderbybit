@@ -358,12 +358,12 @@ CMD ["sleep", "3600"]
         finally:
             self.compose('up', '-d', '--wait', '--wait-timeout', '30', 'app', check=True)
         override = self.root / 'unhealthy.json'
-        override.write_text(json.dumps({'services': {'app': {'healthcheck': {'test': ['CMD', 'false'], 'retries': 1}}}}))
+        override.write_text(json.dumps({'services': {'app': {'healthcheck': {'test': ['CMD', 'false'], 'interval': '1s', 'retries': 1}}}}))
         run('docker', 'compose', '-p', self.project, '-f', str(self.root / 'compose.yaml'),
             '-f', str(override), 'up', '-d', '--no-deps', 'app', check=True)
         try:
             cid = self.compose('ps', '-q', 'app').stdout.strip()
-            for _ in range(50):
+            for _ in range(100):
                 status = run('docker', 'inspect', '--format', '{{.State.Health.Status}}', cid).stdout.strip()
                 if status == 'unhealthy':
                     break

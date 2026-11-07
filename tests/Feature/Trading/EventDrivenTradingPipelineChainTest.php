@@ -23,6 +23,7 @@ use App\Trading\Jobs\ProcessPaperPipelineJob;
 use Carbon\CarbonImmutable;
 use DateTimeImmutable;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Queue;
 use Tests\TestCase;
 
@@ -33,6 +34,7 @@ final class EventDrivenTradingPipelineChainTest extends TestCase
     protected function setUp(): void
     {
         parent::setUp();
+        Http::fake();
         config([
             'trading.pipeline_mode' => 'EVENT_DRIVEN',
             'exchanges.binance.paper_taker_rate' => '0.0005',
@@ -293,7 +295,8 @@ final class EventDrivenTradingPipelineChainTest extends TestCase
         ];
 
         foreach ($intervals as $interval => $seconds) {
-            for ($i = 220; $i >= 2; $i--) {
+            $min = $interval === '15' ? 2 : 1;
+            for ($i = 220; $i >= $min; $i--) {
                 $openTime = $decisionTime->modify('-'.($i * $seconds).' seconds');
                 CandleRecord::query()->create([
                     'exchange' => $exchange,
