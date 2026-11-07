@@ -6,10 +6,12 @@ namespace Tests\Integration;
 
 use App\Exchanges\Binance\BinanceDeploymentInitializer;
 use App\Exchanges\Binance\ExchangePaperReconciliation;
+use App\Exchanges\ExchangeRegistry;
 use App\PaperTrading\Application\PaperAccountService;
 use App\PaperTrading\Infrastructure\Persistence\VirtualExecutionRecord;
 use App\PaperTrading\Infrastructure\Persistence\VirtualPositionRecord;
 use App\Strategy\Infrastructure\Persistence\SignalRecord;
+use App\StrategyBuilder\PrimaryStrategies;
 use Illuminate\Database\Connection;
 use Illuminate\Database\Events\QueryExecuted;
 use Illuminate\Support\Facades\DB;
@@ -74,7 +76,7 @@ final class M9SnapshotIsolationPostgresIntegrationTest extends TestCase
         self::assertNotNull($positionQuery);
         self::assertSame('LEDGER_PASS_ONLY', $report['status'], json_encode($report['issues']));
         self::assertSame('repeatable read', $report['transaction_isolation']);
-        self::assertSame(26, $report['verified_pairs']);
+        self::assertSame(count(PrimaryStrategies::ids()) * count(app(ExchangeRegistry::class)->registeredIds()), $report['verified_pairs']);
         $covered = collect($report['accounts'])->firstWhere('account_id', $accountId);
         self::assertSame('10000.000000000000', $covered['current_equity'], 'M9 must read the pre-commit repeatable-read snapshot, not the later committed valuation.');
         self::assertSame('2.408252280000', (string) DB::table('paper_accounts')->where('id', $accountId)->value('unrealized_pnl'));
@@ -131,7 +133,7 @@ final class M9SnapshotIsolationPostgresIntegrationTest extends TestCase
         self::assertSame('INITIALIZED_SUCCESSFULLY', $result['status']);
         self::assertSame('LEDGER_PASS_ONLY', $result['reconciliation']['status']);
         self::assertSame('repeatable read', $result['reconciliation']['transaction_isolation']);
-        self::assertSame(26, $result['reconciliation']['verified_pairs']);
+        self::assertSame(count(PrimaryStrategies::ids()) * count(app(ExchangeRegistry::class)->registeredIds()), $result['reconciliation']['verified_pairs']);
         $covered = collect($result['reconciliation']['accounts'])->firstWhere('account_id', $accountId);
         self::assertSame('10000.000000000000', $covered['current_equity'], 'Deployment M9 must use one snapshot across the valuation commit.');
         self::assertSame('2.408252280000', (string) DB::table('paper_accounts')->where('id', $accountId)->value('unrealized_pnl'));
@@ -147,7 +149,7 @@ final class M9SnapshotIsolationPostgresIntegrationTest extends TestCase
         ]);
         $cleanReport = app(ExchangePaperReconciliation::class)->inspect();
         self::assertSame('LEDGER_PASS_ONLY', $cleanReport['status'], json_encode($cleanReport['issues']));
-        self::assertSame(26, $cleanReport['verified_pairs']);
+        self::assertSame(count(PrimaryStrategies::ids()) * count(app(ExchangeRegistry::class)->registeredIds()), $cleanReport['verified_pairs']);
         self::assertContains($blocked->id, array_column($cleanReport['accounts'], 'account_id'));
         self::assertSame('BLOCKED', DB::table('paper_accounts')->where('id', $blocked->id)->value('status'));
 
@@ -164,7 +166,7 @@ final class M9SnapshotIsolationPostgresIntegrationTest extends TestCase
 
         $report = app(ExchangePaperReconciliation::class)->inspect();
         self::assertSame('FAIL', $report['status']);
-        self::assertSame(26, $report['verified_pairs']);
+        self::assertSame(count(PrimaryStrategies::ids()) * count(app(ExchangeRegistry::class)->registeredIds()), $report['verified_pairs']);
         $codes = array_column($report['issues'], 'code');
         foreach (['UNREALIZED_MISMATCH', 'CLOSED_POSITION_UNREALIZED_NONZERO',
             'ACCOUNT_REALIZED_MISMATCH', 'ACCOUNT_EQUITY_MISMATCH'] as $code) {

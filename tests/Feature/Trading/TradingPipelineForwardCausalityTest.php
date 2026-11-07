@@ -10,6 +10,7 @@ use App\Exchanges\Binance\ExchangePaperReconciliation;
 use App\MarketData\Infrastructure\Persistence\CandleRecord;
 use App\PaperTrading\Application\PaperAccountService;
 use App\PaperTrading\Application\PaperProcessingService;
+use App\PaperTrading\Application\PaperTopologySynchronizer;
 use App\PaperTrading\Domain\PositionStatus;
 use App\PaperTrading\Infrastructure\Persistence\PaperAccountRecord;
 use App\PaperTrading\Infrastructure\Persistence\PaperSignalStateRecord;
@@ -24,6 +25,7 @@ use App\Trading\Jobs\ProcessPaperPipelineJob;
 use Carbon\CarbonImmutable;
 use DateTimeImmutable;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\DB;
 use Ramsey\Uuid\Uuid;
 use Tests\TestCase;
 
@@ -178,13 +180,21 @@ final class TradingPipelineForwardCausalityTest extends TestCase
         self::assertSame(2, VirtualExecutionRecord::query()->where('position_id', $position->id)->count());
     }
 
-    public function test_binance_event_driven_virtual_fill_is_forward_only_and_reconciles_26_accounts(): void
+    public function test_binance_forward_fill_reconciles_130_accounts_and_preserves_other_venues(): void
     {
         CarbonImmutable::setTestNow(new CarbonImmutable('2026-10-26T10:00:00Z'));
         config(['exchanges.binance_paper_provisioning_approved' => true]);
         app(PaperAccountService::class)->allPrimaryAccounts();
         app(BinancePaperProvisioner::class)->provision();
         app(BinancePaperCapital::class)->allocate('10000', 'STAGE-D-ISOLATED');
+        app(PaperTopologySynchronizer::class)->sync(true);
+        self::assertSame(130, PaperAccountRecord::query()->where('is_primary', true)->count());
+        $otherVenues = DB::table('paper_accounts')->whereNotIn('exchange_id', ['bybit', 'binance'])->orderBy('id')->get();
+        self::assertCount(104, $otherVenues);
+        foreach ($otherVenues as $otherAccount) {
+            self::assertSame('BLOCKED', $otherAccount->status);
+            self::assertDecimalSame('0', $otherAccount->starting_balance);
+        }
         $account = PaperAccountRecord::query()->where('exchange_id', 'binance')
             ->where('primary_strategy_id', 'baseline')->firstOrFail();
         $account->update(['status' => 'ACTIVE']);
@@ -208,7 +218,9 @@ final class TradingPipelineForwardCausalityTest extends TestCase
 
         $report = app(ExchangePaperReconciliation::class)->inspect();
         self::assertSame('LEDGER_PASS_ONLY', $report['status'], json_encode($report['issues']));
-        self::assertSame(26, $report['verified_pairs']);
+        self::assertSame(130, $report['expected_pairs']);
+        self::assertSame(130, $report['verified_pairs']);
+        self::assertSame($otherVenues->toJson(), DB::table('paper_accounts')->whereNotIn('exchange_id', ['bybit', 'binance'])->orderBy('id')->get()->toJson());
     }
 
     private function baselineAccount(): PaperAccountRecord

@@ -14,17 +14,17 @@ final class MultiExchangeComparisonTest extends TestCase
 {
     use RefreshDatabase;
 
-    public function test_all_thirteen_primary_strategies_are_visible_on_both_exchanges_without_merging(): void
+    public function test_all_thirteen_primary_strategies_are_visible_on_every_registered_exchange_without_merging(): void
     {
         $bybit = app(PaperAccountService::class)->allPrimaryAccounts();
         self::assertCount(13, $bybit);
         self::assertSame(13, $bybit->pluck('id')->unique()->count());
         $result = app(ExchangeComparisonService::class)->report();
         self::assertSame(13, $result['strategy_families']);
-        self::assertSame(26, $result['expected_accounts']);
+        self::assertSame(130, $result['expected_accounts']);
         self::assertSame(13, $result['provisioned_accounts']);
         self::assertSame('DISABLED_BY_DEFAULT', $result['portfolio_aggregation']);
-        self::assertCount(26, $result['accounts']);
+        self::assertCount(130, $result['accounts']);
         self::assertCount(13, array_filter($result['accounts'], fn ($row) => $row['exchange_id'] === 'binance'));
         foreach ($result['accounts'] as $row) {
             if ($row['exchange_id'] === 'binance') {
@@ -64,7 +64,7 @@ final class MultiExchangeComparisonTest extends TestCase
     {
         $result = $this->getJson('/api/v1/exchanges/comparison');
         $result->assertOk()->assertJsonPath('data.strategy_families', 13)
-            ->assertJsonPath('data.expected_accounts', 26);
+            ->assertJsonPath('data.expected_accounts', 130);
         $firstBinance = collect($result->json('data.accounts'))->firstWhere('exchange_id', 'binance');
         self::assertNull($firstBinance['current_equity']);
         self::assertNull($firstBinance['starting_balance']);

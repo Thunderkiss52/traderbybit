@@ -39,17 +39,31 @@ final class R8CapitalPolicyTest extends TestCase
 
     public function test_rejects_zero_or_negative_starting_balance(): void
     {
-        config(['paper.new_primary_initial_balances.bybit.invalid' => '0']);
+        config(['paper.new_primary_initial_balances.bybit.baseline' => '0']);
         $this->expectException(DomainException::class);
         $this->expectExceptionMessage('New PRIMARY virtual opening balance must be positive.');
-        $this->policy->openingBalance('bybit', 'invalid');
+        $this->policy->openingBalance('bybit', 'baseline');
     }
 
     public function test_rejects_malformed_starting_balance(): void
     {
-        config(['paper.new_primary_initial_balances.bybit.invalid' => 'not-a-number']);
+        config(['paper.new_primary_initial_balances.bybit.baseline' => 'not-a-number']);
         $this->expectException(DomainException::class);
         $this->expectExceptionMessage('Invalid new PRIMARY virtual opening balance.');
-        $this->policy->openingBalance('bybit', 'invalid');
+        $this->policy->openingBalance('bybit', 'baseline');
+    }
+
+    public function test_new_standalone_strategies_and_venues_are_unfunded(): void
+    {
+        config(['paper.new_primary_default_starting_balance' => '10000']);
+        self::assertSame('0', $this->policy->openingBalance('okx', 'baseline'));
+        self::assertSame('0', $this->policy->openingBalance('bybit', 'new_registered_strategy'));
+        self::assertSame('0', $this->policy->openingBalance('binance', 'baseline'));
+    }
+
+    public function test_activation_capital_accepts_zero_without_implicitly_funding(): void
+    {
+        self::assertSame('0', $this->policy->activationBalance('0'));
+        self::assertSame('1250.50', $this->policy->activationBalance('1250.50'));
     }
 }

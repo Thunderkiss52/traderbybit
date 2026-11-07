@@ -4,8 +4,10 @@ declare(strict_types=1);
 
 namespace App\Exchanges\Binance;
 
+use App\Exchanges\ExchangeRegistry;
 use App\PaperTrading\Application\EquitySnapshotRepairService;
 use App\PaperTrading\Application\PaperAccountService;
+use App\PaperTrading\Application\PaperTopologySynchronizer;
 use App\Strategy\Application\StrategyRegistry;
 use App\StrategyBuilder\PrimaryStrategies;
 use Illuminate\Contracts\Cache\Factory as CacheFactory;
@@ -13,8 +15,8 @@ use Illuminate\Support\Facades\DB;
 use RuntimeException;
 
 /**
- * Deterministic, idempotent deployment initializer for the 26-account canonical topology.
- * Provisions 13 Binance accounts, binds configuration, allocates initial capital (accounts stay BLOCKED),
+ * Idempotent legacy Binance funding initializer with complete registered topology.
+ * Provisions Binance accounts, binds configuration, allocates authorized capital (accounts stay BLOCKED),
  * verifies Bybit financial history checksums are unchanged, and confirms M9 reconciliation.
  */
 final class BinanceDeploymentInitializer
@@ -86,7 +88,10 @@ final class BinanceDeploymentInitializer
                     throw new RuntimeException('Binance checkpoint provenance requires separate review before initialization.');
                 }
 
-                // Step 4: Run full M9 26-account reconciliation
+                // Complete the registered topology without funding or activating new venues.
+                app(PaperTopologySynchronizer::class)->sync(true);
+
+                // Step 4: Reconcile every registered exchange and standalone strategy.
                 $reconcileReport = $this->reconciliation->inspect();
                 if ($reconcileReport['status'] !== 'LEDGER_PASS_ONLY') {
                     throw new RuntimeException('M9 full-cohort reconciliation failed: '.json_encode($reconcileReport['issues'], JSON_THROW_ON_ERROR));
@@ -99,7 +104,7 @@ final class BinanceDeploymentInitializer
                     'snapshot_repair' => $repairResult,
                     'reconciliation' => $reconcileReport,
                     'bybit_history_preserved' => true,
-                    'canonical_accounts_count' => array_sum(array_map('count', PrimaryStrategies::byExchange((array) config('exchanges.enabled', [])))),
+                    'canonical_accounts_count' => array_sum(array_map('count', PrimaryStrategies::byExchange(app(ExchangeRegistry::class)->registeredIds()))),
                 ];
             }, attempts: 1);
         } finally {

@@ -36,6 +36,9 @@ final class StrategyPipelineFunnelVerificationTest extends TestCase
     protected function setUp(): void
     {
         parent::setUp();
+        // Dedicated preservation fixture for the original 26-account registry.
+        config(['exchanges.enabled' => ['bybit', 'binance']]);
+        DB::table('exchanges')->whereNotIn('id', ['bybit', 'binance'])->delete();
         config([
             'exchanges.binance.paper_taker_rate' => '0.0005',
             'exchanges.binance.paper_slippage_rate' => '0.0002',

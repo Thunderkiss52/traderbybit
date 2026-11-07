@@ -309,6 +309,7 @@ final class PaperLifecycleTest extends TestCase
             $this->context('BTCUSDT', $signalTime);
             $this->candle($entryTime, '100.5', '102', '100', '101');
             $this->candle($stopTime, '101', '102', '94', '96');
+            $this->process((new DateTimeImmutable("2026-10-14T{$stopTime}:00Z"))->modify('+5 minutes')->format('H:i'));
         }
         $this->process('10:55');
         $account = $this->app->make(PaperAccountService::class)->default()->refresh();
@@ -323,6 +324,7 @@ final class PaperLifecycleTest extends TestCase
             $this->context('BTCUSDT', $signalTime);
             $this->candle($entryTime, '100.5', '102', '100', '101');
             $this->candle($stopTime, '101', '102', '94', '96');
+            $this->process((new DateTimeImmutable("2026-10-14T{$stopTime}:00Z"))->modify('+5 minutes')->format('H:i'));
         }
 
         $this->process('10:55');

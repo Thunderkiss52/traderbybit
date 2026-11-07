@@ -127,7 +127,7 @@ final class ExchangeOnboardingTest extends TestCase
     public function test_register_new_exchange_succeeds_with_offline_data_source_lifecycle(): void
     {
         $payload = [
-            'id' => 'okx',
+            'id' => 'okx_fixture',
             'name' => 'OKX Linear Swap',
             'market_type' => 'linear_perpetual',
             'description' => 'OKX USDT linear perpetual swaps',
@@ -137,14 +137,14 @@ final class ExchangeOnboardingTest extends TestCase
         $response->assertStatus(201);
 
         $data = $response->json('data');
-        self::assertSame('okx', $data['id']);
+        self::assertSame('okx_fixture', $data['id']);
         self::assertSame('OKX Linear Swap', $data['name']);
         self::assertSame('OFFLINE_DATA_SOURCE', $data['lifecycle_status']);
         self::assertFalse($data['paper_eligible']);
         self::assertFalse($data['paper_approved']);
 
         $this->assertDatabaseHas('exchanges', [
-            'id' => 'okx',
+            'id' => 'okx_fixture',
             'lifecycle_status' => 'OFFLINE_DATA_SOURCE',
             'paper_approved' => false,
         ]);
@@ -208,7 +208,7 @@ final class ExchangeOnboardingTest extends TestCase
     public function test_csv_upload_detects_duplicates_idempotently(): void
     {
         $this->postJson('/api/v1/exchanges', [
-            'id' => 'kraken',
+            'id' => 'kraken_fixture',
             'name' => 'Kraken Futures',
         ])->assertStatus(201);
 
@@ -217,7 +217,7 @@ final class ExchangeOnboardingTest extends TestCase
             ."2026-10-15T00:15:00Z,3020.0,3040.0,3010.0,3035.0,90.0\n";
 
         // First upload
-        $res1 = $this->postJson('/api/v1/exchanges/kraken/upload-candles', [
+        $res1 = $this->postJson('/api/v1/exchanges/kraken_fixture/upload-candles', [
             'symbol' => 'ETHUSDT',
             'interval' => '15m',
             'csv' => $csv,
@@ -226,7 +226,7 @@ final class ExchangeOnboardingTest extends TestCase
         self::assertSame(2, $res1->json('data.imported_bars'));
 
         // Duplicate upload of exact same content
-        $res2 = $this->postJson('/api/v1/exchanges/kraken/upload-candles', [
+        $res2 = $this->postJson('/api/v1/exchanges/kraken_fixture/upload-candles', [
             'symbol' => 'ETHUSDT',
             'interval' => '15m',
             'csv' => $csv,
@@ -236,20 +236,20 @@ final class ExchangeOnboardingTest extends TestCase
         self::assertSame(2, $res2->json('data.duplicates_skipped'));
         self::assertSame(0, $res2->json('data.conflicts_recorded'));
 
-        self::assertSame(2, CandleRecord::query()->where('exchange', 'kraken')->count());
+        self::assertSame(2, CandleRecord::query()->where('exchange', 'kraken_fixture')->count());
     }
 
     public function test_csv_upload_detects_and_records_conflicts_without_corruption(): void
     {
         $this->postJson('/api/v1/exchanges', [
-            'id' => 'coinbase',
+            'id' => 'coinbase_fixture',
             'name' => 'Coinbase Derivatives',
         ])->assertStatus(201);
 
         $initialCsv = "timestamp,open,high,low,close,volume\n"
             ."1761799800,100.0,110.0,95.0,105.0,500.0\n";
 
-        $this->postJson('/api/v1/exchanges/coinbase/upload-candles', [
+        $this->postJson('/api/v1/exchanges/coinbase_fixture/upload-candles', [
             'symbol' => 'SOLUSDT',
             'interval' => '5m',
             'csv' => $initialCsv,
@@ -259,7 +259,7 @@ final class ExchangeOnboardingTest extends TestCase
         $conflictingCsv = "timestamp,open,high,low,close,volume\n"
             ."1761799800,100.0,110.0,95.0,108.0,600.0\n";
 
-        $resConflict = $this->postJson('/api/v1/exchanges/coinbase/upload-candles', [
+        $resConflict = $this->postJson('/api/v1/exchanges/coinbase_fixture/upload-candles', [
             'symbol' => 'SOLUSDT',
             'interval' => '5m',
             'csv' => $conflictingCsv,
@@ -271,7 +271,7 @@ final class ExchangeOnboardingTest extends TestCase
 
         // Verify original candle in DB remains uncorrupted
         $originalCandle = CandleRecord::query()
-            ->where('exchange', 'coinbase')
+            ->where('exchange', 'coinbase_fixture')
             ->where('symbol', 'SOLUSDT')
             ->first();
         self::assertNotNull($originalCandle);
@@ -279,7 +279,7 @@ final class ExchangeOnboardingTest extends TestCase
 
         // Verify conflict recorded in market_candle_conflicts
         $conflictCount = DB::table('market_candle_conflicts')
-            ->where('exchange', 'coinbase')
+            ->where('exchange', 'coinbase_fixture')
             ->where('symbol', 'SOLUSDT')
             ->count();
         self::assertGreaterThanOrEqual(1, $conflictCount);
@@ -319,12 +319,12 @@ final class ExchangeOnboardingTest extends TestCase
     public function test_transition_to_research_enabled_requires_candle_history(): void
     {
         $this->postJson('/api/v1/exchanges', [
-            'id' => 'bitget',
+            'id' => 'bitget_fixture',
             'name' => 'Bitget Futures',
         ])->assertStatus(201);
 
         // Try transitioning without any candles
-        $failRes = $this->postJson('/api/v1/exchanges/bitget/lifecycle', [
+        $failRes = $this->postJson('/api/v1/exchanges/bitget_fixture/lifecycle', [
             'status' => 'RESEARCH_ENABLED',
         ]);
         $failRes->assertStatus(422);
@@ -333,21 +333,21 @@ final class ExchangeOnboardingTest extends TestCase
         // Now upload candles
         $csv = "timestamp,open,high,low,close,volume\n"
             ."1761799800,100.0,110.0,95.0,105.0,500.0\n";
-        $this->postJson('/api/v1/exchanges/bitget/upload-candles', [
+        $this->postJson('/api/v1/exchanges/bitget_fixture/upload-candles', [
             'symbol' => 'BTCUSDT',
             'interval' => '5m',
             'csv' => $csv,
         ])->assertStatus(200);
 
         // Now lifecycle transition succeeds
-        $passRes = $this->postJson('/api/v1/exchanges/bitget/lifecycle', [
+        $passRes = $this->postJson('/api/v1/exchanges/bitget_fixture/lifecycle', [
             'status' => 'RESEARCH_ENABLED',
         ]);
         $passRes->assertStatus(200);
         self::assertSame('RESEARCH_ENABLED', $passRes->json('data.lifecycle_status'));
 
         // Verify ExchangeRegistry recognises it for backtesting
-        self::assertTrue(app(ExchangeRegistry::class)->isSupportedForBacktest('bitget'));
+        self::assertTrue(app(ExchangeRegistry::class)->isSupportedForBacktest('bitget_fixture'));
     }
 
     public function test_paper_activation_rejected_without_required_capabilities(): void

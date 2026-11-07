@@ -384,7 +384,7 @@ final class BinancePaperReadiness
             'strategy_eligibility' => $strategyEligibility,
             'm9_ledger' => [
                 'status' => $m9Report['status'] ?? 'FAIL',
-                'expected_pairs' => $m9Report['expected_pairs'] ?? 26,
+                'expected_pairs' => $m9Report['expected_pairs'] ?? null,
                 'verified_pairs' => $m9Report['verified_pairs'] ?? 0,
                 'issue_count' => count($m9Report['issues'] ?? []),
             ],

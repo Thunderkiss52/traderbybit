@@ -25,6 +25,14 @@ final class BinanceDeploymentInitializationTest extends TestCase
 {
     use RefreshDatabase;
 
+    protected function setUp(): void
+    {
+        parent::setUp();
+        // This fixture verifies the preserved original 26-account financial cohort.
+        config(['exchanges.enabled' => ['bybit', 'binance']]);
+        DB::table('exchanges')->whereNotIn('id', ['bybit', 'binance'])->delete();
+    }
+
     public function test_binance_deployment_initializer_is_idempotent_and_preserves_bybit_history(): void
     {
         // 1. Setup representative Bybit primary accounts with financial history

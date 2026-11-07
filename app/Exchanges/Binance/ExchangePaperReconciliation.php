@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Exchanges\Binance;
 
+use App\Exchanges\ExchangeRegistry;
 use App\StrategyBuilder\PrimaryStrategies;
 use Brick\Math\BigDecimal;
 use Illuminate\Support\Facades\DB;
@@ -50,11 +51,12 @@ final class ExchangePaperReconciliation
         $strategies = PrimaryStrategies::ids();
         // New public-data exchanges have zero-funded BLOCKED PAPER placeholders
         // until their own accounting/execution adapters are reviewed.
-        $exchanges = array_values((array) config('exchanges.enabled', ['bybit', 'binance']));
+        $exchanges = app(ExchangeRegistry::class)->registeredIds();
         // Count every PRIMARY row, not only the two expected exchanges. A
-        // foreign/NULL exchange row must not disappear from the 26-account
+        // foreign/NULL exchange row must not disappear from the registered
         // census merely because the supported pairs are all present.
         $scopes = PrimaryStrategies::byExchange($exchanges);
+        $expectedPairs = array_sum(array_map('count', $scopes));
         $allPrimary = DB::table('paper_accounts')->where('is_primary', true)->get();
         $accounts = $allPrimary->filter(static fn ($account): bool => in_array($account->exchange_id, $exchanges, true));
         $issues = [];
@@ -115,6 +117,8 @@ final class ExchangePaperReconciliation
                 // transfer; a zero-balance account must not conceal one either.
                 $transfers = DB::table('paper_capital_events')->where('paper_account_id', $account->id)->get();
                 $approvedCapital = BigDecimal::zero();
+                $requiresCapitalEvents = $exchange !== 'bybit'
+                    || ! in_array($strategy, (array) config('paper.initially_approved_bybit_strategies', []), true);
                 foreach ($transfers as $transfer) {
                     if ($transfer->exchange_id !== $exchange) {
                         $issues[] = ['exchange_id' => $exchange, 'strategy_id' => $strategy,
@@ -122,19 +126,19 @@ final class ExchangePaperReconciliation
 
                         continue;
                     }
-                    if ($exchange === 'binance' || str_starts_with($strategy, 'user_')) {
+                    if ($requiresCapitalEvents) {
                         $approvedCapital = $approvedCapital->plus((string) $transfer->amount);
                     }
                 }
-                if (($exchange === 'binance' || str_starts_with($strategy, 'user_'))
+                if ($requiresCapitalEvents
                     && ! $approvedCapital->isEqualTo(BigDecimal::of((string) $account->starting_balance))) {
                     $issues[] = ['exchange_id' => $exchange, 'strategy_id' => $strategy, 'code' => 'PAPER_CAPITAL_PROVENANCE_MISMATCH'];
                 }
                 $positions = DB::table('virtual_positions')->where('paper_account_id', $account->id)->get();
-                if ($exchange === 'binance' && $positions->isNotEmpty()
+                if ($requiresCapitalEvents && $positions->isNotEmpty()
                     && ! BigDecimal::of((string) $account->starting_balance)->isPositive()) {
                     $issues[] = ['exchange_id' => $exchange, 'strategy_id' => $strategy,
-                        'code' => 'UNFUNDED_BINANCE_TRADING_HISTORY'];
+                        'code' => $exchange === 'binance' ? 'UNFUNDED_BINANCE_TRADING_HISTORY' : 'UNFUNDED_PAPER_TRADING_HISTORY'];
                 }
                 $gross = BigDecimal::zero();
                 $fees = BigDecimal::zero();
@@ -297,12 +301,16 @@ final class ExchangePaperReconciliation
         }
 
         return [
-            'status' => $issues === [] && count($coverage) === count($strategies) * 2 ? 'LEDGER_PASS_ONLY' : 'FAIL',
+            'status' => $issues === [] && count($coverage) === $expectedPairs ? 'LEDGER_PASS_ONLY' : 'FAIL',
             ...$snapshotMetadata,
             'm9_acceptance' => 'NOT_VERIFIED_API_UI_EXPORT_AND_PG_E2E',
             'aggregation_scope' => 'PER_EXCHANGE_PER_STRATEGY',
-            'expected_pairs' => count($strategies) * 2,
+            'expected_pairs' => $expectedPairs,
             'verified_pairs' => count($coverage),
+            'registered_exchange_count' => count($exchanges),
+            'registered_strategy_count' => count($strategies),
+            'funded_accounts' => $accounts->filter(static fn ($account): bool => BigDecimal::of((string) $account->starting_balance)->isPositive())->count(),
+            'zero_funded_blocked_accounts' => $accounts->filter(static fn ($account): bool => $account->status === 'BLOCKED' && BigDecimal::of((string) $account->starting_balance)->isZero())->count(),
             'issues' => array_map(static fn (array $issue): array => array_merge($snapshotMetadata, $issue), $issues),
             'accounts' => $coverage,
         ];

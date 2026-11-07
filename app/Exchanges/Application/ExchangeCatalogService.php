@@ -8,7 +8,9 @@ use App\Exchanges\Domain\ExchangeLifecycleStatus;
 use App\Exchanges\ExchangeRegistry;
 use App\Exchanges\Infrastructure\Persistence\ExchangeRecord;
 use App\MarketData\Infrastructure\Persistence\CandleRecord;
+use App\PaperTrading\Application\PaperTopologySynchronizer;
 use DomainException;
+use Illuminate\Support\Facades\DB;
 use InvalidArgumentException;
 
 final readonly class ExchangeCatalogService
@@ -88,47 +90,43 @@ final readonly class ExchangeCatalogService
 
         $capabilities = array_merge([
             'has_candles' => false,
-            'has_funding' => $marketType === 'linear_perpetual',
+            'has_funding' => false,
             'has_open_interest' => false,
             'has_live_adapter' => $this->registry->hasAdapter($id),
             'adapter_class' => null,
             'supported_timeframes' => ['5', '15', '30', '60'],
-            'price_precision' => 2,
-            'qty_precision' => 3,
-            'min_qty' => '0.001',
-            'min_notional' => '5.0',
+            'price_precision' => null,
+            'qty_precision' => null,
+            'min_qty' => null,
+            'min_notional' => null,
         ], (array) ($data['capabilities'] ?? []));
 
-        $costModel = (array) ($data['cost_model'] ?? [
-            'version' => "{$id}-model-2026.1",
-            'market' => $marketType,
-            'fee_tier' => 'Standard',
-            'maker_rate' => '0.0002',
-            'taker_rate' => '0.0005',
-            'slippage_rate' => '0.0002',
-        ]);
+        $costModel = $data['cost_model'] ?? null;
 
-        $created = ExchangeRecord::query()->create([
-            'id' => $id,
-            'name' => $name,
-            'market_type' => $marketType,
-            'description' => $data['description'] ?? null,
-            'lifecycle_status' => ExchangeLifecycleStatus::OfflineDataSource->value,
-            'capabilities' => $capabilities,
-            'cost_model' => $costModel,
-            'paper_execution_assumptions' => $data['paper_execution_assumptions'] ?? [
-                'execution_model' => 'NEXT_CANDLE_OPEN',
-                'ambiguous_execution_policy' => 'FLAG_AND_HOLD',
-            ],
-            'paper_eligible' => false,
-            'paper_approved' => false,
-            'paper_approved_at' => null,
-            'metadata' => ['onboarded_at' => now('UTC')->toISOString()],
-        ]);
+        return DB::transaction(function () use ($id, $name, $marketType, $data, $capabilities, $costModel): ExchangeRecord {
+            $created = ExchangeRecord::query()->create([
+                'id' => $id,
+                'name' => $name,
+                'market_type' => $marketType,
+                'description' => $data['description'] ?? null,
+                'lifecycle_status' => ExchangeLifecycleStatus::OfflineDataSource->value,
+                'capabilities' => $capabilities,
+                'cost_model' => $costModel,
+                'paper_execution_assumptions' => $data['paper_execution_assumptions'] ?? [
+                    'execution_model' => 'NEXT_CANDLE_OPEN',
+                    'ambiguous_execution_policy' => 'FLAG_AND_HOLD',
+                ],
+                'paper_eligible' => false,
+                'paper_approved' => false,
+                'paper_approved_at' => null,
+                'metadata' => ['onboarded_at' => now('UTC')->toISOString()],
+            ]);
 
-        $this->compatibility->reconcileExchange($created->id);
+            $this->compatibility->reconcileExchange($created->id);
+            app(PaperTopologySynchronizer::class)->sync(true);
 
-        return $created;
+            return $created;
+        }, attempts: 3);
     }
 
     public function updateLifecycle(string $id, string $status): ExchangeRecord

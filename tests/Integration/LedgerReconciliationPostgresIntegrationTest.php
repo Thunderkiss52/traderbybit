@@ -4,7 +4,8 @@ declare(strict_types=1);
 
 namespace Tests\Integration;
 
-use App\PaperTrading\Application\PaperAccountService;
+use App\Exchanges\ExchangeRegistry;
+use App\PaperTrading\Application\PaperTopologySynchronizer;
 use App\PaperTrading\Domain\ExecutionType;
 use App\PaperTrading\Domain\PositionStatus;
 use App\PaperTrading\Infrastructure\Persistence\EquitySnapshotRecord;
@@ -16,6 +17,7 @@ use App\PaperTrading\Infrastructure\Persistence\VirtualPositionRecord;
 use App\Research\Application\LedgerReconciliationService;
 use App\Research\Infrastructure\Persistence\ReconciliationRunRecord;
 use App\Strategy\Infrastructure\Persistence\SignalRecord;
+use App\StrategyBuilder\PrimaryStrategies;
 use Brick\Math\BigDecimal;
 use Carbon\CarbonImmutable;
 use Illuminate\Support\Facades\DB;
@@ -71,13 +73,12 @@ final class LedgerReconciliationPostgresIntegrationTest extends TestCase
 
     public function test_reconcile_all_primary_accounts_in_postgresql_succeeds_without_sql_error(): void
     {
-        // The ledger invariant is exactly thirteen PRIMARY accounts. The isolated bybit_test
-        // database is shared by multiple integration suites that create and clean up their
-        // own non-primary scaffolding accounts, so assert on the primary invariant rather
-        // than on a global row count that unrelated residue could perturb.
-        $this->app->make(PaperAccountService::class)->allPrimaryAccounts();
+        // Reconcile the entire registry, including zero-funded BLOCKED venues.
+        $this->app->make(PaperTopologySynchronizer::class)->sync(true);
         $accounts = PaperAccountRecord::query()->where('is_primary', true)->orderBy('name')->get();
-        self::assertTrue(in_array($accounts->count(), [13, 26], true), "Expected 13 or 26 primary paper accounts, got {$accounts->count()}.");
+        self::assertSame(count(PrimaryStrategies::ids()) * count(app(ExchangeRegistry::class)->registeredIds()), $accounts->count());
+        self::assertSame(13, $accounts->where('exchange_id', 'bybit')->count());
+        self::assertSame($accounts->count(), $accounts->unique(fn ($account) => $account->exchange_id.'|'.$account->primary_strategy_id)->count());
 
         $service = $this->app->make(LedgerReconciliationService::class);
         $results = [];

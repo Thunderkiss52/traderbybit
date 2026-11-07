@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\PaperTrading\Application;
 
+use App\Exchanges\ExchangeRegistry;
 use App\StrategyBuilder\PrimaryStrategies;
 use Brick\Math\BigDecimal;
 use Brick\Math\RoundingMode;
@@ -29,8 +30,7 @@ final class GlobalPaperCapitalGuard
             if ($cap->isLessThanOrEqualTo('0') || $cap->isGreaterThan('5')) {
                 return 'global_capital_limit_unverified';
             }
-            $approvedDbExchanges = DB::table('exchanges')->where('paper_approved', true)->pluck('id')->all();
-            $exchanges = array_values(array_unique(array_merge((array) config('exchanges.enabled', ['bybit', 'binance']), $approvedDbExchanges)));
+            $exchanges = app(ExchangeRegistry::class)->registeredIds();
             $strategies = PrimaryStrategies::ids();
             if ($exchanges === [] || $strategies === [] || count($exchanges) !== count(array_unique($exchanges))
                 || count($strategies) !== count(array_unique($strategies))) {

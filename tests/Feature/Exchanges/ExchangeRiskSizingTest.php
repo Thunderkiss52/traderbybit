@@ -28,6 +28,14 @@ final class ExchangeRiskSizingTest extends TestCase
 {
     use RefreshDatabase;
 
+    protected function setUp(): void
+    {
+        parent::setUp();
+        // This fixture verifies the preserved original 26-account financial cohort.
+        config(['exchanges.enabled' => ['bybit', 'binance']]);
+        DB::table('exchanges')->whereNotIn('id', ['bybit', 'binance'])->delete();
+    }
+
     public function test_exchange_costs_drive_risk_and_fill_sizing_and_reconcile_after_retry(): void
     {
         $accounts = $this->accounts();

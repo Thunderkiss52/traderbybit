@@ -34,6 +34,12 @@ final readonly class StrategyRegistry
         return array_merge($this->strategies, array_map(fn ($row) => $this->dsl($row), PrimaryStrategies::registrations()));
     }
 
+    /** Registered executable identities only; library methods and drafts are not strategies. */
+    public function ids(): array
+    {
+        return array_map(static fn (StrategyInterface $strategy): string => $strategy->id(), $this->all());
+    }
+
     public function get(string $id): StrategyInterface
     {
         foreach ($this->strategies as $strategy) {

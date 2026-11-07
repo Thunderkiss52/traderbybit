@@ -41,6 +41,9 @@ final class FullPaperTradingPipelineE2ETest extends TestCase
     protected function setUp(): void
     {
         parent::setUp();
+        // This fixture verifies the preserved original 26-account financial cohort.
+        config(['exchanges.enabled' => ['bybit', 'binance']]);
+        DB::table('exchanges')->whereNotIn('id', ['bybit', 'binance'])->delete();
         config([
             'paper.fees.taker_rate' => '0.0006',
             'paper.slippage_rate' => '0.0002',

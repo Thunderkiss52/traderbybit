@@ -4,8 +4,10 @@ declare(strict_types=1);
 
 namespace Tests\Feature\PaperTrading;
 
+use App\Exchanges\Application\ExchangeCatalogService;
 use App\Exchanges\Binance\BinancePaperCapital;
 use App\Exchanges\Binance\BinancePublicAdapter;
+use App\Exchanges\Binance\ExchangePaperReconciliation;
 use App\Exchanges\Bybit\BybitAdapter;
 use App\Exchanges\Contracts\ExchangeAdapter;
 use App\Exchanges\ExchangeRegistry;
@@ -20,38 +22,43 @@ use App\Strategy\Contracts\StrategyInterface;
 use App\Strategy\Domain\SignalDecision;
 use App\Strategy\Domain\StrategyInput;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\DB;
+use Ramsey\Uuid\Uuid;
 use Tests\TestCase;
 
 final class GlobalCapitalAndTopologyR6Test extends TestCase
 {
     use RefreshDatabase;
 
-    public function test_topology_sync_is_safe_idempotent_and_approval_gated(): void
+    public function test_topology_sync_provisions_all_registered_pairs_without_execution_approval(): void
     {
         $sync = app(PaperTopologySynchronizer::class);
         $dry = $sync->sync();
         self::assertSame('DRY_RUN', $dry['mode']);
-        self::assertCount(26, $dry['missing_pairs']);
+        self::assertCount(130, $dry['missing_pairs']);
         self::assertSame(0, PaperAccountRecord::query()->count());
 
         config(['exchanges.binance_paper_provisioning_approved' => false]);
         $first = $sync->sync(true);
         self::assertSame(13, $first['created_bybit']);
+        self::assertSame(13, $first['created_binance_blocked_unfunded']);
+        self::assertSame(104, $first['created_other_blocked_unfunded']);
         self::assertTrue($first['binance_pending_approval']);
         self::assertSame(13, PaperAccountRecord::query()->where('exchange_id', 'bybit')->count());
-        self::assertSame(0, PaperAccountRecord::query()->where('exchange_id', 'binance')->count());
+        self::assertSame(13, PaperAccountRecord::query()->where('exchange_id', 'binance')->where('status', 'BLOCKED')->where('starting_balance', '0')->count());
+        self::assertSame(130, PaperAccountRecord::query()->where('is_primary', true)->count());
 
         config(['exchanges.binance_paper_provisioning_approved' => true]);
         $second = $sync->sync(true);
-        self::assertSame(13, $second['created_binance_blocked_unfunded']);
+        self::assertSame(0, $second['created_binance_blocked_unfunded']);
         $third = $sync->sync(true);
         self::assertSame(0, $third['created_bybit']);
         self::assertSame(0, $third['created_binance_blocked_unfunded']);
-        self::assertSame(26, PaperAccountRecord::query()->where('is_primary', true)->count());
+        self::assertSame(130, PaperAccountRecord::query()->where('is_primary', true)->count());
         self::assertSame(13, PaperAccountRecord::query()->where('exchange_id', 'binance')->where('status', 'BLOCKED')->count());
     }
 
-    public function test_new_strategy_is_added_to_both_exchanges_without_activating_it_or_mutating_existing_accounts(): void
+    public function test_fourteenth_strategy_is_added_to_all_ten_exchanges_without_mutating_existing_accounts(): void
     {
         config(['exchanges.binance_paper_provisioning_approved' => true]);
         $sync = app(PaperTopologySynchronizer::class);
@@ -64,10 +71,12 @@ final class GlobalCapitalAndTopologyR6Test extends TestCase
         $result = app(PaperTopologySynchronizer::class)->sync(true);
         self::assertSame(1, $result['created_bybit']);
         self::assertSame(1, $result['created_binance_blocked_unfunded']);
-        self::assertSame(28, PaperAccountRecord::query()->where('is_primary', true)->count());
+        self::assertSame(140, PaperAccountRecord::query()->where('is_primary', true)->count());
+        self::assertSame(8, $result['created_other_blocked_unfunded']);
         $bybit = PaperAccountRecord::query()->where('exchange_id', 'bybit')->where('primary_strategy_id', 'sample_new_strategy')->firstOrFail();
         $binance = PaperAccountRecord::query()->where('exchange_id', 'binance')->where('primary_strategy_id', 'sample_new_strategy')->firstOrFail();
         self::assertSame('BLOCKED', $bybit->status);
+        self::assertDecimalSame('0', $bybit->starting_balance);
         self::assertSame('BLOCKED', $binance->status);
         self::assertDecimalSame('0', $binance->starting_balance);
         foreach ($oldAccounts as $id => $expected) {
@@ -118,13 +127,69 @@ final class GlobalCapitalAndTopologyR6Test extends TestCase
         ]);
         app()->instance(ExchangeRegistry::class, $registry);
         $result = app(PaperTopologySynchronizer::class)->sync(true);
-        self::assertSame(13, $result['created_other_blocked_unfunded']);
-        self::assertSame(39, PaperAccountRecord::query()->where('is_primary', true)->count());
+        self::assertSame(117, $result['created_other_blocked_unfunded']);
+        self::assertSame(143, PaperAccountRecord::query()->where('is_primary', true)->count());
         $accounts = PaperAccountRecord::query()->where('exchange_id', 'new_public_exchange')->get();
         foreach ($accounts as $account) {
             self::assertSame('BLOCKED', $account->status);
             self::assertDecimalSame('0', $account->starting_balance);
         }
+    }
+
+    public function test_registration_expands_to_143_then_154_accounts_without_capital_or_history_changes(): void
+    {
+        config(['exchanges.binance_paper_provisioning_approved' => true]);
+        app(PaperTopologySynchronizer::class)->sync(true);
+        app(BinancePaperCapital::class)->allocate('10000', 'TEST-LEGACY-CAPITAL');
+        $legacy = DB::table('paper_accounts')->whereIn('exchange_id', ['bybit', 'binance'])->orderBy('id')->get();
+        self::assertCount(26, $legacy);
+        self::assertSame(26, $legacy->where('starting_balance', '>', 0)->count());
+        self::assertSame(104, DB::table('paper_accounts')->where('starting_balance', '0')->where('status', 'BLOCKED')->count());
+        $blocked = $legacy->where('exchange_id', 'bybit')->take(5)->pluck('id');
+        DB::table('paper_accounts')->whereIn('id', $blocked)->update(['status' => 'BLOCKED', 'current_drawdown_percent' => '5']);
+        $legacy = DB::table('paper_accounts')->whereIn('exchange_id', ['bybit', 'binance'])->orderBy('id')->get();
+        $events = DB::table('paper_capital_events')->orderBy('id')->get()->toJson();
+
+        app(ExchangeCatalogService::class)->register(['id' => 'new_venue', 'name' => 'New Venue', 'market_type' => 'spot']);
+        self::assertSame(143, DB::table('paper_accounts')->where('is_primary', true)->count());
+        $this->registerAdditionalStrategy();
+        app(PaperTopologySynchronizer::class)->sync(true);
+        self::assertSame(154, DB::table('paper_accounts')->where('is_primary', true)->count());
+        self::assertSame([], app(PaperTopologySynchronizer::class)->sync()['missing_pairs']);
+        app(PaperTopologySynchronizer::class)->sync(true);
+        self::assertSame($legacy->toJson(), DB::table('paper_accounts')->whereIn('id', $legacy->pluck('id'))->orderBy('id')->get()->toJson());
+        self::assertSame($events, DB::table('paper_capital_events')->orderBy('id')->get()->toJson());
+        self::assertSame(5, DB::table('paper_accounts')->whereIn('id', $blocked)->where('status', 'BLOCKED')->count());
+        $pairs = DB::table('paper_accounts')->select(['exchange_id', 'primary_strategy_id'])->get();
+        self::assertSame(154, $pairs->unique(fn ($row) => $row->exchange_id.'|'.$row->primary_strategy_id)->count());
+        $new = PaperAccountRecord::query()->where('exchange_id', 'new_venue')->where('primary_strategy_id', 'sample_new_strategy')->firstOrFail();
+        self::assertSame(Uuid::uuid5(Uuid::NAMESPACE_URL, 'traderbybit:paper:primary:new_venue:sample_new_strategy')->toString(), $new->id);
+        self::assertDecimalSame('0', $new->starting_balance);
+        self::assertSame('BLOCKED', $new->status);
+        $m9 = app(ExchangePaperReconciliation::class)->inspect();
+        self::assertSame('LEDGER_PASS_ONLY', $m9['status'], json_encode($m9['issues']));
+        self::assertSame(154, $m9['expected_pairs']);
+        self::assertSame(154, $m9['verified_pairs']);
+    }
+
+    public function test_m9_reconciles_130_and_rejects_foreign_financial_provenance(): void
+    {
+        app(PaperTopologySynchronizer::class)->sync(true);
+        $m9 = app(ExchangePaperReconciliation::class)->inspect();
+        self::assertSame('LEDGER_PASS_ONLY', $m9['status'], json_encode($m9['issues']));
+        self::assertSame(130, $m9['expected_pairs']);
+        self::assertSame(130, $m9['verified_pairs']);
+        $account = PaperAccountRecord::query()->where('exchange_id', 'kraken')->firstOrFail();
+        self::assertSame($account->id, app(PaperAccountService::class)->primaryAccount($account->strategy_id, 'kraken')->id);
+        DB::table('paper_capital_events')->insert([
+            'id' => Uuid::uuid4()->toString(), 'paper_account_id' => $account->id,
+            'exchange_id' => 'bybit', 'amount' => '100', 'approval_reference' => 'TEST-FOREIGN',
+            'reason' => 'OWNER_APPROVED_PAPER_ALLOCATION', 'occurred_at' => now('UTC'),
+            'created_at' => now('UTC'), 'updated_at' => now('UTC'),
+        ]);
+        $m9 = app(ExchangePaperReconciliation::class)->inspect();
+        self::assertSame('FAIL', $m9['status']);
+        self::assertContains('CROSS_EXCHANGE_PAPER_CAPITAL_EVENT', array_column($m9['issues'], 'code'));
     }
 
     public function test_global_five_percent_drawdown_and_reserved_risk_budget_are_independent_fail_closed_gates(): void
@@ -180,6 +245,5 @@ final class GlobalCapitalAndTopologyR6Test extends TestCase
         ));
         app()->forgetInstance(PaperTopologySynchronizer::class);
         app()->forgetInstance(PaperAccountService::class);
-        config(['paper.primary_strategies' => [...(array) config('paper.primary_strategies'), 'sample_new_strategy']]);
     }
 }

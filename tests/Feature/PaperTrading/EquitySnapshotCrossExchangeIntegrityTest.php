@@ -22,6 +22,14 @@ final class EquitySnapshotCrossExchangeIntegrityTest extends TestCase
 {
     use RefreshDatabase;
 
+    protected function setUp(): void
+    {
+        parent::setUp();
+        // This fixture verifies the preserved original 26-account financial cohort.
+        config(['exchanges.enabled' => ['bybit', 'binance']]);
+        DB::table('exchanges')->whereNotIn('id', ['bybit', 'binance'])->delete();
+    }
+
     private function provisionTwentySixAccounts(): void
     {
         $this->app->make(PaperAccountService::class)->allPrimaryAccounts('bybit');

@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\StrategyBuilder;
 
+use App\Strategy\Application\StrategyRegistry;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
 
@@ -12,17 +13,9 @@ final class PrimaryStrategies
 {
     public static function ids(?string $exchange = null): array
     {
-        $ids = (array) config('paper.primary_strategies', []);
-        foreach (self::registrations() as $row) {
-            if ($exchange !== null && ! in_array($exchange, json_decode($row->exchanges, true), true)) {
-                continue;
-            }
-            if (! in_array($row->strategy_id, $ids, true)) {
-                $ids[] = $row->strategy_id;
-            }
-        }
-
-        return $ids;
+        // A portfolio exists on every registered venue. A definition's declared
+        // exchange compatibility governs execution, never portfolio existence.
+        return app(StrategyRegistry::class)->ids();
     }
 
     public static function registrations(): array
@@ -37,14 +30,9 @@ final class PrimaryStrategies
     public static function byExchange(array $exchanges): array
     {
         $out = [];
-        $rows = self::registrations();
+        $ids = self::ids();
         foreach ($exchanges as $exchange) {
-            $out[$exchange] = (array) config('paper.primary_strategies', []);
-            foreach ($rows as $row) {
-                if (in_array($exchange, json_decode($row->exchanges, true), true) && ! in_array($row->strategy_id, $out[$exchange], true)) {
-                    $out[$exchange][] = $row->strategy_id;
-                }
-            }
+            $out[$exchange] = $ids;
         }
 
         return $out;

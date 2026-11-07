@@ -7,10 +7,12 @@ namespace Tests\Feature;
 use App\Audit\Application\AuditExportService;
 use App\Audit\Infrastructure\Persistence\AuditExportRecord;
 use App\Audit\Jobs\GenerateAuditExportJob;
+use App\Exchanges\ExchangeRegistry;
 use App\PaperTrading\Application\PaperAccountService;
 use App\PaperTrading\Infrastructure\Persistence\PaperAccountRecord;
 use App\PaperTrading\Infrastructure\Persistence\PaperSignalStateRecord;
 use App\Strategy\Infrastructure\Persistence\SignalRecord;
+use App\StrategyBuilder\PrimaryStrategies;
 use Carbon\CarbonImmutable;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Queue;
@@ -173,7 +175,17 @@ final class AuditExportTest extends TestCase
                 $coverage = $zip->getFromName('primary_strategy_coverage.csv');
                 self::assertIsString($coverage);
                 $lines = array_values(array_filter(explode("\n", trim($coverage)), 'strlen'));
-                self::assertCount(27, $lines, 'Coverage export must include a header and 13 strategies on each of two exchanges.');
+                $exchanges = app(ExchangeRegistry::class)->registeredIds();
+                $strategies = PrimaryStrategies::ids();
+                self::assertCount(1 + count($exchanges) * count($strategies), $lines, 'Coverage must include every registered exchange and standalone strategy.');
+                $pairs = collect(array_slice($lines, 1))->map(fn (string $line): array => str_getcsv($line))
+                    ->map(fn (array $cells): string => $cells[0].'|'.$cells[1])->all();
+                self::assertCount(count($pairs), array_unique($pairs));
+                foreach ($exchanges as $exchange) {
+                    foreach ($strategies as $strategy) {
+                        self::assertContains($exchange.'|'.$strategy, $pairs);
+                    }
+                }
                 self::assertStringContainsString('btc_eth_lead_lag', $coverage);
                 self::assertStringContainsString('PAPER_EXECUTION', $coverage);
                 self::assertStringContainsString('coverage_status', $lines[0]);

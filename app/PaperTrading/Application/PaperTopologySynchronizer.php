@@ -32,8 +32,7 @@ final readonly class PaperTopologySynchronizer
     public function sync(bool $apply = false): array
     {
         $strategyIds = array_values(PrimaryStrategies::ids());
-        $approvedDbExchanges = DB::table('exchanges')->where('paper_approved', true)->pluck('id')->all();
-        $exchangeIds = array_values(array_unique(array_merge((array) config('exchanges.enabled', []), $approvedDbExchanges)));
+        $exchangeIds = $this->exchanges->registeredIds();
         if ($strategyIds === [] || $exchangeIds === [] || count($strategyIds) !== count(array_unique($strategyIds))
             || count($exchangeIds) !== count(array_unique($exchangeIds))) {
             throw new RuntimeException('Exchange and PRIMARY strategy lists must be nonempty and unique.');
@@ -103,8 +102,9 @@ final readonly class PaperTopologySynchronizer
                     }
                 }
                 $createdOther = 0;
+                $createdBinance = 0;
                 foreach ($exchangeIds as $exchange) {
-                    if (in_array($exchange, ['bybit', 'binance'], true)) {
+                    if ($exchange === 'bybit' || ($exchange === 'binance' && $binanceApproved)) {
                         continue;
                     }
                     foreach ($scopes[$exchange] as $id) {
@@ -129,10 +129,13 @@ final readonly class PaperTopologySynchronizer
                             'configuration_hash' => StrategyRegistry::hash($parameters),
                             'strategy_parameters' => $parameters,
                         ]);
-                        $createdOther++;
+                        if ($exchange === 'binance') {
+                            $createdBinance++;
+                        } else {
+                            $createdOther++;
+                        }
                     }
                 }
-                $createdBinance = 0;
                 if (in_array('binance', $exchangeIds, true) && $binanceApproved) {
                     $createdBinance = $this->binance->provision()['created'];
                 }

@@ -7,6 +7,7 @@ namespace App\Exchanges;
 use App\Exchanges\Contracts\ExchangeAdapter;
 use App\MarketData\Infrastructure\Persistence\CandleRecord;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Schema;
 use InvalidArgumentException;
 use Throwable;
 
@@ -34,6 +35,14 @@ final class ExchangeRegistry
     public function supported(): array
     {
         return array_keys($this->adapters);
+    }
+
+    /** Registration is independent of public-adapter and PAPER execution readiness. */
+    public function registeredIds(): array
+    {
+        $catalog = Schema::hasTable('exchanges') ? DB::table('exchanges')->orderBy('id')->pluck('id')->all() : [];
+
+        return array_values(array_unique(array_merge((array) config('exchanges.enabled', []), $catalog)));
     }
 
     public function isSupportedForBacktest(string $exchange): bool

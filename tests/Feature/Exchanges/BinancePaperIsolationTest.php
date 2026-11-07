@@ -25,6 +25,14 @@ final class BinancePaperIsolationTest extends TestCase
 {
     use RefreshDatabase;
 
+    protected function setUp(): void
+    {
+        parent::setUp();
+        // This fixture verifies the preserved original 26-account financial cohort.
+        config(['exchanges.enabled' => ['bybit', 'binance']]);
+        DB::table('exchanges')->whereNotIn('id', ['bybit', 'binance'])->delete();
+    }
+
     public function test_all_twenty_six_accounts_are_isolated_and_owner_allocation_cannot_change_bybit(): void
     {
         config()->set('exchanges.binance_paper_provisioning_approved', true);

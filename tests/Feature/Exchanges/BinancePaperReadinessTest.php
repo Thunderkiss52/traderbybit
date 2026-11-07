@@ -13,11 +13,20 @@ use App\Strategy\Infrastructure\Persistence\StrategyObservationRecord;
 use Carbon\CarbonInterface;
 use DateTimeImmutable;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\DB;
 use Tests\TestCase;
 
 final class BinancePaperReadinessTest extends TestCase
 {
     use RefreshDatabase;
+
+    protected function setUp(): void
+    {
+        parent::setUp();
+        // This fixture verifies the preserved original 26-account financial cohort.
+        config(['exchanges.enabled' => ['bybit', 'binance']]);
+        DB::table('exchanges')->whereNotIn('id', ['bybit', 'binance'])->delete();
+    }
 
     public function test_readiness_fails_when_cost_configuration_is_missing(): void
     {

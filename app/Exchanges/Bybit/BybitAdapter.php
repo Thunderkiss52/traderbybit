@@ -25,7 +25,7 @@ final readonly class BybitAdapter implements ExchangeAdapter
         if ($limit < 1 || $limit > 500 || $startMs === null || $endMs === null) {
             throw new InvalidArgumentException('Bybit candle adapter requires a bounded historical window and limit <=500.');
         }
-        $candles = $this->client->candles(new CandleQuery('linear', $symbol, Interval::parse(['5m' => '5', '15m' => '15', '30m' => '30', '1h' => '60', '4h' => '240', '1d' => 'D'][$interval] ?? $interval), $startMs, $endMs));
+        $candles = $this->client->candles(new CandleQuery('linear', $symbol, Interval::parse(['1m' => '1', '3m' => '3', '5m' => '5', '15m' => '15', '30m' => '30', '1h' => '60', '4h' => '240', '1d' => 'D'][$interval] ?? $interval), $startMs, $endMs));
 
         return array_map(static fn ($c): array => [
             'exchange_id' => 'bybit', 'symbol' => $c->symbol, 'interval' => $interval,

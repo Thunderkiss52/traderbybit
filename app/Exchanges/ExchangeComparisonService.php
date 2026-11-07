@@ -8,13 +8,13 @@ use App\StrategyBuilder\PrimaryStrategies;
 use Illuminate\Support\Facades\DB;
 use RuntimeException;
 
-/** Read-only, non-aggregated comparison of 13 x 2 isolated paper accounts. */
+/** Read-only comparison of registered exchange x standalone strategy accounts. */
 final readonly class ExchangeComparisonService
 {
     public function report(): array
     {
         $strategies = PrimaryStrategies::ids();
-        $exchanges = (array) config('exchanges.enabled', ['bybit', 'binance']);
+        $exchanges = app(ExchangeRegistry::class)->registeredIds();
         $scopes = PrimaryStrategies::byExchange($exchanges);
         $rows = DB::table('paper_accounts')->where('is_primary', true)
             ->whereIn('exchange_id', $exchanges)->get();

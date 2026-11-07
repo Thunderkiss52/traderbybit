@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\PaperTrading\Application;
 
+use App\Exchanges\ExchangeRegistry;
 use App\PaperTrading\Domain\AccountStatus;
 use App\PaperTrading\Infrastructure\Persistence\EquitySnapshotRecord;
 use App\PaperTrading\Infrastructure\Persistence\PaperAccountRecord;
@@ -144,7 +145,7 @@ final readonly class PaperAccountService
     public function primaryAccount(string $strategyId, string $exchangeId = 'bybit'): PaperAccountRecord
     {
         return DB::transaction(function () use ($strategyId, $exchangeId): PaperAccountRecord {
-            if (! in_array($exchangeId, ['bybit', 'binance'], true)) {
+            if (! in_array($exchangeId, app(ExchangeRegistry::class)->registeredIds(), true)) {
                 throw new \DomainException('Unsupported paper exchange.');
             }
             if (! in_array($strategyId, PrimaryStrategies::ids($exchangeId), true)) {
@@ -173,9 +174,9 @@ final readonly class PaperAccountService
                 return $account;
             }
 
-            if ($exchangeId === 'binance') {
-                // Binance accounts may only be provisioned by the reviewed, evidence-gated migration.
-                throw new \DomainException('Binance PRIMARY account is not provisioned.');
+            if ($exchangeId !== 'bybit') {
+                // Topology discovery creates zero-funded portfolios; a read cannot fund one.
+                throw new \DomainException(ucfirst($exchangeId).' PRIMARY account is not provisioned.');
             }
             $id = Uuid::uuid5(Uuid::NAMESPACE_URL, "traderbybit:paper:primary:{$strategyId}")->toString();
             $starting = app(NewPrimaryCapitalPolicy::class)->openingBalance($exchangeId, $strategyId);

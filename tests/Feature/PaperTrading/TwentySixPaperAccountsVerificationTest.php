@@ -24,11 +24,20 @@ use App\Strategy\Domain\SignalDecision;
 use App\Strategy\Domain\StrategyInput;
 use Brick\Math\BigDecimal;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\DB;
 use Tests\TestCase;
 
 final class TwentySixPaperAccountsVerificationTest extends TestCase
 {
     use RefreshDatabase;
+
+    protected function setUp(): void
+    {
+        parent::setUp();
+        // Dedicated preservation fixture for the original 26-account registry.
+        config(['exchanges.enabled' => ['bybit', 'binance']]);
+        DB::table('exchanges')->whereNotIn('id', ['bybit', 'binance'])->delete();
+    }
 
     public function test_scenario_a_twenty_six_primary_accounts_isolated_and_funded(): void
     {
