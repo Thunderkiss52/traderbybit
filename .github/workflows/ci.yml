@@ -290,8 +290,19 @@ jobs:
           cache: pip
           cache-dependency-path: scripts/ci/browser-requirements.txt
       - run: pip install -r scripts/ci/browser-requirements.txt
+      - name: Cache Playwright browser binaries
+        uses: actions/cache@v4
+        id: playwright-cache
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-${{ runner.os }}-${{ hashFiles('scripts/ci/browser-requirements.txt') }}
       - name: Install pinned Playwright Chrome
-        run: python3 -m playwright install --with-deps chrome
+        run: |
+          if [[ "${{ steps.playwright-cache.outputs.cache-hit }}" == "true" ]]; then
+            python3 -m playwright install-deps chrome
+          else
+            python3 -m playwright install --with-deps chrome
+          fi
       - uses: actions/download-artifact@v4
         with:
           name: frontend-dist
@@ -339,7 +350,40 @@ jobs:
             *) exit 1 ;;
           esac
 
-  workflow-checks:
+  workflow-policy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: ./.github/actions/php
+      - name: Cache actionlint binary
+        uses: actions/cache@v4
+        id: actionlint-cache
+        with:
+          path: /tmp/actionlint
+          key: actionlint-1.7.7-linux-amd64
+      - name: Install pinned workflow validator
+        env:
+          ACTIONLINT_VERSION: '1.7.7'
+        run: |
+          if [[ ! -x /tmp/actionlint ]]; then
+            curl --fail --silent --show-error --location "https://github.com/rhysd/actionlint/releases/download/v${ACTIONLINT_VERSION}/actionlint_${ACTIONLINT_VERSION}_linux_amd64.tar.gz" -o /tmp/actionlint.tar.gz
+            echo '023070a287cd8cccd71515fedc843f1985bf96c436b7effaecce67290e7e0757  /tmp/actionlint.tar.gz' | sha256sum -c -
+            tar -xzf /tmp/actionlint.tar.gz -C /tmp actionlint
+          fi
+          /tmp/actionlint -shellcheck=''
+      - name: Policy and contract regression checks
+        run: |
+          set -o pipefail
+          php scripts/tests/binance_contract_smoke.php
+          php scripts/verify-a2-standalone.php
+          php scripts/verify-gate6-standalone.php
+          python3 scripts/verify-audit-log-redaction.py
+          python3 -m unittest scripts/tests/test_assess_phase0_evidence.py scripts/tests/test_phase0_funding_classifier.py scripts/tests/test_vector_progress.py scripts/tests/test_cicd.py -v
+          git diff --check
+
+  deployment-resilience:
     runs-on: ubuntu-latest
     services:
       postgres:
@@ -359,7 +403,7 @@ jobs:
           --health-cmd "redis-cli ping"
           --health-interval 2s --health-timeout 5s --health-retries 30
     env:
-      REDIS_PREFIX: vector-ci-workflows-
+      REDIS_PREFIX: vector-ci-resilience-
     steps:
       - uses: actions/checkout@v4
         with:
@@ -367,28 +411,12 @@ jobs:
       - uses: ./.github/actions/php
       - name: Initialize isolated deployment regression services
         run: bash scripts/ci/prepare_test_environment.sh
-      - name: Install pinned workflow validator
-        env:
-          ACTIONLINT_VERSION: '1.7.7'
-        run: |
-          curl --fail --silent --show-error --location "https://github.com/rhysd/actionlint/releases/download/v${ACTIONLINT_VERSION}/actionlint_${ACTIONLINT_VERSION}_linux_amd64.tar.gz" -o /tmp/actionlint.tar.gz
-          echo '023070a287cd8cccd71515fedc843f1985bf96c436b7effaecce67290e7e0757  /tmp/actionlint.tar.gz' | sha256sum -c -
-          tar -xzf /tmp/actionlint.tar.gz -C /tmp actionlint
-          /tmp/actionlint -shellcheck=''
-      - name: Install redis-tools CLI for deployment regression checks
-        run: sudo apt-get update -qq && sudo apt-get install -y -qq redis-tools
-      - name: Engineering and deployment regression checks
+      - name: Concurrency and recovery matrix checks
         run: |
           set -o pipefail
-          php scripts/tests/binance_contract_smoke.php
-          php scripts/verify-a2-standalone.php
-          php scripts/verify-gate6-standalone.php
           php scripts/test_p1_postgres_concurrency.php | tee p1-concurrency.log
           grep -q '^OVERALL VERDICT: PASS$' p1-concurrency.log
-          python3 scripts/verify-audit-log-redaction.py
-          python3 -m unittest discover -s scripts/tests -p 'test_*.py' -v
           for script in scripts/tests/test_*.sh scripts/test_deployment_recovery_matrix.sh scripts/test_same_sha_configuration_refresh.sh; do bash "$script"; done
-          git diff --check
       - uses: actions/upload-artifact@v4
         if: always()
         with:
@@ -398,6 +426,24 @@ jobs:
             reports/evidence/p1_concurrency_proof.json
           if-no-files-found: error
           overwrite: true
+
+  deployment-lifecycle:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        suite: [drift, update]
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Container lifecycle integration checks (${{ matrix.suite }})
+        run: |
+          case "${{ matrix.suite }}" in
+            drift) python3 -m unittest scripts/tests/test_deployment_drift_integration.py -v ;;
+            update) python3 -m unittest scripts/tests/test_deployment_update.py -v ;;
+            *) exit 1 ;;
+          esac
 
   publish-images:
     # Images are candidates until CI required succeeds; no dependency on verification jobs.
@@ -466,7 +512,7 @@ jobs:
   ci-required:
     name: CI required
     if: always()
-    needs: [inventory, backend-tests, go-build, go-static, go-checks, frontend-checks, browser-tests, php-quality, security, workflow-checks, publish-images]
+    needs: [inventory, backend-tests, go-build, go-static, go-checks, frontend-checks, browser-tests, php-quality, security, workflow-policy, deployment-resilience, deployment-lifecycle, publish-images]
     runs-on: ubuntu-latest
     permissions:
       contents: read

@@ -29,7 +29,11 @@ elif [[ -f "${PROJECT_ROOT}/ci-release.json" ]]; then
     [[ "${NEW_IMAGE_TAG:-}" =~ ^sha-[0-9a-f]{40}$ ]] || { echo 'Exact release SHA required.' >&2; exit 1; }
     python3 "${SCRIPT_DIR}/release-images.py" "${PROJECT_ROOT}/ci-release.json" "${DEPLOY_STATE_DIR}/release-images" "${NEW_IMAGE_TAG#sha-}"
 fi
-timing_run pre_deployment_state bash "${SCRIPT_DIR}/validate-deployment-state.sh" pre-deploy
+if [[ "${PRE_DEPLOY_VALIDATED:-0}" == "1" ]]; then
+    timing_record pre_deployment_state "${update_start}" 0
+else
+    timing_run pre_deployment_state bash "${SCRIPT_DIR}/validate-deployment-state.sh" pre-deploy
+fi
 
 CURRENT_TAG="${IMAGE_TAG:-latest}"
 if [[ -f "${DEPLOY_STATE_DIR}/.deploy-current" ]]; then

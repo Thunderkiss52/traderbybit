@@ -6,7 +6,8 @@ import re
 from pathlib import Path
 
 JOBS = {"inventory", "backend-tests", "go-build", "go-static", "go-checks", "frontend-checks",
-        "browser-tests", "php-quality", "security", "workflow-checks", "publish-images"}
+        "browser-tests", "php-quality", "security", "workflow-policy", "deployment-resilience",
+        "deployment-lifecycle", "publish-images"}
 TARGETS = {"app", "web", "research-worker"}
 
 

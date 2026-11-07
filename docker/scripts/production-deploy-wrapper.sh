@@ -65,7 +65,7 @@ if [[ -f "${release_dir}/docker/scripts/validate-deployment-state.sh" ]]; then
         exit 1
     fi
 fi
-ENV_FILE="${ENV_FILE}" DEPLOY_STATE_DIR="${STATE_DIR}" NEW_IMAGE_TAG="sha-${release_sha}" DEPLOY_MODE=pull \
+ENV_FILE="${ENV_FILE}" DEPLOY_STATE_DIR="${STATE_DIR}" NEW_IMAGE_TAG="sha-${release_sha}" DEPLOY_MODE=pull PRE_DEPLOY_VALIDATED=1 \
     bash "${release_dir}/docker/scripts/update.sh"
 
 ln -sfn "${release_dir}" "${BASE_DIR}/current.next"

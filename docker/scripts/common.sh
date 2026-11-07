@@ -128,7 +128,7 @@ wait_healthy() {
                 return 1
             fi
         fi
-        sleep 3
+        sleep 0.5
     done
     echo "Timed out waiting for ${service}." >&2
     compose logs --tail=100 "${service}" >&2
@@ -255,7 +255,7 @@ wait_service_ready() {
         if check_service_readiness "${service}"; then
             return 0
         fi
-        sleep 3
+        sleep 0.5
     done
     echo "Timed out waiting for readiness of ${service}." >&2
     compose logs --tail=100 "${service}" >&2
@@ -286,10 +286,41 @@ transition_application_services() {
 }
 
 wait_for_application_services() {
-    local service
-    for service in "${APPLICATION_SERVICES[@]}"; do
-        wait_service_ready "${service}" 120 || return 1
+    local timeout="${1:-120}" start
+    start="$(monotonic_ms)"
+    local -a pending=("${APPLICATION_SERVICES[@]}")
+    while (( ${#pending[@]} > 0 )); do
+        if (( $(monotonic_ms) - start >= timeout * 1000 )); then
+            echo "Timed out waiting for application services: ${pending[*]}." >&2
+            return 1
+        fi
+        local -a still_pending=()
+        for service in "${pending[@]}"; do
+            local cid
+            cid="$(compose ps -q "${service}" 2>/dev/null || true)"
+            if [[ -z "${cid}" ]]; then
+                still_pending+=("${service}")
+                continue
+            fi
+            local st
+            st="$(docker inspect --format '{{if and .State.Running (not .State.Restarting) (not .State.Paused)}}{{if .State.Health}}{{.State.Health.Status}}{{else}}running{{end}}{{else}}{{.State.Status}}{{end}}' "${cid}" 2>/dev/null || true)"
+            if [[ "${st}" == "unhealthy" || "${st}" == "exited" || "${st}" == "dead" ]]; then
+                compose logs --tail=100 "${service}" >&2
+                return 1
+            fi
+            if [[ "${st}" == "healthy" || "${st}" == "running" ]]; then
+                if check_service_readiness "${service}"; then
+                    continue
+                fi
+            fi
+            still_pending+=("${service}")
+        done
+        pending=("${still_pending[@]}")
+        if (( ${#pending[@]} > 0 )); then
+            sleep 0.5
+        fi
     done
+    return 0
 }
 
 is_ancestor_pid() {
