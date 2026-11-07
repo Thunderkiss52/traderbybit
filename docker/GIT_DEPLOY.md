@@ -1,8 +1,29 @@
 # GitHub Actions deployment — one-time setup and checks
 
-The release workflow is split into two connected stages:
-1. **`Build`** (`.github/workflows/ci.yml`): Runs automatically on `push` to `main` (and PRs). Executes all tests, policy verifications, static analyses, and builds/publishes immutable SHA-tagged and digest-pinned images (`app`, `web`, `research-worker`) to GHCR. Its **`CI required`** aggregate gate verifies all mandatory job groups, complete PHP case inventory, isolated service identities, and publishes a verified `release-manifest.json` with direct cross-linking to trigger deployment.
-2. **`Deploy`** (`.github/workflows/deploy.yml`): Manual operator release triggered via `workflow_dispatch` (`Actions → Deploy → Run workflow`). It authorizes current `main`, verifies exact-SHA CI approval, validates GHCR registry image digests against the cryptographic manifest, transfers the release bundle to the VPS, and invokes the host deployment wrapper. Production CD executes zero tests, builds, or dependency installs. Deployment is strictly manual; automatic deployment is prohibited by project policy.
+The entire release lifecycle is consolidated into **one workflow** in the GitHub Actions sidebar: **`Release`** (`.github/workflows/ci.yml`).
+
+The workflow guarantees:
+1. **Automatic Build on Push:** A push to `main` (and PRs) triggers all 13 test and verification jobs, builds Docker images, publishes immutable digest-pinned images to GHCR, and runs the authoritative `CI required` aggregate gate.
+2. **Strictly Manual Production Deployment:** Deployment to production **never runs automatically**. It requires explicit operator action.
+
+## Two supported operational modes
+
+### Mode A: Native Single-Run Approval (Build → Manual Approval → Deploy)
+Available if the repository has GitHub Environment protection rules enabled (`Settings → Environments → production → Required reviewers`):
+1. In repository settings, set variable `ENABLE_NATIVE_DEPLOY_APPROVAL=true`.
+2. A push to `main` automatically executes the Build stage and `CI required`.
+3. When `CI required` succeeds, GitHub Actions pauses at the `Deploy` stage with status *"Waiting for review"*.
+4. The operator clicks **"Review deployments"**, checks `production`, and clicks **"Approve and deploy"**.
+5. Build and Deploy execute within the **same workflow run**.
+
+### Mode B: Zero-Risk Manual Dispatch (Fallback for GitHub Free / Standard Accounts)
+On GitHub Free for private repositories, Environment "Required reviewers" is not available. To eliminate any risk of accidental deployment:
+1. Leave `ENABLE_NATIVE_DEPLOY_APPROVAL` unset (or `false`).
+2. A push to `main` executes only the Build stage and `CI required`. The `deploy` job is skipped on push.
+3. When ready to deploy, open **Actions → Release → Run workflow**:
+   - Leave `Action: deploy` (the default).
+   - Click **Run workflow**.
+4. The deployment runs in a dedicated fast-path dispatch run (~60–90 seconds). All 13 Build jobs are **skipped**; Build does not rerun. The runner cryptographically verifies the exact commit SHA and downloads the approved image digest manifest from the trusted push run.
 
 ## Before first click (one-time server setup)
 
@@ -31,11 +52,13 @@ Optional Environment variable: `DEPLOY_PORT` (defaults to 22).
 
 For private GHCR packages, separately provision registry read credentials on the VPS; `GITHUB_TOKEN` used by GitHub Actions to publish images is **not transferred** to the VPS.
 
-## One-click workflow
+## Operational release flow
 
-1. After review and explicit push authorization, publish the reviewed commit to `main`. The **`Build`** workflow runs automatically. Wait for **`CI required`** and all mandatory checks to succeed for that exact SHA. The step summary on the Build run page will display verified image digests and a direct link to trigger deployment. A push never deploys automatically.
-2. After explicit deployment approval, open GitHub → Actions → **Deploy** → **Run workflow**, selecting `main` (or click the link directly from the Build step summary). An optional full `commit_sha` must equal current main HEAD.
-3. CD verifies the latest exact-SHA trusted `Build` run, its successful aggregate, artifact provenance and all published image digests. It rechecks current main before transfer and before invoking the wrapper. The checksummed archive contains only Compose files, `docker/` deployment assets and `ci-release.json`; runtime code arrives in prebuilt images.
+1. After review and explicit push authorization, publish the reviewed commit to `main`. The **`Release`** workflow runs automatically on `push`. Wait for **`CI required`** and all mandatory checks to succeed for that exact SHA. The step summary on the run page displays verified image digests and release provenance. A push never deploys automatically unless native environment approval is enabled.
+2. After explicit deployment approval:
+   - **Under Mode A (Native Approval):** Click **"Review deployments"** directly on the push run page and approve `production`.
+   - **Under Mode B (Manual Dispatch):** Open GitHub → Actions → **Release** → **Run workflow**, selecting action `deploy` (or click the link directly from the step summary).
+3. CD authorizes the verified exact-SHA trusted run, its successful aggregate, artifact provenance and all published image digests. It rechecks current main before transfer and before invoking the wrapper. The checksummed archive contains only Compose files, `docker/` deployment assets and `ci-release.json`; runtime code arrives in prebuilt images.
 4. The server deploy wrapper verifies the archive checksum, extracts into an isolated SHA release directory, backs up PostgreSQL, pulls immutable GHCR images, migrates, updates the Compose stack, runs healthchecks, and switches the `/srv/bybit-signals/current` symlink only after success.
 5. Existing databases and volumes are preserved. All ten application/worker services use digest-pinned Compose overlays stored under `deploy-state/release-images/`. Current/previous local SHA aliases are retained for the existing scoped rollback-image cleanup. Backups, safe migrations, readiness checks, server locking and application rollback remain enabled; database migrations are not automatically reversed.
 

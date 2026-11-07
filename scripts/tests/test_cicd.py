@@ -41,15 +41,18 @@ class RequiredGateTests(unittest.TestCase):
             self.assertIn("Concurrency fixtures require APP_ENV=testing", result.stderr)
 
     def test_actual_workflow_gates_every_job_and_cd_contains_no_build_or_test_commands(self):
-        ci = (ROOT / ".github/workflows/ci.yml").read_text().split("jobs:\n", 1)[1]
+        workflow_files = sorted((ROOT / ".github/workflows").glob("*.yml"))
+        self.assertEqual([ROOT / ".github/workflows/ci.yml"], workflow_files, "Only one consolidated workflow file must exist in .github/workflows")
+        ci_full = (ROOT / ".github/workflows/ci.yml").read_text()
+        ci = ci_full.split("jobs:\n", 1)[1]
         jobs = set(re.findall(r"^  ([a-z][a-z0-9-]*):$", ci, re.M))
-        self.assertEqual(JOBS, jobs - {"ci-required"})
+        self.assertEqual(JOBS, jobs - {"ci-required", "deploy"})
         gate = ci.split("  ci-required:\n", 1)[1]
         needs = re.search(r"^    needs: \[(.+)\]$", gate, re.M)
         self.assertEqual(JOBS, {name.strip() for name in needs[1].split(",")})
         self.assertIn("    if: always()", gate)
         self.assertNotIn("continue-on-error", ci)
-        cd = (ROOT / ".github/workflows/deploy.yml").read_text()
+        cd = ci.split("  deploy:\n", 1)[1]
         self.assertIn("group: bybit-signals-production", cd)
         self.assertIn("cancel-in-progress: false", cd)
         self.assertNotRegex(cd, r"\b(?:phpunit|npm (?:ci|install|run build)|composer install|go (?:test|build)|docker build\b)")

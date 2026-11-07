@@ -1,4 +1,4 @@
-name: Build
+name: Release
 
 on:
   push:
@@ -6,13 +6,27 @@ on:
   pull_request:
     branches: [main]
   workflow_dispatch:
+    inputs:
+      target:
+        description: 'Action: "deploy" to deploy preverified commit to production; "build" to force complete build'
+        required: true
+        default: 'deploy'
+        type: choice
+        options:
+          - 'deploy'
+          - 'build'
+          - 'build-and-deploy'
+      commit_sha:
+        description: 'Commit SHA to deploy (must have passed CI and published images in GHCR; defaults to HEAD)'
+        required: false
+        default: ''
 
 permissions:
   contents: read
 
 concurrency:
-  group: ci-${{ github.ref }}
-  cancel-in-progress: true
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
 
 env:
   APP_ENV: testing
@@ -38,6 +52,7 @@ env:
 
 jobs:
   inventory:
+    if: github.event_name != 'workflow_dispatch' || inputs.target != 'deploy'
     runs-on: ubuntu-latest
     outputs:
       matrix: ${{ steps.plan.outputs.matrix }}
@@ -59,6 +74,7 @@ jobs:
           overwrite: true
 
   go-build:
+    if: github.event_name != 'workflow_dispatch' || inputs.target != 'deploy'
     runs-on: ubuntu-latest
     env:
       CGO_ENABLED: '0'
@@ -83,6 +99,7 @@ jobs:
           overwrite: true
 
   go-static:
+    if: github.event_name != 'workflow_dispatch' || inputs.target != 'deploy'
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
@@ -106,6 +123,7 @@ jobs:
           esac
 
   go-checks:
+    if: github.event_name != 'workflow_dispatch' || inputs.target != 'deploy'
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
@@ -158,6 +176,7 @@ jobs:
           overwrite: true
 
   backend-tests:
+    if: github.event_name != 'workflow_dispatch' || inputs.target != 'deploy'
     needs: [inventory, go-build]
     runs-on: ubuntu-latest
     name: PHP (${{ matrix.lane }})
@@ -218,6 +237,7 @@ jobs:
           overwrite: true
 
   php-quality:
+    if: github.event_name != 'workflow_dispatch' || inputs.target != 'deploy'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -227,6 +247,7 @@ jobs:
         run: find app bootstrap config database routes tests scripts -name '*.php' -print0 | xargs -0 -n1 php -l > php-lint.log
 
   frontend-checks:
+    if: github.event_name != 'workflow_dispatch' || inputs.target != 'deploy'
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
@@ -255,6 +276,7 @@ jobs:
           overwrite: true
 
   browser-tests:
+    if: github.event_name != 'workflow_dispatch' || inputs.target != 'deploy'
     needs: [frontend-checks, go-build]
     runs-on: ubuntu-latest
     strategy:
@@ -327,6 +349,7 @@ jobs:
           overwrite: true
 
   security:
+    if: github.event_name != 'workflow_dispatch' || inputs.target != 'deploy'
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
@@ -351,6 +374,7 @@ jobs:
           esac
 
   workflow-policy:
+    if: github.event_name != 'workflow_dispatch' || inputs.target != 'deploy'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -384,6 +408,7 @@ jobs:
           git diff --check
 
   deployment-resilience:
+    if: github.event_name != 'workflow_dispatch' || inputs.target != 'deploy'
     runs-on: ubuntu-latest
     services:
       postgres:
@@ -428,6 +453,7 @@ jobs:
           overwrite: true
 
   deployment-lifecycle:
+    if: github.event_name != 'workflow_dispatch' || inputs.target != 'deploy'
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
@@ -446,6 +472,7 @@ jobs:
           esac
 
   publish-images:
+    if: github.event_name != 'workflow_dispatch' || inputs.target != 'deploy'
     # Images are candidates until CI required succeeds; no dependency on verification jobs.
     runs-on: ubuntu-latest
     strategy:
@@ -511,7 +538,7 @@ jobs:
 
   ci-required:
     name: CI required
-    if: always()
+    if: always() && (github.event_name != 'workflow_dispatch' || inputs.target != 'deploy')
     needs: [inventory, backend-tests, go-build, go-static, go-checks, frontend-checks, browser-tests, php-quality, security, workflow-policy, deployment-resilience, deployment-lifecycle, publish-images]
     runs-on: ubuntu-latest
     permissions:
@@ -565,7 +592,7 @@ jobs:
           run_id = manifest["run_id"]
           repo = os.environ.get("GITHUB_REPOSITORY", "traderbybit/traderbybit")
           ref_name = os.environ.get("GITHUB_REF_NAME", "main")
-          deploy_url = f"https://github.com/{repo}/actions/workflows/deploy.yml"
+          deploy_url = f"https://github.com/{repo}/actions/workflows/ci.yml"
 
           lines = [
               "## 🚀 VECTOR Build & CI Verification Succeeded",
@@ -590,7 +617,7 @@ jobs:
               "### 🛡️ Production Release Action",
               "> [!IMPORTANT]",
               "> **Operator Action Required:** Production deployment is strictly operator-triggered.",
-              f"> Click here to trigger production release: [**Deploy Workflow (deploy.yml)**]({deploy_url})",
+              f"> Click here to trigger production release: [**Release Workflow (ci.yml)**]({deploy_url})",
               f"> *(Specify `commit_sha: {sha}`)*",
           ])
 
@@ -619,3 +646,233 @@ jobs:
           path: ci-timings.json
           if-no-files-found: error
           overwrite: true
+
+  deploy:
+    name: Deploy
+    runs-on: ubuntu-latest
+    environment: production
+    concurrency:
+      group: bybit-signals-production
+      cancel-in-progress: false
+    needs: [ci-required]
+    permissions:
+      contents: read
+      packages: read
+      actions: read
+    if: |
+      always() &&
+      (
+        (github.event_name == 'workflow_dispatch' && inputs.target == 'deploy') ||
+        (
+          github.ref == 'refs/heads/main' &&
+          needs.ci-required.result == 'success' &&
+          (vars.ENABLE_NATIVE_DEPLOY_APPROVAL == 'true' || (github.event_name == 'workflow_dispatch' && inputs.target == 'build-and-deploy'))
+        )
+      )
+    steps:
+      - name: Start runner wall clock
+        run: |
+          start_ms=$(python3 -c 'import time; print(time.clock_gettime_ns(time.CLOCK_BOOTTIME) // 1000000)')
+          echo "VECTOR_RUNNER_START_MS=$start_ms" >> "$GITHUB_ENV"
+          echo "DEPLOY_TIMING_FILE=$RUNNER_TEMP/vector-deploy-timing.jsonl" >> "$GITHUB_ENV"
+          echo "VECTOR_RUNNER_STARTED_AT=$(date -u +%Y-%m-%dT%H:%M:%SZ)" >> "$GITHUB_ENV"
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Validate exact target commit SHA
+        id: target
+        shell: bash
+        env:
+          REQUESTED_SHA: ${{ inputs.commit_sha }}
+        run: |
+          set -Eeuo pipefail
+          source docker/scripts/timing.sh
+          timing_record runner_preparation "$VECTOR_RUNNER_START_MS"
+          [[ "$GITHUB_REF" == refs/heads/main ]] || { echo 'Deploy workflow must run from main'; exit 2; }
+          target_sha="${REQUESTED_SHA:-$GITHUB_SHA}"
+          [[ "$target_sha" =~ ^[a-f0-9]{40}$ ]] || { echo 'Full hexadecimal SHA required'; exit 2; }
+          git cat-file -e "${target_sha}^{commit}"
+          echo "sha=$target_sha" >> "$GITHUB_OUTPUT"
+
+      - name: Authorize current main and exact-SHA CI required
+        id: ci
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TARGET_SHA: ${{ steps.target.outputs.sha }}
+        run: |
+          source docker/scripts/timing.sh
+          if [[ "${{ github.event_name }}" == "push" || "${{ inputs.target }}" == "build-and-deploy" ]]; then
+            timing_run github_release_validation python3 scripts/ci/release_guard.py current --sha "$TARGET_SHA" --repository "$GITHUB_REPOSITORY"
+            echo "run_id=$GITHUB_RUN_ID" >> "$GITHUB_OUTPUT"
+            echo "same_run=true" >> "$GITHUB_OUTPUT"
+          else
+            timing_run github_release_validation python3 scripts/ci/release_guard.py authorize --sha "$TARGET_SHA" --repository "$GITHUB_REPOSITORY"
+            echo "same_run=false" >> "$GITHUB_OUTPUT"
+          fi
+          echo "VECTOR_ARTIFACT_START_MS=$(monotonic_ms)" >> "$GITHUB_ENV"
+
+      - name: Download verified release manifest (same run)
+        if: steps.ci.outputs.same_run == 'true'
+        uses: actions/download-artifact@v4
+        with:
+          name: verified-release
+          path: verified-release
+
+      - name: Download verified release manifest (from previous CI run)
+        if: steps.ci.outputs.same_run != 'true'
+        uses: actions/download-artifact@v4
+        with:
+          name: verified-release
+          path: verified-release
+          run-id: ${{ steps.ci.outputs.run_id }}
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Verify published image tags against CI-approved digests
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TARGET_SHA: ${{ steps.target.outputs.sha }}
+          CI_RUN_ID: ${{ steps.ci.outputs.run_id }}
+        run: |
+          set -Eeuo pipefail
+          source docker/scripts/timing.sh
+          timing_record release_artifact_download "$VECTOR_ARTIFACT_START_MS"
+          python3 scripts/ci/release_guard.py manifest --sha "$TARGET_SHA" --repository "$GITHUB_REPOSITORY" --run-id "$CI_RUN_ID" --manifest verified-release/release-manifest.json > image-refs.txt
+          echo "$GH_TOKEN" | docker login ghcr.io -u "$GITHUB_ACTOR" --password-stdin
+          timing_run github_registry_verification bash scripts/ci/verify_images.sh image-refs.txt
+
+      - name: Deploy preverified artifacts to production
+        id: deploy-step
+        shell: bash
+        env:
+          DEPLOY_HOST: ${{ secrets.DEPLOY_HOST }}
+          DEPLOY_USER: ${{ secrets.DEPLOY_USER }}
+          DEPLOY_SSH_KEY: ${{ secrets.DEPLOY_SSH_KEY }}
+          DEPLOY_SSH_HOST_KEY: ${{ secrets.DEPLOY_SSH_HOST_KEY }}
+          DEPLOY_PORT: ${{ vars.DEPLOY_PORT }}
+          DEPLOY_COMMIT_SHA: ${{ steps.target.outputs.sha }}
+          CI_RUN_ID: ${{ steps.ci.outputs.run_id }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_REPOSITORY: ${{ github.repository }}
+        run: |
+          set -Eeuo pipefail
+          source docker/scripts/timing.sh
+          archive_start="$(monotonic_ms)"
+          : "${DEPLOY_HOST:?DEPLOY_HOST is missing}"
+          : "${DEPLOY_USER:?DEPLOY_USER is missing}"
+          : "${DEPLOY_SSH_KEY:?DEPLOY_SSH_KEY is missing}"
+          : "${DEPLOY_SSH_HOST_KEY:?DEPLOY_SSH_HOST_KEY is missing}"
+          DEPLOY_PORT="${DEPLOY_PORT:-22}"
+          [[ "$DEPLOY_PORT" =~ ^[0-9]+$ ]] || { echo 'Invalid SSH port'; exit 2; }
+
+          install -d -m 700 "$HOME/.ssh"
+          (umask 077; printf '%s\n' "$DEPLOY_SSH_KEY" > "$HOME/.ssh/id_ed25519")
+          (umask 077; printf '%s\n' "$DEPLOY_SSH_HOST_KEY" > "$HOME/.ssh/known_hosts")
+          ssh-keygen -y -f "$HOME/.ssh/id_ed25519" >/dev/null
+
+          archive="$RUNNER_TEMP/${DEPLOY_COMMIT_SHA}.tar.gz"
+          # Include the verified digest manifest in the checksummed release archive.
+          git archive --format=tar --output="${archive%.gz}" "$DEPLOY_COMMIT_SHA" compose.yaml compose.proxy.yaml docker
+          cp verified-release/release-manifest.json "$RUNNER_TEMP/ci-release.json"
+          tar -rf "${archive%.gz}" -C "$RUNNER_TEMP" ci-release.json
+          gzip -n "${archive%.gz}"
+          (cd "$RUNNER_TEMP" && sha256sum "${DEPLOY_COMMIT_SHA}.tar.gz" > "${DEPLOY_COMMIT_SHA}.tar.gz.sha256")
+
+          ssh_options=(-p "$DEPLOY_PORT" -i "$HOME/.ssh/id_ed25519" -o BatchMode=yes -o StrictHostKeyChecking=yes)
+          scp_options=(-P "$DEPLOY_PORT" -i "$HOME/.ssh/id_ed25519" -o BatchMode=yes -o StrictHostKeyChecking=yes)
+
+          # Recheck immediately before transfer; a queued dispatch cannot deploy stale main.
+          python3 scripts/ci/release_guard.py current --sha "$DEPLOY_COMMIT_SHA" --repository "$GITHUB_REPOSITORY"
+          timing_record archive_and_ssh_preparation "$archive_start"
+          deploy_start="$(monotonic_ms)"
+          echo "Starting production deployment of preverified commit ${DEPLOY_COMMIT_SHA}..."
+          timing_run archive_transfer scp "${scp_options[@]}" "$archive" "${archive}.sha256" \
+            "${DEPLOY_USER}@${DEPLOY_HOST}:/srv/bybit-signals/incoming/"
+          python3 scripts/ci/release_guard.py current --sha "$DEPLOY_COMMIT_SHA" --repository "$GITHUB_REPOSITORY"
+          timing_run remote_deployment_total ssh "${ssh_options[@]}" "${DEPLOY_USER}@${DEPLOY_HOST}" \
+            "sudo -n /usr/local/sbin/bybit-signals-deploy ${DEPLOY_COMMIT_SHA}"
+          timing_record transfer_and_remote_execution "$deploy_start"
+          python3 -c '
+          import os
+          from pathlib import Path
+
+          target_sha = os.environ.get("DEPLOY_COMMIT_SHA", "")
+          ci_run_id = os.environ.get("CI_RUN_ID", "")
+          repo = os.environ.get("GITHUB_REPOSITORY", "traderbybit/traderbybit")
+          build_url = f"https://github.com/{repo}/actions/runs/{ci_run_id}" if ci_run_id else ""
+
+          lines = [
+              "## 🚢 VECTOR Production Release Deployed",
+              "",
+              f"- **Deployed Commit SHA:** `{target_sha}`",
+          ]
+          if build_url:
+              lines.append(f"- **Originating Build Run:** [Build #{ci_run_id}]({build_url})")
+
+          lines.extend([
+              "",
+              "### 📦 Deployed Image References",
+              "```",
+          ])
+          if Path("image-refs.txt").exists():
+              lines.append(Path("image-refs.txt").read_text().strip())
+          lines.extend([
+              "```",
+              "",
+              "> [!NOTE]",
+              "> Runner wall time and production VPS transition are separate timing events.",
+              "",
+          ])
+
+          summary_path = os.environ.get("GITHUB_STEP_SUMMARY")
+          if summary_path:
+              with open(summary_path, "a") as f:
+                  f.write("\n".join(lines) + "\n")
+          '
+          cp verified-release/release-manifest.json deployed-release.json
+      - uses: actions/upload-artifact@v4
+        with:
+          name: deployed-release
+          path: deployed-release.json
+          if-no-files-found: error
+
+      - name: Record complete runner wall time
+        if: always()
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          if [[ -f docker/scripts/timing.sh ]]; then
+            source docker/scripts/timing.sh
+            # GitHub supplies workflow start/queue timestamps. The workflow's final
+            # duration remains the Actions run duration after this step completes.
+            python3 scripts/ci/report_deploy_workflow_clock.py
+            timing_record runner_wall_to_final_reporting "$VECTOR_RUNNER_START_MS"
+            timing_summary | tee -a "$GITHUB_STEP_SUMMARY"
+            python3 -c '
+            import json, os
+            from pathlib import Path
+
+            timing_file = os.environ.get("DEPLOY_TIMING_FILE")
+            if timing_file and Path(timing_file).exists():
+                lines = [
+                    "",
+                    "### ⏱️ Stage Latency Breakdown",
+                    "| Stage | Duration (s) | Status |",
+                    "| :--- | :--- | :--- |",
+                ]
+                for raw in Path(timing_file).read_text().splitlines():
+                    if not raw.strip():
+                        continue
+                    try:
+                        ev = json.loads(raw)
+                        sec = f"{ev.get(\"elapsed_ms\", 0) / 1000.0:.2f}s"
+                        st = "✅ Success" if ev.get("exit_code", 0) == 0 else f"❌ Failed ({ev.get(\"exit_code\")})"
+                        lines.append(f"| `{ev.get(\"stage\")}` | {sec} | {st} |")
+                    except Exception:
+                        pass
+                summary_path = os.environ.get("GITHUB_STEP_SUMMARY")
+                if summary_path and len(lines) > 4:
+                    with open(summary_path, "a") as f:
+                        f.write("\n".join(lines) + "\n")
+            '
+          fi

@@ -175,7 +175,7 @@ $manifest = [
         'm2_full_scope_local' => true,
         'production_deployed' => false,
         'production_status' => 'DEPLOYED_UNVERIFIED',
-        'deployment_policy' => 'Strictly via .github/workflows/deploy.yml upon explicit owner authorization. Zero real money orders allowed.',
+        'deployment_policy' => 'Strictly via .github/workflows/ci.yml upon explicit owner authorization. Zero real money orders allowed.',
     ],
 ];
 
