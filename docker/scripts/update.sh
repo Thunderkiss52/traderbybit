@@ -145,8 +145,10 @@ rollback_application() {
        bash "${SCRIPT_DIR}/healthcheck.sh" &&
        VALIDATE_IMAGE_TAG="${CURRENT_TAG}" bash "${SCRIPT_DIR}/validate-deployment-state.sh" post-deploy; then
         atomic_write "${DEPLOY_STATE_DIR}/update-in-progress" "${CURRENT_TAG}: ROLLED_BACK"
+        commit_deployment_state "${CURRENT_TAG}" "${PREVIOUS_TAG:-}" "${CURRENT_TAG#sha-}" "${PREVIOUS_TAG#sha-}" "ROLLED_BACK"
     else
         atomic_write "${DEPLOY_STATE_DIR}/update-in-progress" "${CURRENT_TAG}: ROLLBACK_FAILED"
+        commit_deployment_state "${CURRENT_TAG}" "${PREVIOUS_TAG:-}" "${CURRENT_TAG#sha-}" "${PREVIOUS_TAG#sha-}" "ROLLBACK_FAILED"
         echo '[FATAL] Application rollback did not pass verification.' >&2
     fi
     timing_record rollback "${rollback_start}" "${failure_code}"

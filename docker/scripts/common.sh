@@ -460,43 +460,73 @@ commit_deployment_state() {
         prev_rel="$(<"${DEPLOY_STATE_DIR}/release-previous")"
     fi
 
+    local resolved_images=""
+    resolved_images="$(resolve_service_image_references "${curr_tag}" 2>/dev/null || true)"
+
     local state_json
     state_json="$(python3 -c '
 import json, sys
 
+status = sys.argv[1]
+curr_rel = sys.argv[2]
+curr_tag = sys.argv[3]
+prev_rel = sys.argv[4]
+prev_tag = sys.argv[5]
+now = sys.argv[6]
+journal_id = sys.argv[7]
+resolved_raw = sys.argv[8]
+
 services = ["app", "web", "queue", "queue-bybit", "queue-binance", "scheduler", "market-ws", "audit-worker", "backtest-worker", "research-worker"]
-services_dict = {s: {"image_reference": "", "container_status": "configured"} for s in services}
+resolved_map = {}
+if resolved_raw:
+    for line in resolved_raw.strip().splitlines():
+        if "=" in line:
+            svc, ref = line.split("=", 1)
+            resolved_map[svc.strip()] = ref.strip()
+
+services_dict = {}
+for s in services:
+    ref = resolved_map.get(s, "")
+    c_status = "running" if status in ("CONSISTENT", "ROLLED_BACK") else "configured"
+    services_dict[s] = {
+        "image_reference": ref,
+        "container_status": c_status
+    }
 
 state = {
     "schema_version": "1.0.0",
-    "status": sys.argv[1],
-    "current_release_sha": sys.argv[2],
-    "current_image_tag": sys.argv[3],
-    "previous_release_sha": sys.argv[4],
-    "previous_image_tag": sys.argv[5],
+    "status": status,
+    "current_release_sha": curr_rel,
+    "current_image_tag": curr_tag,
+    "previous_release_sha": prev_rel,
+    "previous_image_tag": prev_tag,
     "services": services_dict,
-    "updated_at": sys.argv[6],
-    "last_journal_id": sys.argv[7]
+    "updated_at": now,
+    "last_journal_id": journal_id
 }
 print(json.dumps(state, indent=2))
-' "${status}" "${curr_rel}" "${curr_tag}" "${prev_rel}" "${prev_tag}" "${now}" "${journal_id}")"
+' "${status}" "${curr_rel}" "${curr_tag}" "${prev_rel}" "${prev_tag}" "${now}" "${journal_id}" "${resolved_images}")"
 
     atomic_write "${DEPLOY_STATE_DIR}/deploy-state.json" "${state_json}"
 
-    # In DEGRADED_UNVERIFIED mode, DO NOT update canonical successful release projections
-    if [[ "${status}" == "DEGRADED_UNVERIFIED" ]]; then
-        echo "[WARN] Deployment state committed as DEGRADED_UNVERIFIED. Canonical successful release metadata was NOT modified." >&2
+    # In DEGRADED_UNVERIFIED or ROLLBACK_FAILED mode, DO NOT update canonical successful release projections
+    if [[ "${status}" == "DEGRADED_UNVERIFIED" || "${status}" == "ROLLBACK_FAILED" ]]; then
+        echo "[WARN] Deployment state committed as ${status}. Canonical successful release metadata was NOT modified." >&2
         return 0
     fi
 
     atomic_write "${DEPLOY_STATE_DIR}/.deploy-current" "${curr_tag}"
     if [[ -n "${prev_tag}" ]]; then
         atomic_write "${DEPLOY_STATE_DIR}/.deploy-previous" "${prev_tag}"
+    elif [[ -f "${DEPLOY_STATE_DIR}/.deploy-previous" && "$(<"${DEPLOY_STATE_DIR}/.deploy-previous")" == "${curr_tag}" ]]; then
+        rm -f -- "${DEPLOY_STATE_DIR}/.deploy-previous"
     fi
     if [[ -n "${curr_rel}" ]]; then
         atomic_write "${DEPLOY_STATE_DIR}/release-current" "${curr_rel}"
     fi
     if [[ -n "${prev_rel}" ]]; then
         atomic_write "${DEPLOY_STATE_DIR}/release-previous" "${prev_rel}"
+    elif [[ -f "${DEPLOY_STATE_DIR}/release-previous" && "$(<"${DEPLOY_STATE_DIR}/release-previous")" == "${curr_rel}" ]]; then
+        rm -f -- "${DEPLOY_STATE_DIR}/release-previous"
     fi
 }

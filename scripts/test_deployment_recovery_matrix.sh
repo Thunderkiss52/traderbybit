@@ -149,7 +149,7 @@ assert_data_preserved() {
 }
 
 PASSED_COUNT=0
-TOTAL_COUNT=12
+TOTAL_COUNT=16
 
 # Create Docker test-double wrapper directory
 MOCK_BIN="${TEST_DIR}/mock_bin"
@@ -717,6 +717,174 @@ else
     exit 1
 fi
 assert_data_preserved "SC-12"
+
+# ==============================================================================
+# SC-13: Uniform Running Container Release Mismatch Detection & Reconciliation
+# ==============================================================================
+echo ""
+echo "=== Running SC-13: Uniform Running Release Mismatch Detection & Reconciliation ==="
+SC13_DIR="${TEST_DIR}/sc13"
+mkdir -p "${SC13_DIR}"
+printf "sha-94c853458e5a38f4bc46f32c4f95c56f52216e6c\n" >"${SC13_DIR}/.deploy-current"
+printf "sha-0000000000000000000000000000000000000000\n" >"${SC13_DIR}/.deploy-previous"
+printf "94c853458e5a38f4bc46f32c4f95c56f52216e6c\n" >"${SC13_DIR}/release-current"
+printf "0000000000000000000000000000000000000000\n" >"${SC13_DIR}/release-previous"
+
+# Configure all 10 services to uniformly run 37d30ee...
+cat <<'EOF' >"${MOCK_CONFIG}"
+{
+  "services": {
+    "app": {"cid": "cid_app", "image": "bybit-signals-app:sha-37d30ee343b6305bc764281c4baa7f755863e2f5"},
+    "web": {"cid": "cid_web", "image": "bybit-signals-web:sha-37d30ee343b6305bc764281c4baa7f755863e2f5"},
+    "queue": {"cid": "cid_queue", "image": "bybit-signals-app:sha-37d30ee343b6305bc764281c4baa7f755863e2f5"},
+    "queue-bybit": {"cid": "cid_queue-bybit", "image": "bybit-signals-app:sha-37d30ee343b6305bc764281c4baa7f755863e2f5"},
+    "queue-binance": {"cid": "cid_queue-binance", "image": "bybit-signals-app:sha-37d30ee343b6305bc764281c4baa7f755863e2f5"},
+    "scheduler": {"cid": "cid_scheduler", "image": "bybit-signals-app:sha-37d30ee343b6305bc764281c4baa7f755863e2f5"},
+    "market-ws": {"cid": "cid_market-ws", "image": "bybit-signals-app:sha-37d30ee343b6305bc764281c4baa7f755863e2f5"},
+    "audit-worker": {"cid": "cid_audit-worker", "image": "bybit-signals-app:sha-37d30ee343b6305bc764281c4baa7f755863e2f5"},
+    "backtest-worker": {"cid": "cid_backtest-worker", "image": "bybit-signals-app:sha-37d30ee343b6305bc764281c4baa7f755863e2f5"},
+    "research-worker": {"cid": "cid_research-worker", "image": "bybit-signals-research-worker:sha-37d30ee343b6305bc764281c4baa7f755863e2f5"}
+  }
+}
+EOF
+
+# Part A: AUTO_RECOVER_ON_DEPLOY=0 must fail with uniform mismatch diagnostic
+if PATH="${MOCK_BIN}:${PATH}" MOCK_DOCKER_STATE="${MOCK_CONFIG}" SKIP_DOCKER_INSPECT=0 AUTO_RECOVER_ON_DEPLOY=0 \
+   DEPLOY_STATE_DIR="${SC13_DIR}" bash "${PROJECT_ROOT}/docker/scripts/validate-deployment-state.sh" pre-deploy >"${SC13_DIR}/out_noauto.log" 2>&1; then
+    echo "[FAIL] SC-13: Validation passed unexpectedly on uniform container mismatch with AUTO_RECOVER_ON_DEPLOY=0!"
+    exit 1
+else
+    if grep -q "Uniform container release mismatch detected in pre-deploy check" "${SC13_DIR}/out_noauto.log"; then
+        echo "  [PASS] SC-13A: Uniform container release mismatch detected with exact actionable diagnostics."
+    else
+        echo "[FAIL] SC-13A missing uniform mismatch diagnostic:"
+        cat "${SC13_DIR}/out_noauto.log"
+        exit 1
+    fi
+fi
+
+# Part B: AUTO_RECOVER_ON_DEPLOY=1 must automatically reconcile metadata to running release
+if FORCE_CONSISTENT=1 PATH="${MOCK_BIN}:${PATH}" MOCK_DOCKER_STATE="${MOCK_CONFIG}" SKIP_DOCKER_INSPECT=0 AUTO_RECOVER_ON_DEPLOY=1 SKIP_READINESS=1 \
+   DEPLOY_STATE_DIR="${SC13_DIR}" bash "${PROJECT_ROOT}/docker/scripts/validate-deployment-state.sh" pre-deploy >"${SC13_DIR}/out_auto.log" 2>&1; then
+    recovered_tag="$(<"${SC13_DIR}/.deploy-current")"
+    if [[ "${recovered_tag}" == "sha-37d30ee343b6305bc764281c4baa7f755863e2f5" ]]; then
+        echo "[PASS] SC-13: AUTO_RECOVER_ON_DEPLOY=1 successfully reconciled metadata to running containers."
+        PASSED_COUNT=$((PASSED_COUNT + 1))
+    else
+        echo "[FAIL] SC-13: Unexpected recovered tag: ${recovered_tag}"
+        exit 1
+    fi
+else
+    echo "[FAIL] SC-13B: Automated recovery failed:"
+    cat "${SC13_DIR}/out_auto.log"
+    exit 1
+fi
+assert_data_preserved "SC-13"
+
+# ==============================================================================
+# SC-14: Completed Historical Recovery Journal Archival
+# ==============================================================================
+echo ""
+echo "=== Running SC-14: Completed Historical Recovery Journal Archival ==="
+SC14_DIR="${TEST_DIR}/sc14"
+mkdir -p "${SC14_DIR}"
+OLD_REC_ID="hist-uuid-sc14-old"
+cat <<EOF >"${SC14_DIR}/recovery-journal.json"
+{
+  "recovery_id": "${OLD_REC_ID}",
+  "updated_at": "2026-10-20T12:00:00Z",
+  "state": "COMMITTED",
+  "target_tag": "sha-37d30ee343b6305bc764281c4baa7f755863e2f5",
+  "target_previous_tag": "sha-0000000000000000000000000000000000000000",
+  "target_release": "37d30ee343b6305bc764281c4baa7f755863e2f5",
+  "target_previous_release": "0000000000000000000000000000000000000000",
+  "details": {"status": "CONSISTENT"}
+}
+EOF
+printf "sha-37d30ee343b6305bc764281c4baa7f755863e2f5\n" >"${SC14_DIR}/.deploy-current"
+printf "37d30ee343b6305bc764281c4baa7f755863e2f5\n" >"${SC14_DIR}/release-current"
+
+if SKIP_DOCKER_INSPECT=1 DEPLOY_STATE_DIR="${SC14_DIR}" bash "${PROJECT_ROOT}/docker/scripts/recover-deployment-state.sh" \
+   --repair --skip-readiness \
+   --target-tag "sha-94c853458e5a38f4bc46f32c4f95c56f52216e6c" \
+   --previous-tag "sha-37d30ee343b6305bc764281c4baa7f755863e2f5" >"${SC14_DIR}/out.log" 2>&1; then
+    if [[ -f "${SC14_DIR}/recovery-journal-${OLD_REC_ID}.json" ]]; then
+        echo "[PASS] SC-14: Completed historical journal archived and new recovery session succeeded without conflict."
+        PASSED_COUNT=$((PASSED_COUNT + 1))
+    else
+        echo "[FAIL] SC-14: Historical journal was not archived to recovery-journal-${OLD_REC_ID}.json!"
+        exit 1
+    fi
+else
+    echo "[FAIL] SC-14 recovery failed on completed historical journal:"
+    cat "${SC14_DIR}/out.log"
+    exit 1
+fi
+assert_data_preserved "SC-14"
+
+# ==============================================================================
+# SC-15: Interrupted Update Detection in pre-deploy
+# ==============================================================================
+echo ""
+echo "=== Running SC-15: Interrupted Update Detection in pre-deploy ==="
+SC15_DIR="${TEST_DIR}/sc15"
+mkdir -p "${SC15_DIR}"
+printf "sha-94c853458e5a38f4bc46f32c4f95c56f52216e6c\n" >"${SC15_DIR}/.deploy-current"
+printf "94c853458e5a38f4bc46f32c4f95c56f52216e6c\n" >"${SC15_DIR}/release-current"
+echo "sha-94c853458e5a38f4bc46f32c4f95c56f52216e6c -> sha-new: MIGRATING" >"${SC15_DIR}/update-in-progress"
+
+if SKIP_DOCKER_INSPECT=1 DEPLOY_STATE_DIR="${SC15_DIR}" bash "${PROJECT_ROOT}/docker/scripts/validate-deployment-state.sh" pre-deploy >"${SC15_DIR}/out.log" 2>&1; then
+    echo "[FAIL] SC-15: Validation passed unexpectedly when update-in-progress had MIGRATING!"
+    exit 1
+else
+    if grep -q "interrupted or schema-blocked update is pending" "${SC15_DIR}/out.log"; then
+        echo "[PASS] SC-15: Pending interrupted update detected and failed closed in pre-deploy."
+        PASSED_COUNT=$((PASSED_COUNT + 1))
+    else
+        echo "[FAIL] SC-15 missing interrupted update diagnostic:"
+        cat "${SC15_DIR}/out.log"
+        exit 1
+    fi
+fi
+assert_data_preserved "SC-15"
+
+# ==============================================================================
+# SC-16: Rollback Failed Status Detection in deploy-state.json
+# ==============================================================================
+echo ""
+echo "=== Running SC-16: Rollback Failed Status Detection ==="
+SC16_DIR="${TEST_DIR}/sc16"
+mkdir -p "${SC16_DIR}"
+cat <<'EOF' >"${SC16_DIR}/deploy-state.json"
+{
+  "schema_version": "1.0.0",
+  "status": "ROLLBACK_FAILED",
+  "current_release_sha": "94c853458e5a38f4bc46f32c4f95c56f52216e6c",
+  "current_image_tag": "sha-94c853458e5a38f4bc46f32c4f95c56f52216e6c",
+  "previous_release_sha": "37d30ee343b6305bc764281c4baa7f755863e2f5",
+  "previous_image_tag": "sha-37d30ee343b6305bc764281c4baa7f755863e2f5",
+  "services": {},
+  "updated_at": "2026-11-05T12:00:00Z",
+  "last_journal_id": "test-uuid-sc16"
+}
+EOF
+printf "sha-94c853458e5a38f4bc46f32c4f95c56f52216e6c\n" >"${SC16_DIR}/.deploy-current"
+printf "94c853458e5a38f4bc46f32c4f95c56f52216e6c\n" >"${SC16_DIR}/release-current"
+
+if SKIP_DOCKER_INSPECT=1 DEPLOY_STATE_DIR="${SC16_DIR}" bash "${PROJECT_ROOT}/docker/scripts/validate-deployment-state.sh" pre-deploy >"${SC16_DIR}/out.log" 2>&1; then
+    echo "[FAIL] SC-16: Validation passed unexpectedly on ROLLBACK_FAILED status!"
+    exit 1
+else
+    if grep -q "status ROLLBACK_FAILED" "${SC16_DIR}/out.log"; then
+        echo "[PASS] SC-16: State recording ROLLBACK_FAILED failed closed before deployment."
+        PASSED_COUNT=$((PASSED_COUNT + 1))
+    else
+        echo "[FAIL] SC-16 missing ROLLBACK_FAILED diagnostic:"
+        cat "${SC16_DIR}/out.log"
+        exit 1
+    fi
+fi
+assert_data_preserved "SC-16"
 
 echo ""
 echo "================================================================="

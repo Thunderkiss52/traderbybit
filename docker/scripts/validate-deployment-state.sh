@@ -116,10 +116,23 @@ if [[ -z "${PREVIOUS_RELEASE}" && -f "${REL_PREV_FILE}" ]]; then
     PREVIOUS_RELEASE="$(<"${REL_PREV_FILE}")"
 fi
 
-# 1. State Corruption Detection
+# 1. Pre-deploy Interrupted Update Guard
+if [[ "${MODE}" == "pre-deploy" && -f "${DEPLOY_STATE_DIR}/update-in-progress" ]]; then
+    progress_content="$(<"${DEPLOY_STATE_DIR}/update-in-progress")"
+    if [[ ! "${progress_content}" =~ :[[:space:]]*ROLLED_BACK$ ]]; then
+        echo "[FATAL] An interrupted or schema-blocked update is pending in ${DEPLOY_STATE_DIR}/update-in-progress: ${progress_content}" >&2
+        echo "Deployment halted fail-closed before any container or database modifications." >&2
+        exit 1
+    fi
+fi
+
+# 2. State Corruption Detection
 if [[ "${STATE_STATUS}" == "CORRUPTED" ]]; then
     IS_CORRUPTED=1
     CORRUPTION_REASON="Canonical deploy-state.json explicitly records status CORRUPTED."
+elif [[ "${STATE_STATUS}" == "ROLLBACK_FAILED" ]]; then
+    IS_CORRUPTED=1
+    CORRUPTION_REASON="Canonical deploy-state.json records status ROLLBACK_FAILED: a prior rollback failed verification."
 elif [[ -n "${CURRENT_TAG}" && -n "${PREVIOUS_TAG}" && "${CURRENT_TAG}" == "${PREVIOUS_TAG}" ]]; then
     if [[ -n "${CURRENT_RELEASE}" && -n "${PREVIOUS_RELEASE}" && "${CURRENT_RELEASE}" != "${PREVIOUS_RELEASE}" ]]; then
         IS_CORRUPTED=1
@@ -140,11 +153,14 @@ fi
 declare -A RUNNING_IMAGES
 declare -A SERVICE_STATUS
 declare -A EXPECTED_IMAGES
+declare -A DETECTED_TAGS
 
-for svc in "${APPLICATION_SERVICES[@]}"; do
-    RUNNING_IMAGES["${svc}"]="NOT_CHECKED"
-    SERVICE_STATUS["${svc}"]="NOT_CHECKED"
-done
+HAS_DRIFT=0
+IS_UNIFORM_MISMATCH=0
+UNIFORM_TAG=""
+UNIFORM_RELEASE=""
+RUNNING_COUNT=0
+TOTAL_SERVICES=${#APPLICATION_SERVICES[@]}
 
 if [[ "${SKIP_DOCKER_INSPECT:-0}" != "1" ]]; then
     validation_tag="${VALIDATE_IMAGE_TAG:-${CURRENT_TAG:-${IMAGE_TAG}}}"
@@ -161,12 +177,49 @@ if [[ "${SKIP_DOCKER_INSPECT:-0}" != "1" ]]; then
             SERVICE_STATUS["${svc}"]="${st}"
             if ! verify_image_identity "${svc}" "${EXPECTED_IMAGES[${svc}]}"; then HAS_DRIFT=1; fi
             if [[ "${MODE}" == "post-deploy" && "${st}" != healthy && "${st}" != running ]]; then HAS_DRIFT=1; fi
+            if [[ "${st}" == "healthy" || "${st}" == "running" ]]; then
+                RUNNING_COUNT=$((RUNNING_COUNT + 1))
+            fi
+            svc_tag=""
+            if [[ "${img}" =~ :([a-zA-Z0-9_.-]+)(@|$) ]]; then
+                svc_tag="${BASH_REMATCH[1]}"
+            fi
+            if [[ -n "${svc_tag}" ]]; then
+                DETECTED_TAGS["${svc_tag}"]=1
+            fi
         else
             RUNNING_IMAGES["${svc}"]="NOT_RUNNING"
             SERVICE_STATUS["${svc}"]="STOPPED"
             if [[ -n "${CURRENT_TAG}${VALIDATE_IMAGE_TAG:-}" ]]; then HAS_DRIFT=1; fi
         fi
     done
+
+    # Check if all 10 running containers are uniformly on the same release tag
+    if (( HAS_DRIFT )) && [[ "${RUNNING_COUNT}" -eq "${TOTAL_SERVICES}" ]] && [[ "${#DETECTED_TAGS[@]}" -eq 1 ]]; then
+        candidate_uniform_tag="${!DETECTED_TAGS[@]}"
+        if [[ -n "${candidate_uniform_tag}" && "${candidate_uniform_tag}" != "${validation_tag}" ]]; then
+            candidate_resolved="$(resolve_service_image_references "${candidate_uniform_tag}" 2>/dev/null || true)"
+            if [[ -n "${candidate_resolved}" ]]; then
+                uniform_matches=1
+                while IFS='=' read -r c_svc c_ref; do
+                    [[ -n "${c_svc}" ]] || continue
+                    if ! verify_image_identity "${c_svc}" "${c_ref}" >/dev/null 2>&1; then
+                        uniform_matches=0
+                        break
+                    fi
+                done <<< "${candidate_resolved}"
+                if (( uniform_matches )); then
+                    IS_UNIFORM_MISMATCH=1
+                    UNIFORM_TAG="${candidate_uniform_tag}"
+                    if [[ "${UNIFORM_TAG}" =~ ^sha-([0-9a-f]{40})$ ]]; then
+                        UNIFORM_RELEASE="${BASH_REMATCH[1]}"
+                    else
+                        UNIFORM_RELEASE="${UNIFORM_TAG#sha-}"
+                    fi
+                fi
+            fi
+        fi
+    fi
 fi
 
 # 3. Mode-specific verifications
@@ -182,7 +235,13 @@ case "${MODE}" in
         if (( IS_CORRUPTED )); then
             echo "Corruption Details   : ${CORRUPTION_REASON}"
         fi
-        echo "Container Drift      : $( (( HAS_DRIFT )) && echo 'YES (Mixed Versions Detected)' || echo 'NO' )"
+        if (( IS_UNIFORM_MISMATCH )); then
+            echo "Container Drift      : YES (Uniform Release Mismatch: containers=${UNIFORM_TAG} vs metadata=${CURRENT_TAG})"
+        elif (( HAS_DRIFT )); then
+            echo "Container Drift      : YES (Mixed Versions Detected)"
+        else
+            echo "Container Drift      : NO"
+        fi
         echo "Running Services:"
         for svc in "${APPLICATION_SERVICES[@]}"; do
             printf "  %-16s %-10s %s\n" "${svc}" "[${SERVICE_STATUS["${svc}"]}]" "${RUNNING_IMAGES["${svc}"]}"
@@ -228,8 +287,40 @@ case "${MODE}" in
                 printf "  %-16s %s\n" "${svc}" "${RUNNING_IMAGES["${svc}"]}" >&2
             done
             if [[ "${ALLOW_CONTAINER_DRIFT:-0}" != "1" ]]; then
-                echo "[FATAL] Mixed-version containers detected in pre-deploy check. Realign containers before deploying." >&2
-                exit 1
+                if (( IS_UNIFORM_MISMATCH )); then
+                    echo "[INFO] Detected uniform running release (${UNIFORM_TAG}) differing from canonical metadata (${CURRENT_TAG})." >&2
+                    if [[ "${AUTO_RECOVER_ON_DEPLOY:-0}" == "1" ]]; then
+                        echo "[INFO] AUTO_RECOVER_ON_DEPLOY=1 active: reconciling deployment metadata to uniform running release ${UNIFORM_TAG}..." >&2
+                        extra_recovery_flags=()
+                        if [[ "${SKIP_READINESS:-0}" == "1" ]]; then
+                            extra_recovery_flags+=(--skip-readiness)
+                        fi
+                        prev_rec_tag="${PREVIOUS_TAG:-}"
+                        prev_rec_rel="${PREVIOUS_RELEASE:-}"
+                        if [[ "${prev_rec_tag}" == "${UNIFORM_TAG}" ]]; then
+                            prev_rec_tag=""
+                            prev_rec_rel=""
+                        fi
+                        AUTO_RECOVER_ON_DEPLOY=0 bash "${SCRIPT_DIR}/recover-deployment-state.sh" --repair "${extra_recovery_flags[@]}" \
+                            --target-tag "${UNIFORM_TAG}" \
+                            --target-release "${UNIFORM_RELEASE}" \
+                            ${prev_rec_tag:+--previous-tag "${prev_rec_tag}"} \
+                            ${prev_rec_rel:+--previous-release "${prev_rec_rel}"} || {
+                            echo "[FATAL] Automated pre-deploy metadata reconciliation failed." >&2
+                            exit 1
+                        }
+                        echo "[INFO] Automated pre-deploy metadata reconciliation completed. Re-verifying deployment state..." >&2
+                        exec bash "${BASH_SOURCE[0]}" pre-deploy
+                    fi
+                    echo "[FATAL] Uniform container release mismatch detected in pre-deploy check." >&2
+                    echo "All 10 application containers are uniformly running release '${UNIFORM_TAG}', but canonical metadata records '${CURRENT_TAG}'." >&2
+                    echo "Realign deployment metadata before deploying:" >&2
+                    echo "  recover-deployment-state.sh --repair --target-tag \"${UNIFORM_TAG}\"" >&2
+                    exit 1
+                else
+                    echo "[FATAL] Mixed-version containers detected in pre-deploy check. Realign containers before deploying." >&2
+                    exit 1
+                fi
             fi
         fi
         echo "Pre-deployment state validation passed."

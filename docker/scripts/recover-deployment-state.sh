@@ -22,6 +22,10 @@ while [[ $# -gt 0 ]]; do
             MODE="repair"
             shift
             ;;
+        --realign-metadata)
+            MODE="repair"
+            shift
+            ;;
         --realign-containers)
             REALIGN_CONTAINERS=1
             shift
@@ -96,7 +100,12 @@ fi
 declare -A RUNNING_IMAGES
 declare -A SERVICE_STATUS
 declare -A EXPECTED_IMAGES
+declare -A DETECTED_TAGS
 HAS_DRIFT=0
+UNIFORM_RUNNING_TAG=""
+UNIFORM_RUNNING_RELEASE=""
+RUNNING_COUNT=0
+TOTAL_SERVICES=${#APPLICATION_SERVICES[@]}
 
 for svc in "${APPLICATION_SERVICES[@]}"; do
     RUNNING_IMAGES["${svc}"]="NOT_CHECKED"
@@ -118,6 +127,16 @@ if [[ "${SKIP_DOCKER_INSPECT:-0}" != "1" ]]; then
             SERVICE_STATUS["${svc}"]="${st}"
             if ! verify_image_identity "${svc}" "${EXPECTED_IMAGES[${svc}]}"; then HAS_DRIFT=1; fi
             if [[ "${MODE}" == "post-deploy" && "${st}" != healthy && "${st}" != running ]]; then HAS_DRIFT=1; fi
+            if [[ "${st}" == "healthy" || "${st}" == "running" ]]; then
+                RUNNING_COUNT=$((RUNNING_COUNT + 1))
+            fi
+            svc_tag=""
+            if [[ "${img}" =~ :([a-zA-Z0-9_.-]+)(@|$) ]]; then
+                svc_tag="${BASH_REMATCH[1]}"
+            fi
+            if [[ -n "${svc_tag}" ]]; then
+                DETECTED_TAGS["${svc_tag}"]=1
+            fi
         else
             RUNNING_IMAGES["${svc}"]="NOT_RUNNING"
             SERVICE_STATUS["${svc}"]="STOPPED"
@@ -125,6 +144,28 @@ if [[ "${SKIP_DOCKER_INSPECT:-0}" != "1" ]]; then
         fi
     done
 
+    if [[ "${RUNNING_COUNT}" -eq "${TOTAL_SERVICES}" ]] && [[ "${#DETECTED_TAGS[@]}" -eq 1 ]]; then
+        candidate_tag="${!DETECTED_TAGS[@]}"
+        candidate_resolved="$(resolve_service_image_references "${candidate_tag}" 2>/dev/null || true)"
+        if [[ -n "${candidate_resolved}" ]]; then
+            uniform_matches=1
+            while IFS='=' read -r c_svc c_ref; do
+                [[ -n "${c_svc}" ]] || continue
+                if ! verify_image_identity "${c_svc}" "${c_ref}" >/dev/null 2>&1; then
+                    uniform_matches=0
+                    break
+                fi
+            done <<< "${candidate_resolved}"
+            if (( uniform_matches )); then
+                UNIFORM_RUNNING_TAG="${candidate_tag}"
+                if [[ "${UNIFORM_RUNNING_TAG}" =~ ^sha-([0-9a-f]{40})$ ]]; then
+                    UNIFORM_RUNNING_RELEASE="${BASH_REMATCH[1]}"
+                else
+                    UNIFORM_RUNNING_RELEASE="${UNIFORM_RUNNING_TAG#sha-}"
+                fi
+            fi
+        fi
+    fi
 fi
 
 if [[ "${MODE}" == "inspect" ]]; then
@@ -135,13 +176,24 @@ if [[ "${MODE}" == "inspect" ]]; then
     echo "Current Release SHA  : ${CURRENT_RELEASE:-<unset>}"
     echo "Previous Release SHA : ${PREVIOUS_RELEASE:-<unset>}"
     echo "Status               : ${STATE_STATUS:-<unknown>}"
-    echo "Container Drift      : $( (( HAS_DRIFT )) && echo 'YES (Mixed Versions Detected)' || echo 'NO' )"
+    if [[ -n "${UNIFORM_RUNNING_TAG}" && "${UNIFORM_RUNNING_TAG}" != "${CURRENT_TAG}" ]]; then
+        echo "Container Drift      : YES (Uniform Release Mismatch: containers=${UNIFORM_RUNNING_TAG} vs metadata=${CURRENT_TAG})"
+    elif (( HAS_DRIFT )); then
+        echo "Container Drift      : YES (Mixed Versions Detected)"
+    else
+        echo "Container Drift      : NO"
+    fi
     echo "Services:"
     for svc in "${APPLICATION_SERVICES[@]}"; do
         printf "  %-16s %-10s %s\n" "${svc}" "[${SERVICE_STATUS["${svc}"]:-UNKNOWN}]" "${RUNNING_IMAGES["${svc}"]:-UNKNOWN}"
     done
     if [[ -f "${JOURNAL_FILE}" ]]; then
-        echo "Active Journal Found: ${JOURNAL_FILE}"
+        j_state_val="$(python3 -c "import json; data=json.load(open('${JOURNAL_FILE}')); print(data.get('state',''))" 2>/dev/null || true)"
+        if [[ "${j_state_val}" == "COMMITTED" ]]; then
+            echo "Completed Journal Found: ${JOURNAL_FILE}"
+        else
+            echo "Active Journal Found: ${JOURNAL_FILE}"
+        fi
         python3 -c "import json; data=json.load(open('${JOURNAL_FILE}')); print(f'  Recovery ID: {data.get(\"recovery_id\")} | State: {data.get(\"state\")} | Target: {data.get(\"target_tag\")}')" 2>/dev/null || true
     fi
     exit 0
@@ -179,6 +231,10 @@ fi
 
 # Determine target tags and releases
 TARGET_TAG="${TARGET_TAG_OVERRIDE}"
+if [[ -z "${TARGET_TAG}" && -n "${UNIFORM_RUNNING_TAG}" ]]; then
+    echo "[INFO] Running containers are uniformly on ${UNIFORM_RUNNING_TAG}; adopting as recovery target tag."
+    TARGET_TAG="${UNIFORM_RUNNING_TAG}"
+fi
 if [[ -z "${TARGET_TAG}" ]]; then
     TARGET_TAG="${CURRENT_TAG}"
 fi
@@ -193,9 +249,14 @@ TARGET_PREV_TAG="${PREV_TAG_OVERRIDE}"
 if [[ -z "${TARGET_PREV_TAG}" ]]; then
     if [[ -n "${PREVIOUS_TAG}" && "${PREVIOUS_TAG}" != "${TARGET_TAG}" ]]; then
         TARGET_PREV_TAG="${PREVIOUS_TAG}"
+    elif [[ -n "${CURRENT_TAG}" && "${CURRENT_TAG}" != "${TARGET_TAG}" ]]; then
+        TARGET_PREV_TAG=""
     elif [[ -n "${PREVIOUS_RELEASE}" && "${PREVIOUS_RELEASE}" != "${CURRENT_RELEASE}" ]]; then
         TARGET_PREV_TAG="sha-${PREVIOUS_RELEASE}"
     fi
+fi
+if [[ -n "${TARGET_PREV_TAG}" && "${TARGET_PREV_TAG}" == "${TARGET_TAG}" ]]; then
+    TARGET_PREV_TAG=""
 fi
 
 # Deterministic resolution of omitted release SHAs
@@ -221,6 +282,10 @@ if [[ -z "${TARGET_PREV_RELEASE}" && -n "${TARGET_PREV_TAG}" ]]; then
         echo "[FATAL] Unable to deterministically resolve previous release SHA from '${TARGET_PREV_TAG}'. Provide --previous-release explicitly." >&2
         exit 1
     fi
+fi
+if [[ -n "${TARGET_PREV_RELEASE}" && "${TARGET_PREV_RELEASE}" == "${TARGET_RELEASE}" ]]; then
+    TARGET_PREV_RELEASE=""
+    TARGET_PREV_TAG=""
 fi
 
 if [[ -z "${TARGET_TAG}" ]]; then
@@ -278,13 +343,17 @@ except Exception:
     fi
 
     IFS='|' read -r j_id j_state j_target <<< "${journal_valid}"
-    if [[ -n "${j_target}" && "${j_target}" != "${TARGET_TAG}" ]]; then
-        echo "[FATAL] Active journal target '${j_target}' conflicts with requested target '${TARGET_TAG}'." >&2
-        exit 1
+    if [[ "${j_state}" == "COMMITTED" ]]; then
+        echo "Found completed historical recovery journal (session ${j_id}). Archiving to recovery-journal-${j_id}.json..."
+        mv -f "${JOURNAL_FILE}" "${DEPLOY_STATE_DIR}/recovery-journal-${j_id}.json"
+    else
+        if [[ -n "${j_target}" && "${j_target}" != "${TARGET_TAG}" ]]; then
+            echo "[FATAL] Active journal target '${j_target}' conflicts with requested target '${TARGET_TAG}'." >&2
+            exit 1
+        fi
+        RECOVERY_ID="${j_id}"
+        echo "Resuming recovery session ID: ${RECOVERY_ID} (prior state: ${j_state})"
     fi
-
-    RECOVERY_ID="${j_id}"
-    echo "Resuming recovery session ID: ${RECOVERY_ID} (prior state: ${j_state})"
 fi
 
 if [[ -z "${RECOVERY_ID}" ]]; then

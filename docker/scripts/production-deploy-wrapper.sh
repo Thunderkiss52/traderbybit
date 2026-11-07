@@ -14,13 +14,11 @@ fi
 if [[ "${1:-}" == "recover" ]]; then
     shift
     recovery_script=""
-    if [[ -f "${BASE_DIR}/current/docker/scripts/recover-deployment-state.sh" ]]; then
+    candidate="$(ls -td "${RELEASES_DIR}"/* 2>/dev/null | head -n 1 || true)"
+    if [[ -n "${candidate}" && -f "${candidate}/docker/scripts/recover-deployment-state.sh" ]]; then
+        recovery_script="${candidate}/docker/scripts/recover-deployment-state.sh"
+    elif [[ -f "${BASE_DIR}/current/docker/scripts/recover-deployment-state.sh" ]]; then
         recovery_script="${BASE_DIR}/current/docker/scripts/recover-deployment-state.sh"
-    else
-        candidate="$(ls -td "${RELEASES_DIR}"/* 2>/dev/null | head -n 1 || true)"
-        if [[ -n "${candidate}" && -f "${candidate}/docker/scripts/recover-deployment-state.sh" ]]; then
-            recovery_script="${candidate}/docker/scripts/recover-deployment-state.sh"
-        fi
     fi
     if [[ -n "${recovery_script}" ]]; then
         exec env ENV_FILE="${ENV_FILE}" DEPLOY_STATE_DIR="${STATE_DIR}" bash "${recovery_script}" "$@"

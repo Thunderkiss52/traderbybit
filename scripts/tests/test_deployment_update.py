@@ -141,6 +141,19 @@ MIN_FREE_DISK_GB=0
                 self.assertEqual(OLD, (self.state / '.deploy-current').read_text().strip())
                 self.assertEqual(PREVIOUS, (self.state / '.deploy-previous').read_text().strip())
                 self.assertIn('ROLLED_BACK', (self.state / 'update-in-progress').read_text())
+                if (self.state / 'deploy-state.json').exists():
+                    state_data = json.loads((self.state / 'deploy-state.json').read_text())
+                    self.assertEqual('ROLLED_BACK', state_data['status'])
+                    self.assertEqual(OLD, state_data['current_image_tag'])
+                    self.assertEqual(OLD[4:], state_data['current_release_sha'])
+                    self.assertIn('app', state_data.get('services', {}))
+
+    def test_interrupted_migration_in_progress_blocks_predeploy_validator(self):
+        (self.state / 'update-in-progress').write_text(f'{OLD} -> {NEW}: MIGRATING\n')
+        val_res = subprocess.run(['bash', str(self.root / 'docker/scripts/validate-deployment-state.sh'), 'pre-deploy'],
+                                 env=self.env, text=True, capture_output=True)
+        self.assertNotEqual(0, val_res.returncode)
+        self.assertIn('interrupted or schema-blocked update is pending', val_res.stdout + val_res.stderr)
 
     def test_forward_migration_blocks_application_rollback(self):
         result = self.update('forward-migration')
