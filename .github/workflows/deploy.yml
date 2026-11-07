@@ -145,16 +145,16 @@ jobs:
             # GitHub supplies workflow start/queue timestamps. The workflow's final
             # duration remains the Actions run duration after this step completes.
             python3 - <<'PYCODE'
-import json, os, urllib.request, urllib.error
-url = f"https://api.github.com/repos/{os.environ['GITHUB_REPOSITORY']}/actions/runs/{os.environ['GITHUB_RUN_ID']}"
-request = urllib.request.Request(url, headers={"Authorization": "Bearer " + os.environ["GH_TOKEN"], "Accept": "application/vnd.github+json"})
-try:
-    with urllib.request.urlopen(request, timeout=30) as response:
-        run = json.load(response)
-    print("VECTOR_WORKFLOW_CLOCK " + json.dumps({key: run.get(key) for key in ("created_at", "run_started_at", "updated_at", "status")}))
-except (OSError, ValueError) as error:
-    print("::warning::Workflow timestamp metadata unavailable: " + type(error).__name__)
-PYCODE
+            import json, os, urllib.request, urllib.error
+            url = f"https://api.github.com/repos/{os.environ['GITHUB_REPOSITORY']}/actions/runs/{os.environ['GITHUB_RUN_ID']}"
+            request = urllib.request.Request(url, headers={"Authorization": "Bearer " + os.environ["GH_TOKEN"], "Accept": "application/vnd.github+json"})
+            try:
+                with urllib.request.urlopen(request, timeout=30) as response:
+                    run = json.load(response)
+                print("VECTOR_WORKFLOW_CLOCK " + json.dumps({key: run.get(key) for key in ("created_at", "run_started_at", "updated_at", "status")}))
+            except (OSError, ValueError) as error:
+                print("::warning::Workflow timestamp metadata unavailable: " + type(error).__name__)
+            PYCODE
             timing_record runner_wall_to_final_reporting "$VECTOR_RUNNER_START_MS"
             timing_summary | tee -a "$GITHUB_STEP_SUMMARY"
           fi
