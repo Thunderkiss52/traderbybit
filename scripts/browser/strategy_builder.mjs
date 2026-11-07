@@ -3,6 +3,9 @@ const { chromium } = await import(
 );
 import assert from "node:assert/strict";
 import { execFileSync } from "node:child_process";
+const registeredExchanges = JSON.parse(execFileSync(process.env.VECTOR_BROWSER_PHP || "php", [
+    "scripts/browser/seed_strategy_builder.php", "registered-exchanges",
+], { encoding: "utf8" }));
 const browser = await chromium.launch({
     executablePath: "/usr/bin/google-chrome",
     headless: true,
@@ -46,8 +49,10 @@ try {
     let pending = response("/strategies?page=1", "GET");
     await button("Load strategies").click();
     await accept(pending);
+    await page.getByRole("tab", { name: "Language Authoring", exact: true }).click();
     await button("Interpret description").click();
     await page.getByText("RSI period 14", { exact: false }).first().waitFor();
+    await page.getByRole("tab", { name: "Visual Strategy Builder", exact: true }).click();
     await page
         .getByLabel("Strategy ID (user_ prefix)", { exact: true })
         .fill("user_browser_" + Date.now());
@@ -64,11 +69,13 @@ try {
     pending = response("/strategies?page=1", "GET");
     await button("Load strategies").click();
     await accept(pending);
+    await page.getByRole("tab", { name: "Drafts & Versions", exact: true }).click();
     await page
         .getByRole("listitem")
         .filter({ hasText: decode(draft.definition).id })
         .getByRole("button", { name: "Resume draft" })
         .click();
+    await page.getByRole("tab", { name: "Visual Strategy Builder", exact: true }).click();
     assert.equal(
         await page
             .getByLabel("Position timeout bars", { exact: true })
@@ -91,6 +98,7 @@ try {
             exact: true,
         })
         .waitFor();
+    await page.getByRole("tab", { name: "Runs & Research", exact: true }).click();
     await page
         .getByLabel("From UTC (ISO 8601)", { exact: true })
         .fill("2026-01-15T00:00:00Z");
@@ -125,9 +133,12 @@ try {
     await button("Submit for PAPER approval").click();
     const approval = await accept(pending);
     assert.equal(approval.owner_authorized, true);
-    assert.equal(approval.accounts.length, 1);
-    assert.equal(approval.accounts[0].status, "BLOCKED");
-    assert.equal(Number(approval.accounts[0].starting_balance), 0);
+    assert.deepEqual(approval.accounts.map((account) => account.exchange_id).sort(), registeredExchanges.sort());
+    for (const account of approval.accounts) {
+        assert.equal(account.status, "BLOCKED");
+        assert.equal(Number(account.starting_balance), 0);
+        assert.equal(Number(account.current_equity), 0);
+    }
     for (const [key, value] of Object.entries({
         max_candidates: 3,
         max_windows: 1,

@@ -19,14 +19,14 @@ final class ManagementTest extends TestCase
 {
     use RefreshDatabase;
 
-    public function test_authoring_and_rejected_approval_preserve_all_26_accounts_and_global_guard(): void
+    public function test_authoring_and_rejected_approval_preserve_all_registered_accounts_and_global_guard(): void
     {
         Http::preventStrayRequests();
         config(['exchanges.binance_paper_provisioning_approved' => true, 'services.research_api_token' => 'test-owner']);
         app(PaperTopologySynchronizer::class)->sync(true);
         DB::table('paper_accounts')->update(['status' => 'BLOCKED']);
         $before = DB::table('paper_accounts')->orderBy('id')->get()->toJson();
-        self::assertSame(26, DB::table('paper_accounts')->count());
+        self::assertSame(130, DB::table('paper_accounts')->count());
         $guard = app(GlobalPaperCapitalGuard::class)->entryRejectionReason('1');
         $budget = config('paper.global_capital');
         $this->withHeader('X-Research-Token', 'test-owner');

@@ -1,6 +1,8 @@
 <?php
 
 declare(strict_types=1);
+
+use App\Exchanges\ExchangeRegistry;
 use App\MarketData\Infrastructure\Persistence\CandleRecord;
 use App\PaperTrading\Application\PaperTopologySynchronizer;
 use Illuminate\Contracts\Console\Kernel;
@@ -12,6 +14,10 @@ $app = require __DIR__.'/../../bootstrap/app.php';
 $app->make(Kernel::class)->bootstrap();
 if (! $app->environment('testing') || DB::connection()->getDatabaseName() !== 'bybit_builder_browser') {
     throw new RuntimeException('Only the task-owned bybit_builder_browser fixture is allowed.');
+}
+if (($argv[1] ?? '') === 'registered-exchanges') {
+    echo json_encode(app(ExchangeRegistry::class)->registeredIds(), JSON_THROW_ON_ERROR);
+    exit;
 }
 foreach ([5, 15, 30, 60] as $minutes) {
     $from = new DateTimeImmutable('2026-01-15T00:00:00Z');

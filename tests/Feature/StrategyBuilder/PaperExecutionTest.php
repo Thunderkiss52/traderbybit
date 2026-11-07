@@ -49,8 +49,15 @@ final class PaperExecutionTest extends TestCase
         $governance = app(PaperGovernance::class);
         $governance->certify($definition->id, $run->id);
         $governance->approve($definition->id, $definition->checksum, 'OWNER-TEST-INITIAL');
-        self::assertSame(27, DB::table('paper_accounts')->count());
-        $account = DB::table('paper_accounts')->where('primary_strategy_id', $d['id'])->first();
+        self::assertSame(140, DB::table('paper_accounts')->count());
+        $newAccounts = DB::table('paper_accounts')->where('primary_strategy_id', $d['id'])->get();
+        self::assertCount(10, $newAccounts);
+        foreach ($newAccounts as $newAccount) {
+            self::assertSame('BLOCKED', $newAccount->status);
+            self::assertDecimalSame('0', $newAccount->starting_balance);
+        }
+        $account = DB::table('paper_accounts')->where('primary_strategy_id', $d['id'])->where('exchange_id', 'bybit')->first();
+        $otherVenues = DB::table('paper_accounts')->where('primary_strategy_id', $d['id'])->where('exchange_id', '!=', 'bybit')->orderBy('id')->get()->toJson();
         $capital = app(GlobalPaperCapitalGuard::class);
         self::assertSame('global_risk_budget_exceeded', $capital->entryRejectionReason('6501'));
         $allocation = app(AccountAuthorization::class);
@@ -71,6 +78,7 @@ final class PaperExecutionTest extends TestCase
         app(PaperProcessingService::class)->process($account->id, 'BTCUSDT');
         self::assertSame(1, DB::table('virtual_positions')->where('paper_account_id', $account->id)->count(), json_encode(['risk' => DB::table('risk_decisions')->get(), 'states' => DB::table('paper_signal_states')->get()]));
         self::assertSame($original->toJson(), DB::table('paper_accounts')->whereIn('id', $original->pluck('id'))->orderBy('id')->get()->toJson());
+        self::assertSame($otherVenues, DB::table('paper_accounts')->where('primary_strategy_id', $d['id'])->where('exchange_id', '!=', 'bybit')->orderBy('id')->get()->toJson());
         Http::assertNothingSent();
     }
 

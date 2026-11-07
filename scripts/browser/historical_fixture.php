@@ -46,6 +46,11 @@ if (PHP_SAPI !== 'cli-server') {
         $app->make(Kernel::class)->call('queue:work', ['connection' => 'database', '--queue' => 'research', '--max-time' => 45, '--sleep' => 1, '--tries' => 1, '--timeout' => 1600]);
     } elseif (($argv[1] ?? '') === 'snapshot') {
         echo DB::selectOne("SELECT md5(string_agg(row_to_json(p)::text, '' ORDER BY p.id)) || '|' || count(*) || '|' || count(*) filter (where status='BLOCKED') AS snapshot FROM paper_accounts p")->snapshot;
+    } elseif (($argv[1] ?? '') === 'topology') {
+        echo json_encode([
+            'expected' => $app->make(PaperTopologySynchronizer::class)->sync(false)['expected_pairs'],
+            'legacy' => DB::table('paper_accounts')->where('is_primary', true)->whereIn('exchange_id', ['bybit', 'binance'])->whereIn('primary_strategy_id', config('paper.primary_strategies'))->count(),
+        ], JSON_THROW_ON_ERROR);
     } elseif (($argv[1] ?? '') === 'seed') {
         config(['exchanges.binance_paper_provisioning_approved' => true]);
         $app->make(PaperTopologySynchronizer::class)->sync(true);
