@@ -17,6 +17,7 @@ from unittest.mock import patch
 import xml.etree.ElementTree as ET
 
 from scripts.ci.php_shards import discover, partition, verify
+from scripts.ci import php_shards
 from scripts.ci.required_gate import JOBS, check_images, check_jobs
 from scripts.ci.release_guard import GitHub, check_gate, check_manifest, select_run
 from scripts.ci.check_isolation import verify as verify_isolation
@@ -122,6 +123,29 @@ class ReleaseTests(unittest.TestCase):
 
 
 class ShardTests(unittest.TestCase):
+    def test_generated_and_downloaded_shards_preserve_configured_test_bootstrap(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            (root / "scripts/ci").mkdir(parents=True)
+            (root / "scripts/ci/php_timings.json").write_text("{}")
+            (root / "phpunit.xml").write_text('<phpunit bootstrap="tests/bootstrap.php"><testsuites/><source><include><directory>app</directory></include></source></phpunit>')
+            files = {f"tests/{suite}/{i}Test.php": [f"Case::{suite}{i}"]
+                     for suite in ("Unit", "Feature", "Integration") for i in range(4)}
+            files["tests/Integration/BinanceObservationRedisLockIntegrationTest.php"] = ["Case::redis"]
+            output = root / "plan"
+            with patch.object(php_shards, "ROOT", root), patch.object(php_shards, "discover", return_value=files):
+                with contextlib.redirect_stdout(io.StringIO()):
+                    php_shards.plan(root / "discovery.xml", output)
+                for path in output.glob("*.xml"):
+                    self.assertEqual(str(root / "tests/bootstrap.php"), ET.parse(path).getroot().get("bootstrap"))
+                # Downloaded artifacts contain paths from a different runner checkout.
+                lane = output / "unit-2.xml"
+                lane.write_text(lane.read_text().replace(str(root), "/another/runner/checkout"))
+                with patch("sys.argv", ["php_shards.py", "run", "unit-2", "--plan-dir", str(output), "--reports", str(root / "results")]), patch.object(php_shards.subprocess, "run") as run:
+                    php_shards.main()
+                self.assertEqual(str(root / "tests/bootstrap.php"), ET.parse(lane).getroot().get("bootstrap"))
+                run.assert_called_once()
+
     def test_files_partition_once_with_future_files_and_redis_concurrency_kept_together(self):
         files = {f"tests/{suite}/{i}Test.php": [f"Case::{i}"] for suite in ("Unit", "Feature", "Integration") for i in range(12)}
         for p in ("BinanceObservationRedisLockIntegrationTest.php", "PaperPipelineConcurrentWorkersIntegrationTest.php"):

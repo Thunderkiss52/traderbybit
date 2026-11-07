@@ -239,7 +239,7 @@ func TestAll8ConditionOperators(t *testing.T) {
 		{"crosses_below", Condition{Op: "crosses_below", Left: "fast", Right: json.RawMessage(`"slow"`)}, false},
 		{"within_true", Condition{Op: "within", Left: "rsi", Right: json.RawMessage(`[30.0, 35.0]`)}, true},
 		{"within_false", Condition{Op: "within", Left: "rsi", Right: json.RawMessage(`[40.0, 50.0]`)}, false},
-		{"change_pct_positive", Condition{Op: "change_pct", Left: "fast", Right: json.RawMessage(`5.0`)}, true},   // (105/98-1)*100 = 7.14% >= 5%
+		{"change_pct_positive", Condition{Op: "change_pct", Left: "fast", Right: json.RawMessage(`5.0`)}, true},  // (105/98-1)*100 = 7.14% >= 5%
 		{"change_pct_negative", Condition{Op: "change_pct", Left: "drop", Right: json.RawMessage(`-5.0`)}, true}, // (90/100-1)*100 = -10% <= -5%
 	}
 

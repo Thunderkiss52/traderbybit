@@ -13,6 +13,15 @@ ROOT = Path(__file__).resolve().parents[2]
 REDIS_FILES = {"BinanceObservationRedisLockIntegrationTest.php", "PaperPipelineConcurrentWorkersIntegrationTest.php"}
 
 
+def relocate_bootstrap(root):
+    """Use this checkout's configured bootstrap, including its test isolation hooks."""
+    bootstrap = ET.parse(ROOT / "phpunit.xml").getroot().get("bootstrap")
+    if bootstrap:
+        root.set("bootstrap", str(ROOT / bootstrap))
+    else:
+        root.attrib.pop("bootstrap", None)
+
+
 def discover(path):
     result = {}
     for node in ET.parse(path).getroot().iter():
@@ -54,7 +63,7 @@ def plan(discovery, output):
             raise ValueError(f"Empty mandatory shard: {lane}")
         tree = copy.deepcopy(base)
         root = tree.getroot()
-        root.set("bootstrap", str(ROOT / "vendor/autoload.php"))
+        relocate_bootstrap(root)
         root.remove(root.find("testsuites"))
         suite = ET.SubElement(ET.SubElement(root, "testsuites"), "testsuite", name=lane)
         for path in sorted(paths):
@@ -121,7 +130,7 @@ def main():
         tree = ET.parse(xml)
         for node in tree.getroot().iter():
             if node.tag == "phpunit":
-                node.set("bootstrap", str(ROOT / "vendor/autoload.php"))
+                relocate_bootstrap(node)
             if node.tag in ("file", "directory") and node.text:
                 node.text = str(ROOT / ("tests/" + node.text.split("/tests/", 1)[1] if "/tests/" in node.text else "app"))
         tree.write(xml, encoding="utf-8", xml_declaration=True)
