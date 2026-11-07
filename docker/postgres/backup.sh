@@ -20,7 +20,7 @@ TMP="${TARGET}.partial"
 trap 'rm -f "${TMP}"' EXIT
 
 backup_start="$(monotonic_ms)"
-if compose exec -T postgres pg_dump -U "${POSTGRES_USER}" -d "${POSTGRES_DB}" --format=custom --compress=9 --no-owner --no-acl >"${TMP}"; then
+if compose exec -T postgres pg_dump -U "${POSTGRES_USER}" -d "${POSTGRES_DB}" --format=custom --compress="${PG_DUMP_COMPRESS:-6}" --no-owner --no-acl >"${TMP}"; then
     timing_record postgres_backup_creation "${backup_start}"
 else
     status=$?

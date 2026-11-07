@@ -29,10 +29,14 @@ elif [[ -f "${PROJECT_ROOT}/ci-release.json" ]]; then
     [[ "${NEW_IMAGE_TAG:-}" =~ ^sha-[0-9a-f]{40}$ ]] || { echo 'Exact release SHA required.' >&2; exit 1; }
     python3 "${SCRIPT_DIR}/release-images.py" "${PROJECT_ROOT}/ci-release.json" "${DEPLOY_STATE_DIR}/release-images" "${NEW_IMAGE_TAG#sha-}"
 fi
+pre_deploy_status=0
 if [[ "${PRE_DEPLOY_VALIDATED:-0}" == "1" ]]; then
     timing_record pre_deployment_state "${update_start}" 0
 else
-    timing_run pre_deployment_state bash "${SCRIPT_DIR}/validate-deployment-state.sh" pre-deploy
+    if ! timing_run pre_deployment_state bash "${SCRIPT_DIR}/validate-deployment-state.sh" pre-deploy; then
+        pre_deploy_status=$?
+        exit "${pre_deploy_status}"
+    fi
 fi
 
 CURRENT_TAG="${IMAGE_TAG:-latest}"
@@ -70,6 +74,44 @@ if [[ "${NEW_TAG}" == "${CURRENT_TAG}" ]]; then
     else
         NEW_TAG="${NEW_TAG}-$(date -u +%Y%m%d%H%M%S)"
     fi
+fi
+
+env_file="${ENV_FILE:-${PROJECT_ROOT}/.env}"
+current_env_hash=""
+if [[ -f "${env_file}" ]]; then
+    current_env_hash="$(sha256sum "${env_file}" 2>/dev/null | awk '{print $1}')"
+fi
+saved_env_hash=""
+if [[ -f "${DEPLOY_STATE_DIR}/.env.sha256" ]]; then
+    saved_env_hash="$(<"${DEPLOY_STATE_DIR}/.env.sha256")"
+fi
+
+IS_SAME_SHA_FASTPATH=0
+if [[ "${IS_SAME_TAG_RECONCILE}" == "1" && "${pre_deploy_status}" -eq 0 && -n "${current_env_hash}" && "${current_env_hash}" == "${saved_env_hash}" ]]; then
+    if [[ -f "${DEPLOY_STATE_DIR}/deploy-state.json" ]] && grep -q '"status":[[:space:]]*"CONSISTENT"' "${DEPLOY_STATE_DIR}/deploy-state.json"; then
+        IS_SAME_SHA_FASTPATH=1
+    fi
+fi
+
+if [[ "${IS_SAME_SHA_FASTPATH}" == "1" ]]; then
+    echo "[FAST-PATH] Release ${NEW_TAG} matches running containers with zero drift and unchanged configuration."
+    echo "[FAST-PATH] Executing verified safe no-op deployment: verifying health and release integrity without container recreation."
+    timing_run application_health bash "${SCRIPT_DIR}/healthcheck.sh"
+    VALIDATE_IMAGE_TAG="${NEW_TAG}" timing_run post_deployment_validation bash "${SCRIPT_DIR}/validate-deployment-state.sh" post-deploy
+    prev_target_tag="${PREVIOUS_TAG}"
+    prev_target_rel=""
+    if [[ -f "${DEPLOY_STATE_DIR}/release-previous" ]]; then
+        prev_target_rel="$(<"${DEPLOY_STATE_DIR}/release-previous")"
+    elif [[ -n "${prev_target_tag}" ]]; then
+        prev_target_rel="${prev_target_tag#sha-}"
+    fi
+    new_rel="${NEW_TAG#sha-}"
+    commit_deployment_state "${NEW_TAG}" "${prev_target_tag}" "${new_rel}" "${prev_target_rel}" "CONSISTENT"
+    if [[ -n "${current_env_hash}" ]]; then
+        atomic_write "${DEPLOY_STATE_DIR}/.env.sha256" "${current_env_hash}"
+    fi
+    echo "Verified safe no-op deployment completed for image tag ${NEW_TAG}."
+    exit 0
 fi
 
 timing_run postgres_backup_total bash "${PROJECT_ROOT}/docker/postgres/backup.sh"
@@ -194,6 +236,9 @@ else
     curr_rel="${CURRENT_TAG#sha-}"
     commit_deployment_state "${NEW_TAG}" "${CURRENT_TAG}" "${new_rel}" "${curr_rel}" "CONSISTENT"
 
+fi
+if [[ -n "${current_env_hash}" ]]; then
+    atomic_write "${DEPLOY_STATE_DIR}/.env.sha256" "${current_env_hash}"
 fi
 rm -f -- "${DEPLOY_STATE_DIR}/update-in-progress"
 trap - ERR

@@ -15,10 +15,16 @@ fi
 
 acquire_deployment_lock "IMAGE_RETENTION"
 declare -A protected_ids
+declare -A checked_refs
 for tag in "${current}" "${previous}"; do
     [[ -n "${tag}" ]] || continue
     references="$(resolve_service_image_references "${tag}")" || exit 1
     while IFS='=' read -r service reference; do
+        [[ -n "${reference}" ]] || continue
+        if [[ -n "${checked_refs["${reference}"]:-}" ]]; then
+            continue
+        fi
+        checked_refs["${reference}"]=1
         id="$(docker image inspect --format '{{.Id}}' "${reference}")" || {
             echo "Required release image missing; refusing cleanup: ${reference}" >&2; exit 1;
         }

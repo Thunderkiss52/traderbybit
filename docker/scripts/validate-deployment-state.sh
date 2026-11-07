@@ -180,7 +180,7 @@ if [[ "${SKIP_DOCKER_INSPECT:-0}" != "1" ]]; then
             st="$(docker inspect --format '{{if and .State.Running (not .State.Restarting) (not .State.Paused)}}{{if .State.Health}}{{.State.Health.Status}}{{else}}running{{end}}{{else}}{{.State.Status}}{{end}}' "${cid}" 2>/dev/null || true)"
             RUNNING_IMAGES["${svc}"]="${img}"
             SERVICE_STATUS["${svc}"]="${st}"
-            if ! verify_image_identity "${svc}" "${EXPECTED_IMAGES[${svc}]}"; then HAS_DRIFT=1; fi
+            if ! verify_image_identity "${svc}" "${EXPECTED_IMAGES[${svc}]}" "${cid}"; then HAS_DRIFT=1; fi
             if [[ "${MODE}" == "post-deploy" && "${st}" != healthy && "${st}" != running ]]; then HAS_DRIFT=1; fi
             if [[ "${st}" == "healthy" || "${st}" == "running" ]]; then
                 RUNNING_COUNT=$((RUNNING_COUNT + 1))

@@ -382,20 +382,28 @@ release_deployment_lock() {
     fi
 }
 
+declare -gA _EXPECTED_IMAGE_IDS=()
+declare -gA _VERIFIED_RELEASE_IMAGES=()
+
 verify_image_identity() {
     local service="$1"
     local expected_ref="$2"
-    local cid
-    cid="$(compose ps -q "${service}" 2>/dev/null || true)"
+    local cid="${3:-}"
+    if [[ -z "${cid}" ]]; then
+        cid="$(compose ps -q "${service}" 2>/dev/null || true)"
+    fi
     [[ -n "${cid}" ]] || { echo "[FATAL] Service '${service}' container not found." >&2; return 1; }
 
     local actual_img actual_id
     actual_img="$(docker inspect --format '{{.Config.Image}}' "${cid}" 2>/dev/null || true)"
     actual_id="$(docker inspect --format '{{.Image}}' "${cid}" 2>/dev/null || true)"
 
-    local expected_id
-    expected_id="$(docker image inspect --format '{{.Id}}' "${expected_ref}" 2>/dev/null || true)"
-    [[ -n "${expected_id}" ]] || { echo "[FATAL] Expected image '${expected_ref}' not found in Docker cache." >&2; return 1; }
+    local expected_id="${_EXPECTED_IMAGE_IDS["${expected_ref}"]:-}"
+    if [[ -z "${expected_id}" ]]; then
+        expected_id="$(docker image inspect --format '{{.Id}}' "${expected_ref}" 2>/dev/null || true)"
+        [[ -n "${expected_id}" ]] || { echo "[FATAL] Expected image '${expected_ref}' not found in Docker cache." >&2; return 1; }
+        _EXPECTED_IMAGE_IDS["${expected_ref}"]="${expected_id}"
+    fi
 
     # A registry index/manifest digest is not a Docker image config ID. Resolve the
     # approved reference through Docker for this host platform, then compare IDs.
@@ -414,6 +422,9 @@ verify_image_identity() {
 
 verify_release_image() {
     local reference="$1" revision expected_sha
+    if [[ -n "${_VERIFIED_RELEASE_IMAGES["${reference}"]:-}" ]]; then
+        return 0
+    fi
     docker image inspect "${reference}" >/dev/null || return 1
     if [[ "${reference}" == *@* ]]; then
         [[ "${reference}" =~ :sha-([0-9a-f]{40})@sha256:[0-9a-f]{64}$ ]] || {
@@ -425,6 +436,8 @@ verify_release_image() {
             echo "[FATAL] OCI revision mismatch for ${reference}: ${revision}" >&2; return 1;
         }
     fi
+    _VERIFIED_RELEASE_IMAGES["${reference}"]=1
+    return 0
 }
 
 # Snapshot the migration ledger of a verified known-good release. Changed or
