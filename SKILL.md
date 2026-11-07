@@ -15,7 +15,7 @@ Every engineer and AI coding agent working on this repository **MUST** read, und
 
 VECTOR is a quantitative research and virtual paper-trading system operating strictly in **PAPER** mode with zero live exchange order execution capabilities.
 
-- **Exchanges:** Bybit (linear USDT-perpetual) and Binance (linear USDT-perpetual).
+- **Registered exchanges:** Binance, Bybit, Coinbase, Upbit, OKX, Bitget, Gate, KuCoin, Kraken and HTX. Registration is independent of validated market-data and execution support; unsupported market types remain BLOCKED.
 - **Core Strategy Portfolio:** 13 canonical `PRIMARY` strategies:
   1. `baseline`
   2. `trend_pullback`
@@ -30,7 +30,7 @@ VECTOR is a quantitative research and virtual paper-trading system operating str
   11. `volatility_compression_breakout`
   12. `btc_eth_lead_lag`
   13. `multi_timeframe_trend_following`
-- **Account Model:** Exactly **26 independent PAPER accounts** (13 Bybit + 13 Binance). Each account possesses isolated capital, dedicated ledger journals, strict drawdown tracking, and independent position lifecycle management.
+- **Account Model:** One independent portfolio per registered exchange × registered standalone strategy (currently **10 × 13 = 130**). Reusable Strategy Library methods and drafts do not receive accounts. Preserve original 26 Bybit/Binance balances and histories; additional accounts start BLOCKED and zero-funded. Each account has isolated capital, ledger, drawdown and position lifecycle. Expected counts derive from registry identities, never a fixed platform total.
 - **Authoritative Ledger & Risk:** PHP 8.3+ / Laravel (event-driven trading pipeline, quantitative indicators, risk evaluation, and double-entry financial accounting).
 - **Frontend Dashboard:** Vue 3, Quasar 2, Vite, TypeScript.
 - **Persistence & Message Broker:** PostgreSQL 17 (or 16) with strict `NUMERIC(24, 12)` precision and Redis 7.4.
@@ -117,7 +117,7 @@ VECTOR is a quantitative research and virtual paper-trading system operating str
 1. **Strict PAPER Boundary:**
    - Trading is 100% simulated. API keys are strictly read-only for public market data. No trade endpoints or live routing may exist in the codebase.
 2. **Account Independence:**
-   - All 26 accounts (13 Bybit + 13 Binance) are strictly isolated. A failure, halt, or drawdown event on one account must never disrupt, block, or corrupt another account.
+   - All registered exchange × strategy portfolios are strictly isolated, including the original 26 Bybit/Binance accounts. A failure, halt, or drawdown event on one account must never disrupt, block, or corrupt another account.
 3. **Closed-Candle Execution Invariant:**
    - Trading signals and paper executions are evaluated **strictly on closed candles**.
    - No signals or entry decisions may be calculated on open, forming, or incomplete candles.

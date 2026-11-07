@@ -11,9 +11,8 @@
 
 VECTOR is a research and virtual paper-trading platform strictly operating in PAPER mode:
 
-- **13 PRIMARY Strategies on Bybit (linear USDT-perpetual).**
-- **13 PRIMARY Strategies on Binance (linear USDT-perpetual).**
-- **26 Independent PAPER Accounts:** 13 Bybit + 13 Binance accounts, each maintaining isolated balances, positions, executions, drawdowns, and ledger histories.
+- **Dynamic PRIMARY topology:** one isolated virtual portfolio for every registered exchange × registered standalone trading strategy. The current registry has 10 exchanges and 13 strategies, giving 130 portfolios. Strategy Library methods and unregistered drafts are not standalone identities.
+- Preserve the original 26 Bybit/Binance accounts and financial histories. Additional portfolios start BLOCKED and zero-funded until independently validated; existence does not imply PAPER execution readiness.
 - **Authoritative Backend:** PHP 8.3+ / Laravel (orchestration, event-driven trading pipeline, risk evaluation, and double-entry accounting).
 - **Frontend Dashboard:** Vue 3, Quasar 2, Vite, TypeScript (observability, operational dashboards, and audit visualizer).
 - **Persistence & Queues:** PostgreSQL (with `NUMERIC`/`DECIMAL` financial safety and transactional guarantees) and Redis (caching and isolated queues).
