@@ -104,12 +104,13 @@ final class TwentySixPaperAccountsVerificationTest extends TestCase
             self::assertSame($expected, [(string) $current->starting_balance, (string) $current->current_equity, $current->status]);
         }
 
-        // New strategy is created as BLOCKED
+        // New strategy is created as ACTIVE on approved Bybit paper exchange, BLOCKED on Binance
         $newBybit = PaperAccountRecord::query()->where('exchange_id', 'bybit')->where('primary_strategy_id', 'volatility_arbitrage_v1')->firstOrFail();
         $newBinance = PaperAccountRecord::query()->where('exchange_id', 'binance')->where('primary_strategy_id', 'volatility_arbitrage_v1')->firstOrFail();
-        self::assertSame('BLOCKED', $newBybit->status);
+        self::assertSame('ACTIVE', $newBybit->status);
         self::assertSame('BLOCKED', $newBinance->status);
         self::assertDecimalSame('0', (string) $newBinance->starting_balance);
+        self::assertDecimalSame('10000', (string) $newBybit->starting_balance);
     }
 
     public function test_scenario_c_research_only_exchange_onboards_with_zero_capital_and_blocked_status(): void

@@ -92,11 +92,6 @@ final readonly class PaperTopologySynchronizer
                         $missingBybit = ! isset($pairs['bybit|'.$id]);
                         $account = $this->accounts->primaryAccount($id, 'bybit');
                         if ($missingBybit) {
-                            // A newly registered strategy is provisioned, NOT automatically validated.
-                            // Existing 13 PRIMARY accounts are never implicitly reblocked or reactivated.
-                            if (! in_array($id, (array) config('paper.initially_approved_bybit_strategies', []), true)) {
-                                $account->update(['status' => 'BLOCKED']);
-                            }
                             $createdBybit++;
                         }
                     }

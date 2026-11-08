@@ -349,7 +349,7 @@ final class ExchangeManagementController extends Controller
             return response()->json([
                 'data' => $result,
                 'message' => $apply
-                    ? 'Topology synchronized successfully for approved exchanges. 13 primary accounts provisioned.'
+                    ? 'Topology synchronized successfully for approved exchanges. Primary accounts provisioned.'
                     : 'Topology sync dry-run completed successfully.',
             ]);
         } catch (InvalidArgumentException|DomainException $e) {

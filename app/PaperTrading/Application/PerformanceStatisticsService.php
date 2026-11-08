@@ -18,7 +18,78 @@ final class PerformanceStatisticsService
 {
     public function calculate(string $accountId, array $filters = []): PerformanceReport
     {
-        $query = VirtualPositionRecord::query()->where('paper_account_id', $accountId);
+        $accountForDrawdown = PaperAccountRecord::query()->findOrFail($accountId);
+        $maximumDrawdown = $this->drawdown(
+            $accountForDrawdown->starting_balance,
+            EquitySnapshotRecord::query()->performance()->where('paper_account_id', $accountId)
+                ->oldest('recorded_at')->oldest('id')->cursor(['equity', 'source_event_key', 'unrealized_pnl', 'valuation_fresh']),
+            $accountForDrawdown->current_equity
+        );
+
+        $positionQuery = VirtualPositionRecord::query()->where('paper_account_id', $accountId);
+        $signalQuery = SignalRecord::query()->where(function ($signals) use ($accountId): void {
+            $signals->whereExists(function ($states) use ($accountId): void {
+                $states->selectRaw('1')->from('paper_signal_states')
+                    ->whereColumn('paper_signal_states.signal_id', 'signals.id')
+                    ->where('paper_signal_states.paper_account_id', $accountId);
+            })->orWhereExists(function ($events) use ($accountId): void {
+                $events->selectRaw('1')->from('trading_journal_events')
+                    ->whereColumn('trading_journal_events.signal_id', 'signals.id')
+                    ->where('trading_journal_events.paper_account_id', $accountId)
+                    ->where('trading_journal_events.event_type', 'ANALYTICAL_SKIP');
+            });
+        });
+
+        return $this->evaluateQueryPerformance($positionQuery, $signalQuery, $maximumDrawdown, $filters);
+    }
+
+    public function calculateForAccounts(array $accountIds, string $exchange, array $filters = []): PerformanceReport
+    {
+        if (empty($accountIds)) {
+            return new PerformanceReport([
+                'total_signals' => 0, 'buy_signals' => 0, 'sell_signals' => 0, 'skip_signals' => 0,
+                'opened_positions' => 0, 'closed_positions' => 0, 'winning_trades' => 0, 'losing_trades' => 0,
+                'win_rate' => null, 'loss_rate' => null, 'average_win' => null, 'average_loss' => null,
+                'average_r' => null, 'expectancy' => null, 'gross_profit' => '0', 'gross_loss' => '0',
+                'profit_factor' => null, 'profit_factor_unavailable_reason' => 'no_positions',
+                'gross_pnl' => '0', 'net_pnl' => '0', 'fees' => '0', 'total_commissions' => '0',
+                'funding' => '0', 'total_funding_payments' => '0', 'total_slippage_cost' => '0',
+                'slippage_population' => 'ALL_SELECTED_POSITIONS_DIAGNOSTIC_ONLY',
+                'trade_statistics_population' => 'CLOSED_POSITIONS',
+                'open_position_fees' => '0', 'open_position_funding' => '0',
+                'maximum_drawdown_percent' => '0', 'average_holding_seconds' => null,
+                'maximum_consecutive_wins' => 0, 'maximum_consecutive_losses' => 0,
+            ], [
+                'incomplete_funding_positions' => 0,
+                'ambiguous_execution_positions' => 0,
+                'awaiting_market_data_positions' => 0,
+            ]);
+        }
+
+        $accounts = PaperAccountRecord::query()->whereIn('id', $accountIds)->get();
+        $maximumDrawdown = (string) ($accounts->max('maximum_drawdown_percent') ?? '0');
+
+        $positionQuery = VirtualPositionRecord::query()->whereIn('paper_account_id', $accountIds);
+        $signalQuery = SignalRecord::query()->where(function ($signals) use ($accountIds, $exchange): void {
+            $signals->whereExists(function ($states) use ($accountIds): void {
+                $states->selectRaw('1')->from('paper_signal_states')
+                    ->whereColumn('paper_signal_states.signal_id', 'signals.id')
+                    ->whereIn('paper_signal_states.paper_account_id', $accountIds);
+            })->orWhereExists(function ($events) use ($accountIds): void {
+                $events->selectRaw('1')->from('trading_journal_events')
+                    ->whereColumn('trading_journal_events.signal_id', 'signals.id')
+                    ->whereIn('trading_journal_events.paper_account_id', $accountIds)
+                    ->where('trading_journal_events.event_type', 'ANALYTICAL_SKIP');
+            })->orWhere(function ($q) use ($exchange): void {
+                $q->where('exchange', $exchange);
+            });
+        });
+
+        return $this->evaluateQueryPerformance($positionQuery, $signalQuery, $maximumDrawdown, $filters);
+    }
+
+    private function evaluateQueryPerformance($query, $signalQuery, ?string $maximumDrawdown, array $filters): PerformanceReport
+    {
         foreach (['symbol', 'side', 'quality_class', 'strategy_version'] as $field) {
             if (isset($filters[$field])) {
                 $query->where($field, $filters[$field]);
@@ -85,18 +156,7 @@ final class PerformanceStatisticsService
                 BigDecimal::of($execution->quantity)->multipliedBy($execution->slippage)
             ), BigDecimal::zero());
         $profitFactor = $grossLoss->isZero() ? null : (string) $grossProfit->dividedBy($grossLoss->abs(), 8, RoundingMode::HalfEven);
-        $signalQuery = SignalRecord::query()->where(function ($signals) use ($accountId): void {
-            $signals->whereExists(function ($states) use ($accountId): void {
-                $states->selectRaw('1')->from('paper_signal_states')
-                    ->whereColumn('paper_signal_states.signal_id', 'signals.id')
-                    ->where('paper_signal_states.paper_account_id', $accountId);
-            })->orWhereExists(function ($events) use ($accountId): void {
-                $events->selectRaw('1')->from('trading_journal_events')
-                    ->whereColumn('trading_journal_events.signal_id', 'signals.id')
-                    ->where('trading_journal_events.paper_account_id', $accountId)
-                    ->where('trading_journal_events.event_type', 'ANALYTICAL_SKIP');
-            });
-        });
+
         foreach (['symbol', 'side', 'quality_class', 'strategy_version'] as $field) {
             if (isset($filters[$field])) {
                 $signalQuery->where($field, $filters[$field]);
@@ -115,13 +175,6 @@ final class PerformanceStatisticsService
             $sideCounts[$signal->side] = ($sideCounts[$signal->side] ?? 0) + 1;
         }
         $skip = (int) ($sideCounts['SKIP'] ?? 0);
-        $accountForDrawdown = PaperAccountRecord::query()->findOrFail($accountId);
-        $maximumDrawdown = $this->drawdown(
-            $accountForDrawdown->starting_balance,
-            EquitySnapshotRecord::query()->performance()->where('paper_account_id', $accountId)
-                ->oldest('recorded_at')->oldest('id')->cursor(['equity', 'source_event_key', 'unrealized_pnl', 'valuation_fresh']),
-            $accountForDrawdown->current_equity
-        );
 
         return new PerformanceReport([
             'total_signals' => $totalSignals, 'buy_signals' => (int) ($sideCounts['BUY'] ?? 0), 'sell_signals' => (int) ($sideCounts['SELL'] ?? 0), 'skip_signals' => $skip,

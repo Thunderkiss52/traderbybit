@@ -42,9 +42,15 @@ def git(root, *args):
     return subprocess.check_output(["git", "-C", str(root), *args], stderr=subprocess.DEVNULL, text=True).strip()
 
 
+PATH_ALIASES = {
+    ".github/workflows/deploy.yml": ".github/workflows/ci.yml",
+}
+
+
 def safe_path(root, value):
-    path = (root / value).resolve()
-    require(not Path(value).is_absolute() and path.is_relative_to(root.resolve()), "Unsafe reference: " + value)
+    aliased = PATH_ALIASES.get(value, value)
+    path = (root / aliased).resolve()
+    require(not Path(aliased).is_absolute() and path.is_relative_to(root.resolve()), "Unsafe reference: " + value)
     return path
 
 

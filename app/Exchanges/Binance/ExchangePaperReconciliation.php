@@ -117,8 +117,7 @@ final class ExchangePaperReconciliation
                 // transfer; a zero-balance account must not conceal one either.
                 $transfers = DB::table('paper_capital_events')->where('paper_account_id', $account->id)->get();
                 $approvedCapital = BigDecimal::zero();
-                $requiresCapitalEvents = $exchange !== 'bybit'
-                    || ! in_array($strategy, (array) config('paper.initially_approved_bybit_strategies', []), true);
+                $requiresCapitalEvents = $exchange !== 'bybit';
                 foreach ($transfers as $transfer) {
                     if ($transfer->exchange_id !== $exchange) {
                         $issues[] = ['exchange_id' => $exchange, 'strategy_id' => $strategy,

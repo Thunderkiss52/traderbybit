@@ -75,8 +75,8 @@ final class GlobalCapitalAndTopologyR6Test extends TestCase
         self::assertSame(8, $result['created_other_blocked_unfunded']);
         $bybit = PaperAccountRecord::query()->where('exchange_id', 'bybit')->where('primary_strategy_id', 'sample_new_strategy')->firstOrFail();
         $binance = PaperAccountRecord::query()->where('exchange_id', 'binance')->where('primary_strategy_id', 'sample_new_strategy')->firstOrFail();
-        self::assertSame('BLOCKED', $bybit->status);
-        self::assertDecimalSame('0', $bybit->starting_balance);
+        self::assertSame('ACTIVE', $bybit->status);
+        self::assertDecimalSame('10000', $bybit->starting_balance);
         self::assertSame('BLOCKED', $binance->status);
         self::assertDecimalSame('0', $binance->starting_balance);
         foreach ($oldAccounts as $id => $expected) {

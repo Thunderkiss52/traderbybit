@@ -36,6 +36,7 @@ use App\Strategy\Application\StrategyRegistry;
 use App\Strategy\Infrastructure\Persistence\MarketContextRecord;
 use App\Strategy\Infrastructure\Persistence\SignalRecord;
 use App\Strategy\Infrastructure\Persistence\StrategyObservationRecord;
+use App\StrategyBuilder\PrimaryStrategies;
 use Brick\Math\BigDecimal;
 use Brick\Math\RoundingMode;
 use Carbon\CarbonImmutable;
@@ -137,6 +138,7 @@ final class ResearchController extends Controller
                 'available_virtual_capital' => $availableCapital,
                 'reserved_risk' => (string) $totalReservedRisk,
                 'total_return_percent' => $totalReturn,
+                'maximum_drawdown_percent' => (string) ($primaryAccounts->max('maximum_drawdown_percent') ?? '0'),
                 'open_positions' => VirtualPositionRecord::query()->where('exchange_id', $exchange)->whereNull('closed_at')->count(),
                 'pending_entry_signals' => PaperSignalStateRecord::query()->where('exchange_id', $exchange)->where('status', 'PENDING_ENTRY')->count(),
             ];
@@ -358,7 +360,8 @@ final class ResearchController extends Controller
                     }
 
                     $status = 'HEALTHY';
-                    if ($provisionedCount < 13) {
+                    $expectedStrategiesCount = count(PrimaryStrategies::ids($exchange));
+                    if ($provisionedCount < $expectedStrategiesCount) {
                         $status = 'TOPOLOGY_INCOMPLETE';
                     } elseif ($blockedCount === $provisionedCount) {
                         $status = 'AWAITING_ACTIVATION';
@@ -388,7 +391,9 @@ final class ResearchController extends Controller
                     ];
                 })(),
                 'positions' => $positions,
-                'performance' => $selectedAccount ? Cache::remember('paper:dashboard:performance:'.$selectedAccount->id, 60, fn () => $statistics->calculate($selectedAccount->id)->metrics) : null,
+                'performance' => $selectedAccount
+                    ? Cache::remember('paper:dashboard:performance:'.$selectedAccount->id, 60, fn () => $statistics->calculate($selectedAccount->id)->metrics)
+                    : Cache::remember("paper:dashboard:performance:aggregate:{$exchange}", 60, fn () => $statistics->calculateForAccounts($primaryAccounts->pluck('id')->all(), $exchange)->metrics),
                 'exchange_scope' => $exchange,
                 'research_settings' => [
                     'starting_balance' => config('backtest.starting_balance'),
@@ -754,13 +759,13 @@ final class ResearchController extends Controller
             $q->where('exchange_id', $exchange);
         }
         if ($r->filled('account')) {
-            $q->where('paper_account_id', $r->string('account'));
+            $q->where('paper_account_id', (string) $r->string('account'));
         }
         if ($r->filled('symbol')) {
-            $q->where('symbol', $this->symbol($r->string('symbol')));
+            $q->where('symbol', $this->symbol((string) $r->string('symbol')));
         }
         if ($r->filled('search')) {
-            $q->where('symbol', 'like', '%'.strtoupper($r->string('search')).'%');
+            $q->where('symbol', 'like', '%'.strtoupper((string) $r->string('search')).'%');
         }
 
         $page = $q->latest('opened_at')->latest('id')->paginate($this->perPage($r));

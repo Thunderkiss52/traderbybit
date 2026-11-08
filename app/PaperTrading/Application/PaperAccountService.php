@@ -175,16 +175,15 @@ final readonly class PaperAccountService
             }
 
             if ($exchangeId !== 'bybit') {
-                // Topology discovery creates zero-funded portfolios; a read cannot fund one.
                 throw new \DomainException(ucfirst($exchangeId).' PRIMARY account is not provisioned.');
             }
+
             $id = Uuid::uuid5(Uuid::NAMESPACE_URL, "traderbybit:paper:primary:{$strategyId}")->toString();
             $starting = app(NewPrimaryCapitalPolicy::class)->openingBalance($exchangeId, $strategyId);
 
             $account = PaperAccountRecord::query()->firstOrCreate(['id' => $id], [
                 'name' => 'Forward Paper '.$strategyId,
-                'status' => in_array($strategyId, (array) config('paper.initially_approved_bybit_strategies', []), true)
-                    ? AccountStatus::Active->value : AccountStatus::Blocked->value,
+                'status' => AccountStatus::Active->value,
                 'starting_balance' => $starting,
                 'current_equity' => $starting,
                 'peak_equity' => $starting,

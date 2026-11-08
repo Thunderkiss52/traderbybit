@@ -47,7 +47,7 @@ final readonly class ExchangeComparisonService
                     'account_id' => $account?->id,
                     'status' => $account?->status ?? 'ACCOUNT_NOT_PROVISIONED',
                     'evaluation_status' => $account === null ? 'NOT_EVALUATED'
-                        : ($exchange === 'binance' && $account->status !== 'ACTIVE' ? 'EXECUTION_BLOCKED' : 'REQUIRES_EVIDENCE'),
+                        : ($account->status === 'ACTIVE' ? 'STRATEGY_EVALUATING' : ($exchange === 'binance' ? 'EXECUTION_BLOCKED' : 'BLOCKED')),
                     'starting_balance' => $account === null ? null : (string) $account->starting_balance,
                     'current_equity' => $account === null ? null : (string) $account->current_equity,
                     'realized_pnl' => $account === null ? null : (string) $account->realized_pnl,

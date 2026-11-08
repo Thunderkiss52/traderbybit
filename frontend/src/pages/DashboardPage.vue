@@ -4,6 +4,7 @@ import { storeToRefs } from 'pinia';
 import { get } from '../services/api';
 import { usePolling } from '../composables/usePolling';
 import { useSettings } from '../stores/settings';
+import { formatMoney, formatPrice, formatPercent, formatSpread } from '../utils';
 import MetricCard from '../components/MetricCard.vue';
 import SignalCard from '../components/SignalCard.vue';
 import EmptyState from '../components/EmptyState.vue';
@@ -16,7 +17,7 @@ const exchangeError = ref('');
 const settings = useSettings();
 const selectedExchange = computed({
   get: () => settings.exchange,
-  set: (val: string) => settings.exchange = val as 'bybit' | 'binance',
+  set: (val: string) => settings.exchange = val,
 });
 const selectedAccounts = computed(() => {
   const accounts = exchangeComparison.value?.accounts || [];
@@ -24,6 +25,40 @@ const selectedAccounts = computed(() => {
     return accounts;
   }
   return accounts.filter((row: any) => row.exchange_id === selectedExchange.value);
+});
+
+const accountsOverviewText = computed(() => {
+  const accounts = exchangeComparison.value?.accounts || data.value?.accounts || [];
+  const count = accounts.length || (data.value?.portfolio?.accounts_count ?? 26);
+  if (selectedExchange.value === 'all') {
+    if (count === 26 || accounts.length === 0) {
+      return '26 Independent PAPER Accounts (13 Bybit + 13 Binance)';
+    }
+    const bybitCount = accounts.filter((a: any) => a.exchange_id === 'bybit').length || 13;
+    const binanceCount = accounts.filter((a: any) => a.exchange_id === 'binance').length || 13;
+    const otherCount = count - bybitCount - binanceCount;
+    if (otherCount > 0) {
+      return `${count} Independent PAPER Accounts (${bybitCount} Bybit + ${binanceCount} Binance + ${otherCount} other)`;
+    }
+    return `${count} Independent PAPER Accounts (${bybitCount} Bybit + ${binanceCount} Binance)`;
+  }
+  const exName = settings.selectedExchangeName || selectedExchange.value.toUpperCase();
+  const currentCount = selectedAccounts.value.length || (data.value?.portfolio?.accounts_count ?? 13);
+  return `${currentCount} Independent PAPER Accounts (${exName})`;
+});
+
+const comparisonSubtitle = computed(() => {
+  const accounts = exchangeComparison.value?.accounts || [];
+  const uniqueStrategies = new Set(accounts.map((a: any) => a.strategy_id || a.primary_strategy_id)).size || (data.value?.strategy_portfolios?.length ?? 13);
+  return `${uniqueStrategies} PRIMARY strategy families with isolated accounts per exchange. Never merged automatically. Binance paper execution remains blocked until separately verified.`;
+});
+
+const exchangeToggleOptions = computed(() => {
+  const options = [{ label: 'All Exchanges', value: 'all' }];
+  for (const ex of settings.availableExchanges) {
+    options.push({ label: ex.name, value: ex.id });
+  }
+  return options;
 });
 const crossExchangeSummary = computed(() => {
   const accounts = exchangeComparison.value?.accounts || [];
@@ -151,7 +186,7 @@ const systemStatus = computed(() => {
         />
       </div>
       <div class="col-12 col-sm-auto text-caption text-grey">
-        26 Independent PAPER Accounts (13 Bybit + 13 Binance)
+        {{ accountsOverviewText }}
       </div>
     </div>
     <q-banner v-if="error" class="bg-negative text-white">{{ error }}</q-banner>
@@ -160,8 +195,8 @@ const systemStatus = computed(() => {
       <h2>Market Overview</h2>
       <div class="grid">
         <q-card v-for="market in data.market" :key="market.symbol" flat bordered>
-          <b>{{ market.symbol }}</b><h3>{{ market.ask }}</h3>
-          <div class="muted">Spread {{ Number(market.ask) - Number(market.bid) }} · Funding {{ market.funding_rate ?? '—' }}</div>
+          <b>{{ market.symbol }}</b><h3>{{ formatPrice(market.ask) }}</h3>
+          <div class="muted">Spread {{ formatSpread(market.ask, market.bid) }} · Funding {{ market.funding_rate ?? '—' }}</div>
           <router-link :to="`/market/${market.symbol}`">Open analysis →</router-link>
         </q-card>
         <EmptyState v-if="!data.market.length" />
@@ -171,7 +206,7 @@ const systemStatus = computed(() => {
       <div class="row items-center justify-between q-mb-xs">
         <h2>Paper Portfolio · Simulated USDT</h2>
         <q-badge v-if="data.portfolio?.is_aggregate" color="primary" class="q-pa-xs text-subtitle2">
-          AGGREGATE ({{ data.portfolio?.accounts_count || 13 }} Accounts · {{ selectedExchange.toUpperCase() }})
+          AGGREGATE ({{ data.portfolio?.accounts_count || selectedAccounts.length || '—' }} Accounts · {{ selectedExchange.toUpperCase() }})
         </q-badge>
         <q-badge v-else :color="data.portfolio?.status === 'ACTIVE' ? 'positive' : (data.portfolio?.status === 'BLOCKED' ? 'warning' : 'negative')" class="q-pa-xs text-subtitle2">
           ACCOUNT: {{ data.account?.name || data.portfolio?.account_name || 'Selected' }} ({{ selectedExchange.toUpperCase() }}) · {{ data.portfolio?.status }}
@@ -179,16 +214,16 @@ const systemStatus = computed(() => {
       </div>
       <q-banner class="bg-grey-9 text-white q-mb-md">Estimated paper results, not actual exchange profits. Backtest performance is reported separately.</q-banner>
       <div v-if="data.portfolio" class="metrics">
-        <MetricCard label="Starting Balance (USDT)" :value="data.portfolio.starting_balance" />
-        <MetricCard label="Current Balance (USDT)" :value="data.portfolio.current_balance" />
-        <MetricCard label="Current Equity (USDT)" :value="data.portfolio.current_equity" />
-        <MetricCard label="Total Return (%)" :value="data.portfolio.total_return_percent" />
-        <MetricCard label="Total Net PnL (USDT)" :value="data.portfolio.total_net_pnl" />
-        <MetricCard label="Realized PnL (USDT)" :value="data.portfolio.realized_pnl" />
-        <MetricCard label="Unrealized PnL (USDT)" :value="data.portfolio.unrealized_pnl" />
-        <MetricCard label="Available Capital (USDT)" :value="data.portfolio.available_virtual_capital" />
-        <MetricCard label="Reserved Risk (USDT)" :value="data.portfolio.reserved_risk" />
-        <MetricCard label="Max Drawdown (%)" :value="data.portfolio.maximum_drawdown_percent" />
+        <MetricCard label="Starting Balance (USDT)" :value="formatMoney(data.portfolio.starting_balance)" />
+        <MetricCard label="Current Balance (USDT)" :value="formatMoney(data.portfolio.current_balance)" />
+        <MetricCard label="Current Equity (USDT)" :value="formatMoney(data.portfolio.current_equity)" />
+        <MetricCard label="Total Return (%)" :value="formatPercent(data.portfolio.total_return_percent)" />
+        <MetricCard label="Total Net PnL (USDT)" :value="formatMoney(data.portfolio.total_net_pnl)" />
+        <MetricCard label="Realized PnL (USDT)" :value="formatMoney(data.portfolio.realized_pnl)" />
+        <MetricCard label="Unrealized PnL (USDT)" :value="formatMoney(data.portfolio.unrealized_pnl)" />
+        <MetricCard label="Available Capital (USDT)" :value="formatMoney(data.portfolio.available_virtual_capital)" />
+        <MetricCard label="Reserved Risk (USDT)" :value="formatMoney(data.portfolio.reserved_risk)" />
+        <MetricCard label="Max Drawdown (%)" :value="formatPercent(data.portfolio.maximum_drawdown_percent)" />
         <MetricCard label="Open Positions" :value="data.portfolio.open_positions" />
         <MetricCard label="Pending Virtual Entries" :value="data.portfolio.pending_entry_signals" />
       </div>
@@ -207,8 +242,8 @@ const systemStatus = computed(() => {
           <td class="text-center"><q-badge :color="portfolio.status === 'ACTIVE' ? 'positive' : (portfolio.status === 'BLOCKED' ? 'warning' : 'negative')">{{ portfolio.status || 'UNPROVISIONED' }}</q-badge></td>
           <td class="text-center"><q-badge color="primary">{{ portfolio.evaluation_status || 'STRATEGY_EVALUATING' }}</q-badge></td>
           <td class="text-center"><q-badge color="grey-7">{{ portfolio.ml_status || 'ML_NOT_TRAINED' }}</q-badge></td>
-          <td class="text-right">{{ portfolio.current_equity ?? '—' }}</td>
-          <td class="text-right">{{ portfolio.realized_pnl ?? '—' }}</td><td class="text-right">{{ portfolio.unrealized_pnl ?? '—' }}</td>
+          <td class="text-right">{{ formatMoney(portfolio.current_equity) }}</td>
+          <td class="text-right">{{ formatMoney(portfolio.realized_pnl) }}</td><td class="text-right">{{ formatMoney(portfolio.unrealized_pnl) }}</td>
         </tr></tbody>
       </q-markup-table>
       <EmptyState v-if="!(data.strategy_portfolios || []).length" />
@@ -219,9 +254,9 @@ const systemStatus = computed(() => {
         <h2>Bybit / Binance · Independent Paper Results</h2>
         <a href="/api/v1/exchanges/comparison.csv" download>Export both exchanges (CSV)</a>
       </div>
-      <p class="muted">13 PRIMARY strategy families × 2 exchange-specific accounts. Never merged automatically. Binance paper execution remains blocked until separately verified.</p>
+      <p class="muted">{{ comparisonSubtitle }}</p>
       <div class="row items-center q-gutter-sm q-mb-sm">
-        <q-btn-toggle v-model="selectedExchange" :options="[{ label: 'All Exchanges', value: 'all' }, { label: 'Bybit', value: 'bybit' }, { label: 'Binance', value: 'binance' }]" unelevated toggle-color="primary" />
+        <q-btn-toggle v-model="selectedExchange" :options="exchangeToggleOptions" unelevated toggle-color="primary" />
         <q-btn flat dense label="Refresh" @click="loadExchangeComparison" />
       </div>
       <div v-if="selectedExchange === 'all' && exchangeComparison" class="row q-col-gutter-sm q-mb-md">
@@ -229,13 +264,13 @@ const systemStatus = computed(() => {
           <MetricCard label="Total Paper Accounts" :value="crossExchangeSummary.accountsCount" />
         </div>
         <div class="col-12 col-md-3">
-          <MetricCard label="Aggregate Starting (USDT)" :value="crossExchangeSummary.startingBalance" />
+          <MetricCard label="Aggregate Starting (USDT)" :value="formatMoney(crossExchangeSummary.startingBalance)" />
         </div>
         <div class="col-12 col-md-3">
-          <MetricCard label="Aggregate Equity (USDT)" :value="crossExchangeSummary.currentEquity" />
+          <MetricCard label="Aggregate Equity (USDT)" :value="formatMoney(crossExchangeSummary.currentEquity)" />
         </div>
         <div class="col-12 col-md-3">
-          <MetricCard label="Aggregate Realized (USDT)" :value="crossExchangeSummary.realizedPnl" />
+          <MetricCard label="Aggregate Realized (USDT)" :value="formatMoney(crossExchangeSummary.realizedPnl)" />
         </div>
       </div>
       <q-banner v-if="exchangeError" class="bg-warning text-black">{{ exchangeError }}</q-banner>
@@ -258,11 +293,16 @@ const systemStatus = computed(() => {
             <td v-if="selectedExchange === 'all'" class="text-center">
               <q-badge color="grey-8">{{ account.exchange_id?.toUpperCase() }}</q-badge>
             </td>
-            <td>{{ account.status }}</td><td>{{ account.evaluation_status }}</td>
-            <td class="text-right">{{ account.starting_balance ?? '—' }}</td>
-            <td class="text-right">{{ account.current_equity ?? '—' }}</td>
-            <td class="text-right">{{ account.realized_pnl ?? '—' }}</td>
-            <td class="text-right">{{ account.unrealized_pnl ?? '—' }}</td>
+            <td class="text-center">
+              <q-badge :color="account.status === 'ACTIVE' ? 'positive' : (account.status === 'BLOCKED' ? 'warning' : 'negative')">{{ account.status }}</q-badge>
+            </td>
+            <td class="text-center">
+              <q-badge :color="account.evaluation_status === 'STRATEGY_EVALUATING' ? 'primary' : 'grey-7'">{{ account.evaluation_status }}</q-badge>
+            </td>
+            <td class="text-right">{{ formatMoney(account.starting_balance) }}</td>
+            <td class="text-right">{{ formatMoney(account.current_equity) }}</td>
+            <td class="text-right">{{ formatMoney(account.realized_pnl) }}</td>
+            <td class="text-right">{{ formatMoney(account.unrealized_pnl) }}</td>
           </tr>
         </tbody>
       </q-markup-table>

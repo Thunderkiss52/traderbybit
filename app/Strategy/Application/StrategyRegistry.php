@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Strategy\Application;
 
+use App\PaperTrading\Application\PaperTopologySynchronizer;
 use App\Strategy\Contracts\StrategyInterface;
 use App\Strategy\Research\BaselineStrategy;
 use App\Strategy\Research\BollingerMeanReversionStrategy;
@@ -23,15 +24,43 @@ use App\StrategyBuilder\ForwardEvaluator;
 use App\StrategyBuilder\PaperDslStrategy;
 use App\StrategyBuilder\PrimaryStrategies;
 use Illuminate\Support\Arr;
+use Illuminate\Support\Facades\Schema;
 
-final readonly class StrategyRegistry
+final class StrategyRegistry
 {
+    /** @var array<string, StrategyInterface> */
+    private array $dynamicStrategies = [];
+
     /** @param list<StrategyInterface> $strategies */
     public function __construct(private array $strategies, private LevelInteractionAnalyzer $levels, private LevelProbabilityService $probabilities) {}
 
+    public function register(StrategyInterface $strategy): void
+    {
+        $this->dynamicStrategies[$strategy->id()] = $strategy;
+
+        try {
+            if (Schema::hasTable('paper_accounts')) {
+                app(PaperTopologySynchronizer::class)->sync(true);
+            }
+        } catch (\Throwable) {
+            // Silently ignore if in unit tests or before schema migration
+        }
+    }
+
     public function all(): array
     {
-        return array_merge($this->strategies, array_map(fn ($row) => $this->dsl($row), PrimaryStrategies::registrations()));
+        $all = array_merge(
+            $this->strategies,
+            array_values($this->dynamicStrategies),
+            array_map(fn ($row) => $this->dsl($row), PrimaryStrategies::registrations())
+        );
+
+        $unique = [];
+        foreach ($all as $strategy) {
+            $unique[$strategy->id()] = $strategy;
+        }
+
+        return array_values($unique);
     }
 
     /** Registered executable identities only; library methods and drafts are not strategies. */
@@ -42,6 +71,10 @@ final readonly class StrategyRegistry
 
     public function get(string $id): StrategyInterface
     {
+        if (isset($this->dynamicStrategies[$id])) {
+            return $this->dynamicStrategies[$id];
+        }
+
         foreach ($this->strategies as $strategy) {
             if ($strategy->id() === $id) {
                 return $strategy;
@@ -59,6 +92,9 @@ final readonly class StrategyRegistry
 
     public function make(string $id, array $parameters): StrategyInterface
     {
+        if (isset($this->dynamicStrategies[$id])) {
+            return $this->dynamicStrategies[$id];
+        }
         if (str_starts_with($id, 'user_')) {
             $strategy = $this->get($id);
             if (self::hash($parameters) !== self::hash($strategy->parameters())) {

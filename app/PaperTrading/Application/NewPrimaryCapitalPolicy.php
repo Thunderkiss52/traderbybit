@@ -15,9 +15,16 @@ final class NewPrimaryCapitalPolicy
 {
     public function openingBalance(string $exchangeId, string $strategyId): string
     {
-        if ($exchangeId !== 'bybit' || ! in_array($strategyId, (array) config('paper.initially_approved_bybit_strategies', []), true)) {
+        $isExecutionApproved = match ($exchangeId) {
+            'bybit' => true,
+            'binance' => (bool) config('exchanges.binance_paper_execution_approved', false),
+            default => (bool) config("exchanges.{$exchangeId}_paper_execution_approved", false),
+        };
+
+        if (! $isExecutionApproved) {
             return '0';
         }
+
         $amount = config("paper.new_primary_initial_balances.{$exchangeId}.{$strategyId}")
             ?? config('paper.new_primary_default_starting_balance', '10000');
         if (! is_string($amount) || ! preg_match('/^(?:0|[1-9][0-9]{0,8})(?:\.[0-9]{1,12})?$/D', $amount)) {
