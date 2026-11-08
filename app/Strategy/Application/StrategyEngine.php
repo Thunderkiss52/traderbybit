@@ -27,22 +27,22 @@ final readonly class StrategyEngine
     public function evaluate(StrategyInput $input): SignalDecision
     {
         if ($input->validationErrors !== []) {
-            return $this->skip($input, $input->validationErrors);
+            return $this->skip($input, $input->validationErrors, $this->snapshot($input));
         }
 
         if (($temporalError = $this->temporalError($input)) !== null) {
-            return $this->skip($input, [$temporalError]);
+            return $this->skip($input, [$temporalError], $this->snapshot($input));
         }
 
         if (! $input->trend->warmupReady || ! $input->setup->warmupReady || ! $input->entry->warmupReady || ! $input->confirmation->warmupReady) {
-            return $this->skip($input, ['insufficient_warmup']);
+            return $this->skip($input, ['insufficient_warmup'], $this->snapshot($input));
         }
 
         $hour = $input->trend->latest();
         $entry = $input->entry->latest();
         $confirmation = $input->confirmation->latest();
         if ($hour === null || $entry === null || $confirmation === null) {
-            return $this->skip($input, ['missing_timeframe_data']);
+            return $this->skip($input, ['missing_timeframe_data'], $this->snapshot($input));
         }
 
         $hourlyTrend = $this->trend($hour);
@@ -385,6 +385,132 @@ final readonly class StrategyEngine
         return $risks;
     }
 
+    public function evaluateRules(StrategyInput $input): array
+    {
+        $rules = [];
+        $hour = $input->trend->latest();
+        $entry = $input->entry->latest();
+        $confirmation = $input->confirmation->latest();
+        $setup = $input->setup->latest();
+
+        $warmupPassed = $input->trend->warmupReady && $input->setup->warmupReady && $input->entry->warmupReady && $input->confirmation->warmupReady;
+        $rules[] = [
+            'rule' => 'warmup_completeness',
+            'passed' => $warmupPassed,
+            'operator' => '==',
+            'actual' => [
+                'trend' => $input->trend->warmupReady,
+                'setup' => $input->setup->warmupReady,
+                'entry' => $input->entry->warmupReady,
+                'confirmation' => $input->confirmation->warmupReady,
+            ],
+            'threshold' => ['all' => true],
+            'blocking' => ! $warmupPassed,
+            'category' => 'PRECONDITION',
+        ];
+
+        $temporalErr = $this->temporalError($input);
+        $rules[] = [
+            'rule' => 'temporal_integrity',
+            'passed' => $temporalErr === null,
+            'operator' => '==',
+            'actual' => $temporalErr ?? 'valid',
+            'threshold' => 'valid',
+            'blocking' => $temporalErr !== null,
+            'category' => 'PRECONDITION',
+        ];
+
+        if ($hour !== null) {
+            $adxMin = (string) $this->config['trend']['adx_min'];
+            $adxVal = $hour->adx ?? '0';
+            $adxPassed = $this->gte($adxVal, $adxMin);
+            $rules[] = [
+                'rule' => 'hourly_adx_strength',
+                'passed' => $adxPassed,
+                'operator' => '>=',
+                'actual' => (float) $adxVal,
+                'threshold' => (float) $adxMin,
+                'blocking' => ! $adxPassed,
+                'category' => 'TREND_FILTER',
+            ];
+
+            $emaAlignedBuy = $this->gt($hour->emaFast ?? '0', $hour->emaSlow ?? '0');
+            $emaAlignedSell = $this->lt($hour->emaFast ?? '0', $hour->emaSlow ?? '0');
+            $rules[] = [
+                'rule' => 'hourly_ema_alignment',
+                'passed' => $emaAlignedBuy || $emaAlignedSell,
+                'operator' => '!=',
+                'actual' => [
+                    'ema_fast' => (float) ($hour->emaFast ?? 0),
+                    'ema_slow' => (float) ($hour->emaSlow ?? 0),
+                    'direction' => $emaAlignedBuy ? 'BULLISH' : ($emaAlignedSell ? 'BEARISH' : 'NEUTRAL'),
+                ],
+                'threshold' => ['direction' => 'DIRECTIONAL'],
+                'blocking' => ! ($emaAlignedBuy || $emaAlignedSell),
+                'category' => 'TREND_FILTER',
+            ];
+        }
+
+        if ($setup !== null) {
+            $setupBuy = $this->gt($setup->close ?? '0', $setup->emaFast ?? '0') && $this->gt($setup->emaFast ?? '0', $setup->emaSlow ?? '0');
+            $setupSell = $this->lt($setup->close ?? '0', $setup->emaFast ?? '0') && $this->lt($setup->close ?? '0', $setup->emaSlow ?? '0');
+            $rules[] = [
+                'rule' => 'setup_alignment_30m',
+                'passed' => $setupBuy || $setupSell,
+                'operator' => '==',
+                'actual' => [
+                    'close' => (float) ($setup->close ?? 0),
+                    'ema_fast' => (float) ($setup->emaFast ?? 0),
+                    'ema_slow' => (float) ($setup->emaSlow ?? 0),
+                ],
+                'threshold' => ['alignment' => 'TREND_ALIGNED'],
+                'blocking' => ! ($setupBuy || $setupSell),
+                'category' => 'SETUP_FILTER',
+            ];
+        }
+
+        if ($confirmation !== null) {
+            $prev = $input->confirmation->previous();
+            $mid = (string) $this->config['confirmation']['rsi_midline'];
+            $confBuy = $this->gt($confirmation->close ?? '0', $confirmation->emaEntry ?? '0')
+                && $this->gte($confirmation->rsi ?? '0', $mid)
+                && $this->gte($confirmation->macdHistogram ?? '0', $prev?->macdHistogram ?? '0');
+            $confSell = $this->lt($confirmation->close ?? '0', $confirmation->emaEntry ?? '0')
+                && $this->lte($confirmation->rsi ?? '0', $mid)
+                && $this->lte($confirmation->macdHistogram ?? '0', $prev?->macdHistogram ?? '0');
+
+            $rules[] = [
+                'rule' => 'confirmation_momentum_5m',
+                'passed' => $confBuy || $confSell,
+                'operator' => '==',
+                'actual' => [
+                    'close' => (float) ($confirmation->close ?? 0),
+                    'ema_20' => (float) ($confirmation->emaEntry ?? 0),
+                    'rsi' => (float) ($confirmation->rsi ?? 0),
+                    'macd_hist' => (float) ($confirmation->macdHistogram ?? 0),
+                ],
+                'threshold' => ['rsi_midline' => (float) $mid],
+                'blocking' => ! ($confBuy || $confSell),
+                'category' => 'CONFIRMATION_FILTER',
+            ];
+        }
+
+        if ($entry !== null) {
+            $atrVal = (float) ($entry->atr ?? 0);
+            $rules[] = [
+                'rule' => 'atr_volatility_non_zero',
+                'passed' => $atrVal > 0,
+                'operator' => '>',
+                'actual' => $atrVal,
+                'threshold' => 0.0,
+                'blocking' => $atrVal <= 0,
+                'category' => 'VOLATILITY_FILTER',
+            ];
+        }
+
+        return $rules;
+    }
+
     private function snapshot(StrategyInput $input, array $levelInteraction = []): array
     {
         $bar = static fn (?BarState $b): ?array => $b === null ? null : [
@@ -396,8 +522,14 @@ final readonly class StrategyEngine
             'average_turnover' => $b->averageTurnover, 'support' => $b->support, 'resistance' => $b->resistance,
         ];
 
-        return ['1h' => $bar($input->trend->latest()), '30m' => $bar($input->setup->latest()), '15m' => $bar($input->entry->latest()), '5m' => $bar($input->confirmation->latest()),
-            'level_interaction' => $levelInteraction];
+        return [
+            '1h' => $bar($input->trend->latest()),
+            '30m' => $bar($input->setup->latest()),
+            '15m' => $bar($input->entry->latest()),
+            '5m' => $bar($input->confirmation->latest()),
+            'level_interaction' => $levelInteraction,
+            'rules' => $this->evaluateRules($input),
+        ];
     }
 
     private function skip(StrategyInput $input, array $reasons, array $snapshot = [], int $score = 0): SignalDecision

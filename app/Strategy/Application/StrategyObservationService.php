@@ -107,6 +107,7 @@ final readonly class StrategyObservationService
                 $analysis = [
                     'level_interaction' => $levelInteraction,
                     'indicator_snapshot' => $decision->indicatorSnapshot,
+                    'rules' => $decision->indicatorSnapshot['rules'] ?? [],
                     'diagnostics' => $this->diagnostics($decision, $strategyInput),
                 ];
                 if ($decision->pricePlan !== null) {
@@ -195,6 +196,7 @@ final readonly class StrategyObservationService
                     $candAnalysis = [
                         'level_interaction' => $levelInteraction,
                         'indicator_snapshot' => $candDecision->indicatorSnapshot,
+                        'rules' => $candDecision->indicatorSnapshot['rules'] ?? [],
                         'diagnostics' => $this->diagnostics($candDecision, $input),
                     ];
                     if ($candDecision->pricePlan !== null) {

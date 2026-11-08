@@ -69,6 +69,7 @@ final readonly class SignalDecision
             'maximum_holding_minutes' => $this->maximumHoldingMinutes,
             'reasons' => array_values($this->reasons),
             'risks' => array_values($this->risks),
+            'rules' => $this->indicatorSnapshot['rules'] ?? [],
             'indicators' => $this->indicatorSnapshot,
         ];
     }
