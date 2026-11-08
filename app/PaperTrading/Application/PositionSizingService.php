@@ -88,6 +88,21 @@ final readonly class PositionSizingService
             return new PositionSize(false, (string) $quantity, (string) $riskCapital, (string) $effectiveLoss, (string) $notional, 'notional_limit_exceeded');
         }
 
-        return new PositionSize(true, (string) $quantity, (string) $riskCapital, (string) $effectiveLoss, (string) $notional, qtyStep: $limits->qtyStep);
+        $leverage = $settings !== null && isset($settings['leverage']) ? (string) $settings['leverage'] : '1.00';
+        $margin = $settings !== null && $settings['mode'] === 'fixed_margin'
+            ? (string) $settings['amount']
+            : (string) $notional->dividedBy($leverage, 24, RoundingMode::HalfEven);
+
+        return new PositionSize(
+            allowed: true,
+            quantity: (string) $quantity,
+            riskCapital: (string) $riskCapital,
+            effectiveLossPerUnit: (string) $effectiveLoss,
+            notional: (string) $notional,
+            reason: null,
+            qtyStep: $limits->qtyStep,
+            allocatedMargin: $margin,
+            leverage: $leverage,
+        );
     }
 }
