@@ -7,6 +7,7 @@ namespace App\Audit\Http;
 use App\Audit\Application\AuditExportService;
 use App\Audit\Application\StrategyFunnelService;
 use App\Audit\Infrastructure\Persistence\AuditExportRecord;
+use App\Exchanges\ExchangeRegistry;
 use App\Http\Controllers\Controller;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -43,7 +44,8 @@ final class AuditExportController extends Controller
     {
         $validated = $request->validate(['days' => ['nullable', 'integer', 'in:1,7,14,30']]);
         $exchange = $request->header('X-Exchange') ?: $request->string('exchange', 'bybit')->toString();
-        if (! in_array($exchange, ['bybit', 'binance'], true)) {
+        $registered = app(ExchangeRegistry::class)->registeredIds();
+        if (! in_array($exchange, $registered, true)) {
             $exchange = 'bybit';
         }
 

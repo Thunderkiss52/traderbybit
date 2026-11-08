@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Research\Application;
 
+use App\Exchanges\ExchangeRegistry;
 use App\MarketData\Application\MarketCandleConflictService;
 use App\MarketData\Domain\CandleIntegrityUnavailable;
 use App\MarketData\Infrastructure\Persistence\CandleRecord;
@@ -39,7 +40,8 @@ final class SystemFreshnessService
 
         $symbols = (array) config('ui.symbols', ['BTCUSDT', 'ETHUSDT']);
         $intervals = ['5', '15', '30', '60', '240'];
-        $exchanges = $exchangeFilter !== null ? [$exchangeFilter] : ['bybit', 'binance'];
+        $registered = app(ExchangeRegistry::class)->registeredIds();
+        $exchanges = $exchangeFilter !== null ? [$exchangeFilter] : $registered;
 
         $scopes = [];
         foreach ($exchanges as $exchange) {

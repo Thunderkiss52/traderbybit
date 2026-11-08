@@ -113,10 +113,41 @@ onBeforeUnmount(() => { controller?.abort(); chartsController?.abort(); });
       :pagination="{ rowsPerPage: 0 }"
       hide-pagination
     >
-      <template #body-cell-event_type="props">
-        <q-td :props="props">
-          <q-badge color="blue-grey-8" :label="props.value" />
-        </q-td>
+      <template #header="props">
+        <q-tr :props="props">
+          <q-th auto-width />
+          <q-th v-for="col in props.cols" :key="col.name" :props="props">
+            {{ col.label }}
+          </q-th>
+        </q-tr>
+      </template>
+      <template #body="props">
+        <q-tr :props="props">
+          <q-td auto-width>
+            <q-btn size="sm" color="grey-6" round dense flat @click="props.expand = !props.expand" :icon="props.expand ? 'expand_less' : 'expand_more'" />
+          </q-td>
+          <q-td v-for="col in props.cols" :key="col.name" :props="props">
+            <template v-if="col.name === 'event_type'">
+              <q-badge color="blue-grey-8" :label="col.value" />
+            </template>
+            <template v-else-if="col.name === 'signal_id' && props.row.signal_id">
+              <router-link :to="`/signals/${props.row.signal_id}`" class="text-primary text-bold" style="text-decoration:none;">
+                {{ col.value }}
+              </router-link>
+            </template>
+            <template v-else>
+              {{ col.value }}
+            </template>
+          </q-td>
+        </q-tr>
+        <q-tr v-show="props.expand" :props="props">
+          <q-td colspan="100%">
+            <div class="q-pa-sm">
+              <div class="text-caption text-weight-bold text-grey-4 q-mb-xs">Event Audit Payload:</div>
+              <pre class="bg-grey-10 text-grey-2 q-pa-sm rounded-borders text-caption" style="max-height: 250px; overflow: auto; white-space: pre-wrap; font-family: monospace;">{{ props.row.payload ? JSON.stringify(props.row.payload, null, 2) : 'No payload recorded' }}</pre>
+            </div>
+          </q-td>
+        </q-tr>
       </template>
     </q-table>
     <div class="row items-center justify-between q-mt-md">

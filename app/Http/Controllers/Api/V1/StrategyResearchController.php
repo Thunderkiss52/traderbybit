@@ -7,6 +7,7 @@ namespace App\Http\Controllers\Api\V1;
 use App\Backtest\Application\BacktestRunService;
 use App\Backtest\Infrastructure\Persistence\BacktestRunRecord;
 use App\Backtest\Infrastructure\Persistence\BacktestSegmentRecord;
+use App\Exchanges\ExchangeRegistry;
 use App\Http\Controllers\Controller;
 use App\Http\Resources\V1\ResearchResource;
 use App\PaperTrading\Application\DailyPerformanceService;
@@ -65,7 +66,8 @@ final class StrategyResearchController extends Controller
             $query->where('side', strtoupper($request->string('side')->toString()));
         }
         $exchange = $request->header('X-Exchange') ?: $request->string('exchange', 'bybit')->toString();
-        if (! in_array($exchange, ['bybit', 'binance'], true)) {
+        $registered = app(ExchangeRegistry::class)->registeredIds();
+        if (! in_array($exchange, $registered, true)) {
             $exchange = 'bybit';
         }
         $signalIds = SignalRecord::query()->select('id')->where('strategy_id', $id);
@@ -192,7 +194,8 @@ final class StrategyResearchController extends Controller
         $symbol = strtoupper($request->string('symbol', 'ALL')->toString());
         abort_unless(in_array($symbol, ['ALL', 'BTCUSDT', 'ETHUSDT'], true), 422, 'Unsupported symbol.');
         $exchange = $request->header('X-Exchange') ?: $request->string('exchange', 'bybit')->toString();
-        if (! in_array($exchange, ['bybit', 'binance'], true)) {
+        $registered = app(ExchangeRegistry::class)->registeredIds();
+        if (! in_array($exchange, $registered, true)) {
             $exchange = 'bybit';
         }
         $accounts = PaperAccountRecord::query()->where('exchange_id', $exchange)->whereIn('mode', ['RESEARCH_FORWARD_PAPER', 'STRATEGY_FORWARD_PAPER'])->latest('created_at')->latest('id')->paginate(max(1, min(100, $request->integer('per_page', 10))));

@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Audit\Application;
 
+use App\Exchanges\ExchangeRegistry;
 use App\Strategy\Application\StrategyRegistry;
 use App\Strategy\Infrastructure\Persistence\StrategyObservationRecord;
 use Illuminate\Support\Facades\Cache;
@@ -19,7 +20,8 @@ final readonly class StrategyFunnelService
         if (! in_array($days, [1, 7, 14, 30], true)) {
             throw new \InvalidArgumentException('Invalid funnel window.');
         }
-        if (! in_array($exchange, ['bybit', 'binance'], true)) {
+        $registered = app(ExchangeRegistry::class)->registeredIds();
+        if (! in_array($exchange, $registered, true)) {
             $exchange = 'bybit';
         }
 

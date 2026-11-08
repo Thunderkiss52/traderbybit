@@ -6,6 +6,7 @@ namespace App\Audit\Backtest;
 
 use App\Backtest\Application\DatasetInspector;
 use App\Backtest\Infrastructure\Persistence\BacktestRunRecord;
+use App\Exchanges\ExchangeRegistry;
 use DateTimeImmutable;
 use DateTimeZone;
 use Illuminate\Database\Query\Builder;
@@ -31,7 +32,8 @@ final class BacktestAuditArchiveBuilder
         }
         $exchange = $run->strategy_config['_exchange'] ?? 'bybit';
         $symbols = $run->symbols;
-        if (! in_array($exchange, ['bybit', 'binance'], true)
+        $registered = app(ExchangeRegistry::class)->registeredIds();
+        if (! in_array($exchange, $registered, true)
             || ! is_array($symbols) || $symbols === [] || count($symbols) > 32) {
             throw new RuntimeException('Invalid saved backtest exchange or symbol scope.');
         }

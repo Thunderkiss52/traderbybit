@@ -12,6 +12,7 @@ use App\Backtest\Infrastructure\Persistence\BacktestRunRecord;
 use App\Backtest\Infrastructure\Persistence\BacktestSegmentRecord;
 use App\Backtest\Infrastructure\Persistence\BacktestTradeRecord;
 use App\Backtest\Jobs\RunBacktestJob;
+use App\Exchanges\ExchangeRegistry;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\V1\BacktestStoreRequest;
 use App\Http\Requests\V1\MarketSeriesRequest;
@@ -63,6 +64,18 @@ final class ResearchController extends Controller
         ], Response::HTTP_NOT_FOUND);
     }
 
+    private function badRequest(string $code, string $message): JsonResponse
+    {
+        return response()->json([
+            'schema_version' => '1.0.0',
+            'research_mode' => true,
+            'error' => [
+                'code' => $code,
+                'message' => $message,
+            ],
+        ], Response::HTTP_BAD_REQUEST);
+    }
+
     private function ok(mixed $data): ResearchResource
     {
         return new ResearchResource($data);
@@ -85,8 +98,9 @@ final class ResearchController extends Controller
     private function resolveExchange(Request $request): string
     {
         $exchange = $request->header('X-Exchange') ?: $request->string('exchange', 'bybit')->toString();
+        $registered = app(ExchangeRegistry::class)->registeredIds();
 
-        return in_array($exchange, ['bybit', 'binance'], true) ? $exchange : 'bybit';
+        return in_array($exchange, $registered, true) ? $exchange : 'bybit';
     }
 
     public function dashboard(Request $request, PerformanceStatisticsService $statistics, StrategyRegistry $strategies): ResearchResource
@@ -829,11 +843,15 @@ final class ResearchController extends Controller
             ->get(['id', 'name', 'mode', 'strategy_id', 'primary_strategy_id', 'exchange_id', 'status']));
     }
 
-    public function paperAccounts(Request $r): ResearchResource
+    public function paperAccounts(Request $r): ResearchResource|JsonResponse
     {
         $exchange = $r->header('X-Exchange') ?: $r->string('exchange')->toString();
         $query = PaperAccountRecord::query();
-        if ($exchange !== '' && in_array($exchange, ['bybit', 'binance'], true)) {
+        $registered = app(ExchangeRegistry::class)->registeredIds();
+        if ($exchange !== '') {
+            if (! in_array($exchange, $registered, true)) {
+                return $this->badRequest('unsupported_exchange', "Exchange '{$exchange}' is not registered.");
+            }
             $query->where('exchange_id', $exchange);
         }
 
@@ -844,7 +862,7 @@ final class ResearchController extends Controller
         ]));
     }
 
-    public function journal(Request $r): ResearchResource
+    public function journal(Request $r): ResearchResource|JsonResponse
     {
         $validated = $r->validate([
             'account' => ['nullable', 'uuid'],
@@ -854,7 +872,11 @@ final class ResearchController extends Controller
         $days = (int) ($validated['period_days'] ?? 7);
         $q = JournalEventRecord::query()->where('occurred_at', '>=', now('UTC')->subDays($days));
         $exchange = $r->header('X-Exchange') ?: $r->string('exchange')->toString();
-        if ($exchange && in_array($exchange, ['bybit', 'binance'], true)) {
+        $registered = app(ExchangeRegistry::class)->registeredIds();
+        if ($exchange !== '') {
+            if (! in_array($exchange, $registered, true)) {
+                return $this->badRequest('unsupported_exchange', "Exchange '{$exchange}' is not registered.");
+            }
             $q->where('exchange_id', $exchange);
         }
         if (! empty($validated['account'])) {
@@ -865,7 +887,7 @@ final class ResearchController extends Controller
         }
 
         // Avoid a full-history COUNT(*) and eager statistics calculation on the journal request.
-        return $this->ok($q->latest('occurred_at')->latest('sequence')->simplePaginate($this->perPage($r), ['sequence', 'id', 'paper_account_id', 'position_id', 'signal_id', 'event_type', 'occurred_at']));
+        return $this->ok($q->latest('occurred_at')->latest('sequence')->simplePaginate($this->perPage($r), ['sequence', 'id', 'paper_account_id', 'position_id', 'signal_id', 'event_type', 'payload', 'occurred_at']));
     }
 
     public function statistics(Request $r, PerformanceStatisticsService $s): ResearchResource
@@ -1005,7 +1027,8 @@ final class ResearchController extends Controller
     public function dailyPerformance(Request $request, DailyPerformanceService $service): ResearchResource
     {
         $exchange = $request->header('X-Exchange') ?: $request->string('exchange', 'bybit')->toString();
-        if (! in_array($exchange, ['bybit', 'binance'], true)) {
+        $registered = app(ExchangeRegistry::class)->registeredIds();
+        if (! in_array($exchange, $registered, true)) {
             $exchange = 'bybit';
         }
         $account = $request->string('account')->toString() ?: PaperAccountRecord::query()->where('exchange_id', $exchange)->value('id');
@@ -1093,7 +1116,7 @@ final class ResearchController extends Controller
         $a = $account?->id;
         $decisions = $a ? RiskDecisionRecord::query()->where('paper_account_id', $a)
             ->where('exchange_id', $exchange)
-            ->latest('decided_at')->latest('id')->paginate($this->perPage($r), ['id', 'signal_id', 'allowed', 'reasons', 'decided_at']) : null;
+            ->latest('decided_at')->latest('id')->paginate($this->perPage($r), ['id', 'signal_id', 'allowed', 'reasons', 'snapshot', 'decided_at']) : null;
 
         return $this->ok([
             'account' => $account,

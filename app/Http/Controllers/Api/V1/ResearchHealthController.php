@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers\Api\V1;
 
+use App\Exchanges\ExchangeRegistry;
 use App\Http\Controllers\Controller;
 use App\Http\Resources\V1\ResearchResource;
 use App\Research\Application\LedgerReconciliationService;
@@ -102,7 +103,8 @@ final class ResearchHealthController extends Controller
     {
         try {
             $exchange = $request->query('exchange');
-            $exchange = is_string($exchange) && in_array($exchange, ['bybit', 'binance'], true) ? $exchange : null;
+            $registered = app(ExchangeRegistry::class)->registeredIds();
+            $exchange = is_string($exchange) && in_array($exchange, $registered, true) ? $exchange : null;
             $alertOnMissing = $request->boolean('alert_on_missing', false);
 
             return $this->ok($freshness->check($exchange, $alertOnMissing));

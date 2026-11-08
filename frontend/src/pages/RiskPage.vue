@@ -113,13 +113,44 @@ onBeforeUnmount(() => controller?.abort());
       :pagination="{ rowsPerPage: 0 }"
       hide-pagination
     >
-      <template #body-cell-allowed="props">
-        <q-td :props="props">
-          <q-badge
-            :color="props.value ? 'positive' : 'negative'"
-            :label="props.value ? 'ALLOWED' : 'REJECTED'"
-          />
-        </q-td>
+      <template #header="props">
+        <q-tr :props="props">
+          <q-th auto-width />
+          <q-th v-for="col in props.cols" :key="col.name" :props="props">
+            {{ col.label }}
+          </q-th>
+        </q-tr>
+      </template>
+      <template #body="props">
+        <q-tr :props="props">
+          <q-td auto-width>
+            <q-btn size="sm" color="grey-6" round dense flat @click="props.expand = !props.expand" :icon="props.expand ? 'expand_less' : 'expand_more'" />
+          </q-td>
+          <q-td v-for="col in props.cols" :key="col.name" :props="props">
+            <template v-if="col.name === 'allowed'">
+              <q-badge
+                :color="props.row.allowed ? 'positive' : 'negative'"
+                :label="props.row.allowed ? 'ALLOWED' : 'REJECTED'"
+              />
+            </template>
+            <template v-else-if="col.name === 'signal_id' && props.row.signal_id">
+              <router-link :to="`/signals/${props.row.signal_id}`" class="text-primary text-bold" style="text-decoration:none;">
+                {{ col.value }}
+              </router-link>
+            </template>
+            <template v-else>
+              {{ col.value }}
+            </template>
+          </q-td>
+        </q-tr>
+        <q-tr v-show="props.expand" :props="props">
+          <q-td colspan="100%">
+            <div class="q-pa-sm">
+              <div class="text-caption text-weight-bold text-grey-4 q-mb-xs">Risk Decision Snapshot & Guardrail Evaluation:</div>
+              <pre class="bg-grey-10 text-grey-2 q-pa-sm rounded-borders text-caption" style="max-height: 250px; overflow: auto; white-space: pre-wrap; font-family: monospace;">{{ props.row.snapshot ? JSON.stringify(props.row.snapshot, null, 2) : 'No snapshot recorded' }}</pre>
+            </div>
+          </q-td>
+        </q-tr>
       </template>
     </q-table>
     <div class="row items-center justify-between q-mt-md">
