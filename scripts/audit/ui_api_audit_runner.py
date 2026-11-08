@@ -177,6 +177,7 @@ def run_ui_routes_audit(base_url: str, output_dir: str, mode: str, take_screensh
         {"path": "/market/BTCUSDT", "title": "Market BTCUSDT", "expected": ["BTCUSDT", "Market context"]},
         {"path": "/market/ETHUSDT", "title": "Market ETHUSDT", "expected": ["ETHUSDT", "Market context"]},
         {"path": "/signals", "title": "Signals", "expected": ["Signals", "Side"]},
+        {"path": "/monitor", "title": "Strategy Signal Monitor", "expected": ["Strategy Signal Monitor", "Decision Explainability"]},
         {"path": "/positions", "title": "Positions", "expected": ["Paper Positions", "Status"]},
         {"path": "/journal", "title": "Journal", "expected": ["Journal", "Events"]},
         {"path": "/audit", "title": "Audit", "expected": ["Audit", "Exports"]},
