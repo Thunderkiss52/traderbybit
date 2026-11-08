@@ -47,6 +47,7 @@ const links = [
   ['/dashboard', 'space_dashboard', 'dashboard'],
   ['/market/BTCUSDT', 'candlestick_chart', 'Market'],
   ['/signals', 'bolt', 'signals'],
+  ['/monitor', 'track_changes', 'Signal Monitor'],
   ['/positions', 'account_balance_wallet', 'positions'],
   ['/journal', 'menu_book', 'journal'],
   ['/audit', 'download', 'Audit'],

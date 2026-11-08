@@ -13,6 +13,7 @@ use App\Http\Controllers\Api\V1\ResearchController as C;
 use App\Http\Controllers\Api\V1\ResearchHealthController as H;
 use App\Http\Controllers\Api\V1\ResearchIntelligenceController as I;
 use App\Http\Controllers\Api\V1\ResearchJobController as J;
+use App\Http\Controllers\Api\V1\StrategyMonitorController;
 use App\Http\Controllers\Api\V1\StrategyResearchController as R;
 use App\Strategy\Http\MethodCatalogController;
 use App\StrategyBuilder\ManagementController;
@@ -146,6 +147,8 @@ Route::prefix('v1')->middleware('throttle:api')->group(function () {
     Route::get('market/{symbol}/analysis', [C::class, 'analysis']);
     Route::get('signals', [C::class, 'signals']);
     Route::get('signals/{id}', [C::class, 'signal']);
+    Route::get('strategy-monitor', [StrategyMonitorController::class, 'index']);
+    Route::get('strategy-monitor/timeline', [StrategyMonitorController::class, 'timeline']);
     Route::get('positions', [C::class, 'positions']);
     Route::get('positions/{id}', [C::class, 'position']);
     Route::get('journal', [C::class, 'journal']);

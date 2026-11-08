@@ -14,6 +14,7 @@ export const router = createRouter({
         { path: 'market/:symbol', component: () => import('../pages/MarketPage.vue') },
         { path: 'signals', component: () => import('../pages/TablePage.vue'), meta: { title: 'Signals', endpoint: '/signals', detail: true } },
         { path: 'signals/:id', component: () => import('../pages/RecordDetailPage.vue'), meta: { title: 'Signal', endpoint: '/signals' } },
+        { path: 'monitor', component: () => import('../pages/StrategyMonitorPage.vue'), meta: { title: 'Strategy Signal Monitor' } },
         { path: 'positions', component: () => import('../pages/TablePage.vue'), meta: { title: 'Paper Positions', endpoint: '/positions', detail: true } },
         { path: 'positions/:id', component: () => import('../pages/RecordDetailPage.vue'), meta: { title: 'Paper Position', endpoint: '/positions' } },
         { path: 'journal', component: () => import('../pages/JournalPage.vue') },
