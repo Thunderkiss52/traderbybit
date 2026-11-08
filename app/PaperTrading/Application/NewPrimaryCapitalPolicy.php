@@ -16,7 +16,7 @@ final class NewPrimaryCapitalPolicy
     public function openingBalance(string $exchangeId, string $strategyId): string
     {
         $isExecutionApproved = match ($exchangeId) {
-            'bybit' => true,
+            'bybit' => in_array($strategyId, (array) config('paper.initially_approved_bybit_strategies', []), true),
             'binance' => (bool) config('exchanges.binance_paper_execution_approved', false),
             default => (bool) config("exchanges.{$exchangeId}_paper_execution_approved", false),
         };
