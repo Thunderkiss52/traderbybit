@@ -31,6 +31,7 @@ final readonly class SignalDecision
         public array $indicatorSnapshot,
         public string $strategyVersion,
         public string $schemaVersion,
+        public ?int $candleId = null,
     ) {}
 
     public function toContractArray(): array
@@ -51,6 +52,7 @@ final readonly class SignalDecision
             'research_mode' => true,
             'disclaimer' => 'Исследовательский режим. Не является инвестиционной рекомендацией',
             'market' => ['exchange' => $this->exchange, 'category' => $this->category, 'symbol' => $this->symbol, 'timeframe' => $this->timeframe],
+            'candle_id' => $this->candleId,
             'decision_time' => $date($this->decisionTime),
             'candle_close_time' => $date($this->candleCloseTime),
             'side' => $this->side->value,
