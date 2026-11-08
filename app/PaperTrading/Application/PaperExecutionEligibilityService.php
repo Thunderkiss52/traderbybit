@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\PaperTrading\Application;
 
 use App\Exchanges\Binance\BinancePaperSafety;
+use App\Exchanges\ExchangeRegistry;
 use App\PaperTrading\Domain\SignalLifecycle;
 use App\PaperTrading\Infrastructure\Persistence\PaperAccountRecord;
 use App\PaperTrading\Infrastructure\Persistence\PaperSignalStateRecord;
@@ -76,14 +77,17 @@ final readonly class PaperExecutionEligibilityService
         }
 
         // Exchange-specific safety gates
+        $registered = app(ExchangeRegistry::class)->registeredIds();
+        if (! in_array($account->exchange_id, $registered, true)) {
+            return 'unknown_exchange';
+        }
+
         if ($account->exchange_id === 'binance') {
             try {
                 BinancePaperSafety::assertExecutable($account);
             } catch (DomainException) {
                 return 'binance_account_not_executable';
             }
-        } elseif ($account->exchange_id !== 'bybit') {
-            return 'unknown_exchange';
         }
 
         // Mode and configuration lifecycle validation

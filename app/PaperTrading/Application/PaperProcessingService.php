@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\PaperTrading\Application;
 
 use App\Exchanges\Binance\BinancePaperSafety;
+use App\Exchanges\ExchangeRegistry;
 use App\MarketData\Infrastructure\Persistence\CandleRecord;
 use App\MarketData\Jobs\RecoverCandleGapsJob;
 use App\PaperTrading\Domain\InstrumentConstraints;
@@ -46,13 +47,15 @@ final readonly class PaperProcessingService
     public function process(?string $accountId = null, ?string $symbol = null, ?DateTimeImmutable $at = null, bool $allowNewEntries = true, ?bool $historical = null): array
     {
         $account = $accountId === null ? $this->accounts->default() : PaperAccountRecord::query()->findOrFail($accountId);
+        $registered = app(ExchangeRegistry::class)->registeredIds();
+        if (! in_array($account->exchange_id, $registered, true)) {
+            throw new \DomainException('Unknown paper account exchange.');
+        }
         if ($account->exchange_id === 'binance') {
             BinancePaperSafety::assertProvenance($account);
             if ($account->status === 'ACTIVE' && $allowNewEntries) {
                 BinancePaperSafety::assertExecutable($account);
             }
-        } elseif ($account->exchange_id !== 'bybit') {
-            throw new \DomainException('Unknown paper account exchange.');
         }
         $eligibility = $this->eligibility ?? app(PaperExecutionEligibilityService::class);
         $historical ??= $at !== null;

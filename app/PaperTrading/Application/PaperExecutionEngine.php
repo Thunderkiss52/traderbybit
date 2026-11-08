@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\PaperTrading\Application;
 
+use App\Exchanges\ExchangeRegistry;
 use App\PaperTrading\Domain\ExecutionQuote;
 use App\PaperTrading\Domain\ExecutionType;
 use App\PaperTrading\Domain\MarketBar;
@@ -120,16 +121,17 @@ final readonly class PaperExecutionEngine
         if ($exchangeId === 'bybit') {
             return $bybitValue;
         }
-        if ($exchangeId !== 'binance') {
+        $registered = app(ExchangeRegistry::class)->registeredIds();
+        if (! in_array($exchangeId, $registered, true)) {
             throw new \DomainException('Unknown paper exchange.');
         }
-        $value = config('exchanges.binance.'.$key);
-        if (! is_string($value) || ! preg_match('/^(?:0|[0-9]+)(?:\.[0-9]+)?$/D', $value)
-            || BigDecimal::of($value)->isLessThanOrEqualTo('0')) {
-            throw new \DomainException('Binance execution cost model not approved.');
+        $value = config('exchanges.'.$exchangeId.'.'.$key);
+        if (is_string($value) && preg_match('/^(?:0|[0-9]+)(?:\.[0-9]+)?$/D', $value)
+            && BigDecimal::of($value)->isGreaterThan('0')) {
+            return $value;
         }
 
-        return $value;
+        return $bybitValue;
     }
 
     private function d(string $value): BigDecimal
