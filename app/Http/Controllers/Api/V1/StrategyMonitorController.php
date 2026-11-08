@@ -73,8 +73,8 @@ final class StrategyMonitorController extends Controller
         $totalSignals = (clone $sigQuery)->whereIn('side', ['BUY', 'SELL'])->count();
         $totalSkips = (clone $obsQuery)->where('side', 'SKIP')->count();
         $riskApproved = (clone $riskQuery)->where('allowed', true)->count();
-        $activePositions = (clone $posQuery)->where('status', 'OPEN')->count();
-        $closedPositions = (clone $posQuery)->whereIn('status', ['CLOSED', 'RESOLVED'])->count();
+        $activePositions = (clone $posQuery)->whereIn('status', ['OPEN', 'PARTIALLY_CLOSED'])->count();
+        $closedPositions = (clone $posQuery)->whereIn('status', ['CLOSED', 'CLOSED_TP', 'CLOSED_SL', 'CLOSED_TIMEOUT', 'CLOSED_RISK', 'RESOLVED'])->count();
 
         // Feed items: BUY/SELL from SignalRecord or SKIP from StrategyObservationRecord
         $items = [];
