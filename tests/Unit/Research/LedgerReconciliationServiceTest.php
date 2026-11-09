@@ -13,6 +13,7 @@ use App\PaperTrading\Infrastructure\Persistence\VirtualPositionRecord;
 use App\Research\Application\LedgerReconciliationService;
 use App\Strategy\Infrastructure\Persistence\SignalRecord;
 use Brick\Math\BigDecimal;
+use Carbon\CarbonImmutable;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
@@ -172,6 +173,11 @@ final class LedgerReconciliationServiceTest extends TestCase
             'schema_version' => '1.0.0',
         ]);
 
+        $openedAt = CarbonImmutable::parse('2026-11-07T07:00:00Z');
+        $closedAt = CarbonImmutable::parse('2026-11-07T09:00:00Z');
+        $tp1Time = CarbonImmutable::parse('2026-11-07T07:30:00Z');
+        $fundingTime = CarbonImmutable::parse('2026-11-07T08:00:00Z');
+
         $positionId = (string) Str::uuid();
         VirtualPositionRecord::query()->create([
             'id' => $positionId,
@@ -194,9 +200,9 @@ final class LedgerReconciliationServiceTest extends TestCase
             'fees' => '4.80',
             'funding' => '2.50',
             'net_pnl' => '247.70',
-            'opened_at' => now('UTC')->subHours(2),
-            'maximum_holding_until' => now('UTC')->addHours(2),
-            'closed_at' => now('UTC')->subHour(),
+            'opened_at' => $openedAt,
+            'maximum_holding_until' => $openedAt->addHours(4),
+            'closed_at' => $closedAt,
             'execution_model' => 'FORWARD_PAPER',
             'execution_version' => '1.0.0',
             'schema_version' => '1.0.0',
@@ -215,8 +221,8 @@ final class LedgerReconciliationServiceTest extends TestCase
             'gross_pnl' => '0.00',
             'commission' => '1.50',
             'slippage' => '0.00',
-            'market_event_at' => now('UTC')->subHours(2),
-            'registered_at' => now('UTC')->subHours(2),
+            'market_event_at' => $openedAt,
+            'registered_at' => $openedAt,
             'price_source' => 'NEXT_CANDLE_OPEN',
             'ambiguous_execution' => false,
             'idempotency_key' => 'exec:entry:'.$positionId,
@@ -235,8 +241,8 @@ final class LedgerReconciliationServiceTest extends TestCase
             'gross_pnl' => '100.00',
             'commission' => '1.60',
             'slippage' => '0.00',
-            'market_event_at' => now('UTC')->subMinutes(90),
-            'registered_at' => now('UTC')->subMinutes(90),
+            'market_event_at' => $tp1Time,
+            'registered_at' => $tp1Time,
             'price_source' => 'LIMIT_ORDER',
             'ambiguous_execution' => false,
             'idempotency_key' => 'exec:tp1:'.$positionId,
@@ -255,8 +261,8 @@ final class LedgerReconciliationServiceTest extends TestCase
             'gross_pnl' => '150.00',
             'commission' => '1.70',
             'slippage' => '0.00',
-            'market_event_at' => now('UTC')->subHour(),
-            'registered_at' => now('UTC')->subHour(),
+            'market_event_at' => $closedAt,
+            'registered_at' => $closedAt,
             'price_source' => 'LIMIT_ORDER',
             'ambiguous_execution' => false,
             'idempotency_key' => 'exec:tp2:'.$positionId,
@@ -269,7 +275,7 @@ final class LedgerReconciliationServiceTest extends TestCase
             'exchange' => 'bybit',
             'category' => 'linear',
             'symbol' => 'BTCUSDT',
-            'funding_at' => now('UTC')->subMinutes(75),
+            'funding_at' => $fundingTime,
             'rate' => '0.0001',
             'mark_price' => '62500.00',
         ]);
@@ -281,7 +287,7 @@ final class LedgerReconciliationServiceTest extends TestCase
             'mark_price' => '62500.00',
             'rate' => '0.0001',
             'amount' => '2.50',
-            'funding_at' => now('UTC')->subMinutes(75),
+            'funding_at' => $fundingTime,
         ]);
 
         // Update account to reflect realized trades & funding: 250 - 4.80 + 2.50 = 247.70
