@@ -83,10 +83,16 @@ final class ExchangePaperReconciliation
                 }
                 $account = $matches->first();
                 $accountIssueStart = count($issues);
-                if (! in_array($exchange, ['bybit', 'binance'], true) && ($account->status !== 'BLOCKED'
-                    || ! BigDecimal::of((string) $account->starting_balance)->isZero()
-                    || ! BigDecimal::of((string) $account->current_equity)->isZero())) {
-                    $issues[] = ['exchange_id' => $exchange, 'strategy_id' => $strategy, 'code' => 'UNVERIFIED_EXCHANGE_FUNDED_OR_ACTIVE'];
+                $isApproved = match ($exchange) {
+                    'bybit', 'binance' => true,
+                    default => (bool) (
+                        config("exchanges.{$exchange}.paper_execution_approved")
+                        ?? config("exchanges.{$exchange}_paper_execution_approved")
+                        ?? config("exchanges.{$exchange}_paper_approved")
+                    ),
+                };
+                if (! $isApproved && $account->status !== 'BLOCKED') {
+                    $issues[] = ['exchange_id' => $exchange, 'strategy_id' => $strategy, 'code' => 'UNAPPROVED_EXCHANGE_NOT_BLOCKED'];
                 }
                 if ($account->strategy_id !== $strategy || $account->research_experiment_id !== null) {
                     $issues[] = ['exchange_id' => $exchange, 'strategy_id' => $strategy, 'code' => 'INVALID_ACCOUNT_PROVENANCE'];

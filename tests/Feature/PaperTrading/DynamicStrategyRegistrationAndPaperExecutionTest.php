@@ -86,8 +86,8 @@ final class DynamicStrategyRegistrationAndPaperExecutionTest extends TestCase
         self::assertDecimalSame('10000', (string) $bybitAccount->current_equity);
 
         self::assertSame('BLOCKED', $binanceAccount->status);
-        self::assertDecimalSame('0', (string) $binanceAccount->starting_balance);
-        self::assertDecimalSame('0', (string) $binanceAccount->current_equity);
+        self::assertDecimalSame('10000', (string) $binanceAccount->starting_balance);
+        self::assertDecimalSame('10000', (string) $binanceAccount->current_equity);
 
         // 3. Simulate market data and signal evaluation for the 14th strategy on Bybit
         $this->travelTo(new DateTimeImmutable('2026-10-14T10:15:00Z'));

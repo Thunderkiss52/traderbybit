@@ -15,18 +15,12 @@ final class NewPrimaryCapitalPolicy
 {
     public function openingBalance(string $exchangeId, string $strategyId): string
     {
-        $isExecutionApproved = match ($exchangeId) {
-            'bybit' => true,
-            'binance' => (bool) config('exchanges.binance_paper_execution_approved', false),
-            default => (bool) config("exchanges.{$exchangeId}_paper_execution_approved", false),
-        };
+        $strategyAmount = config("paper.new_primary_initial_balances.{$exchangeId}.{$strategyId}");
+        $exchangeAmount = config("paper.new_primary_initial_balances.{$exchangeId}");
+        $amount = is_string($strategyAmount)
+            ? $strategyAmount
+            : (is_string($exchangeAmount) ? $exchangeAmount : config('paper.new_primary_default_starting_balance', '10000'));
 
-        if (! $isExecutionApproved) {
-            return '0';
-        }
-
-        $amount = config("paper.new_primary_initial_balances.{$exchangeId}.{$strategyId}")
-            ?? config('paper.new_primary_default_starting_balance', '10000');
         if (! is_string($amount) || ! preg_match('/^(?:0|[1-9][0-9]{0,8})(?:\.[0-9]{1,12})?$/D', $amount)) {
             throw new DomainException('Invalid new PRIMARY virtual opening balance.');
         }

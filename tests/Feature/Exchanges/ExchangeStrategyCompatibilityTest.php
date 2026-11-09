@@ -155,7 +155,7 @@ final class ExchangeStrategyCompatibilityTest extends TestCase
             ->count();
         self::assertSame(count(PrimaryStrategies::ids()), $paperAccountsCount);
         self::assertSame(0, PaperAccountRecord::query()->where('exchange_id', 'kraken_futures')->where('status', '!=', 'BLOCKED')->count());
-        self::assertTrue(BigDecimal::of((string) PaperAccountRecord::query()->where('exchange_id', 'kraken_futures')->sum('starting_balance'))->isZero());
+        self::assertTrue(BigDecimal::of((string) PaperAccountRecord::query()->where('exchange_id', 'kraken_futures')->sum('starting_balance'))->isPositive());
 
         // Invariant: Exchange lifecycle status remains unapproved for paper execution
         $freshExchange = ExchangeRecord::query()->findOrFail('kraken_futures');

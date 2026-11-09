@@ -109,7 +109,7 @@ final class TwentySixPaperAccountsVerificationTest extends TestCase
         $newBinance = PaperAccountRecord::query()->where('exchange_id', 'binance')->where('primary_strategy_id', 'volatility_arbitrage_v1')->firstOrFail();
         self::assertSame('ACTIVE', $newBybit->status);
         self::assertSame('BLOCKED', $newBinance->status);
-        self::assertDecimalSame('0', (string) $newBinance->starting_balance);
+        self::assertDecimalSame('10000', (string) $newBinance->starting_balance);
         self::assertDecimalSame('10000', (string) $newBybit->starting_balance);
     }
 
@@ -167,8 +167,8 @@ final class TwentySixPaperAccountsVerificationTest extends TestCase
         $eligibility = app(PaperExecutionEligibilityService::class);
         foreach ($okxAccounts as $account) {
             self::assertSame('BLOCKED', $account->status);
-            self::assertDecimalSame('0', (string) $account->starting_balance);
-            self::assertDecimalSame('0', (string) $account->current_equity);
+            self::assertDecimalSame('10000', (string) $account->starting_balance);
+            self::assertDecimalSame('10000', (string) $account->current_equity);
             self::assertFalse($eligibility->isAccountEntryEligible($account));
         }
     }

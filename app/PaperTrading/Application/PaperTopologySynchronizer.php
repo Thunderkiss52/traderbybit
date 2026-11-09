@@ -27,6 +27,7 @@ final readonly class PaperTopologySynchronizer
         private PaperAccountService $accounts,
         private BinancePaperProvisioner $binance,
         private CacheFactory $cache,
+        private ?NewPrimaryCapitalPolicy $capitalPolicy = null,
     ) {}
 
     public function sync(bool $apply = false): array
@@ -86,6 +87,7 @@ final readonly class PaperTopologySynchronizer
                         'paper_orders' => 'NEVER_REAL',
                     ];
                 }
+                $policy = $this->capitalPolicy ?? app(NewPrimaryCapitalPolicy::class);
                 $createdBybit = 0;
                 if (in_array('bybit', $exchangeIds, true)) {
                     foreach ($scopes['bybit'] as $id) {
@@ -99,9 +101,14 @@ final readonly class PaperTopologySynchronizer
                 $createdOther = 0;
                 $createdBinance = 0;
                 foreach ($exchangeIds as $exchange) {
-                    if ($exchange === 'bybit' || ($exchange === 'binance' && $binanceApproved)) {
+                    if ($exchange === 'bybit') {
                         continue;
                     }
+                    $isExecutionApproved = match ($exchange) {
+                        'binance' => (bool) config('exchanges.binance_paper_execution_approved', false),
+                        default => (bool) config("exchanges.{$exchange}_paper_execution_approved", false),
+                    };
+
                     foreach ($scopes[$exchange] as $id) {
                         if (isset($pairs[$exchange.'|'.$id])) {
                             continue;
@@ -112,18 +119,42 @@ final readonly class PaperTopologySynchronizer
                         if (PaperAccountRecord::query()->where('id', $accountId)->exists()) {
                             throw new RuntimeException('Canonical PRIMARY account identifier already occupied.');
                         }
+                        $startingBalance = $policy->openingBalance($exchange, $id);
                         $createdAccount = PaperAccountRecord::query()->create([
-                            'id' => $accountId, 'name' => strtoupper($exchange).' Paper '.$id,
-                            'status' => 'BLOCKED', 'starting_balance' => '0',
-                            'current_equity' => '0', 'peak_equity' => '0',
-                            'realized_pnl' => '0', 'unrealized_pnl' => '0', 'reserved_risk' => '0',
-                            'maximum_drawdown_percent' => '0', 'current_drawdown_percent' => '0',
-                            'mode' => 'STRATEGY_FORWARD_PAPER', 'exchange_id' => $exchange,
-                            'strategy_id' => $id, 'primary_strategy_id' => $id, 'is_primary' => true,
+                            'id' => $accountId,
+                            'name' => strtoupper($exchange).' Paper '.$id,
+                            'status' => $isExecutionApproved ? 'ACTIVE' : 'BLOCKED',
+                            'starting_balance' => $startingBalance,
+                            'current_equity' => $startingBalance,
+                            'peak_equity' => $startingBalance,
+                            'realized_pnl' => '0',
+                            'unrealized_pnl' => '0',
+                            'reserved_risk' => '0',
+                            'maximum_drawdown_percent' => '0',
+                            'current_drawdown_percent' => '0',
+                            'mode' => 'STRATEGY_FORWARD_PAPER',
+                            'exchange_id' => $exchange,
+                            'strategy_id' => $id,
+                            'primary_strategy_id' => $id,
+                            'is_primary' => true,
                             'strategy_version' => $strategy->version(),
                             'configuration_hash' => StrategyRegistry::hash($parameters),
                             'strategy_parameters' => $parameters,
                         ]);
+
+                        $now = now('UTC');
+                        DB::table('paper_capital_events')->insertOrIgnore([
+                            'id' => Uuid::uuid5(Uuid::NAMESPACE_URL, "vector:paper-allocation:{$accountId}:initial")->toString(),
+                            'paper_account_id' => $accountId,
+                            'exchange_id' => $exchange,
+                            'amount' => $startingBalance,
+                            'approval_reference' => 'POLICY_INITIAL_CAPITAL',
+                            'reason' => 'INITIAL_RESEARCH_CAPITAL_ALLOCATION',
+                            'occurred_at' => $now,
+                            'created_at' => $now,
+                            'updated_at' => $now,
+                        ]);
+
                         $this->accounts->ensureInitialSnapshot($createdAccount);
                         if ($exchange === 'binance') {
                             $createdBinance++;
@@ -132,15 +163,16 @@ final readonly class PaperTopologySynchronizer
                         }
                     }
                 }
-                if (in_array('binance', $exchangeIds, true) && $binanceApproved) {
-                    $createdBinance = $this->binance->provision()['created'];
-                }
 
                 return [
-                    'mode' => 'APPLIED', 'expected_pairs' => array_sum(array_map('count', $scopes)),
-                    'created_bybit' => $createdBybit, 'created_binance_blocked_unfunded' => $createdBinance,
+                    'mode' => 'APPLIED',
+                    'expected_pairs' => array_sum(array_map('count', $scopes)),
+                    'created_bybit' => $createdBybit,
+                    'created_binance_blocked_unfunded' => $createdBinance,
                     'created_other_blocked_unfunded' => $createdOther,
-                    'binance_pending_approval' => in_array('binance', $exchangeIds, true) && ! $binanceApproved,
+                    'created_binance' => $createdBinance,
+                    'created_other' => $createdOther,
+                    'binance_pending_approval' => in_array('binance', $exchangeIds, true) && ! (bool) config('exchanges.binance_paper_execution_approved', false),
                     'paper_orders' => 'NEVER_REAL',
                 ];
             }, attempts: 1);

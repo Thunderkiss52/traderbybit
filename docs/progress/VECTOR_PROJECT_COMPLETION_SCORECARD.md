@@ -2,8 +2,8 @@
 
 **PROVISIONAL** — independently calculated scores; not product readiness.
 
-Source HEAD: `ae93bc4b0ac060ae09ff214cd8f78740979cbf9e`. Assessment source: `5b674960adc8ff6591134537763dce7a5bb0bb3c`.
-Assessment date: 2026-11-07; scope: `VECTOR-SCOPE-20261027-v1`.
+Source HEAD: `c76f7cd338a33e2736d447a9a3c76c60e6ec7cd4`. Assessment source: `5b674960adc8ff6591134537763dce7a5bb0bb3c`.
+Assessment date: 2026-11-09; scope: `VECTOR-SCOPE-20261027-v1`.
 Registry hash: `26d32b9e72f022065d4d1cfe5b405745f797de0e3786c592a451aefc2b8fa7eb`.
 
 | Metric | Completion |
