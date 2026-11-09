@@ -579,53 +579,7 @@ jobs:
         env:
           GITHUB_REPOSITORY: ${{ github.repository }}
           GITHUB_REF_NAME: ${{ github.ref_name }}
-        run: |
-          python3 -c '
-          import json, os
-          from pathlib import Path
-
-          manifest_file = Path("release-manifest.json")
-          if not manifest_file.exists():
-              exit(0)
-          manifest = json.loads(manifest_file.read_text())
-          sha = manifest["sha"]
-          run_id = manifest["run_id"]
-          repo = os.environ.get("GITHUB_REPOSITORY", "traderbybit/traderbybit")
-          ref_name = os.environ.get("GITHUB_REF_NAME", "main")
-          deploy_url = f"https://github.com/{repo}/actions/workflows/ci.yml"
-
-          lines = [
-              "## 🚀 VECTOR Build & CI Verification Succeeded",
-              "",
-              f"- **Verified Commit SHA:** `{sha}`",
-              f"- **Build Run ID:** `{run_id}`",
-              f"- **Target Branch:** `{ref_name}`",
-              "",
-              "### 📦 Approved Immutable Image Digest Manifest",
-              "| Target | Image Reference | Digest |",
-              "| :--- | :--- | :--- |",
-          ]
-          for img in manifest.get("images", []):
-              target = img.get("target", "")
-              tag = img.get("tag", "")
-              digest = img.get("digest", "")
-              short_digest = digest[:23] + "..." if len(digest) > 23 else digest
-              lines.append(f"| `{target}` | `{tag}` | `{short_digest}` |")
-
-          lines.extend([
-              "",
-              "### 🛡️ Production Release Action",
-              "> [!IMPORTANT]",
-              "> **Operator Action Required:** Production deployment is strictly operator-triggered.",
-              f"> Click here to trigger production release: [**Release Workflow (ci.yml)**]({deploy_url})",
-              f"> *(Specify `commit_sha: {sha}`)*",
-          ])
-
-          summary_path = os.environ.get("GITHUB_STEP_SUMMARY")
-          if summary_path:
-              with open(summary_path, "a") as f:
-                  f.write("\n".join(lines) + "\n")
-          '
+        run: python3 scripts/ci/report_release_summary.py
       - uses: actions/upload-artifact@v4
         with:
           name: verified-release
@@ -792,43 +746,7 @@ jobs:
           timing_run remote_deployment_total ssh "${ssh_options[@]}" "${DEPLOY_USER}@${DEPLOY_HOST}" \
             "sudo -n /usr/local/sbin/bybit-signals-deploy ${DEPLOY_COMMIT_SHA}"
           timing_record transfer_and_remote_execution "$deploy_start"
-          python3 -c '
-          import os
-          from pathlib import Path
-
-          target_sha = os.environ.get("DEPLOY_COMMIT_SHA", "")
-          ci_run_id = os.environ.get("CI_RUN_ID", "")
-          repo = os.environ.get("GITHUB_REPOSITORY", "traderbybit/traderbybit")
-          build_url = f"https://github.com/{repo}/actions/runs/{ci_run_id}" if ci_run_id else ""
-
-          lines = [
-              "## 🚢 VECTOR Production Release Deployed",
-              "",
-              f"- **Deployed Commit SHA:** `{target_sha}`",
-          ]
-          if build_url:
-              lines.append(f"- **Originating Build Run:** [Build #{ci_run_id}]({build_url})")
-
-          lines.extend([
-              "",
-              "### 📦 Deployed Image References",
-              "```",
-          ])
-          if Path("image-refs.txt").exists():
-              lines.append(Path("image-refs.txt").read_text().strip())
-          lines.extend([
-              "```",
-              "",
-              "> [!NOTE]",
-              "> Runner wall time and production VPS transition are separate timing events.",
-              "",
-          ])
-
-          summary_path = os.environ.get("GITHUB_STEP_SUMMARY")
-          if summary_path:
-              with open(summary_path, "a") as f:
-                  f.write("\n".join(lines) + "\n")
-          '
+          python3 scripts/ci/report_deployed_summary.py
           cp verified-release/release-manifest.json deployed-release.json
       - uses: actions/upload-artifact@v4
         with:
@@ -848,31 +766,5 @@ jobs:
             python3 scripts/ci/report_deploy_workflow_clock.py
             timing_record runner_wall_to_final_reporting "$VECTOR_RUNNER_START_MS"
             timing_summary | tee -a "$GITHUB_STEP_SUMMARY"
-            python3 -c '
-            import json, os
-            from pathlib import Path
-
-            timing_file = os.environ.get("DEPLOY_TIMING_FILE")
-            if timing_file and Path(timing_file).exists():
-                lines = [
-                    "",
-                    "### ⏱️ Stage Latency Breakdown",
-                    "| Stage | Duration (s) | Status |",
-                    "| :--- | :--- | :--- |",
-                ]
-                for raw in Path(timing_file).read_text().splitlines():
-                    if not raw.strip():
-                        continue
-                    try:
-                        ev = json.loads(raw)
-                        sec = f"{ev.get(\"elapsed_ms\", 0) / 1000.0:.2f}s"
-                        st = "✅ Success" if ev.get("exit_code", 0) == 0 else f"❌ Failed ({ev.get(\"exit_code\")})"
-                        lines.append(f"| `{ev.get(\"stage\")}` | {sec} | {st} |")
-                    except Exception:
-                        pass
-                summary_path = os.environ.get("GITHUB_STEP_SUMMARY")
-                if summary_path and len(lines) > 4:
-                    with open(summary_path, "a") as f:
-                        f.write("\n".join(lines) + "\n")
-            '
+            python3 scripts/ci/report_deploy_timing_summary.py
           fi

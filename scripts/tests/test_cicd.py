@@ -309,5 +309,151 @@ class DigestDeploymentTests(unittest.TestCase):
                 self.assertEqual("redis:7.4-alpine", services["redis"]["image"])
 
 
+class SummaryReportingTests(unittest.TestCase):
+    def test_workflow_contains_no_multiline_python_c_commands(self):
+        ci_yaml = (ROOT / ".github/workflows/ci.yml").read_text()
+        # Find every python3 -c '...' command
+        multiline_c = re.findall(r"python3\s+-c\s+'([^']*\n[^']*)'", ci_yaml)
+        self.assertEqual([], multiline_c, "No multiline python3 -c '...' commands are allowed in ci.yml")
+
+    def test_report_release_summary_creates_expected_table_and_handles_missing(self):
+        with tempfile.TemporaryDirectory() as directory:
+            work_dir = Path(directory)
+            summary_path = work_dir / "step_summary.md"
+            env = {
+                **os.environ,
+                "GITHUB_STEP_SUMMARY": str(summary_path),
+                "GITHUB_REPOSITORY": "traderbybit/traderbybit",
+                "GITHUB_REF_NAME": "main",
+            }
+            # Case 1: manifest does not exist -> exits 0 without error
+            res = subprocess.run(
+                ["python3", str(ROOT / "scripts/ci/report_release_summary.py")],
+                cwd=work_dir,
+                env=env,
+                capture_output=True,
+                text=True,
+            )
+            self.assertEqual(0, res.returncode)
+            self.assertFalse(summary_path.exists())
+
+            # Case 2: manifest exists -> writes markdown summary table
+            manifest = {
+                "sha": SHA,
+                "run_id": "12345678",
+                "images": [
+                    {
+                        "target": "app",
+                        "tag": f"ghcr.io/{REPOSITORY}/app:sha-{SHA}",
+                        "digest": "sha256:" + "a" * 64,
+                    },
+                    {
+                        "target": "web",
+                        "tag": f"ghcr.io/{REPOSITORY}/web:sha-{SHA}",
+                        "digest": "sha256:" + "b" * 64,
+                    },
+                ],
+            }
+            (work_dir / "release-manifest.json").write_text(json.dumps(manifest))
+            res = subprocess.run(
+                ["python3", str(ROOT / "scripts/ci/report_release_summary.py")],
+                cwd=work_dir,
+                env=env,
+                capture_output=True,
+                text=True,
+            )
+            self.assertEqual(0, res.returncode)
+            summary_content = summary_path.read_text()
+            self.assertIn("## 🚀 VECTOR Build & CI Verification Succeeded", summary_content)
+            self.assertIn(f"**Verified Commit SHA:** `{SHA}`", summary_content)
+            self.assertIn("**Build Run ID:** `12345678`", summary_content)
+            self.assertIn(f"| `app` | `ghcr.io/{REPOSITORY}/app:sha-{SHA}` | `sha256:aaaaaaaaaaaaaaaa...` |", summary_content)
+            self.assertIn("Production Release Action", summary_content)
+
+    def test_report_deployed_summary_creates_expected_summary_and_handles_missing(self):
+        with tempfile.TemporaryDirectory() as directory:
+            work_dir = Path(directory)
+            summary_path = work_dir / "step_summary.md"
+            env = {
+                **os.environ,
+                "GITHUB_STEP_SUMMARY": str(summary_path),
+                "DEPLOY_COMMIT_SHA": SHA,
+                "CI_RUN_ID": "87654321",
+                "GITHUB_REPOSITORY": "traderbybit/traderbybit",
+            }
+            # Case 1: image-refs.txt missing -> still produces summary
+            res = subprocess.run(
+                ["python3", str(ROOT / "scripts/ci/report_deployed_summary.py")],
+                cwd=work_dir,
+                env=env,
+                capture_output=True,
+                text=True,
+            )
+            self.assertEqual(0, res.returncode)
+            content = summary_path.read_text()
+            self.assertIn("## 🚢 VECTOR Production Release Deployed", content)
+            self.assertIn(f"**Deployed Commit SHA:** `{SHA}`", content)
+            self.assertIn("[Build #87654321](https://github.com/traderbybit/traderbybit/actions/runs/87654321)", content)
+
+            # Case 2: image-refs.txt exists -> embeds references
+            summary_path.unlink()
+            refs_content = f"ghcr.io/{REPOSITORY}/app:sha-{SHA}@sha256:" + "0" * 64
+            (work_dir / "image-refs.txt").write_text(refs_content)
+            res = subprocess.run(
+                ["python3", str(ROOT / "scripts/ci/report_deployed_summary.py")],
+                cwd=work_dir,
+                env=env,
+                capture_output=True,
+                text=True,
+            )
+            self.assertEqual(0, res.returncode)
+            content = summary_path.read_text()
+            self.assertIn(refs_content, content)
+
+    def test_report_deploy_timing_summary_creates_latency_table(self):
+        with tempfile.TemporaryDirectory() as directory:
+            work_dir = Path(directory)
+            summary_path = work_dir / "step_summary.md"
+            timing_path = work_dir / "deploy-timings.jsonl"
+            env = {
+                **os.environ,
+                "GITHUB_STEP_SUMMARY": str(summary_path),
+                "DEPLOY_TIMING_FILE": str(timing_path),
+            }
+
+            # Case 1: file does not exist -> exits 0, no file written
+            env_missing = {**env, "DEPLOY_TIMING_FILE": str(work_dir / "missing.jsonl")}
+            res = subprocess.run(
+                ["python3", str(ROOT / "scripts/ci/report_deploy_timing_summary.py")],
+                cwd=work_dir,
+                env=env_missing,
+                capture_output=True,
+                text=True,
+            )
+            self.assertEqual(0, res.returncode)
+            self.assertFalse(summary_path.exists())
+
+            # Case 2: file exists with stages -> writes markdown latency table
+            timings = [
+                {"stage": "runner_preparation", "elapsed_ms": 6451, "exit_code": 0},
+                {"stage": "github_release_validation", "elapsed_ms": 1030, "exit_code": 1},
+                {"stage": "runner_wall_to_final_reporting", "elapsed_ms": 8091, "exit_code": 0},
+            ]
+            timing_path.write_text("\n".join(json.dumps(t) for t in timings) + "\n")
+            res = subprocess.run(
+                ["python3", str(ROOT / "scripts/ci/report_deploy_timing_summary.py")],
+                cwd=work_dir,
+                env=env,
+                capture_output=True,
+                text=True,
+            )
+            self.assertEqual(0, res.returncode)
+            content = summary_path.read_text()
+            self.assertIn("### ⏱️ Stage Latency Breakdown", content)
+            self.assertIn("| `runner_preparation` | 6.45s | ✅ Success |", content)
+            self.assertIn("| `github_release_validation` | 1.03s | ❌ Failed (1) |", content)
+            self.assertIn("| `runner_wall_to_final_reporting` | 8.09s | ✅ Success |", content)
+
+
 if __name__ == "__main__":
     unittest.main()
