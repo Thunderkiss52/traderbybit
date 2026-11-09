@@ -38,6 +38,7 @@ use App\QuoteIntegrity\Console\QimPurgeExpiredCommand;
 use App\QuoteIntegrity\Console\QimRunChecksCommand;
 use App\QuoteIntegrity\Console\QimSampleBarsCommand;
 use App\Research\Console\ResearchBenchmarkCommand;
+use App\Strategy\Console\BackfillCandleIdsCommand;
 use App\Strategy\Console\GenerateSignalsCommand;
 use App\Strategy\Domain\StrategyInputIntegrityException;
 use Illuminate\Auth\Access\AuthorizationException;
@@ -73,6 +74,7 @@ return Application::configure(basePath: dirname(__DIR__))
         SyncCandlesCommand::class,
         StreamCandlesCommand::class,
         GenerateSignalsCommand::class,
+        BackfillCandleIdsCommand::class,
         ProcessPaperTradingCommand::class,
         PaperPositionsCommand::class,
         PaperReconcileFundingCommand::class,

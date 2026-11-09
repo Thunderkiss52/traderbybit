@@ -170,7 +170,7 @@ fi
 atomic_write "${DEPLOY_STATE_DIR}/update-in-progress" "${CURRENT_TAG} -> ${NEW_TAG}: MIGRATING"
 # A failed migration may have partial DDL without a migration-ledger record.
 # Do not arm application rollback until migration and initialization succeed.
-timing_run migrations compose run --rm --no-deps app php artisan migrate --force --no-interaction
+timing_run migrations run_safe_database_migration
 timing_run financial_initialization compose run --rm --no-deps app php artisan binance:initialize-paper --force --no-interaction
 
 rollback_application() {

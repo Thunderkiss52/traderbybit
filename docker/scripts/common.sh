@@ -477,6 +477,59 @@ assert_rollback_migration_state() {
     }
 }
 
+report_postgres_lock_diagnostics() {
+    echo "[DIAGNOSTIC] Checking active PostgreSQL queries and transactions:" >&2
+    compose exec -T postgres psql -U "${POSTGRES_USER}" -d "${POSTGRES_DB}" -c "
+        SELECT pid, now() - xact_start AS xact_duration, state, wait_event_type, wait_event, query
+        FROM pg_stat_activity
+        WHERE state != 'idle' AND pid != pg_backend_pid();
+    " >&2 || true
+
+    echo "[DIAGNOSTIC] Checking locks on application tables:" >&2
+    compose exec -T postgres psql -U "${POSTGRES_USER}" -d "${POSTGRES_DB}" -c "
+        SELECT l.pid, c.relname, l.mode, l.granted
+        FROM pg_locks l
+        JOIN pg_class c ON l.relation = c.oid
+        JOIN pg_namespace n ON c.relnamespace = n.oid
+        WHERE n.nspname = 'public' AND c.relname IN ('signals', 'migrations', 'market_candles');
+    " >&2 || true
+}
+
+run_safe_database_migration() {
+    local timeout_secs="${MIGRATION_TIMEOUT_SECONDS:-300}"
+    local mig_exit=0
+    echo "[MIGRATION] Running database migrations with timeout ceiling of ${timeout_secs}s..."
+
+    compose run --rm --no-deps app php artisan migrate --force --no-interaction &
+    local mig_pid=$!
+    local elapsed=0
+
+    while kill -0 "${mig_pid}" 2>/dev/null; do
+        sleep 1
+        elapsed=$((elapsed + 1))
+        if [[ "${elapsed}" -ge "${timeout_secs}" ]]; then
+            echo "[ERROR] Database migration timed out after ${timeout_secs}s. Terminating container PID ${mig_pid}..." >&2
+            kill -TERM "${mig_pid}" 2>/dev/null || true
+            sleep 2
+            kill -KILL "${mig_pid}" 2>/dev/null || true
+            wait "${mig_pid}" 2>/dev/null || true
+            report_postgres_lock_diagnostics
+            return 124
+        fi
+    done
+
+    wait "${mig_pid}" || mig_exit=$?
+
+    if [[ "${mig_exit}" -ne 0 ]]; then
+        echo "[ERROR] Database migration failed (exit code: ${mig_exit})." >&2
+        report_postgres_lock_diagnostics
+        return "${mig_exit}"
+    fi
+
+    echo "[MIGRATION] Database migrations completed successfully."
+    return 0
+}
+
 atomic_write() {
     local target="$1"
     local content="$2"

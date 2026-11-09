@@ -62,7 +62,7 @@ compose up -d postgres redis
 wait_healthy postgres 180
 wait_healthy redis 120
 
-compose run --rm --no-deps app php artisan migrate --force --no-interaction
+run_safe_database_migration
 compose run --rm --no-deps app php artisan binance:initialize-paper --force --no-interaction
 compose up -d --no-build --no-deps "${APPLICATION_SERVICES[@]}"
 
