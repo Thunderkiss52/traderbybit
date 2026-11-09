@@ -4,6 +4,9 @@ declare(strict_types=1);
 
 namespace App\PaperTrading\Infrastructure\Persistence;
 
+use App\PaperTrading\Domain\TradeRiskClass;
+use App\Strategy\Domain\QualityClass;
+use App\Strategy\Domain\SignalQuality;
 use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Model;
 
@@ -28,5 +31,21 @@ final class VirtualPositionRecord extends Model
             'initial_quantity' => 'string', 'remaining_quantity' => 'string', 'qty_step' => 'string', 'risk_capital' => 'string', 'gross_pnl' => 'string',
             'net_pnl' => 'string', 'unrealized_pnl' => 'string', 'fees' => 'string', 'funding' => 'string', 'r_multiple' => 'string',
         ];
+    }
+
+    public function getSignalQualityAttribute(?string $value): string
+    {
+        if ($value !== null && $value !== '') {
+            return $value;
+        }
+
+        return SignalQuality::fromQualityClass(
+            $this->quality_class !== null ? QualityClass::tryFrom($this->quality_class) : null
+        )->value;
+    }
+
+    public function getTradeRiskAttribute(?string $value): string
+    {
+        return $value ?: TradeRiskClass::Unknown->value;
     }
 }

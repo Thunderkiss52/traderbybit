@@ -15,6 +15,8 @@ const selectedExchange = ref<string>(settings.exchange || '');
 const selectedStrategy = ref<string>('');
 const selectedSymbol = ref<string>('');
 const selectedSide = ref<string>('');
+const selectedQuality = ref<string>('');
+const selectedRisk = ref<string>('');
 const page = ref(1);
 
 const monitorData = shallowRef<any>({
@@ -27,6 +29,10 @@ const monitorData = shallowRef<any>({
     risk_approved: 0,
     active_positions: 0,
     closed_positions: 0,
+    long_signals: 0,
+    short_signals: 0,
+    quality_counts: {},
+    risk_counts: {},
   },
   signals: { data: [], current_page: 1, last_page: 1, total: 0 },
 });
@@ -40,7 +46,8 @@ const columns: QTableColumn[] = [
   { name: 'symbol', label: 'Symbol', field: 'symbol', align: 'left', sortable: true },
   { name: 'strategy_id', label: 'Strategy', field: 'strategy_id', align: 'left', sortable: true },
   { name: 'side', label: 'Decision', field: 'side', align: 'center', sortable: true },
-  { name: 'quality', label: 'Quality / Score', field: (r: any) => r.quality_class ? `${r.quality_class} (${r.score})` : `${r.score || '—'}`, align: 'center' },
+  { name: 'signal_quality', label: 'Signal Quality', field: (r: any) => r.signal_quality || 'UNKNOWN', align: 'center', sortable: true },
+  { name: 'trade_risk', label: 'Trade Risk', field: (r: any) => r.trade_risk || 'UNKNOWN', align: 'center', sortable: true },
   { name: 'risk_decision', label: 'Risk Guardrail', field: (r: any) => r.risk_decision ? (r.risk_decision.allowed ? 'APPROVED' : 'REJECTED') : '—', align: 'center' },
   { name: 'position', label: 'Virtual Execution', field: (r: any) => r.position?.status || (r.side === 'SKIP' ? 'NOT_ATTEMPTED' : 'PENDING'), align: 'center' },
   { name: 'actions', label: '', field: 'id', align: 'right' },
@@ -75,6 +82,22 @@ const sideOptions = [
   { label: 'SKIP (Filter Active)', value: 'SKIP' },
 ];
 
+const qualityOptions = [
+  { label: 'All Signal Qualities', value: '' },
+  { label: 'HIGH Quality', value: 'HIGH' },
+  { label: 'MEDIUM Quality', value: 'MEDIUM' },
+  { label: 'LOW Quality', value: 'LOW' },
+  { label: 'UNKNOWN Quality', value: 'UNKNOWN' },
+];
+
+const riskOptions = [
+  { label: 'All Trade Risks', value: '' },
+  { label: 'LOW Risk', value: 'LOW' },
+  { label: 'MEDIUM Risk', value: 'MEDIUM' },
+  { label: 'HIGH Risk', value: 'HIGH' },
+  { label: 'UNKNOWN Risk', value: 'UNKNOWN' },
+];
+
 let currentController: AbortController | undefined;
 
 async function loadMonitor() {
@@ -99,6 +122,12 @@ async function loadMonitor() {
     }
     if (selectedSide.value) {
       params.side = selectedSide.value;
+    }
+    if (selectedQuality.value) {
+      params.quality = selectedQuality.value;
+    }
+    if (selectedRisk.value) {
+      params.risk = selectedRisk.value;
     }
 
     const res: any = await get('/strategy-monitor', params, currentController.signal);
@@ -138,7 +167,7 @@ function resetPagination() {
   loadMonitor();
 }
 
-watch([selectedExchange, selectedStrategy, selectedSymbol, selectedSide], resetPagination);
+watch([selectedExchange, selectedStrategy, selectedSymbol, selectedSide, selectedQuality, selectedRisk], resetPagination);
 watch(page, loadMonitor);
 watch(() => settings.exchange, (newVal) => {
   if (newVal !== selectedExchange.value) {
@@ -153,13 +182,31 @@ onMounted(() => {
 onBeforeUnmount(() => {
   currentController?.abort();
 });
+
+function qualityColor(quality: string) {
+  switch (quality) {
+    case 'HIGH': return 'cyan-8';
+    case 'MEDIUM': return 'primary';
+    case 'LOW': return 'orange-8';
+    default: return 'blue-grey-6';
+  }
+}
+
+function riskColor(risk: string) {
+  switch (risk) {
+    case 'LOW': return 'positive';
+    case 'MEDIUM': return 'warning';
+    case 'HIGH': return 'negative';
+    default: return 'blue-grey-6';
+  }
+}
 </script>
 
 <template>
   <q-page padding>
     <div class="page-title">
       <div>
-        <span class="eyebrow">MULTI-EXCHANGE STRATEGY OBSERVABILITY</span>
+        <span class="eyebrow">MULTI-EXCHANGE STRATEGY OBSERVABILITY & QUALITY GATE</span>
         <h1>Strategy Signal Monitor</h1>
       </div>
       <q-badge color="primary" label="PAPER RESEARCH ONLY" />
@@ -171,7 +218,7 @@ onBeforeUnmount(() => {
       </template>
       <div class="text-weight-bold">Исследовательский режим — Торговые ордера на бирже отключены</div>
       <div class="text-caption">
-        Система осуществляет непрерывный технический анализ на 10 биржах и выполняет виртуальные PAPER-транзакции в изолированном реестре. Все решения полностью детерминированы и трассируемы.
+        Система осуществляет непрерывный технический анализ на 10 биржах и выполняет виртуальные PAPER-транзакции в изолированном реестре. Все решения оцениваются через независимые матрицы качества сигнала (Setup Edge) и риска сделки (Portfolio Hazard).
       </div>
     </q-banner>
 
@@ -180,18 +227,20 @@ onBeforeUnmount(() => {
     </q-banner>
 
     <!-- Metrics Cards Row -->
-    <div class="metrics q-mb-lg">
+    <div class="metrics q-mb-md">
       <MetricCard label="Market Evaluations" :value="monitorData.metrics?.total_evaluations" />
       <MetricCard label="Actionable Signals" :value="monitorData.metrics?.total_signals" />
       <MetricCard label="Analytical Skips" :value="monitorData.metrics?.total_skips" />
+      <MetricCard label="Long Signals (BUY)" :value="monitorData.metrics?.long_signals" />
+      <MetricCard label="Short Signals (SELL)" :value="monitorData.metrics?.short_signals" />
       <MetricCard label="Risk Approved" :value="monitorData.metrics?.risk_approved" />
-      <MetricCard label="Active Virtual Positions" :value="monitorData.metrics?.active_positions" />
-      <MetricCard label="Closed Virtual Positions" :value="monitorData.metrics?.closed_positions" />
+      <MetricCard label="Active Positions" :value="monitorData.metrics?.active_positions" />
+      <MetricCard label="Closed Positions" :value="monitorData.metrics?.closed_positions" />
     </div>
 
     <!-- Filters Row -->
     <div class="row q-col-gutter-sm q-mb-md items-center">
-      <div class="col-12 col-sm-3">
+      <div class="col-12 col-sm-2">
         <q-select
           v-model="selectedExchange"
           dense
@@ -202,7 +251,7 @@ onBeforeUnmount(() => {
           label="Exchange Venue"
         />
       </div>
-      <div class="col-12 col-sm-3">
+      <div class="col-12 col-sm-2">
         <q-select
           v-model="selectedStrategy"
           dense
@@ -213,7 +262,7 @@ onBeforeUnmount(() => {
           label="Strategy Model"
         />
       </div>
-      <div class="col-12 col-sm-3">
+      <div class="col-12 col-sm-2">
         <q-select
           v-model="selectedSymbol"
           dense
@@ -224,7 +273,7 @@ onBeforeUnmount(() => {
           label="Instrument / Pair"
         />
       </div>
-      <div class="col-12 col-sm-3">
+      <div class="col-12 col-sm-2">
         <q-select
           v-model="selectedSide"
           dense
@@ -233,6 +282,28 @@ onBeforeUnmount(() => {
           map-options
           :options="sideOptions"
           label="Signal Decision"
+        />
+      </div>
+      <div class="col-12 col-sm-2">
+        <q-select
+          v-model="selectedQuality"
+          dense
+          outlined
+          emit-value
+          map-options
+          :options="qualityOptions"
+          label="Signal Quality"
+        />
+      </div>
+      <div class="col-12 col-sm-2">
+        <q-select
+          v-model="selectedRisk"
+          dense
+          outlined
+          emit-value
+          map-options
+          :options="riskOptions"
+          label="Trade Risk"
         />
       </div>
     </div>
@@ -263,6 +334,24 @@ onBeforeUnmount(() => {
           <template #body-cell-exchange="props">
             <q-td :props="props">
               <q-badge outline color="blue-grey-4" :label="props.value.toUpperCase()" />
+            </q-td>
+          </template>
+
+          <template #body-cell-signal_quality="props">
+            <q-td :props="props">
+              <q-badge
+                :color="qualityColor(props.value)"
+                :label="props.row.score ? `${props.value} (${props.row.score})` : props.value"
+              />
+            </q-td>
+          </template>
+
+          <template #body-cell-trade_risk="props">
+            <q-td :props="props">
+              <q-badge
+                :color="riskColor(props.value)"
+                :label="props.value"
+              />
             </q-td>
           </template>
 
@@ -336,11 +425,23 @@ onBeforeUnmount(() => {
                   <span class="text-caption text-grey-4">v{{ selectedItem.strategy_version }}</span>
                 </div>
               </div>
-              <q-badge
-                size="md"
-                :color="selectedItem.side === 'BUY' ? 'positive' : (selectedItem.side === 'SELL' ? 'negative' : 'warning')"
-                :label="selectedItem.side"
-              />
+              <div class="row q-gutter-xs">
+                <q-badge
+                  size="md"
+                  :color="selectedItem.side === 'BUY' ? 'positive' : (selectedItem.side === 'SELL' ? 'negative' : 'warning')"
+                  :label="selectedItem.side"
+                />
+                <q-badge
+                  size="md"
+                  :color="qualityColor(selectedItem.signal_quality || 'UNKNOWN')"
+                  :label="'Q: ' + (selectedItem.signal_quality || 'UNKNOWN')"
+                />
+                <q-badge
+                  size="md"
+                  :color="riskColor(selectedItem.trade_risk || 'UNKNOWN')"
+                  :label="'R: ' + (selectedItem.trade_risk || 'UNKNOWN')"
+                />
+              </div>
             </div>
 
             <!-- Panel 1: Decision Explainability & Rules Breakdown -->
@@ -389,27 +490,40 @@ onBeforeUnmount(() => {
               header-class="text-weight-bold text-subtitle2 bg-grey-9 rounded-borders q-my-xs"
             >
               <div class="q-pa-sm">
-                <div v-if="selectedItem.risk_decision" class="q-mb-sm">
-                  <div class="row items-center justify-between text-caption q-mb-xs">
-                    <span>Guardrail Status:</span>
+                <div class="row q-col-gutter-xs q-mb-xs">
+                  <div class="col-6">
+                    <div class="text-caption text-grey-4">Gate Matrix Decision:</div>
                     <q-badge
-                      :color="selectedItem.risk_decision.allowed ? 'positive' : 'negative'"
-                      :label="selectedItem.risk_decision.allowed ? 'PASSED ALL CHECKS' : 'REJECTED'"
+                      :color="selectedItem.gate_decision === 'ELIGIBLE' ? 'positive' : (selectedItem.gate_decision === 'CONDITIONALLY_ELIGIBLE' ? 'info' : 'negative')"
+                      :label="selectedItem.gate_decision || (selectedItem.risk_decision?.allowed ? 'ELIGIBLE' : 'BLOCKED')"
                     />
                   </div>
-                  <div class="text-caption text-grey-4">
-                    Checks & Reasons: {{ selectedItem.risk_decision.reasons?.join(', ') || 'all_checks_passed' }}
+                  <div class="col-6">
+                    <div class="text-caption text-grey-4">Guardrail Status:</div>
+                    <q-badge
+                      :color="selectedItem.risk_decision?.allowed ? 'positive' : 'negative'"
+                      :label="selectedItem.risk_decision?.allowed ? 'PASSED ALL CHECKS' : 'REJECTED'"
+                    />
                   </div>
                 </div>
 
-                <div v-if="selectedItem.entry_zone" class="bg-grey-10 q-pa-sm rounded-borders text-caption q-mt-xs">
+                <div v-if="selectedItem.risk_decision?.reasons?.length > 0" class="text-caption text-grey-4 q-mb-xs">
+                  Checks / Rejections: {{ selectedItem.risk_decision.reasons.join(', ') }}
+                </div>
+
+                <div class="bg-grey-10 q-pa-sm rounded-borders text-caption q-mt-xs">
                   <div class="row q-col-gutter-xs">
-                    <div class="col-6">Entry Zone: <span class="text-white">{{ selectedItem.entry_zone.low }} - {{ selectedItem.entry_zone.high }}</span></div>
-                    <div class="col-6">Stop Loss: <span class="text-negative">{{ selectedItem.stop_loss || '—' }}</span></div>
-                    <div class="col-6">Target 1: <span class="text-positive">{{ selectedItem.take_profit_1 || '—' }}</span></div>
-                    <div class="col-6">Target 2: <span class="text-positive">{{ selectedItem.take_profit_2 || '—' }}</span></div>
+                    <div class="col-6">Entry Zone: <span class="text-white">{{ selectedItem.entry_zone?.low }} - {{ selectedItem.entry_zone?.high }}</span></div>
+                    <div class="col-6">Planned Stop: <span class="text-negative">{{ selectedItem.planned_stop_loss?.price || selectedItem.stop_loss || '—' }} ({{ selectedItem.planned_stop_loss?.distance_percent ? selectedItem.planned_stop_loss.distance_percent + '%' : '—' }})</span></div>
+                    <div class="col-6">Planned Risk $: <span class="text-warning">{{ selectedItem.planned_stop_loss?.loss_amount ? selectedItem.planned_stop_loss.loss_amount + ' USDT' : '—' }}</span></div>
+                    <div class="col-6">Planned Notional: <span class="text-white">{{ selectedItem.notional ? selectedItem.notional + ' USDT' : '—' }}</span></div>
+                    <div class="col-6">Est. Margin (10x): <span class="text-cyan">{{ selectedItem.margin ? selectedItem.margin + ' USDT' : '—' }}</span></div>
+                    <div class="col-6">Target 1 (TP1): <span class="text-positive">{{ selectedItem.take_profit_1 || '—' }}</span></div>
+                    <div class="col-6">Target 2 (TP2): <span class="text-positive">{{ selectedItem.take_profit_2 || '—' }}</span></div>
                     <div class="col-6">R:R (TP1/TP2): <span class="text-cyan">{{ selectedItem.risk_reward?.tp1 || '—' }} / {{ selectedItem.risk_reward?.tp2 || '—' }}</span></div>
-                    <div class="col-6">Risk Capital %: <span class="text-warning">{{ selectedItem.model_risk_percent ? (Number(selectedItem.model_risk_percent) * 100).toFixed(2) + '%' : '—' }}</span></div>
+                    <div class="col-12" v-if="selectedItem.expected_net_edge !== undefined && selectedItem.expected_net_edge !== null">
+                      Expected Net Edge: <span class="text-positive">{{ selectedItem.expected_net_edge }} USDT / trade</span>
+                    </div>
                   </div>
                 </div>
               </div>

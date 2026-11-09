@@ -15,6 +15,9 @@ use App\PaperTrading\Infrastructure\Persistence\VirtualPositionRecord;
 use App\Strategy\Application\StrategyRegistry;
 use App\Strategy\Infrastructure\Persistence\SignalRecord;
 use App\Strategy\Infrastructure\Persistence\StrategyObservationRecord;
+use Brick\Math\BigDecimal;
+use Brick\Math\RoundingMode;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Symfony\Component\HttpFoundation\Response;
@@ -45,6 +48,8 @@ final class StrategyMonitorController extends Controller
         $strategyId = $request->string('strategy_id')->toString();
         $symbol = strtoupper($request->string('symbol')->toString());
         $side = strtoupper($request->string('side')->toString());
+        $quality = strtoupper($request->string('quality')->toString());
+        $risk = strtoupper($request->string('risk')->toString());
         $perPage = max(1, min(100, $request->integer('per_page', 20)));
 
         // Metrics aggregation
@@ -69,12 +74,65 @@ final class StrategyMonitorController extends Controller
             $posQuery->where('symbol', $symbol);
         }
 
+        if ($quality !== '' && $quality !== 'ALL') {
+            if ($quality === 'UNKNOWN') {
+                $sigQuery->where(function (Builder $b): void {
+                    $b->whereNull('signal_quality')->orWhere('signal_quality', 'UNKNOWN');
+                });
+            } else {
+                $sigQuery->where(function (Builder $b) use ($quality): void {
+                    $b->where('signal_quality', $quality)
+                        ->orWhere('quality_class', match ($quality) {
+                            'HIGH' => 'A',
+                            'MEDIUM' => 'B',
+                            'LOW' => 'C',
+                            default => null,
+                        });
+                });
+            }
+        }
+
+        if ($risk !== '' && $risk !== 'ALL') {
+            if ($risk === 'UNKNOWN') {
+                $sigQuery->where(function (Builder $b): void {
+                    $b->whereNull('trade_risk')->orWhere('trade_risk', 'UNKNOWN');
+                });
+            } else {
+                $sigQuery->where('trade_risk', $risk);
+            }
+        }
+
         $totalEvaluations = (clone $obsQuery)->count();
         $totalSignals = (clone $sigQuery)->whereIn('side', ['BUY', 'SELL'])->count();
         $totalSkips = (clone $obsQuery)->where('side', 'SKIP')->count();
         $riskApproved = (clone $riskQuery)->where('allowed', true)->count();
         $activePositions = (clone $posQuery)->whereIn('status', ['OPEN', 'PARTIALLY_CLOSED'])->count();
         $closedPositions = (clone $posQuery)->whereIn('status', ['CLOSED', 'CLOSED_TP', 'CLOSED_SL', 'CLOSED_TIMEOUT', 'CLOSED_RISK', 'RESOLVED'])->count();
+
+        $longSignalsCount = (clone $sigQuery)->where('side', 'BUY')->count();
+        $shortSignalsCount = (clone $sigQuery)->where('side', 'SELL')->count();
+        $qualityCounts = [
+            'HIGH' => (clone $sigQuery)->where(function (Builder $b): void {
+                $b->where('signal_quality', 'HIGH')->orWhere('quality_class', 'A');
+            })->count(),
+            'MEDIUM' => (clone $sigQuery)->where(function (Builder $b): void {
+                $b->where('signal_quality', 'MEDIUM')->orWhere('quality_class', 'B');
+            })->count(),
+            'LOW' => (clone $sigQuery)->where(function (Builder $b): void {
+                $b->where('signal_quality', 'LOW')->orWhere('quality_class', 'C');
+            })->count(),
+            'UNKNOWN' => (clone $sigQuery)->where(function (Builder $b): void {
+                $b->whereNull('signal_quality')->whereNull('quality_class');
+            })->count(),
+        ];
+        $riskCounts = [
+            'LOW' => (clone $sigQuery)->where('trade_risk', 'LOW')->count(),
+            'MEDIUM' => (clone $sigQuery)->where('trade_risk', 'MEDIUM')->count(),
+            'HIGH' => (clone $sigQuery)->where('trade_risk', 'HIGH')->count(),
+            'UNKNOWN' => (clone $sigQuery)->where(function (Builder $b): void {
+                $b->whereNull('trade_risk')->orWhere('trade_risk', 'UNKNOWN');
+            })->count(),
+        ];
 
         // Feed items: BUY/SELL from SignalRecord or SKIP from StrategyObservationRecord
         $items = [];
@@ -93,6 +151,8 @@ final class StrategyMonitorController extends Controller
                     'strategy_version' => $obs->strategy_version,
                     'side' => 'SKIP',
                     'quality_class' => null,
+                    'signal_quality' => 'UNKNOWN',
+                    'trade_risk' => 'UNKNOWN',
                     'score' => $obs->score,
                     'reasons' => $obs->reasons,
                     'risks' => [],
@@ -120,8 +180,28 @@ final class StrategyMonitorController extends Controller
 
             foreach ($paginator->items() as $sig) {
                 $rules = data_get($sig->contract, 'rules') ?? data_get($sig->indicator_snapshot, 'rules') ?? [];
-                $risk = $riskDecisions->get($sig->id);
+                $riskRecord = $riskDecisions->get($sig->id);
                 $pos = $positions->get($sig->id);
+
+                $entryMid = BigDecimal::of((string) ($sig->entry_low ?? $sig->stop_loss ?? '1'))
+                    ->plus(BigDecimal::of((string) ($sig->entry_high ?? $sig->stop_loss ?? '1')))
+                    ->dividedBy(2, 8, RoundingMode::HalfEven);
+                $stopDistPercent = null;
+                if (! $entryMid->isZero() && $sig->stop_loss !== null) {
+                    $dist = BigDecimal::of((string) $sig->stop_loss)->minus($entryMid)->abs();
+                    $stopDistPercent = (string) $dist->dividedBy($entryMid, 6, RoundingMode::HalfEven)->multipliedBy(100);
+                }
+
+                $riskSnapshot = $riskRecord ? (is_array($riskRecord->snapshot) ? $riskRecord->snapshot : (json_decode((string) $riskRecord->snapshot, true) ?? [])) : [];
+                $riskCapital = $riskSnapshot['risk_capital'] ?? null;
+                $notional = $riskSnapshot['notional_after'] ?? $riskSnapshot['notional'] ?? null;
+                $margin = $riskSnapshot['margin'] ?? ($notional !== null ? (string) BigDecimal::of((string) $notional)->dividedBy(10, 8, RoundingMode::HalfEven) : null);
+                $signalQualityVal = $sig->signal_quality ?? ($sig->quality_class ? match ($sig->quality_class) {
+                    'A' => 'HIGH', 'B' => 'MEDIUM', 'C' => 'LOW', default => 'UNKNOWN'
+                } : 'UNKNOWN');
+                $tradeRiskVal = $sig->trade_risk ?? $riskRecord?->trade_risk ?? $riskSnapshot['trade_risk'] ?? 'UNKNOWN';
+                $gateDecision = $riskSnapshot['gate_decision'] ?? ($riskRecord ? ($riskRecord->allowed ? 'ELIGIBLE' : 'REJECTED') : null);
+                $expectedNetEdge = $riskSnapshot['expected_net_edge'] ?? null;
 
                 $items[] = [
                     'id' => $sig->id,
@@ -134,9 +214,20 @@ final class StrategyMonitorController extends Controller
                     'strategy_version' => $sig->strategy_version,
                     'side' => $sig->side,
                     'quality_class' => $sig->quality_class,
+                    'signal_quality' => $signalQualityVal,
+                    'trade_risk' => $tradeRiskVal,
                     'score' => $sig->score,
                     'entry_zone' => ['low' => $sig->entry_low, 'high' => $sig->entry_high],
                     'stop_loss' => $sig->stop_loss,
+                    'planned_stop_loss' => [
+                        'price' => $sig->stop_loss,
+                        'distance_percent' => $stopDistPercent,
+                        'loss_amount' => $riskCapital,
+                    ],
+                    'notional' => $notional,
+                    'margin' => $margin,
+                    'expected_net_edge' => $expectedNetEdge,
+                    'gate_decision' => $gateDecision,
                     'take_profit_1' => $sig->take_profit_1,
                     'take_profit_2' => $sig->take_profit_2,
                     'risk_reward' => ['tp1' => $sig->risk_reward_1, 'tp2' => $sig->risk_reward_2],
@@ -147,12 +238,14 @@ final class StrategyMonitorController extends Controller
                     'decision_time' => $sig->decision_time?->toIso8601String(),
                     'candle_close_time' => $sig->candle_close_time?->toIso8601String(),
                     'candle_id' => $sig->candle_id,
-                    'risk_decision' => $risk ? [
-                        'id' => $risk->id,
-                        'allowed' => $risk->allowed,
-                        'reasons' => $risk->reasons,
-                        'snapshot' => $risk->snapshot,
-                        'decided_at' => $risk->decided_at?->toIso8601String(),
+                    'risk_decision' => $riskRecord ? [
+                        'id' => $riskRecord->id,
+                        'allowed' => $riskRecord->allowed,
+                        'signal_quality' => $riskRecord->signal_quality ?? $signalQualityVal,
+                        'trade_risk' => $riskRecord->trade_risk ?? $tradeRiskVal,
+                        'reasons' => $riskRecord->reasons,
+                        'snapshot' => $riskRecord->snapshot,
+                        'decided_at' => $riskRecord->decided_at?->toIso8601String(),
                     ] : null,
                     'position' => $pos ? [
                         'id' => $pos->id,
@@ -198,6 +291,10 @@ final class StrategyMonitorController extends Controller
                 'risk_approved' => $riskApproved,
                 'active_positions' => $activePositions,
                 'closed_positions' => $closedPositions,
+                'long_signals' => $longSignalsCount,
+                'short_signals' => $shortSignalsCount,
+                'quality_counts' => $qualityCounts,
+                'risk_counts' => $riskCounts,
             ],
             'signals' => [
                 'data' => $items,

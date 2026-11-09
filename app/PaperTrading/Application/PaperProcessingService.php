@@ -12,11 +12,14 @@ use App\PaperTrading\Domain\InstrumentConstraints;
 use App\PaperTrading\Domain\MarketBar;
 use App\PaperTrading\Domain\PositionStatus;
 use App\PaperTrading\Domain\SignalLifecycle;
+use App\PaperTrading\Domain\TradeRiskClass;
 use App\PaperTrading\Infrastructure\Persistence\PaperAccountRecord;
 use App\PaperTrading\Infrastructure\Persistence\PaperSignalStateRecord;
 use App\PaperTrading\Infrastructure\Persistence\RiskDecisionRecord;
 use App\PaperTrading\Infrastructure\Persistence\VirtualPositionRecord;
 use App\Strategy\Application\StrategyRegistry;
+use App\Strategy\Domain\QualityClass;
+use App\Strategy\Domain\SignalQuality;
 use App\Strategy\Infrastructure\Persistence\MarketContextRecord;
 use App\Strategy\Infrastructure\Persistence\SignalRecord;
 use App\Strategy\Infrastructure\Persistence\StrategyObservationRecord;
@@ -160,15 +163,20 @@ final readonly class PaperProcessingService
 
                 DB::transaction(function () use ($account, $signal, $currentTime, $decisionLatencyMs, $creationLatencyMs): void {
                     $decisionId = Uuid::uuid5(Uuid::NAMESPACE_URL, "traderbybit:risk:{$account->id}:{$signal->id}:{$this->config['risk_version']}")->toString();
+                    $sigQuality = SignalQuality::fromString($signal->quality_class)->value;
                     RiskDecisionRecord::query()->insertOrIgnore([[
                         'id' => $decisionId,
                         'paper_account_id' => $account->id,
                         'exchange_id' => $account->exchange_id,
                         'signal_id' => $signal->id,
+                        'signal_quality' => $sigQuality,
+                        'trade_risk' => TradeRiskClass::Unknown->value,
                         'allowed' => false,
                         'reasons' => json_encode(['signal_expired_before_ingestion'], JSON_THROW_ON_ERROR),
                         'snapshot' => json_encode([
                             'reason' => 'signal_expired_before_ingestion',
+                            'signal_quality' => $sigQuality,
+                            'trade_risk' => TradeRiskClass::Unknown->value,
                             'decision_time' => $signal->decision_time->format(DATE_ATOM),
                             'created_at' => $signal->created_at->format(DATE_ATOM),
                             'expires_at' => $signal->expires_at->format(DATE_ATOM),
@@ -230,14 +238,19 @@ final readonly class PaperProcessingService
                         $signal->created_at->getTimestamp() - $signal->decision_time->getTimestamp(),
                         $currentTime->getTimestamp() - $signal->decision_time->getTimestamp()
                     );
+                    $sigQuality = SignalQuality::fromString($signal->quality_class)->value;
                     RiskDecisionRecord::query()->insertOrIgnore([[
                         'id' => $decisionId,
                         'paper_account_id' => $account->id, 'exchange_id' => $account->exchange_id,
                         'signal_id' => $signal->id,
+                        'signal_quality' => $sigQuality,
+                        'trade_risk' => TradeRiskClass::Unknown->value,
                         'allowed' => false,
                         'reasons' => json_encode(['late_signal_not_executable'], JSON_THROW_ON_ERROR),
                         'snapshot' => json_encode([
                             'reason' => 'late_signal_not_executable',
+                            'signal_quality' => $sigQuality,
+                            'trade_risk' => TradeRiskClass::Unknown->value,
                             'delay_seconds' => $delay,
                             'decision_time' => $signal->decision_time->format(DATE_ATOM),
                             'created_at' => $signal->created_at->format(DATE_ATOM),
@@ -337,8 +350,14 @@ final readonly class PaperProcessingService
                 $assessment = $this->assessment($locked, $signal);
                 $decisionId = Uuid::uuid5(Uuid::NAMESPACE_URL, "traderbybit:risk:{$locked->id}:{$signal->id}:{$this->config['risk_version']}")->toString();
                 $decidedAt = $forwardOnly ? $currentTime : $signal->decision_time->toDateTimeImmutable();
+                $sigQuality = $assessment['snapshot']['signal_quality'] ?? SignalQuality::fromString($signal->quality_class)->value;
+                $tradeRisk = $assessment['snapshot']['trade_risk'] ?? TradeRiskClass::Unknown->value;
+
                 RiskDecisionRecord::query()->insertOrIgnore([[
-                    'id' => $decisionId, 'paper_account_id' => $locked->id, 'exchange_id' => $locked->exchange_id, 'signal_id' => $signal->id, 'allowed' => $assessment['allowed'],
+                    'id' => $decisionId, 'paper_account_id' => $locked->id, 'exchange_id' => $locked->exchange_id, 'signal_id' => $signal->id,
+                    'signal_quality' => $sigQuality,
+                    'trade_risk' => $tradeRisk,
+                    'allowed' => $assessment['allowed'],
                     'reasons' => json_encode($assessment['reasons'], JSON_THROW_ON_ERROR), 'snapshot' => json_encode($assessment['snapshot'], JSON_THROW_ON_ERROR),
                     'risk_version' => (string) $this->config['risk_version'], 'decided_at' => $decidedAt, 'created_at' => now(), 'updated_at' => now(),
                 ]]);
@@ -442,15 +461,69 @@ final readonly class PaperProcessingService
         $corr = $same === null ? null : $this->correlation->between($signal->symbol, $same->symbol, $signal->decision_time->toDateTimeImmutable(), $account->exchange_id);
         $totalRiskPercent = BigDecimal::of($account->current_equity)->isZero() ? '999' : (string) BigDecimal::of($account->reserved_risk)->dividedBy($account->current_equity, 24, RoundingMode::HalfEven)->multipliedBy(100);
         $notional = $active->reduce(fn (BigDecimal $sum, VirtualPositionRecord $p): BigDecimal => $sum->plus(BigDecimal::of($p->entry_price)->multipliedBy($p->remaining_quantity)), BigDecimal::zero());
+
+        $qualityEnum = SignalQuality::fromQualityClass(
+            $signal->quality_class !== null ? QualityClass::tryFrom($signal->quality_class) : null,
+            $signal->score
+        );
+
+        $tradeRiskService = app(TradeRiskClassificationService::class);
+        $costEstimate = $size !== null && $size->allowed ? $this->execution->commission((string) $size->quantity, $entry, $account->exchange_id) : '0';
+        $riskAssessmentResult = $tradeRiskService->classify([
+            'equity' => $account->current_equity,
+            'entry_price' => $entry,
+            'stop_loss' => $signal->stop_loss,
+            'take_profit_1' => $signal->take_profit_1,
+            'risk_capital' => $size?->riskCapital,
+            'notional' => $size?->notional,
+            'current_drawdown_percent' => $account->current_drawdown_percent,
+            'open_positions_count' => $active->count(),
+            'atr' => $entryIndicators['atr_14'] ?? null,
+            'bid' => $context?->bid,
+            'ask' => $context?->ask,
+            'correlation' => $corr,
+            'estimated_costs' => $costEstimate,
+        ]);
+
+        $gateService = app(PreExecutionQualityRiskGate::class);
+        $gateResult = $gateService->evaluate([
+            'signal_quality' => $qualityEnum,
+            'trade_risk' => $riskAssessmentResult['risk_class'],
+            'expected_net_edge' => null,
+            'sample_size' => 0,
+            'drawdown_percent' => $account->current_drawdown_percent,
+            'side' => $signal->side,
+        ]);
+
         $result = $this->risk->assess([
             'account_status' => $account->status, 'cooldown_until' => $account->cooldown_until?->toDateTimeImmutable(), 'at' => $signal->decision_time->toDateTimeImmutable(),
             'open_positions' => $active->count(), 'equity' => $account->current_equity,
             'free_capital' => (string) BigDecimal::of($account->current_equity)->minus($account->reserved_risk),
             'risk_percent' => $signal->model_risk_percent, 'quality_class' => $signal->quality_class,
+            'signal_quality' => $qualityEnum->value,
+            'trade_risk' => $riskAssessmentResult['risk_class']->value,
+            'quality_risk_pair' => $gateResult['quality_risk_pair'],
+            'gate_decision' => $gateResult['decision']->value,
+            'expected_net_edge' => $gateResult['expected_net_edge'],
+            'sample_size' => $gateResult['sample_size'],
+            'trade_risk_factors' => $riskAssessmentResult['factors'],
+            'trade_risk_score' => $riskAssessmentResult['risk_score'],
+            'quality_risk_gate_eval' => $gateResult,
             'total_risk_percent' => $totalRiskPercent, 'drawdown_percent' => $account->current_drawdown_percent, 'drawdown_override' => $account->drawdown_override,
             'market_failures' => $failures, 'same_direction_correlated_exposure' => $same !== null, 'correlation' => $corr,
             'notional_after' => (string) $notional->plus($size?->notional ?? '0'),
         ]);
+
+        $signal->signal_quality = $qualityEnum->value;
+        $signal->trade_risk = $riskAssessmentResult['risk_class']->value;
+        try {
+            $signal->update([
+                'signal_quality' => $qualityEnum->value,
+                'trade_risk' => $riskAssessmentResult['risk_class']->value,
+            ]);
+        } catch (Throwable) {
+            // Non-critical if in restricted transaction
+        }
 
         return ['allowed' => $result->allowed, 'reasons' => $result->reasons, 'snapshot' => array_merge($result->snapshot, ['position_size' => $size?->quantity, 'risk_capital' => $size?->riskCapital])];
     }

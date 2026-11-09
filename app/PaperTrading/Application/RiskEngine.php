@@ -84,6 +84,17 @@ final readonly class RiskEngine
         foreach ((array) ($input['market_failures'] ?? []) as $failure) {
             $reasons[] = (string) $failure;
         }
+
+        // Quality and Trade Risk Gate evaluation
+        if (isset($input['quality_risk_gate_eval']) && is_array($input['quality_risk_gate_eval'])) {
+            $gateEval = $input['quality_risk_gate_eval'];
+            if (! ($gateEval['allowed'] ?? false)) {
+                foreach ((array) ($gateEval['rejection_reasons'] ?? []) as $gateReason) {
+                    $reasons[] = (string) $gateReason;
+                }
+            }
+        }
+
         if ((bool) ($input['same_direction_correlated_exposure'] ?? false)) {
             $correlation = $input['correlation'] ?? null;
             if ($correlation === null && $this->config['correlation']['insufficient_data_policy'] === 'reject') {
@@ -94,10 +105,23 @@ final readonly class RiskEngine
         }
         $reasons = array_values(array_unique($reasons));
 
-        return new RiskAssessment($reasons === [], $reasons, [
-            'equity' => (string) $input['equity'], 'open_positions' => (int) $input['open_positions'],
-            'total_risk_percent' => (string) $input['total_risk_percent'], 'signal_risk_percent' => (string) $input['risk_percent'],
-            'drawdown_percent' => (string) $input['drawdown_percent'], 'correlation' => $input['correlation'] ?? null,
-        ]);
+        $snapshot = [
+            'equity' => (string) $input['equity'],
+            'open_positions' => (int) $input['open_positions'],
+            'total_risk_percent' => (string) $input['total_risk_percent'],
+            'signal_risk_percent' => (string) $input['risk_percent'],
+            'drawdown_percent' => (string) $input['drawdown_percent'],
+            'correlation' => $input['correlation'] ?? null,
+            'signal_quality' => (string) ($input['signal_quality'] ?? 'UNKNOWN'),
+            'trade_risk' => (string) ($input['trade_risk'] ?? 'UNKNOWN'),
+            'quality_risk_pair' => (string) ($input['quality_risk_pair'] ?? 'UNKNOWN_UNKNOWN'),
+            'gate_decision' => (string) ($input['gate_decision'] ?? 'REJECTED'),
+            'expected_net_edge' => $input['expected_net_edge'] ?? null,
+            'sample_size' => (int) ($input['sample_size'] ?? 0),
+            'trade_risk_factors' => $input['trade_risk_factors'] ?? [],
+            'trade_risk_score' => $input['trade_risk_score'] ?? 50,
+        ];
+
+        return new RiskAssessment($reasons === [], $reasons, $snapshot);
     }
 }

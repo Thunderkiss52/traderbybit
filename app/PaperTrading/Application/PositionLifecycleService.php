@@ -64,7 +64,9 @@ final readonly class PositionLifecycleService
             $fee = $this->execution->commission($quantity, $quote->price, $account->exchange_id);
             $position = VirtualPositionRecord::query()->create([
                 'id' => $positionId, 'paper_account_id' => $account->id, 'exchange_id' => $account->exchange_id, 'signal_id' => $signal->id, 'symbol' => $signal->symbol,
-                'side' => $signal->side, 'quality_class' => $signal->quality_class, 'status' => PositionStatus::Open->value,
+                'side' => $signal->side, 'quality_class' => $signal->quality_class,
+                'signal_quality' => $signal->signal_quality, 'trade_risk' => $signal->trade_risk,
+                'status' => PositionStatus::Open->value,
                 'entry_price' => $quote->price, 'stop_loss' => $signal->stop_loss, 'take_profit_1' => $signal->take_profit_1, 'take_profit_2' => $signal->take_profit_2,
                 'initial_quantity' => $quantity, 'remaining_quantity' => $quantity, 'qty_step' => $size->qtyStep, 'risk_capital' => $size->riskCapital,
                 'gross_pnl' => '0', 'net_pnl' => BigDecimal::of($fee)->negated(), 'unrealized_pnl' => '0', 'fees' => $fee, 'funding' => '0',

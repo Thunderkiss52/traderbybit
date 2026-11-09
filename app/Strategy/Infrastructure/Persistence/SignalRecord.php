@@ -5,6 +5,9 @@ declare(strict_types=1);
 namespace App\Strategy\Infrastructure\Persistence;
 
 use App\MarketData\Infrastructure\Persistence\CandleRecord;
+use App\PaperTrading\Domain\TradeRiskClass;
+use App\Strategy\Domain\QualityClass;
+use App\Strategy\Domain\SignalQuality;
 use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -30,6 +33,23 @@ final class SignalRecord extends Model
             'entry_low' => 'string', 'entry_high' => 'string', 'stop_loss' => 'string', 'take_profit_1' => 'string', 'take_profit_2' => 'string',
             'risk_reward_1' => 'string', 'risk_reward_2' => 'string', 'model_risk_percent' => 'string',
         ];
+    }
+
+    public function getSignalQualityAttribute(?string $value): string
+    {
+        if ($value !== null && $value !== '') {
+            return $value;
+        }
+
+        return SignalQuality::fromQualityClass(
+            $this->quality_class !== null ? QualityClass::tryFrom($this->quality_class) : null,
+            $this->score
+        )->value;
+    }
+
+    public function getTradeRiskAttribute(?string $value): string
+    {
+        return $value ?: TradeRiskClass::Unknown->value;
     }
 
     public function candle(): BelongsTo

@@ -352,11 +352,12 @@ final class AllThirteenStrategiesExecutionTest extends TestCase
 
     private function createMarketContext(string $exchange, string $symbol, DateTimeImmutable $at): void
     {
-        MarketContextRecord::query()->create([
+        MarketContextRecord::query()->updateOrCreate([
             'exchange' => $exchange,
             'category' => 'linear',
             'symbol' => $symbol,
             'observed_at' => $at,
+        ], [
             'bid' => '100.48',
             'ask' => '100.52',
             'turnover_24h' => '100000000',
@@ -372,12 +373,13 @@ final class AllThirteenStrategiesExecutionTest extends TestCase
 
     private function createMarketCandle(string $exchange, string $symbol, string $interval, DateTimeImmutable $at, string $open, string $high, string $low, string $close): void
     {
-        CandleRecord::query()->create([
+        CandleRecord::query()->updateOrCreate([
             'exchange' => $exchange,
             'category' => 'linear',
             'symbol' => $symbol,
             'interval' => $interval,
             'open_time' => $at,
+        ], [
             'open' => $open,
             'high' => $high,
             'low' => $low,

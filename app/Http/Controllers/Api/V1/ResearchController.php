@@ -22,6 +22,7 @@ use App\MarketData\Domain\Candle;
 use App\MarketData\Domain\Interval;
 use App\MarketData\Infrastructure\Persistence\CandleRecord;
 use App\PaperTrading\Application\DailyPerformanceService;
+use App\PaperTrading\Application\DirectionalPerformanceService;
 use App\PaperTrading\Application\PerformanceStatisticsService;
 use App\PaperTrading\Infrastructure\Persistence\EquitySnapshotRecord;
 use App\PaperTrading\Infrastructure\Persistence\JournalEventRecord;
@@ -43,6 +44,7 @@ use Brick\Math\RoundingMode;
 use Carbon\CarbonImmutable;
 use Carbon\CarbonInterface;
 use DateTimeImmutable;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Collection;
@@ -1100,23 +1102,95 @@ final class ResearchController extends Controller
         return $result;
     }
 
-    public function risk(Request $r): ResearchResource
+    public function risk(Request $r, DirectionalPerformanceService $directional): ResearchResource
     {
         $exchange = $this->resolveExchange($r);
         $accounts = PaperAccountRecord::query()->where('exchange_id', $exchange)->orderBy('name')->get();
         $requested = $r->string('account')->toString();
         $account = null;
-        if ($requested !== '') {
+        if ($requested !== '' && $requested !== 'all') {
             $account = $accounts->firstWhere('id', $requested);
         }
-        if ($account === null) {
+        if ($account === null && $requested !== 'all') {
             $account = $accounts->first();
         }
 
-        $a = $account?->id;
-        $decisions = $a ? RiskDecisionRecord::query()->where('paper_account_id', $a)
-            ->where('exchange_id', $exchange)
-            ->latest('decided_at')->latest('id')->paginate($this->perPage($r), ['id', 'signal_id', 'allowed', 'reasons', 'snapshot', 'decided_at']) : null;
+        $query = RiskDecisionRecord::query()->where('exchange_id', $exchange);
+        if ($account !== null) {
+            $query->where('paper_account_id', $account->id);
+        }
+
+        // Apply filters: quality, risk, allowed
+        if ($r->has('quality') && $r->string('quality')->toString() !== '' && $r->string('quality')->toString() !== 'all') {
+            $q = strtoupper($r->string('quality')->toString());
+            if ($q === 'UNKNOWN') {
+                $query->where(function (Builder $b): void {
+                    $b->whereNull('signal_quality')->orWhere('signal_quality', 'UNKNOWN');
+                });
+            } else {
+                $query->where('signal_quality', $q);
+            }
+        }
+
+        if ($r->has('risk') && $r->string('risk')->toString() !== '' && $r->string('risk')->toString() !== 'all') {
+            $riskFilter = strtoupper($r->string('risk')->toString());
+            if ($riskFilter === 'UNKNOWN') {
+                $query->where(function (Builder $b): void {
+                    $b->whereNull('trade_risk')->orWhere('trade_risk', 'UNKNOWN');
+                });
+            } else {
+                $query->where('trade_risk', $riskFilter);
+            }
+        }
+
+        if ($r->has('allowed') && $r->string('allowed')->toString() !== '' && $r->string('allowed')->toString() !== 'all') {
+            $allowedFilter = filter_var($r->string('allowed')->toString(), FILTER_VALIDATE_BOOLEAN, FILTER_NULL_ON_FAILURE);
+            if ($allowedFilter !== null) {
+                $query->where('allowed', $allowedFilter);
+            }
+        }
+
+        $decisions = $query->latest('decided_at')->latest('id')
+            ->paginate($this->perPage($r), ['id', 'paper_account_id', 'signal_id', 'signal_quality', 'trade_risk', 'allowed', 'reasons', 'snapshot', 'decided_at']);
+
+        // Directional performance analysis
+        $criteria = [
+            'exchange_id' => $exchange,
+            'account_id' => $account?->id,
+        ];
+        $directionalAnalysis = $directional->analyze($criteria);
+
+        // Top rejection reasons aggregated
+        $rejectionStatsQuery = RiskDecisionRecord::query()->where('exchange_id', $exchange)->where('allowed', false);
+        if ($account !== null) {
+            $rejectionStatsQuery->where('paper_account_id', $account->id);
+        }
+        $rejectionDecisions = $rejectionStatsQuery->latest('decided_at')->limit(500)->get(['reasons']);
+        $rejectionCounts = [];
+        foreach ($rejectionDecisions as $rd) {
+            $reasons = is_array($rd->reasons) ? $rd->reasons : (json_decode((string) $rd->reasons, true) ?? []);
+            foreach ($reasons as $reason) {
+                $rejectionCounts[$reason] = ($rejectionCounts[$reason] ?? 0) + 1;
+            }
+        }
+        arsort($rejectionCounts);
+
+        $gatePolicyConfig = array_merge([
+            'enabled' => true,
+            'enforce_expectancy' => true,
+            'min_sample_size' => 30,
+            'max_account_drawdown_percent' => '15.0',
+            'matrix' => [
+                'HIGH_LOW' => 'ELIGIBLE',
+                'HIGH_MEDIUM' => 'CONDITIONALLY_ELIGIBLE',
+                'HIGH_HIGH' => 'REJECTED',
+                'MEDIUM_LOW' => 'CONDITIONALLY_ELIGIBLE',
+                'MEDIUM_MEDIUM' => 'CONDITIONALLY_ELIGIBLE',
+                'MEDIUM_HIGH' => 'REJECTED',
+                'LOW_ANY' => 'OBSERVATION_ONLY',
+                'UNKNOWN_ANY' => 'REJECTED',
+            ],
+        ], config('paper.quality_risk_gate') ?? []);
 
         return $this->ok([
             'account' => $account,
@@ -1130,7 +1204,10 @@ final class ResearchController extends Controller
                 'reserved_risk' => (string) $acc->reserved_risk,
                 'current_drawdown_percent' => (string) $acc->current_drawdown_percent,
             ])->values()->all(),
-            'decisions' => $decisions ?? ['data' => [], 'current_page' => 1, 'last_page' => 1],
+            'decisions' => $decisions,
+            'gate_policy' => $gatePolicyConfig,
+            'directional_performance' => $directionalAnalysis,
+            'rejection_reasons' => $rejectionCounts,
             'limits' => config('paper.portfolio'),
         ]);
     }
