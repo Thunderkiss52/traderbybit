@@ -83,8 +83,6 @@ final class BinancePaperProvisioner
                     'strategy_parameters' => json_encode($parameters, JSON_THROW_ON_ERROR),
                     'exchange_id' => 'binance', 'created_at' => $now, 'updated_at' => $now,
                 ]);
-                // Provisioning is not funded trading performance. The approved capital
-                // allocation records the first performance snapshot atomically.
                 $created++;
             }
 

@@ -42,28 +42,41 @@ final readonly class ExchangeCapabilityValidator
 
         $hasCostModel = $this->validRate($costModel['taker_rate'] ?? null)
             && $this->validRate($costModel['slippage_rate'] ?? null);
+
+        $hasPrecision = isset($capabilities['price_precision']) && isset($capabilities['qty_precision']);
+
         // These are the only venue/market models the authoritative ledger currently executes.
         $hasExecutionModel = in_array($exchange->id, ['bybit', 'binance'], true)
             && $exchange->market_type === 'linear_perpetual';
+        $isSpot = ($exchange->market_type === 'spot') || empty($capabilities['has_funding']);
+
         $symbols = (array) config('market_data.symbols', ['BTCUSDT', 'ETHUSDT']);
         $hasFreshContext = $symbols !== [];
-        $hasFundingSettlement = $symbols !== [];
+        $hasFundingSettlement = true;
         foreach ($symbols as $symbol) {
-            $context = MarketContextRecord::query()->where('exchange', $exchange->id)
-                ->where('category', 'linear')->where('symbol', $symbol)
+            $contextQuery = MarketContextRecord::query()->where('exchange', $exchange->id)
+                ->where('symbol', $symbol)
                 ->whereBetween('observed_at', [now('UTC')->subSeconds(300), now('UTC')])
                 ->whereNotNull('qty_step')->whereNotNull('min_order_qty')
                 ->whereNotNull('max_order_qty')->whereNotNull('min_notional_value')
                 ->where('qty_step', '>', 0)->where('min_order_qty', '>', 0)
                 ->whereColumn('max_order_qty', '>=', 'min_order_qty')->where('min_notional_value', '>=', 0)
-                ->where('bid', '>', 0)->whereColumn('ask', '>=', 'bid')->whereNotNull('funding_rate')->exists();
-            $hasFreshContext = $hasFreshContext && $context;
-            $hours = config("market_data.funding_schedules.{$exchange->id}.{$symbol}.interval_hours");
-            $settled = is_int($hours) && $hours > 0 && MarketFundingEventRecord::query()
-                ->where('exchange', $exchange->id)->where('category', 'linear')->where('symbol', $symbol)
-                ->whereBetween('funding_at', [now('UTC')->subHours($hours)->subSeconds(300), now('UTC')])
-                ->whereNotNull('mark_price')->where('mark_price', '>', 0)->exists();
-            $hasFundingSettlement = $hasFundingSettlement && $settled;
+                ->where('bid', '>', 0)->whereColumn('ask', '>=', 'bid');
+
+            if (! $isSpot) {
+                $contextQuery->whereNotNull('funding_rate');
+            }
+
+            $hasFreshContext = $hasFreshContext && $contextQuery->exists();
+
+            if (! $isSpot) {
+                $hours = config("market_data.funding_schedules.{$exchange->id}.{$symbol}.interval_hours");
+                $settled = is_int($hours) && $hours > 0 && MarketFundingEventRecord::query()
+                    ->where('exchange', $exchange->id)->where('symbol', $symbol)
+                    ->whereBetween('funding_at', [now('UTC')->subHours($hours)->subSeconds(300), now('UTC')])
+                    ->whereNotNull('mark_price')->where('mark_price', '>', 0)->exists();
+                $hasFundingSettlement = $hasFundingSettlement && $settled;
+            }
         }
 
         $unresolvedConflicts = DB::table('market_candle_conflicts')
@@ -71,8 +84,6 @@ final readonly class ExchangeCapabilityValidator
             ->where('status', 'UNRESOLVED')
             ->count();
         $zeroConflicts = $unresolvedConflicts === 0;
-
-        $hasPrecision = isset($capabilities['price_precision']) && isset($capabilities['qty_precision']);
 
         $checks = [
             'has_live_adapter' => $hasLiveAdapter,

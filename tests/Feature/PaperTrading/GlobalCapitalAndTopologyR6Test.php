@@ -104,6 +104,11 @@ final class GlobalCapitalAndTopologyR6Test extends TestCase
                     return 'new_public_exchange';
                 }
 
+                public function name(): string
+                {
+                    return 'New Public Exchange';
+                }
+
                 public function fetchCandles(string $symbol, string $interval, int $limit, ?int $startMs = null, ?int $endMs = null): array
                 {
                     return [];

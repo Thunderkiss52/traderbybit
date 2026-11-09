@@ -112,7 +112,7 @@ final readonly class PaperTopologySynchronizer
                         if (PaperAccountRecord::query()->where('id', $accountId)->exists()) {
                             throw new RuntimeException('Canonical PRIMARY account identifier already occupied.');
                         }
-                        PaperAccountRecord::query()->create([
+                        $createdAccount = PaperAccountRecord::query()->create([
                             'id' => $accountId, 'name' => strtoupper($exchange).' Paper '.$id,
                             'status' => 'BLOCKED', 'starting_balance' => '0',
                             'current_equity' => '0', 'peak_equity' => '0',
@@ -124,6 +124,7 @@ final readonly class PaperTopologySynchronizer
                             'configuration_hash' => StrategyRegistry::hash($parameters),
                             'strategy_parameters' => $parameters,
                         ]);
+                        $this->accounts->ensureInitialSnapshot($createdAccount);
                         if ($exchange === 'binance') {
                             $createdBinance++;
                         } else {

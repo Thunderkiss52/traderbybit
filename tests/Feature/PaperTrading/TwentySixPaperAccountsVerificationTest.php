@@ -130,6 +130,11 @@ final class TwentySixPaperAccountsVerificationTest extends TestCase
                     return 'okx_research';
                 }
 
+                public function name(): string
+                {
+                    return 'OKX Research';
+                }
+
                 public function fetchCandles(string $symbol, string $interval, int $limit, ?int $startMs = null, ?int $endMs = null): array
                 {
                     return [];

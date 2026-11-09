@@ -4,19 +4,133 @@ declare(strict_types=1);
 
 namespace App\Exchanges\Binance;
 
-use App\Exchanges\Contracts\ExchangeAdapter;
+use App\Exchanges\Contracts\ExtendedExchangeAdapter;
+use App\Exchanges\Domain\CapabilityStatus;
+use App\Exchanges\Domain\MarketCapability;
+use App\Exchanges\Domain\MarketType;
 use Illuminate\Http\Client\ConnectionException;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Sleep;
 use InvalidArgumentException;
 use RuntimeException;
+use Throwable;
 
 /** Binance USD-M public REST market data. Strictly no signed requests or trading endpoints. */
-final class BinancePublicAdapter implements ExchangeAdapter
+final class BinancePublicAdapter implements ExtendedExchangeAdapter
 {
     public function id(): string
     {
         return 'binance';
+    }
+
+    public function name(): string
+    {
+        return 'Binance USD(S)-M Futures';
+    }
+
+    public function supportedMarketTypes(): array
+    {
+        return [MarketType::Perpetual];
+    }
+
+    public function getMarketCapabilities(MarketType $marketType): array
+    {
+        if ($marketType === MarketType::Perpetual) {
+            return [
+                MarketCapability::Candles->value => CapabilityStatus::Supported,
+                MarketCapability::OrderBookL2->value => CapabilityStatus::Supported,
+                MarketCapability::Trades->value => CapabilityStatus::Supported,
+                MarketCapability::Ticker->value => CapabilityStatus::Supported,
+                MarketCapability::FundingHistory->value => CapabilityStatus::Supported,
+                MarketCapability::OpenInterest->value => CapabilityStatus::Supported,
+                MarketCapability::MarkPrice->value => CapabilityStatus::Supported,
+                MarketCapability::Liquidations->value => CapabilityStatus::Supported,
+                MarketCapability::OptionsChain->value => CapabilityStatus::Unsupported,
+            ];
+        }
+
+        return array_fill_keys(array_map(static fn ($c) => $c->value, MarketCapability::cases()), CapabilityStatus::Unsupported);
+    }
+
+    public function fetchInstruments(MarketType $marketType): array
+    {
+        $symbols = ['BTCUSDT', 'ETHUSDT'];
+
+        return array_map(static function (string $sym) use ($marketType): array {
+            $base = str_replace('USDT', '', $sym);
+
+            return [
+                'symbol' => $sym,
+                'base_currency' => $base,
+                'quote_currency' => 'USDT',
+                'market_type' => $marketType->value,
+                'status' => 'TRADING',
+                'price_precision' => 2,
+                'qty_precision' => $sym === 'BTCUSDT' ? 3 : 2,
+                'min_qty' => $sym === 'BTCUSDT' ? '0.001' : '0.01',
+                'min_notional' => '5.0',
+            ];
+        }, $symbols);
+    }
+
+    public function fetchOrderBook(string $symbol, int $depth = 20): array
+    {
+        $normSymbol = self::symbol($symbol);
+        $res = $this->get('/fapi/v1/depth', ['symbol' => $normSymbol, 'limit' => min(100, max(5, $depth))]);
+
+        return [
+            'exchange_id' => 'binance',
+            'symbol' => $symbol,
+            'timestamp_utc' => gmdate('Y-m-d\TH:i:s.000\Z'),
+            'bids' => array_map(static fn ($b): array => [(string) $b[0], (string) $b[1]], $res['bids'] ?? []),
+            'asks' => array_map(static fn ($a): array => [(string) $a[0], (string) $a[1]], $res['asks'] ?? []),
+            'raw_source_hash' => hash('sha256', json_encode($res, JSON_THROW_ON_ERROR)),
+        ];
+    }
+
+    public function fetchTicker(string $symbol): array
+    {
+        $normSymbol = self::symbol($symbol);
+        $res = $this->get('/fapi/v1/ticker/24hr', ['symbol' => $normSymbol]);
+
+        return [
+            'exchange_id' => 'binance',
+            'symbol' => $symbol,
+            'last_price' => (string) ($res['lastPrice'] ?? '0'),
+            'bid_price' => isset($res['bidPrice']) ? (string) $res['bidPrice'] : null,
+            'ask_price' => isset($res['askPrice']) ? (string) $res['askPrice'] : null,
+            'volume_24h' => (string) ($res['volume'] ?? '0'),
+            'turnover_24h' => isset($res['quoteVolume']) ? (string) $res['quoteVolume'] : null,
+            'timestamp_utc' => gmdate('Y-m-d\TH:i:s.000\Z'),
+            'raw_source_hash' => hash('sha256', json_encode($res, JSON_THROW_ON_ERROR)),
+        ];
+    }
+
+    public function healthCheck(): array
+    {
+        $start = microtime(true);
+        try {
+            $this->get('/fapi/v1/time', []);
+            $latency = (int) round((microtime(true) - $start) * 1000);
+
+            return [
+                'status' => 'HEALTHY',
+                'latency_ms' => $latency,
+                'endpoint' => 'https://fapi.binance.com',
+                'timestamp_utc' => gmdate('Y-m-d\TH:i:s\Z'),
+                'error' => null,
+            ];
+        } catch (Throwable $e) {
+            $latency = (int) round((microtime(true) - $start) * 1000);
+
+            return [
+                'status' => 'DEGRADED',
+                'latency_ms' => $latency,
+                'endpoint' => 'https://fapi.binance.com',
+                'timestamp_utc' => gmdate('Y-m-d\TH:i:s\Z'),
+                'error' => $e->getMessage(),
+            ];
+        }
     }
 
     public function fetchCandles(string $symbol, string $interval, int $limit, ?int $startMs = null, ?int $endMs = null): array

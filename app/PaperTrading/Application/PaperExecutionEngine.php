@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\PaperTrading\Application;
 
 use App\Exchanges\ExchangeRegistry;
+use App\Exchanges\Infrastructure\Persistence\ExchangeRecord;
 use App\PaperTrading\Domain\ExecutionQuote;
 use App\PaperTrading\Domain\ExecutionType;
 use App\PaperTrading\Domain\MarketBar;
@@ -123,15 +124,31 @@ final readonly class PaperExecutionEngine
         }
         $registered = app(ExchangeRegistry::class)->registeredIds();
         if (! in_array($exchangeId, $registered, true)) {
-            throw new \DomainException('Unknown paper exchange.');
+            throw new \DomainException("Unknown paper exchange '{$exchangeId}'.");
         }
+        // 1. Direct config override (e.g. exchanges.binance.paper_taker_rate)
         $value = config('exchanges.'.$exchangeId.'.'.$key);
         if (is_string($value) && preg_match('/^(?:0|[0-9]+)(?:\.[0-9]+)?$/D', $value)
             && BigDecimal::of($value)->isGreaterThan('0')) {
             return $value;
         }
 
-        return $bybitValue;
+        // 2. Exchange cost model from config or persistent database record
+        $shortKey = match ($key) {
+            'paper_taker_rate' => 'taker_rate',
+            'paper_slippage_rate' => 'slippage_rate',
+            default => $key,
+        };
+        $model = config('exchanges.'.$exchangeId.'.cost_model')
+            ?? ExchangeRecord::query()->find($exchangeId)?->cost_model;
+        if (is_array($model) && isset($model[$shortKey]) && is_string($model[$shortKey])
+            && preg_match('/^(?:0|[0-9]+)(?:\.[0-9]+)?$/D', $model[$shortKey])
+            && BigDecimal::of($model[$shortKey])->isGreaterThan('0')) {
+            return $model[$shortKey];
+        }
+
+        // Strictly prohibit Bybit rates fallback for other exchanges
+        throw new \DomainException("Exchange-specific cost rate missing for '{$exchangeId}': {$key}. Fallback to Bybit rates is strictly prohibited.");
     }
 
     private function d(string $value): BigDecimal

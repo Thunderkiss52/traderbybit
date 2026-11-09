@@ -69,6 +69,11 @@ final class StrategyRegistry
         return array_map(static fn (StrategyInterface $strategy): string => $strategy->id(), $this->all());
     }
 
+    public function has(string $id): bool
+    {
+        return in_array($id, $this->ids(), true);
+    }
+
     public function get(string $id): StrategyInterface
     {
         if (isset($this->dynamicStrategies[$id])) {

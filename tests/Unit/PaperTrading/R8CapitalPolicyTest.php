@@ -53,12 +53,21 @@ final class R8CapitalPolicyTest extends TestCase
         $this->policy->openingBalance('bybit', 'baseline');
     }
 
-    public function test_new_standalone_strategies_and_venues_are_unfunded(): void
+    public function test_new_standalone_strategies_receive_capital_on_approved_venues_and_unapproved_venues_remain_unfunded(): void
     {
         config(['paper.new_primary_default_starting_balance' => '10000']);
+        // Bybit is execution approved: newly registered strategy receives starting balance
+        self::assertSame('10000', $this->policy->openingBalance('bybit', 'new_registered_strategy'));
+
+        // Unapproved venues remain unfunded (0) until execution approval is granted
+        config(['exchanges.okx_paper_execution_approved' => false]);
+        config(['exchanges.binance_paper_execution_approved' => false]);
         self::assertSame('0', $this->policy->openingBalance('okx', 'baseline'));
-        self::assertSame('0', $this->policy->openingBalance('bybit', 'new_registered_strategy'));
         self::assertSame('0', $this->policy->openingBalance('binance', 'baseline'));
+
+        // Once approved, accounts receive the configured starting balance
+        config(['exchanges.binance_paper_execution_approved' => true]);
+        self::assertSame('10000', $this->policy->openingBalance('binance', 'baseline'));
     }
 
     public function test_activation_capital_accepts_zero_without_implicitly_funding(): void

@@ -115,7 +115,12 @@ final class OkxAdapter extends AbstractExchangeAdapter
             MarketType::Options => 'OPTION',
         };
 
-        $data = $this->getOkx('/api/v5/public/instruments', ['instType' => $instType]);
+        $params = ['instType' => $instType];
+        if ($instType === 'OPTION') {
+            $params['uly'] = 'BTC-USD';
+        }
+
+        $data = $this->getOkx('/api/v5/public/instruments', $params);
         $instruments = [];
 
         foreach ($data as $row) {

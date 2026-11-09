@@ -217,7 +217,8 @@ final readonly class ExchangeStrategyCompatibilityService
         $missingTimeframes = array_diff($requiredTimeframes, $supportedTimeframes);
         $timeframesCompatible = empty($missingTimeframes);
 
-        // 4. Historical coverage & minimum history
+        // 4. Historical coverage & minimum history derived from strategy indicators
+        $minWarmupBars = $this->requiredWarmupBars($strategy);
         $coverageInfo = [];
         $totalBars = 0;
         $historyCompatible = true;
@@ -230,10 +231,10 @@ final readonly class ExchangeStrategyCompatibilityService
                     ->where('category', $strategyMarketType === 'spot' ? 'spot' : 'linear')
                     ->where('interval', (string) $interval)->where('is_closed', true)
                     ->where('open_time', '<=', now('UTC')->subSeconds($seconds))
-                    ->orderByDesc('open_time')->limit(self::MINIMUM_WARMUP_BARS)->pluck('open_time') : collect();
+                    ->orderByDesc('open_time')->limit($minWarmupBars)->pluck('open_time') : collect();
                 $bars = $times->count();
                 $totalBars += $bars;
-                $contiguous = $bars >= self::MINIMUM_WARMUP_BARS;
+                $contiguous = $bars >= $minWarmupBars;
                 $previous = null;
                 foreach ($times as $time) {
                     $timestamp = CarbonImmutable::parse($time)->getTimestamp();
@@ -245,7 +246,7 @@ final readonly class ExchangeStrategyCompatibilityService
                 $fresh = $bars > 0 && CarbonImmutable::parse($times->first())->addSeconds($seconds)->gte(now('UTC')->subSeconds(300));
                 $freshCandles = $freshCandles && $fresh;
                 $historyCompatible = $historyCompatible && $contiguous;
-                $coverageInfo[$symbol][(string) $interval] = ['bars' => $bars, 'min_required' => self::MINIMUM_WARMUP_BARS, 'sufficient' => $contiguous, 'fresh' => $fresh];
+                $coverageInfo[$symbol][(string) $interval] = ['bars' => $bars, 'min_required' => $minWarmupBars, 'sufficient' => $contiguous, 'fresh' => $fresh];
             }
         }
 
@@ -313,7 +314,7 @@ final readonly class ExchangeStrategyCompatibilityService
             $reasonsMissing[] = 'MISSING_REQUIRED_TIMEFRAMES: Missing required timeframes: '.implode(', ', $missingTimeframes).'.';
         }
         if (! $historyCompatible) {
-            $reasonsMissing[] = "INSUFFICIENT_HISTORICAL_DATA: Historical candle count ({$totalBars} bars) does not meet minimum warmup threshold (".self::MINIMUM_WARMUP_BARS.' bars).';
+            $reasonsMissing[] = "INSUFFICIENT_HISTORICAL_DATA: Historical candle count ({$totalBars} bars) does not meet minimum warmup threshold ({$minWarmupBars} bars).";
         }
         foreach ($featureBlockers as $blocker) {
             $reasonsMissing[] = $blocker;
@@ -486,6 +487,40 @@ final readonly class ExchangeStrategyCompatibilityService
             'requires_funding' => false,
             'requires_open_interest' => false,
         ];
+    }
+
+    /**
+     * Derive required warmup bars from actual strategy indicator parameters and timeframes.
+     * Prevents assuming an arbitrary fixed threshold across diverse strategies.
+     */
+    public function requiredWarmupBars(array $strategy): int
+    {
+        if (isset($strategy['min_bars']) && is_numeric($strategy['min_bars'])) {
+            return max(1, (int) $strategy['min_bars']);
+        }
+
+        $strategyId = (string) ($strategy['id'] ?? '');
+        if ($this->strategyRegistry->has($strategyId)) {
+            $instance = $this->strategyRegistry->get($strategyId);
+            $params = $instance->parameters();
+            if (isset($params['min_bars']) && is_numeric($params['min_bars'])) {
+                return max(1, (int) $params['min_bars']);
+            }
+            if (isset($params['history_limit']) && is_numeric($params['history_limit'])) {
+                return max(1, (int) $params['history_limit']);
+            }
+            if (isset($params['period']) && is_numeric($params['period'])) {
+                return max(1, (int) $params['period'] + 10);
+            }
+            if (isset($params['entry_ema_slow']) && is_numeric($params['entry_ema_slow'])) {
+                return max(1, (int) $params['entry_ema_slow'] + 10);
+            }
+            if (isset($params['trend_ema_slow']) && is_numeric($params['trend_ema_slow'])) {
+                return max(1, (int) $params['trend_ema_slow'] + 10);
+            }
+        }
+
+        return self::MINIMUM_WARMUP_BARS;
     }
 
     private function formatRecord(ExchangeStrategyCompatibilityRecord $record): array
