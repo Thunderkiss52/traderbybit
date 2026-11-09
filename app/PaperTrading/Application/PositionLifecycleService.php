@@ -36,14 +36,24 @@ final readonly class PositionLifecycleService
 
     public function open(PaperAccountRecord $account, PaperSignalStateRecord $state, SignalRecord $signal, PositionSize $size, ExecutionQuote $quote, DateTimeImmutable $at): VirtualPositionRecord
     {
+        $positionId = Uuid::uuid5(Uuid::NAMESPACE_URL, "traderbybit:position:{$account->id}:{$signal->id}")->toString();
+        if ($existing = VirtualPositionRecord::query()->find($positionId)) {
+            return $existing;
+        }
+
         $eligibility = $this->eligibility ?? app(PaperExecutionEligibilityService::class);
         $eligibility->assertOpenEligible($account, $state, $signal, $at);
 
-        return DB::transaction(function () use ($account, $state, $signal, $size, $quote, $at, $eligibility): VirtualPositionRecord {
+        return DB::transaction(function () use ($account, $state, $signal, $size, $quote, $at, $eligibility, $positionId): VirtualPositionRecord {
             // All PAPER entry transactions acquire the same guard lock before account rows.
             app(GlobalPaperCapitalGuard::class)->lockEntryDecision();
             $lockedAccount = PaperAccountRecord::query()->lockForUpdate()->findOrFail($account->id);
             $lockedState = PaperSignalStateRecord::query()->lockForUpdate()->findOrFail($state->id);
+
+            if ($existing = VirtualPositionRecord::query()->find($positionId)) {
+                return $existing;
+            }
+
             // Recheck authorization *inside* the account lock. A previously
             // loaded ACTIVE model is not evidence that the account is still
             // permitted to open an entry when concurrent risk/jobs change it.
@@ -54,10 +64,6 @@ final readonly class PositionLifecycleService
                 ? app(GlobalPaperCapitalGuard::class)->entryRejectionReason((string) $size->riskCapital) : null;
             if ($aggregateReason !== null) {
                 throw new \DomainException('Entry ineligible: '.$aggregateReason);
-            }
-            $positionId = Uuid::uuid5(Uuid::NAMESPACE_URL, "traderbybit:position:{$account->id}:{$signal->id}")->toString();
-            if ($existing = VirtualPositionRecord::query()->find($positionId)) {
-                return $existing;
             }
             SignalLifecycle::from($lockedState->status)->transitionTo(SignalLifecycle::Active);
             $quantity = (string) $size->quantity;

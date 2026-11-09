@@ -12,6 +12,7 @@ enum QualityRiskGateDecision: string
     case Eligible = 'ELIGIBLE';
     case ConditionallyEligible = 'CONDITIONALLY_ELIGIBLE';
     case ObservationOnly = 'OBSERVATION_ONLY';
+    case InsufficientEvidence = 'INSUFFICIENT_EVIDENCE';
     case Rejected = 'REJECTED';
 
     public function isPermitted(): bool

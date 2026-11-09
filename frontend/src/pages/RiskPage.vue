@@ -422,7 +422,7 @@ function gateDecisionClass(quality: string, risk: string): { label: string; colo
                 <div class="col-12 col-md-4">
                   <div class="text-caption text-grey-4">Gate Decision:</div>
                   <q-badge
-                    :color="props.row.snapshot?.gate_decision === 'ELIGIBLE' ? 'positive' : (props.row.snapshot?.gate_decision === 'CONDITIONALLY_ELIGIBLE' ? 'info' : 'negative')"
+                    :color="props.row.snapshot?.gate_decision === 'ELIGIBLE' ? 'positive' : (props.row.snapshot?.gate_decision === 'CONDITIONALLY_ELIGIBLE' ? 'info' : (props.row.snapshot?.gate_decision === 'INSUFFICIENT_EVIDENCE' ? 'warning' : 'negative'))"
                     :label="props.row.snapshot?.gate_decision || (props.row.allowed ? 'ELIGIBLE' : 'REJECTED')"
                   />
                 </div>

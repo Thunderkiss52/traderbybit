@@ -7,10 +7,14 @@ namespace App\PaperTrading\Application;
 use App\Exchanges\Binance\BinancePaperSafety;
 use App\Exchanges\ExchangeRegistry;
 use App\PaperTrading\Domain\SignalLifecycle;
+use App\PaperTrading\Domain\TradeRiskClass;
 use App\PaperTrading\Infrastructure\Persistence\PaperAccountRecord;
 use App\PaperTrading\Infrastructure\Persistence\PaperSignalStateRecord;
+use App\PaperTrading\Infrastructure\Persistence\RiskDecisionRecord;
 use App\Research\Infrastructure\Persistence\LearningCandidateStrategyRecord;
 use App\Strategy\Application\StrategyRegistry;
+use App\Strategy\Domain\QualityClass;
+use App\Strategy\Domain\SignalQuality;
 use App\Strategy\Infrastructure\Persistence\ResearchExperimentRecord;
 use App\Strategy\Infrastructure\Persistence\SignalRecord;
 use App\StrategyBuilder\PrimaryStrategies;
@@ -195,6 +199,64 @@ final readonly class PaperExecutionEligibilityService
 
         if ($account->exchange_id === 'binance') {
             BinancePaperSafety::assertExecutable($account);
+        }
+
+        // Canonical Quality and Risk Gate Enforcement:
+        // No virtual position can ever be opened if the signal is LOW quality, HIGH risk, UNKNOWN, or rejected by the gate.
+        $quality = $signal->signal_quality !== null
+            ? SignalQuality::fromString($signal->signal_quality)
+            : SignalQuality::fromQualityClass(
+                $signal->quality_class !== null ? QualityClass::tryFrom($signal->quality_class) : null,
+                $signal->score
+            );
+
+        if ($quality === SignalQuality::Low) {
+            throw new DomainException('Entry ineligible: low_signal_quality_observation_only');
+        }
+        if ($quality === SignalQuality::Unknown) {
+            throw new DomainException('Entry ineligible: unknown_signal_quality');
+        }
+
+        $rawRisk = $signal->getRawOriginal('trade_risk');
+        $tradeRisk = $rawRisk !== null && $rawRisk !== '' ? TradeRiskClass::tryFrom((string) $rawRisk) : null;
+        if ($tradeRisk === null) {
+            $decision = RiskDecisionRecord::query()->where('paper_account_id', $account->id)->where('signal_id', $signal->id)->latest('id')->first();
+            if ($decision !== null) {
+                if (! $decision->allowed) {
+                    throw new DomainException('Entry ineligible: '.($decision->reasons[0] ?? 'entry_risk_rejected'));
+                }
+                $tradeRisk = TradeRiskClass::tryFrom((string) $decision->trade_risk);
+            } else {
+                $classifier = app(TradeRiskClassificationService::class);
+                $riskResult = $classifier->classify([
+                    'equity' => $account->current_equity,
+                    'entry_price' => $signal->entry_high ?? $signal->entry_low,
+                    'stop_loss' => $signal->stop_loss,
+                    'take_profit_1' => $signal->take_profit_1,
+                    'current_drawdown_percent' => $account->current_drawdown_percent,
+                ]);
+                $tradeRisk = $riskResult['risk_class'];
+            }
+        }
+
+        if ($tradeRisk === TradeRiskClass::High) {
+            throw new DomainException('Entry ineligible: high_risk_trade_rejected');
+        }
+        if ($tradeRisk === TradeRiskClass::Unknown) {
+            throw new DomainException('Entry ineligible: unknown_trade_risk');
+        }
+
+        $gate = app(PreExecutionQualityRiskGate::class);
+        $gateEval = $gate->evaluate([
+            'signal_quality' => $quality,
+            'trade_risk' => $tradeRisk,
+            'drawdown_percent' => $account->current_drawdown_percent,
+            'side' => $signal->side,
+        ]);
+
+        if (! $gateEval['decision']->isPermitted()) {
+            $reason = $gateEval['rejection_reasons'][0] ?? 'quality_risk_gate_rejected';
+            throw new DomainException("Entry ineligible: {$reason}");
         }
     }
 }

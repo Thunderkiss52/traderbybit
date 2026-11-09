@@ -61,11 +61,12 @@ final readonly class TradeRiskClassificationService
 
             $factors = [];
             $warnings = [];
+            $missingFactors = [];
             $totalScore = 0;
             $totalWeight = 0;
             $highCount = 0;
 
-            // 1. Risk Capital as % of Equity
+            // 1. Risk Capital as % of Equity (Weight: 20)
             $riskCapital = BigDecimal::of((string) ($input['risk_capital'] ?? '0'));
             if ($riskCapital->isPositive()) {
                 $riskEquityPct = $riskCapital->dividedBy($equity, 6, RoundingMode::HalfEven)->multipliedBy(100)->toFloat();
@@ -84,9 +85,14 @@ final readonly class TradeRiskClassificationService
                 $factors['risk_equity_percent'] = ['value' => round($riskEquityPct, 4), 'level' => $level, 'weight' => 20, 'score' => $score];
                 $totalScore += $score * 20;
                 $totalWeight += 20;
+            } else {
+                $missingFactors[] = 'risk_capital';
+                $factors['risk_equity_percent'] = ['value' => null, 'level' => 'UNAVAILABLE', 'weight' => 20, 'score' => 50];
+                $totalScore += 50 * 20;
+                $totalWeight += 20;
             }
 
-            // 2. Stop-Loss Distance %
+            // 2. Stop-Loss Distance % (Weight: 15)
             $slDistPct = $entry->minus($stop)->abs()->dividedBy($entry, 6, RoundingMode::HalfEven)->multipliedBy(100)->toFloat();
             if ($slDistPct > 6.00) {
                 $level = 'HIGH';
@@ -104,7 +110,7 @@ final readonly class TradeRiskClassificationService
             $totalScore += $score * 15;
             $totalWeight += 15;
 
-            // 3. Notional Leverage
+            // 3. Notional Leverage (Weight: 15)
             $notional = BigDecimal::of((string) ($input['notional'] ?? '0'));
             if ($notional->isPositive()) {
                 $leverage = $notional->dividedBy($equity, 4, RoundingMode::HalfEven)->toFloat();
@@ -123,9 +129,14 @@ final readonly class TradeRiskClassificationService
                 $factors['notional_leverage'] = ['value' => round($leverage, 2), 'level' => $level, 'weight' => 15, 'score' => $score];
                 $totalScore += $score * 15;
                 $totalWeight += 15;
+            } else {
+                $missingFactors[] = 'notional_leverage';
+                $factors['notional_leverage'] = ['value' => null, 'level' => 'UNAVAILABLE', 'weight' => 15, 'score' => 50];
+                $totalScore += 50 * 15;
+                $totalWeight += 15;
             }
 
-            // 4. Current Account Drawdown
+            // 4. Current Account Drawdown (Weight: 15)
             $dd = (float) ($input['current_drawdown_percent'] ?? 0.0);
             if ($dd >= 3.0) {
                 $level = 'HIGH';
@@ -143,7 +154,7 @@ final readonly class TradeRiskClassificationService
             $totalScore += $score * 15;
             $totalWeight += 15;
 
-            // 5. Portfolio Open Positions Count
+            // 5. Portfolio Open Positions Count (Weight: 10)
             $openPos = (int) ($input['open_positions_count'] ?? 0);
             if ($openPos >= 2) {
                 $level = 'HIGH';
@@ -160,7 +171,7 @@ final readonly class TradeRiskClassificationService
             $totalScore += $score * 10;
             $totalWeight += 10;
 
-            // 6. Volatility (ATR %)
+            // 6. Volatility (ATR %) (Weight: 10)
             if (isset($input['atr']) && is_numeric($input['atr'])) {
                 $atr = BigDecimal::of((string) $input['atr']);
                 if ($atr->isPositive()) {
@@ -180,10 +191,20 @@ final readonly class TradeRiskClassificationService
                     $factors['volatility_atr_percent'] = ['value' => round($atrPct, 3), 'level' => $level, 'weight' => 10, 'score' => $score];
                     $totalScore += $score * 10;
                     $totalWeight += 10;
+                } else {
+                    $missingFactors[] = 'volatility_atr_percent';
+                    $factors['volatility_atr_percent'] = ['value' => null, 'level' => 'UNAVAILABLE', 'weight' => 10, 'score' => 50];
+                    $totalScore += 50 * 10;
+                    $totalWeight += 10;
                 }
+            } else {
+                $missingFactors[] = 'volatility_atr_percent';
+                $factors['volatility_atr_percent'] = ['value' => null, 'level' => 'UNAVAILABLE', 'weight' => 10, 'score' => 50];
+                $totalScore += 50 * 10;
+                $totalWeight += 10;
             }
 
-            // 7. Liquidity Spread
+            // 7. Liquidity Spread (Weight: 5)
             if (isset($input['bid'], $input['ask']) && is_numeric($input['bid']) && is_numeric($input['ask'])) {
                 $bid = BigDecimal::of((string) $input['bid']);
                 $ask = BigDecimal::of((string) $input['ask']);
@@ -205,11 +226,26 @@ final readonly class TradeRiskClassificationService
                     $factors['spread_drag_percent'] = ['value' => round($spreadPct, 4), 'level' => $level, 'weight' => 5, 'score' => $score];
                     $totalScore += $score * 5;
                     $totalWeight += 5;
+                } else {
+                    $missingFactors[] = 'spread_drag_percent';
+                    $factors['spread_drag_percent'] = ['value' => null, 'level' => 'UNAVAILABLE', 'weight' => 5, 'score' => 50];
+                    $totalScore += 50 * 5;
+                    $totalWeight += 5;
                 }
+            } else {
+                $missingFactors[] = 'spread_drag_percent';
+                $factors['spread_drag_percent'] = ['value' => null, 'level' => 'UNAVAILABLE', 'weight' => 5, 'score' => 50];
+                $totalScore += 50 * 5;
+                $totalWeight += 5;
             }
 
-            // 8. Correlation with Existing Positions
-            if (isset($input['correlation']) && is_numeric($input['correlation'])) {
+            // 8. Correlation with Existing Positions (Weight: 5)
+            if ($openPos === 0) {
+                // When 0 open positions exist, portfolio correlation risk with existing positions is zero
+                $factors['correlation'] = ['value' => 0.0, 'level' => 'LOW', 'weight' => 5, 'score' => 10];
+                $totalScore += 10 * 5;
+                $totalWeight += 5;
+            } elseif (isset($input['correlation']) && is_numeric($input['correlation'])) {
                 $corr = abs((float) $input['correlation']);
                 if ($corr >= 0.70) {
                     $level = 'HIGH';
@@ -226,9 +262,14 @@ final readonly class TradeRiskClassificationService
                 $factors['correlation'] = ['value' => round($corr, 3), 'level' => $level, 'weight' => 5, 'score' => $score];
                 $totalScore += $score * 5;
                 $totalWeight += 5;
+            } else {
+                $missingFactors[] = 'correlation';
+                $factors['correlation'] = ['value' => null, 'level' => 'UNAVAILABLE', 'weight' => 5, 'score' => 50];
+                $totalScore += 50 * 5;
+                $totalWeight += 5;
             }
 
-            // 9. Execution Cost Drag
+            // 9. Execution Cost Drag (Weight: 5)
             if (isset($input['estimated_costs'], $input['take_profit_1']) && is_numeric($input['estimated_costs']) && is_numeric($input['take_profit_1'])) {
                 $tp1 = BigDecimal::of((string) $input['take_profit_1']);
                 $costs = BigDecimal::of((string) $input['estimated_costs']);
@@ -250,18 +291,33 @@ final readonly class TradeRiskClassificationService
                     $factors['execution_cost_drag'] = ['value' => round($costDrag, 3), 'level' => $level, 'weight' => 5, 'score' => $score];
                     $totalScore += $score * 5;
                     $totalWeight += 5;
+                } else {
+                    $missingFactors[] = 'execution_cost_drag';
+                    $factors['execution_cost_drag'] = ['value' => null, 'level' => 'UNAVAILABLE', 'weight' => 5, 'score' => 50];
+                    $totalScore += 50 * 5;
+                    $totalWeight += 5;
                 }
+            } else {
+                $missingFactors[] = 'execution_cost_drag';
+                $factors['execution_cost_drag'] = ['value' => null, 'level' => 'UNAVAILABLE', 'weight' => 5, 'score' => 50];
+                $totalScore += 50 * 5;
+                $totalWeight += 5;
             }
 
             $compositeScore = $totalWeight > 0 ? (int) round($totalScore / $totalWeight) : 50;
 
-            // Overall Classification Rule:
-            // - If >= 3 High factors OR compositeScore >= 65 OR (>= 2 High factors AND compositeScore >= 50) => HIGH
-            // - If compositeScore <= 35 AND highCount === 0 => LOW
-            // - Otherwise => MEDIUM
+            if ($missingFactors !== []) {
+                $warnings[] = 'Missing or unverified factors: '.implode(', ', $missingFactors);
+            }
+
+            // Overall Classification Rules:
+            // 1. High Risk: >= 3 High factors OR compositeScore >= 65 OR (>= 2 High factors AND compositeScore >= 50)
+            // 2. Low Risk: compositeScore <= 35 AND highCount === 0 AND NO missing critical factors
+            //    (A missing factor must NOT silently create an artificially favorable LOW risk score)
+            // 3. Otherwise: Medium Risk (uncertainty elevates unobserved risks to MEDIUM, avoiding false confidence)
             if ($highCount >= 3 || $compositeScore >= 65 || ($highCount >= 2 && $compositeScore >= 50)) {
                 $riskClass = TradeRiskClass::High;
-            } elseif ($compositeScore <= 35 && $highCount === 0) {
+            } elseif ($compositeScore <= 35 && $highCount === 0 && count($missingFactors) === 0) {
                 $riskClass = TradeRiskClass::Low;
             } else {
                 $riskClass = TradeRiskClass::Medium;
@@ -272,6 +328,7 @@ final readonly class TradeRiskClassificationService
                 'risk_score' => $compositeScore,
                 'factors' => $factors,
                 'warnings' => $warnings,
+                'missing_factors' => $missingFactors,
             ];
         } catch (Throwable $e) {
             return $this->unknownResult('Risk classification error: '.$e->getMessage());

@@ -494,7 +494,7 @@ function riskColor(risk: string) {
                   <div class="col-6">
                     <div class="text-caption text-grey-4">Gate Matrix Decision:</div>
                     <q-badge
-                      :color="selectedItem.gate_decision === 'ELIGIBLE' ? 'positive' : (selectedItem.gate_decision === 'CONDITIONALLY_ELIGIBLE' ? 'info' : 'negative')"
+                      :color="selectedItem.gate_decision === 'ELIGIBLE' ? 'positive' : (selectedItem.gate_decision === 'CONDITIONALLY_ELIGIBLE' ? 'info' : (selectedItem.gate_decision === 'INSUFFICIENT_EVIDENCE' ? 'warning' : 'negative'))"
                       :label="selectedItem.gate_decision || (selectedItem.risk_decision?.allowed ? 'ELIGIBLE' : 'BLOCKED')"
                     />
                   </div>

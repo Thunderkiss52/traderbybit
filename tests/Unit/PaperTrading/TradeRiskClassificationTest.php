@@ -112,4 +112,41 @@ final class TradeRiskClassificationTest extends TestCase
         $this->assertSame(TradeRiskClass::Unknown, $result['risk_class']);
         $this->assertContains('Equity must be positive.', $result['warnings']);
     }
+
+    public function test_missing_critical_factors_prevent_low_risk_classification(): void
+    {
+        // Low stop-loss distance, low drawdown, 0 open positions, but missing ATR, spread, correlation, cost drag
+        $result = $this->service->classify([
+            'equity' => '10000.00',
+            'entry_price' => '50000.00',
+            'stop_loss' => '49500.00', // 1.0% (LOW)
+            'risk_capital' => '15.00', // 0.15% (LOW)
+            'notional' => '1500.00', // 0.15x (LOW)
+            'current_drawdown_percent' => '0.2', // LOW
+            'open_positions_count' => 0, // LOW
+            // atr missing
+            // bid/ask missing
+            // correlation missing
+            // estimated_costs missing
+        ]);
+
+        // A missing factor must NOT silently create an artificially favorable LOW risk score
+        $this->assertNotSame(TradeRiskClass::Low, $result['risk_class']);
+        $this->assertNotEmpty($result['missing_factors']);
+        $this->assertContains('volatility_atr_percent', $result['missing_factors']);
+        $this->assertContains('spread_drag_percent', $result['missing_factors']);
+    }
+
+    public function test_missing_essential_prices_returns_unknown_risk(): void
+    {
+        // Entry price missing or zero
+        $result = $this->service->classify([
+            'equity' => '10000.00',
+            'entry_price' => '0',
+            'stop_loss' => '49500.00',
+        ]);
+
+        $this->assertSame(TradeRiskClass::Unknown, $result['risk_class']);
+        $this->assertContains('Valid entry and stop-loss prices are required.', $result['warnings']);
+    }
 }

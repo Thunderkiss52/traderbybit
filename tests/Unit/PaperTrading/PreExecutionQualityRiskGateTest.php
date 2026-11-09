@@ -153,4 +153,59 @@ final class PreExecutionQualityRiskGateTest extends TestCase
         $this->assertFalse($eval['allowed']);
         $this->assertContains('directional_negative_expectancy_SELL', $eval['rejection_reasons']);
     }
+
+    public function test_high_quality_low_risk_with_negative_edge_is_rejected(): void
+    {
+        $eval = $this->gate->evaluate([
+            'signal_quality' => SignalQuality::High,
+            'trade_risk' => TradeRiskClass::Low,
+            'expected_net_edge' => -0.5,
+        ]);
+
+        $this->assertSame(QualityRiskGateDecision::Rejected, $eval['decision']);
+        $this->assertFalse($eval['allowed']);
+        $this->assertContains('high_quality_low_risk_negative_edge', $eval['rejection_reasons']);
+    }
+
+    public function test_high_quality_low_risk_insufficient_evidence_when_edge_required(): void
+    {
+        $eval = $this->gate->evaluate([
+            'signal_quality' => SignalQuality::High,
+            'trade_risk' => TradeRiskClass::Low,
+            'require_validated_edge' => true,
+            'expected_net_edge' => null,
+            'sample_size' => 0,
+        ]);
+
+        $this->assertSame(QualityRiskGateDecision::InsufficientEvidence, $eval['decision']);
+        $this->assertFalse($eval['allowed']);
+        $this->assertContains('insufficient_expectancy_evidence', $eval['rejection_reasons']);
+    }
+
+    public function test_medium_quality_medium_risk_with_small_sample_is_insufficient_evidence(): void
+    {
+        $eval = $this->gate->evaluate([
+            'signal_quality' => SignalQuality::Medium,
+            'trade_risk' => TradeRiskClass::Medium,
+            'sample_size' => 5, // < 10
+            'expected_net_edge' => 0.10,
+        ]);
+
+        $this->assertSame(QualityRiskGateDecision::InsufficientEvidence, $eval['decision']);
+        $this->assertFalse($eval['allowed']);
+        $this->assertContains('insufficient_expectancy_evidence', $eval['rejection_reasons']);
+    }
+
+    public function test_cost_drag_exceeding_profit_target_is_rejected(): void
+    {
+        $eval = $this->gate->evaluate([
+            'signal_quality' => SignalQuality::High,
+            'trade_risk' => TradeRiskClass::Low,
+            'cost_drag_percent' => 120.0, // >= 100%
+        ]);
+
+        $this->assertSame(QualityRiskGateDecision::Rejected, $eval['decision']);
+        $this->assertFalse($eval['allowed']);
+        $this->assertContains('execution_cost_drag_exceeds_edge', $eval['rejection_reasons']);
+    }
 }

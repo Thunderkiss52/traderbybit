@@ -14,7 +14,7 @@ use App\Strategy\Domain\SignalQuality;
  */
 final readonly class PreExecutionQualityRiskGate
 {
-    public const VERSION = '1.0.0';
+    public const VERSION = '1.1.0';
 
     public function version(): string
     {
@@ -31,6 +31,9 @@ final readonly class PreExecutionQualityRiskGate
      *     directional_win_rate?: float|null,
      *     directional_profit_factor?: float|null,
      *     directional_sample_size?: int|null,
+     *     cost_drag_percent?: float|null,
+     *     prospective_net_edge_bps?: float|null,
+     *     require_validated_edge?: bool,
      *     side?: string|null
      * } $context
      * @return array{
@@ -51,6 +54,8 @@ final readonly class PreExecutionQualityRiskGate
         $sampleSize = (int) ($context['sample_size'] ?? 0);
         $drawdown = (float) ($context['drawdown_percent'] ?? 0.0);
         $side = strtoupper((string) ($context['side'] ?? 'BUY'));
+        $costDragPct = isset($context['cost_drag_percent']) ? (float) $context['cost_drag_percent'] : null;
+        $requireValidatedEdge = (bool) ($context['require_validated_edge'] ?? false);
 
         $pair = "{$quality->value}_{$risk->value}";
         $reasons = [];
@@ -61,6 +66,7 @@ final readonly class PreExecutionQualityRiskGate
             'expected_net_edge' => $expectedNetEdge,
             'sample_size' => $sampleSize,
             'drawdown_percent' => $drawdown,
+            'cost_drag_percent' => $costDragPct,
             'side' => $side,
         ];
 
@@ -103,7 +109,20 @@ final readonly class PreExecutionQualityRiskGate
             ];
         }
 
-        // 4. Directional Expectancy Check (if sufficient historical directional sample exists)
+        // 4. Cost drag check: if costs consume >= 100% of prospective TP1 gain, reject
+        if ($costDragPct !== null && $costDragPct >= 100.0) {
+            return [
+                'decision' => QualityRiskGateDecision::Rejected,
+                'allowed' => false,
+                'quality_risk_pair' => $pair,
+                'expected_net_edge' => $expectedNetEdge,
+                'sample_size' => $sampleSize,
+                'rejection_reasons' => ['execution_cost_drag_exceeds_edge'],
+                'diagnostics' => $diagnostics,
+            ];
+        }
+
+        // 5. Directional Expectancy Check (if sufficient historical directional sample exists)
         $dirSample = (int) ($context['directional_sample_size'] ?? 0);
         if ($dirSample >= 10) {
             $dirWinRate = isset($context['directional_win_rate']) ? (float) $context['directional_win_rate'] : null;
@@ -125,9 +144,33 @@ final readonly class PreExecutionQualityRiskGate
             }
         }
 
-        // 5. Matrix Evaluation
+        // 6. Matrix Evaluation
         if ($quality === SignalQuality::High && $risk === TradeRiskClass::Low) {
-            // HIGH Quality / LOW Risk: Eligible after general risk validation
+            // HIGH Quality / LOW Risk: Eligible, but never with confirmed negative edge
+            if ($expectedNetEdge !== null && $expectedNetEdge < 0.0) {
+                return [
+                    'decision' => QualityRiskGateDecision::Rejected,
+                    'allowed' => false,
+                    'quality_risk_pair' => $pair,
+                    'expected_net_edge' => $expectedNetEdge,
+                    'sample_size' => $sampleSize,
+                    'rejection_reasons' => ['high_quality_low_risk_negative_edge'],
+                    'diagnostics' => $diagnostics,
+                ];
+            }
+
+            if ($requireValidatedEdge && ($expectedNetEdge === null || $sampleSize === 0)) {
+                return [
+                    'decision' => QualityRiskGateDecision::InsufficientEvidence,
+                    'allowed' => false,
+                    'quality_risk_pair' => $pair,
+                    'expected_net_edge' => $expectedNetEdge,
+                    'sample_size' => $sampleSize,
+                    'rejection_reasons' => ['insufficient_expectancy_evidence'],
+                    'diagnostics' => $diagnostics,
+                ];
+            }
+
             return [
                 'decision' => QualityRiskGateDecision::Eligible,
                 'allowed' => true,
@@ -153,6 +196,18 @@ final readonly class PreExecutionQualityRiskGate
                 ];
             }
 
+            if ($requireValidatedEdge && ($expectedNetEdge === null || $sampleSize === 0)) {
+                return [
+                    'decision' => QualityRiskGateDecision::InsufficientEvidence,
+                    'allowed' => false,
+                    'quality_risk_pair' => $pair,
+                    'expected_net_edge' => $expectedNetEdge,
+                    'sample_size' => $sampleSize,
+                    'rejection_reasons' => ['insufficient_expectancy_evidence'],
+                    'diagnostics' => $diagnostics,
+                ];
+            }
+
             return [
                 'decision' => QualityRiskGateDecision::Eligible,
                 'allowed' => true,
@@ -171,6 +226,17 @@ final readonly class PreExecutionQualityRiskGate
             }
             if ($expectedNetEdge !== null && $expectedNetEdge < 0.0) {
                 $reasons[] = 'medium_quality_low_risk_negative_edge';
+            }
+            if ($requireValidatedEdge && ($expectedNetEdge === null || $sampleSize === 0)) {
+                return [
+                    'decision' => QualityRiskGateDecision::InsufficientEvidence,
+                    'allowed' => false,
+                    'quality_risk_pair' => $pair,
+                    'expected_net_edge' => $expectedNetEdge,
+                    'sample_size' => $sampleSize,
+                    'rejection_reasons' => ['insufficient_expectancy_evidence'],
+                    'diagnostics' => $diagnostics,
+                ];
             }
 
             $allowed = $reasons === [];
@@ -192,10 +258,29 @@ final readonly class PreExecutionQualityRiskGate
                 $reasons[] = 'medium_risk_drawdown_limit';
             }
             if ($sampleSize > 0 && $sampleSize < 10) {
-                $reasons[] = 'insufficient_expectancy_evidence';
+                return [
+                    'decision' => QualityRiskGateDecision::InsufficientEvidence,
+                    'allowed' => false,
+                    'quality_risk_pair' => $pair,
+                    'expected_net_edge' => $expectedNetEdge,
+                    'sample_size' => $sampleSize,
+                    'rejection_reasons' => ['insufficient_expectancy_evidence'],
+                    'diagnostics' => $diagnostics,
+                ];
             }
             if ($expectedNetEdge !== null && $expectedNetEdge <= 0.05) {
                 $reasons[] = 'medium_quality_medium_risk_insufficient_edge';
+            }
+            if ($requireValidatedEdge && ($expectedNetEdge === null || $sampleSize === 0)) {
+                return [
+                    'decision' => QualityRiskGateDecision::InsufficientEvidence,
+                    'allowed' => false,
+                    'quality_risk_pair' => $pair,
+                    'expected_net_edge' => $expectedNetEdge,
+                    'sample_size' => $sampleSize,
+                    'rejection_reasons' => ['insufficient_expectancy_evidence'],
+                    'diagnostics' => $diagnostics,
+                ];
             }
 
             $allowed = $reasons === [];
