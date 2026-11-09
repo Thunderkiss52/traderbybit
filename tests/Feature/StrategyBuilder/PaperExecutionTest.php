@@ -59,12 +59,12 @@ final class PaperExecutionTest extends TestCase
         $account = DB::table('paper_accounts')->where('primary_strategy_id', $d['id'])->where('exchange_id', 'bybit')->first();
         $otherVenues = DB::table('paper_accounts')->where('primary_strategy_id', $d['id'])->where('exchange_id', '!=', 'bybit')->orderBy('id')->get()->toJson();
         $capital = app(GlobalPaperCapitalGuard::class);
-        self::assertSame('global_risk_budget_exceeded', $capital->entryRejectionReason('6501'));
+        self::assertSame('global_risk_budget_exceeded', $capital->entryRejectionReason('65001'));
         $allocation = app(AccountAuthorization::class);
         $allocation->fund($definition->id, $account->id, '10000', 'OWNER-TEST-CAPITAL');
         $allocation->fund($definition->id, $account->id, '10000', 'OWNER-TEST-CAPITAL');
         self::assertSame(1, DB::table('paper_capital_events')->where('paper_account_id', $account->id)->count());
-        self::assertSame('global_risk_budget_exceeded', $capital->entryRejectionReason('6501'));
+        self::assertSame('global_risk_budget_exceeded', $capital->entryRejectionReason('65001'));
         $governance->activate($definition->id, $definition->checksum, 'OWNER-TEST-STRATEGY-ACTIVE', false);
         $allocation->authorize($definition->id, $account->id, 'OWNER-TEST-ACCOUNT-ACTIVE');
         $decision = app(StrategyRegistry::class)->get($d['id'])->evaluate(app(StrategyInputFactory::class)->make('bybit', 'linear', 'BTCUSDT', $at));

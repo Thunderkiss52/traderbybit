@@ -180,10 +180,13 @@ final readonly class PaperAccountService
 
             $id = Uuid::uuid5(Uuid::NAMESPACE_URL, "traderbybit:paper:primary:{$strategyId}")->toString();
             $starting = app(NewPrimaryCapitalPolicy::class)->openingBalance($exchangeId, $strategyId);
+            $status = in_array($strategyId, config('paper.initially_approved_bybit_strategies', []), true)
+                ? AccountStatus::Active->value
+                : AccountStatus::Blocked->value;
 
             $account = PaperAccountRecord::query()->firstOrCreate(['id' => $id], [
                 'name' => 'Forward Paper '.$strategyId,
-                'status' => AccountStatus::Active->value,
+                'status' => $status,
                 'starting_balance' => $starting,
                 'current_equity' => $starting,
                 'peak_equity' => $starting,

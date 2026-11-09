@@ -15,6 +15,10 @@ final class NewPrimaryCapitalPolicy
 {
     public function openingBalance(string $exchangeId, string $strategyId): string
     {
+        if (str_starts_with($strategyId, 'user_')) {
+            return '0';
+        }
+
         $strategyAmount = config("paper.new_primary_initial_balances.{$exchangeId}.{$strategyId}");
         $exchangeAmount = config("paper.new_primary_initial_balances.{$exchangeId}");
         $amount = is_string($strategyAmount)

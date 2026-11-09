@@ -193,7 +193,7 @@ final class TradingPipelineForwardCausalityTest extends TestCase
         self::assertCount(104, $otherVenues);
         foreach ($otherVenues as $otherAccount) {
             self::assertSame('BLOCKED', $otherAccount->status);
-            self::assertDecimalSame('0', $otherAccount->starting_balance);
+            self::assertDecimalSame('10000', $otherAccount->starting_balance);
         }
         $account = PaperAccountRecord::query()->where('exchange_id', 'binance')
             ->where('primary_strategy_id', 'baseline')->firstOrFail();

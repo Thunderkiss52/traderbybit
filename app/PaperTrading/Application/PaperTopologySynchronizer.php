@@ -9,6 +9,7 @@ use App\Exchanges\ExchangeRegistry;
 use App\PaperTrading\Infrastructure\Persistence\PaperAccountRecord;
 use App\Strategy\Application\StrategyRegistry;
 use App\StrategyBuilder\PrimaryStrategies;
+use Brick\Math\BigDecimal;
 use Illuminate\Contracts\Cache\Factory as CacheFactory;
 use Illuminate\Support\Facades\DB;
 use Ramsey\Uuid\Uuid;
@@ -120,10 +121,11 @@ final readonly class PaperTopologySynchronizer
                             throw new RuntimeException('Canonical PRIMARY account identifier already occupied.');
                         }
                         $startingBalance = $policy->openingBalance($exchange, $id);
+                        $accountStatus = str_starts_with($id, 'user_') ? 'BLOCKED' : ($isExecutionApproved ? 'ACTIVE' : 'BLOCKED');
                         $createdAccount = PaperAccountRecord::query()->create([
                             'id' => $accountId,
                             'name' => strtoupper($exchange).' Paper '.$id,
-                            'status' => $isExecutionApproved ? 'ACTIVE' : 'BLOCKED',
+                            'status' => $accountStatus,
                             'starting_balance' => $startingBalance,
                             'current_equity' => $startingBalance,
                             'peak_equity' => $startingBalance,
@@ -142,18 +144,20 @@ final readonly class PaperTopologySynchronizer
                             'strategy_parameters' => $parameters,
                         ]);
 
-                        $now = now('UTC');
-                        DB::table('paper_capital_events')->insertOrIgnore([
-                            'id' => Uuid::uuid5(Uuid::NAMESPACE_URL, "vector:paper-allocation:{$accountId}:initial")->toString(),
-                            'paper_account_id' => $accountId,
-                            'exchange_id' => $exchange,
-                            'amount' => $startingBalance,
-                            'approval_reference' => 'POLICY_INITIAL_CAPITAL',
-                            'reason' => 'INITIAL_RESEARCH_CAPITAL_ALLOCATION',
-                            'occurred_at' => $now,
-                            'created_at' => $now,
-                            'updated_at' => $now,
-                        ]);
+                        if (BigDecimal::of($startingBalance)->isPositive()) {
+                            $now = now('UTC');
+                            DB::table('paper_capital_events')->insertOrIgnore([
+                                'id' => Uuid::uuid5(Uuid::NAMESPACE_URL, "vector:paper-allocation:{$accountId}:initial")->toString(),
+                                'paper_account_id' => $accountId,
+                                'exchange_id' => $exchange,
+                                'amount' => $startingBalance,
+                                'approval_reference' => 'POLICY_INITIAL_CAPITAL',
+                                'reason' => 'INITIAL_RESEARCH_CAPITAL_ALLOCATION',
+                                'occurred_at' => $now,
+                                'created_at' => $now,
+                                'updated_at' => $now,
+                            ]);
+                        }
 
                         $this->accounts->ensureInitialSnapshot($createdAccount);
                         if ($exchange === 'binance') {

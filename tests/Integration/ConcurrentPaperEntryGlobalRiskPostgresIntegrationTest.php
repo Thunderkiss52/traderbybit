@@ -15,6 +15,7 @@ use App\PaperTrading\Infrastructure\Persistence\PaperAccountRecord;
 use App\PaperTrading\Infrastructure\Persistence\PaperSignalStateRecord;
 use App\Strategy\Application\StrategyRegistry;
 use App\Strategy\Infrastructure\Persistence\SignalRecord;
+use Brick\Math\BigDecimal;
 use DateTimeImmutable;
 use DomainException;
 use Illuminate\Support\Facades\DB;
@@ -58,12 +59,17 @@ final class ConcurrentPaperEntryGlobalRiskPostgresIntegrationTest extends TestCa
         config(['exchanges.binance_paper_provisioning_approved' => true]);
         app(PaperTopologySynchronizer::class)->sync(true);
 
-        // All 13 Bybit accounts have 10,000 USDT -> starting total = 130,000 USDT
-        // At 5% cap, maximum aggregate risk budget = 6,500 USDT.
-        // We set reserved_risk to 6,480 USDT across accounts, leaving exactly 20 USDT of risk available.
+        // Dynamic primary capital across all provisioned accounts
+        // At 5% cap, we set reserved_risk to leave exactly 20 USDT of risk available.
+        $totalStarting = DB::table('paper_accounts')->where('is_primary', true)->get()->reduce(
+            fn (BigDecimal $carry, $acc) => $carry->plus((string) $acc->starting_balance),
+            BigDecimal::zero()
+        );
+        $maxRisk = $totalStarting->multipliedBy('0.05');
+        $targetReserved = (string) $maxRisk->minus('20');
         PaperAccountRecord::query()->where('exchange_id', 'bybit')
             ->where('primary_strategy_id', 'baseline')
-            ->update(['reserved_risk' => '6480.000000000000']);
+            ->update(['reserved_risk' => $targetReserved]);
 
         $accountService = app(PaperAccountService::class);
         $trendStrategy = app(StrategyRegistry::class)->get('trend_pullback');
@@ -139,6 +145,7 @@ final class ConcurrentPaperEntryGlobalRiskPostgresIntegrationTest extends TestCa
             if (! empty($signalIds)) {
                 SignalRecord::query()->whereIn('id', $signalIds)->delete();
             }
+            DB::table('paper_capital_events')->where('exchange_id', 'binance')->delete();
             PaperAccountRecord::query()->where('exchange_id', 'binance')->delete();
             foreach ($bybitAccountsBefore as $accData) {
                 DB::table('paper_accounts')->where('id', $accData['id'])->update($accData);

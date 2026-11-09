@@ -40,7 +40,11 @@ final class ExchangeRegistry
     /** Registration is independent of public-adapter and PAPER execution readiness. */
     public function registeredIds(): array
     {
-        $catalog = Schema::hasTable('exchanges') ? DB::table('exchanges')->orderBy('id')->pluck('id')->all() : [];
+        try {
+            $catalog = Schema::hasTable('exchanges') ? DB::table('exchanges')->orderBy('id')->pluck('id')->all() : [];
+        } catch (Throwable) {
+            $catalog = [];
+        }
 
         return array_values(array_unique(array_merge((array) config('exchanges.enabled', []), $catalog)));
     }

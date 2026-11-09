@@ -3,6 +3,10 @@
 declare(strict_types=1);
 
 require_once __DIR__.'/../../app/Exchanges/Contracts/ExchangeAdapter.php';
+require_once __DIR__.'/../../app/Exchanges/Domain/MarketType.php';
+require_once __DIR__.'/../../app/Exchanges/Domain/MarketCapability.php';
+require_once __DIR__.'/../../app/Exchanges/Domain/CapabilityStatus.php';
+require_once __DIR__.'/../../app/Exchanges/Contracts/ExtendedExchangeAdapter.php';
 require_once __DIR__.'/../../app/Exchanges/Binance/BinancePublicAdapter.php';
 require_once __DIR__.'/../../app/Exchanges/Binance/BinanceCandleWindow.php';
 require_once __DIR__.'/../../app/Exchanges/Binance/BinanceSourceIdentity.php';
@@ -10,6 +14,7 @@ require_once __DIR__.'/../../app/Exchanges/Binance/BinanceSourceIdentity.php';
 use App\Exchanges\Binance\BinanceCandleWindow;
 use App\Exchanges\Binance\BinancePublicAdapter;
 use App\Exchanges\Binance\BinanceSourceIdentity;
+use App\Exchanges\Contracts\ExtendedExchangeAdapter;
 
 if (! function_exists('config')) {
     function config(string $key, mixed $default = null): mixed
@@ -25,6 +30,11 @@ $check = static function (bool $condition, string $message) use (&$checks): void
     }
     $checks++;
 };
+
+$check(is_subclass_of(BinancePublicAdapter::class, ExtendedExchangeAdapter::class), 'BinancePublicAdapter implements ExtendedExchangeAdapter');
+$adapterInstance = new BinancePublicAdapter;
+$check($adapterInstance->id() === 'binance', 'Binance adapter ID');
+$check($adapterInstance->name() === 'Binance USD(S)-M Futures', 'Binance adapter name');
 
 $open = (int) (intdiv(time() - 900, 300) * 300) * 1000;
 $row = [$open, '100.00000000', '105.00000000', '99.00000000', '102.12345678', '1000.00000000', $open + 299999, '101234.56780000'];
