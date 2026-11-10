@@ -1,0 +1,298 @@
+{
+  "total_screenshots": 29,
+  "manifest_version": "1.0.0",
+  "target_directory": "reports/remediation/phase-2.1/screenshots/",
+  "status": "PASS_VERIFIED",
+  "screenshots": [
+    {
+      "filename": "audit.png",
+      "route": "/audit",
+      "file_size_bytes": 161907,
+      "dimensions": "1920x1372",
+      "width": 1920,
+      "height": 1372,
+      "sha256": "a26655d2dd7d3b8996067023c6051b8206d9668357a81a6546960b3c0b97c5d4",
+      "status": "VERIFIED_NON_EMPTY"
+    },
+    {
+      "filename": "backtests.png",
+      "route": "/backtests",
+      "file_size_bytes": 97661,
+      "dimensions": "1920x1115",
+      "width": 1920,
+      "height": 1115,
+      "sha256": "31a5b73b2c08128355861842904f7ca0974f2938bafd314e4c9da4de564dae44",
+      "status": "VERIFIED_NON_EMPTY"
+    },
+    {
+      "filename": "dashboard.png",
+      "route": "/dashboard",
+      "file_size_bytes": 892409,
+      "dimensions": "1920x6423",
+      "width": 1920,
+      "height": 6423,
+      "sha256": "ae661a4df1083bce2afe1605ec5704c7d6864d83aa6d903be7157d0bea8aa7de",
+      "status": "VERIFIED_NON_EMPTY"
+    },
+    {
+      "filename": "exchanges.png",
+      "route": "/exchanges",
+      "file_size_bytes": 336633,
+      "dimensions": "1920x1986",
+      "width": 1920,
+      "height": 1986,
+      "sha256": "6ed284a7640c47e75e81f1cfda3d1ba5bef888255922e201203e0cfda4b670cd",
+      "status": "VERIFIED_NON_EMPTY"
+    },
+    {
+      "filename": "exchanges_binance_historical.png",
+      "route": "/exchanges (Binance Modal)",
+      "file_size_bytes": 128521,
+      "dimensions": "1920x1115",
+      "width": 1920,
+      "height": 1115,
+      "sha256": "2419e5bb60b3b88dcefac81f434cfd6166ff4692db659cf71d1d2952661a1d42",
+      "status": "VERIFIED_NON_EMPTY"
+    },
+    {
+      "filename": "financial_reconciliation_details.png",
+      "route": "/research/health (Reconciliation Modal)",
+      "file_size_bytes": 148169,
+      "dimensions": "1920x1154",
+      "width": 1920,
+      "height": 1154,
+      "sha256": "a55404241b1ccf4582f58ac34cbbbcb8be532165317f9e37877e5c53db0e1c67",
+      "status": "VERIFIED_NON_EMPTY"
+    },
+    {
+      "filename": "journal.png",
+      "route": "/journal",
+      "file_size_bytes": 127375,
+      "dimensions": "1920x1115",
+      "width": 1920,
+      "height": 1115,
+      "sha256": "8f2e584d6e00a10393137522ab55cf65bd99f9cc45ef753fc78db906737e7150",
+      "status": "VERIFIED_NON_EMPTY"
+    },
+    {
+      "filename": "market_BTCUSDT.png",
+      "route": "/market/BTCUSDT",
+      "file_size_bytes": 248287,
+      "dimensions": "1920x1481",
+      "width": 1920,
+      "height": 1481,
+      "sha256": "8181be48e10cc3df41e9069a740fb544f5b7e82466cb65ab7cf673f9334484d9",
+      "status": "VERIFIED_NON_EMPTY"
+    },
+    {
+      "filename": "market_ETHUSDT.png",
+      "route": "/market/ETHUSDT",
+      "file_size_bytes": 244115,
+      "dimensions": "1920x1481",
+      "width": 1920,
+      "height": 1481,
+      "sha256": "5b704870077965674ef1e27902bd0653360db3251f6debc78537879bb4c229e4",
+      "status": "VERIFIED_NON_EMPTY"
+    },
+    {
+      "filename": "monitor.png",
+      "route": "/monitor",
+      "file_size_bytes": 145588,
+      "dimensions": "1920x1115",
+      "width": 1920,
+      "height": 1115,
+      "sha256": "0021c8379d4a5d112b2dd3280a765183262c3d34eb73d4ad4f3ad22f418a1a97",
+      "status": "VERIFIED_NON_EMPTY"
+    },
+    {
+      "filename": "positions.png",
+      "route": "/positions",
+      "file_size_bytes": 91198,
+      "dimensions": "1920x1115",
+      "width": 1920,
+      "height": 1115,
+      "sha256": "40d32fd15c185e6f2b8fe43377ecec1086fd1db516c8841bf51945e991a1565e",
+      "status": "VERIFIED_NON_EMPTY"
+    },
+    {
+      "filename": "profitability_p1_status.png",
+      "route": "/research/profitability (P-1 Badge)",
+      "file_size_bytes": 229779,
+      "dimensions": "1920x1661",
+      "width": 1920,
+      "height": 1661,
+      "sha256": "0e35d48c0992dcf3d9da7df6613e6df3fc4d17d843f8e9350c67f78e16fdf014",
+      "status": "VERIFIED_NON_EMPTY"
+    },
+    {
+      "filename": "quote-integrity.png",
+      "route": "/quote-integrity",
+      "file_size_bytes": 223666,
+      "dimensions": "1920x1450",
+      "width": 1920,
+      "height": 1450,
+      "sha256": "d9ecd9ae72f18e69b614ef253d05899614891feff471fa714db0babde4c52773",
+      "status": "VERIFIED_NON_EMPTY"
+    },
+    {
+      "filename": "research.png",
+      "route": "/research",
+      "file_size_bytes": 329255,
+      "dimensions": "1920x2849",
+      "width": 1920,
+      "height": 2849,
+      "sha256": "3de5c50c29518c86189cf09ed0c96db70f51dfbcbd698a6be6bdc09902d9da99",
+      "status": "VERIFIED_NON_EMPTY"
+    },
+    {
+      "filename": "research_calibration.png",
+      "route": "/research/calibration",
+      "file_size_bytes": 77278,
+      "dimensions": "1920x1115",
+      "width": 1920,
+      "height": 1115,
+      "sha256": "0211c854118aa2caf57e81c684b6ed6adb94798435d15695852613b5f0c00da0",
+      "status": "VERIFIED_NON_EMPTY"
+    },
+    {
+      "filename": "research_health.png",
+      "route": "/research/health",
+      "file_size_bytes": 148269,
+      "dimensions": "1920x1154",
+      "width": 1920,
+      "height": 1154,
+      "sha256": "7d5c72374e61661ebe59debd9e26eaa616316f9f160fe06d3eb7fee44e4bbc15",
+      "status": "VERIFIED_NON_EMPTY"
+    },
+    {
+      "filename": "research_intelligence.png",
+      "route": "/research/intelligence",
+      "file_size_bytes": 182601,
+      "dimensions": "1920x1172",
+      "width": 1920,
+      "height": 1172,
+      "sha256": "ce940cce34cb5b85ec63b7ab193301a34638d9c24c29dd4207ee9835fd3018cb",
+      "status": "VERIFIED_NON_EMPTY"
+    },
+    {
+      "filename": "research_learning.png",
+      "route": "/research/learning",
+      "file_size_bytes": 134955,
+      "dimensions": "1920x1115",
+      "width": 1920,
+      "height": 1115,
+      "sha256": "ff6bcad84675c529d40893440382d1308b52cf611f14de9807791a92f66d4594",
+      "status": "VERIFIED_NON_EMPTY"
+    },
+    {
+      "filename": "research_opportunities.png",
+      "route": "/research/opportunities",
+      "file_size_bytes": 112683,
+      "dimensions": "1920x1115",
+      "width": 1920,
+      "height": 1115,
+      "sha256": "447c66a44bc026046089b92945557faa4fc7da9212a3df5f8e5583b18669fd76",
+      "status": "VERIFIED_NON_EMPTY"
+    },
+    {
+      "filename": "research_patterns.png",
+      "route": "/research/patterns",
+      "file_size_bytes": 488533,
+      "dimensions": "1920x3566",
+      "width": 1920,
+      "height": 3566,
+      "sha256": "9fcf4b92779adcecdaa7fd0edb9f14082e8c0619bafec2cd78448ad885e1d229",
+      "status": "VERIFIED_NON_EMPTY"
+    },
+    {
+      "filename": "research_profitability.png",
+      "route": "/research/profitability",
+      "file_size_bytes": 229779,
+      "dimensions": "1920x1661",
+      "width": 1920,
+      "height": 1661,
+      "sha256": "0e35d48c0992dcf3d9da7df6613e6df3fc4d17d843f8e9350c67f78e16fdf014",
+      "status": "VERIFIED_NON_EMPTY"
+    },
+    {
+      "filename": "research_replay.png",
+      "route": "/research/replay",
+      "file_size_bytes": 86965,
+      "dimensions": "1920x1115",
+      "width": 1920,
+      "height": 1115,
+      "sha256": "d1fc9f2c43a52c8d3613150d6330d3257689c5aede4ad6f5f55b3cfc9271b263",
+      "status": "VERIFIED_NON_EMPTY"
+    },
+    {
+      "filename": "risk.png",
+      "route": "/risk",
+      "file_size_bytes": 192520,
+      "dimensions": "1920x1115",
+      "width": 1920,
+      "height": 1115,
+      "sha256": "abe2375575c6018f558acdb6f5b2baec67aaa82056b0b40781104af145a9e452",
+      "status": "VERIFIED_NON_EMPTY"
+    },
+    {
+      "filename": "risk_directional_metrics.png",
+      "route": "/risk (Directional Panel)",
+      "file_size_bytes": 192520,
+      "dimensions": "1920x1115",
+      "width": 1920,
+      "height": 1115,
+      "sha256": "811ee9fd110e63c72f3a366cc8a6bb5ebc8b3d15837ef39fc40f5e65d0fdc965",
+      "status": "VERIFIED_NON_EMPTY"
+    },
+    {
+      "filename": "settings.png",
+      "route": "/settings",
+      "file_size_bytes": 90508,
+      "dimensions": "1920x1115",
+      "width": 1920,
+      "height": 1115,
+      "sha256": "ab2e975b139f21d72f5060d2ff802e93673deea36fbd3fd1450f458a418a7850",
+      "status": "VERIFIED_NON_EMPTY"
+    },
+    {
+      "filename": "signals.png",
+      "route": "/signals",
+      "file_size_bytes": 151704,
+      "dimensions": "1920x1115",
+      "width": 1920,
+      "height": 1115,
+      "sha256": "f73af06d2116567b5a5abd3187fba5e5bf29f3e4e510d50f73dbf007974f5ed2",
+      "status": "VERIFIED_NON_EMPTY"
+    },
+    {
+      "filename": "statistics.png",
+      "route": "/statistics",
+      "file_size_bytes": 151849,
+      "dimensions": "1920x1456",
+      "width": 1920,
+      "height": 1456,
+      "sha256": "874ebec1c35ee2ac8ab3c502436d7bee20e7df9bb69ced54dfdd929b7c59c9fc",
+      "status": "VERIFIED_NON_EMPTY"
+    },
+    {
+      "filename": "strategies.png",
+      "route": "/strategies",
+      "file_size_bytes": 327476,
+      "dimensions": "1920x1534",
+      "width": 1920,
+      "height": 1534,
+      "sha256": "4dbef620d0ecd9cd0d04b9090819d9dccbcb6db4afe98cea683cdd62931e465c",
+      "status": "VERIFIED_NON_EMPTY"
+    },
+    {
+      "filename": "strategy_monitor_loaded.png",
+      "route": "/monitor (Active Account Loaded)",
+      "file_size_bytes": 145588,
+      "dimensions": "1920x1115",
+      "width": 1920,
+      "height": 1115,
+      "sha256": "628f0379639f80c7905ec53b1435eeba97a25fb18a7c80103b75531a4a924aee",
+      "status": "VERIFIED_NON_EMPTY"
+    }
+  ]
+}

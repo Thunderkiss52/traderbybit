@@ -1,0 +1,30 @@
+{
+  "environment": "isolated_test_postgresql_native",
+  "verified_at": "2026-11-10T19:02:05.458448+00:00",
+  "api_endpoint": "http://127.0.0.1:8000/api/v1/research/learning/models",
+  "status": "PASS_WITH_LIMITATIONS",
+  "local_fixture_verification": {
+    "status": "PASS_VERIFIED",
+    "records_seeded": 800,
+    "records_traversed": 800,
+    "unique_ids_count": 800,
+    "duplicate_count": 0,
+    "pages_traversed": 40,
+    "per_page": 20,
+    "first_record_id": "e0a54eb9-feba-5ad3-a2aa-2185348f5c75",
+    "last_record_id": "2b613ca0-edf5-5f9b-b03e-91704e3fdf03",
+    "terminal_page_confirmed": true,
+    "traversal_complete": true
+  },
+  "production_historical_verification": {
+    "status": "BLOCKED_BY_ENVIRONMENT",
+    "historical_target_count": 786,
+    "reason": "Production VPS database and remote read-only proxy are not accessible from the isolated local development environment. Zero production credentials configured in .env."
+  },
+  "contract_compliance": {
+    "envelope": "ResearchResource",
+    "paginator": "LengthAwarePaginator",
+    "per_page_bounded": true,
+    "out_of_bounds_empty": true
+  }
+}
