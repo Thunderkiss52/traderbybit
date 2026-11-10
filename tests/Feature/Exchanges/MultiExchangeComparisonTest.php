@@ -56,8 +56,12 @@ final class MultiExchangeComparisonTest extends TestCase
         $bybit = $service->primaryAccount('trend_pullback');
         self::assertSame('bybit', $bybit->exchange_id);
         self::assertSame($bybit->id, $service->primaryAccount('trend_pullback')->id);
+        $binance = $service->primaryAccount('trend_pullback', 'binance');
+        self::assertSame('binance', $binance->exchange_id);
+        self::assertNotSame($bybit->id, $binance->id);
+
         $this->expectException(\DomainException::class);
-        $service->primaryAccount('trend_pullback', 'binance');
+        $service->primaryAccount('trend_pullback', 'unsupported_exchange');
     }
 
     public function test_missing_account_values_are_null_not_invented_balance(): void

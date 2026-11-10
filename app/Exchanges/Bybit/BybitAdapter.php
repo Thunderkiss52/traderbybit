@@ -31,9 +31,28 @@ final readonly class BybitAdapter implements ExtendedExchangeAdapter
 
     public function fetchCandles(string $symbol, string $interval, int $limit, ?int $startMs = null, ?int $endMs = null): array
     {
-        if ($limit < 1 || $limit > 500 || $startMs === null || $endMs === null) {
-            throw new InvalidArgumentException('Bybit candle adapter requires a bounded historical window and limit <=500.');
+        if ($limit < 1 || $limit > 500) {
+            throw new InvalidArgumentException('Bybit candle adapter requires limit between 1 and 500.');
         }
+
+        if ($endMs === null) {
+            $endMs = (int) (microtime(true) * 1000);
+        }
+        if ($startMs === null) {
+            $stepSeconds = match ($interval) {
+                '1m', '1' => 60,
+                '3m', '3' => 180,
+                '5m', '5' => 300,
+                '15m', '15' => 900,
+                '30m', '30' => 1800,
+                '1h', '60' => 3600,
+                '4h', '240' => 14400,
+                '1d', 'D' => 86400,
+                default => 300,
+            };
+            $startMs = $endMs - ($limit * $stepSeconds * 1000);
+        }
+
         $candles = $this->client->candles(new CandleQuery('linear', $symbol, Interval::parse(['1m' => '1', '3m' => '3', '5m' => '5', '15m' => '15', '30m' => '30', '1h' => '60', '4h' => '240', '1d' => 'D'][$interval] ?? $interval), $startMs, $endMs));
 
         return array_map(static fn ($c): array => [

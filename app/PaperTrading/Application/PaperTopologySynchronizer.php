@@ -212,6 +212,31 @@ final readonly class PaperTopologySynchronizer
                     }
                 }
 
+                // Ensure all existing primary accounts have at least an initial equity snapshot
+                $existingWithoutSnapshots = PaperAccountRecord::query()
+                    ->where('is_primary', true)
+                    ->whereNotIn('id', DB::table('equity_snapshots')->select('paper_account_id'))
+                    ->get();
+
+                if ($existingWithoutSnapshots->isNotEmpty()) {
+                    $recoverySnapshots = [];
+                    foreach ($existingWithoutSnapshots as $acc) {
+                        $recoverySnapshots[] = [
+                            'paper_account_id' => $acc->id,
+                            'exchange_id' => $acc->exchange_id,
+                            'recorded_at' => $acc->created_at ?? $now,
+                            'equity' => $acc->starting_balance,
+                            'realized_pnl' => '0',
+                            'unrealized_pnl' => '0',
+                            'drawdown_percent' => '0',
+                            'source_event_key' => 'account:initial',
+                            'created_at' => $now,
+                            'updated_at' => $now,
+                        ];
+                    }
+                    EquitySnapshotRecord::query()->insertOrIgnore($recoverySnapshots);
+                }
+
                 return [
                     'mode' => 'APPLIED',
                     'expected_pairs' => array_sum(array_map('count', $scopes)),

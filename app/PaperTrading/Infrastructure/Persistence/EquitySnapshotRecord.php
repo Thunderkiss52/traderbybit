@@ -29,7 +29,7 @@ final class EquitySnapshotRecord extends Model
     public function scopeOpeningCapital(Builder $query): Builder
     {
         return $query->where(function (Builder $opening): void {
-            $opening->where('source_event_key', 'account:initial')
+            $opening->where('source_event_key', 'like', 'account:initial%')
                 ->orWhereExists(function ($capital): void {
                     $capital->selectRaw('1')->from('paper_capital_events as pc')
                         ->whereColumn('pc.paper_account_id', 'equity_snapshots.paper_account_id')

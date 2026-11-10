@@ -189,16 +189,16 @@ final class BitgetAdapter extends AbstractExchangeAdapter
         }
 
         $granularity = match ($interval) {
-            '1m', '1' => '1m',
-            '3m', '3' => '3m',
-            '5m', '5' => '5m',
-            '15m', '15' => '15m',
-            '30m', '30' => '30m',
+            '1m', '1' => '1min',
+            '3m', '3' => '3min',
+            '5m', '5' => '5min',
+            '15m', '15' => '15min',
+            '30m', '30' => '30min',
             '1h', '60m', '60' => '1h',
             '4h', '240m', '240' => '4h',
             '6h', '360m', '360' => '6h',
             '12h', '720m', '720' => '12h',
-            '1d', 'D', '1440m' => '1d',
+            '1d', 'D', '1440m' => '1day',
             default => throw new InvalidArgumentException("Unsupported candle interval '{$interval}' for {$this->id()}."),
         };
 

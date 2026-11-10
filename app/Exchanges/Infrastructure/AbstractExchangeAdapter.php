@@ -30,7 +30,9 @@ abstract class AbstractExchangeAdapter implements ExtendedExchangeAdapter
      */
     protected function get(string $path, array $query = [], array $headers = []): array
     {
-        $url = rtrim($this->baseUrl, '/').'/'.ltrim($path, '/');
+        $url = (str_starts_with($path, 'http://') || str_starts_with($path, 'https://'))
+            ? $path
+            : rtrim($this->baseUrl, '/').'/'.ltrim($path, '/');
         $delayMs = 150;
 
         for ($attempt = 1; $attempt <= $this->maxRetries; $attempt++) {

@@ -113,19 +113,19 @@ final class KrakenAdapter extends AbstractExchangeAdapter
             return $symbol;
         }
         if ($symbol === 'BTCUSDT' || $symbol === 'XBTUSDT') {
-            return 'PI_XBTUSD';
+            return 'PF_XBTUSD';
         }
         if ($symbol === 'ETHUSDT') {
-            return 'PI_ETHUSD';
+            return 'PF_ETHUSD';
         }
         if (str_ends_with($symbol, 'USDT')) {
             $base = substr($symbol, 0, -4);
             $base = $base === 'BTC' ? 'XBT' : $base;
 
-            return 'PI_'.$base.'USD';
+            return 'PF_'.$base.'USD';
         }
 
-        return 'PI_'.$symbol;
+        return 'PF_'.$symbol;
     }
 
     public static function normalizeSpotSymbol(string $symbol): string
@@ -191,11 +191,24 @@ final class KrakenAdapter extends AbstractExchangeAdapter
      */
     public function fetchCandles(string $symbol, string $interval, int $limit, ?int $startMs = null, ?int $endMs = null): array
     {
-        $futuresSymbol = self::normalizeFuturesSymbol($symbol);
-        $tf = self::normalizeFuturesInterval($interval);
+        $raw = null;
+        try {
+            $futuresSymbol = self::normalizeFuturesSymbol($symbol);
+            $tf = self::normalizeFuturesInterval($interval);
+            $raw = $this->get("{$this->futuresBaseUrl}/charts/v1/trade/{$futuresSymbol}/{$tf}");
+        } catch (\Throwable) {
+            $raw = null;
+        }
 
-        // Try Kraken Futures trade chart
-        $raw = $this->get("{$this->futuresBaseUrl}/charts/v1/trade/{$futuresSymbol}/{$tf}");
+        if (! isset($raw['candles']) || ! is_array($raw['candles']) || empty($raw['candles'])) {
+            $spotSymbol = self::normalizeSpotSymbol($symbol);
+            $spotTf = self::normalizeSpotInterval($interval);
+            $query = ['pair' => $spotSymbol, 'interval' => $spotTf];
+            if ($startMs !== null) {
+                $query['since'] = (int) ($startMs / 1000);
+            }
+            $raw = $this->get("{$this->spotBaseUrl}/OHLC", $query);
+        }
 
         $results = [];
 

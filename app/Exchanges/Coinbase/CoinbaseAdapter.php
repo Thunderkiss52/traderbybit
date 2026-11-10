@@ -125,6 +125,18 @@ final class CoinbaseAdapter extends AbstractExchangeAdapter
             throw new InvalidArgumentException("Limit must be between 1 and 300 for {$this->id()}.");
         }
 
+        if ($interval === '3m' || $interval === '3') {
+            $baseCandles = $this->fetchCandles($symbol, '1m', min(300, $limit * 3), $startMs, $endMs);
+
+            return $this->aggregateBars($baseCandles, 3, '3m', $symbol);
+        }
+
+        if ($interval === '30m' || $interval === '30') {
+            $baseCandles = $this->fetchCandles($symbol, '15m', min(300, $limit * 2), $startMs, $endMs);
+
+            return $this->aggregateBars($baseCandles, 2, '30m', $symbol);
+        }
+
         $granularity = match ($interval) {
             '1m', '1' => 60,
             '5m', '5' => 300,
@@ -183,6 +195,56 @@ final class CoinbaseAdapter extends AbstractExchangeAdapter
         }
 
         return $candles;
+    }
+
+    /**
+     * Aggregate smaller timeframe bars into target interval.
+     *
+     * @param  list<array<string, mixed>>  $candles
+     * @return list<array<string, mixed>>
+     */
+    private function aggregateBars(array $candles, int $factor, string $targetInterval, string $symbol): array
+    {
+        if (count($candles) < $factor) {
+            return [];
+        }
+
+        $chunks = array_chunk($candles, $factor);
+        $aggregated = [];
+
+        foreach ($chunks as $chunk) {
+            if (count($chunk) < $factor) {
+                continue;
+            }
+
+            $first = $chunk[0];
+            $last = $chunk[count($chunk) - 1];
+
+            $highs = array_map(static fn (array $c): float => (float) $c['high'], $chunk);
+            $lows = array_map(static fn (array $c): float => (float) $c['low'], $chunk);
+            $volumeSum = '0';
+            foreach ($chunk as $c) {
+                $volumeSum = bcadd($volumeSum, (string) $c['volume'], 8);
+            }
+
+            $aggregated[] = [
+                'exchange_id' => $this->id(),
+                'symbol' => $symbol,
+                'interval' => $targetInterval,
+                'open_time_utc' => $first['open_time_utc'],
+                'close_time_utc' => $last['close_time_utc'],
+                'open' => (string) $first['open'],
+                'high' => (string) max($highs),
+                'low' => (string) min($lows),
+                'close' => (string) $last['close'],
+                'volume' => $volumeSum,
+                'turnover' => null,
+                'is_closed' => true,
+                'raw_source_hash' => hash('sha256', json_encode($chunk, JSON_THROW_ON_ERROR)),
+            ];
+        }
+
+        return $aggregated;
     }
 
     /**
