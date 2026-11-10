@@ -11,6 +11,8 @@ enum ExchangeLifecycleStatus: string
     case ResearchEnabled = 'RESEARCH_ENABLED';
     case PaperEligible = 'PAPER_ELIGIBLE';
     case ActivePaper = 'ACTIVE_PAPER';
+    case Paused = 'PAUSED';
+    case Deactivated = 'DEACTIVATED';
 
     public function canResearch(): bool
     {
@@ -33,6 +35,16 @@ enum ExchangeLifecycleStatus: string
         return $this === self::ActivePaper;
     }
 
+    public function isDeactivated(): bool
+    {
+        return $this === self::Deactivated;
+    }
+
+    public function isPaused(): bool
+    {
+        return $this === self::Paused;
+    }
+
     public function displayName(): string
     {
         return match ($this) {
@@ -41,6 +53,8 @@ enum ExchangeLifecycleStatus: string
             self::ResearchEnabled => 'Research-Enabled Data Source',
             self::PaperEligible => 'PAPER-Eligible Exchange',
             self::ActivePaper => 'Active Owner-Approved PAPER Exchange',
+            self::Paused => 'Paused Exchange',
+            self::Deactivated => 'Deactivated Exchange',
         };
     }
 }

@@ -326,12 +326,13 @@ final class KrakenAdapter extends AbstractExchangeAdapter
         }
 
         $results = [];
+        $inverseSymbol = str_replace('PF_', 'PI_', $futuresSymbol);
         foreach ($tickers as $t) {
             if (! is_array($t)) {
                 continue;
             }
             $tSymbol = (string) ($t['symbol'] ?? '');
-            if ($tSymbol === $futuresSymbol || $tSymbol === $symbol) {
+            if ($tSymbol === $futuresSymbol || $tSymbol === $inverseSymbol || $tSymbol === $symbol) {
                 $oi = self::decimal($t['openInterest'] ?? '0', 'open_interest');
                 $lastTime = (string) ($t['lastTime'] ?? gmdate('Y-m-d\TH:i:s\Z'));
                 $ts = strtotime($lastTime) ?: time();
@@ -542,12 +543,13 @@ final class KrakenAdapter extends AbstractExchangeAdapter
 
         $tickers = $raw['tickers'] ?? (array_is_list($raw) ? $raw : []);
 
+        $inverseSymbol = str_replace('PF_', 'PI_', $futuresSymbol);
         foreach ($tickers as $t) {
             if (! is_array($t)) {
                 continue;
             }
             $tSymbol = (string) ($t['symbol'] ?? '');
-            if ($tSymbol === $futuresSymbol || $tSymbol === $symbol) {
+            if ($tSymbol === $futuresSymbol || $tSymbol === $inverseSymbol || $tSymbol === $symbol) {
                 $last = self::decimal($t['last'] ?? null, 'last_price');
                 $bid = isset($t['bid']) && $t['bid'] !== '' ? self::decimal($t['bid'], 'bid_price') : null;
                 $ask = isset($t['ask']) && $t['ask'] !== '' ? self::decimal($t['ask'], 'ask_price') : null;

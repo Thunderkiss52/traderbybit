@@ -67,6 +67,25 @@ export async function registerExchange(payload: object): Promise<{ data: Exchang
   return (await api.post('/exchanges', payload)).data;
 }
 
+export async function onboardExchange(payload: object): Promise<{ data: Exchange; message: string }> {
+  return (await api.post('/exchanges/onboard', payload)).data;
+}
+
+export async function testExchangeConnectivity(id: string): Promise<{
+  data: { exchange_id: string; reachable: boolean; latency_ms: number | null; probe_status: string; error: string | null };
+  message: string;
+}> {
+  return (await api.post(`/exchanges/${id}/connectivity`)).data;
+}
+
+export async function deactivateExchange(id: string, reason?: string): Promise<{ data: Exchange; message: string }> {
+  return (await api.post(`/exchanges/${id}/deactivate`, { reason })).data;
+}
+
+export async function pauseExchange(id: string, reason?: string): Promise<{ data: Exchange; message: string }> {
+  return (await api.post(`/exchanges/${id}/pause`, { reason })).data;
+}
+
 export async function fetchExchangeDetail(id: string): Promise<Exchange> {
   return (await api.get(`/exchanges/${id}`)).data.data;
 }

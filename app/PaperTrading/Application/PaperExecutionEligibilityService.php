@@ -5,7 +5,9 @@ declare(strict_types=1);
 namespace App\PaperTrading\Application;
 
 use App\Exchanges\Binance\BinancePaperSafety;
+use App\Exchanges\Domain\ExchangeLifecycleStatus;
 use App\Exchanges\ExchangeRegistry;
+use App\Exchanges\Infrastructure\Persistence\ExchangeRecord;
 use App\PaperTrading\Domain\SignalLifecycle;
 use App\PaperTrading\Domain\TradeRiskClass;
 use App\PaperTrading\Infrastructure\Persistence\PaperAccountRecord;
@@ -45,6 +47,34 @@ final readonly class PaperExecutionEligibilityService
      */
     public function accountEntryRejectionReason(PaperAccountRecord $account): ?string
     {
+        // 1. Exchange-specific safety and lifecycle gates
+        $registered = app(ExchangeRegistry::class)->registeredIds();
+        if (! in_array($account->exchange_id, $registered, true)) {
+            return 'unknown_exchange';
+        }
+
+        $exchangeRecord = ExchangeRecord::query()->find($account->exchange_id);
+        if ($exchangeRecord !== null) {
+            if ($exchangeRecord->lifecycle_status === ExchangeLifecycleStatus::Deactivated->value) {
+                return 'exchange_deactivated';
+            }
+            if ($exchangeRecord->lifecycle_status === ExchangeLifecycleStatus::Paused->value) {
+                return 'exchange_paused';
+            }
+            if (! $exchangeRecord->paper_approved && $account->exchange_id !== 'bybit' && ! (bool) config("exchanges.{$account->exchange_id}.paper_execution_approved", false)) {
+                return 'exchange_not_paper_approved';
+            }
+        }
+
+        if ($account->exchange_id === 'binance') {
+            try {
+                BinancePaperSafety::assertExecutable($account);
+            } catch (DomainException) {
+                return 'binance_account_not_executable';
+            }
+        }
+
+        // 2. Drawdown & account status gates
         $drawdown = $account->current_drawdown_percent;
         if ($drawdown === null) {
             return $account->status === 'ACTIVE' ? 'drawdown_unverified' : 'account_not_active';
@@ -74,24 +104,10 @@ final readonly class PaperExecutionEligibilityService
             return $globalReason;
         }
 
-        // SIGNAL_ONLY check (e.g. btc_eth_lead_lag)
+        // 3. SIGNAL_ONLY check (e.g. btc_eth_lead_lag)
         $signalOnly = (array) config('research.forward_paper.signal_only_strategies', []);
         if (in_array($account->strategy_id, $signalOnly, true)) {
             return 'signal_only_strategy';
-        }
-
-        // Exchange-specific safety gates
-        $registered = app(ExchangeRegistry::class)->registeredIds();
-        if (! in_array($account->exchange_id, $registered, true)) {
-            return 'unknown_exchange';
-        }
-
-        if ($account->exchange_id === 'binance') {
-            try {
-                BinancePaperSafety::assertExecutable($account);
-            } catch (DomainException) {
-                return 'binance_account_not_executable';
-            }
         }
 
         // Mode and configuration lifecycle validation

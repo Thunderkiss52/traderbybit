@@ -13,12 +13,15 @@ use App\Exchanges\Htx\HtxAdapter;
 use App\Exchanges\Infrastructure\AbstractExchangeAdapter;
 use App\Exchanges\Kraken\KrakenAdapter;
 use App\Exchanges\KuCoin\KuCoinAdapter;
+use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Http;
 use RuntimeException;
 use Tests\TestCase;
 
 final class GroupBExchangesTest extends TestCase
 {
+    use RefreshDatabase;
+
     private GateAdapter $gate;
 
     private KuCoinAdapter $kucoin;

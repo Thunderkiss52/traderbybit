@@ -39,7 +39,9 @@ export type ExchangeLifecycleStatus =
   | 'CONNECTED_PUBLIC_DATA'
   | 'RESEARCH_ENABLED'
   | 'PAPER_ELIGIBLE'
-  | 'ACTIVE_PAPER';
+  | 'ACTIVE_PAPER'
+  | 'PAUSED'
+  | 'DEACTIVATED';
 
 export interface ExchangeCapabilities {
   has_candles: boolean;

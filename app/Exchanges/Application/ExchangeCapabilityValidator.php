@@ -18,6 +18,62 @@ final readonly class ExchangeCapabilityValidator
     public function __construct(private ExchangeRegistry $registry) {}
 
     /**
+     * Test live public network connectivity to an exchange.
+     *
+     * @return array{
+     *     reachable: bool,
+     *     latency_ms: float|null,
+     *     probe_status: string,
+     *     error: string|null
+     * }
+     */
+    public function testConnectivity(ExchangeRecord|string $exchange): array
+    {
+        $id = $exchange instanceof ExchangeRecord ? $exchange->id : $exchange;
+        if (! $this->registry->hasAdapter($id)) {
+            return [
+                'reachable' => false,
+                'latency_ms' => null,
+                'probe_status' => 'NO_ADAPTER',
+                'error' => "No live adapter registered for '{$id}'.",
+            ];
+        }
+
+        try {
+            $adapter = $this->registry->resolve($id);
+            if (method_exists($adapter, 'testConnectivity')) {
+                /** @var array{reachable: bool, latency_ms: float|null, error: string|null} $res */
+                $res = $adapter->testConnectivity();
+
+                return [
+                    'reachable' => (bool) $res['reachable'],
+                    'latency_ms' => $res['latency_ms'],
+                    'probe_status' => $res['reachable'] ? 'SUCCESS' : 'FAILED',
+                    'error' => $res['error'],
+                ];
+            }
+
+            $start = microtime(true);
+            $adapter->fetchTicker('BTCUSDT');
+            $latency = round((microtime(true) - $start) * 1000, 2);
+
+            return [
+                'reachable' => true,
+                'latency_ms' => $latency,
+                'probe_status' => 'SUCCESS',
+                'error' => null,
+            ];
+        } catch (\Throwable $e) {
+            return [
+                'reachable' => false,
+                'latency_ms' => null,
+                'probe_status' => 'FAILED',
+                'error' => $e->getMessage(),
+            ];
+        }
+    }
+
+    /**
      * Audit whether an exchange qualifies for PAPER eligibility and research.
      *
      * @return array{

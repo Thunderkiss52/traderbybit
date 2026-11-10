@@ -35,6 +35,153 @@ final class ExchangeManagementController extends Controller
     }
 
     /**
+     * Declarative exchange onboarding using a versioned manifest.
+     */
+    public function onboard(Request $request, ExchangeCatalogService $catalog): JsonResponse
+    {
+        try {
+            $payload = $request->all();
+            if (isset($payload['manifest']) && is_array($payload['manifest'])) {
+                $payload = $payload['manifest'];
+            } elseif (isset($payload['manifest']) && is_string($payload['manifest'])) {
+                $decoded = json_decode($payload['manifest'], true);
+                if (is_array($decoded)) {
+                    $payload = $decoded;
+                }
+            }
+
+            $exchange = $catalog->onboardManifest($payload);
+
+            return response()->json([
+                'data' => $exchange->toArray(),
+                'message' => "Exchange '{$exchange->id}' onboarded declaratively. Topology synchronized.",
+            ], Response::HTTP_CREATED);
+        } catch (ValidationException $e) {
+            return response()->json([
+                'error' => [
+                    'code' => 'VALIDATION_FAILED',
+                    'message' => $e->getMessage(),
+                    'errors' => $e->errors(),
+                ],
+                'message' => $e->getMessage(),
+            ], Response::HTTP_UNPROCESSABLE_ENTITY);
+        } catch (InvalidArgumentException $e) {
+            return response()->json([
+                'error' => [
+                    'code' => 'INVALID_MANIFEST',
+                    'message' => $e->getMessage(),
+                ],
+                'message' => $e->getMessage(),
+            ], Response::HTTP_UNPROCESSABLE_ENTITY);
+        } catch (Throwable $e) {
+            return response()->json([
+                'error' => [
+                    'code' => 'ONBOARDING_FAILED',
+                    'message' => $e->getMessage(),
+                ],
+                'message' => $e->getMessage(),
+            ], Response::HTTP_INTERNAL_SERVER_ERROR);
+        }
+    }
+
+    /**
+     * Test live network connectivity to an exchange.
+     */
+    public function checkConnectivity(
+        string $id,
+        ExchangeCatalogService $catalog,
+        ExchangeCapabilityValidator $validator
+    ): JsonResponse {
+        $exchange = $catalog->find($id);
+        if ($exchange === null) {
+            return response()->json([
+                'error' => [
+                    'code' => 'EXCHANGE_NOT_FOUND',
+                    'message' => "Exchange '{$id}' is not registered.",
+                ],
+                'message' => "Exchange '{$id}' is not registered.",
+            ], Response::HTTP_NOT_FOUND);
+        }
+
+        $result = $validator->testConnectivity($exchange);
+
+        return response()->json([
+            'data' => array_merge(['exchange_id' => $exchange->id], $result),
+            'message' => "Connectivity probe for '{$id}': {$result['probe_status']}.",
+        ]);
+    }
+
+    /**
+     * Deactivate an exchange, blocking its paper accounts while preserving all historical financial records.
+     */
+    public function deactivate(
+        Request $request,
+        string $id,
+        ExchangeCatalogService $catalog
+    ): JsonResponse {
+        try {
+            $reason = (string) $request->input('reason', 'OPERATOR_DEACTIVATED');
+            $exchange = $catalog->deactivate($id, $reason);
+
+            return response()->json([
+                'data' => $exchange->toArray(),
+                'message' => "Exchange '{$id}' successfully deactivated. Historical records preserved.",
+            ]);
+        } catch (InvalidArgumentException|DomainException $e) {
+            return response()->json([
+                'error' => [
+                    'code' => 'DEACTIVATION_REJECTED',
+                    'message' => $e->getMessage(),
+                ],
+                'message' => $e->getMessage(),
+            ], Response::HTTP_UNPROCESSABLE_ENTITY);
+        } catch (Throwable $e) {
+            return response()->json([
+                'error' => [
+                    'code' => 'DEACTIVATION_FAILED',
+                    'message' => $e->getMessage(),
+                ],
+                'message' => $e->getMessage(),
+            ], Response::HTTP_INTERNAL_SERVER_ERROR);
+        }
+    }
+
+    /**
+     * Pause an exchange, temporarily blocking paper accounts while existing positions continue to be serviced.
+     */
+    public function pause(
+        Request $request,
+        string $id,
+        ExchangeCatalogService $catalog
+    ): JsonResponse {
+        try {
+            $reason = (string) $request->input('reason', 'OPERATOR_PAUSED');
+            $exchange = $catalog->pause($id, $reason);
+
+            return response()->json([
+                'data' => $exchange->toArray(),
+                'message' => "Exchange '{$id}' successfully paused.",
+            ]);
+        } catch (InvalidArgumentException|DomainException $e) {
+            return response()->json([
+                'error' => [
+                    'code' => 'PAUSE_REJECTED',
+                    'message' => $e->getMessage(),
+                ],
+                'message' => $e->getMessage(),
+            ], Response::HTTP_UNPROCESSABLE_ENTITY);
+        } catch (Throwable $e) {
+            return response()->json([
+                'error' => [
+                    'code' => 'PAUSE_FAILED',
+                    'message' => $e->getMessage(),
+                ],
+                'message' => $e->getMessage(),
+            ], Response::HTTP_INTERNAL_SERVER_ERROR);
+        }
+    }
+
+    /**
      * Register a new exchange identifier.
      */
     public function store(Request $request, ExchangeCatalogService $catalog): JsonResponse

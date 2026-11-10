@@ -11,6 +11,7 @@ use App\Exchanges\Domain\MarketCapability;
 use App\Exchanges\Domain\MarketType;
 use App\Exchanges\Okx\OkxAdapter;
 use App\Exchanges\Upbit\UpbitAdapter;
+use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\Client\Request;
 use Illuminate\Support\Facades\Http;
 use RuntimeException;
@@ -18,6 +19,7 @@ use Tests\TestCase;
 
 final class GroupAExchangesTest extends TestCase
 {
+    use RefreshDatabase;
     // =========================================================================
     // COINBASE EXCHANGE TESTS
     // =========================================================================

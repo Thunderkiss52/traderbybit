@@ -243,6 +243,23 @@ final readonly class ExchangeStrategyCompatibilityService
                     }
                     $previous = $timestamp;
                 }
+                $hasOpenCandles = CandleRecord::query()
+                    ->where('exchange', $exchange->id)->where('symbol', $symbol)
+                    ->where('interval', (string) $interval)
+                    ->where('is_closed', false)
+                    ->where('open_time', '<=', now('UTC'))
+                    ->exists();
+
+                $hasFutureCandles = CandleRecord::query()
+                    ->where('exchange', $exchange->id)->where('symbol', $symbol)
+                    ->where('interval', (string) $interval)
+                    ->where('open_time', '>', now('UTC'))
+                    ->exists();
+
+                if ($hasOpenCandles || $hasFutureCandles) {
+                    $contiguous = false;
+                }
+
                 $fresh = $bars > 0 && CarbonImmutable::parse($times->first())->addSeconds($seconds)->gte(now('UTC')->subSeconds(300));
                 $freshCandles = $freshCandles && $fresh;
                 $historyCompatible = $historyCompatible && $contiguous;

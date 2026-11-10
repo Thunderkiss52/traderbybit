@@ -258,8 +258,8 @@ const systemStatus = computed(() => {
     </section>
     <section>
       <div class="row items-center justify-between q-mb-sm">
-        <h2>Bybit / Binance · Independent Paper Results</h2>
-        <a href="/api/v1/exchanges/comparison.csv" download>Export both exchanges (CSV)</a>
+        <h2>{{ selectedExchange === 'all' ? 'Multi-Exchange' : (settings.selectedExchangeName || selectedExchange.toUpperCase()) }} · Independent Paper Results</h2>
+        <a href="/api/v1/exchanges/comparison.csv" download>Export exchanges (CSV)</a>
       </div>
       <p class="muted">{{ comparisonSubtitle }}</p>
       <div class="row items-center q-gutter-sm q-mb-sm">

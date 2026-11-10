@@ -10,26 +10,38 @@ import {
     type ParameterRange,
 } from "../../strategyBuilder/definition.js";
 import { getStrategyMethods, assignStrategyExchange } from "../../services/api";
+import { useSettings } from "../../stores/settings";
 import type { TradingMethod } from "../../types";
 
 const $q = useQuasar();
+const settingsStore = useSettings();
 const props = defineProps<{ modelValue: Definition }>();
 const emit = defineEmits<{ "update:modelValue": [value: Definition] }>();
 const names = computed(() => Object.keys(props.modelValue.indicators));
 
-// Target Exchanges & Markets in VECTOR
-const targetExchanges = [
-    { label: "Bybit (linear USDT-perpetual / spot)", value: "bybit" },
-    { label: "Binance (linear USDT-perpetual / spot)", value: "binance" },
-    { label: "Coinbase Exchange (spot)", value: "coinbase" },
-    { label: "OKX Global (perpetual / spot / futures / options)", value: "okx" },
-    { label: "Bitget Global (perpetual / spot / futures)", value: "bitget" },
-    { label: "Gate.io (perpetual / spot / futures / options)", value: "gate" },
-    { label: "KuCoin (perpetual / spot / futures)", value: "kucoin" },
-    { label: "Kraken (perpetual / spot / futures)", value: "kraken" },
-    { label: "HTX Huobi (perpetual / spot / futures)", value: "htx" },
-    { label: "Upbit Korea (spot)", value: "upbit" },
+// Target Exchanges & Markets in VECTOR (dynamically loaded from registry with canonical initial fallback)
+const canonicalFallbackExchanges = [
+    { label: "Bybit", value: "bybit" },
+    { label: "Binance", value: "binance" },
+    { label: "Coinbase", value: "coinbase" },
+    { label: "OKX", value: "okx" },
+    { label: "Bitget", value: "bitget" },
+    { label: "Gate.io", value: "gate" },
+    { label: "KuCoin", value: "kucoin" },
+    { label: "Kraken", value: "kraken" },
+    { label: "HTX", value: "htx" },
+    { label: "Upbit", value: "upbit" },
 ];
+
+const targetExchanges = computed(() => {
+    if (settingsStore.availableExchanges && settingsStore.availableExchanges.length > 0) {
+        return settingsStore.availableExchanges.map((ex: any) => ({
+            label: `${ex.name} (${ex.id})`,
+            value: ex.id,
+        }));
+    }
+    return canonicalFallbackExchanges;
+});
 
 const marketTypes = [
     { label: "USDT Perpetual (Linear)", value: "perpetual" },

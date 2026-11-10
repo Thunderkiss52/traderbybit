@@ -5,10 +5,13 @@ declare(strict_types=1);
 namespace App\Exchanges\Application;
 
 use App\Exchanges\Domain\ExchangeLifecycleStatus;
+use App\Exchanges\Domain\ExchangeManifest;
+use App\Exchanges\Domain\ExchangeManifestValidator;
 use App\Exchanges\ExchangeRegistry;
 use App\Exchanges\Infrastructure\Persistence\ExchangeRecord;
 use App\MarketData\Infrastructure\Persistence\CandleRecord;
 use App\PaperTrading\Application\PaperTopologySynchronizer;
+use App\PaperTrading\Infrastructure\Persistence\PaperAccountRecord;
 use DomainException;
 use Illuminate\Support\Facades\DB;
 use InvalidArgumentException;
@@ -65,6 +68,59 @@ final readonly class ExchangeCatalogService
     public function get(string $id): ExchangeRecord
     {
         return $this->find($id) ?? throw new InvalidArgumentException("Exchange '{$id}' is not registered.");
+    }
+
+    /**
+     * Declarative onboarding of a new exchange via versioned manifest.
+     * Enforces capability validation, persists metadata/cost model, and automatically provisions
+     * independent PAPER accounts across all registered standalone strategies.
+     */
+    public function onboardManifest(ExchangeManifest|array $manifest): ExchangeRecord
+    {
+        $manifestObj = $manifest instanceof ExchangeManifest ? $manifest : ExchangeManifest::fromArray($manifest);
+        (new ExchangeManifestValidator)->assertValid($manifestObj);
+
+        $id = $manifestObj->id;
+        if (ExchangeRecord::query()->where('id', $id)->exists()) {
+            throw new InvalidArgumentException("Exchange '{$id}' is already registered.");
+        }
+
+        // Test connectivity if baseUrl is configured
+        $initialLifecycle = ExchangeLifecycleStatus::OfflineDataSource->value;
+        if ($manifestObj->baseUrl !== null) {
+            $conn = $this->validator->testConnectivity($id);
+            if ($conn['reachable']) {
+                $initialLifecycle = ExchangeLifecycleStatus::ConnectedPublicData->value;
+            }
+        }
+
+        return DB::transaction(function () use ($manifestObj, $id, $initialLifecycle): ExchangeRecord {
+            $data = $manifestObj->toArray();
+            $created = ExchangeRecord::query()->create([
+                'id' => $id,
+                'name' => $manifestObj->name,
+                'market_type' => $manifestObj->marketType,
+                'description' => $manifestObj->description,
+                'lifecycle_status' => $initialLifecycle,
+                'capabilities' => $data['capabilities'],
+                'cost_model' => $data['cost_model'],
+                'paper_execution_assumptions' => $data['paper_execution_assumptions'],
+                'paper_eligible' => false,
+                'paper_approved' => false,
+                'paper_approved_at' => null,
+                'metadata' => array_merge($data['metadata'], [
+                    'manifest_version' => $manifestObj->manifestVersion,
+                    'onboarded_declaratively' => true,
+                    'onboarded_at' => now('UTC')->toISOString(),
+                ]),
+            ]);
+
+            $this->compatibility->reconcileExchange($created->id);
+            // Topology scaling: automatically provision 1 independent paper account for every strategy
+            app(PaperTopologySynchronizer::class)->sync(true);
+
+            return $created;
+        }, attempts: 3);
     }
 
     public function register(array $data): ExchangeRecord
@@ -176,20 +232,103 @@ final readonly class ExchangeCatalogService
         }
 
         $now = now('UTC');
-        $exchange->update([
-            'paper_eligible' => true,
-            'paper_approved' => true,
-            'paper_approved_at' => $now,
-            'lifecycle_status' => ExchangeLifecycleStatus::ActivePaper->value,
-            'metadata' => array_merge((array) ($exchange->metadata ?? []), [
-                'approved_by_owner_at' => $now->toISOString(),
-                'approval_reference' => $reference,
-            ]),
-        ]);
 
-        $fresh = $exchange->fresh();
-        $this->compatibility->reconcileExchange($fresh->id);
+        return DB::transaction(function () use ($exchange, $now, $reference, $id): ExchangeRecord {
+            $exchange->update([
+                'paper_eligible' => true,
+                'paper_approved' => true,
+                'paper_approved_at' => $now,
+                'lifecycle_status' => ExchangeLifecycleStatus::ActivePaper->value,
+                'metadata' => array_merge((array) ($exchange->metadata ?? []), [
+                    'approved_by_owner_at' => $now->toISOString(),
+                    'approval_reference' => $reference,
+                ]),
+            ]);
 
-        return $fresh;
+            // Activate primary paper accounts for this exchange
+            PaperAccountRecord::query()
+                ->where('exchange_id', $id)
+                ->where('is_primary', true)
+                ->where('status', 'BLOCKED')
+                ->update([
+                    'status' => 'ACTIVE',
+                    'updated_at' => $now,
+                ]);
+
+            $fresh = $exchange->fresh();
+            $this->compatibility->reconcileExchange($fresh->id);
+            app(PaperTopologySynchronizer::class)->sync(true);
+
+            return $fresh;
+        }, attempts: 3);
+    }
+
+    /**
+     * Deactivate an exchange, transitioning its lifecycle to DEACTIVATED and blocking its paper accounts.
+     * All historical financial records, positions, equity snapshots, and accounts are 100% preserved.
+     */
+    public function deactivate(string $id, string $reason = 'OPERATOR_DEACTIVATED'): ExchangeRecord
+    {
+        $exchange = $this->get($id);
+        $now = now('UTC');
+
+        return DB::transaction(function () use ($exchange, $now, $reason, $id): ExchangeRecord {
+            $exchange->update([
+                'paper_approved' => false,
+                'lifecycle_status' => ExchangeLifecycleStatus::Deactivated->value,
+                'metadata' => array_merge((array) ($exchange->metadata ?? []), [
+                    'deactivated_at' => $now->toISOString(),
+                    'deactivation_reason' => $reason,
+                ]),
+            ]);
+
+            // Block active paper accounts for this exchange to prevent new orders/executions
+            PaperAccountRecord::query()
+                ->where('exchange_id', $id)
+                ->where('status', 'ACTIVE')
+                ->update([
+                    'status' => 'BLOCKED',
+                    'updated_at' => $now,
+                ]);
+
+            $fresh = $exchange->fresh();
+            $this->compatibility->reconcileExchange($fresh->id);
+
+            return $fresh;
+        }, attempts: 3);
+    }
+
+    /**
+     * Pause an exchange, transitioning its lifecycle to PAUSED and temporarily blocking paper accounts.
+     * All historical records and active positions remain serviced while new entries are blocked.
+     */
+    public function pause(string $id, string $reason = 'OPERATOR_PAUSED'): ExchangeRecord
+    {
+        $exchange = $this->get($id);
+        $now = now('UTC');
+
+        return DB::transaction(function () use ($exchange, $now, $reason, $id): ExchangeRecord {
+            $exchange->update([
+                'paper_approved' => false,
+                'lifecycle_status' => ExchangeLifecycleStatus::Paused->value,
+                'metadata' => array_merge((array) ($exchange->metadata ?? []), [
+                    'paused_at' => $now->toISOString(),
+                    'pause_reason' => $reason,
+                ]),
+            ]);
+
+            PaperAccountRecord::query()
+                ->where('exchange_id', $id)
+                ->where('status', 'ACTIVE')
+                ->update([
+                    'status' => 'BLOCKED',
+                    'updated_at' => $now,
+                ]);
+
+            $fresh = $exchange->fresh();
+            $this->compatibility->reconcileExchange($fresh->id);
+
+            return $fresh;
+        }, attempts: 3);
     }
 }

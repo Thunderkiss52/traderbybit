@@ -3,6 +3,7 @@ import { computed, onMounted, ref } from 'vue';
 import { useQuasar } from 'quasar';
 import {
   approveExchangePaper,
+  deactivateExchange,
   fetchCompatibilityMatrix,
   fetchExchangeCoverage,
   fetchExchangeDetail,
@@ -10,9 +11,12 @@ import {
   fetchExchangeStrategies,
   getExchangeCapabilities,
   getExchangeInstruments,
+  onboardExchange,
+  pauseExchange,
   reconcileExchangeCompatibility,
   registerExchange,
   syncExchangeTopology,
+  testExchangeConnectivity,
   updateExchangeLifecycle,
   uploadExchangeCandles,
 } from '../services/api';
@@ -56,6 +60,104 @@ const registerForm = ref({
   slippage_rate: '0.0002',
 });
 const registerLoading = ref(false);
+
+// Declarative Manifest Onboarding Dialog
+const manifestDialogOpen = ref(false);
+const manifestInput = ref('');
+const manifestLoading = ref(false);
+
+function openManifestDialog() {
+  manifestInput.value = JSON.stringify({
+    manifest_version: "1.0",
+    id: "hyperliquid",
+    name: "Hyperliquid L1 Perps",
+    market_type: "linear_perpetual",
+    description: "Decentralized L1 perpetual orderbook",
+    base_url: "https://api.hyperliquid.xyz",
+    supported_timeframes: ["5m", "15m", "30m", "1h"],
+    cost_model: {
+      version: "hyperliquid-perps-2026.1",
+      market: "USDC Perpetuals",
+      fee_tier: "Standard",
+      maker_rate: "0.0001",
+      taker_rate: "0.00035",
+      slippage_rate: "0.00015"
+    }
+  }, null, 2);
+  manifestDialogOpen.value = true;
+}
+
+async function submitOnboardManifest() {
+  manifestLoading.value = true;
+  try {
+    const parsed = JSON.parse(manifestInput.value);
+    const res = await onboardExchange(parsed);
+    $q.notify({ type: 'positive', message: res.message });
+    manifestDialogOpen.value = false;
+    await loadExchanges();
+  } catch (err: any) {
+    $q.notify({ type: 'negative', message: err.message || 'Manifest onboarding failed.' });
+  } finally {
+    manifestLoading.value = false;
+  }
+}
+
+async function probeConnectivity(exchangeId: string) {
+  try {
+    $q.loading.show({ message: `Probing connectivity for ${exchangeId}...` });
+    const res = await testExchangeConnectivity(exchangeId);
+    $q.loading.hide();
+    const data = res.data;
+    if (data.reachable) {
+      $q.notify({
+        type: 'positive',
+        message: `${exchangeId.toUpperCase()}: Connection healthy (${data.latency_ms} ms)`,
+      });
+    } else {
+      $q.notify({
+        type: 'warning',
+        message: `${exchangeId.toUpperCase()}: Probe unreachable: ${data.error || 'Failed'}`,
+      });
+    }
+  } catch (err: any) {
+    $q.loading.hide();
+    $q.notify({ type: 'negative', message: err.message || 'Connectivity probe failed.' });
+  }
+}
+
+async function handleDeactivate(exchangeId: string) {
+  $q.dialog({
+    title: 'Deactivate Exchange',
+    message: `Deactivate ${exchangeId.toUpperCase()}? This blocks new trading while strictly preserving all historical accounts and transactions.`,
+    cancel: true,
+    persistent: true,
+  }).onOk(async () => {
+    try {
+      const res = await deactivateExchange(exchangeId, 'OPERATOR_UI_DEACTIVATED');
+      $q.notify({ type: 'info', message: res.message });
+      await loadExchanges();
+    } catch (err: any) {
+      $q.notify({ type: 'negative', message: err.message || 'Deactivation failed.' });
+    }
+  });
+}
+
+async function handlePause(exchangeId: string) {
+  $q.dialog({
+    title: 'Pause Exchange',
+    message: `Pause ${exchangeId.toUpperCase()}? New entries will be blocked while existing positions continue to be serviced.`,
+    cancel: true,
+    persistent: true,
+  }).onOk(async () => {
+    try {
+      const res = await pauseExchange(exchangeId, 'OPERATOR_UI_PAUSED');
+      $q.notify({ type: 'warning', message: res.message });
+      await loadExchanges();
+    } catch (err: any) {
+      $q.notify({ type: 'negative', message: err.message || 'Pause failed.' });
+    }
+  });
+}
 
 // Upload CSV Dialog
 const uploadDialogOpen = ref(false);
@@ -521,6 +623,13 @@ onMounted(() => {
         />
         <q-btn
           unelevated
+          color="accent"
+          icon="file_upload"
+          label="Onboard Manifest"
+          @click="openManifestDialog"
+        />
+        <q-btn
+          unelevated
           color="primary"
           icon="add_business"
           label="Register Exchange"
@@ -709,6 +818,35 @@ onMounted(() => {
                 icon="sync_alt"
                 label="Topology"
                 @click="openSyncDialog(exchange.id)"
+              />
+              <q-btn
+                flat
+                dense
+                size="sm"
+                color="info"
+                icon="wifi"
+                label="Probe"
+                @click="probeConnectivity(exchange.id)"
+              />
+              <q-btn
+                v-if="exchange.lifecycle_status === 'ACTIVE_PAPER'"
+                flat
+                dense
+                size="sm"
+                color="amber-9"
+                icon="pause"
+                label="Pause"
+                @click="handlePause(exchange.id)"
+              />
+              <q-btn
+                v-if="exchange.lifecycle_status !== 'DEACTIVATED'"
+                flat
+                dense
+                size="sm"
+                color="negative"
+                icon="block"
+                label="Deactivate"
+                @click="handleDeactivate(exchange.id)"
               />
             </div>
           </q-card-actions>
@@ -1543,6 +1681,48 @@ onMounted(() => {
         <q-separator />
         <q-card-actions align="right">
           <q-btn flat label="Close" color="primary" v-close-popup />
+        </q-card-actions>
+      </q-card>
+    </q-dialog>
+
+    <!-- Declarative Manifest Onboarding Dialog -->
+    <q-dialog v-model="manifestDialogOpen" persistent>
+      <q-card style="min-width: 650px; max-width: 850px; background: #1c2128;" class="text-white">
+        <q-card-section class="row items-center justify-between">
+          <div class="row items-center q-gutter-sm">
+            <q-avatar icon="integration_instructions" color="accent" text-color="black" />
+            <div class="text-h6 text-weight-bold">Declarative Exchange Onboarding</div>
+          </div>
+          <q-btn flat round dense icon="close" v-close-popup />
+        </q-card-section>
+        <q-separator />
+        <q-card-section class="q-pt-sm">
+          <div class="text-caption text-grey-4 q-mb-md">
+            Provide a versioned JSON exchange manifest conforming to the VECTOR capability contract.
+            Onboarding registers the exchange, records cost models/rate limits, and automatically provisions
+            independent PAPER accounts across all registered standalone strategies in <code>BLOCKED</code> status.
+          </div>
+          <q-input
+            v-model="manifestInput"
+            type="textarea"
+            filled
+            rows="14"
+            label="JSON Exchange Manifest"
+            hint="Must include manifest_version, id, name, market_type, supported_timeframes, and cost_model"
+            class="code-font"
+          />
+        </q-card-section>
+        <q-separator />
+        <q-card-actions align="right" class="q-pa-md">
+          <q-btn flat label="Cancel" color="grey-5" v-close-popup />
+          <q-btn
+            unelevated
+            color="accent"
+            icon="rocket_launch"
+            label="Onboard Exchange"
+            :loading="manifestLoading"
+            @click="submitOnboardManifest"
+          />
         </q-card-actions>
       </q-card>
     </q-dialog>
