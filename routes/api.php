@@ -194,6 +194,10 @@ Route::prefix('v1')->middleware('throttle:api')->group(function () {
     Route::post('research/profitability/generations/p4', [ProfitabilityResearchController::class, 'storeP4Generation'])->middleware('research.token');
     Route::get('research/profitability/decision-gate', [ProfitabilityResearchController::class, 'decisionGate']);
     Route::post('research/profitability/generations/p6', [ProfitabilityResearchController::class, 'storeP6Generation'])->middleware('research.token');
+    Route::get('research/profitability/signal-analytics', [ProfitabilityResearchController::class, 'signalAnalytics']);
+    Route::get('research/profitability/signal-explorer', [ProfitabilityResearchController::class, 'signalExplorer']);
+    Route::get('research/profitability/signal-explorer/export', [ProfitabilityResearchController::class, 'signalExplorerExport']);
+    Route::get('research/profitability/signal-explorer/{id}', [ProfitabilityResearchController::class, 'signalDetail']);
     Route::get('research/autonomy/registry', [ProfitabilityResearchController::class, 'autonomyRegistry']);
     Route::get('research/autonomy/experiments', [ProfitabilityResearchController::class, 'autonomyExperiments']);
     Route::post('research/autonomy/experiments', [ProfitabilityResearchController::class, 'storeAutonomyExperiment'])->middleware('research.token');

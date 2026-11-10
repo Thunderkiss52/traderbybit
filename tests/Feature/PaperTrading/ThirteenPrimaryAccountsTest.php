@@ -53,6 +53,9 @@ final class ThirteenPrimaryAccountsTest extends TestCase
         $primary = $service->primaryAccount('liquidity_sweep_reversal');
         $strategy = $this->app->make(StrategyRegistry::class)->get('liquidity_sweep_reversal');
 
+        $primary->update(['configuration_hash' => null, 'strategy_parameters' => null]);
+        $primary->refresh();
+
         self::assertNull($primary->configuration_hash);
 
         $account = $service->strategyForward($strategy->id(), $strategy->version(), $strategy->parameters());

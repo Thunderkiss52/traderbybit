@@ -128,8 +128,8 @@ final readonly class PaperTopologySynchronizer
                         : Uuid::uuid5(Uuid::NAMESPACE_URL, "traderbybit:paper:primary:{$exchange}:{$id}")->toString();
 
                     $startingBalance = $policy->openingBalance($exchange, $id);
-                    $isInitiallyApproved = in_array($id, $initiallyApproved, true) && $exchange === 'bybit';
-                    $accountStatus = $isInitiallyApproved ? 'ACTIVE' : 'BLOCKED';
+                    $isExecutionApproved = (bool) config("exchanges.{$exchange}.paper_execution_approved", false);
+                    $accountStatus = ($exchange === 'bybit' || $isExecutionApproved) ? 'ACTIVE' : 'BLOCKED';
 
                     $missingAccounts[] = [
                         'id' => $accountId,

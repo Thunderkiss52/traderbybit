@@ -40,8 +40,8 @@ final class StatisticsPayloadSerializationRegressionTest extends TestCase
         self::assertIsArray($data['breakdowns']['symbols'], 'Symbols breakdown must always be a JSON array');
         self::assertIsArray($data['period_pnl']['daily']['data'], 'Period PnL daily data must always be a JSON array');
 
-        // Confirm new v5 cache key was populated with plain arrays
-        $cached = Cache::get("paper:statistics:response:v5:{$account->id}:1:1:1");
+        // Confirm new v6 cache key was populated with plain arrays
+        $cached = Cache::get("paper:statistics:response:v6:{$account->id}:1:1:1:all");
         self::assertIsArray($cached);
         self::assertIsArray($cached['equity']);
         self::assertIsArray($cached['breakdowns']['symbols']);

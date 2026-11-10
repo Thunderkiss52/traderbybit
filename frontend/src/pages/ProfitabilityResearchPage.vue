@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed, onMounted, ref, watch } from 'vue';
-import { get } from '../services/api';
+import { api, get } from '../services/api';
 import { requirePayload } from '../profitabilityContract';
 import { counterfactualView, formatMetric } from '../researchSemantics';
 import { useSettings } from '../stores/settings';
@@ -43,6 +43,152 @@ const tracePosition = ref<any>(null);
 const traceAttribution = ref<any>(null);
 const traceFills = ref<any[]>([]);
 
+// Signal Quality Analytics & Multi-Timeframe Attribution State
+const signalTimeframe = ref('all');
+const signalStrategy = ref('all');
+const signalDirection = ref('all');
+const signalQuality = ref('all');
+const signalRisk = ref('all');
+const signalGateDecision = ref('all');
+const signalExecutionStatus = ref('all');
+const signalOutcome = ref('all');
+const signalDateFrom = ref('');
+const signalDateTo = ref('');
+
+const signalAnalyticsLoading = ref(false);
+const signalAnalyticsData = ref<any>(null);
+const signalAnalyticsError = ref('');
+
+// Signal Explorer Paginated Table State
+const explorerLoading = ref(false);
+const explorerSignals = ref<any[]>([]);
+const explorerPagination = ref({
+  page: 1,
+  rowsPerPage: 20,
+  rowsNumber: 0,
+  sortBy: 'decision_time',
+  descending: true,
+});
+
+// Signal Detail Dialog State
+const showSignalDetailDialog = ref(false);
+const signalDetailLoading = ref(false);
+const signalDetailData = ref<any>(null);
+const signalDetailError = ref('');
+
+const primaryStrategiesList = [
+  { label: 'Все стратегии', value: 'all' },
+  { label: 'Baseline', value: 'baseline' },
+  { label: 'Trend Pullback', value: 'trend_pullback' },
+  { label: 'Bollinger Mean Reversion', value: 'bollinger_mean_reversion' },
+  { label: 'Donchian ATR Breakout', value: 'donchian_atr_breakout' },
+  { label: 'Regime Switching', value: 'regime_switching' },
+  { label: 'Momentum', value: 'momentum' },
+  { label: 'Support Resistance Bounce', value: 'support_resistance_bounce' },
+  { label: 'Support Resistance Breakout', value: 'support_resistance_breakout' },
+  { label: 'Funding OI Squeeze', value: 'funding_open_interest_squeeze' },
+  { label: 'Liquidity Sweep Reversal', value: 'liquidity_sweep_reversal' },
+  { label: 'Volatility Compression Breakout', value: 'volatility_compression_breakout' },
+  { label: 'BTC/ETH Lead Lag', value: 'btc_eth_lead_lag' },
+  { label: 'Multi-Timeframe Trend Following', value: 'multi_timeframe_trend_following' },
+];
+
+function getSignalFilters() {
+  const params: Record<string, any> = {};
+  if (s.exchange && s.exchange !== 'all') params.exchange = s.exchange;
+  if (s.instrument && s.instrument !== 'all' && s.resolvedSymbol) params.symbol = s.resolvedSymbol;
+  if (signalTimeframe.value !== 'all') params.timeframe = signalTimeframe.value;
+  if (signalStrategy.value !== 'all') params.strategy = signalStrategy.value;
+  if (signalDirection.value !== 'all') params.side = signalDirection.value;
+  if (signalQuality.value !== 'all') params.signal_quality = signalQuality.value;
+  if (signalRisk.value !== 'all') params.trade_risk = signalRisk.value;
+  if (signalGateDecision.value !== 'all') params.gate_decision = signalGateDecision.value;
+  if (signalExecutionStatus.value !== 'all') params.execution_status = signalExecutionStatus.value;
+  if (signalOutcome.value !== 'all') params.outcome = signalOutcome.value;
+  if (signalDateFrom.value) params.from = signalDateFrom.value;
+  if (signalDateTo.value) params.to = signalDateTo.value;
+  return params;
+}
+
+async function loadSignalAnalytics() {
+  signalAnalyticsLoading.value = true;
+  signalAnalyticsError.value = '';
+  try {
+    const params = getSignalFilters();
+    const res = await api.get('/research/profitability/signal-analytics', { params });
+    signalAnalyticsData.value = res.data?.data || null;
+  } catch (err: any) {
+    signalAnalyticsError.value = err?.message || 'Ошибка загрузки аналитики сигналов';
+  } finally {
+    signalAnalyticsLoading.value = false;
+  }
+}
+
+async function loadSignalExplorer(props?: any) {
+  explorerLoading.value = true;
+  try {
+    const pagination = props?.pagination || explorerPagination.value;
+    const params: Record<string, any> = {
+      ...getSignalFilters(),
+      page: pagination.page,
+      per_page: pagination.rowsPerPage,
+      sort_by: pagination.sortBy,
+      sort_dir: pagination.descending ? 'desc' : 'asc',
+    };
+    const res = await api.get('/research/profitability/signal-explorer', { params });
+    const payload = res.data;
+    explorerSignals.value = payload.data || [];
+    explorerPagination.value = {
+      page: payload.current_page || pagination.page,
+      rowsPerPage: payload.per_page || pagination.rowsPerPage,
+      rowsNumber: payload.total || 0,
+      sortBy: pagination.sortBy,
+      descending: pagination.descending,
+    };
+  } catch {
+    //
+  } finally {
+    explorerLoading.value = false;
+  }
+}
+
+async function openSignalDetail(signalId: string) {
+  if (!signalId) return;
+  showSignalDetailDialog.value = true;
+  signalDetailLoading.value = true;
+  signalDetailData.value = null;
+  signalDetailError.value = '';
+  try {
+    const res = await api.get(`/research/profitability/signal-explorer/${signalId}`);
+    signalDetailData.value = res.data?.data || null;
+  } catch (err: any) {
+    signalDetailError.value = err?.message || `Ошибка загрузки сигнала ${signalId}`;
+  } finally {
+    signalDetailLoading.value = false;
+  }
+}
+
+function exportSignalExplorerCsv() {
+  const params = getSignalFilters();
+  const query = new URLSearchParams(params).toString();
+  window.open(`/api/v1/research/profitability/signal-explorer/export?${query}`, '_blank');
+}
+
+function resetSignalFilters() {
+  signalTimeframe.value = 'all';
+  signalStrategy.value = 'all';
+  signalDirection.value = 'all';
+  signalQuality.value = 'all';
+  signalRisk.value = 'all';
+  signalGateDecision.value = 'all';
+  signalExecutionStatus.value = 'all';
+  signalOutcome.value = 'all';
+  signalDateFrom.value = '';
+  signalDateTo.value = '';
+  void loadSignalAnalytics();
+  void loadSignalExplorer();
+}
+
 async function loadData() {
   const version = ++loadVersion;
   loading.value = true;
@@ -77,9 +223,20 @@ async function loadData() {
 
 watch(() => s.exchange, () => {
   void loadData();
+  void loadSignalAnalytics();
+  void loadSignalExplorer();
 });
 watch(() => s.instrument, () => {
   void loadData();
+  void loadSignalAnalytics();
+  void loadSignalExplorer();
+});
+
+watch(activeTab, (tab) => {
+  if (tab === 'signal_analytics' && !signalAnalyticsData.value) {
+    void loadSignalAnalytics();
+    void loadSignalExplorer();
+  }
 });
 
 async function openPositionTrace(positionId: string) {
@@ -108,7 +265,9 @@ async function openPositionTrace(positionId: string) {
 }
 
 onMounted(() => {
-  loadData();
+  void loadData();
+  void loadSignalAnalytics();
+  void loadSignalExplorer();
 });
 </script>
 
@@ -241,6 +400,7 @@ onMounted(() => {
       narrow-indicator
     >
       <q-tab name="finance" label="Финансы и Издержки" icon="account_balance_wallet" no-caps />
+      <q-tab name="signal_analytics" label="Качество сигналов и Таймфреймы" icon="insights" no-caps />
       <q-tab name="slippage" label="Атрибуция проскальзывания (P-1)" icon="trending_down" no-caps />
       <q-tab name="risk" label="Риск и Счета" icon="shield" no-caps />
       <q-tab name="sample_quality" label="Дорожная карта (P-1..P-6)" icon="alt_route" no-caps />
@@ -648,7 +808,458 @@ onMounted(() => {
           </q-list>
         </q-card>
       </q-tab-panel>
+
+      <!-- Tab: Signal Quality Analytics & Multi-Timeframe Attribution -->
+      <q-tab-panel name="signal_analytics" class="q-pa-none">
+        <!-- Global Filter Bar -->
+        <q-card flat bordered class="q-pa-md q-mb-md">
+          <div class="row items-center justify-between q-mb-sm">
+            <div class="text-subtitle1 text-bold">Фильтры аналитики сигналов и атрибуции</div>
+            <div class="row q-gutter-sm">
+              <q-btn outline dense color="primary" icon="refresh" label="Применить" no-caps @click="loadSignalAnalytics(); loadSignalExplorer();" :loading="signalAnalyticsLoading || explorerLoading" />
+              <q-btn flat dense color="grey" icon="restart_alt" label="Сбросить" no-caps @click="resetSignalFilters" />
+              <q-btn outline dense color="secondary" icon="download" label="Экспорт CSV" no-caps @click="exportSignalExplorerCsv" />
+            </div>
+          </div>
+
+          <div class="row q-col-gutter-sm">
+            <div class="col-12 col-sm-6 col-md-2">
+              <q-select
+                v-model="signalTimeframe"
+                dense
+                outlined
+                label="Таймфрейм"
+                :options="['all', '1m', '3m', '5m', '15m', '30m', '60m']"
+                @update:model-value="loadSignalAnalytics(); loadSignalExplorer();"
+              />
+            </div>
+            <div class="col-12 col-sm-6 col-md-2">
+              <q-select
+                v-model="signalStrategy"
+                dense
+                outlined
+                label="Стратегия"
+                emit-value
+                map-options
+                :options="primaryStrategiesList"
+                @update:model-value="loadSignalAnalytics(); loadSignalExplorer();"
+              />
+            </div>
+            <div class="col-12 col-sm-6 col-md-2">
+              <q-select
+                v-model="signalDirection"
+                dense
+                outlined
+                label="Направление"
+                :options="['all', 'BUY', 'SELL']"
+                @update:model-value="loadSignalAnalytics(); loadSignalExplorer();"
+              />
+            </div>
+            <div class="col-12 col-sm-6 col-md-2">
+              <q-select
+                v-model="signalQuality"
+                dense
+                outlined
+                label="Качество (Quality)"
+                :options="['all', 'HIGH', 'MEDIUM', 'LOW', 'UNKNOWN']"
+                @update:model-value="loadSignalAnalytics(); loadSignalExplorer();"
+              />
+            </div>
+            <div class="col-12 col-sm-6 col-md-2">
+              <q-select
+                v-model="signalRisk"
+                dense
+                outlined
+                label="Риск сделки (Risk)"
+                :options="['all', 'LOW', 'MEDIUM', 'HIGH', 'UNKNOWN']"
+                @update:model-value="loadSignalAnalytics(); loadSignalExplorer();"
+              />
+            </div>
+            <div class="col-12 col-sm-6 col-md-2">
+              <q-select
+                v-model="signalOutcome"
+                dense
+                outlined
+                label="Исход (Outcome)"
+                :options="['all', 'GOOD', 'BAD', 'UNPROVEN']"
+                @update:model-value="loadSignalAnalytics(); loadSignalExplorer();"
+              />
+            </div>
+          </div>
+        </q-card>
+
+        <!-- Diagnostics Banner -->
+        <div v-if="signalAnalyticsData?.diagnostics?.length" class="q-mb-md">
+          <q-banner
+            v-for="(diag, dIdx) in signalAnalyticsData.diagnostics"
+            :key="dIdx"
+            dense
+            rounded
+            class="q-mb-xs"
+            :class="diag.severity === 'WARNING' ? 'bg-amber-9 text-black' : 'bg-blue-9 text-white'"
+          >
+            <template #avatar>
+              <q-icon :name="diag.severity === 'WARNING' ? 'warning' : 'info'" />
+            </template>
+            <div class="text-caption text-bold">{{ diag.type }}: {{ diag.message }}</div>
+          </q-banner>
+        </div>
+
+        <!-- Section A: Performance Overview -->
+        <div class="row q-col-gutter-md q-mb-md">
+          <div class="col-12 col-md-3">
+            <q-card flat bordered class="q-pa-sm">
+              <div class="text-caption text-grey-7">Net PnL (Сигналы & Позиции)</div>
+              <div class="text-h6 text-bold" :class="Number(signalAnalyticsData?.overview?.overall_net_pnl) >= 0 ? 'text-positive' : 'text-negative'">
+                {{ signalAnalyticsData?.overview?.overall_net_pnl ?? '0.00' }} USDT
+              </div>
+              <div class="text-caption text-grey-6">Gross: {{ signalAnalyticsData?.overview?.overall_gross_pnl ?? '0.00' }} · Fees: {{ signalAnalyticsData?.overview?.overall_fees ?? '0.00' }}</div>
+            </q-card>
+          </div>
+
+          <div class="col-12 col-md-3">
+            <q-card flat bordered class="q-pa-sm">
+              <div class="text-caption text-grey-7">Win Rate & Profit Factor</div>
+              <div class="text-h6 text-bold text-primary">
+                {{ signalAnalyticsData?.overview?.win_rate ?? 0 }}%
+              </div>
+              <div class="text-caption text-grey-6">PF: {{ signalAnalyticsData?.overview?.profit_factor ?? 0 }} · Max DD: {{ signalAnalyticsData?.overview?.max_drawdown ?? 0 }}%</div>
+            </q-card>
+          </div>
+
+          <div class="col-12 col-md-3">
+            <q-card flat bordered class="q-pa-sm">
+              <div class="text-caption text-grey-7">Оцененные сигналы</div>
+              <div class="text-h6 text-bold">
+                {{ signalAnalyticsData?.overview?.total_signals ?? 0 }}
+              </div>
+              <div class="text-caption text-grey-6">BUY: {{ signalAnalyticsData?.overview?.buy_signals ?? 0 }} · SELL: {{ signalAnalyticsData?.overview?.sell_signals ?? 0 }} · Сделок: {{ signalAnalyticsData?.overview?.executed_trades ?? 0 }}</div>
+            </q-card>
+          </div>
+
+          <div class="col-12 col-md-3">
+            <q-card flat bordered class="q-pa-sm">
+              <div class="text-caption text-grey-7">Отклонено / Observation-Only</div>
+              <div class="text-h6 text-bold text-warning">
+                {{ signalAnalyticsData?.overview?.rejected_signals ?? 0 }} / {{ signalAnalyticsData?.overview?.observation_only_signals ?? 0 }}
+              </div>
+              <div class="text-caption text-grey-6">Закрыто сделок: {{ signalAnalyticsData?.overview?.closed_trades ?? 0 }}</div>
+            </q-card>
+          </div>
+        </div>
+
+        <!-- Section A Attribution Cards & Distribution Chips -->
+        <div class="row q-col-gutter-md q-mb-md">
+          <div class="col-12 col-md-6">
+            <q-card flat bordered class="q-pa-sm">
+              <div class="text-caption text-bold text-grey-5 q-mb-xs">ЛУЧШИЕ И ХУДШИЕ СЕГМЕНТЫ (ATTRIBUTION):</div>
+              <div class="row q-col-gutter-sm text-caption">
+                <div class="col-6">
+                  <div>Лучшая биржа: <strong class="text-positive">{{ signalAnalyticsData?.overview?.best_exchange ?? '—' }}</strong></div>
+                  <div>Лучшая стратегия: <strong class="text-positive">{{ signalAnalyticsData?.overview?.best_strategy ?? '—' }}</strong></div>
+                  <div>Лучший инструмент: <strong class="text-positive">{{ signalAnalyticsData?.overview?.best_instrument ?? '—' }}</strong></div>
+                </div>
+                <div class="col-6">
+                  <div>Худшая биржа: <strong class="text-negative">{{ signalAnalyticsData?.overview?.worst_exchange ?? '—' }}</strong></div>
+                  <div>Худшая стратегия: <strong class="text-negative">{{ signalAnalyticsData?.overview?.worst_strategy ?? '—' }}</strong></div>
+                  <div>Лучший ТФ: <strong class="text-primary">{{ signalAnalyticsData?.overview?.best_timeframe ?? '—' }}</strong> (Худший: {{ signalAnalyticsData?.overview?.worst_timeframe ?? '—' }})</div>
+                </div>
+              </div>
+            </q-card>
+          </div>
+
+          <div class="col-12 col-md-6">
+            <q-card flat bordered class="q-pa-sm">
+              <div class="text-caption text-bold text-grey-5 q-mb-xs">РАСПРЕДЕЛЕНИЕ ИСХОДОВ И КАЧЕСТВА:</div>
+              <div class="q-gutter-xs">
+                <q-chip dense color="positive" text-color="white" icon="check_circle">
+                  GOOD: {{ signalAnalyticsData?.overview?.outcome_distribution?.GOOD ?? 0 }} ({{ signalAnalyticsData?.overview?.outcome_distribution?.good_percent ?? 0 }}%)
+                </q-chip>
+                <q-chip dense color="negative" text-color="white" icon="cancel">
+                  BAD: {{ signalAnalyticsData?.overview?.outcome_distribution?.BAD ?? 0 }}
+                </q-chip>
+                <q-chip dense color="grey-7" text-color="white" icon="help">
+                  UNPROVEN: {{ signalAnalyticsData?.overview?.outcome_distribution?.UNPROVEN ?? 0 }}
+                </q-chip>
+                <q-chip dense color="indigo" text-color="white">
+                  HIGH Quality: {{ signalAnalyticsData?.overview?.quality_distribution?.HIGH ?? 0 }}
+                </q-chip>
+                <q-chip dense color="blue-7" text-color="white">
+                  MED Quality: {{ signalAnalyticsData?.overview?.quality_distribution?.MEDIUM ?? 0 }}
+                </q-chip>
+                <q-chip dense color="grey-8" text-color="white">
+                  LOW Quality: {{ signalAnalyticsData?.overview?.quality_distribution?.LOW ?? 0 }}
+                </q-chip>
+              </div>
+            </q-card>
+          </div>
+        </div>
+
+        <!-- Section B: Exchange Comparison Table -->
+        <q-card flat bordered class="q-pa-md q-mb-md">
+          <div class="text-subtitle1 text-bold q-mb-sm">Секция B: Сравнение бирж (Exchange Comparison)</div>
+          <q-table
+            flat
+            dense
+            bordered
+            :rows="signalAnalyticsData?.exchange_comparison || []"
+            row-key="exchange"
+            :columns="[
+              { name: 'exchange', label: 'Биржа', field: 'exchange', align: 'left', sortable: true },
+              { name: 'signals', label: 'Сигналы', field: 'signals', align: 'right', sortable: true },
+              { name: 'executed', label: 'Исполнено', field: 'executed', align: 'right', sortable: true },
+              { name: 'good_percent', label: 'GOOD %', field: 'good_percent', align: 'right', sortable: true, format: (v: any) => `${v}%` },
+              { name: 'win_rate', label: 'Win Rate', field: 'win_rate', align: 'right', sortable: true, format: (v: any) => `${v}%` },
+              { name: 'net_pnl', label: 'Net PnL (USDT)', field: 'net_pnl', align: 'right', sortable: true },
+              { name: 'expectancy', label: 'Ожидание/сигнал', field: 'expectancy', align: 'right', sortable: true },
+              { name: 'max_drawdown', label: 'Max DD', field: 'max_drawdown', align: 'right', sortable: true, format: (v: any) => `${v}%` },
+            ]"
+            :pagination="{ rowsPerPage: 10 }"
+          />
+        </q-card>
+
+        <!-- Section C: Strategy Comparison Table -->
+        <q-card flat bordered class="q-pa-md q-mb-md">
+          <div class="text-subtitle1 text-bold q-mb-sm">Секция C: Сравнение стратегий (Strategy Comparison)</div>
+          <q-table
+            flat
+            dense
+            bordered
+            :rows="signalAnalyticsData?.strategy_comparison || []"
+            row-key="strategy"
+            :columns="[
+              { name: 'strategy', label: 'Стратегия', field: 'strategy', align: 'left', sortable: true },
+              { name: 'signals', label: 'Сигналы', field: 'signals', align: 'right', sortable: true },
+              { name: 'executed', label: 'Исполнено', field: 'executed', align: 'right', sortable: true },
+              { name: 'good_percent', label: 'GOOD %', field: 'good_percent', align: 'right', sortable: true, format: (v: any) => `${v}%` },
+              { name: 'win_rate', label: 'Win Rate', field: 'win_rate', align: 'right', sortable: true, format: (v: any) => `${v}%` },
+              { name: 'net_pnl', label: 'Net PnL (USDT)', field: 'net_pnl', align: 'right', sortable: true },
+              { name: 'expectancy', label: 'Ожидание/сигнал', field: 'expectancy', align: 'right', sortable: true },
+            ]"
+            :pagination="{ rowsPerPage: 13 }"
+          />
+        </q-card>
+
+        <!-- Section D: Timeframe Comparison Table -->
+        <q-card flat bordered class="q-pa-md q-mb-md">
+          <div class="text-subtitle1 text-bold q-mb-sm">Секция D: Сравнение канонических таймфреймов (1m, 3m, 5m, 15m, 30m, 60m)</div>
+          <q-table
+            flat
+            dense
+            bordered
+            :rows="signalAnalyticsData?.timeframe_comparison || []"
+            row-key="timeframe"
+            :columns="[
+              { name: 'timeframe', label: 'Таймфрейм', field: 'timeframe', align: 'left', sortable: true },
+              { name: 'signals', label: 'Сигналы', field: 'signals', align: 'right', sortable: true },
+              { name: 'executed', label: 'Исполнено', field: 'executed', align: 'right', sortable: true },
+              { name: 'win_rate', label: 'Win Rate', field: 'win_rate', align: 'right', sortable: true, format: (v: any) => `${v}%` },
+              { name: 'net_pnl', label: 'Net PnL (USDT)', field: 'net_pnl', align: 'right', sortable: true },
+              { name: 'profit_factor', label: 'Profit Factor', field: 'profit_factor', align: 'right', sortable: true },
+              { name: 'expectancy', label: 'Ожидание/сигнал', field: 'expectancy', align: 'right', sortable: true },
+              { name: 'status', label: 'Статус данных', field: 'status', align: 'center', sortable: true },
+            ]"
+            :pagination="{ rowsPerPage: 6 }"
+          >
+            <template #body-cell-status="props">
+              <q-td :props="props">
+                <q-badge :color="props.value === 'SUPPORTED' ? 'positive' : (props.value === 'AGGREGATED' ? 'info' : 'grey-7')">
+                  {{ props.value }}
+                </q-badge>
+              </q-td>
+            </template>
+          </q-table>
+        </q-card>
+
+        <!-- Section E: Signal Quality Matrix -->
+        <q-card flat bordered class="q-pa-md q-mb-md">
+          <div class="text-subtitle1 text-bold q-mb-sm">Секция E: Матрица Качество vs Риск (Quality vs Trade Risk Grid)</div>
+          <q-table
+            flat
+            dense
+            bordered
+            :rows="signalAnalyticsData?.quality_risk_matrix || []"
+            row-key="(r) => `${r.quality}_${r.trade_risk}`"
+            :columns="[
+              { name: 'quality', label: 'Качество (Quality)', field: 'quality', align: 'left', sortable: true },
+              { name: 'trade_risk', label: 'Риск (Trade Risk)', field: 'trade_risk', align: 'left', sortable: true },
+              { name: 'signals', label: 'Всего сигналов', field: 'signals', align: 'right', sortable: true },
+              { name: 'executed', label: 'Исполнено', field: 'executed', align: 'right', sortable: true },
+              { name: 'rejected', label: 'Отклонено', field: 'rejected', align: 'right', sortable: true },
+              { name: 'win_rate', label: 'Win Rate', field: 'win_rate', align: 'right', sortable: true, format: (v: any) => `${v}%` },
+              { name: 'net_pnl', label: 'Net PnL (USDT)', field: 'net_pnl', align: 'right', sortable: true },
+              { name: 'expectancy', label: 'Ожидание/сигнал', field: 'expectancy', align: 'right', sortable: true },
+            ]"
+            :pagination="{ rowsPerPage: 16 }"
+          />
+        </q-card>
+
+        <!-- Section F: Signal Explorer Table -->
+        <q-card flat bordered class="q-pa-md q-mb-md">
+          <div class="row items-center justify-between q-mb-sm">
+            <div class="text-subtitle1 text-bold">Секция F: Обозреватель сигналов (Signal Explorer)</div>
+            <q-btn outline dense color="secondary" icon="download" label="Экспорт CSV" no-caps @click="exportSignalExplorerCsv" />
+          </div>
+          <q-table
+            flat
+            dense
+            bordered
+            :rows="explorerSignals"
+            row-key="id"
+            :loading="explorerLoading"
+            v-model:pagination="explorerPagination"
+            @request="loadSignalExplorer"
+            :columns="[
+              { name: 'decision_time', label: 'Время', field: 'decision_time', align: 'left', sortable: true },
+              { name: 'exchange', label: 'Биржа', field: 'exchange', align: 'left', sortable: true },
+              { name: 'strategy_id', label: 'Стратегия', field: 'strategy_id', align: 'left', sortable: true },
+              { name: 'symbol', label: 'Символ', field: 'symbol', align: 'left', sortable: true },
+              { name: 'timeframe', label: 'ТФ', field: 'timeframe', align: 'center', sortable: true },
+              { name: 'side', label: 'Сторона', field: 'side', align: 'center', sortable: true },
+              { name: 'entry_price', label: 'Вход', field: 'entry_price', align: 'right' },
+              { name: 'stop_loss', label: 'Stop Loss', field: 'stop_loss', align: 'right' },
+              { name: 'signal_quality', label: 'Качество', field: 'signal_quality', align: 'center', sortable: true },
+              { name: 'trade_risk', label: 'Риск', field: 'trade_risk', align: 'center', sortable: true },
+              { name: 'gate_decision', label: 'Gate', field: 'gate_decision', align: 'center' },
+              { name: 'retrospective_outcome', label: 'Исход', field: 'retrospective_outcome', align: 'center', sortable: true },
+              { name: 'net_pnl', label: 'Net PnL', field: 'net_pnl', align: 'right' },
+              { name: 'actions', label: 'Детали', field: 'actions', align: 'center' },
+            ]"
+          >
+            <template #body-cell-side="props">
+              <q-td :props="props">
+                <q-badge :color="props.value === 'BUY' ? 'positive' : 'negative'">
+                  {{ props.value }}
+                </q-badge>
+              </q-td>
+            </template>
+            <template #body-cell-signal_quality="props">
+              <q-td :props="props">
+                <q-badge :color="props.value === 'HIGH' ? 'indigo' : (props.value === 'MEDIUM' ? 'blue-7' : 'grey-7')">
+                  {{ props.value }}
+                </q-badge>
+              </q-td>
+            </template>
+            <template #body-cell-trade_risk="props">
+              <q-td :props="props">
+                <q-badge :color="props.value === 'LOW' ? 'positive' : (props.value === 'MEDIUM' ? 'warning' : 'negative')">
+                  {{ props.value }}
+                </q-badge>
+              </q-td>
+            </template>
+            <template #body-cell-retrospective_outcome="props">
+              <q-td :props="props">
+                <q-badge :color="props.value === 'GOOD' ? 'positive' : (props.value === 'BAD' ? 'negative' : 'grey-7')">
+                  {{ props.value }}
+                </q-badge>
+              </q-td>
+            </template>
+            <template #body-cell-actions="props">
+              <q-td :props="props">
+                <q-btn flat dense round icon="visibility" color="primary" @click="openSignalDetail(props.row.id)">
+                  <q-tooltip>Полная объяснимость сигнала</q-tooltip>
+                </q-btn>
+              </q-td>
+            </template>
+          </q-table>
+        </q-card>
+      </q-tab-panel>
     </q-tab-panels>
+
+    <!-- Dialog: Signal Explainability Detail View -->
+    <q-dialog v-model="showSignalDetailDialog" maximized>
+      <q-card>
+        <q-toolbar class="bg-indigo-9 text-white">
+          <q-toolbar-title>Объяснимость сигнала (Signal Explainability & Audit Trace)</q-toolbar-title>
+          <q-btn flat round dense icon="close" v-close-popup />
+        </q-toolbar>
+
+        <q-card-section class="q-pa-md" v-if="signalDetailLoading">
+          <div class="row justify-center q-my-lg">
+            <q-spinner color="primary" size="3em" />
+          </div>
+        </q-card-section>
+
+        <q-card-section class="q-pa-md" v-else-if="signalDetailError">
+          <q-banner dense class="bg-negative text-white rounded-borders">
+            {{ signalDetailError }}
+          </q-banner>
+        </q-card-section>
+
+        <q-card-section class="q-pa-md" v-else-if="signalDetailData">
+          <div class="row q-col-gutter-md q-mb-md">
+            <div class="col-12 col-md-4">
+              <q-card flat bordered class="q-pa-sm">
+                <div class="text-caption text-grey-7">Идентификация сигнала:</div>
+                <div class="text-subtitle1 text-bold">{{ signalDetailData.symbol }} · {{ signalDetailData.side }}</div>
+                <div class="text-caption text-grey-6">Биржа: {{ signalDetailData.exchange }} · ТФ: {{ signalDetailData.timeframe }}</div>
+                <div class="text-caption text-grey-6">Стратегия: {{ signalDetailData.strategy_id }} (v{{ signalDetailData.strategy_version }})</div>
+                <div class="text-caption text-mono">ID: {{ signalDetailData.id }}</div>
+              </q-card>
+            </div>
+
+            <div class="col-12 col-md-4">
+              <q-card flat bordered class="q-pa-sm">
+                <div class="text-caption text-grey-7">Уровни входа и риска:</div>
+                <div>Зона входа: <strong>{{ signalDetailData.entry_low }} — {{ signalDetailData.entry_high }}</strong></div>
+                <div>Stop Loss: <strong class="text-negative">{{ signalDetailData.stop_loss }}</strong></div>
+                <div>Take Profit: <strong class="text-positive">{{ signalDetailData.take_profit_1 }}</strong> (TP2: {{ signalDetailData.take_profit_2 }})</div>
+              </q-card>
+            </div>
+
+            <div class="col-12 col-md-4">
+              <q-card flat bordered class="q-pa-sm">
+                <div class="text-caption text-grey-7">Классификация и Gate:</div>
+                <div>Качество (Quality): <strong class="text-indigo">{{ signalDetailData.signal_quality }}</strong></div>
+                <div>Риск (Trade Risk): <strong class="text-warning">{{ signalDetailData.trade_risk }}</strong></div>
+                <div>Решение Gate: <strong>{{ signalDetailData.gate_decision }}</strong> (Allowed: {{ signalDetailData.gate_allowed ? 'ДА' : 'НЕТ' }})</div>
+                <div>Ретроспективный исход: <strong :class="signalDetailData.retrospective_outcome === 'GOOD' ? 'text-positive' : (signalDetailData.retrospective_outcome === 'BAD' ? 'text-negative' : 'text-grey')">{{ signalDetailData.retrospective_outcome }}</strong></div>
+              </q-card>
+            </div>
+          </div>
+
+          <div class="row q-col-gutter-md q-mb-md">
+            <div class="col-12 col-md-6">
+              <q-card flat bordered class="q-pa-md">
+                <div class="text-subtitle2 text-bold q-mb-xs">Причины сигнала (Signal Reasons):</div>
+                <q-list dense separator>
+                  <q-item v-for="(reason, rIdx) in signalDetailData.reasons || []" :key="rIdx">
+                    <q-item-section avatar><q-icon name="check" color="positive" /></q-item-section>
+                    <q-item-section>{{ reason }}</q-item-section>
+                  </q-item>
+                </q-list>
+
+                <div class="text-subtitle2 text-bold q-mt-md q-mb-xs">Риски и ограничения (Signal Risks):</div>
+                <q-list dense separator>
+                  <q-item v-for="(risk, kIdx) in signalDetailData.risks || []" :key="kIdx">
+                    <q-item-section avatar><q-icon name="warning" color="warning" /></q-item-section>
+                    <q-item-section>{{ risk }}</q-item-section>
+                  </q-item>
+                </q-list>
+              </q-card>
+            </div>
+
+            <div class="col-12 col-md-6">
+              <q-card flat bordered class="q-pa-md">
+                <div class="text-subtitle2 text-bold q-mb-xs">Срез индикаторов (Indicator Snapshot):</div>
+                <pre class="bg-grey-10 text-white q-pa-sm rounded-borders text-caption text-mono" style="max-height: 250px; overflow-y: auto;">{{ JSON.stringify(signalDetailData.indicator_snapshot, null, 2) }}</pre>
+              </q-card>
+            </div>
+          </div>
+
+          <!-- Position Trace if Executed -->
+          <q-card flat bordered class="q-pa-md" v-if="signalDetailData.position">
+            <div class="text-subtitle2 text-bold q-mb-xs">Связанная позиция PAPER (Virtual Position):</div>
+            <div class="row q-col-gutter-sm text-caption">
+              <div class="col-3">Статус: <strong>{{ signalDetailData.position.status }}</strong></div>
+              <div class="col-3">Цена входа: <strong>{{ signalDetailData.position.entry_price }}</strong></div>
+              <div class="col-3">Net PnL: <strong :class="Number(signalDetailData.position.net_pnl) >= 0 ? 'text-positive' : 'text-negative'">{{ signalDetailData.position.net_pnl }} USDT</strong></div>
+              <div class="col-3">R-Multiple: <strong>{{ signalDetailData.position.r_multiple ?? '—' }}</strong></div>
+            </div>
+          </q-card>
+        </q-card-section>
+      </q-card>
+    </q-dialog>
 
     <!-- Dialog: Machine-Readable Metric Registry -->
     <q-dialog v-model="showRegistryDialog" maximized>

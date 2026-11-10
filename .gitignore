@@ -11,6 +11,7 @@ frontend/dist/
 
 # Archives
 *.zip
+!VECTOR_UI_API_AUDIT_REPORT.zip
 
 # Dependencies
 /vendor
@@ -30,6 +31,7 @@ frontend/dist/
 
 # Archives
 *.zip
+!VECTOR_UI_API_AUDIT_REPORT.zip
 
 # Temporary verification reports
 /docs/VERIFICATION_LATEST.md

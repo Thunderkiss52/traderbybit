@@ -1,0 +1,11 @@
+exchange_id,exchange_name,api_endpoint,market_types,rate_limit_tier,taker_fee,slippage_rate,connectivity_status,execution_mode,candle_freshness_status
+bybit,Bybit,https://api.bybit.com,"linear,spot",120_REQ_MIN,0.00055,0.0002,ONLINE_HEALTHY,PAPER,UP_TO_DATE
+binance,Binance,https://fapi.binance.com,"linear,spot",1200_WEIGHT_MIN,0.00050,0.0002,ONLINE_HEALTHY,PAPER,UP_TO_DATE
+coinbase,Coinbase,https://api.exchange.coinbase.com,spot,10_REQ_SEC,0.00600,0.0002,ONLINE_HEALTHY,PAPER,UP_TO_DATE
+upbit,Upbit,https://api.upbit.com,spot,10_REQ_SEC,0.00050,0.0002,ONLINE_HEALTHY,PAPER,UP_TO_DATE
+okx,OKX,https://www.okx.com,"linear,spot",20_REQ_2SEC,0.00050,0.0002,ONLINE_HEALTHY,PAPER,UP_TO_DATE
+bitget,Bitget,https://api.bitget.com,"linear,spot",20_REQ_SEC,0.00060,0.0002,ONLINE_HEALTHY,PAPER,UP_TO_DATE
+gate,Gate.io,https://api.gateio.ws,"linear,spot",300_REQ_MIN,0.00050,0.0002,ONLINE_HEALTHY,PAPER,UP_TO_DATE
+kucoin,KuCoin,https://api.kucoin.com,"linear,spot",100_REQ_10SEC,0.00060,0.0002,ONLINE_HEALTHY,PAPER,UP_TO_DATE
+kraken,Kraken,https://api.kraken.com,"linear,spot",15_COUNTER,0.00050,0.0002,ONLINE_HEALTHY,PAPER,UP_TO_DATE
+htx,HTX,https://api.huobi.pro,"linear,spot",100_REQ_2SEC,0.00050,0.0002,ONLINE_HEALTHY,PAPER,UP_TO_DATE

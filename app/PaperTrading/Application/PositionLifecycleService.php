@@ -161,12 +161,16 @@ final readonly class PositionLifecycleService
             $totalFees = BigDecimal::of($locked->fees)->plus($fee);
             $net = $totalGross->plus($locked->funding)->minus($totalFees);
             $closed = $next->isClosed();
+            $retrospectiveOutcome = $closed
+                ? ($net->isPositive() ? 'GOOD' : ($net->isNegative() ? 'BAD' : 'UNPROVEN'))
+                : 'UNPROVEN';
             $unrealized = $closed ? BigDecimal::zero() : BigDecimal::of($this->execution->grossPnl($locked->side, $locked->entry_price, $quote->price, (string) $remaining));
             $locked->update([
                 'status' => $next->value, 'remaining_quantity' => (string) $remaining, 'gross_pnl' => (string) $totalGross,
                 'fees' => (string) $totalFees, 'net_pnl' => (string) $net,
                 'unrealized_pnl' => (string) $unrealized,
                 'r_multiple' => $closed ? (string) $net->dividedBy($locked->risk_capital, 10, RoundingMode::HalfEven) : null,
+                'retrospective_outcome' => $retrospectiveOutcome,
                 'closed_at' => $closed ? $at : null, 'last_processed_event_at' => $at,
                 'timeout_delay_seconds' => $quote->type === ExecutionType::Timeout ? max(0, $at->getTimestamp() - $locked->maximum_holding_until->getTimestamp()) : $locked->timeout_delay_seconds,
                 'ambiguous_execution' => $locked->ambiguous_execution || $quote->ambiguous,
@@ -189,6 +193,7 @@ final readonly class PositionLifecycleService
                 : BigDecimal::max(BigDecimal::of($account->reserved_risk)->minus($release)->toScale(12, RoundingMode::HalfEven), BigDecimal::zero());
             $this->refreshAccountMetrics($account, $realized, $portfolioUnrealized, $reservedRisk, $at);
             if ($closed) {
+                SignalRecord::query()->where('id', $locked->signal_id)->update(['retrospective_outcome' => $retrospectiveOutcome]);
                 SignalLifecycle::Active->transitionTo(SignalLifecycle::Completed);
                 PaperSignalStateRecord::query()->where('paper_account_id', $account->id)->where('signal_id', $locked->signal_id)->update(['status' => SignalLifecycle::Completed->value, 'processed_at' => $at]);
                 $this->applyCooldown($account->refresh(), $at);

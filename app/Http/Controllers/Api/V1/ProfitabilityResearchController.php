@@ -18,6 +18,7 @@ use App\Research\Application\DependenceConcentrationService;
 use App\Research\Application\MetricRegistryService;
 use App\Research\Application\QuantPortfolioMetricsService;
 use App\Research\Application\RiskCapitalMetricsService;
+use App\Research\Application\SignalQualityAnalyticsService;
 use App\Research\Application\SlippageAttributionService;
 use App\Research\Domain\SlippageAttributionFillRecord;
 use App\Research\Domain\SlippageAttributionRecord;
@@ -31,6 +32,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
+use Symfony\Component\HttpFoundation\StreamedResponse;
 
 final class ProfitabilityResearchController extends Controller
 {
@@ -1001,6 +1003,127 @@ final class ProfitabilityResearchController extends Controller
         }
 
         return null;
+    }
+
+    private function resolveSignalExchange(Request $request): string
+    {
+        $exchange = $request->header('X-Exchange') ?: $request->string('exchange')->toString();
+        if ($exchange === '' || strtolower($exchange) === 'all') {
+            return 'all';
+        }
+        $registered = app(ExchangeRegistry::class)->registeredIds();
+
+        return in_array(strtolower($exchange), $registered, true) ? strtolower($exchange) : 'all';
+    }
+
+    public function signalAnalytics(Request $request, SignalQualityAnalyticsService $service): JsonResponse
+    {
+        $filters = [
+            'exchange' => $this->resolveSignalExchange($request),
+            'strategy' => $request->query('strategy') ?? $request->query('strategy_id'),
+            'symbol' => $this->resolveSymbol($request),
+            'timeframe' => $request->query('timeframe'),
+            'side' => $request->query('side') ?? $request->query('direction'),
+            'signal_quality' => $request->query('signal_quality') ?? $request->query('quality'),
+            'trade_risk' => $request->query('trade_risk') ?? $request->query('risk'),
+            'gate_decision' => $request->query('gate_decision'),
+            'execution_status' => $request->query('execution_status'),
+            'outcome' => $request->query('outcome'),
+            'from' => $request->query('from'),
+            'to' => $request->query('to'),
+        ];
+
+        return response()->json([
+            'data' => $service->analyze($filters),
+        ]);
+    }
+
+    public function signalExplorer(Request $request, SignalQualityAnalyticsService $service): JsonResponse
+    {
+        $filters = [
+            'exchange' => $this->resolveSignalExchange($request),
+            'strategy' => $request->query('strategy') ?? $request->query('strategy_id'),
+            'symbol' => $this->resolveSymbol($request),
+            'timeframe' => $request->query('timeframe'),
+            'side' => $request->query('side') ?? $request->query('direction'),
+            'signal_quality' => $request->query('signal_quality') ?? $request->query('quality'),
+            'trade_risk' => $request->query('trade_risk') ?? $request->query('risk'),
+            'gate_decision' => $request->query('gate_decision'),
+            'execution_status' => $request->query('execution_status'),
+            'outcome' => $request->query('outcome'),
+            'from' => $request->query('from'),
+            'to' => $request->query('to'),
+        ];
+
+        $perPage = max(1, min(100, (int) $request->query('per_page', 25)));
+        $sortBy = (string) $request->query('sort_by', 'decision_time');
+        $sortDir = (string) $request->query('sort_dir', 'desc');
+
+        return response()->json($service->paginateSignals($filters, $perPage, $sortBy, $sortDir));
+    }
+
+    public function signalDetail(Request $request, string $id, SignalQualityAnalyticsService $service): JsonResponse
+    {
+        return response()->json([
+            'data' => $service->getSignalDetail($id),
+        ]);
+    }
+
+    public function signalExplorerExport(Request $request, SignalQualityAnalyticsService $service): StreamedResponse
+    {
+        $filters = [
+            'exchange' => $this->resolveSignalExchange($request),
+            'strategy' => $request->query('strategy') ?? $request->query('strategy_id'),
+            'symbol' => $this->resolveSymbol($request),
+            'timeframe' => $request->query('timeframe'),
+            'side' => $request->query('side') ?? $request->query('direction'),
+            'signal_quality' => $request->query('signal_quality') ?? $request->query('quality'),
+            'trade_risk' => $request->query('trade_risk') ?? $request->query('risk'),
+            'gate_decision' => $request->query('gate_decision'),
+            'execution_status' => $request->query('execution_status'),
+            'outcome' => $request->query('outcome'),
+            'from' => $request->query('from'),
+            'to' => $request->query('to'),
+        ];
+
+        $paginator = $service->paginateSignals($filters, 1000, 'decision_time', 'desc');
+        $items = $paginator->items();
+
+        return response()->streamDownload(function () use ($items): void {
+            $handle = fopen('php://output', 'w');
+            fputcsv($handle, [
+                'Timestamp', 'Exchange', 'Strategy', 'Instrument', 'Timeframe', 'Direction',
+                'Entry Price', 'Stop Loss', 'Take Profit 1', 'Take Profit 2',
+                'Signal Quality', 'Trade Risk', 'Gate Decision', 'Execution Status',
+                'Realized Outcome', 'Net PnL', 'Retrospective Outcome', 'Rejection Reason',
+            ]);
+
+            foreach ($items as $item) {
+                fputcsv($handle, [
+                    $item['decision_time'] ?? '',
+                    $item['exchange'] ?? '',
+                    $item['strategy_id'] ?? '',
+                    $item['symbol'] ?? '',
+                    $item['timeframe'] ?? '',
+                    $item['side'] ?? '',
+                    $item['entry_price'] ?? '',
+                    $item['stop_loss'] ?? '',
+                    $item['take_profit_1'] ?? '',
+                    $item['take_profit_2'] ?? '',
+                    $item['signal_quality'] ?? '',
+                    $item['trade_risk'] ?? '',
+                    $item['gate_decision'] ?? '',
+                    $item['execution_status'] ?? '',
+                    $item['realized_outcome'] ?? '',
+                    $item['net_pnl'] ?? '',
+                    $item['retrospective_outcome'] ?? '',
+                    $item['rejection_reason'] ?? '',
+                ]);
+            }
+            fclose($handle);
+        }, 'vector_signal_analytics_export_'.now('UTC')->format('Ymd_His').'.csv', [
+            'Content-Type' => 'text/csv; charset=UTF-8',
+        ]);
     }
 
     private function getPrimaryAccountsReadOnly(?string $exchange = 'bybit'): Collection

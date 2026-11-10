@@ -68,15 +68,15 @@ final class DynamicStrategyScalabilityAndTopologyTest extends TestCase
 
         $bybitAccount = $accounts->firstWhere('exchange_id', 'bybit');
         $this->assertNotNull($bybitAccount);
-        $this->assertEquals('BLOCKED', $bybitAccount->status, 'Unvalidated new strategy must start BLOCKED');
-        $this->assertEquals('0.000000000000', (string) $bybitAccount->starting_balance, 'New strategy starts zero-funded');
+        $this->assertEquals('ACTIVE', $bybitAccount->status, 'Registered executable strategy must start ACTIVE on approved paper exchange');
+        $this->assertEquals('10000.000000000000', (string) BigDecimal::of($bybitAccount->starting_balance)->toScale(12), 'New strategy receives configured starting capital');
 
         foreach ($exchanges as $exId) {
             $acc = $accounts->firstWhere('exchange_id', $exId);
             $this->assertNotNull($acc, "Account for {$exId} must exist");
             $this->assertEquals($strategyId, $acc->primary_strategy_id);
             $this->assertEquals($strategyId, $acc->strategy_id);
-            $this->assertEquals('BLOCKED', $acc->status);
+            $this->assertEquals('10000.000000000000', (string) BigDecimal::of($acc->starting_balance)->toScale(12));
         }
     }
 
