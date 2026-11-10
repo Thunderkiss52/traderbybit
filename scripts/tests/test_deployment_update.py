@@ -155,6 +155,34 @@ MIN_FREE_DISK_GB=0
         self.assertNotEqual(0, val_res.returncode)
         self.assertIn('interrupted or schema-blocked update is pending', val_res.stdout + val_res.stderr)
 
+    def test_recover_deployment_state_resolves_interrupted_update(self):
+        (self.state / 'update-in-progress').write_text(f'{OLD} -> {NEW}: MIGRATING\n')
+        (self.root / 'docker-state.json').write_text(json.dumps(dict(running=OLD, migrations='2026_10_20_initial')))
+        rec_res = subprocess.run(['bash', str(self.root / 'docker/scripts/recover-deployment-state.sh'),
+                                  '--repair', '--skip-readiness'],
+                                 env={**self.env, 'SKIP_DOCKER_INSPECT': '1'}, text=True, capture_output=True)
+        self.assertEqual(0, rec_res.returncode, rec_res.stdout + rec_res.stderr)
+        self.assertIn('ROLLED_BACK', (self.state / 'update-in-progress').read_text())
+        archived = list(self.state.glob('update-in-progress-*.archived'))
+        self.assertEqual(1, len(archived))
+        self.assertIn('MIGRATING', archived[0].read_text())
+        val_res = subprocess.run(['bash', str(self.root / 'docker/scripts/validate-deployment-state.sh'), 'pre-deploy'],
+                                 env={**self.env, 'SKIP_DOCKER_INSPECT': '1'}, text=True, capture_output=True)
+        self.assertEqual(0, val_res.returncode, val_res.stdout + val_res.stderr)
+
+    def test_autorecover_on_deploy_resolves_prior_failed_release_for_new_candidate(self):
+        diff_tag = 'sha-1111111111111111111111111111111111111111'
+        (self.state / 'update-in-progress').write_text(f'{OLD} -> {NEW}: MIGRATING\n')
+        (self.root / 'docker-state.json').write_text(json.dumps(dict(running=OLD, migrations='2026_10_20_initial')))
+        val_res = subprocess.run(['bash', str(self.root / 'docker/scripts/validate-deployment-state.sh'), 'pre-deploy'],
+                                 env={**self.env, 'NEW_IMAGE_TAG': diff_tag, 'AUTO_RECOVER_ON_DEPLOY': '1',
+                                      'SKIP_DOCKER_INSPECT': '1', 'SKIP_READINESS': '1'},
+                                 text=True, capture_output=True)
+        self.assertEqual(0, val_res.returncode, val_res.stdout + val_res.stderr)
+        self.assertIn('ROLLED_BACK', (self.state / 'update-in-progress').read_text())
+        archived = list(self.state.glob('update-in-progress-*.archived'))
+        self.assertEqual(1, len(archived))
+
     def test_forward_migration_blocks_application_rollback(self):
         result = self.update('forward-migration')
         self.assertNotEqual(0, result.returncode)

@@ -17,8 +17,27 @@ finish_update() {
 trap finish_update EXIT
 if [[ -f "${DEPLOY_STATE_DIR}/update-in-progress" ]] &&
    ! grep -q ': ROLLED_BACK$' "${DEPLOY_STATE_DIR}/update-in-progress"; then
+    progress_content="$(<"${DEPLOY_STATE_DIR}/update-in-progress")"
+    failed_tag=""
+    failed_regex='->[[:space:]]*(sha-[0-9a-f]{40}):'
+    if [[ "${progress_content}" =~ ${failed_regex} ]]; then
+        failed_tag="${BASH_REMATCH[1]}"
+    fi
+    req_new_tag="${NEW_IMAGE_TAG:-${NEW_TAG:-}}"
+    if [[ "${AUTO_RECOVER_ON_DEPLOY:-0}" == "1" && -n "${failed_tag}" && -n "${req_new_tag}" && "${req_new_tag}" != "${failed_tag}" ]]; then
+        echo "[INFO] Detected pending interrupted update from prior failed release (${failed_tag})." >&2
+        echo "[INFO] AUTO_RECOVER_ON_DEPLOY=1 active: evaluating recovery review before update..." >&2
+        if AUTO_RECOVER_ON_DEPLOY=0 bash "${SCRIPT_DIR}/recover-deployment-state.sh" --repair; then
+            echo "[INFO] Automated recovery review resolved interrupted journal. Proceeding with update." >&2
+        fi
+    fi
+fi
+if [[ -f "${DEPLOY_STATE_DIR}/update-in-progress" ]] &&
+   ! grep -q ': ROLLED_BACK$' "${DEPLOY_STATE_DIR}/update-in-progress"; then
     echo '[BLOCKED] An interrupted or schema-blocked update requires explicit recovery review.' >&2
     cat "${DEPLOY_STATE_DIR}/update-in-progress" >&2
+    echo "To resolve, verify database schema and run:" >&2
+    echo "  sudo bybit-signals-deploy recover --repair" >&2
     exit 1
 fi
 if [[ "${DEPLOY_MODE:-pull}" == pull && "${ALLOW_TEST_PROJECT:-0}" != 1 ]]; then

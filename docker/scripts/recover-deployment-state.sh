@@ -68,6 +68,7 @@ DEPLOY_CURR_FILE="${DEPLOY_STATE_DIR}/.deploy-current"
 DEPLOY_PREV_FILE="${DEPLOY_STATE_DIR}/.deploy-previous"
 REL_CURR_FILE="${DEPLOY_STATE_DIR}/release-current"
 REL_PREV_FILE="${DEPLOY_STATE_DIR}/release-previous"
+PROGRESS_FILE="${DEPLOY_STATE_DIR}/update-in-progress"
 
 CURRENT_TAG=""
 PREVIOUS_TAG=""
@@ -195,6 +196,17 @@ if [[ "${MODE}" == "inspect" ]]; then
             echo "Active Journal Found: ${JOURNAL_FILE}"
         fi
         python3 -c "import json; data=json.load(open('${JOURNAL_FILE}')); print(f'  Recovery ID: {data.get(\"recovery_id\")} | State: {data.get(\"state\")} | Target: {data.get(\"target_tag\")}')" 2>/dev/null || true
+    fi
+    if [[ -f "${PROGRESS_FILE}" ]]; then
+        progress_val="$(<"${PROGRESS_FILE}")"
+        echo "Pending Update       : ${progress_val}"
+        if [[ ! "${progress_val}" =~ :[[:space:]]*ROLLED_BACK$ ]]; then
+            echo "Interrupted Update   : YES (Explicit Recovery Review Required)"
+        else
+            echo "Interrupted Update   : NO (Previously Rolled Back)"
+        fi
+    else
+        echo "Pending Update       : NONE"
     fi
     exit 0
 fi
@@ -445,6 +457,40 @@ if (( ! SKIP_READINESS )); then
 fi
 
 update_journal "HEALTHY" "{}"
+
+# Step 3.5: Reconcile and Resolve Interrupted Update Journal (if present)
+if [[ -f "${PROGRESS_FILE}" ]]; then
+    progress_val="$(<"${PROGRESS_FILE}")"
+    if [[ ! "${progress_val}" =~ :[[:space:]]*ROLLED_BACK$ ]]; then
+        echo "Interrupted update journal found: ${progress_val}"
+        echo "Verifying database schema consistency before resolving..."
+        schema_snapshot="${DEPLOY_STATE_DIR}/release-schemas/${TARGET_TAG}.schema.sha256"
+        migrations_snapshot="${DEPLOY_STATE_DIR}/release-schemas/${TARGET_TAG}.migrations"
+        schema_verified=1
+        if [[ "${SKIP_DOCKER_INSPECT:-0}" != "1" && -s "${schema_snapshot}" && -s "${migrations_snapshot}" ]]; then
+            actual_schema="$(schema_state 2>/dev/null || true)"
+            actual_migrations="$(migration_state 2>/dev/null || true)"
+            if [[ -n "${actual_schema}" && "${actual_schema}" != "$(<"${schema_snapshot}")" ]]; then
+                echo "[FATAL] Current PostgreSQL schema does not match known-good snapshot for ${TARGET_TAG}." >&2
+                schema_verified=0
+            fi
+            if [[ -n "${actual_migrations}" && "${actual_migrations}" != "$(<"${migrations_snapshot}")" ]]; then
+                echo "[FATAL] Current migrations do not match known-good snapshot for ${TARGET_TAG}." >&2
+                schema_verified=0
+            fi
+        fi
+
+        if (( ! schema_verified )); then
+            echo "[FATAL] Automatic resolution of interrupted update refused due to schema discrepancy." >&2
+            exit 1
+        fi
+
+        echo "Archiving interrupted update journal to update-in-progress-${RECOVERY_ID}.archived..."
+        mv -f "${PROGRESS_FILE}" "${DEPLOY_STATE_DIR}/update-in-progress-${RECOVERY_ID}.archived"
+        atomic_write "${PROGRESS_FILE}" "${TARGET_TAG}: ROLLED_BACK"
+        echo "Interrupted update journal resolved to ${TARGET_TAG}: ROLLED_BACK."
+    fi
+fi
 
 # Step 4: Atomic Commit
 FINAL_STATUS="CONSISTENT"

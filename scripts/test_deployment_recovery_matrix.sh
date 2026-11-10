@@ -846,6 +846,21 @@ else
         exit 1
     fi
 fi
+
+# Part B: Verify recover-deployment-state.sh --repair resolves the interrupted update journal
+if SKIP_DOCKER_INSPECT=1 DEPLOY_STATE_DIR="${SC15_DIR}" bash "${PROJECT_ROOT}/docker/scripts/recover-deployment-state.sh" \
+   --repair --skip-readiness >"${SC15_DIR}/repair.log" 2>&1; then
+    if grep -q ': ROLLED_BACK$' "${SC15_DIR}/update-in-progress"; then
+        echo "[PASS] SC-15: Interrupted update resolved to ROLLED_BACK by recover-deployment-state.sh."
+    else
+        echo "[FAIL] SC-15: update-in-progress was not marked ROLLED_BACK!"
+        exit 1
+    fi
+else
+    echo "[FAIL] SC-15: recover-deployment-state.sh repair failed:"
+    cat "${SC15_DIR}/repair.log"
+    exit 1
+fi
 assert_data_preserved "SC-15"
 
 # ==============================================================================

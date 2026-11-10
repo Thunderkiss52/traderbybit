@@ -120,8 +120,31 @@ fi
 if [[ "${MODE}" == "pre-deploy" && -f "${DEPLOY_STATE_DIR}/update-in-progress" ]]; then
     progress_content="$(<"${DEPLOY_STATE_DIR}/update-in-progress")"
     if [[ ! "${progress_content}" =~ :[[:space:]]*ROLLED_BACK$ ]]; then
+        failed_tag=""
+        failed_regex='->[[:space:]]*(sha-[0-9a-f]{40}):'
+        if [[ "${progress_content}" =~ ${failed_regex} ]]; then
+            failed_tag="${BASH_REMATCH[1]}"
+        fi
+        req_new_tag="${NEW_IMAGE_TAG:-${VALIDATE_IMAGE_TAG:-}}"
+        if [[ "${AUTO_RECOVER_ON_DEPLOY:-0}" == "1" && -n "${failed_tag}" && -n "${req_new_tag}" && "${req_new_tag}" != "${failed_tag}" ]]; then
+            echo "[INFO] Detected pending interrupted update from prior failed release (${failed_tag})." >&2
+            echo "[INFO] AUTO_RECOVER_ON_DEPLOY=1 active: executing automated recovery review before proceeding..." >&2
+            extra_recovery_flags=()
+            if [[ "${SKIP_READINESS:-0}" == "1" ]]; then
+                extra_recovery_flags+=(--skip-readiness)
+            fi
+            if AUTO_RECOVER_ON_DEPLOY=0 bash "${SCRIPT_DIR}/recover-deployment-state.sh" --repair "${extra_recovery_flags[@]}"; then
+                echo "[INFO] Automated recovery review successfully verified system and resolved journal. Re-verifying..." >&2
+                exec bash "${BASH_SOURCE[0]}" pre-deploy
+            else
+                echo "[FATAL] Automated recovery review failed." >&2
+                exit 1
+            fi
+        fi
         echo "[FATAL] An interrupted or schema-blocked update is pending in ${DEPLOY_STATE_DIR}/update-in-progress: ${progress_content}" >&2
         echo "Deployment halted fail-closed before any container or database modifications." >&2
+        echo "To recover, run:" >&2
+        echo "  sudo DEPLOY_STATE_DIR=\"${DEPLOY_STATE_DIR}\" ENV_FILE=\"${ENV_FILE}\" \"\${RELEASE_DIR}/docker/scripts/recover-deployment-state.sh\" --repair" >&2
         exit 1
     fi
 fi

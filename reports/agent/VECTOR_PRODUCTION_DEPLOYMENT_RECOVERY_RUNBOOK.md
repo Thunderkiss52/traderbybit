@@ -105,6 +105,12 @@ The following fixes have been implemented, verified, and integrated into the rep
 - Wrapper checks newest unpacked release directory for `recover-deployment-state.sh` before falling back to `current`.
 - Emits clear recovery instructions if pre-deployment checks fail.
 
+### 3.6 Interrupted Update Journal Resolution in `recover-deployment-state.sh`
+- Inspect mode displays pending `update-in-progress` and indicates whether explicit recovery review is required.
+- In repair mode, verifies database schema integrity against `TARGET_TAG` before resolving.
+- Archives interrupted journal to `update-in-progress-<recovery_id>.archived` and transitions status to `${TARGET_TAG}: ROLLED_BACK`.
+- Under `AUTO_RECOVER_ON_DEPLOY=1`, pre-deploy validation automatically initiates recovery review when deploying a new candidate release if the running containers and database schema match the baseline release.
+
 ---
 
 ## 4. Production Recovery Runbook
