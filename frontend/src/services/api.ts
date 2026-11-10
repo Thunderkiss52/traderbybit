@@ -15,6 +15,13 @@ api.interceptors.request.use(config => {
     const saved = JSON.parse(localStorage.getItem('ui-settings') || '{}');
     const exchange = saved.exchange || 'bybit';
     config.headers['X-Exchange'] = exchange;
+    const instrument = saved.instrument || 'all';
+    config.headers['X-Instrument'] = instrument;
+    if (instrument === 'BTC') {
+      config.headers['X-Symbol'] = 'BTCUSDT';
+    } else if (instrument === 'ETH') {
+      config.headers['X-Symbol'] = 'ETHUSDT';
+    }
   } catch {
     // ignore
   }

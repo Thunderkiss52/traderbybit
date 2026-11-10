@@ -13,7 +13,7 @@ const error = ref('');
 
 const selectedExchange = ref<string>(settings.exchange || '');
 const selectedStrategy = ref<string>('');
-const selectedSymbol = ref<string>('');
+const selectedSymbol = ref<string>(settings.resolvedSymbol || '');
 const selectedSide = ref<string>('');
 const selectedQuality = ref<string>('');
 const selectedRisk = ref<string>('');
@@ -173,6 +173,9 @@ watch(() => settings.exchange, (newVal) => {
   if (newVal !== selectedExchange.value) {
     selectedExchange.value = newVal;
   }
+});
+watch(() => settings.instrument, () => {
+  selectedSymbol.value = settings.resolvedSymbol || '';
 });
 
 onMounted(() => {

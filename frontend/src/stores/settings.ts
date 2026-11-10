@@ -18,6 +18,12 @@ export interface ExchangeConnectivity {
   detail?: string;
 }
 
+export interface InstrumentOption {
+  id: string;
+  name: string;
+  symbol: string;
+}
+
 export const useSettings = defineStore('settings', () => {
   const saved = JSON.parse(localStorage.getItem('ui-settings') || '{}');
   const locale = ref(saved.locale || 'ru');
@@ -29,6 +35,27 @@ export const useSettings = defineStore('settings', () => {
   const preferredSymbol = ref(saved.preferredSymbol || 'BTCUSDT');
   const preferredInterval = ref(saved.preferredInterval || '15');
   const exchange = ref<string>(saved.exchange || 'bybit');
+  const instrument = ref<string>(saved.instrument || 'all');
+
+  const availableInstruments = ref<InstrumentOption[]>([
+    { id: 'all', name: 'All Instruments', symbol: 'ALL' },
+    { id: 'BTC', name: 'BTC · Bitcoin', symbol: 'BTCUSDT' },
+    { id: 'ETH', name: 'ETH · Ethereum', symbol: 'ETHUSDT' },
+  ]);
+
+  const selectedInstrumentRecord = computed(() => {
+    return availableInstruments.value.find((i) => i.id === instrument.value);
+  });
+
+  const selectedInstrumentName = computed(() => {
+    return selectedInstrumentRecord.value?.name || (instrument.value === 'all' ? 'All Instruments' : instrument.value);
+  });
+
+  const resolvedSymbol = computed(() => {
+    if (instrument.value === 'BTC') return 'BTCUSDT';
+    if (instrument.value === 'ETH') return 'ETHUSDT';
+    return '';
+  });
 
   const availableExchanges = ref<ExchangeOption[]>([
     { id: 'bybit', name: 'Bybit', lifecycle_status: 'ACTIVE_PAPER', paper_approved: true },
@@ -133,20 +160,21 @@ export const useSettings = defineStore('settings', () => {
   });
 
   watch(
-    [locale, dark, timezone, numberLocale, autoRefresh, account, preferredSymbol, preferredInterval, exchange],
+    [locale, dark, timezone, numberLocale, autoRefresh, account, preferredSymbol, preferredInterval, exchange, instrument],
     () => localStorage.setItem('ui-settings', JSON.stringify({
       locale: locale.value, dark: dark.value, timezone: timezone.value,
       numberLocale: numberLocale.value, autoRefresh: autoRefresh.value, account: account.value,
       preferredSymbol: preferredSymbol.value, preferredInterval: preferredInterval.value,
-      exchange: exchange.value,
+      exchange: exchange.value, instrument: instrument.value,
     })),
     { deep: true },
   );
 
   return {
     locale, dark, timezone, numberLocale, autoRefresh, account,
-    preferredSymbol, preferredInterval, exchange,
+    preferredSymbol, preferredInterval, exchange, instrument,
     availableExchanges, selectedExchangeRecord, selectedExchangeName, selectedExchangeStatus,
+    availableInstruments, selectedInstrumentRecord, selectedInstrumentName, resolvedSymbol,
     connectivity, checkConnectivity,
     loadExchanges,
   };

@@ -52,9 +52,14 @@ const fetchStatistics = async () => {
       equity_page: equityPage.value,
       r_page: rPage.value,
       period_page: periodPage.value,
+      exchange: settings.exchange,
     };
     if (selectedAccount.value) {
       params.account = selectedAccount.value;
+    }
+    if (settings.instrument && settings.instrument !== 'all') {
+      params.instrument = settings.instrument;
+      if (settings.resolvedSymbol) params.symbol = settings.resolvedSymbol;
     }
     const res: any = await get('/statistics', params, statsController.signal);
     if (current === statsVersion && res && typeof res === 'object') {
@@ -93,6 +98,13 @@ watch(() => settings.account, (val) => {
 });
 watch(() => settings.exchange, () => {
   selectedAccount.value = '';
+  equityPage.value = 1;
+  rPage.value = 1;
+  periodPage.value = 1;
+  fetchStatistics();
+});
+
+watch(() => settings.instrument, () => {
   equityPage.value = 1;
   rPage.value = 1;
   periodPage.value = 1;

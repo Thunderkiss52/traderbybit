@@ -111,9 +111,14 @@ async function loadDashboard() {
   dashboardController = new AbortController();
   const current = ++reqVersion;
   try {
-    const params = selectedAccount.value && selectedAccount.value !== 'all'
-      ? { account: selectedAccount.value }
-      : { account: 'all' };
+    const params: Record<string, string> = {
+      account: selectedAccount.value && selectedAccount.value !== 'all' ? selectedAccount.value : 'all',
+      exchange: settings.exchange,
+    };
+    if (settings.instrument && settings.instrument !== 'all') {
+      params.instrument = settings.instrument;
+      if (settings.resolvedSymbol) params.symbol = settings.resolvedSymbol;
+    }
     const res = await get<any>('/dashboard', params, dashboardController.signal);
     if (current === reqVersion && res) {
       data.value = res;
@@ -143,6 +148,10 @@ watch(() => settings.exchange, () => {
   selectedAccount.value = 'all';
   loadDashboard();
   loadExchangeComparison();
+});
+
+watch(() => settings.instrument, () => {
+  loadDashboard();
 });
 
 const { autoRefresh } = storeToRefs(useSettings());

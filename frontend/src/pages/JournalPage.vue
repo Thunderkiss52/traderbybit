@@ -39,6 +39,7 @@ async function loadJournal() {
   try {
     const result: any = await get('/journal', {
       page: page.value, per_page: 10, period_days: days.value,
+      exchange: settings.exchange,
       ...(account.value ? { account: account.value } : {}),
       ...(eventType.value ? { event_type: eventType.value } : {}),
     }, controller.signal);
@@ -82,6 +83,9 @@ watch(() => settings.exchange, () => {
   account.value = '';
   page.value = 1;
   reloadAccounts();
+  loadJournal();
+});
+watch(() => settings.instrument, () => {
   loadJournal();
 });
 watch([days, account, eventType], resetPage);

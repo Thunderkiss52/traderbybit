@@ -105,9 +105,14 @@ async function load() {
       page: page.value,
       search: search.value,
       per_page: pageSize.value,
+      exchange: settings.exchange,
     };
     if (selectedAccount.value) {
       params.account = selectedAccount.value;
+    }
+    if (settings.instrument && settings.instrument !== 'all') {
+      params.instrument = settings.instrument;
+      if (settings.resolvedSymbol) params.symbol = settings.resolvedSymbol;
     }
     const response: any = await get(
       endpoint.value,
@@ -170,6 +175,11 @@ watch(() => settings.exchange, () => {
   selectedAccount.value = '';
   page.value = 1;
   reloadAccounts();
+  load();
+});
+
+watch(() => settings.instrument, () => {
+  page.value = 1;
   load();
 });
 

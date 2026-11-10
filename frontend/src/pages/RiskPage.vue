@@ -66,7 +66,12 @@ async function load() {
     const params: Record<string, unknown> = {
       page: page.value,
       per_page: 10,
+      exchange: settings.exchange,
     };
+    if (settings.instrument && settings.instrument !== 'all') {
+      params.instrument = settings.instrument;
+      if (settings.resolvedSymbol) params.symbol = settings.resolvedSymbol;
+    }
     if (selectedAccount.value && selectedAccount.value !== 'all') {
       params.account = selectedAccount.value;
     } else if (selectedAccount.value === 'all') {
@@ -114,6 +119,11 @@ watch(() => settings.account, (val) => {
 
 watch(() => settings.exchange, () => {
   selectedAccount.value = '';
+  page.value = 1;
+  load();
+});
+
+watch(() => settings.instrument, () => {
   page.value = 1;
   load();
 });

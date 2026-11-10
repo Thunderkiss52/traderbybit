@@ -76,7 +76,9 @@ final class ProfitabilityResearchController extends Controller
     public function summary(Request $request): JsonResponse
     {
         $asOf = CarbonImmutable::now('UTC');
-        $accounts = $this->getPrimaryAccountsReadOnly();
+        $exchange = $this->resolveExchange($request);
+        $symbol = $this->resolveSymbol($request);
+        $accounts = $this->getPrimaryAccountsReadOnly($exchange);
 
         $primaryAccountIds = $accounts->pluck('id')->filter()->all();
 
@@ -130,11 +132,34 @@ final class ProfitabilityResearchController extends Controller
         }
 
         // 2. Full-lifecycle population economics (strictly isolated from window totals)
-        $allPositions = VirtualPositionRecord::query()
-            ->whereIn('paper_account_id', $primaryAccountIds)
-            ->get();
+        $positionsQuery = VirtualPositionRecord::query()
+            ->whereIn('paper_account_id', $primaryAccountIds);
+        if ($exchange !== 'all') {
+            $positionsQuery->where('exchange_id', $exchange);
+        }
+        if ($symbol !== null) {
+            $positionsQuery->where('symbol', $symbol);
+        }
+        $allPositions = $positionsQuery->get();
 
         $lifecycleEconomics = $this->lifecycleEconomics($allPositions, $asOf);
+
+        // Breakdown by exchange across filtered positions
+        $breakdownByExchange = [];
+        $positionsByExchange = $allPositions->groupBy('exchange_id');
+        foreach ($positionsByExchange as $exId => $exPositions) {
+            $exEcon = $this->lifecycleEconomics($exPositions, $asOf);
+            $breakdownByExchange[$exId] = [
+                'exchange_id' => (string) $exId,
+                'total_positions' => $exEcon['total_positions'],
+                'gross_pnl' => (string) $exEcon['gross_pnl'],
+                'fees' => (string) $exEcon['fees'],
+                'signed_funding' => (string) $exEcon['signed_funding'],
+                'net_pnl' => (string) $exEcon['net_pnl'],
+                'win_rate' => $exEcon['win_rate'],
+                'profit_factor' => $exEcon['profit_factor'],
+            ];
+        }
 
         // 3. Execution-level slippage price delta diagnostic
         $executions = VirtualExecutionRecord::query()
@@ -179,6 +204,8 @@ final class ProfitabilityResearchController extends Controller
                         'win_rate' => $lifecycleEconomics['win_rate'],
                         'counts' => $lifecycleEconomics['counts'],
                         'r_metrics' => $lifecycleEconomics['r_metrics'],
+                        'breakdown_by_symbol' => $lifecycleEconomics['breakdown_by_symbol'],
+                        'breakdown_by_exchange' => $breakdownByExchange,
                         'provenance' => 'RECOMPUTED_FROM_SOURCE',
                     ],
                     'execution_slippage_diagnostic' => [
@@ -189,6 +216,11 @@ final class ProfitabilityResearchController extends Controller
                         'double_deduction_prohibited' => true,
                         'diagnostic_warning' => 'Fill prices already reflect slippage. This dollar drag must NOT be subtracted from Net PnL a second time.',
                     ],
+                ],
+                'filters' => [
+                    'exchange' => $exchange,
+                    'symbol' => $symbol ?? 'ALL',
+                    'instrument' => $request->header('X-Instrument') ?: $request->string('instrument')->toString() ?: 'all',
                 ],
                 'gated_modules' => [
                     'P-1' => ['name' => 'Slippage Attribution', 'status' => 'IMPLEMENTED_VERIFIED', 'authorized' => true],
@@ -222,16 +254,21 @@ final class ProfitabilityResearchController extends Controller
      */
     public function strategies(Request $request): JsonResponse
     {
-        $accounts = $this->getPrimaryAccountsReadOnly();
+        $exchange = $this->resolveExchange($request);
+        $symbol = $this->resolveSymbol($request);
+        $accounts = $this->getPrimaryAccountsReadOnly($exchange);
         $asOf = CarbonImmutable::now('UTC');
 
         $result = [];
 
         foreach ($accounts as $account) {
             $strategyId = $account->primary_strategy_id ?? $account->strategy_id;
-            $positions = VirtualPositionRecord::query()
-                ->where('paper_account_id', $account->id)
-                ->get();
+            $posQuery = VirtualPositionRecord::query()
+                ->where('paper_account_id', $account->id);
+            if ($symbol !== null) {
+                $posQuery->where('symbol', $symbol);
+            }
+            $positions = $posQuery->get();
 
             $economics = $this->lifecycleEconomics($positions, $asOf);
 
@@ -239,6 +276,7 @@ final class ProfitabilityResearchController extends Controller
                 'strategy_id' => $strategyId,
                 'account_id' => $account->id,
                 'name' => $account->name,
+                'exchange_id' => (string) $account->exchange_id,
                 'point_in_time' => [
                     'scope' => 'POINT_IN_TIME',
                     'starting_balance' => (string) $account->starting_balance,
@@ -256,6 +294,7 @@ final class ProfitabilityResearchController extends Controller
                     'net_pnl' => (string) $economics['net_pnl'],
                     'win_rate' => $economics['win_rate'],
                     'profit_factor' => $economics['profit_factor'],
+                    'breakdown_by_symbol' => $economics['breakdown_by_symbol'],
                 ],
             ];
         }
@@ -264,6 +303,11 @@ final class ProfitabilityResearchController extends Controller
             'status' => 'SUCCESS',
             'data' => [
                 'as_of' => $asOf->toIso8601String(),
+                'filters' => [
+                    'exchange' => $exchange,
+                    'symbol' => $symbol ?? 'ALL',
+                    'instrument' => $request->header('X-Instrument') ?: $request->string('instrument')->toString() ?: 'all',
+                ],
                 'strategies' => $result,
             ],
         ]);
@@ -275,13 +319,17 @@ final class ProfitabilityResearchController extends Controller
      */
     public function strategyDetail(string $strategyId, Request $request): JsonResponse
     {
-        $account = PaperAccountRecord::query()
-            ->where('exchange_id', 'bybit')
-            ->where(function ($query) use ($strategyId): void {
-                $query->where('primary_strategy_id', $strategyId)
-                    ->orWhere('strategy_id', $strategyId);
-            })
-            ->first();
+        $exchange = $this->resolveExchange($request);
+        $symbol = $this->resolveSymbol($request);
+
+        $accQuery = PaperAccountRecord::query();
+        if ($exchange !== 'all') {
+            $accQuery->where('exchange_id', $exchange);
+        }
+        $account = $accQuery->where(function ($query) use ($strategyId): void {
+            $query->where('primary_strategy_id', $strategyId)
+                ->orWhere('strategy_id', $strategyId);
+        })->first();
 
         if ($account === null) {
             return response()->json([
@@ -293,10 +341,12 @@ final class ProfitabilityResearchController extends Controller
         }
 
         $asOf = CarbonImmutable::now('UTC');
-        $positions = VirtualPositionRecord::query()
-            ->where('paper_account_id', $account->id)
-            ->orderByDesc('opened_at')
-            ->get();
+        $posQuery = VirtualPositionRecord::query()
+            ->where('paper_account_id', $account->id);
+        if ($symbol !== null) {
+            $posQuery->where('symbol', $symbol);
+        }
+        $positions = $posQuery->orderByDesc('opened_at')->get();
 
         $lifecycleEconomics = $this->lifecycleEconomics($positions, $asOf);
 
@@ -887,16 +937,57 @@ final class ProfitabilityResearchController extends Controller
     /**
      * @return Collection<int, PaperAccountRecord>
      */
-    private function getPrimaryAccountsReadOnly(): Collection
+    private function resolveExchange(Request $request): string
+    {
+        $exchange = $request->header('X-Exchange') ?: $request->string('exchange')->toString();
+        if ($exchange === '' || $exchange === 'bybit') {
+            return 'bybit';
+        }
+        if ($exchange === 'all') {
+            return 'all';
+        }
+        $registered = app(\App\Exchanges\ExchangeRegistry::class)->registeredIds();
+
+        return in_array($exchange, $registered, true) ? $exchange : 'bybit';
+    }
+
+    private function resolveSymbol(Request $request): ?string
+    {
+        $symbol = $request->header('X-Symbol') ?: $request->string('symbol')->toString();
+        $instrument = $request->header('X-Instrument') ?: $request->string('instrument')->toString();
+
+        if ($symbol !== '' && $symbol !== 'all' && $symbol !== 'ALL') {
+            $sym = strtoupper($symbol);
+            if (in_array($sym, config('ui.symbols', ['BTCUSDT', 'ETHUSDT']), true)) {
+                return $sym;
+            }
+        }
+
+        if ($instrument === 'BTC' || strtoupper($instrument) === 'BTCUSDT') {
+            return 'BTCUSDT';
+        }
+        if ($instrument === 'ETH' || strtoupper($instrument) === 'ETHUSDT') {
+            return 'ETHUSDT';
+        }
+
+        return null;
+    }
+
+    private function getPrimaryAccountsReadOnly(?string $exchange = 'bybit'): Collection
     {
         // Read endpoints must never provision or repair accounts. Missing primary
         // accounts are surfaced through an empty/incomplete response; provisioning
         // belongs to migrations, scheduled jobs or explicit mutation endpoints.
-        return PaperAccountRecord::query()
+        $query = PaperAccountRecord::query()
             ->where('is_primary', true)
-            ->where('exchange_id', 'bybit')
             ->whereIn('primary_strategy_id', $this->primaryStrategies())
-            ->orderBy('primary_strategy_id')
-            ->get();
+            ->orderBy('exchange_id')
+            ->orderBy('primary_strategy_id');
+
+        if ($exchange !== null && $exchange !== '' && $exchange !== 'all') {
+            $query->where('exchange_id', $exchange);
+        }
+
+        return $query->get();
     }
 }

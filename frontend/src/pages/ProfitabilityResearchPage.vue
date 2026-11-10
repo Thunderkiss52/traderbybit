@@ -1,9 +1,11 @@
 <script setup lang="ts">
-import { computed, onMounted, ref } from 'vue';
+import { computed, onMounted, ref, watch } from 'vue';
 import { get } from '../services/api';
 import { requirePayload } from '../profitabilityContract';
 import { counterfactualView, formatMetric } from '../researchSemantics';
+import { useSettings } from '../stores/settings';
 
+const s = useSettings();
 const activeTab = ref('finance');
 const loading = ref(false);
 const error = ref('');
@@ -22,6 +24,16 @@ const slippageTotalDrag = computed(() => (
   ?? null
 ));
 
+// Symbol breakdown from lifecycle economics
+const symbolBreakdown = computed(() => {
+  return summaryData.value?.accounting_scopes?.full_lifecycle_economics?.breakdown_by_symbol || {};
+});
+
+// Exchange breakdown from lifecycle economics
+const exchangeBreakdown = computed(() => {
+  return summaryData.value?.accounting_scopes?.full_lifecycle_economics?.breakdown_by_exchange || {};
+});
+
 // Position Trace Dialog State
 const showTraceDialog = ref(false);
 const traceLoading = ref(false);
@@ -37,10 +49,16 @@ async function loadData() {
   summaryData.value = registryData.value = slippageData.value = null;
   error.value = '';
   try {
+    const params: Record<string, string> = {};
+    if (s.exchange) params.exchange = s.exchange;
+    if (s.instrument && s.instrument !== 'all') {
+      params.instrument = s.instrument;
+      if (s.resolvedSymbol) params.symbol = s.resolvedSymbol;
+    }
     const [summaryRes, registryRes, slippageRes] = await Promise.all([
-      get('/research/profitability/summary'),
-      get('/research/profitability/metric-registry'),
-      get('/research/profitability/slippage-attribution'),
+      get('/research/profitability/summary', params),
+      get('/research/profitability/metric-registry', params),
+      get('/research/profitability/slippage-attribution', params),
     ]);
     if (version !== loadVersion) return;
     const summary = requirePayload(summaryRes, ['accounting_scopes', 'as_of']);
@@ -56,6 +74,13 @@ async function loadData() {
     if (version === loadVersion) loading.value = false;
   }
 }
+
+watch(() => s.exchange, () => {
+  void loadData();
+});
+watch(() => s.instrument, () => {
+  void loadData();
+});
 
 async function openPositionTrace(positionId: string) {
   if (!positionId) return;
@@ -134,6 +159,31 @@ onMounted(() => {
     </q-banner>
 
     <q-banner v-if="availability !== 'AVAILABLE'" dense class="q-mb-md">{{ availability }}</q-banner>
+
+    <!-- Active Scope Toolbar -->
+    <div class="row items-center q-gutter-sm q-mb-md bg-grey-10 q-pa-sm rounded-borders">
+      <div class="text-caption text-bold text-grey-4">ОБЛАСТЬ АНАЛИЗА:</div>
+      <q-chip
+        dense
+        color="primary"
+        text-color="white"
+        icon="currency_exchange"
+      >
+        Биржа: {{ s.selectedExchangeName }}
+      </q-chip>
+      <q-chip
+        dense
+        :color="s.instrument !== 'all' ? 'indigo-7' : 'grey-8'"
+        text-color="white"
+        icon="toll"
+      >
+        Инструмент: {{ s.selectedInstrumentName }}
+      </q-chip>
+      <q-space />
+      <div class="text-caption text-grey-5">
+        {{ s.exchange === 'all' ? 'Кросс-биржевой агрегат' : s.selectedExchangeName }} · {{ s.instrument === 'all' ? 'Все инструменты (BTC + ETH)' : s.resolvedSymbol }}
+      </div>
+    </div>
 
     <!-- Top KPI Cards -->
     <div class="row q-col-gutter-md q-mb-md">
@@ -260,6 +310,68 @@ onMounted(() => {
                   <div class="text-subtitle2">{{ summaryData?.accounting_scopes?.execution_slippage_diagnostic?.stored_slippage_unit || 'USDT_PER_CONTRACT_PRICE_DELTA' }}</div>
                 </div>
               </div>
+            </q-card>
+          </div>
+
+          <!-- Instrument Attribution: BTC vs ETH -->
+          <div class="col-12 col-md-6">
+            <q-card flat bordered class="q-pa-md">
+              <div class="row items-center justify-between q-mb-sm">
+                <div class="text-subtitle1 text-bold">Атрибуция по инструментам (BTC vs ETH)</div>
+                <q-badge color="indigo-7" :label="s.instrument === 'all' ? 'Все инструменты' : s.resolvedSymbol" />
+              </div>
+              <div v-if="Object.keys(symbolBreakdown).length === 0" class="text-caption text-grey-6">
+                Нет данных по сделкам для выбранного диапазона.
+              </div>
+              <q-list v-else dense separator>
+                <q-item v-for="(symData, symKey) in symbolBreakdown" :key="symKey">
+                  <q-item-section>
+                    <q-item-label class="text-bold">{{ symKey }}</q-item-label>
+                    <q-item-label caption class="text-grey-5">
+                      Сделок: {{ symData.total_positions || symData.trades || 0 }} · Винрейт: {{ symData.win_rate != null ? (Number(symData.win_rate) * 100).toFixed(1) + '%' : '—' }}
+                    </q-item-label>
+                  </q-item-section>
+                  <q-item-section side>
+                    <div class="text-bold" :class="Number(symData.net_pnl) >= 0 ? 'text-positive' : 'text-negative'">
+                      {{ Number(symData.net_pnl).toFixed(2) }} USDT
+                    </div>
+                    <div class="text-caption text-grey-5">
+                      Fees: {{ Number(symData.fees || 0).toFixed(2) }}
+                    </div>
+                  </q-item-section>
+                </q-item>
+              </q-list>
+            </q-card>
+          </div>
+
+          <!-- Exchange Attribution -->
+          <div class="col-12 col-md-6">
+            <q-card flat bordered class="q-pa-md">
+              <div class="row items-center justify-between q-mb-sm">
+                <div class="text-subtitle1 text-bold">Атрибуция по биржам (Exchange Isolation)</div>
+                <q-badge color="primary" :label="s.selectedExchangeName" />
+              </div>
+              <div v-if="Object.keys(exchangeBreakdown).length === 0" class="text-caption text-grey-6">
+                {{ s.selectedExchangeName }}: позиции в изолированном контуре учета.
+              </div>
+              <q-list v-else dense separator>
+                <q-item v-for="(exData, exKey) in exchangeBreakdown" :key="exKey">
+                  <q-item-section>
+                    <q-item-label class="text-bold text-uppercase">{{ exKey }}</q-item-label>
+                    <q-item-label caption class="text-grey-5">
+                      Позиций: {{ exData.total_positions }} · WinRate: {{ exData.win_rate != null ? (Number(exData.win_rate) * 100).toFixed(1) + '%' : '—' }}
+                    </q-item-label>
+                  </q-item-section>
+                  <q-item-section side>
+                    <div class="text-bold" :class="Number(exData.net_pnl) >= 0 ? 'text-positive' : 'text-negative'">
+                      {{ Number(exData.net_pnl).toFixed(2) }} USDT
+                    </div>
+                    <div class="text-caption text-grey-5">
+                      Fees: {{ Number(exData.fees || 0).toFixed(2) }}
+                    </div>
+                  </q-item-section>
+                </q-item>
+              </q-list>
             </q-card>
           </div>
         </div>

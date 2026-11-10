@@ -153,6 +153,50 @@ const links = [
             class="q-pa-xs text-bold"
           />
 
+          <!-- Global Instrument Selector Dropdown -->
+          <q-btn-dropdown
+            dense
+            no-caps
+            unelevated
+            rounded
+            color="grey-9"
+            text-color="grey-2"
+            icon="toll"
+            :label="s.selectedInstrumentName"
+            data-testid="global-instrument-dropdown"
+          >
+            <q-list style="min-width: 200px">
+              <q-item-label header class="text-weight-bold">Trading Instruments</q-item-label>
+
+              <q-item
+                v-for="inst in s.availableInstruments"
+                :key="inst.id"
+                clickable
+                v-close-popup
+                @click="s.instrument = inst.id"
+                :active="s.instrument === inst.id"
+                active-class="bg-blue-grey-10"
+              >
+                <q-item-section avatar style="min-width: 32px">
+                  <q-icon v-if="s.instrument === inst.id" name="check" color="primary" />
+                </q-item-section>
+                <q-item-section>
+                  <q-item-label class="text-weight-medium">{{ inst.name }}</q-item-label>
+                  <q-item-label caption class="text-grey-5">{{ inst.symbol }}</q-item-label>
+                </q-item-section>
+              </q-item>
+            </q-list>
+          </q-btn-dropdown>
+
+          <!-- Selected Instrument Badge when filtered -->
+          <q-badge
+            v-if="s.instrument !== 'all'"
+            color="indigo-7"
+            :label="s.resolvedSymbol"
+            class="q-pa-xs text-bold"
+            data-testid="global-instrument-badge"
+          />
+
           <!-- Market Data Connectivity Indicator (Truthful backend feed health: LIVE, STALE, OFFLINE, UNKNOWN) -->
           <q-chip
             dense

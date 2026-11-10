@@ -41,12 +41,22 @@ final class StrategyMonitorController extends Controller
         $exchange = $request->header('X-Exchange') ?: $request->string('exchange')->toString();
         $registeredIds = $exchanges->registeredIds();
 
-        if ($exchange !== '' && ! in_array($exchange, $registeredIds, true)) {
+        if ($exchange !== '' && $exchange !== 'all' && ! in_array($exchange, $registeredIds, true)) {
             return $this->badRequest('unsupported_exchange', "Exchange '{$exchange}' is not registered.");
         }
 
         $strategyId = $request->string('strategy_id')->toString();
         $symbol = strtoupper($request->string('symbol')->toString());
+        if ($symbol === '' || $symbol === 'ALL') {
+            $symHeader = $request->header('X-Symbol') ?: $request->header('X-Instrument') ?: $request->string('instrument')->toString();
+            if ($symHeader === 'BTC' || strtoupper($symHeader) === 'BTCUSDT') {
+                $symbol = 'BTCUSDT';
+            } elseif ($symHeader === 'ETH' || strtoupper($symHeader) === 'ETHUSDT') {
+                $symbol = 'ETHUSDT';
+            } else {
+                $symbol = '';
+            }
+        }
         $side = strtoupper($request->string('side')->toString());
         $quality = strtoupper($request->string('quality')->toString());
         $risk = strtoupper($request->string('risk')->toString());
@@ -58,7 +68,7 @@ final class StrategyMonitorController extends Controller
         $posQuery = VirtualPositionRecord::query();
         $riskQuery = RiskDecisionRecord::query();
 
-        if ($exchange !== '') {
+        if ($exchange !== '' && $exchange !== 'all') {
             $obsQuery->where('exchange', $exchange);
             $sigQuery->where('exchange', $exchange);
             $posQuery->where('exchange_id', $exchange);

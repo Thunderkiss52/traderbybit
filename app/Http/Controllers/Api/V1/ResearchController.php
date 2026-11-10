@@ -97,28 +97,64 @@ final class ResearchController extends Controller
         return max(1, min(100, $request->integer('per_page', 10)));
     }
 
-    private function resolveExchange(Request $request): string
+    private function resolveExchange(Request $request, bool $allowAll = true): string
     {
-        $exchange = $request->header('X-Exchange') ?: $request->string('exchange', 'bybit')->toString();
+        $exchange = $request->header('X-Exchange') ?: $request->string('exchange')->toString();
+        if ($exchange === '') {
+            return 'bybit';
+        }
+        if ($allowAll && $exchange === 'all') {
+            return 'all';
+        }
         $registered = app(ExchangeRegistry::class)->registeredIds();
 
         return in_array($exchange, $registered, true) ? $exchange : 'bybit';
     }
 
+    private function resolveSymbol(Request $request): ?string
+    {
+        $symbol = $request->header('X-Symbol') ?: $request->string('symbol')->toString();
+        $instrument = $request->header('X-Instrument') ?: $request->string('instrument')->toString();
+
+        if ($symbol !== '' && $symbol !== 'all' && $symbol !== 'ALL') {
+            $sym = strtoupper($symbol);
+            if (in_array($sym, config('ui.symbols', ['BTCUSDT', 'ETHUSDT']), true)) {
+                return $sym;
+            }
+        }
+
+        if ($instrument === 'BTC' || strtoupper($instrument) === 'BTCUSDT') {
+            return 'BTCUSDT';
+        }
+        if ($instrument === 'ETH' || strtoupper($instrument) === 'ETHUSDT') {
+            return 'ETHUSDT';
+        }
+
+        return null;
+    }
+
     public function dashboard(Request $request, PerformanceStatisticsService $statistics, StrategyRegistry $strategies): ResearchResource
     {
-        $exchange = $this->resolveExchange($request);
+        $exchange = $this->resolveExchange($request, true);
+        $symbol = $this->resolveSymbol($request);
         $requestedAccount = $request->string('account')->toString();
 
         $cacheAccountKey = $requestedAccount !== '' ? $requestedAccount : 'default';
-        $cacheKey = "paper:dashboard:full_payload:{$exchange}:{$cacheAccountKey}:v10";
-        $payload = Cache::remember($cacheKey, 10, function () use ($statistics, $strategies, $exchange, $requestedAccount): array {
-            $primaryAccounts = PaperAccountRecord::query()->where('exchange_id', $exchange)->where('is_primary', true)->orderBy('name')->get();
+        $cacheSymbolKey = $symbol ?? 'all';
+        $cacheKey = "paper:dashboard:full_payload:{$exchange}:{$cacheSymbolKey}:{$cacheAccountKey}:v12";
+        $payload = Cache::remember($cacheKey, 10, function () use ($statistics, $strategies, $exchange, $symbol, $cacheSymbolKey, $requestedAccount, $request): array {
+            $primaryAccountsQuery = PaperAccountRecord::query()->where('is_primary', true);
+            if ($exchange !== 'all') {
+                $primaryAccountsQuery->where('exchange_id', $exchange);
+            }
+            $primaryAccounts = $primaryAccountsQuery->orderBy('exchange_id')->orderBy('name')->get();
             if ($primaryAccounts->isEmpty()) {
-                $primaryAccounts = PaperAccountRecord::query()->where('exchange_id', $exchange)->orderBy('name')->get();
+                $primaryAccounts = PaperAccountRecord::query()
+                    ->when($exchange !== 'all', fn ($q) => $q->where('exchange_id', $exchange))
+                    ->orderBy('exchange_id')->orderBy('name')->get();
             }
 
-            // Aggregate metrics across all primary accounts on this exchange (13 Bybit or 13 Binance)
+            // Aggregate metrics across all matching primary accounts
             $totalStarting = BigDecimal::zero();
             $totalRealized = BigDecimal::zero();
             $totalUnrealized = BigDecimal::zero();
@@ -140,6 +176,15 @@ final class ResearchController extends Controller
                 : (string) $totalNet->multipliedBy(100)->dividedBy($totalStarting, 8, RoundingMode::HalfEven);
             $availableCapital = (string) $totalCurrentEquity->minus($totalReservedRisk);
 
+            $openPositionsCount = VirtualPositionRecord::query()
+                ->when($exchange !== 'all', fn ($q) => $q->where('exchange_id', $exchange))
+                ->when($symbol !== null, fn ($q) => $q->where('symbol', $symbol))
+                ->whereNull('closed_at')->count();
+
+            $pendingSignalsCount = PaperSignalStateRecord::query()
+                ->when($exchange !== 'all', fn ($q) => $q->where('exchange_id', $exchange))
+                ->where('status', 'PENDING_ENTRY')->count();
+
             $aggregatePortfolio = [
                 'scope' => 'aggregate',
                 'is_aggregate' => true,
@@ -155,18 +200,20 @@ final class ResearchController extends Controller
                 'reserved_risk' => (string) $totalReservedRisk,
                 'total_return_percent' => $totalReturn,
                 'maximum_drawdown_percent' => (string) ($primaryAccounts->max('maximum_drawdown_percent') ?? '0'),
-                'open_positions' => VirtualPositionRecord::query()->where('exchange_id', $exchange)->whereNull('closed_at')->count(),
-                'pending_entry_signals' => PaperSignalStateRecord::query()->where('exchange_id', $exchange)->where('status', 'PENDING_ENTRY')->count(),
+                'open_positions' => $openPositionsCount,
+                'pending_entry_signals' => $pendingSignalsCount,
             ];
 
-            $isAggregateView = ($requestedAccount === 'all');
+            $isAggregateView = ($requestedAccount === 'all' || ($requestedAccount === '' && $exchange === 'all'));
             $selectedAccount = null;
 
             if (! $isAggregateView) {
                 if ($requestedAccount !== '') {
-                    $selectedAccount = PaperAccountRecord::query()->where('exchange_id', $exchange)->where('id', $requestedAccount)->first();
+                    $selectedAccount = PaperAccountRecord::query()
+                        ->when($exchange !== 'all', fn ($q) => $q->where('exchange_id', $exchange))
+                        ->where('id', $requestedAccount)->first();
                 }
-                if ($selectedAccount === null && $requestedAccount === '') {
+                if ($selectedAccount === null && $requestedAccount === '' && $exchange !== 'all') {
                     $selectedAccount = PaperAccountRecord::query()->where('exchange_id', $exchange)->oldest()->first();
                 }
             }
@@ -179,19 +226,29 @@ final class ResearchController extends Controller
                 'strategy_id' => $selectedAccount->primary_strategy_id ?? $selectedAccount->strategy_id,
                 'exchange_id' => $selectedAccount->exchange_id,
                 'status' => $selectedAccount->status,
-                'open_positions' => VirtualPositionRecord::query()->where('paper_account_id', $selectedAccount->id)->whereNull('closed_at')->count(),
+                'open_positions' => VirtualPositionRecord::query()
+                    ->where('paper_account_id', $selectedAccount->id)
+                    ->when($symbol !== null, fn ($q) => $q->where('symbol', $symbol))
+                    ->whereNull('closed_at')->count(),
                 'pending_entry_signals' => PaperSignalStateRecord::query()->where('paper_account_id', $selectedAccount->id)->where('status', 'PENDING_ENTRY')->count(),
             ]) : null;
 
             $activePortfolio = $isAggregateView ? $aggregatePortfolio : ($accountPortfolio ?? $aggregatePortfolio);
 
-            $contexts = collect(config('ui.symbols'))->map(
-                static fn (string $symbol) => MarketContextRecord::query()->where('exchange', $exchange)->where('symbol', $symbol)->latest('observed_at')->first()
+            $contextSymbols = $symbol !== null ? [$symbol] : config('ui.symbols');
+            $contexts = collect($contextSymbols)->map(
+                static fn (string $sym) => MarketContextRecord::query()
+                    ->when($exchange !== 'all', fn ($q) => $q->where('exchange', $exchange))
+                    ->where('symbol', $sym)->latest('observed_at')->first()
             )->filter()->values();
-            $skipReasons = Cache::remember("paper:dashboard:skip_reasons_24h:{$exchange}", 60, function () use ($exchange): array {
-                $recentSkips = SignalRecord::query()->where('exchange', $exchange)->where('side', 'SKIP')
+
+            $skipSymbols = $symbol !== null ? [$symbol] : config('ui.symbols');
+            $skipReasons = Cache::remember("paper:dashboard:skip_reasons_24h:{$exchange}:{$cacheSymbolKey}", 60, function () use ($exchange, $skipSymbols): array {
+                $recentSkips = SignalRecord::query()
+                    ->when($exchange !== 'all', fn ($q) => $q->where('exchange', $exchange))
+                    ->where('side', 'SKIP')
                     ->where('decision_time', '>=', now('UTC')->subDay())
-                    ->whereIn('symbol', config('ui.symbols'))
+                    ->whereIn('symbol', $skipSymbols)
                     ->latest('decision_time')
                     ->get(['reasons']);
                 $skipCounts = [];
@@ -206,7 +263,11 @@ final class ResearchController extends Controller
 
                 return array_slice($skipCounts, 0, 8, true);
             });
-            $recentDecisions = SignalRecord::query()->where('exchange', $exchange)->whereIn('symbol', config('ui.symbols'))
+
+            $decisionSymbols = $symbol !== null ? [$symbol] : config('ui.symbols');
+            $recentDecisions = SignalRecord::query()
+                ->when($exchange !== 'all', fn ($q) => $q->where('exchange', $exchange))
+                ->whereIn('symbol', $decisionSymbols)
                 ->latest('decision_time')->latest('id')->limit(8)
                 ->get(['id', 'symbol', 'side', 'decision_time', 'reasons', 'indicator_snapshot'])
                 ->map(static fn (SignalRecord $decision): array => [
@@ -218,9 +279,21 @@ final class ResearchController extends Controller
                     'level_interaction' => data_get($decision->indicator_snapshot, 'level_interaction'),
                 ])->values()->all();
 
-            $signals = SignalRecord::query()->where('exchange', $exchange)->whereIn('side', ['BUY', 'SELL'])->latest('decision_time')->latest('id')->limit(8)->get(['id', 'symbol', 'side', 'quality_class', 'score', 'entry_low', 'entry_high', 'stop_loss', 'take_profit_1', 'take_profit_2', 'expires_at', 'reasons', 'decision_time'])->map(fn ($s) => $s->toArray())->all();
+            $signals = SignalRecord::query()
+                ->when($exchange !== 'all', fn ($q) => $q->where('exchange', $exchange))
+                ->when($symbol !== null, fn ($q) => $q->where('symbol', $symbol))
+                ->whereIn('side', ['BUY', 'SELL'])
+                ->latest('decision_time')->latest('id')->limit(8)
+                ->get(['id', 'symbol', 'side', 'quality_class', 'score', 'entry_low', 'entry_high', 'stop_loss', 'take_profit_1', 'take_profit_2', 'expires_at', 'reasons', 'decision_time'])
+                ->map(fn ($s) => $s->toArray())->all();
 
-            $positionsQuery = VirtualPositionRecord::query()->where('exchange_id', $exchange)->whereNull('closed_at');
+            $positionsQuery = VirtualPositionRecord::query()->whereNull('closed_at');
+            if ($exchange !== 'all') {
+                $positionsQuery->where('exchange_id', $exchange);
+            }
+            if ($symbol !== null) {
+                $positionsQuery->where('symbol', $symbol);
+            }
             if ($selectedAccount !== null) {
                 $positionsQuery->where('paper_account_id', $selectedAccount->id);
             }
@@ -246,13 +319,20 @@ final class ResearchController extends Controller
                 'signals' => $signals,
                 'recent_decisions' => $recentDecisions,
                 'skip_reasons_24h' => $skipReasons,
-                'strategy_observations_24h' => Cache::remember("paper:dashboard:strategy_observations_24h:{$exchange}:v6", 60, fn () => $this->strategyObservations($strategies, $exchange)),
+                'filters' => [
+                    'exchange' => $exchange,
+                    'symbol' => $symbol ?? 'ALL',
+                    'instrument' => $request->header('X-Instrument') ?: $request->string('instrument')->toString() ?: 'all',
+                ],
+                'strategy_observations_24h' => Cache::remember("paper:dashboard:strategy_observations_24h:{$exchange}:{$cacheSymbolKey}:v7", 60, fn () => $this->strategyObservations($strategies, $exchange, $symbol)),
                 'strategy_portfolios' => collect($strategies->metadata())->map(function (array $strategy) use ($exchange): array {
                     $account = PaperAccountRecord::query()
-                        ->where('primary_strategy_id', $strategy['id'])->where('exchange_id', $exchange)
+                        ->where('primary_strategy_id', $strategy['id'])
+                        ->when($exchange !== 'all', fn ($q) => $q->where('exchange_id', $exchange))
                         ->first()
                         ?? PaperAccountRecord::query()
-                            ->where('strategy_id', $strategy['id'])->where('exchange_id', $exchange)
+                            ->where('strategy_id', $strategy['id'])
+                            ->when($exchange !== 'all', fn ($q) => $q->where('exchange_id', $exchange))
                             ->whereIn('mode', ['FORWARD_PAPER', 'STRATEGY_FORWARD_PAPER', 'RESEARCH_FORWARD_PAPER'])
                             ->latest('created_at')
                             ->first();
@@ -422,14 +502,19 @@ final class ResearchController extends Controller
         return $this->ok($payload);
     }
 
-    private function strategyObservations(StrategyRegistry $strategies, string $exchange = 'bybit'): array
+    private function strategyObservations(StrategyRegistry $strategies, string $exchange = 'bybit', ?string $symbol = null): array
     {
         $since = now('UTC')->subDay();
 
-        return collect($strategies->metadata())->map(function (array $strategy) use ($since, $exchange): array {
-            $query = StrategyObservationRecord::query()
-                ->where('exchange', $exchange)
-                ->where('strategy_id', $strategy['id'])
+        return collect($strategies->metadata())->map(function (array $strategy) use ($since, $exchange, $symbol): array {
+            $query = StrategyObservationRecord::query();
+            if ($exchange !== 'all') {
+                $query->where('exchange', $exchange);
+            }
+            if ($symbol !== null) {
+                $query->where('symbol', $symbol);
+            }
+            $query->where('strategy_id', $strategy['id'])
                 ->where(fn ($q) => $q->where('configuration_hash', $strategy['configuration_hash'])->orWhereNull('configuration_hash'))
                 ->where('decision_time', '>=', $since);
             $counts = (clone $query)->selectRaw('side, COUNT(*) AS aggregate')->groupBy('side')->pluck('aggregate', 'side');
@@ -441,14 +526,15 @@ final class ResearchController extends Controller
                 'reasons' => is_array($latest->reasons) ? $latest->reasons : (array) $latest->reasons,
                 'analysis' => is_array($latest->analysis) ? $latest->analysis : (array) $latest->analysis,
             ] : null;
-            $symbols = collect((array) config('ui.symbols'))->map(function (string $symbol) use ($query): array {
-                $symbolQuery = (clone $query)->where('symbol', $symbol);
+            $targetSymbols = $symbol !== null ? [$symbol] : (array) config('ui.symbols');
+            $symbols = collect($targetSymbols)->map(function (string $sym) use ($query): array {
+                $symbolQuery = (clone $query)->where('symbol', $sym);
                 $symbolCounts = (clone $symbolQuery)->selectRaw('side, COUNT(*) AS aggregate')->groupBy('side')->pluck('aggregate', 'side');
                 $symLatest = (clone $symbolQuery)->latest('decision_time')->latest('id')
                     ->first(['side', 'decision_time', 'reasons', 'analysis']);
 
                 return [
-                    'symbol' => $symbol,
+                    'symbol' => $sym,
                     'buy' => (int) ($symbolCounts['BUY'] ?? 0),
                     'sell' => (int) ($symbolCounts['SELL'] ?? 0),
                     'skip' => (int) ($symbolCounts['SKIP'] ?? 0),
@@ -690,9 +776,13 @@ final class ResearchController extends Controller
             'signals.stop_loss', 'signals.take_profit_1', 'signals.take_profit_2', 'signals.reasons', 'signals.risks',
             'signals.strategy_id', 'signals.strategy_version',
         ]);
-        $exchange = $this->resolveExchange($r);
-        if ($exchange) {
+        $exchange = $this->resolveExchange($r, true);
+        if ($exchange !== '' && $exchange !== 'all') {
             $q->where('exchange', $exchange);
+        }
+        $symbol = $this->resolveSymbol($r);
+        if ($symbol !== null) {
+            $q->where('symbol', $symbol);
         }
         foreach (['symbol', 'side', 'quality_class', 'strategy_id', 'strategy_version'] as $f) {
             if ($r->filled($f)) {
@@ -708,12 +798,12 @@ final class ResearchController extends Controller
 
         if ($signalIds->isNotEmpty()) {
             $accountFilter = $r->filled('account') ? $r->string('account')->toString() : null;
-            $exchangeFilter = $this->resolveExchange($r);
+            $exchangeFilter = $this->resolveExchange($r, true);
 
             $riskDecisions = RiskDecisionRecord::query()
                 ->whereIn('signal_id', $signalIds)
                 ->when($accountFilter, fn ($query) => $query->where('paper_account_id', $accountFilter))
-                ->when(! $accountFilter && $exchangeFilter, fn ($query) => $query->where('exchange_id', $exchangeFilter))
+                ->when(! $accountFilter && $exchangeFilter && $exchangeFilter !== 'all', fn ($query) => $query->where('exchange_id', $exchangeFilter))
                 ->latest('decided_at')
                 ->latest('id')
                 ->get(['id', 'signal_id', 'allowed'])
@@ -723,7 +813,7 @@ final class ResearchController extends Controller
             $paperStates = PaperSignalStateRecord::query()
                 ->whereIn('signal_id', $signalIds)
                 ->when($accountFilter, fn ($query) => $query->where('paper_account_id', $accountFilter))
-                ->when(! $accountFilter && $exchangeFilter, fn ($query) => $query->where('exchange_id', $exchangeFilter))
+                ->when(! $accountFilter && $exchangeFilter && $exchangeFilter !== 'all', fn ($query) => $query->where('exchange_id', $exchangeFilter))
                 ->latest('updated_at')
                 ->latest('id')
                 ->get(['id', 'signal_id', 'status'])
@@ -733,7 +823,7 @@ final class ResearchController extends Controller
             $positions = VirtualPositionRecord::query()
                 ->whereIn('signal_id', $signalIds)
                 ->when($accountFilter, fn ($query) => $query->where('paper_account_id', $accountFilter))
-                ->when(! $accountFilter && $exchangeFilter, fn ($query) => $query->where('exchange_id', $exchangeFilter))
+                ->when(! $accountFilter && $exchangeFilter && $exchangeFilter !== 'all', fn ($query) => $query->where('exchange_id', $exchangeFilter))
                 ->latest('opened_at')
                 ->latest('id')
                 ->get(['id', 'signal_id'])
@@ -770,14 +860,17 @@ final class ResearchController extends Controller
     public function positions(Request $r): ResearchResource
     {
         $q = VirtualPositionRecord::query();
-        $exchange = $this->resolveExchange($r);
-        if ($exchange) {
+        $exchange = $this->resolveExchange($r, true);
+        if ($exchange !== '' && $exchange !== 'all') {
             $q->where('exchange_id', $exchange);
         }
         if ($r->filled('account')) {
             $q->where('paper_account_id', (string) $r->string('account'));
         }
-        if ($r->filled('symbol')) {
+        $symbol = $this->resolveSymbol($r);
+        if ($symbol !== null) {
+            $q->where('symbol', $symbol);
+        } elseif ($r->filled('symbol')) {
             $q->where('symbol', $this->symbol((string) $r->string('symbol')));
         }
         if ($r->filled('search')) {
@@ -787,9 +880,13 @@ final class ResearchController extends Controller
         $page = $q->latest('opened_at')->latest('id')->paginate($this->perPage($r));
         $symbols = collect($page->items())->pluck('symbol')->unique()->filter()->values();
         $latestPrices = $symbols->mapWithKeys(
-            static fn (string $symbol) => [
-                $symbol => Cache::remember("market:latest_close:5m:{$exchange}:{$symbol}", 5, static function () use ($symbol, $exchange): ?array {
-                    $c = CandleRecord::query()->where('exchange', $exchange)->where('symbol', $symbol)->where('interval', '5')->where('is_closed', true)->latest('open_time')->first(['symbol', 'close']);
+            static fn (string $sym) => [
+                $sym => Cache::remember("market:latest_close:5m:".($exchange === 'all' ? 'any' : $exchange).":{$sym}", 5, static function () use ($sym, $exchange): ?array {
+                    $cQuery = CandleRecord::query()->where('symbol', $sym)->where('interval', '5')->where('is_closed', true);
+                    if ($exchange !== 'all') {
+                        $cQuery->where('exchange', $exchange);
+                    }
+                    $c = $cQuery->latest('open_time')->first(['symbol', 'close']);
 
                     return $c !== null ? ['symbol' => (string) $c->symbol, 'close' => (string) $c->close] : null;
                 }),
@@ -836,10 +933,11 @@ final class ResearchController extends Controller
 
     public function journalAccounts(Request $r): ResearchResource
     {
-        $exchange = $this->resolveExchange($r);
+        $exchange = $this->resolveExchange($r, true);
 
         return $this->ok(PaperAccountRecord::query()
-            ->where('exchange_id', $exchange)
+            ->when($exchange !== 'all', fn ($q) => $q->where('exchange_id', $exchange))
+            ->orderBy('exchange_id')
             ->orderBy('name')
             ->limit(100)
             ->get(['id', 'name', 'mode', 'strategy_id', 'primary_strategy_id', 'exchange_id', 'status']));
@@ -850,7 +948,7 @@ final class ResearchController extends Controller
         $exchange = $r->header('X-Exchange') ?: $r->string('exchange')->toString();
         $query = PaperAccountRecord::query();
         $registered = app(ExchangeRegistry::class)->registeredIds();
-        if ($exchange !== '') {
+        if ($exchange !== '' && $exchange !== 'all') {
             if (! in_array($exchange, $registered, true)) {
                 return $this->badRequest('unsupported_exchange', "Exchange '{$exchange}' is not registered.");
             }
@@ -875,7 +973,7 @@ final class ResearchController extends Controller
         $q = JournalEventRecord::query()->where('occurred_at', '>=', now('UTC')->subDays($days));
         $exchange = $r->header('X-Exchange') ?: $r->string('exchange')->toString();
         $registered = app(ExchangeRegistry::class)->registeredIds();
-        if ($exchange !== '') {
+        if ($exchange !== '' && $exchange !== 'all') {
             if (! in_array($exchange, $registered, true)) {
                 return $this->badRequest('unsupported_exchange', "Exchange '{$exchange}' is not registered.");
             }
@@ -894,8 +992,11 @@ final class ResearchController extends Controller
 
     public function statistics(Request $r, PerformanceStatisticsService $s): ResearchResource
     {
-        $exchange = $this->resolveExchange($r);
-        $accounts = PaperAccountRecord::query()->where('exchange_id', $exchange)->orderBy('name')->get();
+        $exchange = $this->resolveExchange($r, true);
+        $symbol = $this->resolveSymbol($r);
+        $accounts = PaperAccountRecord::query()
+            ->when($exchange !== 'all', fn ($q) => $q->where('exchange_id', $exchange))
+            ->orderBy('exchange_id')->orderBy('name')->get();
         $requested = $r->string('account')->toString();
         $account = null;
         if ($requested !== '') {
@@ -940,10 +1041,14 @@ final class ResearchController extends Controller
         $rPage = max(1, $r->integer('r_page', 1));
         $periodPage = max(1, $r->integer('period_page', 1));
 
-        $cacheKey = "paper:statistics:response:v5:{$a}:{$equityPage}:{$rPage}:{$periodPage}";
+        $cacheSymbol = $symbol ?? 'all';
+        $cacheKey = "paper:statistics:response:v6:{$a}:{$equityPage}:{$rPage}:{$periodPage}:{$cacheSymbol}";
 
-        $payload = Cache::remember($cacheKey, 30, function () use ($a, $report, $equityPage, $rPage, $periodPage): array {
+        $payload = Cache::remember($cacheKey, 30, function () use ($a, $symbol, $report, $equityPage, $rPage, $periodPage): array {
             $closed = VirtualPositionRecord::query()->where('paper_account_id', $a)->whereNotNull('closed_at');
+            if ($symbol !== null) {
+                $closed->where('symbol', $symbol);
+            }
             $group = static fn (string $field): array => (clone $closed)
                 ->selectRaw($field.', COUNT(*) AS trades, SUM(net_pnl) AS net_pnl, SUM(CASE WHEN net_pnl > 0 THEN 1 ELSE 0 END) AS winning_trades')
                 ->groupBy($field)->orderBy($field)->get()
@@ -1003,6 +1108,11 @@ final class ResearchController extends Controller
                 'period_pnl' => $this->periodPnl((clone $closed)->oldest('closed_at')->cursor(['closed_at', 'net_pnl']), $periodPage),
             ];
         });
+
+        $payload['filters'] = [
+            'exchange' => $exchange,
+            'symbol' => $symbol ?? 'ALL',
+        ];
 
         $payload['account'] = [
             'id' => $account->id,
@@ -1104,20 +1214,29 @@ final class ResearchController extends Controller
 
     public function risk(Request $r, DirectionalPerformanceService $directional): ResearchResource
     {
-        $exchange = $this->resolveExchange($r);
-        $accounts = PaperAccountRecord::query()->where('exchange_id', $exchange)->orderBy('name')->get();
+        $exchange = $this->resolveExchange($r, true);
+        $symbol = $this->resolveSymbol($r);
+        $accounts = PaperAccountRecord::query()
+            ->when($exchange !== 'all', fn ($q) => $q->where('exchange_id', $exchange))
+            ->orderBy('exchange_id')->orderBy('name')->get();
         $requested = $r->string('account')->toString();
         $account = null;
         if ($requested !== '' && $requested !== 'all') {
             $account = $accounts->firstWhere('id', $requested);
         }
-        if ($account === null && $requested !== 'all') {
+        if ($account === null && $requested !== 'all' && $exchange !== 'all') {
             $account = $accounts->first();
         }
 
-        $query = RiskDecisionRecord::query()->where('exchange_id', $exchange);
+        $query = RiskDecisionRecord::query();
+        if ($exchange !== 'all') {
+            $query->where('exchange_id', $exchange);
+        }
         if ($account !== null) {
             $query->where('paper_account_id', $account->id);
+        }
+        if ($symbol !== null) {
+            $query->whereHas('signal', fn ($q) => $q->where('symbol', $symbol));
         }
 
         // Apply filters: quality, risk, allowed
@@ -1155,13 +1274,17 @@ final class ResearchController extends Controller
 
         // Directional performance analysis
         $criteria = [
-            'exchange_id' => $exchange,
+            'exchange_id' => $exchange !== 'all' ? $exchange : null,
             'account_id' => $account?->id,
+            'symbol' => $symbol,
         ];
         $directionalAnalysis = $directional->analyze($criteria);
 
         // Top rejection reasons aggregated
-        $rejectionStatsQuery = RiskDecisionRecord::query()->where('exchange_id', $exchange)->where('allowed', false);
+        $rejectionStatsQuery = RiskDecisionRecord::query()
+            ->when($exchange !== 'all', fn ($q) => $q->where('exchange_id', $exchange))
+            ->when($symbol !== null, fn ($q) => $q->whereHas('signal', fn ($s) => $s->where('symbol', $symbol)))
+            ->where('allowed', false);
         if ($account !== null) {
             $rejectionStatsQuery->where('paper_account_id', $account->id);
         }
@@ -1194,6 +1317,10 @@ final class ResearchController extends Controller
 
         return $this->ok([
             'account' => $account,
+            'filters' => [
+                'exchange' => $exchange,
+                'symbol' => $symbol ?? 'ALL',
+            ],
             'accounts' => $accounts->map(fn ($acc) => [
                 'id' => (string) $acc->id,
                 'name' => (string) $acc->name,

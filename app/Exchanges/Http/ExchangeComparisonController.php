@@ -28,12 +28,12 @@ final class ExchangeComparisonController extends Controller
             if ($file === false) {
                 throw new \RuntimeException('Unable to stream CSV.');
             }
-            fputcsv($file, ['exchange_id', 'strategy_id', 'account_id', 'status', 'evaluation_status', 'starting_balance', 'current_equity', 'realized_pnl', 'unrealized_pnl', 'drawdown_percent']);
+            fputcsv($file, ['exchange_id', 'strategy_id', 'account_id', 'status', 'evaluation_status', 'inactivity_reason', 'starting_balance', 'current_equity', 'realized_pnl', 'unrealized_pnl', 'drawdown_percent']);
             foreach ($report['accounts'] as $row) {
                 // Preserve null as an empty cell; never fabricate zero or combine exchange balances.
                 fputcsv($file, array_map(static fn ($value): string => $value === null ? '' : (string) $value, [
                     $row['exchange_id'], $row['strategy_id'], $row['account_id'], $row['status'],
-                    $row['evaluation_status'], $row['starting_balance'], $row['current_equity'],
+                    $row['evaluation_status'], $row['inactivity_reason'] ?? '', $row['starting_balance'], $row['current_equity'],
                     $row['realized_pnl'], $row['unrealized_pnl'], $row['drawdown_percent'],
                 ]));
             }
