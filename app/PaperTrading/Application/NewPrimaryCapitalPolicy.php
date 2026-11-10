@@ -15,21 +15,23 @@ final class NewPrimaryCapitalPolicy
 {
     public function openingBalance(string $exchangeId, string $strategyId): string
     {
-        if (str_starts_with($strategyId, 'user_')) {
-            return '0';
-        }
-
         $strategyAmount = config("paper.new_primary_initial_balances.{$exchangeId}.{$strategyId}");
         $exchangeAmount = config("paper.new_primary_initial_balances.{$exchangeId}");
+        $initiallyApproved = (array) config('paper.initially_approved_bybit_strategies', []);
+
         $amount = is_string($strategyAmount)
             ? $strategyAmount
-            : (is_string($exchangeAmount) ? $exchangeAmount : config('paper.new_primary_default_starting_balance', '10000'));
+            : (is_string($exchangeAmount)
+                ? $exchangeAmount
+                : ($exchangeId === 'bybit' && in_array($strategyId, $initiallyApproved, true)
+                    ? (string) config('paper.new_primary_default_starting_balance', '10000')
+                    : '0'));
 
         if (! is_string($amount) || ! preg_match('/^(?:0|[1-9][0-9]{0,8})(?:\.[0-9]{1,12})?$/D', $amount)) {
             throw new DomainException('Invalid new PRIMARY virtual opening balance.');
         }
-        if (BigDecimal::of($amount)->isLessThanOrEqualTo('0')) {
-            throw new DomainException('New PRIMARY virtual opening balance must be positive.');
+        if (BigDecimal::of($amount)->isNegative()) {
+            throw new DomainException('New PRIMARY virtual opening balance cannot be negative.');
         }
 
         return (string) BigDecimal::of($amount);

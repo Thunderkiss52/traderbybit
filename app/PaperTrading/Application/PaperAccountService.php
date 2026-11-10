@@ -174,18 +174,18 @@ final readonly class PaperAccountService
                 return $account;
             }
 
-            if ($exchangeId !== 'bybit') {
-                throw new \DomainException(ucfirst($exchangeId).' PRIMARY account is not provisioned.');
-            }
+            $id = $exchangeId === 'bybit'
+                ? Uuid::uuid5(Uuid::NAMESPACE_URL, "traderbybit:paper:primary:{$strategyId}")->toString()
+                : Uuid::uuid5(Uuid::NAMESPACE_URL, "traderbybit:paper:primary:{$exchangeId}:{$strategyId}")->toString();
 
-            $id = Uuid::uuid5(Uuid::NAMESPACE_URL, "traderbybit:paper:primary:{$strategyId}")->toString();
-            $starting = app(NewPrimaryCapitalPolicy::class)->openingBalance($exchangeId, $strategyId);
-            $status = str_starts_with($strategyId, 'user_')
-                ? AccountStatus::Blocked->value
-                : AccountStatus::Active->value;
+            $policy = app(NewPrimaryCapitalPolicy::class);
+            $starting = $policy->openingBalance($exchangeId, $strategyId);
+
+            $isInitiallyApproved = in_array($strategyId, (array) config('paper.initially_approved_bybit_strategies', []), true) && $exchangeId === 'bybit';
+            $status = $isInitiallyApproved ? AccountStatus::Active->value : AccountStatus::Blocked->value;
 
             $account = PaperAccountRecord::query()->firstOrCreate(['id' => $id], [
-                'name' => 'Forward Paper '.$strategyId,
+                'name' => strtoupper($exchangeId).' Paper '.$strategyId,
                 'status' => $status,
                 'starting_balance' => $starting,
                 'current_equity' => $starting,
@@ -201,8 +201,8 @@ final readonly class PaperAccountService
                 'primary_strategy_id' => $strategyId,
                 'is_primary' => true,
                 'strategy_version' => $version,
-                'configuration_hash' => str_starts_with($strategyId, 'user_') ? $hash : null,
-                'strategy_parameters' => str_starts_with($strategyId, 'user_') ? $parameters : null,
+                'configuration_hash' => $hash,
+                'strategy_parameters' => $parameters,
             ]);
 
             if (! $account->is_primary || $account->primary_strategy_id !== $strategyId || $account->research_experiment_id !== null || $account->exchange_id !== $exchangeId) {

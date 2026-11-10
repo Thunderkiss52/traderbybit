@@ -47,6 +47,22 @@ final class StrategyRegistry
         }
     }
 
+    /** @param list<StrategyInterface> $strategies */
+    public function registerBatch(array $strategies): void
+    {
+        foreach ($strategies as $strategy) {
+            $this->dynamicStrategies[$strategy->id()] = $strategy;
+        }
+
+        try {
+            if (Schema::hasTable('paper_accounts')) {
+                app(PaperTopologySynchronizer::class)->sync(true);
+            }
+        } catch (\Throwable) {
+            // Silently ignore if in unit tests or before schema migration
+        }
+    }
+
     public function all(): array
     {
         $all = array_merge(
@@ -85,13 +101,13 @@ final class StrategyRegistry
                 return $strategy;
             }
         }
-        if (str_starts_with($id, 'user_')) {
-            foreach (PrimaryStrategies::registrations() as $row) {
-                if ($row->strategy_id === $id) {
-                    return $this->dsl($row);
-                }
+
+        foreach (PrimaryStrategies::registrations() as $row) {
+            if ($row->strategy_id === $id) {
+                return $this->dsl($row);
             }
         }
+
         throw new \InvalidArgumentException("Unknown strategy: {$id}");
     }
 
@@ -100,13 +116,16 @@ final class StrategyRegistry
         if (isset($this->dynamicStrategies[$id])) {
             return $this->dynamicStrategies[$id];
         }
-        if (str_starts_with($id, 'user_')) {
-            $strategy = $this->get($id);
-            if (self::hash($parameters) !== self::hash($strategy->parameters())) {
-                throw new \InvalidArgumentException('User strategy parameters are immutable; publish and approve another version.');
-            }
 
-            return $strategy;
+        foreach (PrimaryStrategies::registrations() as $row) {
+            if ($row->strategy_id === $id) {
+                $strategy = $this->dsl($row);
+                if (self::hash($parameters) !== self::hash($strategy->parameters())) {
+                    throw new \InvalidArgumentException('Strategy parameters are immutable; publish and approve another version.');
+                }
+
+                return $strategy;
+            }
         }
         if ($id === 'baseline') {
             $overrides = Arr::undot($parameters);

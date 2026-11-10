@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers\Api\V1;
 
+use App\Exchanges\ExchangeRegistry;
 use App\Http\Controllers\Controller;
 use App\PaperTrading\Application\DailyPerformanceService;
 use App\PaperTrading\Application\PerformanceStatisticsService;
@@ -326,12 +327,12 @@ final class ProfitabilityResearchController extends Controller
         if ($exchange !== 'all') {
             $accQuery->where('exchange_id', $exchange);
         }
-        $account = $accQuery->where(function ($query) use ($strategyId): void {
+        $accounts = $accQuery->where(function ($query) use ($strategyId): void {
             $query->where('primary_strategy_id', $strategyId)
                 ->orWhere('strategy_id', $strategyId);
-        })->first();
+        })->get();
 
-        if ($account === null) {
+        if ($accounts->isEmpty()) {
             return response()->json([
                 'error' => [
                     'code' => 'STRATEGY_NOT_FOUND',
@@ -340,15 +341,37 @@ final class ProfitabilityResearchController extends Controller
             ], 404);
         }
 
+        $account = $accounts->firstWhere('exchange_id', 'bybit') ?? $accounts->first();
+        $totalStarting = $accounts->reduce(fn ($sum, $a) => $sum->plus($a->starting_balance ?? '0'), BigDecimal::zero());
+        $totalCurrent = $accounts->reduce(fn ($sum, $a) => $sum->plus($a->current_equity ?? '0'), BigDecimal::zero());
+        $totalPeak = $accounts->reduce(fn ($sum, $a) => $sum->plus($a->peak_equity ?? '0'), BigDecimal::zero());
+        $totalRealized = $accounts->reduce(fn ($sum, $a) => $sum->plus($a->realized_pnl ?? '0'), BigDecimal::zero());
+
         $asOf = CarbonImmutable::now('UTC');
         $posQuery = VirtualPositionRecord::query()
-            ->where('paper_account_id', $account->id);
+            ->whereIn('paper_account_id', $accounts->pluck('id'));
         if ($symbol !== null) {
             $posQuery->where('symbol', $symbol);
         }
         $positions = $posQuery->orderByDesc('opened_at')->get();
 
         $lifecycleEconomics = $this->lifecycleEconomics($positions, $asOf);
+
+        // Breakdown by exchange for this strategy
+        $breakdownByExchange = [];
+        foreach ($positions->groupBy('exchange_id') as $exId => $exPositions) {
+            $exEcon = $this->lifecycleEconomics($exPositions, $asOf);
+            $breakdownByExchange[$exId] = [
+                'exchange_id' => (string) $exId,
+                'total_positions' => $exEcon['total_positions'],
+                'gross_pnl' => (string) $exEcon['gross_pnl'],
+                'fees' => (string) $exEcon['fees'],
+                'signed_funding' => (string) $exEcon['signed_funding'],
+                'net_pnl' => (string) $exEcon['net_pnl'],
+                'win_rate' => $exEcon['win_rate'],
+                'profit_factor' => $exEcon['profit_factor'],
+            ];
+        }
 
         // Fetch recent executions
         $executions = VirtualExecutionRecord::query()
@@ -359,7 +382,7 @@ final class ProfitabilityResearchController extends Controller
 
         // Latest reconciliation
         $latestReconciliation = ReconciliationRunRecord::query()
-            ->where('paper_account_id', $account->id)
+            ->whereIn('paper_account_id', $accounts->pluck('id'))
             ->orderByDesc('created_at')
             ->first();
 
@@ -368,19 +391,26 @@ final class ProfitabilityResearchController extends Controller
             'data' => [
                 'as_of' => $asOf->toIso8601String(),
                 'strategy_id' => $strategyId,
+                'filters' => [
+                    'exchange' => $exchange,
+                    'symbol' => $symbol ?? 'ALL',
+                ],
                 'account' => [
-                    'id' => $account->id,
-                    'name' => $account->name,
+                    'id' => $accounts->count() === 1 ? $account->id : 'aggregated',
+                    'name' => $accounts->count() === 1 ? $account->name : "All Exchanges ({$accounts->count()} accounts)",
                     'mode' => $account->mode,
                     'is_primary' => (bool) $account->is_primary,
-                    'exchange_id' => (string) $account->exchange_id,
-                    'starting_balance' => (string) $account->starting_balance,
-                    'current_equity' => (string) $account->current_equity,
-                    'peak_equity' => (string) $account->peak_equity,
-                    'realized_pnl' => (string) $account->realized_pnl,
+                    'exchange_id' => $accounts->count() === 1 ? (string) $account->exchange_id : 'all',
+                    'starting_balance' => (string) $totalStarting,
+                    'current_equity' => (string) $totalCurrent,
+                    'peak_equity' => (string) $totalPeak,
+                    'realized_pnl' => (string) $totalRealized,
                     'current_drawdown_percent' => (string) ($account->current_drawdown_percent ?? '0.00'),
                     'maximum_drawdown_percent' => (string) ($account->maximum_drawdown_percent ?? '0.00'),
                 ],
+                'lifecycle_economics' => array_merge($lifecycleEconomics, [
+                    'breakdown_by_exchange' => $breakdownByExchange,
+                ]),
                 'lifecycle_economics' => [
                     'scope' => 'FULL_LIFECYCLE',
                     'as_of' => $asOf->toIso8601String(),
@@ -946,7 +976,7 @@ final class ProfitabilityResearchController extends Controller
         if ($exchange === 'all') {
             return 'all';
         }
-        $registered = app(\App\Exchanges\ExchangeRegistry::class)->registeredIds();
+        $registered = app(ExchangeRegistry::class)->registeredIds();
 
         return in_array($exchange, $registered, true) ? $exchange : 'bybit';
     }

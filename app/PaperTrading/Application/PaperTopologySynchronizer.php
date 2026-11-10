@@ -6,6 +6,7 @@ namespace App\PaperTrading\Application;
 
 use App\Exchanges\Binance\BinancePaperProvisioner;
 use App\Exchanges\ExchangeRegistry;
+use App\PaperTrading\Infrastructure\Persistence\EquitySnapshotRecord;
 use App\PaperTrading\Infrastructure\Persistence\PaperAccountRecord;
 use App\Strategy\Application\StrategyRegistry;
 use App\StrategyBuilder\PrimaryStrategies;
@@ -58,13 +59,16 @@ final readonly class PaperTopologySynchronizer
         }
         try {
             return DB::transaction(function () use ($exchangeIds, $apply, $scopes): array {
+                if ($apply) {
+                    // Advisory transaction lock to prevent concurrent synchronization races
+                    DB::select('SELECT pg_advisory_xact_lock(20261110, 10002)');
+                }
+
                 $existing = PaperAccountRecord::query()->where('is_primary', true)->get();
                 $pairs = [];
                 foreach ($existing as $account) {
                     $key = $account->exchange_id.'|'.$account->primary_strategy_id;
-                    if (isset($pairs[$key]) || ! in_array($account->exchange_id, $exchangeIds, true)
-                        || ! in_array($account->primary_strategy_id, $scopes[$account->exchange_id] ?? [], true)
-                        || $account->strategy_id !== $account->primary_strategy_id
+                    if (isset($pairs[$key]) || $account->strategy_id !== $account->primary_strategy_id
                         || $account->research_experiment_id !== null) {
                         throw new RuntimeException('Unexpected or inconsistent PRIMARY account; owner reconciliation required.');
                     }
@@ -88,83 +92,123 @@ final readonly class PaperTopologySynchronizer
                         'paper_orders' => 'NEVER_REAL',
                     ];
                 }
+
                 $policy = $this->capitalPolicy ?? app(NewPrimaryCapitalPolicy::class);
+                $initiallyApproved = (array) config('paper.initially_approved_bybit_strategies', []);
                 $createdBybit = 0;
-                if (in_array('bybit', $exchangeIds, true)) {
-                    foreach ($scopes['bybit'] as $id) {
-                        $missingBybit = ! isset($pairs['bybit|'.$id]);
-                        $account = $this->accounts->primaryAccount($id, 'bybit');
-                        if ($missingBybit) {
-                            $createdBybit++;
-                        }
-                    }
-                }
                 $createdOther = 0;
                 $createdBinance = 0;
-                foreach ($exchangeIds as $exchange) {
-                    if ($exchange === 'bybit') {
+
+                $missingAccounts = [];
+                $missingSnapshots = [];
+                $missingCapitalEvents = [];
+                $now = now('UTC');
+
+                // Ensure default Bybit baseline account exists first if required
+                if (in_array('bybit', $exchangeIds, true) && in_array('baseline', $scopes['bybit'], true) && ! isset($pairs['bybit|baseline'])) {
+                    $this->accounts->default();
+                    $createdBybit++;
+                    $pairs['bybit|baseline'] = PaperAccountRecord::query()->where('primary_strategy_id', 'baseline')->where('exchange_id', 'bybit')->first();
+                }
+
+                foreach ($missing as $m) {
+                    $exchange = $m['exchange_id'];
+                    $id = $m['strategy_id'];
+                    $key = $exchange.'|'.$id;
+                    if (isset($pairs[$key])) {
                         continue;
                     }
-                    $isExecutionApproved = match ($exchange) {
-                        'binance' => (bool) config('exchanges.binance_paper_execution_approved', false),
-                        default => (bool) config("exchanges.{$exchange}_paper_execution_approved", false),
-                    };
 
-                    foreach ($scopes[$exchange] as $id) {
-                        if (isset($pairs[$exchange.'|'.$id])) {
-                            continue;
-                        }
-                        $strategy = $this->strategies->get($id);
-                        $parameters = $strategy->parameters();
-                        $accountId = Uuid::uuid5(Uuid::NAMESPACE_URL, "traderbybit:paper:primary:{$exchange}:{$id}")->toString();
-                        if (PaperAccountRecord::query()->where('id', $accountId)->exists()) {
-                            throw new RuntimeException('Canonical PRIMARY account identifier already occupied.');
-                        }
-                        $startingBalance = $policy->openingBalance($exchange, $id);
-                        $accountStatus = str_starts_with($id, 'user_') ? 'BLOCKED' : ($isExecutionApproved ? 'ACTIVE' : 'BLOCKED');
-                        $createdAccount = PaperAccountRecord::query()->create([
-                            'id' => $accountId,
-                            'name' => strtoupper($exchange).' Paper '.$id,
-                            'status' => $accountStatus,
-                            'starting_balance' => $startingBalance,
-                            'current_equity' => $startingBalance,
-                            'peak_equity' => $startingBalance,
-                            'realized_pnl' => '0',
-                            'unrealized_pnl' => '0',
-                            'reserved_risk' => '0',
-                            'maximum_drawdown_percent' => '0',
-                            'current_drawdown_percent' => '0',
-                            'mode' => 'STRATEGY_FORWARD_PAPER',
+                    $strategy = $this->strategies->get($id);
+                    $parameters = $strategy->parameters();
+                    $version = $strategy->version();
+
+                    $accountId = ($exchange === 'bybit')
+                        ? Uuid::uuid5(Uuid::NAMESPACE_URL, "traderbybit:paper:primary:{$id}")->toString()
+                        : Uuid::uuid5(Uuid::NAMESPACE_URL, "traderbybit:paper:primary:{$exchange}:{$id}")->toString();
+
+                    $startingBalance = $policy->openingBalance($exchange, $id);
+                    $isInitiallyApproved = in_array($id, $initiallyApproved, true) && $exchange === 'bybit';
+                    $accountStatus = $isInitiallyApproved ? 'ACTIVE' : 'BLOCKED';
+
+                    $missingAccounts[] = [
+                        'id' => $accountId,
+                        'name' => strtoupper($exchange).' Paper '.$id,
+                        'status' => $accountStatus,
+                        'starting_balance' => $startingBalance,
+                        'current_equity' => $startingBalance,
+                        'peak_equity' => $startingBalance,
+                        'realized_pnl' => '0',
+                        'unrealized_pnl' => '0',
+                        'reserved_risk' => '0',
+                        'maximum_drawdown_percent' => '0',
+                        'current_drawdown_percent' => '0',
+                        'mode' => 'STRATEGY_FORWARD_PAPER',
+                        'exchange_id' => $exchange,
+                        'strategy_id' => $id,
+                        'primary_strategy_id' => $id,
+                        'is_primary' => true,
+                        'strategy_version' => $version,
+                        'configuration_hash' => StrategyRegistry::hash($parameters),
+                        'strategy_parameters' => json_encode($parameters, JSON_THROW_ON_ERROR),
+                        'created_at' => $now,
+                        'updated_at' => $now,
+                    ];
+
+                    if (BigDecimal::of($startingBalance)->isPositive()) {
+                        $missingCapitalEvents[] = [
+                            'id' => Uuid::uuid5(Uuid::NAMESPACE_URL, "vector:paper-allocation:{$accountId}:initial")->toString(),
+                            'paper_account_id' => $accountId,
                             'exchange_id' => $exchange,
-                            'strategy_id' => $id,
-                            'primary_strategy_id' => $id,
-                            'is_primary' => true,
-                            'strategy_version' => $strategy->version(),
-                            'configuration_hash' => StrategyRegistry::hash($parameters),
-                            'strategy_parameters' => $parameters,
-                        ]);
+                            'amount' => $startingBalance,
+                            'approval_reference' => 'POLICY_INITIAL_CAPITAL',
+                            'reason' => 'INITIAL_RESEARCH_CAPITAL_ALLOCATION',
+                            'occurred_at' => $now,
+                            'created_at' => $now,
+                            'updated_at' => $now,
+                        ];
+                    }
 
-                        if (BigDecimal::of($startingBalance)->isPositive()) {
-                            $now = now('UTC');
-                            DB::table('paper_capital_events')->insertOrIgnore([
-                                'id' => Uuid::uuid5(Uuid::NAMESPACE_URL, "vector:paper-allocation:{$accountId}:initial")->toString(),
-                                'paper_account_id' => $accountId,
-                                'exchange_id' => $exchange,
-                                'amount' => $startingBalance,
-                                'approval_reference' => 'POLICY_INITIAL_CAPITAL',
-                                'reason' => 'INITIAL_RESEARCH_CAPITAL_ALLOCATION',
-                                'occurred_at' => $now,
-                                'created_at' => $now,
-                                'updated_at' => $now,
-                            ]);
-                        }
+                    $missingSnapshots[] = [
+                        'paper_account_id' => $accountId,
+                        'exchange_id' => $exchange,
+                        'recorded_at' => $now,
+                        'equity' => $startingBalance,
+                        'realized_pnl' => '0',
+                        'unrealized_pnl' => '0',
+                        'drawdown_percent' => '0',
+                        'source_event_key' => 'account:initial',
+                        'valued_through' => $now,
+                        'valuation_fresh' => true,
+                        'created_at' => $now,
+                        'updated_at' => $now,
+                    ];
 
-                        $this->accounts->ensureInitialSnapshot($createdAccount);
-                        if ($exchange === 'binance') {
-                            $createdBinance++;
-                        } else {
-                            $createdOther++;
-                        }
+                    if ($exchange === 'bybit') {
+                        $createdBybit++;
+                    } elseif ($exchange === 'binance') {
+                        $createdBinance++;
+                    } else {
+                        $createdOther++;
+                    }
+                }
+
+                // Batch insert chunked for massive scalability
+                if (! empty($missingAccounts)) {
+                    foreach (array_chunk($missingAccounts, 250) as $chunk) {
+                        PaperAccountRecord::query()->insert($chunk);
+                    }
+                }
+
+                if (! empty($missingCapitalEvents)) {
+                    foreach (array_chunk($missingCapitalEvents, 250) as $chunk) {
+                        DB::table('paper_capital_events')->insertOrIgnore($chunk);
+                    }
+                }
+
+                if (! empty($missingSnapshots)) {
+                    foreach (array_chunk($missingSnapshots, 250) as $chunk) {
+                        EquitySnapshotRecord::query()->insertOrIgnore($chunk);
                     }
                 }
 

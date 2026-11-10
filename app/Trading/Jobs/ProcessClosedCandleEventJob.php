@@ -201,8 +201,8 @@ final class ProcessClosedCandleEventJob implements ShouldQueue
                     $scanner = app(MarketScannerService::class);
                     $scanResult = $scanner->scanSymbol($this->symbol, $closeAt, 'bybit', 'linear');
                     $signalsCount = (int) ($scanResult['evaluations_count'] ?? 0);
-                } elseif ($this->exchange === 'binance') {
-                    $observations = app(StrategyObservationService::class)->observe($this->symbol, $closeAt, 'binance', 'linear');
+                } else {
+                    $observations = app(StrategyObservationService::class)->observe($this->symbol, $closeAt, $this->exchange, 'linear');
                     $signalsCount = count($observations);
                 }
             } catch (StrategyObservationActiveException $e) {

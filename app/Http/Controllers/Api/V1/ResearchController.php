@@ -881,7 +881,7 @@ final class ResearchController extends Controller
         $symbols = collect($page->items())->pluck('symbol')->unique()->filter()->values();
         $latestPrices = $symbols->mapWithKeys(
             static fn (string $sym) => [
-                $sym => Cache::remember("market:latest_close:5m:".($exchange === 'all' ? 'any' : $exchange).":{$sym}", 5, static function () use ($sym, $exchange): ?array {
+                $sym => Cache::remember('market:latest_close:5m:'.($exchange === 'all' ? 'any' : $exchange).":{$sym}", 5, static function () use ($sym, $exchange): ?array {
                     $cQuery = CandleRecord::query()->where('symbol', $sym)->where('interval', '5')->where('is_closed', true);
                     if ($exchange !== 'all') {
                         $cQuery->where('exchange', $exchange);
