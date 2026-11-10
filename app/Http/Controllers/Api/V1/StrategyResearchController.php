@@ -26,6 +26,7 @@ use App\Strategy\Infrastructure\Persistence\StrategyObservationRecord;
 use App\Strategy\Jobs\RunResearchExperimentJob;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Str;
 use Ramsey\Uuid\Uuid;
 
 final class StrategyResearchController extends Controller
@@ -130,7 +131,8 @@ final class StrategyResearchController extends Controller
 
     public function experiment(Request $request, string $id): ResearchResource
     {
-        $experiment = ResearchExperimentRecord::query()->findOrFail($id);
+        $experiment = Str::isUuid($id) ? ResearchExperimentRecord::query()->find($id) : null;
+        abort_if($experiment === null, 404, "Experiment [{$id}] was not found.");
         $segments = $experiment->backtest_run_id ? BacktestSegmentRecord::query()->where('backtest_run_id', $experiment->backtest_run_id)->orderBy('window_index')->orderBy('kind')->paginate(max(1, min(100, $request->integer('per_page', 10)))) : null;
 
         return new ResearchResource(['experiment' => $experiment, 'backtest' => $experiment->backtest_run_id ? BacktestRunRecord::query()->find($experiment->backtest_run_id, ['id', 'status', 'metrics', 'warnings', 'progress']) : null, 'segments' => $segments ?? ['data' => [], 'current_page' => 1, 'last_page' => 1, 'total' => 0]]);

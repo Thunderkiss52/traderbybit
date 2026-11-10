@@ -25,7 +25,11 @@ final class BacktestAuditController extends Controller
 
     public function status(string $id, BacktestAuditService $service): JsonResponse
     {
-        return response()->json(['data' => $service->status($id)]);
+        try {
+            return response()->json(['data' => $service->status($id)]);
+        } catch (InvalidArgumentException $e) {
+            return response()->json(['error' => ['code' => 'INVALID_ID', 'message' => $e->getMessage()]], 404);
+        }
     }
 
     public function download(string $id, BacktestAuditService $service): BinaryFileResponse

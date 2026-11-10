@@ -29,28 +29,26 @@ const selectedAccounts = computed(() => {
 
 const accountsOverviewText = computed(() => {
   const accounts = exchangeComparison.value?.accounts || data.value?.accounts || [];
-  const count = accounts.length || (data.value?.portfolio?.accounts_count ?? 26);
+  const count = accounts.length || (data.value?.portfolio?.accounts_count ?? 130);
   if (selectedExchange.value === 'all') {
-    if (count === 26 || accounts.length === 0) {
+    if (count === 26) {
       return '26 Independent PAPER Accounts (13 Bybit + 13 Binance)';
     }
-    const bybitCount = accounts.filter((a: any) => a.exchange_id === 'bybit').length || 13;
-    const binanceCount = accounts.filter((a: any) => a.exchange_id === 'binance').length || 13;
-    const otherCount = count - bybitCount - binanceCount;
-    if (otherCount > 0) {
-      return `${count} Independent PAPER Accounts (${bybitCount} Bybit + ${binanceCount} Binance + ${otherCount} other)`;
-    }
-    return `${count} Independent PAPER Accounts (${bybitCount} Bybit + ${binanceCount} Binance)`;
+    const activeCount = accounts.filter((a: any) => a.status === 'ACTIVE').length;
+    const uniqueExchanges = new Set(accounts.map((a: any) => a.exchange_id)).size || 10;
+    return `${count} Independent PAPER Accounts across ${uniqueExchanges} Exchanges (${activeCount} Active)`;
   }
   const exName = settings.selectedExchangeName || selectedExchange.value.toUpperCase();
-  const currentCount = selectedAccounts.value.length || (data.value?.portfolio?.accounts_count ?? 13);
-  return `${currentCount} Independent PAPER Accounts (${exName})`;
+  const currentAccounts = selectedAccounts.value;
+  const currentCount = currentAccounts.length || 13;
+  const currentActive = currentAccounts.filter((a: any) => a.status === 'ACTIVE').length;
+  return `${currentCount} Independent PAPER Accounts (${exName}: ${currentActive} Active)`;
 });
 
 const comparisonSubtitle = computed(() => {
   const accounts = exchangeComparison.value?.accounts || [];
   const uniqueStrategies = new Set(accounts.map((a: any) => a.strategy_id || a.primary_strategy_id)).size || (data.value?.strategy_portfolios?.length ?? 13);
-  return `${uniqueStrategies} PRIMARY strategy families with isolated accounts per exchange. Never merged automatically. Binance paper execution remains blocked until separately verified.`;
+  return `${uniqueStrategies} PRIMARY strategy families with isolated accounts per exchange. Evaluated independently with strict risk and ledger isolation.`;
 });
 
 const exchangeToggleOptions = computed(() => {

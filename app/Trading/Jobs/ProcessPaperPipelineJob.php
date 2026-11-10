@@ -88,11 +88,7 @@ final class ProcessPaperPipelineJob implements ShouldQueue
             return;
         }
 
-        $allowNewEntries = match ($this->exchange) {
-            'binance' => (bool) config('exchanges.binance.paper_execution_approved', false),
-            'bybit' => true,
-            default => false,
-        };
+        $allowNewEntries = (bool) config("exchanges.{$this->exchange}.paper_execution_approved", $this->exchange === 'bybit');
 
         $accountsQuery = PaperAccountRecord::query()
             ->where('exchange_id', $this->exchange)

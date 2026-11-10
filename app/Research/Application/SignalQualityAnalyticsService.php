@@ -19,6 +19,7 @@ use Brick\Math\RoundingMode;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Str;
 
 final class SignalQualityAnalyticsService
 {
@@ -151,7 +152,10 @@ final class SignalQualityAnalyticsService
      */
     public function getSignalDetail(string $signalId): array
     {
-        $sig = SignalRecord::query()->findOrFail($signalId);
+        $sig = Str::isUuid($signalId) ? SignalRecord::query()->find($signalId) : null;
+        if ($sig === null) {
+            abort(404, "Signal [{$signalId}] was not found.");
+        }
         $pos = VirtualPositionRecord::query()->where('signal_id', $sig->id)->first();
         $risk = RiskDecisionRecord::query()->where('signal_id', $sig->id)->first();
 

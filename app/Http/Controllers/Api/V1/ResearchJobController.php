@@ -10,6 +10,7 @@ use App\Research\Infrastructure\Persistence\ResearchJobRecord;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
 use Symfony\Component\HttpFoundation\Response;
@@ -121,6 +122,13 @@ final class ResearchJobController extends Controller
 
     public function show(string $id): JsonResponse
     {
+        if (! Str::isUuid($id)) {
+            return response()->json([
+                'success' => false,
+                'message' => "Research job {$id} not found",
+            ], Response::HTTP_NOT_FOUND);
+        }
+
         try {
             $job = ResearchJobRecord::query()->where('job_id', $id)->first();
 

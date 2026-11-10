@@ -191,7 +191,11 @@ final class ProfitabilityResearchController extends Controller
                         'total_current_equity' => $accounts->isEmpty() ? null : (string) $totalCurrentEquity,
                         'total_peak_equity' => $accounts->isEmpty() ? null : (string) $totalPeakEquity,
                         'total_realized_pnl' => $accounts->isEmpty() ? null : (string) $totalRealizedPnl,
-                        'active_accounts_count' => count($accounts),
+                        'active_accounts_count' => $accounts->where('status', 'ACTIVE')->count(),
+                        'total_accounts_count' => $accounts->count(),
+                        'blocked_accounts_count' => $accounts->where('status', 'BLOCKED')->count(),
+                        'symbol_filter' => $symbol,
+                        'symbol_attribution_note' => $symbol !== null ? 'Cash balance and equity are account-wide; see full_lifecycle_economics for symbol-specific realized PnL and trades.' : null,
                         'accounts' => $accountSummaries,
                     ],
                     'full_lifecycle_economics' => [
@@ -464,7 +468,9 @@ final class ProfitabilityResearchController extends Controller
     public function slippageAttribution(Request $request): JsonResponse
     {
         $scope = (string) $request->query('accounting_scope', 'FULL_LIFECYCLE');
-        $data = $this->slippageAttribution->getLatestSummary($scope);
+        $exchange = $this->resolveExchange($request);
+        $symbol = $this->resolveSymbol($request);
+        $data = $this->slippageAttribution->getLatestSummary($scope, $exchange, $symbol);
 
         return response()->json([
             'status' => 'SUCCESS',
@@ -607,7 +613,9 @@ final class ProfitabilityResearchController extends Controller
     public function riskCapitalMetrics(Request $request): JsonResponse
     {
         $scope = (string) $request->query('accounting_scope', 'FULL_LIFECYCLE');
-        $data = $this->riskCapitalMetrics->getLatestMetrics($scope);
+        $exchange = $this->resolveExchange($request);
+        $symbol = $this->resolveSymbol($request);
+        $data = $this->riskCapitalMetrics->getLatestMetrics($scope, $exchange, $symbol);
 
         return response()->json([
             'status' => $data['status'] === 'SUCCEEDED' ? 'SUCCESS' : $data['status'],
@@ -637,7 +645,9 @@ final class ProfitabilityResearchController extends Controller
     public function costMfeMae(Request $request): JsonResponse
     {
         $scope = (string) $request->query('accounting_scope', 'FULL_LIFECYCLE');
-        $data = $this->costMfeMae->getLatestCostMfeMae($scope);
+        $exchange = $this->resolveExchange($request);
+        $symbol = $this->resolveSymbol($request);
+        $data = $this->costMfeMae->getLatestCostMfeMae($scope, $exchange, $symbol);
 
         return response()->json([
             'status' => $data['status'] === 'SUCCEEDED' ? 'SUCCESS' : $data['status'],

@@ -72,8 +72,13 @@ final readonly class PositionSizingService
             $riskCapital = $actualRisk;
         }
         $notional = $quantity->multipliedBy($entry);
-        if ($quantity->isLessThan($d($limits->minOrderQty)) || $notional->isLessThan($d($limits->minNotionalValue))) {
+        if ($quantity->isLessThan($d($limits->minOrderQty))) {
             return new PositionSize(false, (string) $quantity, (string) $riskCapital, (string) $effectiveLoss, (string) $notional, 'below_minimum_order');
+        }
+        if ($notional->isLessThan($d($limits->minNotionalValue))) {
+            $reason = ($settings !== null && $settings['mode'] === 'fixed_notional') ? 'below_minimum_notional_order' : 'below_minimum_order';
+
+            return new PositionSize(false, (string) $quantity, (string) $riskCapital, (string) $effectiveLoss, (string) $notional, $reason);
         }
         if ($quantity->isGreaterThan($d($limits->maxOrderQty))) {
             return new PositionSize(false, (string) $quantity, (string) $riskCapital, (string) $effectiveLoss, (string) $notional, 'above_maximum_quantity');

@@ -123,6 +123,7 @@ final class DependenceConcentrationService
         $symbol = strtoupper((string) ($parameters['symbol'] ?? 'ALL'));
         $windowStart = isset($parameters['window_start']) ? CarbonImmutable::parse($parameters['window_start'], 'UTC') : null;
         $windowEnd = isset($parameters['window_end']) ? CarbonImmutable::parse($parameters['window_end'], 'UTC') : null;
+        $exchange = $parameters['exchange'] ?? $parameters['exchange_id'] ?? null;
         $maxCarryForwardAge = (int) ($parameters['max_carry_forward_age_seconds'] ?? self::DEFAULT_MAX_CARRY_FORWARD_AGE_SECONDS);
         $alignmentInterval = (int) ($parameters['alignment_interval_seconds'] ?? self::DEFAULT_ALIGNMENT_INTERVAL_SECONDS);
 
@@ -148,6 +149,9 @@ final class DependenceConcentrationService
             'algorithm_version' => self::ALGORITHM_VERSION,
             'cluster_definition_version' => OverlapClusterBuilder::CLUSTER_DEFINITION_VERSION,
         ];
+        if ($exchange !== null && $exchange !== 'all') {
+            $normalizedParams['exchange'] = $exchange;
+        }
         $payloadHash = hash('sha256', json_encode($normalizedParams, JSON_THROW_ON_ERROR));
 
         $existing = ResearchGenerationRecord::query()->where('idempotency_key', $idempotencyKey)->first();
@@ -176,7 +180,7 @@ final class DependenceConcentrationService
         ]);
 
         try {
-            $result = $this->compute($generationId, $accountingScope, $asOf, $symbol, $windowStart, $windowEnd, $maxCarryForwardAge, $alignmentInterval);
+            $result = $this->compute($generationId, $accountingScope, $asOf, $symbol, $windowStart, $windowEnd, $maxCarryForwardAge, $alignmentInterval, $exchange);
 
             $generation->update([
                 'status' => $result['status'],
@@ -209,12 +213,13 @@ final class DependenceConcentrationService
         ?CarbonImmutable $windowStart,
         ?CarbonImmutable $windowEnd,
         int $maxCarryForwardAge,
-        int $alignmentInterval
+        int $alignmentInterval,
+        ?string $exchange = null
     ): array {
         $builder = new OverlapClusterBuilder;
         $analyzer = new ConcentrationAnalyzer;
 
-        $accounts = $this->primaryAccounts();
+        $accounts = $this->primaryAccounts($exchange);
         $perAccount = [];
         $allIntervals = [];
         $exclusionReasons = [];
@@ -410,12 +415,13 @@ final class DependenceConcentrationService
     /**
      * @return Collection<int, PaperAccountRecord>
      */
-    private function primaryAccounts(): Collection
+    private function primaryAccounts(?string $exchange = null): Collection
     {
         return PaperAccountRecord::query()
             ->where('is_primary', true)
-            ->where('exchange_id', 'bybit')
+            ->when($exchange !== null && $exchange !== 'all', fn ($q) => $q->where('exchange_id', $exchange))
             ->whereNotNull('primary_strategy_id')
+            ->orderBy('exchange_id')
             ->orderBy('primary_strategy_id')
             ->get();
     }

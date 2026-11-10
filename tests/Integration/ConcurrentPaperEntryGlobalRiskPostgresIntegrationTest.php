@@ -59,13 +59,10 @@ final class ConcurrentPaperEntryGlobalRiskPostgresIntegrationTest extends TestCa
         config(['exchanges.binance_paper_provisioning_approved' => true]);
         app(PaperTopologySynchronizer::class)->sync(true);
 
-        // Dynamic primary capital across all provisioned accounts
+        // Dynamic primary capital across active risk-bearing accounts
         // At 5% cap, we set reserved_risk to leave exactly 20 USDT of risk available.
-        $totalStarting = DB::table('paper_accounts')->where('is_primary', true)->get()->reduce(
-            fn (BigDecimal $carry, $acc) => $carry->plus((string) $acc->starting_balance),
-            BigDecimal::zero()
-        );
-        $maxRisk = $totalStarting->multipliedBy('0.05');
+        $capitalSummary = app(GlobalPaperCapitalGuard::class)->computeCapitalSummary();
+        $maxRisk = BigDecimal::of($capitalSummary['deployable_risk_budget']);
         $targetReserved = (string) $maxRisk->minus('20');
         PaperAccountRecord::query()->where('exchange_id', 'bybit')
             ->where('primary_strategy_id', 'baseline')

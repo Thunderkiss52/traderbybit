@@ -10,6 +10,25 @@ use DomainException;
 /** Persisted, versioned per-account sizing selection. Never overrides risk gates. */
 final class PaperSizingSettings
 {
+    public const DEFAULT_SETTINGS = [
+        'mode' => 'fixed_notional',
+        'amount' => '5',
+    ];
+
+    public static function defaultSettings(): array
+    {
+        return self::DEFAULT_SETTINGS;
+    }
+
+    public static function effectiveForAccount(?array $settings): array
+    {
+        if ($settings === null) {
+            return self::DEFAULT_SETTINGS;
+        }
+
+        return self::normalize($settings) ?? self::DEFAULT_SETTINGS;
+    }
+
     public static function normalize(?array $settings): ?array
     {
         if ($settings === null) {

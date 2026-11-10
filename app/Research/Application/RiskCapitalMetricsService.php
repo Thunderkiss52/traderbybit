@@ -134,7 +134,8 @@ final class RiskCapitalMetricsService
         ]);
 
         try {
-            $accounts = $this->primaryAccountsReadOnly();
+            $exchangeFilter = $parameters['exchange'] ?? $parameters['exchange_id'] ?? null;
+            $accounts = $this->primaryAccountsReadOnly($exchangeFilter);
             $records = [];
             foreach ($accounts as $account) {
                 $records[] = $this->computeForAccount(
@@ -210,12 +211,13 @@ final class RiskCapitalMetricsService
      *
      * @return Collection<int, PaperAccountRecord>
      */
-    public function primaryAccountsReadOnly(): Collection
+    public function primaryAccountsReadOnly(?string $exchange = null): Collection
     {
         return PaperAccountRecord::query()
             ->where('is_primary', true)
-            ->where('exchange_id', 'bybit')
+            ->when($exchange !== null && $exchange !== 'all', fn ($q) => $q->where('exchange_id', $exchange))
             ->whereNotNull('primary_strategy_id')
+            ->orderBy('exchange_id')
             ->orderBy('primary_strategy_id')
             ->get();
     }
@@ -603,7 +605,7 @@ final class RiskCapitalMetricsService
      *
      * @return array<string, mixed>
      */
-    public function getLatestMetrics(string $accountingScope = 'FULL_LIFECYCLE'): array
+    public function getLatestMetrics(string $accountingScope = 'FULL_LIFECYCLE', ?string $exchange = null, ?string $symbol = null): array
     {
         $generation = ResearchGenerationRecord::query()
             ->where('package_code', 'P-2')
@@ -620,10 +622,15 @@ final class RiskCapitalMetricsService
             ];
         }
 
-        $metrics = StrategyRiskMetricRecord::query()
-            ->where('generation_id', $generation->id)
-            ->orderBy('strategy_id')
-            ->get();
+        $metricsQuery = StrategyRiskMetricRecord::query()
+            ->where('generation_id', $generation->id);
+        if ($symbol !== null && $symbol !== 'all' && $symbol !== 'ALL') {
+            $metricsQuery->where('symbol', $symbol);
+        }
+        if ($exchange !== null && $exchange !== 'all') {
+            $metricsQuery->whereIn('paper_account_id', PaperAccountRecord::query()->where('exchange_id', $exchange)->select('id'));
+        }
+        $metrics = $metricsQuery->orderBy('strategy_id')->get();
 
         return [
             'status' => $generation->status,

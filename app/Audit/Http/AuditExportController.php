@@ -11,6 +11,7 @@ use App\Exchanges\ExchangeRegistry;
 use App\Http\Controllers\Controller;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Str;
 use Symfony\Component\HttpFoundation\BinaryFileResponse;
 
 final class AuditExportController extends Controller
@@ -37,7 +38,12 @@ final class AuditExportController extends Controller
 
     public function show(string $id, AuditExportService $service): JsonResponse
     {
-        return response()->json(['data' => $service->publicStatus(AuditExportRecord::query()->findOrFail($id))]);
+        $job = Str::isUuid($id) ? AuditExportRecord::query()->find($id) : null;
+        if ($job === null) {
+            return response()->json(['error' => ['code' => 'NOT_FOUND', 'message' => "Audit export [{$id}] not found."]], 404);
+        }
+
+        return response()->json(['data' => $service->publicStatus($job)]);
     }
 
     public function funnel(Request $request, StrategyFunnelService $funnel): JsonResponse

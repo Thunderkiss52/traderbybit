@@ -23,6 +23,7 @@ use App\MarketData\Domain\Interval;
 use App\MarketData\Infrastructure\Persistence\CandleRecord;
 use App\PaperTrading\Application\DailyPerformanceService;
 use App\PaperTrading\Application\DirectionalPerformanceService;
+use App\PaperTrading\Application\PaperSizingSettings;
 use App\PaperTrading\Application\PerformanceStatisticsService;
 use App\PaperTrading\Infrastructure\Persistence\EquitySnapshotRecord;
 use App\PaperTrading\Infrastructure\Persistence\JournalEventRecord;
@@ -960,6 +961,73 @@ final class ResearchController extends Controller
             'status', 'starting_balance', 'current_equity', 'realized_pnl', 'unrealized_pnl',
             'reserved_risk', 'maximum_drawdown_percent', 'current_drawdown_percent', 'is_primary',
         ]));
+    }
+
+    public function getAccountSizing(string $id): ResearchResource|JsonResponse
+    {
+        $account = PaperAccountRecord::query()->find($id);
+        if ($account === null) {
+            return $this->notFound('account_not_found', "Account [{$id}] was not found.");
+        }
+
+        return $this->ok([
+            'account_id' => $account->id,
+            'name' => $account->name,
+            'exchange_id' => $account->exchange_id,
+            'strategy_id' => $account->strategy_id,
+            'configured_sizing_settings' => $account->sizing_settings,
+            'effective_sizing_settings' => PaperSizingSettings::effectiveForAccount($account->sizing_settings),
+            'default_sizing_settings' => PaperSizingSettings::defaultSettings(),
+        ]);
+    }
+
+    public function updateAccountSizing(string $id, Request $request): ResearchResource|JsonResponse
+    {
+        $account = PaperAccountRecord::query()->find($id);
+        if ($account === null) {
+            return $this->notFound('account_not_found', "Account [{$id}] was not found.");
+        }
+
+        $payload = $request->all();
+        if (empty($payload)) {
+            $account->update(['sizing_settings' => null]);
+        } else {
+            try {
+                $normalized = PaperSizingSettings::normalize($payload);
+                $account->update(['sizing_settings' => $normalized]);
+            } catch (\DomainException $e) {
+                return $this->badRequest('invalid_sizing_settings', $e->getMessage());
+            }
+        }
+
+        $account->refresh();
+
+        return $this->ok([
+            'account_id' => $account->id,
+            'configured_sizing_settings' => $account->sizing_settings,
+            'effective_sizing_settings' => PaperSizingSettings::effectiveForAccount($account->sizing_settings),
+        ]);
+    }
+
+    public function getEffectiveAccountSizing(string $id, Request $request): ResearchResource|JsonResponse
+    {
+        $account = PaperAccountRecord::query()->find($id);
+        if ($account === null) {
+            return $this->notFound('account_not_found', "Account [{$id}] was not found.");
+        }
+
+        $symbol = $request->query('symbol', 'BTCUSDT');
+        $effectiveSettings = PaperSizingSettings::effectiveForAccount($account->sizing_settings);
+        $costModel = config("exchanges.{$account->exchange_id}.cost_model", []);
+
+        return $this->ok([
+            'account_id' => $account->id,
+            'exchange_id' => $account->exchange_id,
+            'symbol' => $symbol,
+            'effective_sizing_settings' => $effectiveSettings,
+            'current_equity' => (string) $account->current_equity,
+            'exchange_cost_model' => $costModel,
+        ]);
     }
 
     public function journal(Request $r): ResearchResource|JsonResponse

@@ -38,6 +38,12 @@ abstract class TestCase extends BaseTestCase
                 throw new \RuntimeException('Expected an empty migrated test fixture.');
             }
         }
+        if (Schema::hasTable('paper_capital_events')) {
+            $db->table('paper_capital_events')->delete();
+        }
+        if (Schema::hasTable('risk_decisions')) {
+            $db->table('risk_decisions')->delete();
+        }
         $db->table('equity_snapshots')->delete();
         $db->table('paper_accounts')->delete();
     }

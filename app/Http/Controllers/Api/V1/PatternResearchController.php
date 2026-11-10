@@ -18,6 +18,7 @@ use App\Strategy\Infrastructure\Persistence\LevelInteractionForecastRecord;
 use App\Strategy\Infrastructure\Persistence\SignalRecord;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Str;
 use Ramsey\Uuid\Uuid;
 
 final class PatternResearchController extends Controller
@@ -51,7 +52,8 @@ final class PatternResearchController extends Controller
 
     public function show(string $id): JsonResponse
     {
-        $pattern = PatternRecord::query()->findOrFail($id);
+        $pattern = Str::isUuid($id) ? PatternRecord::query()->find($id) : null;
+        abort_if($pattern === null, 404, "Pattern [{$id}] not found.");
 
         return response()->json(['data' => $pattern]);
     }

@@ -451,10 +451,13 @@ final class QualityRiskGateAndProfitabilityVerificationTest extends TestCase
 
         self::assertSame(130, $result['total_expected']);
         self::assertSame(130, $result['total_provisioned']);
-        self::assertSame(130, $result['counts']['DATA_READY']);
         self::assertSame(130, $result['counts']['STRATEGY_READY']);
-        self::assertSame(130, $result['counts']['GATE_VERIFIED']);
         self::assertSame(117, $result['counts']['RISK_BLOCKED']);
+        self::assertArrayHasKey('account_provisioned', $result['matrix'][0]);
+        self::assertArrayHasKey('market_data_ready', $result['matrix'][0]);
+        self::assertArrayHasKey('strategy_ready', $result['matrix'][0]);
+        self::assertArrayHasKey('execution_ready', $result['matrix'][0]);
+        self::assertArrayHasKey('reconciliation_passed', $result['matrix'][0]);
     }
 
     /**

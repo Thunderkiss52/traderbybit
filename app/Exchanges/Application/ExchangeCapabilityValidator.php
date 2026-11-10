@@ -45,9 +45,10 @@ final readonly class ExchangeCapabilityValidator
 
         $hasPrecision = isset($capabilities['price_precision']) && isset($capabilities['qty_precision']);
 
-        // These are the only venue/market models the authoritative ledger currently executes.
-        $hasExecutionModel = in_array($exchange->id, ['bybit', 'binance'], true)
-            && $exchange->market_type === 'linear_perpetual';
+        // Execution model is supported when paper execution is configured/approved and market type has cost structure.
+        $hasExecutionModel = ((bool) config("exchanges.{$exchange->id}.paper_execution_approved", false)
+            || ($exchange->id === 'bybit' && in_array($exchange->market_type, ['linear_perpetual', 'linear'], true)))
+            && in_array($exchange->market_type, ['linear_perpetual', 'linear', 'spot'], true);
         $isSpot = ($exchange->market_type === 'spot') || empty($capabilities['has_funding']);
 
         $symbols = (array) config('market_data.symbols', ['BTCUSDT', 'ETHUSDT']);

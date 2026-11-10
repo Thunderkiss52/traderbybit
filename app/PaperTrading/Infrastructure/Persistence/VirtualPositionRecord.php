@@ -30,6 +30,7 @@ final class VirtualPositionRecord extends Model
             'entry_price' => 'string', 'stop_loss' => 'string', 'take_profit_1' => 'string', 'take_profit_2' => 'string',
             'initial_quantity' => 'string', 'remaining_quantity' => 'string', 'qty_step' => 'string', 'risk_capital' => 'string', 'gross_pnl' => 'string',
             'net_pnl' => 'string', 'unrealized_pnl' => 'string', 'fees' => 'string', 'funding' => 'string', 'r_multiple' => 'string',
+            'sizing_snapshot' => 'array',
         ];
     }
 

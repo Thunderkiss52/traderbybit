@@ -81,11 +81,19 @@ final class SlippageAttributionService
 
         try {
             // Retrieve the configured independent primary accounts.
+            $exchangeFilter = $parameters['exchange'] ?? $parameters['exchange_id'] ?? null;
+            $symbolFilter = $parameters['symbol'] ?? null;
             $accounts = $this->accountService->allPrimaryAccounts();
+            if ($exchangeFilter !== null && $exchangeFilter !== 'all') {
+                $accounts = $accounts->where('exchange_id', $exchangeFilter);
+            }
             $accountIds = $accounts->pluck('id')->filter()->all();
 
             // Query positions based on scope
             $positionsQuery = VirtualPositionRecord::query()->whereIn('paper_account_id', $accountIds);
+            if ($symbolFilter !== null && $symbolFilter !== 'all' && $symbolFilter !== 'ALL') {
+                $positionsQuery->where('symbol', $symbolFilter);
+            }
             if ($accountingScope === 'WINDOW_FLOW' && isset($parameters['window_start'], $parameters['window_end'])) {
                 $positionsQuery->where('opened_at', '>=', $parameters['window_start'])
                     ->where('opened_at', '<', $parameters['window_end']);
@@ -294,7 +302,7 @@ final class SlippageAttributionService
      *
      * @return array<string, mixed>
      */
-    public function getLatestSummary(string $accountingScope = 'FULL_LIFECYCLE'): array
+    public function getLatestSummary(string $accountingScope = 'FULL_LIFECYCLE', ?string $exchange = null, ?string $symbol = null): array
     {
         $generation = ResearchGenerationRecord::query()
             ->where('package_code', 'P-1')
@@ -311,13 +319,25 @@ final class SlippageAttributionService
             ];
         }
 
-        $positionAttributions = SlippageAttributionRecord::query()
-            ->where('generation_id', $generation->id)
-            ->get();
+        $posQuery = SlippageAttributionRecord::query()
+            ->where('generation_id', $generation->id);
+        if ($symbol !== null && $symbol !== 'all' && $symbol !== 'ALL') {
+            $posQuery->where('symbol', $symbol);
+        }
+        if ($exchange !== null && $exchange !== 'all') {
+            $posQuery->whereIn('paper_account_id', PaperAccountRecord::query()->where('exchange_id', $exchange)->select('id'));
+        }
+        $positionAttributions = $posQuery->get();
 
-        $fillAttributions = SlippageAttributionFillRecord::query()
-            ->where('generation_id', $generation->id)
-            ->get();
+        $fillQuery = SlippageAttributionFillRecord::query()
+            ->where('generation_id', $generation->id);
+        if ($symbol !== null && $symbol !== 'all' && $symbol !== 'ALL') {
+            $fillQuery->where('symbol', $symbol);
+        }
+        if ($exchange !== null && $exchange !== 'all') {
+            $fillQuery->whereIn('paper_account_id', PaperAccountRecord::query()->where('exchange_id', $exchange)->select('id'));
+        }
+        $fillAttributions = $fillQuery->get();
 
         $entryDrag = BigDecimal::zero();
         $partialExitDrag = BigDecimal::zero();

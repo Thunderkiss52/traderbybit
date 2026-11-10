@@ -47,7 +47,7 @@ final class CostMfeMaeService
      *
      * @return array<string, mixed>
      */
-    public function getLatestCostMfeMae(string $accountingScope = 'FULL_LIFECYCLE'): array
+    public function getLatestCostMfeMae(string $accountingScope = 'FULL_LIFECYCLE', ?string $exchange = null, ?string $symbol = null): array
     {
         $generation = ResearchGenerationRecord::query()
             ->where('package_code', self::PACKAGE_CODE)
@@ -64,8 +64,15 @@ final class CostMfeMaeService
             ];
         }
 
-        $records = ResearchMfeMaeRecord::query()
-            ->where('generation_id', $generation->id)
+        $recordsQuery = ResearchMfeMaeRecord::query()
+            ->where('generation_id', $generation->id);
+        if ($symbol !== null && $symbol !== 'all' && $symbol !== 'ALL') {
+            $recordsQuery->where('symbol', $symbol);
+        }
+        if ($exchange !== null && $exchange !== 'all') {
+            $recordsQuery->whereIn('paper_account_id', PaperAccountRecord::query()->where('exchange_id', $exchange)->select('id'));
+        }
+        $records = $recordsQuery
             ->orderBy('symbol')
             ->orderBy('holding_start_at')
             ->get()

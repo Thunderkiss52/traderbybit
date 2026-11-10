@@ -68,9 +68,31 @@ final readonly class PositionLifecycleService
             SignalLifecycle::from($lockedState->status)->transitionTo(SignalLifecycle::Active);
             $quantity = (string) $size->quantity;
             $fee = $this->execution->commission($quantity, $quote->price, $account->exchange_id);
+            $sizingSettings = $lockedAccount->sizing_settings;
+            $effectiveMode = $sizingSettings['mode'] ?? 'fixed_notional';
+            $requestedNotional = match ($effectiveMode) {
+                'fixed_margin' => (string) BigDecimal::of((string) ($sizingSettings['amount'] ?? '5'))->multipliedBy((string) ($sizingSettings['leverage'] ?? '1')),
+                'fixed_notional' => (string) ($sizingSettings['amount'] ?? '5'),
+                default => (string) $size->notional,
+            };
+            $costModelVersion = (string) (config("exchanges.{$account->exchange_id}.cost_model.version") ?? '1.0.0');
+
+            $sizingSnapshot = [
+                'sizing_mode' => $effectiveMode,
+                'requested_notional' => $requestedNotional,
+                'actual_notional' => (string) $size->notional,
+                'allocated_margin' => (string) $size->allocatedMargin,
+                'leverage' => (string) $size->leverage,
+                'planned_risk' => (string) $signal->model_risk_percent,
+                'effective_risk' => (string) $size->riskCapital,
+                'settings_version' => '1.0.0',
+                'instrument_metadata_version' => '1.0.0',
+                'exchange_cost_model_version' => $costModelVersion,
+            ];
+
             $position = VirtualPositionRecord::query()->create([
                 'id' => $positionId, 'paper_account_id' => $account->id, 'exchange_id' => $account->exchange_id, 'signal_id' => $signal->id, 'symbol' => $signal->symbol,
-                'side' => $signal->side, 'quality_class' => $signal->quality_class,
+                'side' => $signal->side, 'quality_class' => $signal->quality_class ?? ($signal->signal_quality === 'HIGH' ? 'A' : ($signal->signal_quality === 'MEDIUM' ? 'B' : 'C')),
                 'signal_quality' => $signal->signal_quality, 'trade_risk' => $signal->trade_risk,
                 'status' => PositionStatus::Open->value,
                 'entry_price' => $quote->price, 'stop_loss' => $signal->stop_loss, 'take_profit_1' => $signal->take_profit_1, 'take_profit_2' => $signal->take_profit_2,
@@ -79,6 +101,7 @@ final readonly class PositionLifecycleService
                 'opened_at' => $at, 'maximum_holding_until' => $at->modify('+'.$signal->maximum_holding_minutes.' minutes'),
                 'last_processed_event_at' => $at, 'ambiguous_execution' => $quote->ambiguous, 'funding_complete' => false,
                 'execution_model' => $quote->priceSource, 'strategy_version' => $signal->strategy_version,
+                'sizing_snapshot' => $sizingSnapshot,
                 'risk_version' => (string) $this->config['risk_version'], 'execution_version' => (string) $this->config['execution_version'], 'schema_version' => (string) $this->config['schema_version'],
             ]);
             $this->recordExecution($position, ExecutionType::Entry, $signal->side, $quantity, $quote, '0', $fee, $at);
@@ -91,6 +114,7 @@ final readonly class PositionLifecycleService
             $this->journal->append($account->id, $signal->id, $position->id, 'POSITION_OPENED', $at, [
                 'paper' => true, 'price' => $quote->price, 'quantity' => $quantity, 'fee' => $fee, 'slippage' => $quote->slippage,
                 'execution_model' => $quote->priceSource, 'ambiguous_execution' => $quote->ambiguous,
+                'sizing_snapshot' => $sizingSnapshot,
             ], "position-opened:{$position->id}");
 
             return $position->refresh();

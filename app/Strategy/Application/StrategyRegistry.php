@@ -24,6 +24,7 @@ use App\StrategyBuilder\ForwardEvaluator;
 use App\StrategyBuilder\PaperDslStrategy;
 use App\StrategyBuilder\PrimaryStrategies;
 use Illuminate\Support\Arr;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Schema;
 
 final class StrategyRegistry
@@ -38,12 +39,16 @@ final class StrategyRegistry
     {
         $this->dynamicStrategies[$strategy->id()] = $strategy;
 
-        try {
-            if (Schema::hasTable('paper_accounts')) {
+        if (Schema::hasTable('paper_accounts')) {
+            try {
                 app(PaperTopologySynchronizer::class)->sync(true);
+            } catch (\Throwable $e) {
+                Log::error('Topology synchronization failed during strategy registration', [
+                    'strategy_id' => $strategy->id(),
+                    'error' => $e->getMessage(),
+                ]);
+                throw $e;
             }
-        } catch (\Throwable) {
-            // Silently ignore if in unit tests or before schema migration
         }
     }
 
@@ -54,12 +59,16 @@ final class StrategyRegistry
             $this->dynamicStrategies[$strategy->id()] = $strategy;
         }
 
-        try {
-            if (Schema::hasTable('paper_accounts')) {
+        if (Schema::hasTable('paper_accounts')) {
+            try {
                 app(PaperTopologySynchronizer::class)->sync(true);
+            } catch (\Throwable $e) {
+                Log::error('Topology synchronization failed during batch strategy registration', [
+                    'count' => count($strategies),
+                    'error' => $e->getMessage(),
+                ]);
+                throw $e;
             }
-        } catch (\Throwable) {
-            // Silently ignore if in unit tests or before schema migration
         }
     }
 

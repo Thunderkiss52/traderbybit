@@ -61,6 +61,7 @@ const signalAnalyticsError = ref('');
 
 // Signal Explorer Paginated Table State
 const explorerLoading = ref(false);
+const explorerError = ref('');
 const explorerSignals = ref<any[]>([]);
 const explorerPagination = ref({
   page: 1,
@@ -76,7 +77,7 @@ const signalDetailLoading = ref(false);
 const signalDetailData = ref<any>(null);
 const signalDetailError = ref('');
 
-const primaryStrategiesList = [
+const primaryStrategiesList = ref<Array<{ label: string; value: string }>>([
   { label: 'Все стратегии', value: 'all' },
   { label: 'Baseline', value: 'baseline' },
   { label: 'Trend Pullback', value: 'trend_pullback' },
@@ -91,7 +92,25 @@ const primaryStrategiesList = [
   { label: 'Volatility Compression Breakout', value: 'volatility_compression_breakout' },
   { label: 'BTC/ETH Lead Lag', value: 'btc_eth_lead_lag' },
   { label: 'Multi-Timeframe Trend Following', value: 'multi_timeframe_trend_following' },
-];
+]);
+
+async function loadDynamicStrategies() {
+  try {
+    const res = await api.get('/research/profitability/strategies');
+    const items = res.data?.data || res.data || [];
+    const seen = new Set(primaryStrategiesList.value.map(s => s.value));
+    for (const item of items) {
+      const id = item.strategy_id || item.id;
+      if (id && !seen.has(id)) {
+        seen.add(id);
+        const label = id.replace(/_/g, ' ').replace(/\b\w/g, (c: string) => c.toUpperCase());
+        primaryStrategiesList.value.push({ label, value: id });
+      }
+    }
+  } catch {
+    // Keep initialized strategies if unavailable
+  }
+}
 
 function getSignalFilters() {
   const params: Record<string, any> = {};
@@ -126,6 +145,7 @@ async function loadSignalAnalytics() {
 
 async function loadSignalExplorer(props?: any) {
   explorerLoading.value = true;
+  explorerError.value = '';
   try {
     const pagination = props?.pagination || explorerPagination.value;
     const params: Record<string, any> = {
@@ -145,8 +165,8 @@ async function loadSignalExplorer(props?: any) {
       sortBy: pagination.sortBy,
       descending: pagination.descending,
     };
-  } catch {
-    //
+  } catch (err: any) {
+    explorerError.value = err?.response?.data?.message || err?.message || 'Ошибка загрузки сигналов обозревателя';
   } finally {
     explorerLoading.value = false;
   }
@@ -266,6 +286,7 @@ async function openPositionTrace(positionId: string) {
 
 onMounted(() => {
   void loadData();
+  void loadDynamicStrategies();
   void loadSignalAnalytics();
   void loadSignalExplorer();
 });
@@ -1100,6 +1121,9 @@ onMounted(() => {
             <div class="text-subtitle1 text-bold">Секция F: Обозреватель сигналов (Signal Explorer)</div>
             <q-btn outline dense color="secondary" icon="download" label="Экспорт CSV" no-caps @click="exportSignalExplorerCsv" />
           </div>
+          <q-banner v-if="explorerError" class="bg-negative text-white q-mb-sm" dense>
+            {{ explorerError }}
+          </q-banner>
           <q-table
             flat
             dense
