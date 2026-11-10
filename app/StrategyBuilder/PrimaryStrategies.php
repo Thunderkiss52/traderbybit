@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\StrategyBuilder;
 
+use App\Strategy\Application\StrategyExchangeAssignmentService;
 use App\Strategy\Application\StrategyRegistry;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
@@ -13,8 +14,10 @@ final class PrimaryStrategies
 {
     public static function ids(?string $exchange = null): array
     {
-        // A portfolio exists on every registered venue. A definition's declared
-        // exchange compatibility governs execution, never portfolio existence.
+        if ($exchange !== null) {
+            return app(StrategyExchangeAssignmentService::class)->assignedStrategiesForExchange($exchange);
+        }
+
         return app(StrategyRegistry::class)->ids();
     }
 
@@ -30,9 +33,9 @@ final class PrimaryStrategies
     public static function byExchange(array $exchanges): array
     {
         $out = [];
-        $ids = self::ids();
+        $assignments = app(StrategyExchangeAssignmentService::class);
         foreach ($exchanges as $exchange) {
-            $out[$exchange] = $ids;
+            $out[$exchange] = $assignments->assignedStrategiesForExchange($exchange);
         }
 
         return $out;

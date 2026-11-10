@@ -175,6 +175,7 @@ final class DynamicExchangeOnboardingAndUnlimitedArchitectureTest extends TestCa
                 'execution_model' => 'NEXT_CANDLE_OPEN',
                 'ambiguous_execution_policy' => 'FLAG_AND_HOLD',
             ],
+            'assigned_strategies' => PrimaryStrategies::ids(),
         ];
 
         $res = $this->postJson('/api/v1/exchanges/onboard', ['manifest' => $manifestData]);
@@ -219,6 +220,7 @@ final class DynamicExchangeOnboardingAndUnlimitedArchitectureTest extends TestCa
                 'taker_rate' => '0.0005',
                 'slippage_rate' => '0.0002',
             ],
+            'assigned_strategies' => PrimaryStrategies::ids(),
         ];
 
         $res2 = $this->postJson('/api/v1/exchanges/onboard', ['manifest' => $dydxManifest]);
@@ -255,6 +257,7 @@ final class DynamicExchangeOnboardingAndUnlimitedArchitectureTest extends TestCa
                     'taker_rate' => '0.0005',
                     'slippage_rate' => '0.0002',
                 ],
+                'assigned_strategies' => PrimaryStrategies::ids(),
             ],
         ])->assertStatus(201);
 
@@ -281,6 +284,7 @@ final class DynamicExchangeOnboardingAndUnlimitedArchitectureTest extends TestCa
                     'taker_rate' => '0.0005',
                     'slippage_rate' => '0.0002',
                 ],
+                'assigned_strategies' => PrimaryStrategies::ids(),
             ],
         ])->assertStatus(201);
 
@@ -318,6 +322,7 @@ final class DynamicExchangeOnboardingAndUnlimitedArchitectureTest extends TestCa
                     'taker_rate' => '0.0005',
                     'slippage_rate' => '0.0002',
                 ],
+                'assigned_strategies' => PrimaryStrategies::ids(),
             ],
         ])->assertStatus(201);
 
@@ -367,6 +372,7 @@ final class DynamicExchangeOnboardingAndUnlimitedArchitectureTest extends TestCa
                     'taker_rate' => '0.0005',
                     'slippage_rate' => '0.0002',
                 ],
+                'assigned_strategies' => PrimaryStrategies::ids(),
             ],
         ])->assertStatus(201);
 

@@ -12,6 +12,7 @@ use App\Exchanges\Infrastructure\Persistence\ExchangeRecord;
 use App\MarketData\Infrastructure\Persistence\CandleRecord;
 use App\PaperTrading\Application\PaperTopologySynchronizer;
 use App\PaperTrading\Infrastructure\Persistence\PaperAccountRecord;
+use App\Strategy\Application\StrategyExchangeAssignmentService;
 use DomainException;
 use Illuminate\Support\Facades\DB;
 use InvalidArgumentException;
@@ -115,8 +116,17 @@ final readonly class ExchangeCatalogService
                 ]),
             ]);
 
+            // Register explicit strategy assignments if specified in manifest
+            $assignedStrategies = $manifestObj->assignedStrategies;
+            if (! empty($assignedStrategies)) {
+                $assignmentService = app(StrategyExchangeAssignmentService::class);
+                foreach ($assignedStrategies as $stratId) {
+                    $assignmentService->assign($stratId, $created->id, 'manifest_onboard');
+                }
+            }
+
             $this->compatibility->reconcileExchange($created->id);
-            // Topology scaling: automatically provision 1 independent paper account for every strategy
+            // Topology scaling: provision accounts for assigned strategies
             app(PaperTopologySynchronizer::class)->sync(true);
 
             return $created;
@@ -177,6 +187,15 @@ final readonly class ExchangeCatalogService
                 'paper_approved_at' => null,
                 'metadata' => ['onboarded_at' => now('UTC')->toISOString()],
             ]);
+
+            // Register explicit strategy assignments if specified in manifest
+            $assignedStrategies = (array) ($data['assigned_strategies'] ?? []);
+            if (! empty($assignedStrategies)) {
+                $assignmentService = app(StrategyExchangeAssignmentService::class);
+                foreach ($assignedStrategies as $stratId) {
+                    $assignmentService->assign($stratId, $created->id, 'manifest_onboard');
+                }
+            }
 
             $this->compatibility->reconcileExchange($created->id);
             app(PaperTopologySynchronizer::class)->sync(true);

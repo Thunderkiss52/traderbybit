@@ -14,6 +14,7 @@ use App\PaperTrading\Infrastructure\Persistence\PaperAccountRecord;
 use App\PaperTrading\Infrastructure\Persistence\PaperSignalStateRecord;
 use App\PaperTrading\Infrastructure\Persistence\RiskDecisionRecord;
 use App\Research\Infrastructure\Persistence\LearningCandidateStrategyRecord;
+use App\Strategy\Application\StrategyExchangeAssignmentService;
 use App\Strategy\Application\StrategyRegistry;
 use App\Strategy\Domain\QualityClass;
 use App\Strategy\Domain\SignalQuality;
@@ -136,6 +137,11 @@ final readonly class PaperExecutionEligibilityService
         if (str_starts_with($account->strategy_id, 'user_') && ! DB::table('strategy_primary_registrations')->where('strategy_id', $account->strategy_id)->where('enabled', true)->exists()) {
             return 'primary_strategy_not_owner_active';
         }
+
+        if (! app(StrategyExchangeAssignmentService::class)->hasAssignment($account->strategy_id, $account->exchange_id)) {
+            return 'strategy_not_assigned_to_exchange';
+        }
+
         $primary = PrimaryStrategies::ids($account->exchange_id);
         $enabled = (array) config('research.forward_paper.enabled_strategies', []);
         if (! in_array($account->strategy_id, $primary, true) && ! in_array($account->strategy_id, $enabled, true)) {

@@ -44,6 +44,7 @@ final readonly class ExchangeManifest implements JsonSerializable
         ],
         public array $endpoints = [],
         public array $metadata = [],
+        public array $assignedStrategies = [],
     ) {}
 
     /**
@@ -96,6 +97,7 @@ final readonly class ExchangeManifest implements JsonSerializable
             ]),
             endpoints: (array) ($data['endpoints'] ?? []),
             metadata: (array) ($data['metadata'] ?? []),
+            assignedStrategies: (array) ($data['assigned_strategies'] ?? []),
         );
     }
 
@@ -145,6 +147,7 @@ final readonly class ExchangeManifest implements JsonSerializable
             ],
             'cost_model' => $this->costModel,
             'paper_execution_assumptions' => $this->paperExecutionAssumptions,
+            'assigned_strategies' => $this->assignedStrategies,
             'metadata' => array_merge($this->metadata, [
                 'manifest_version' => $this->manifestVersion,
                 'onboarded_at' => now('UTC')->toISOString(),

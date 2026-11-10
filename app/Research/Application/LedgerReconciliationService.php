@@ -131,7 +131,7 @@ final class LedgerReconciliationService
             $status = PositionStatus::tryFrom($pos->status);
             $toTime = ($status?->isClosed() && $pos->closed_at !== null)
                 ? $pos->closed_at->toDateTimeImmutable()
-                : now('UTC')->toDateTimeImmutable();
+                : now('UTC')->subMinutes(15)->toDateTimeImmutable();
 
             $expectedBoundaries = $lifecycle->expectedFundingBoundaries(
                 $pos->opened_at->toDateTimeImmutable(),

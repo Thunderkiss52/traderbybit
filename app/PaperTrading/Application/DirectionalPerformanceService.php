@@ -86,6 +86,11 @@ final readonly class DirectionalPerformanceService
         if ($exchangeId !== null && $exchangeId !== '') {
             $posQuery->where('exchange_id', $exchangeId);
         }
+        if ($strategyId !== null && $strategyId !== '') {
+            $posQuery->whereIn('paper_account_id', function ($q) use ($strategyId): void {
+                $q->select('id')->from('paper_accounts')->where('strategy_id', $strategyId)->orWhere('primary_strategy_id', $strategyId);
+            });
+        }
         if ($symbol !== null && $symbol !== '') {
             $posQuery->where('symbol', $symbol);
         }
@@ -200,6 +205,9 @@ final readonly class DirectionalPerformanceService
         if ($symbol !== null && $symbol !== '') {
             $sigQuery->where('symbol', $symbol);
         }
+        if ($strategyId !== null && $strategyId !== '') {
+            $sigQuery->where('strategy_id', $strategyId);
+        }
         if ($side !== null) {
             $sigQuery->where('side', $side);
         }
@@ -209,6 +217,9 @@ final readonly class DirectionalPerformanceService
         $riskRejections = RiskDecisionRecord::query()
             ->when($accountId, fn ($q) => $q->where('paper_account_id', $accountId))
             ->when($exchangeId, fn ($q) => $q->where('exchange_id', $exchangeId))
+            ->when($strategyId, fn ($q) => $q->whereIn('paper_account_id', function ($sub) use ($strategyId): void {
+                $sub->select('id')->from('paper_accounts')->where('strategy_id', $strategyId)->orWhere('primary_strategy_id', $strategyId);
+            }))
             ->where('allowed', false)
             ->count();
 
@@ -218,16 +229,20 @@ final readonly class DirectionalPerformanceService
             'winning_trades' => $winCount,
             'losing_trades' => $lossCount,
             'win_rate' => $winRate,
+            'win_rate_percent' => $winRate,
             'profit_factor' => $profitFactor,
             'gross_profit' => (string) $grossProfit,
             'gross_loss' => (string) $grossLoss,
             'gross_pnl' => (string) $totalGross,
             'net_pnl' => (string) $totalNet,
+            'total_net_pnl' => (string) $totalNet,
             'fees' => (string) $totalFees,
+            'total_fees' => (string) $totalFees,
             'funding' => (string) $totalFunding,
             'slippage' => (string) $slippageCost,
             'expectancy' => $expectancy,
             'average_r' => $averageR,
+            'avg_r' => $averageR,
             'max_consecutive_wins' => $maxConsecutiveWins,
             'max_consecutive_losses' => $maxConsecutiveLosses,
             'total_signals' => $totalSignals,

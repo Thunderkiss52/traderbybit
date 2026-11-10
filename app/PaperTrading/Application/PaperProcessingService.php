@@ -17,6 +17,7 @@ use App\PaperTrading\Infrastructure\Persistence\PaperAccountRecord;
 use App\PaperTrading\Infrastructure\Persistence\PaperSignalStateRecord;
 use App\PaperTrading\Infrastructure\Persistence\RiskDecisionRecord;
 use App\PaperTrading\Infrastructure\Persistence\VirtualPositionRecord;
+use App\Strategy\Application\PreEntryStrategyEvidenceService;
 use App\Strategy\Application\StrategyRegistry;
 use App\Strategy\Domain\QualityClass;
 use App\Strategy\Domain\SignalQuality;
@@ -485,13 +486,26 @@ final readonly class PaperProcessingService
             'estimated_costs' => $costEstimate,
         ]);
 
+        $evidenceService = app(PreEntryStrategyEvidenceService::class);
+        $strategyEvidence = $evidenceService->computePreEntryEvidence(
+            $account->strategy_id,
+            $account->exchange_id,
+            $signal->symbol,
+            $signal->side,
+            $signal->decision_time->toDateTimeImmutable()
+        );
+
         $gateService = app(PreExecutionQualityRiskGate::class);
         $gateResult = $gateService->evaluate([
             'signal_quality' => $qualityEnum,
             'trade_risk' => $riskAssessmentResult['risk_class'],
-            'expected_net_edge' => null,
-            'sample_size' => 0,
+            'expected_net_edge' => $strategyEvidence['expected_net_edge'],
+            'sample_size' => $strategyEvidence['sample_size'],
             'drawdown_percent' => $account->current_drawdown_percent,
+            'directional_win_rate' => $strategyEvidence['directional_win_rate'],
+            'directional_profit_factor' => $strategyEvidence['directional_profit_factor'],
+            'directional_sample_size' => $strategyEvidence['directional_sample_size'],
+            'cost_drag_percent' => $costEstimate['cost_to_tp1_gain_percent'] ?? null,
             'side' => $signal->side,
         ]);
 

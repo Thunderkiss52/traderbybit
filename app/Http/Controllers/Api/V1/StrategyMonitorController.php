@@ -112,37 +112,55 @@ final class StrategyMonitorController extends Controller
             }
         }
 
-        $totalEvaluations = (clone $obsQuery)->count();
-        $totalSignals = (clone $sigQuery)->whereIn('side', ['BUY', 'SELL'])->count();
-        $totalSkips = (clone $obsQuery)->where('side', 'SKIP')->count();
-        $riskApproved = (clone $riskQuery)->where('allowed', true)->count();
-        $activePositions = (clone $posQuery)->whereIn('status', ['OPEN', 'PARTIALLY_CLOSED'])->count();
-        $closedPositions = (clone $posQuery)->whereIn('status', ['CLOSED', 'CLOSED_TP', 'CLOSED_SL', 'CLOSED_TIMEOUT', 'CLOSED_RISK', 'RESOLVED'])->count();
+        // Consolidated aggregation queries for high performance (resolves 15s timeout)
+        $obsAgg = (clone $obsQuery)
+            ->selectRaw("
+                COUNT(*) as total_evaluations,
+                COUNT(*) FILTER (WHERE side = 'SKIP') as total_skips
+            ")->first();
+        $totalEvaluations = (int) ($obsAgg?->total_evaluations ?? 0);
+        $totalSkips = (int) ($obsAgg?->total_skips ?? 0);
 
-        $longSignalsCount = (clone $sigQuery)->where('side', 'BUY')->count();
-        $shortSignalsCount = (clone $sigQuery)->where('side', 'SELL')->count();
+        $posAgg = (clone $posQuery)
+            ->selectRaw("
+                COUNT(*) FILTER (WHERE status IN ('OPEN', 'PARTIALLY_CLOSED')) as active_positions,
+                COUNT(*) FILTER (WHERE status IN ('CLOSED', 'CLOSED_TP', 'CLOSED_SL', 'CLOSED_TIMEOUT', 'CLOSED_RISK', 'RESOLVED')) as closed_positions
+            ")->first();
+        $activePositions = (int) ($posAgg?->active_positions ?? 0);
+        $closedPositions = (int) ($posAgg?->closed_positions ?? 0);
+
+        $sigAgg = (clone $sigQuery)
+            ->selectRaw("
+                COUNT(*) FILTER (WHERE side IN ('BUY', 'SELL')) as total_signals,
+                COUNT(*) FILTER (WHERE side = 'BUY') as long_signals,
+                COUNT(*) FILTER (WHERE side = 'SELL') as short_signals,
+                COUNT(*) FILTER (WHERE signal_quality = 'HIGH' OR quality_class = 'A') as q_high,
+                COUNT(*) FILTER (WHERE signal_quality = 'MEDIUM' OR quality_class = 'B') as q_medium,
+                COUNT(*) FILTER (WHERE signal_quality = 'LOW' OR quality_class = 'C') as q_low,
+                COUNT(*) FILTER (WHERE signal_quality IS NULL AND quality_class IS NULL) as q_unknown,
+                COUNT(*) FILTER (WHERE trade_risk = 'LOW') as r_low,
+                COUNT(*) FILTER (WHERE trade_risk = 'MEDIUM') as r_medium,
+                COUNT(*) FILTER (WHERE trade_risk = 'HIGH') as r_high,
+                COUNT(*) FILTER (WHERE trade_risk IS NULL OR trade_risk = 'UNKNOWN') as r_unknown
+            ")->first();
+
+        $totalSignals = (int) ($sigAgg?->total_signals ?? 0);
+        $longSignalsCount = (int) ($sigAgg?->long_signals ?? 0);
+        $shortSignalsCount = (int) ($sigAgg?->short_signals ?? 0);
         $qualityCounts = [
-            'HIGH' => (clone $sigQuery)->where(function (Builder $b): void {
-                $b->where('signal_quality', 'HIGH')->orWhere('quality_class', 'A');
-            })->count(),
-            'MEDIUM' => (clone $sigQuery)->where(function (Builder $b): void {
-                $b->where('signal_quality', 'MEDIUM')->orWhere('quality_class', 'B');
-            })->count(),
-            'LOW' => (clone $sigQuery)->where(function (Builder $b): void {
-                $b->where('signal_quality', 'LOW')->orWhere('quality_class', 'C');
-            })->count(),
-            'UNKNOWN' => (clone $sigQuery)->where(function (Builder $b): void {
-                $b->whereNull('signal_quality')->whereNull('quality_class');
-            })->count(),
+            'HIGH' => (int) ($sigAgg?->q_high ?? 0),
+            'MEDIUM' => (int) ($sigAgg?->q_medium ?? 0),
+            'LOW' => (int) ($sigAgg?->q_low ?? 0),
+            'UNKNOWN' => (int) ($sigAgg?->q_unknown ?? 0),
         ];
         $riskCounts = [
-            'LOW' => (clone $sigQuery)->where('trade_risk', 'LOW')->count(),
-            'MEDIUM' => (clone $sigQuery)->where('trade_risk', 'MEDIUM')->count(),
-            'HIGH' => (clone $sigQuery)->where('trade_risk', 'HIGH')->count(),
-            'UNKNOWN' => (clone $sigQuery)->where(function (Builder $b): void {
-                $b->whereNull('trade_risk')->orWhere('trade_risk', 'UNKNOWN');
-            })->count(),
+            'LOW' => (int) ($sigAgg?->r_low ?? 0),
+            'MEDIUM' => (int) ($sigAgg?->r_medium ?? 0),
+            'HIGH' => (int) ($sigAgg?->r_high ?? 0),
+            'UNKNOWN' => (int) ($sigAgg?->r_unknown ?? 0),
         ];
+
+        $riskApproved = (clone $riskQuery)->where('allowed', true)->count();
 
         // Feed items: BUY/SELL from SignalRecord or SKIP from StrategyObservationRecord
         $items = [];

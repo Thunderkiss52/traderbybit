@@ -200,8 +200,12 @@ final class GlobalCapitalAndTopologyR6Test extends TestCase
 
     public function test_global_five_percent_drawdown_and_reserved_risk_budget_are_independent_fail_closed_gates(): void
     {
+        foreach ((array) config('exchanges.enabled', []) as $ex) {
+            config(["exchanges.{$ex}.paper_execution_approved" => true]);
+        }
         $sync = app(PaperTopologySynchronizer::class);
         $sync->sync(true);
+        PaperAccountRecord::query()->where('is_primary', true)->update(['status' => 'ACTIVE']);
         $guard = app(GlobalPaperCapitalGuard::class);
         self::assertNull($guard->entryRejectionReason());
         // 130 x 10,000 initial -> 1,300,000 total virtual capital, 5% cap = 65,000.

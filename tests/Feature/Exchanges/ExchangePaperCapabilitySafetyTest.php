@@ -8,6 +8,7 @@ use App\Exchanges\Application\ExchangeCapabilityValidator;
 use App\Exchanges\Application\ExchangeStrategyCompatibilityService;
 use App\Exchanges\Infrastructure\Persistence\ExchangeRecord;
 use App\MarketData\Infrastructure\Persistence\CandleRecord;
+use Carbon\Carbon;
 use Carbon\CarbonImmutable;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
@@ -28,6 +29,7 @@ final class ExchangePaperCapabilitySafetyTest extends TestCase
 
     public function test_history_requires_every_timeframe_and_rejects_open_future_or_gapped_bars(): void
     {
+        Carbon::setTestNow('2026-11-07T12:00:00Z');
         CarbonImmutable::setTestNow('2026-11-07T12:00:00Z');
         try {
             $service = app(ExchangeStrategyCompatibilityService::class);
@@ -52,6 +54,7 @@ final class ExchangePaperCapabilitySafetyTest extends TestCase
             CandleRecord::query()->where('exchange', 'bybit')->where('interval', '15')->where('open_time', now('UTC')->subMinutes(150))->delete();
             self::assertFalse($service->evaluate($exchange, $strategy)['research_eligible']);
         } finally {
+            Carbon::setTestNow();
             CarbonImmutable::setTestNow();
         }
     }

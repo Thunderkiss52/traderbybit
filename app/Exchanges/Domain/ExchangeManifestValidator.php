@@ -6,6 +6,7 @@ namespace App\Exchanges\Domain;
 
 use App\Exchanges\Contracts\ExchangeAdapter;
 use App\HistoricalData\UniversalAcquisitionService;
+use App\Security\ExchangeUrlSecurityValidator;
 use Brick\Math\BigDecimal;
 use InvalidArgumentException;
 
@@ -72,9 +73,16 @@ final class ExchangeManifestValidator
             $errors[] = 'min_notional must be a positive numeric value.';
         }
 
-        // 7. Base URL & Adapter Class
-        if ($manifest->baseUrl !== null && ! filter_var($manifest->baseUrl, FILTER_VALIDATE_URL)) {
-            $errors[] = "Invalid base_url '{$manifest->baseUrl}'.";
+        // 7. Base URL SSRF & Security Validation
+        if ($manifest->baseUrl !== null) {
+            if (! filter_var($manifest->baseUrl, FILTER_VALIDATE_URL)) {
+                $errors[] = "Invalid base_url '{$manifest->baseUrl}'.";
+            } else {
+                $security = app(ExchangeUrlSecurityValidator::class)->validateUrl($manifest->baseUrl);
+                if (! $security['safe']) {
+                    $errors[] = "base_url security rejection: {$security['reason']}";
+                }
+            }
         }
         if ($manifest->adapterClass !== null) {
             if (! class_exists($manifest->adapterClass)) {

@@ -13,6 +13,7 @@ use App\StrategyBuilder\PrimaryStrategies;
 use Brick\Math\BigDecimal;
 use Illuminate\Contracts\Cache\Factory as CacheFactory;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Schema;
 use Ramsey\Uuid\Uuid;
 use RuntimeException;
 
@@ -128,9 +129,13 @@ final readonly class PaperTopologySynchronizer
                         : Uuid::uuid5(Uuid::NAMESPACE_URL, "traderbybit:paper:primary:{$exchange}:{$id}")->toString();
 
                     $startingBalance = $policy->openingBalance($exchange, $id);
-                    $isExecutionApproved = (bool) config("exchanges.{$exchange}.paper_execution_approved", false)
-                        || (bool) DB::table('exchanges')->where('id', $exchange)->where('paper_approved', true)->value('paper_approved');
-                    $accountStatus = ($exchange === 'bybit' || $isExecutionApproved) ? 'ACTIVE' : 'BLOCKED';
+                    $isExecutionApproved = match ($exchange) {
+                        'bybit' => true,
+                        'binance' => (bool) config('exchanges.binance.paper_execution_approved', (bool) config('exchanges.binance_paper_execution_approved', false)),
+                        default => (bool) config("exchanges.{$exchange}.paper_execution_approved", (bool) config("exchanges.{$exchange}_paper_execution_approved", false))
+                            || (bool) (Schema::hasTable('exchanges') ? DB::table('exchanges')->where('id', $exchange)->where('paper_approved', true)->value('paper_approved') : false),
+                    };
+                    $accountStatus = $isExecutionApproved ? 'ACTIVE' : 'BLOCKED';
 
                     $missingAccounts[] = [
                         'id' => $accountId,

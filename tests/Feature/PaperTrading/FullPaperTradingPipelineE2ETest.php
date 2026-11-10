@@ -440,8 +440,10 @@ final class FullPaperTradingPipelineE2ETest extends TestCase
     public function test_concurrent_position_openings_enforce_global_capital_guard_5_percent_limit(): void
     {
         // Setup 26 accounts (13 Bybit + 13 Binance = 260,000 USDT total capital, 5% cap = 13,000 USDT)
+        config(['exchanges.binance.paper_execution_approved' => true]);
         $initializer = $this->app->make(BinanceDeploymentInitializer::class);
         $initializer->initialize('10000', 'OWNER-VECTOR-RISK-20261104');
+        PaperAccountRecord::query()->where('exchange_id', 'binance')->update(['status' => 'ACTIVE']);
 
         $guard = $this->app->make(GlobalPaperCapitalGuard::class);
 
@@ -547,7 +549,7 @@ final class FullPaperTradingPipelineE2ETest extends TestCase
         string $low,
         string $close,
     ): void {
-        DB::table('market_candles')->insert([
+        DB::table('market_candles')->insertOrIgnore([
             'exchange' => $exchange,
             'category' => 'linear',
             'symbol' => $symbol,

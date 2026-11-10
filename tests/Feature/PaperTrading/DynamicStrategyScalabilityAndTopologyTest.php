@@ -359,6 +359,11 @@ final readonly class DynamicBenchmarkStrategy implements StrategyInterface
         return $this->strategyVersion;
     }
 
+    public function targetExchanges(): array
+    {
+        return ['bybit', 'binance', 'coinbase', 'upbit', 'okx', 'bitget', 'gate', 'kucoin', 'kraken', 'htx'];
+    }
+
     public function description(): string
     {
         return "Dynamic Benchmark Strategy {$this->strategyId}";

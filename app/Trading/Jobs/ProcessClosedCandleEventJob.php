@@ -5,10 +5,9 @@ declare(strict_types=1);
 namespace App\Trading\Jobs;
 
 use App\Exchanges\Binance\BinanceCandleIngestion;
-use App\Exchanges\Binance\BinanceContextCapture;
-use App\Strategy\Application\MarketContextCollector;
 use App\Strategy\Application\MarketScannerService;
 use App\Strategy\Application\StrategyObservationService;
+use App\Strategy\Application\UniversalMarketContextCollector;
 use App\Strategy\Contracts\MarketContextRepository;
 use App\Strategy\Exceptions\StrategyObservationActiveException;
 use App\Strategy\Infrastructure\Persistence\StrategyObservationRecord;
@@ -325,11 +324,7 @@ final class ProcessClosedCandleEventJob implements ShouldQueue
             $repo = app(MarketContextRepository::class);
             $existing = $repo->latestAt($this->exchange, 'linear', $this->symbol, $closeAt);
             if ($existing === null) {
-                if ($this->exchange === 'bybit') {
-                    app(MarketContextCollector::class)->collect($this->symbol);
-                } elseif ($this->exchange === 'binance') {
-                    app(BinanceContextCapture::class)->capture($this->symbol);
-                }
+                app(UniversalMarketContextCollector::class)->collect($this->exchange, $this->symbol);
             }
         } catch (Throwable $e) {
             Log::warning("Market context capture non-fatal failure for {$this->exchange}:{$this->symbol}: ".$e->getMessage());

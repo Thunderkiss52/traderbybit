@@ -193,7 +193,7 @@ final class AutonomousLearningController extends Controller
 
     public function generateCandidate(Request $request, StrategyEvolutionService $evolution): ResearchResource|JsonResponse
     {
-        $validated = $request->validate(['exchange' => ['sometimes', 'string', 'in:bybit,binance']]);
+        $validated = $request->validate(['exchange' => ['sometimes', 'string']]);
         try {
             $parentStrategyId = $request->string('parent_strategy_id', 'trend_pullback')->toString();
             $seed = $request->has('seed') ? $request->integer('seed') : null;
@@ -348,9 +348,17 @@ final class AutonomousLearningController extends Controller
         try {
             $exchange = $request->query('exchange');
             $query = LearningModelArtifactRecord::query()->latest('created_at');
-            if (is_string($exchange) && in_array($exchange, ['bybit', 'binance'], true)) {
-                $query->where('parameters->exchange', $exchange);
+            if (is_string($exchange) && $exchange !== '' && $exchange !== 'ALL') {
+                $query->where('parameters->exchange', strtolower($exchange));
             }
+
+            if ($request->has('per_page') || $request->has('page')) {
+                $perPage = max(1, min(100, $request->integer('per_page', 20)));
+                $paginated = $query->paginate($perPage);
+
+                return $this->ok($paginated);
+            }
+
             $records = $query->get();
 
             return $this->ok($records);
@@ -366,7 +374,7 @@ final class AutonomousLearningController extends Controller
 
     public function trainModel(Request $request, LearningPredictorService $trainer): ResearchResource|JsonResponse
     {
-        $request->validate(['exchange' => ['sometimes', 'in:bybit,binance']]);
+        $request->validate(['exchange' => ['sometimes', 'string']]);
         try {
             $event = $request->string('target_event', 'TP_BEFORE_SL')->toString();
             $symbol = $request->string('symbol', 'BTCUSDT')->toString();

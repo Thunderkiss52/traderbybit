@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Trading\Application;
 
+use App\Exchanges\ExchangeRegistry;
 use App\MarketData\Infrastructure\Persistence\CandleRecord;
 use App\Strategy\Infrastructure\Persistence\StrategyObservationRecord;
 use App\StrategyBuilder\PrimaryStrategies;
@@ -19,6 +20,7 @@ final class TradingPipelineRecoveryService
 {
     public function __construct(
         private readonly TradingPipelineEventService $eventService,
+        private readonly ?ExchangeRegistry $exchangeRegistry = null,
     ) {}
 
     /**
@@ -202,7 +204,7 @@ final class TradingPipelineRecoveryService
             }
 
             // Re-dispatch fresh pending/uncompleted event
-            $queue = (string) config("trading.queues.{$event->exchange}", $event->exchange === 'binance' ? 'trading-binance' : 'trading-bybit');
+            $queue = (string) config("trading.queues.{$event->exchange}", "trading-{$event->exchange}");
 
             try {
                 if ($event->stage === TradingPipelineEventRecord::STAGE_CANDLE_CLOSED) {
@@ -243,7 +245,11 @@ final class TradingPipelineRecoveryService
 
         // 2. Discover unrecorded closed 15m candles from the last 5 minutes
         $symbols = (array) config('trading.symbols', ['BTCUSDT', 'ETHUSDT']);
-        $exchanges = ['bybit', 'binance'];
+        $registry = $this->exchangeRegistry ?? app(ExchangeRegistry::class);
+        $exchanges = $registry->activeIds();
+        if ($exchanges === []) {
+            $exchanges = ['bybit', 'binance'];
+        }
         $candlesRecovered = 0;
 
         foreach ($exchanges as $exchange) {

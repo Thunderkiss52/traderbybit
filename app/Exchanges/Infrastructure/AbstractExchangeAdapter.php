@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Exchanges\Infrastructure;
 
 use App\Exchanges\Contracts\ExtendedExchangeAdapter;
+use App\Security\ExchangeUrlSecurityValidator;
 use Illuminate\Http\Client\ConnectionException;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Sleep;
@@ -33,11 +34,16 @@ abstract class AbstractExchangeAdapter implements ExtendedExchangeAdapter
         $url = (str_starts_with($path, 'http://') || str_starts_with($path, 'https://'))
             ? $path
             : rtrim($this->baseUrl, '/').'/'.ltrim($path, '/');
+
+        // Enforce SSRF protection on every outbound request
+        app(ExchangeUrlSecurityValidator::class)->assertSafe($url);
+
         $delayMs = 150;
 
         for ($attempt = 1; $attempt <= $this->maxRetries; $attempt++) {
             try {
                 $response = Http::timeout($this->timeoutSeconds)
+                    ->withoutRedirecting()
                     ->withHeaders(array_merge([
                         'User-Agent' => 'VECTOR-Research/1.0 (Public Market Data; Non-Trading)',
                         'Accept' => 'application/json',

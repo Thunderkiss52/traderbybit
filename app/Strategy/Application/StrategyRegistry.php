@@ -23,7 +23,9 @@ use App\Strategy\Research\VolatilityCompressionBreakoutStrategy;
 use App\StrategyBuilder\ForwardEvaluator;
 use App\StrategyBuilder\PaperDslStrategy;
 use App\StrategyBuilder\PrimaryStrategies;
+use Carbon\CarbonImmutable;
 use Illuminate\Support\Arr;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Schema;
 
@@ -35,9 +37,17 @@ final class StrategyRegistry
     /** @param list<StrategyInterface> $strategies */
     public function __construct(private array $strategies, private LevelInteractionAnalyzer $levels, private LevelProbabilityService $probabilities) {}
 
-    public function register(StrategyInterface $strategy): void
+    public function register(StrategyInterface $strategy, ?array $targetExchanges = null): void
     {
         $this->dynamicStrategies[$strategy->id()] = $strategy;
+
+        $targetExchanges = $targetExchanges ?? (method_exists($strategy, 'targetExchanges') ? $strategy->targetExchanges() : null);
+        if ($targetExchanges !== null && Schema::hasTable('strategy_exchange_assignments')) {
+            $assignmentService = app(StrategyExchangeAssignmentService::class);
+            foreach ($targetExchanges as $ex) {
+                $assignmentService->assign($strategy->id(), $ex, 'strategy_registration');
+            }
+        }
 
         if (Schema::hasTable('paper_accounts')) {
             try {
@@ -53,10 +63,34 @@ final class StrategyRegistry
     }
 
     /** @param list<StrategyInterface> $strategies */
-    public function registerBatch(array $strategies): void
+    public function registerBatch(array $strategies, ?array $targetExchanges = null): void
     {
+        $assignmentRows = [];
+        $now = CarbonImmutable::now('UTC');
+
         foreach ($strategies as $strategy) {
             $this->dynamicStrategies[$strategy->id()] = $strategy;
+            $exs = $targetExchanges ?? (method_exists($strategy, 'targetExchanges') ? $strategy->targetExchanges() : null);
+            if ($exs !== null && Schema::hasTable('strategy_exchange_assignments')) {
+                foreach ($exs as $ex) {
+                    $assignmentRows[] = [
+                        'strategy_id' => $strategy->id(),
+                        'exchange_id' => $ex,
+                        'market_type' => 'perpetual',
+                        'assigned_by' => 'batch_registration',
+                        'assigned_at' => $now,
+                        'is_active' => true,
+                        'created_at' => $now,
+                        'updated_at' => $now,
+                    ];
+                }
+            }
+        }
+
+        if (! empty($assignmentRows)) {
+            foreach (array_chunk($assignmentRows, 500) as $chunk) {
+                DB::table('strategy_exchange_assignments')->insertOrIgnore($chunk);
+            }
         }
 
         if (Schema::hasTable('paper_accounts')) {

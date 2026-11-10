@@ -20,6 +20,7 @@ use App\Research\Application\QuantPortfolioMetricsService;
 use App\Research\Application\RiskCapitalMetricsService;
 use App\Research\Application\SignalQualityAnalyticsService;
 use App\Research\Application\SlippageAttributionService;
+use App\Research\Domain\ResearchGenerationRecord;
 use App\Research\Domain\SlippageAttributionFillRecord;
 use App\Research\Domain\SlippageAttributionRecord;
 use App\Research\Exceptions\IdempotencyConflictException;
@@ -230,7 +231,26 @@ final class ProfitabilityResearchController extends Controller
                     'instrument' => $request->header('X-Instrument') ?: $request->string('instrument')->toString() ?: 'all',
                 ],
                 'gated_modules' => [
-                    'P-1' => ['name' => 'Slippage Attribution', 'status' => 'IMPLEMENTED_VERIFIED', 'authorized' => true],
+                    'P-1' => [
+                        'name' => 'Slippage Attribution',
+                        'status' => (function (): string {
+                            $record = ResearchGenerationRecord::query()
+                                ->where('package_code', 'P-1')
+                                ->latest('created_at')
+                                ->first();
+
+                            return match ($record?->status) {
+                                'COMPLETED' => 'IMPLEMENTED_VERIFIED',
+                                'RUNNING' => 'RUNNING',
+                                'QUEUED' => 'QUEUED',
+                                'FAILED' => 'FAILED',
+                                'STALE' => 'STALE',
+                                null => class_exists(SlippageAttributionService::class) ? 'IMPLEMENTED_VERIFIED' : 'NOT_IMPLEMENTED',
+                                default => (string) $record->status,
+                            };
+                        })(),
+                        'authorized' => true,
+                    ],
                     'P-2' => ['name' => 'Risk-Adjusted Metrics & Capital Efficiency', 'status' => 'IMPLEMENTED', 'authorized' => true],
                     'P-3' => ['name' => 'Rejected-Signal SHADOW Replay', 'status' => 'BLOCKED_PROHIBITED', 'authorized' => false],
                     'P-4' => ['name' => 'Cost Structure & MFE/MAE', 'status' => 'NOT_IMPLEMENTED', 'authorized' => false],

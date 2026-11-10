@@ -328,6 +328,8 @@ def run_pagination_audit(api_base: str, output_dir: str) -> List[Dict[str, Any]]
         {"name": "backtests", "uri": "/backtests", "dataPath": "data"},
         {"name": "research_patterns", "uri": "/research/patterns", "dataPath": "data"},
         {"name": "research_strategies", "uri": "/research/strategies", "dataPath": "data.data"},
+        {"name": "research_models", "uri": "/research/autonomous/models", "dataPath": "data"},
+        {"name": "research_candidates", "uri": "/research/autonomous/candidates", "dataPath": "data.data"},
     ]
 
     results = []
@@ -342,6 +344,8 @@ def run_pagination_audit(api_base: str, output_dir: str) -> List[Dict[str, Any]]
                 cur = cur[p]
             else:
                 return []
+        if isinstance(cur, dict) and "data" in cur and isinstance(cur["data"], list):
+            cur = cur["data"]
         return cur if isinstance(cur, list) else []
 
     for ep in endpoints:

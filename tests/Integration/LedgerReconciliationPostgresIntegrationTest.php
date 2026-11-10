@@ -92,7 +92,7 @@ final class LedgerReconciliationPostgresIntegrationTest extends TestCase
         self::assertCount($accounts->count(), $results);
         foreach ($results as $res) {
             // Legacy migration-created fixtures may lack initial snapshots; do not certify them complete.
-            $hasInitial = DB::table('equity_snapshots')->where('paper_account_id', $res['paper_account_id'])->where('source_event_key', 'account:initial')->exists();
+            $hasInitial = EquitySnapshotRecord::query()->performance()->where('paper_account_id', $res['paper_account_id'])->openingCapital()->exists();
             self::assertSame(
                 $hasInitial ? 'PASSED' : 'INCOMPLETE',
                 $res['status'],
