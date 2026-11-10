@@ -239,10 +239,11 @@ function gateDecisionClass(quality: string, risk: string): { label: string; colo
                 </div>
                 <div class="q-mt-xs text-caption">
                   <div>Positions: <strong class="text-white">{{ d.directional_performance?.directional?.LONG?.closed_positions || 0 }}</strong> closed ({{ d.directional_performance?.directional?.LONG?.opened_positions || 0 }} total)</div>
-                  <div>Win Rate: <strong class="text-white">{{ d.directional_performance?.directional?.LONG?.win_rate_percent }}%</strong></div>
+                  <div>Win Rate: <strong class="text-white">{{ d.directional_performance?.directional?.LONG?.win_rate_percent != null ? d.directional_performance.directional.LONG.win_rate_percent + '%' : '—' }}</strong></div>
                   <div>Profit Factor: <strong class="text-white">{{ d.directional_performance?.directional?.LONG?.profit_factor || '—' }}</strong></div>
                   <div>Net PnL: <strong :class="Number(d.directional_performance?.directional?.LONG?.total_net_pnl || 0) >= 0 ? 'text-positive' : 'text-negative'">{{ d.directional_performance?.directional?.LONG?.total_net_pnl || '0' }} USDT</strong></div>
                   <div>Fees Paid: <span class="text-grey-4">{{ d.directional_performance?.directional?.LONG?.total_fees || '0' }} USDT</span></div>
+                  <div>Funding: <span class="text-grey-4">{{ d.directional_performance?.directional?.LONG?.funding || '0' }} USDT</span></div>
                   <div>Avg R: <span class="text-cyan">{{ d.directional_performance?.directional?.LONG?.avg_r || '—' }}</span></div>
                 </div>
               </div>
@@ -257,10 +258,11 @@ function gateDecisionClass(quality: string, risk: string): { label: string; colo
                 </div>
                 <div class="q-mt-xs text-caption">
                   <div>Positions: <strong class="text-white">{{ d.directional_performance?.directional?.SHORT?.closed_positions || 0 }}</strong> closed ({{ d.directional_performance?.directional?.SHORT?.opened_positions || 0 }} total)</div>
-                  <div>Win Rate: <strong class="text-white">{{ d.directional_performance?.directional?.SHORT?.win_rate_percent }}%</strong></div>
+                  <div>Win Rate: <strong class="text-white">{{ d.directional_performance?.directional?.SHORT?.win_rate_percent != null ? d.directional_performance.directional.SHORT.win_rate_percent + '%' : '—' }}</strong></div>
                   <div>Profit Factor: <strong class="text-white">{{ d.directional_performance?.directional?.SHORT?.profit_factor || '—' }}</strong></div>
                   <div>Net PnL: <strong :class="Number(d.directional_performance?.directional?.SHORT?.total_net_pnl || 0) >= 0 ? 'text-positive' : 'text-negative'">{{ d.directional_performance?.directional?.SHORT?.total_net_pnl || '0' }} USDT</strong></div>
                   <div>Fees Paid: <span class="text-grey-4">{{ d.directional_performance?.directional?.SHORT?.total_fees || '0' }} USDT</span></div>
+                  <div>Funding: <span class="text-grey-4">{{ d.directional_performance?.directional?.SHORT?.funding || '0' }} USDT</span></div>
                   <div>Avg R: <span class="text-cyan">{{ d.directional_performance?.directional?.SHORT?.avg_r || '—' }}</span></div>
                 </div>
               </div>

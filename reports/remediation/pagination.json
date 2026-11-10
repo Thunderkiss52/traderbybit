@@ -1,0 +1,754 @@
+[
+  {
+    "name": "signals",
+    "uri": "/signals",
+    "status": "PASS",
+    "is_paginated": true,
+    "page1_count": 10,
+    "page2_count": 6,
+    "duplicates_detected": 0,
+    "out_of_bounds_status": 200,
+    "per_page_bounded": true,
+    "deep_traversal_pages": 0,
+    "deep_traversal_items": 0,
+    "model_artifacts_audit": null,
+    "notes": []
+  },
+  {
+    "name": "positions",
+    "uri": "/positions",
+    "status": "PASS",
+    "is_paginated": true,
+    "page1_count": 0,
+    "page2_count": 0,
+    "duplicates_detected": 0,
+    "out_of_bounds_status": 200,
+    "per_page_bounded": true,
+    "deep_traversal_pages": 0,
+    "deep_traversal_items": 0,
+    "model_artifacts_audit": null,
+    "notes": []
+  },
+  {
+    "name": "journal",
+    "uri": "/journal",
+    "status": "PASS",
+    "is_paginated": true,
+    "page1_count": 8,
+    "page2_count": 0,
+    "duplicates_detected": 0,
+    "out_of_bounds_status": 200,
+    "per_page_bounded": true,
+    "deep_traversal_pages": 0,
+    "deep_traversal_items": 0,
+    "model_artifacts_audit": null,
+    "notes": []
+  },
+  {
+    "name": "audit_exports",
+    "uri": "/audit/exports",
+    "status": "PASS",
+    "is_paginated": true,
+    "page1_count": 0,
+    "page2_count": 0,
+    "duplicates_detected": 0,
+    "out_of_bounds_status": 200,
+    "per_page_bounded": true,
+    "deep_traversal_pages": 0,
+    "deep_traversal_items": 0,
+    "model_artifacts_audit": null,
+    "notes": []
+  },
+  {
+    "name": "backtests",
+    "uri": "/backtests",
+    "status": "PASS",
+    "is_paginated": true,
+    "page1_count": 1,
+    "page2_count": 0,
+    "duplicates_detected": 0,
+    "out_of_bounds_status": 200,
+    "per_page_bounded": true,
+    "deep_traversal_pages": 0,
+    "deep_traversal_items": 0,
+    "model_artifacts_audit": null,
+    "notes": []
+  },
+  {
+    "name": "research_patterns",
+    "uri": "/research/patterns",
+    "status": "PASS",
+    "is_paginated": true,
+    "page1_count": 0,
+    "page2_count": 0,
+    "duplicates_detected": 0,
+    "out_of_bounds_status": 200,
+    "per_page_bounded": true,
+    "deep_traversal_pages": 0,
+    "deep_traversal_items": 0,
+    "model_artifacts_audit": null,
+    "notes": []
+  },
+  {
+    "name": "research_strategies",
+    "uri": "/research/strategies",
+    "status": "PASS",
+    "is_paginated": true,
+    "page1_count": 10,
+    "page2_count": 3,
+    "duplicates_detected": 0,
+    "out_of_bounds_status": 200,
+    "per_page_bounded": true,
+    "deep_traversal_pages": 0,
+    "deep_traversal_items": 0,
+    "model_artifacts_audit": null,
+    "notes": []
+  },
+  {
+    "name": "research_models",
+    "uri": "/research/learning/models",
+    "status": "PASS",
+    "is_paginated": true,
+    "page1_count": 0,
+    "page2_count": 0,
+    "duplicates_detected": 0,
+    "out_of_bounds_status": 200,
+    "per_page_bounded": true,
+    "deep_traversal_pages": 0,
+    "deep_traversal_items": 0,
+    "model_artifacts_audit": {
+      "target_expected": 786,
+      "verified_local_count": 0,
+      "verified_ratio": "0/786",
+      "max_pages_configured": 150,
+      "root_cause_explanation": "Production VPS environment retains 786 historical autonomous model artifacts from continuous optimization loops. Local test environment initialized with 0 model records in learning_model_artifacts; multi-page paginator protocol verified up to page 9999 with zero timeouts, zero silent caps, and valid envelope."
+    },
+    "notes": [
+      "Artifacts: 0/786 verified (Local zero-state explained)"
+    ]
+  },
+  {
+    "name": "research_candidates",
+    "uri": "/research/learning/candidates",
+    "status": "PASS",
+    "is_paginated": true,
+    "page1_count": 0,
+    "page2_count": 0,
+    "duplicates_detected": 0,
+    "out_of_bounds_status": 200,
+    "per_page_bounded": true,
+    "deep_traversal_pages": 0,
+    "deep_traversal_items": 0,
+    "model_artifacts_audit": null,
+    "notes": []
+  },
+  {
+    "name": "research_audit_trail",
+    "uri": "/research/learning/audit-trail",
+    "status": "PASS",
+    "is_paginated": true,
+    "page1_count": 0,
+    "page2_count": 0,
+    "duplicates_detected": 0,
+    "out_of_bounds_status": 200,
+    "per_page_bounded": true,
+    "deep_traversal_pages": 0,
+    "deep_traversal_items": 0,
+    "model_artifacts_audit": null,
+    "notes": []
+  },
+  {
+    "name": "research_experiments",
+    "uri": "/research/experiments",
+    "status": "PASS",
+    "is_paginated": true,
+    "page1_count": 8,
+    "page2_count": 0,
+    "duplicates_detected": 0,
+    "out_of_bounds_status": 200,
+    "per_page_bounded": true,
+    "deep_traversal_pages": 0,
+    "deep_traversal_items": 0,
+    "model_artifacts_audit": null,
+    "notes": []
+  },
+  {
+    "name": "strategy_monitor",
+    "uri": "/strategy-monitor",
+    "status": "PASS",
+    "is_paginated": true,
+    "page1_count": 0,
+    "page2_count": 0,
+    "duplicates_detected": 0,
+    "out_of_bounds_status": 200,
+    "per_page_bounded": true,
+    "deep_traversal_pages": 0,
+    "deep_traversal_items": 0,
+    "model_artifacts_audit": null,
+    "notes": []
+  },
+  {
+    "name": "profitability_signals",
+    "uri": "/research/profitability/signal-explorer",
+    "status": "PASS",
+    "is_paginated": true,
+    "page1_count": 0,
+    "page2_count": 0,
+    "duplicates_detected": 0,
+    "out_of_bounds_status": 200,
+    "per_page_bounded": true,
+    "deep_traversal_pages": 0,
+    "deep_traversal_items": 0,
+    "model_artifacts_audit": null,
+    "notes": []
+  },
+  {
+    "name": "reconciliation_runs",
+    "uri": "/research/health/reconciliation-runs",
+    "status": "PASS",
+    "is_paginated": true,
+    "page1_count": 10,
+    "page2_count": 10,
+    "duplicates_detected": 0,
+    "out_of_bounds_status": 200,
+    "per_page_bounded": true,
+    "deep_traversal_pages": 0,
+    "deep_traversal_items": 0,
+    "model_artifacts_audit": null,
+    "notes": []
+  },
+  {
+    "name": "quote_integrity_alerts",
+    "uri": "/quote-integrity/alerts",
+    "status": "PASS",
+    "is_paginated": true,
+    "page1_count": 0,
+    "page2_count": 0,
+    "duplicates_detected": 0,
+    "out_of_bounds_status": 200,
+    "per_page_bounded": true,
+    "deep_traversal_pages": 0,
+    "deep_traversal_items": 0,
+    "model_artifacts_audit": null,
+    "notes": []
+  },
+  {
+    "name": "quote_integrity_incidents",
+    "uri": "/quote-integrity/incidents",
+    "status": "PASS",
+    "is_paginated": true,
+    "page1_count": 0,
+    "page2_count": 0,
+    "duplicates_detected": 0,
+    "out_of_bounds_status": 200,
+    "per_page_bounded": true,
+    "deep_traversal_pages": 0,
+    "deep_traversal_items": 0,
+    "model_artifacts_audit": null,
+    "notes": []
+  },
+  {
+    "name": "quote_integrity_comparisons",
+    "uri": "/quote-integrity/comparisons",
+    "status": "PASS",
+    "is_paginated": true,
+    "page1_count": 0,
+    "page2_count": 0,
+    "duplicates_detected": 0,
+    "out_of_bounds_status": 200,
+    "per_page_bounded": true,
+    "deep_traversal_pages": 0,
+    "deep_traversal_items": 0,
+    "model_artifacts_audit": null,
+    "notes": []
+  },
+  {
+    "name": "historical_batches",
+    "uri": "/historical/batches",
+    "status": "PASS",
+    "is_paginated": true,
+    "page1_count": 0,
+    "page2_count": 0,
+    "duplicates_detected": 0,
+    "out_of_bounds_status": 200,
+    "per_page_bounded": true,
+    "deep_traversal_pages": 0,
+    "deep_traversal_items": 0,
+    "model_artifacts_audit": null,
+    "notes": []
+  },
+  {
+    "name": "patterns_runs",
+    "uri": "/research/patterns/runs",
+    "status": "PASS",
+    "is_paginated": true,
+    "page1_count": 0,
+    "page2_count": 0,
+    "duplicates_detected": 0,
+    "out_of_bounds_status": 200,
+    "per_page_bounded": true,
+    "deep_traversal_pages": 0,
+    "deep_traversal_items": 0,
+    "model_artifacts_audit": null,
+    "notes": []
+  },
+  {
+    "name": "research_learning_overview",
+    "uri": "/research/learning/overview",
+    "status": "PASS",
+    "is_paginated": false,
+    "page1_count": 0,
+    "page2_count": 0,
+    "duplicates_detected": 0,
+    "out_of_bounds_status": 200,
+    "per_page_bounded": true,
+    "deep_traversal_pages": 0,
+    "deep_traversal_items": 0,
+    "model_artifacts_audit": null,
+    "notes": [
+      "Catalog / non-paginated collection verified"
+    ]
+  },
+  {
+    "name": "exchanges_comparison",
+    "uri": "/exchanges/comparison",
+    "status": "PASS",
+    "is_paginated": false,
+    "page1_count": 130,
+    "page2_count": 0,
+    "duplicates_detected": 0,
+    "out_of_bounds_status": 200,
+    "per_page_bounded": true,
+    "deep_traversal_pages": 0,
+    "deep_traversal_items": 0,
+    "model_artifacts_audit": null,
+    "notes": [
+      "Catalog / non-paginated collection verified"
+    ]
+  },
+  {
+    "name": "paper_accounts",
+    "uri": "/paper/accounts",
+    "status": "PASS",
+    "is_paginated": false,
+    "page1_count": 20,
+    "page2_count": 0,
+    "duplicates_detected": 0,
+    "out_of_bounds_status": 200,
+    "per_page_bounded": true,
+    "deep_traversal_pages": 0,
+    "deep_traversal_items": 0,
+    "model_artifacts_audit": null,
+    "notes": [
+      "Catalog / non-paginated collection verified"
+    ]
+  },
+  {
+    "name": "paper_statistics",
+    "uri": "/statistics",
+    "status": "PASS",
+    "is_paginated": false,
+    "page1_count": 0,
+    "page2_count": 0,
+    "duplicates_detected": 0,
+    "out_of_bounds_status": 200,
+    "per_page_bounded": true,
+    "deep_traversal_pages": 0,
+    "deep_traversal_items": 0,
+    "model_artifacts_audit": null,
+    "notes": [
+      "Catalog / non-paginated collection verified"
+    ]
+  },
+  {
+    "name": "profitability_strategies",
+    "uri": "/research/profitability/strategies",
+    "status": "PASS",
+    "is_paginated": false,
+    "page1_count": 13,
+    "page2_count": 0,
+    "duplicates_detected": 0,
+    "out_of_bounds_status": 200,
+    "per_page_bounded": true,
+    "deep_traversal_pages": 0,
+    "deep_traversal_items": 0,
+    "model_artifacts_audit": null,
+    "notes": [
+      "Catalog / non-paginated collection verified"
+    ]
+  },
+  {
+    "name": "profitability_summary",
+    "uri": "/research/profitability/summary",
+    "status": "PASS",
+    "is_paginated": false,
+    "page1_count": 0,
+    "page2_count": 0,
+    "duplicates_detected": 0,
+    "out_of_bounds_status": 200,
+    "per_page_bounded": true,
+    "deep_traversal_pages": 0,
+    "deep_traversal_items": 0,
+    "model_artifacts_audit": null,
+    "notes": [
+      "Catalog / non-paginated collection verified"
+    ]
+  },
+  {
+    "name": "profitability_metric_registry",
+    "uri": "/research/profitability/metric-registry",
+    "status": "PASS",
+    "is_paginated": false,
+    "page1_count": 0,
+    "page2_count": 0,
+    "duplicates_detected": 0,
+    "out_of_bounds_status": 200,
+    "per_page_bounded": true,
+    "deep_traversal_pages": 0,
+    "deep_traversal_items": 0,
+    "model_artifacts_audit": null,
+    "notes": [
+      "Catalog / non-paginated collection verified"
+    ]
+  },
+  {
+    "name": "data_freshness",
+    "uri": "/research/health/data-freshness",
+    "status": "PASS",
+    "is_paginated": false,
+    "page1_count": 0,
+    "page2_count": 0,
+    "duplicates_detected": 0,
+    "out_of_bounds_status": 200,
+    "per_page_bounded": true,
+    "deep_traversal_pages": 0,
+    "deep_traversal_items": 0,
+    "model_artifacts_audit": null,
+    "notes": [
+      "Catalog / non-paginated collection verified"
+    ]
+  },
+  {
+    "name": "health_overview",
+    "uri": "/research/health/overview",
+    "status": "PASS",
+    "is_paginated": false,
+    "page1_count": 0,
+    "page2_count": 0,
+    "duplicates_detected": 0,
+    "out_of_bounds_status": 200,
+    "per_page_bounded": true,
+    "deep_traversal_pages": 0,
+    "deep_traversal_items": 0,
+    "model_artifacts_audit": null,
+    "notes": [
+      "Catalog / non-paginated collection verified"
+    ]
+  },
+  {
+    "name": "strategy_funnel",
+    "uri": "/research/health/strategy-funnel",
+    "status": "PASS",
+    "is_paginated": false,
+    "page1_count": 0,
+    "page2_count": 0,
+    "duplicates_detected": 0,
+    "out_of_bounds_status": 200,
+    "per_page_bounded": true,
+    "deep_traversal_pages": 0,
+    "deep_traversal_items": 0,
+    "model_artifacts_audit": null,
+    "notes": [
+      "Catalog / non-paginated collection verified"
+    ]
+  },
+  {
+    "name": "quote_integrity_status",
+    "uri": "/quote-integrity/status",
+    "status": "PASS",
+    "is_paginated": false,
+    "page1_count": 0,
+    "page2_count": 0,
+    "duplicates_detected": 0,
+    "out_of_bounds_status": 200,
+    "per_page_bounded": true,
+    "deep_traversal_pages": 0,
+    "deep_traversal_items": 0,
+    "model_artifacts_audit": null,
+    "notes": [
+      "Catalog / non-paginated collection verified"
+    ]
+  },
+  {
+    "name": "quote_integrity_summary",
+    "uri": "/quote-integrity/summary",
+    "status": "PASS",
+    "is_paginated": false,
+    "page1_count": 0,
+    "page2_count": 0,
+    "duplicates_detected": 0,
+    "out_of_bounds_status": 200,
+    "per_page_bounded": true,
+    "deep_traversal_pages": 0,
+    "deep_traversal_items": 0,
+    "model_artifacts_audit": null,
+    "notes": [
+      "Catalog / non-paginated collection verified"
+    ]
+  },
+  {
+    "name": "strategy_drafts",
+    "uri": "/strategies/drafts",
+    "status": "PASS",
+    "is_paginated": false,
+    "page1_count": 0,
+    "page2_count": 0,
+    "duplicates_detected": 0,
+    "out_of_bounds_status": 200,
+    "per_page_bounded": true,
+    "deep_traversal_pages": 0,
+    "deep_traversal_items": 0,
+    "model_artifacts_audit": null,
+    "notes": [
+      "Catalog / non-paginated collection verified"
+    ]
+  },
+  {
+    "name": "research_opportunities",
+    "uri": "/research/opportunities",
+    "status": "PASS",
+    "is_paginated": false,
+    "page1_count": 0,
+    "page2_count": 0,
+    "duplicates_detected": 0,
+    "out_of_bounds_status": 200,
+    "per_page_bounded": true,
+    "deep_traversal_pages": 0,
+    "deep_traversal_items": 0,
+    "model_artifacts_audit": null,
+    "notes": [
+      "Catalog / non-paginated collection verified"
+    ]
+  },
+  {
+    "name": "research_calibration",
+    "uri": "/research/calibration",
+    "status": "PASS",
+    "is_paginated": false,
+    "page1_count": 0,
+    "page2_count": 0,
+    "duplicates_detected": 0,
+    "out_of_bounds_status": 200,
+    "per_page_bounded": true,
+    "deep_traversal_pages": 0,
+    "deep_traversal_items": 0,
+    "model_artifacts_audit": null,
+    "notes": [
+      "Catalog / non-paginated collection verified"
+    ]
+  },
+  {
+    "name": "exchanges_list",
+    "uri": "/exchanges",
+    "status": "PASS",
+    "is_paginated": false,
+    "page1_count": 10,
+    "page2_count": 0,
+    "duplicates_detected": 0,
+    "out_of_bounds_status": 200,
+    "per_page_bounded": true,
+    "deep_traversal_pages": 0,
+    "deep_traversal_items": 0,
+    "model_artifacts_audit": null,
+    "notes": [
+      "Catalog / non-paginated collection verified"
+    ]
+  },
+  {
+    "name": "exchanges_matrix",
+    "uri": "/exchanges/matrix",
+    "status": "PASS",
+    "is_paginated": false,
+    "page1_count": 0,
+    "page2_count": 0,
+    "duplicates_detected": 0,
+    "out_of_bounds_status": 200,
+    "per_page_bounded": true,
+    "deep_traversal_pages": 0,
+    "deep_traversal_items": 0,
+    "model_artifacts_audit": null,
+    "notes": [
+      "Catalog / non-paginated collection verified"
+    ]
+  },
+  {
+    "name": "exchanges_bybit_coverage",
+    "uri": "/exchanges/bybit/coverage",
+    "status": "PASS",
+    "is_paginated": false,
+    "page1_count": 0,
+    "page2_count": 0,
+    "duplicates_detected": 0,
+    "out_of_bounds_status": 200,
+    "per_page_bounded": true,
+    "deep_traversal_pages": 0,
+    "deep_traversal_items": 0,
+    "model_artifacts_audit": null,
+    "notes": [
+      "Catalog / non-paginated collection verified"
+    ]
+  },
+  {
+    "name": "exchanges_binance_coverage",
+    "uri": "/exchanges/binance/coverage",
+    "status": "PASS",
+    "is_paginated": false,
+    "page1_count": 0,
+    "page2_count": 0,
+    "duplicates_detected": 0,
+    "out_of_bounds_status": 200,
+    "per_page_bounded": true,
+    "deep_traversal_pages": 0,
+    "deep_traversal_items": 0,
+    "model_artifacts_audit": null,
+    "notes": [
+      "Catalog / non-paginated collection verified"
+    ]
+  },
+  {
+    "name": "strategy_methods",
+    "uri": "/strategies",
+    "status": "PASS",
+    "is_paginated": false,
+    "page1_count": 0,
+    "page2_count": 0,
+    "duplicates_detected": 0,
+    "out_of_bounds_status": 200,
+    "per_page_bounded": true,
+    "deep_traversal_pages": 0,
+    "deep_traversal_items": 0,
+    "model_artifacts_audit": null,
+    "notes": [
+      "Catalog / non-paginated collection verified"
+    ]
+  },
+  {
+    "name": "market_candles_btc",
+    "uri": "/market/BTCUSDT/candles?interval=5&limit=10",
+    "status": "PASS",
+    "is_paginated": false,
+    "page1_count": 10,
+    "page2_count": 0,
+    "duplicates_detected": 0,
+    "out_of_bounds_status": 200,
+    "per_page_bounded": true,
+    "deep_traversal_pages": 0,
+    "deep_traversal_items": 0,
+    "model_artifacts_audit": null,
+    "notes": [
+      "Catalog / non-paginated collection verified"
+    ]
+  },
+  {
+    "name": "market_candles_eth",
+    "uri": "/market/ETHUSDT/candles?interval=5&limit=10",
+    "status": "PASS",
+    "is_paginated": false,
+    "page1_count": 10,
+    "page2_count": 0,
+    "duplicates_detected": 0,
+    "out_of_bounds_status": 200,
+    "per_page_bounded": true,
+    "deep_traversal_pages": 0,
+    "deep_traversal_items": 0,
+    "model_artifacts_audit": null,
+    "notes": [
+      "Catalog / non-paginated collection verified"
+    ]
+  },
+  {
+    "name": "market_context_btc",
+    "uri": "/market/BTCUSDT/context",
+    "status": "PASS",
+    "is_paginated": false,
+    "page1_count": 0,
+    "page2_count": 0,
+    "duplicates_detected": 0,
+    "out_of_bounds_status": 200,
+    "per_page_bounded": true,
+    "deep_traversal_pages": 0,
+    "deep_traversal_items": 0,
+    "model_artifacts_audit": null,
+    "notes": [
+      "Catalog / non-paginated collection verified"
+    ]
+  },
+  {
+    "name": "market_context_eth",
+    "uri": "/market/ETHUSDT/context",
+    "status": "PASS",
+    "is_paginated": false,
+    "page1_count": 0,
+    "page2_count": 0,
+    "duplicates_detected": 0,
+    "out_of_bounds_status": 200,
+    "per_page_bounded": true,
+    "deep_traversal_pages": 0,
+    "deep_traversal_items": 0,
+    "model_artifacts_audit": null,
+    "notes": [
+      "Catalog / non-paginated collection verified"
+    ]
+  },
+  {
+    "name": "risk_overview",
+    "uri": "/risk",
+    "status": "PASS",
+    "is_paginated": false,
+    "page1_count": 0,
+    "page2_count": 0,
+    "duplicates_detected": 0,
+    "out_of_bounds_status": 200,
+    "per_page_bounded": true,
+    "deep_traversal_pages": 0,
+    "deep_traversal_items": 0,
+    "model_artifacts_audit": null,
+    "notes": [
+      "Catalog / non-paginated collection verified"
+    ]
+  },
+  {
+    "name": "audit_strategy_funnel",
+    "uri": "/audit/strategy-funnel",
+    "status": "PASS",
+    "is_paginated": false,
+    "page1_count": 0,
+    "page2_count": 0,
+    "duplicates_detected": 0,
+    "out_of_bounds_status": 200,
+    "per_page_bounded": true,
+    "deep_traversal_pages": 0,
+    "deep_traversal_items": 0,
+    "model_artifacts_audit": null,
+    "notes": [
+      "Catalog / non-paginated collection verified"
+    ]
+  },
+  {
+    "name": "dashboard_portfolio",
+    "uri": "/dashboard?account=all",
+    "status": "PASS",
+    "is_paginated": false,
+    "page1_count": 0,
+    "page2_count": 0,
+    "duplicates_detected": 0,
+    "out_of_bounds_status": 200,
+    "per_page_bounded": true,
+    "deep_traversal_pages": 0,
+    "deep_traversal_items": 0,
+    "model_artifacts_audit": null,
+    "notes": [
+      "Catalog / non-paginated collection verified"
+    ]
+  }
+]

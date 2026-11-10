@@ -2,15 +2,16 @@
 
 declare(strict_types=1);
 
-require __DIR__ . '/../../vendor/autoload.php';
-$app = require_once __DIR__ . '/../../bootstrap/app.php';
-$kernel = $app->make(Illuminate\Contracts\Console\Kernel::class);
+require __DIR__.'/../../vendor/autoload.php';
+$app = require_once __DIR__.'/../../bootstrap/app.php';
+$kernel = $app->make(Kernel::class);
 $kernel->bootstrap();
 
 use App\Exchanges\ExchangeRegistry;
-use App\StrategyBuilder\PrimaryStrategies;
 use App\PaperTrading\Application\TopologyMatrixAuditService;
 use App\Research\Application\LedgerReconciliationService;
+use App\StrategyBuilder\PrimaryStrategies;
+use Illuminate\Contracts\Console\Kernel;
 use Illuminate\Support\Facades\DB;
 
 $registry = app(ExchangeRegistry::class);
@@ -20,7 +21,7 @@ $topologyReport = $auditService->audit();
 
 // 1. VECTOR_10_EXCHANGE_READINESS_MATRIX.csv
 $exchanges = ['bybit', 'binance', 'coinbase', 'upbit', 'okx', 'bitget', 'gate', 'kucoin', 'kraken', 'htx'];
-$exFp = fopen(__DIR__ . '/../../VECTOR_10_EXCHANGE_READINESS_MATRIX.csv', 'w');
+$exFp = fopen(__DIR__.'/../../VECTOR_10_EXCHANGE_READINESS_MATRIX.csv', 'w');
 fputcsv($exFp, [
     'Exchange',
     'Adapter',
@@ -33,24 +34,24 @@ fputcsv($exFp, [
     'Strategy_Compatibility',
     'PAPER_Readiness',
     'Actual_Execution_Evidence',
-    'Financial_Reconciliation'
+    'Financial_Reconciliation',
 ]);
 
 foreach ($exchanges as $ex) {
     $adapter = $registry->hasAdapter($ex) ? $registry->resolve($ex) : null;
-    $hasAdapter = $adapter !== null ? 'REGISTERED (' . get_class($adapter) . ')' : 'UNAVAILABLE';
-    $types = $adapter ? implode(';', array_map(fn($t) => $t->value, $adapter->supportedMarketTypes())) : 'linear_perpetual';
+    $hasAdapter = $adapter !== null ? 'REGISTERED ('.get_class($adapter).')' : 'UNAVAILABLE';
+    $types = $adapter ? implode(';', array_map(fn ($t) => $t->value, $adapter->supportedMarketTypes())) : 'linear_perpetual';
     $costModel = config("exchanges.{$ex}.cost_model.version", 'MISSING');
     $isApproved = config("exchanges.{$ex}.paper_execution_approved", $ex === 'bybit');
-    
+
     $candlesCount = DB::table('market_candles')->where('exchange', $ex)->count();
-    $candleStatus = $candlesCount >= 50 ? "DATA_READY ({$candlesCount} bars)" : ($candlesCount > 0 ? "HISTORY_INCOMPLETE ({$candlesCount} bars)" : "MARKET_DATA_CONNECTING");
-    $warmupStatus = $candlesCount >= 50 ? "WARMUP_SUFFICIENT" : "WARMUP_INCOMPLETE";
-    
+    $candleStatus = $candlesCount >= 50 ? "DATA_READY ({$candlesCount} bars)" : ($candlesCount > 0 ? "HISTORY_INCOMPLETE ({$candlesCount} bars)" : 'MARKET_DATA_CONNECTING');
+    $warmupStatus = $candlesCount >= 50 ? 'WARMUP_SUFFICIENT' : 'WARMUP_INCOMPLETE';
+
     $primaryAccounts = DB::table('paper_accounts')->where('exchange_id', $ex)->where('is_primary', true)->get();
     $activeCount = $primaryAccounts->where('status', 'ACTIVE')->count();
     $readiness = ($ex === 'bybit') ? 'PAPER_READY' : 'STANDBY_VALIDATION (BLOCKED)';
-    
+
     // Reconciliation status
     $reconciledCount = 0;
     foreach ($primaryAccounts as $acc) {
@@ -59,7 +60,7 @@ foreach ($exchanges as $ex) {
             $reconciledCount++;
         }
     }
-    $reconStatus = "PASSED ({$reconciledCount}/" . count($primaryAccounts) . " accounts verified)";
+    $reconStatus = "PASSED ({$reconciledCount}/".count($primaryAccounts).' accounts verified)';
     $execEvidence = ($ex === 'bybit') ? 'LIVE_EXECUTIONS_RECORDED' : 'BLOCKED_BY_SAFETY_INVARIANT';
 
     fputcsv($exFp, [
@@ -78,10 +79,10 @@ foreach ($exchanges as $ex) {
     ]);
 }
 fclose($exFp);
-echo "Generated VECTOR_10_EXCHANGE_READINESS_MATRIX.csv" . PHP_EOL;
+echo 'Generated VECTOR_10_EXCHANGE_READINESS_MATRIX.csv'.PHP_EOL;
 
 // 2. VECTOR_STRATEGY_EXCHANGE_MATRIX.csv
-$strFp = fopen(__DIR__ . '/../../VECTOR_STRATEGY_EXCHANGE_MATRIX.csv', 'w');
+$strFp = fopen(__DIR__.'/../../VECTOR_STRATEGY_EXCHANGE_MATRIX.csv', 'w');
 fputcsv($strFp, [
     'Strategy_ID',
     'Exchange',
@@ -94,7 +95,7 @@ fputcsv($strFp, [
     'Net_PnL',
     'Drawdown',
     'Last_Activity',
-    'Failure_Reason'
+    'Failure_Reason',
 ]);
 
 $accounts = DB::table('paper_accounts')->where('is_primary', true)->orderBy('exchange_id')->orderBy('primary_strategy_id')->get();
@@ -105,7 +106,7 @@ foreach ($accounts as $acc) {
         ->where('paper_account_id', $acc->id)
         ->where('event_type', 'RISK_GATE_REJECTED')
         ->count();
-    
+
     $lastActivity = $acc->updated_at ?? 'NONE';
     $failureReason = ($acc->status === 'BLOCKED') ? 'ACCOUNT_BLOCKED_UNTIL_DATA_WARMUP' : 'NONE';
 
@@ -125,10 +126,10 @@ foreach ($accounts as $acc) {
     ]);
 }
 fclose($strFp);
-echo "Generated VECTOR_STRATEGY_EXCHANGE_MATRIX.csv" . PHP_EOL;
+echo 'Generated VECTOR_STRATEGY_EXCHANGE_MATRIX.csv'.PHP_EOL;
 
 // 3. VECTOR_PROFITABILITY_VERIFICATION.csv
-$profFp = fopen(__DIR__ . '/../../VECTOR_PROFITABILITY_VERIFICATION.csv', 'w');
+$profFp = fopen(__DIR__.'/../../VECTOR_PROFITABILITY_VERIFICATION.csv', 'w');
 fputcsv($profFp, [
     'Exchange',
     'Strategy',
@@ -141,7 +142,7 @@ fputcsv($profFp, [
     'Win_Rate',
     'Profit_Factor',
     'Drawdown',
-    'Sample_Size'
+    'Sample_Size',
 ]);
 
 // Query positions with their signal quality and risk classes
@@ -169,7 +170,7 @@ foreach ($positions as $p) {
     $risk = $p->trade_risk ?? 'LOW';
     $k = "{$ex}|{$strat}|{$sym}|{$tf}|{$qual}|{$risk}";
 
-    if (!isset($grouped[$k])) {
+    if (! isset($grouped[$k])) {
         $grouped[$k] = [
             'exchange' => $ex,
             'strategy' => $strat,
@@ -188,19 +189,19 @@ foreach ($positions as $p) {
 
     $grouped[$k]['trades']++;
     $net = (float) ($p->net_pnl ?? 0);
-    $grouped[$k]['net_pnl'] = (string) (((float)$grouped[$k]['net_pnl']) + $net);
+    $grouped[$k]['net_pnl'] = (string) (((float) $grouped[$k]['net_pnl']) + $net);
     if ($net > 0) {
         $grouped[$k]['wins']++;
-        $grouped[$k]['gross_profit'] = (string) (((float)$grouped[$k]['gross_profit']) + $net);
+        $grouped[$k]['gross_profit'] = (string) (((float) $grouped[$k]['gross_profit']) + $net);
     } else {
-        $grouped[$k]['gross_loss'] = (string) (((float)$grouped[$k]['gross_loss']) + abs($net));
+        $grouped[$k]['gross_loss'] = (string) (((float) $grouped[$k]['gross_loss']) + abs($net));
     }
 }
 
 foreach ($grouped as $row) {
-    $winRate = $row['trades'] > 0 ? number_format(($row['wins'] / $row['trades']) * 100, 2) . '%' : '0.00%';
+    $winRate = $row['trades'] > 0 ? number_format(($row['wins'] / $row['trades']) * 100, 2).'%' : '0.00%';
     $loss = (float) $row['gross_loss'];
-    $profitFactor = $loss > 0 ? number_format(((float)$row['gross_profit']) / $loss, 2) : ($row['trades'] > 0 ? 'INF' : '0.00');
+    $profitFactor = $loss > 0 ? number_format(((float) $row['gross_profit']) / $loss, 2) : ($row['trades'] > 0 ? 'INF' : '0.00');
 
     fputcsv($profFp, [
         $row['exchange'],
@@ -210,11 +211,11 @@ foreach ($grouped as $row) {
         $row['quality'],
         $row['risk'],
         $row['trades'],
-        number_format((float)$row['net_pnl'], 4),
+        number_format((float) $row['net_pnl'], 4),
         $winRate,
         $profitFactor,
         $row['drawdown'],
-        $row['trades']
+        $row['trades'],
     ]);
 }
 
@@ -226,7 +227,7 @@ foreach ($exchanges as $ex) {
             foreach (['LOW', 'MEDIUM', 'HIGH'] as $risk) {
                 // If not in grouped
                 $k = "{$ex}|baseline|{$sym}|15m|{$qual}|{$risk}";
-                if (!isset($grouped[$k])) {
+                if (! isset($grouped[$k])) {
                     fputcsv($profFp, [
                         $ex,
                         'baseline',
@@ -239,7 +240,7 @@ foreach ($exchanges as $ex) {
                         'N/A',
                         'N/A',
                         '0.00%',
-                        0
+                        0,
                     ]);
                 }
             }
@@ -247,18 +248,18 @@ foreach ($exchanges as $ex) {
     }
 }
 fclose($profFp);
-echo "Generated VECTOR_PROFITABILITY_VERIFICATION.csv" . PHP_EOL;
+echo 'Generated VECTOR_PROFITABILITY_VERIFICATION.csv'.PHP_EOL;
 
 // 4. VECTOR_API_AUDIT.csv
-$rawApiFp = fopen(__DIR__ . '/../../reports/audit/curl_api_sweep_summary.csv', 'r');
-$apiAuditFp = fopen(__DIR__ . '/../../VECTOR_API_AUDIT.csv', 'w');
+$rawApiFp = fopen(__DIR__.'/../../reports/audit/curl_api_sweep_summary.csv', 'r');
+$apiAuditFp = fopen(__DIR__.'/../../VECTOR_API_AUDIT.csv', 'w');
 fputcsv($apiAuditFp, [
     'Endpoint',
     'Method',
     'Status',
     'Response_Time_Ms',
     'Validation_Result',
-    'Error_Details'
+    'Error_Details',
 ]);
 
 if ($rawApiFp !== false) {
@@ -280,10 +281,10 @@ if ($rawApiFp !== false) {
             $status,
             $timeMs,
             $validation,
-            $errDetails
+            $errDetails,
         ]);
     }
     fclose($rawApiFp);
 }
 fclose($apiAuditFp);
-echo "Generated VECTOR_API_AUDIT.csv" . PHP_EOL;
+echo 'Generated VECTOR_API_AUDIT.csv'.PHP_EOL;

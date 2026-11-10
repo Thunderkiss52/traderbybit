@@ -24,6 +24,34 @@ const slippageTotalDrag = computed(() => (
   ?? null
 ));
 
+const p1Status = computed(() => {
+  if (slippageData.value?.generation_id && (slippageData.value?.status === 'SUCCESS' || slippageData.value?.status === 'COMPLETED')) {
+    return 'COMPLETED';
+  }
+  if (slippageData.value?.status === 'NO_GENERATION_AVAILABLE' || (!slippageData.value?.generation_id && !slippageData.value?.summary)) {
+    return 'NOT_GENERATED';
+  }
+  const s = summaryData.value?.gated_modules?.['P-1']?.status;
+  if (s && s !== 'IMPLEMENTED_VERIFIED') return s;
+  return slippageData.value?.status || 'NOT_GENERATED';
+});
+
+const p1StatusColor = computed(() => {
+  switch (p1Status.value) {
+    case 'COMPLETED':
+    case 'IMPLEMENTED_VERIFIED':
+      return 'positive';
+    case 'RUNNING':
+    case 'QUEUED':
+      return 'info';
+    case 'FAILED':
+    case 'STALE':
+      return 'negative';
+    default:
+      return 'grey-7';
+  }
+});
+
 // Symbol breakdown from lifecycle economics
 const symbolBreakdown = computed(() => {
   return summaryData.value?.accounting_scopes?.full_lifecycle_economics?.breakdown_by_symbol || {};
@@ -563,17 +591,29 @@ onMounted(() => {
         <!-- P-1 Header and Status -->
         <div class="row items-center justify-between q-mb-md">
           <div class="row items-center q-gutter-sm">
-            <q-badge color="positive" class="text-bold q-py-xs q-px-sm">
-              PROFIT-1 P-1: IMPLEMENTED_VERIFIED
+            <q-badge :color="p1StatusColor" class="text-bold q-py-xs q-px-sm">
+              PROFIT-1 P-1: {{ p1Status }}
             </q-badge>
-            <span class="text-caption text-grey-6">
-              Генерация: {{ slippageData?.generation_id || '—' }} (v{{ slippageData?.algorithm_version || '1.0.0' }})
+            <span class="text-caption text-grey-6" v-if="slippageData?.generation_id">
+              Генерация: {{ slippageData.generation_id }} (v{{ slippageData?.algorithm_version || '1.0.0' }})
+            </span>
+            <span class="text-caption text-grey-6" v-else>
+              Генерация: не создана (NOT_GENERATED)
             </span>
           </div>
           <div class="text-caption text-grey-6 text-mono" v-if="slippageData?.output_hash">
             SHA-256: {{ slippageData.output_hash.slice(0, 16) }}...
           </div>
         </div>
+
+        <q-banner v-if="p1Status === 'NOT_GENERATED'" dense class="bg-grey-9 text-white rounded-borders q-mb-md">
+          <template #avatar>
+            <q-icon name="info" color="amber" />
+          </template>
+          <div class="text-caption">
+            <b>Исследовательская генерация P-1 не сформирована (NOT_GENERATED):</b> Для выбранного контура отсутствуют сохраненные расчеты проскальзывания в таблице <code>research_generations</code>. Статус отображается в соответствии с актуальным состоянием базы данных.
+          </div>
+        </q-banner>
 
         <!-- Slippage Breakdown KPI Cards -->
         <div class="row q-col-gutter-md q-mb-md">
@@ -768,11 +808,17 @@ onMounted(() => {
                 <q-chip
                   dense
                   size="sm"
-                  :color="props.row.reconciliation?.status === 'PASSED' ? 'positive' : 'warning'"
+                  :color="props.row.reconciliation?.status === 'PASSED' ? 'positive' : (props.row.reconciliation?.status === 'INCOMPLETE' ? 'warning' : 'grey-7')"
                   text-color="white"
                 >
                   {{ props.row.reconciliation?.status || 'NO_RUN' }}
+                  <q-tooltip v-if="props.row.reconciliation?.incomplete_reasons?.length" class="bg-dark text-white">
+                    Причины INCOMPLETE: {{ props.row.reconciliation.incomplete_reasons.join(', ') }}
+                  </q-tooltip>
                 </q-chip>
+                <div v-if="props.row.reconciliation?.incomplete_reasons?.length" class="text-caption text-grey-5" style="font-size: 10px">
+                  {{ props.row.reconciliation.incomplete_reasons.join(', ') }}
+                </div>
               </q-td>
             </template>
           </q-table>

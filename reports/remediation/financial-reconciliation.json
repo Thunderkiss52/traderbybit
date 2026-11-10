@@ -1,0 +1,168 @@
+{
+  "status": "PASS",
+  "db_accounts_count": 13,
+  "api_accounts_count": 130,
+  "identity_checks": [
+    {
+      "account_id": "0d3347a9-da29-5d6b-8093-3b1629cd3182",
+      "strategy": "volatility_compression_breakout",
+      "exchange": "bybit",
+      "starting": 10000.0,
+      "equity": 10000.0,
+      "realized": 0.0,
+      "unrealized": 0.0,
+      "diff": 0.0,
+      "passed": true
+    },
+    {
+      "account_id": "37978f75-880c-58bf-b610-d89427fbb409",
+      "strategy": "multi_timeframe_trend_following",
+      "exchange": "bybit",
+      "starting": 10000.0,
+      "equity": 10000.0,
+      "realized": 0.0,
+      "unrealized": 0.0,
+      "diff": 0.0,
+      "passed": true
+    },
+    {
+      "account_id": "38fcded4-48f4-52d1-b436-b8ef018f6d8c",
+      "strategy": "regime_switching",
+      "exchange": "bybit",
+      "starting": 10000.0,
+      "equity": 10000.0,
+      "realized": 0.0,
+      "unrealized": 0.0,
+      "diff": 0.0,
+      "passed": true
+    },
+    {
+      "account_id": "458c0fd5-7673-5ce8-ba07-a4576c854945",
+      "strategy": "momentum",
+      "exchange": "bybit",
+      "starting": 10000.0,
+      "equity": 10000.0,
+      "realized": 0.0,
+      "unrealized": 0.0,
+      "diff": 0.0,
+      "passed": true
+    },
+    {
+      "account_id": "5f742264-cc16-57f2-bd5a-d1de7d06b0e8",
+      "strategy": "donchian_atr_breakout",
+      "exchange": "bybit",
+      "starting": 10000.0,
+      "equity": 10000.0,
+      "realized": 0.0,
+      "unrealized": 0.0,
+      "diff": 0.0,
+      "passed": true
+    },
+    {
+      "account_id": "6573dfda-71ed-5444-8d95-08c2a6fadfa7",
+      "strategy": "bollinger_mean_reversion",
+      "exchange": "bybit",
+      "starting": 10000.0,
+      "equity": 10000.0,
+      "realized": 0.0,
+      "unrealized": 0.0,
+      "diff": 0.0,
+      "passed": true
+    },
+    {
+      "account_id": "794fa4f9-33cd-5338-867e-a9c27f834652",
+      "strategy": "support_resistance_bounce",
+      "exchange": "bybit",
+      "starting": 10000.0,
+      "equity": 10000.0,
+      "realized": 0.0,
+      "unrealized": 0.0,
+      "diff": 0.0,
+      "passed": true
+    },
+    {
+      "account_id": "796f61f4-6dd6-53d2-a8e2-3d7a84624dc6",
+      "strategy": "liquidity_sweep_reversal",
+      "exchange": "bybit",
+      "starting": 10000.0,
+      "equity": 10000.0,
+      "realized": 0.0,
+      "unrealized": 0.0,
+      "diff": 0.0,
+      "passed": true
+    },
+    {
+      "account_id": "94b97f13-107d-54a9-b4eb-1ca5a9c79743",
+      "strategy": "baseline",
+      "exchange": "bybit",
+      "starting": 10000.0,
+      "equity": 10000.0,
+      "realized": 0.0,
+      "unrealized": 0.0,
+      "diff": 0.0,
+      "passed": true
+    },
+    {
+      "account_id": "9eab0b93-2696-53fd-9ecb-ff734d04670f",
+      "strategy": "support_resistance_breakout",
+      "exchange": "bybit",
+      "starting": 10000.0,
+      "equity": 10000.0,
+      "realized": 0.0,
+      "unrealized": 0.0,
+      "diff": 0.0,
+      "passed": true
+    },
+    {
+      "account_id": "b17787f4-80b3-5355-a6b0-90311493bab3",
+      "strategy": "funding_open_interest_squeeze",
+      "exchange": "bybit",
+      "starting": 10000.0,
+      "equity": 10000.0,
+      "realized": 0.0,
+      "unrealized": 0.0,
+      "diff": 0.0,
+      "passed": true
+    },
+    {
+      "account_id": "b875d6f3-04f7-5aeb-8d92-88995fef910c",
+      "strategy": "btc_eth_lead_lag",
+      "exchange": "bybit",
+      "starting": 10000.0,
+      "equity": 10000.0,
+      "realized": 0.0,
+      "unrealized": 0.0,
+      "diff": 0.0,
+      "passed": true
+    },
+    {
+      "account_id": "ec9dd1b1-1001-5c4f-a203-4a2a9ba9f9ca",
+      "strategy": "trend_pullback",
+      "exchange": "bybit",
+      "starting": 10000.0,
+      "equity": 10000.0,
+      "realized": 0.0,
+      "unrealized": 0.0,
+      "diff": 0.0,
+      "passed": true
+    }
+  ],
+  "isolation_checks": [
+    {
+      "check": "No exchange mixing",
+      "bybit_count": 13,
+      "binance_count": 0,
+      "passed": true
+    }
+  ],
+  "aggregate_checks": {
+    "db_bybit_starting_sum": 130000.0,
+    "api_starting_balance": 130000.0,
+    "db_bybit_equity_sum": 130000.0,
+    "api_current_equity": 130000.0,
+    "db_bybit_realized_sum": 0.0,
+    "api_realized_pnl": 0.0,
+    "passed": true
+  },
+  "failures": []
+}

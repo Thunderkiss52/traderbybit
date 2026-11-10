@@ -127,10 +127,14 @@ final class ProfitabilityResearchController extends Controller
                     'status' => $latestReconciliation->status,
                     'reconciled_at' => $latestReconciliation->created_at?->toIso8601String(),
                     'discrepancy_count' => $latestReconciliation->discrepancy_count,
+                    'incomplete_reasons' => $latestReconciliation->findings['incomplete_reasons'] ?? [],
+                    'discrepancies' => $latestReconciliation->findings['discrepancies'] ?? [],
                 ] : [
                     'status' => 'NO_RECORDED_RUN',
                     'reconciled_at' => null,
                     'discrepancy_count' => null,
+                    'incomplete_reasons' => [],
+                    'discrepancies' => [],
                 ],
             ];
         }

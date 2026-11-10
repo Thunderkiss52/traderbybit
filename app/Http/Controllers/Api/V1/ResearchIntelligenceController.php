@@ -18,6 +18,7 @@ use App\Research\Infrastructure\Persistence\CounterfactualEvaluationRecord;
 use App\Research\Infrastructure\Persistence\ResearchRecommendationRecord;
 use App\Strategy\Application\StrategyRegistry;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
+use Illuminate\Database\QueryException;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
@@ -78,7 +79,7 @@ final class ResearchIntelligenceController extends Controller
             $mode = $request->string('mode', 'AS_OF_DECISION')->toString();
 
             return $this->ok($service->replay($evaluationId, $mode, $request->boolean('persist')));
-        } catch (ModelNotFoundException|\Illuminate\Database\QueryException|\InvalidArgumentException $e) {
+        } catch (ModelNotFoundException|QueryException|\InvalidArgumentException $e) {
             return response()->json([
                 'success' => false,
                 'message' => 'Evaluation record was not found or invalid.',
