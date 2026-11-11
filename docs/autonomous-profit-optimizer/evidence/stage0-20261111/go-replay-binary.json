@@ -1,0 +1,17 @@
+{
+  "name": "go-replay-binary",
+  "command": [
+    "env",
+    "CGO_ENABLED=0",
+    "/tmp/vector-apo-stage0-20261111/go1.27.3/bin/go",
+    "build",
+    "-trimpath",
+    "-o",
+    "bin/historical-replay",
+    "./cmd/historical-replay"
+  ],
+  "started_utc": "2026-11-11T15:02:00.669751+00:00",
+  "duration_seconds": 0.342,
+  "exit_code": 0,
+  "host_working_directory": "/tmp/vector-apo-stage0-20261111/source-final/research-go"
+}

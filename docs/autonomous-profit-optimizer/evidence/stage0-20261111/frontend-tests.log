@@ -1,0 +1,633 @@
+TAP version 13
+# Subtest: dashboard provides exchange-qualified account selection and aggregate vs account distinction
+not ok 1 - dashboard provides exchange-qualified account selection and aggregate vs account distinction
+  ---
+  duration_ms: 0.933073
+  type: 'test'
+  location: '/tmp/vector-apo-stage0-20261111/source/frontend/tests/account_selection.test.js:10:1'
+  failureType: 'testCodeFailure'
+  error: "ENOENT: no such file or directory, open '/home/thunder/work/traderbybit/src/pages/DashboardPage.vue'"
+  code: 'ENOENT'
+  stack: |-
+    readFileSync (node:fs:440:20)
+    source (file:///tmp/vector-apo-stage0-20261111/source/frontend/tests/account_selection.test.js:7:10)
+    TestContext.<anonymous> (file:///tmp/vector-apo-stage0-20261111/source/frontend/tests/account_selection.test.js:11:16)
+    Test.runInAsyncScope (node:async_hooks:214:14)
+    Test.run (node:internal/test_runner/test:1047:25)
+    Test.start (node:internal/test_runner/test:944:17)
+    startSubtestAfterBootstrap (node:internal/test_runner/harness:296:17)
+  ...
+# Subtest: risk page provides exchange-qualified account selection and prevents stale responses
+not ok 2 - risk page provides exchange-qualified account selection and prevents stale responses
+  ---
+  duration_ms: 0.187552
+  type: 'test'
+  location: '/tmp/vector-apo-stage0-20261111/source/frontend/tests/account_selection.test.js:24:1'
+  failureType: 'testCodeFailure'
+  error: "ENOENT: no such file or directory, open '/home/thunder/work/traderbybit/src/pages/RiskPage.vue'"
+  code: 'ENOENT'
+  stack: |-
+    readFileSync (node:fs:440:20)
+    source (file:///tmp/vector-apo-stage0-20261111/source/frontend/tests/account_selection.test.js:7:10)
+    TestContext.<anonymous> (file:///tmp/vector-apo-stage0-20261111/source/frontend/tests/account_selection.test.js:25:16)
+    Test.runInAsyncScope (node:async_hooks:214:14)
+    Test.run (node:internal/test_runner/test:1047:25)
+    Test.processPendingSubtests (node:internal/test_runner/test:744:18)
+    Test.postRun (node:internal/test_runner/test:1173:19)
+    Test.run (node:internal/test_runner/test:1101:12)
+    async startSubtestAfterBootstrap (node:internal/test_runner/harness:296:3)
+  ...
+# Subtest: statistics page provides exchange-qualified account selection and prevents stale responses
+not ok 3 - statistics page provides exchange-qualified account selection and prevents stale responses
+  ---
+  duration_ms: 0.115839
+  type: 'test'
+  location: '/tmp/vector-apo-stage0-20261111/source/frontend/tests/account_selection.test.js:34:1'
+  failureType: 'testCodeFailure'
+  error: "ENOENT: no such file or directory, open '/home/thunder/work/traderbybit/src/pages/StatisticsPage.vue'"
+  code: 'ENOENT'
+  stack: |-
+    readFileSync (node:fs:440:20)
+    source (file:///tmp/vector-apo-stage0-20261111/source/frontend/tests/account_selection.test.js:7:10)
+    TestContext.<anonymous> (file:///tmp/vector-apo-stage0-20261111/source/frontend/tests/account_selection.test.js:35:16)
+    Test.runInAsyncScope (node:async_hooks:214:14)
+    Test.run (node:internal/test_runner/test:1047:25)
+    Test.processPendingSubtests (node:internal/test_runner/test:744:18)
+    Test.postRun (node:internal/test_runner/test:1173:19)
+    Test.run (node:internal/test_runner/test:1101:12)
+    async Test.processPendingSubtests (node:internal/test_runner/test:744:7)
+  ...
+# Subtest: journal page provides account selection synced with settings store
+not ok 4 - journal page provides account selection synced with settings store
+  ---
+  duration_ms: 1.750091
+  type: 'test'
+  location: '/tmp/vector-apo-stage0-20261111/source/frontend/tests/account_selection.test.js:44:1'
+  failureType: 'testCodeFailure'
+  error: "ENOENT: no such file or directory, open '/home/thunder/work/traderbybit/src/pages/JournalPage.vue'"
+  code: 'ENOENT'
+  stack: |-
+    readFileSync (node:fs:440:20)
+    source (file:///tmp/vector-apo-stage0-20261111/source/frontend/tests/account_selection.test.js:7:10)
+    TestContext.<anonymous> (file:///tmp/vector-apo-stage0-20261111/source/frontend/tests/account_selection.test.js:45:16)
+    Test.runInAsyncScope (node:async_hooks:214:14)
+    Test.run (node:internal/test_runner/test:1047:25)
+    Test.processPendingSubtests (node:internal/test_runner/test:744:18)
+    Test.postRun (node:internal/test_runner/test:1173:19)
+    Test.run (node:internal/test_runner/test:1101:12)
+    async Test.processPendingSubtests (node:internal/test_runner/test:744:7)
+  ...
+# Subtest: table page provides account filter for signals and positions
+not ok 5 - table page provides account filter for signals and positions
+  ---
+  duration_ms: 0.450623
+  type: 'test'
+  location: '/tmp/vector-apo-stage0-20261111/source/frontend/tests/account_selection.test.js:53:1'
+  failureType: 'testCodeFailure'
+  error: "ENOENT: no such file or directory, open '/home/thunder/work/traderbybit/src/pages/TablePage.vue'"
+  code: 'ENOENT'
+  stack: |-
+    readFileSync (node:fs:440:20)
+    source (file:///tmp/vector-apo-stage0-20261111/source/frontend/tests/account_selection.test.js:7:10)
+    TestContext.<anonymous> (file:///tmp/vector-apo-stage0-20261111/source/frontend/tests/account_selection.test.js:54:16)
+    Test.runInAsyncScope (node:async_hooks:214:14)
+    Test.run (node:internal/test_runner/test:1047:25)
+    Test.processPendingSubtests (node:internal/test_runner/test:744:18)
+    Test.postRun (node:internal/test_runner/test:1173:19)
+    Test.run (node:internal/test_runner/test:1101:12)
+    async Test.processPendingSubtests (node:internal/test_runner/test:744:7)
+  ...
+# Subtest: settings store clears account on exchange toggle to prevent cross-exchange contamination
+not ok 6 - settings store clears account on exchange toggle to prevent cross-exchange contamination
+  ---
+  duration_ms: 0.471938
+  type: 'test'
+  location: '/tmp/vector-apo-stage0-20261111/source/frontend/tests/account_selection.test.js:62:1'
+  failureType: 'testCodeFailure'
+  error: "ENOENT: no such file or directory, open '/home/thunder/work/traderbybit/src/stores/settings.ts'"
+  code: 'ENOENT'
+  stack: |-
+    readFileSync (node:fs:440:20)
+    source (file:///tmp/vector-apo-stage0-20261111/source/frontend/tests/account_selection.test.js:7:10)
+    TestContext.<anonymous> (file:///tmp/vector-apo-stage0-20261111/source/frontend/tests/account_selection.test.js:63:16)
+    Test.runInAsyncScope (node:async_hooks:214:14)
+    Test.run (node:internal/test_runner/test:1047:25)
+    Test.processPendingSubtests (node:internal/test_runner/test:744:18)
+    Test.postRun (node:internal/test_runner/test:1173:19)
+    Test.run (node:internal/test_runner/test:1101:12)
+    async Test.processPendingSubtests (node:internal/test_runner/test:744:7)
+  ...
+# Subtest: dashboard aggregate mode and multi-page exchange reactivity are verified
+not ok 7 - dashboard aggregate mode and multi-page exchange reactivity are verified
+  ---
+  duration_ms: 0.424227
+  type: 'test'
+  location: '/tmp/vector-apo-stage0-20261111/source/frontend/tests/account_selection.test.js:67:1'
+  failureType: 'testCodeFailure'
+  error: "ENOENT: no such file or directory, open '/home/thunder/work/traderbybit/src/pages/DashboardPage.vue'"
+  code: 'ENOENT'
+  stack: |-
+    readFileSync (node:fs:440:20)
+    source (file:///tmp/vector-apo-stage0-20261111/source/frontend/tests/account_selection.test.js:7:10)
+    TestContext.<anonymous> (file:///tmp/vector-apo-stage0-20261111/source/frontend/tests/account_selection.test.js:68:21)
+    Test.runInAsyncScope (node:async_hooks:214:14)
+    Test.run (node:internal/test_runner/test:1047:25)
+    Test.processPendingSubtests (node:internal/test_runner/test:744:18)
+    Test.postRun (node:internal/test_runner/test:1173:19)
+    Test.run (node:internal/test_runner/test:1101:12)
+    async Test.processPendingSubtests (node:internal/test_runner/test:744:7)
+  ...
+# Subtest: candidate lab displays validation lifecycle, evidence metrics and rejection reasons
+not ok 8 - candidate lab displays validation lifecycle, evidence metrics and rejection reasons
+  ---
+  duration_ms: 0.828261
+  type: 'test'
+  location: '/tmp/vector-apo-stage0-20261111/source/frontend/tests/candidate_lab_lifecycle.test.js:10:1'
+  failureType: 'testCodeFailure'
+  error: "ENOENT: no such file or directory, open '/home/thunder/work/traderbybit/src/pages/ResearchLearningPage.vue'"
+  code: 'ENOENT'
+  stack: |-
+    readFileSync (node:fs:440:20)
+    source (file:///tmp/vector-apo-stage0-20261111/source/frontend/tests/candidate_lab_lifecycle.test.js:7:10)
+    TestContext.<anonymous> (file:///tmp/vector-apo-stage0-20261111/source/frontend/tests/candidate_lab_lifecycle.test.js:11:16)
+    Test.runInAsyncScope (node:async_hooks:214:14)
+    Test.run (node:internal/test_runner/test:1047:25)
+    Test.start (node:internal/test_runner/test:944:17)
+    startSubtestAfterBootstrap (node:internal/test_runner/harness:296:17)
+  ...
+# Subtest: settings store provides reactive instrument selection and canonical symbol resolution
+not ok 9 - settings store provides reactive instrument selection and canonical symbol resolution
+  ---
+  duration_ms: 1.090473
+  type: 'test'
+  location: '/tmp/vector-apo-stage0-20261111/source/frontend/tests/exchange_instrument_isolation.test.js:10:1'
+  failureType: 'testCodeFailure'
+  error: "ENOENT: no such file or directory, open '/home/thunder/work/traderbybit/src/stores/settings.ts'"
+  code: 'ENOENT'
+  stack: |-
+    readFileSync (node:fs:440:20)
+    source (file:///tmp/vector-apo-stage0-20261111/source/frontend/tests/exchange_instrument_isolation.test.js:7:10)
+    TestContext.<anonymous> (file:///tmp/vector-apo-stage0-20261111/source/frontend/tests/exchange_instrument_isolation.test.js:11:16)
+    Test.runInAsyncScope (node:async_hooks:214:14)
+    Test.run (node:internal/test_runner/test:1047:25)
+    Test.start (node:internal/test_runner/test:944:17)
+    startSubtestAfterBootstrap (node:internal/test_runner/harness:296:17)
+  ...
+# Subtest: api service request interceptor sets X-Exchange, X-Instrument, and X-Symbol headers
+not ok 10 - api service request interceptor sets X-Exchange, X-Instrument, and X-Symbol headers
+  ---
+  duration_ms: 0.275302
+  type: 'test'
+  location: '/tmp/vector-apo-stage0-20261111/source/frontend/tests/exchange_instrument_isolation.test.js:21:1'
+  failureType: 'testCodeFailure'
+  error: "ENOENT: no such file or directory, open '/home/thunder/work/traderbybit/src/services/api.ts'"
+  code: 'ENOENT'
+  stack: |-
+    readFileSync (node:fs:440:20)
+    source (file:///tmp/vector-apo-stage0-20261111/source/frontend/tests/exchange_instrument_isolation.test.js:7:10)
+    TestContext.<anonymous> (file:///tmp/vector-apo-stage0-20261111/source/frontend/tests/exchange_instrument_isolation.test.js:22:16)
+    Test.runInAsyncScope (node:async_hooks:214:14)
+    Test.run (node:internal/test_runner/test:1047:25)
+    Test.processPendingSubtests (node:internal/test_runner/test:744:18)
+    Test.postRun (node:internal/test_runner/test:1173:19)
+    Test.run (node:internal/test_runner/test:1101:12)
+    async startSubtestAfterBootstrap (node:internal/test_runner/harness:296:3)
+  ...
+# Subtest: MainLayout provides top-bar global instrument selector alongside exchange selector
+not ok 11 - MainLayout provides top-bar global instrument selector alongside exchange selector
+  ---
+  duration_ms: 0.277657
+  type: 'test'
+  location: '/tmp/vector-apo-stage0-20261111/source/frontend/tests/exchange_instrument_isolation.test.js:29:1'
+  failureType: 'testCodeFailure'
+  error: "ENOENT: no such file or directory, open '/home/thunder/work/traderbybit/src/layouts/MainLayout.vue'"
+  code: 'ENOENT'
+  stack: |-
+    readFileSync (node:fs:440:20)
+    source (file:///tmp/vector-apo-stage0-20261111/source/frontend/tests/exchange_instrument_isolation.test.js:7:10)
+    TestContext.<anonymous> (file:///tmp/vector-apo-stage0-20261111/source/frontend/tests/exchange_instrument_isolation.test.js:30:16)
+    Test.runInAsyncScope (node:async_hooks:214:14)
+    Test.run (node:internal/test_runner/test:1047:25)
+    Test.processPendingSubtests (node:internal/test_runner/test:744:18)
+    Test.postRun (node:internal/test_runner/test:1173:19)
+    Test.run (node:internal/test_runner/test:1101:12)
+    async Test.processPendingSubtests (node:internal/test_runner/test:744:7)
+  ...
+# Subtest: ProfitabilityResearchPage reacts to exchange and instrument changes with scope isolation
+not ok 12 - ProfitabilityResearchPage reacts to exchange and instrument changes with scope isolation
+  ---
+  duration_ms: 0.332603
+  type: 'test'
+  location: '/tmp/vector-apo-stage0-20261111/source/frontend/tests/exchange_instrument_isolation.test.js:39:1'
+  failureType: 'testCodeFailure'
+  error: "ENOENT: no such file or directory, open '/home/thunder/work/traderbybit/src/pages/ProfitabilityResearchPage.vue'"
+  code: 'ENOENT'
+  stack: |-
+    readFileSync (node:fs:440:20)
+    source (file:///tmp/vector-apo-stage0-20261111/source/frontend/tests/exchange_instrument_isolation.test.js:7:10)
+    TestContext.<anonymous> (file:///tmp/vector-apo-stage0-20261111/source/frontend/tests/exchange_instrument_isolation.test.js:40:16)
+    Test.runInAsyncScope (node:async_hooks:214:14)
+    Test.run (node:internal/test_runner/test:1047:25)
+    Test.processPendingSubtests (node:internal/test_runner/test:744:18)
+    Test.postRun (node:internal/test_runner/test:1173:19)
+    Test.run (node:internal/test_runner/test:1101:12)
+    async Test.processPendingSubtests (node:internal/test_runner/test:744:7)
+  ...
+# Subtest: operational pages watch settings.instrument and pass symbol filters to backend
+not ok 13 - operational pages watch settings.instrument and pass symbol filters to backend
+  ---
+  duration_ms: 2.838054
+  type: 'test'
+  location: '/tmp/vector-apo-stage0-20261111/source/frontend/tests/exchange_instrument_isolation.test.js:52:1'
+  failureType: 'testCodeFailure'
+  error: "ENOENT: no such file or directory, open '/home/thunder/work/traderbybit/src/pages/DashboardPage.vue'"
+  code: 'ENOENT'
+  stack: |-
+    readFileSync (node:fs:440:20)
+    source (file:///tmp/vector-apo-stage0-20261111/source/frontend/tests/exchange_instrument_isolation.test.js:7:10)
+    TestContext.<anonymous> (file:///tmp/vector-apo-stage0-20261111/source/frontend/tests/exchange_instrument_isolation.test.js:53:16)
+    Test.runInAsyncScope (node:async_hooks:214:14)
+    Test.run (node:internal/test_runner/test:1047:25)
+    Test.processPendingSubtests (node:internal/test_runner/test:744:18)
+    Test.postRun (node:internal/test_runner/test:1173:19)
+    Test.run (node:internal/test_runner/test:1101:12)
+    async Test.processPendingSubtests (node:internal/test_runner/test:744:7)
+  ...
+# Subtest: exchanges page is routed and listed in drawer navigation
+ok 14 - exchanges page is routed and listed in drawer navigation
+  ---
+  duration_ms: 1.394862
+  type: 'test'
+  ...
+# Subtest: types/index.ts exports complete universal exchange onboarding interfaces
+ok 15 - types/index.ts exports complete universal exchange onboarding interfaces
+  ---
+  duration_ms: 1.88604
+  type: 'test'
+  ...
+# Subtest: api service exports all required exchange onboarding endpoints
+ok 16 - api service exports all required exchange onboarding endpoints
+  ---
+  duration_ms: 0.251399
+  type: 'test'
+  ...
+# Subtest: ExchangesPage enforces mandatory research mode and virtual paper disclaimer
+ok 17 - ExchangesPage enforces mandatory research mode and virtual paper disclaimer
+  ---
+  duration_ms: 0.479832
+  type: 'test'
+  ...
+# Subtest: ExchangesPage supports capability-based lifecycle states and diagnostics
+ok 18 - ExchangesPage supports capability-based lifecycle states and diagnostics
+  ---
+  duration_ms: 0.555601
+  type: 'test'
+  ...
+# Subtest: ExchangesPage provides CSV upload, owner approval, and topology sync dialogs
+ok 19 - ExchangesPage provides CSV upload, owner approval, and topology sync dialogs
+  ---
+  duration_ms: 0.580797
+  type: 'test'
+  ...
+# Subtest: MainLayout provides dynamic navbar exchange selector with live/offline status indicator and aggregate mode
+ok 20 - MainLayout provides dynamic navbar exchange selector with live/offline status indicator and aggregate mode
+  ---
+  duration_ms: 0.435472
+  type: 'test'
+  ...
+# Subtest: settings store provides dynamic exchanges registry and exchange status helper
+ok 21 - settings store provides dynamic exchanges registry and exchange status helper
+  ---
+  duration_ms: 0.291194
+  type: 'test'
+  ...
+# Subtest: ExchangesPage provides strategy compatibility matrix and reconcile action
+ok 22 - ExchangesPage provides strategy compatibility matrix and reconcile action
+  ---
+  duration_ms: 0.630883
+  type: 'test'
+  ...
+# Subtest: types/index.ts exports MarketType and CapabilityStatus interfaces
+ok 23 - types/index.ts exports MarketType and CapabilityStatus interfaces
+  ---
+  duration_ms: 1.407591
+  type: 'test'
+  ...
+# Subtest: api service exports getExchangeCapabilities and getExchangeInstruments
+ok 24 - api service exports getExchangeCapabilities and getExchangeInstruments
+  ---
+  duration_ms: 0.484804
+  type: 'test'
+  ...
+# Subtest: ExchangesPage renders badges for supported market types across target exchanges
+ok 25 - ExchangesPage renders badges for supported market types across target exchanges
+  ---
+  duration_ms: 1.049863
+  type: 'test'
+  ...
+# Subtest: ExchangesPage provides Market Capabilities matrix inspector with explicit status values
+ok 26 - ExchangesPage provides Market Capabilities matrix inspector with explicit status values
+  ---
+  duration_ms: 1.146176
+  type: 'test'
+  ...
+# Subtest: ExchangesPage provides Instrument Discovery dialog with market type selector
+ok 27 - ExchangesPage provides Instrument Discovery dialog with market type selector
+  ---
+  duration_ms: 1.078989
+  type: 'test'
+  ...
+# Subtest: ExchangesPage strictly enforces research and virtual paper disclaimers without live trading status
+ok 28 - ExchangesPage strictly enforces research and virtual paper disclaimers without live trading status
+  ---
+  duration_ms: 0.930935
+  type: 'test'
+  ...
+# Subtest: pattern page is routed and listed
+ok 29 - pattern page is routed and listed
+  ---
+  duration_ms: 1.083778
+  type: 'test'
+  ...
+# Subtest: paginated pattern research uses bounded server requests
+ok 30 - paginated pattern research uses bounded server requests
+  ---
+  duration_ms: 1.503343
+  type: 'test'
+  ...
+# Subtest: pattern UI distinguishes observations from trading signals
+ok 31 - pattern UI distinguishes observations from trading signals
+  ---
+  duration_ms: 0.397682
+  type: 'test'
+  ...
+# Subtest: pattern discovery starts with a safe complete window and explains asynchronous empty states
+ok 32 - pattern discovery starts with a safe complete window and explains asynchronous empty states
+  ---
+  duration_ms: 0.366866
+  type: 'test'
+  ...
+# Subtest: pattern page shows automatic discovery readiness instead of an unexplained empty table
+ok 33 - pattern page shows automatic discovery readiness instead of an unexplained empty table
+  ---
+  duration_ms: 0.37717
+  type: 'test'
+  ...
+# Subtest: pattern page preserves top-level pagination metadata instead of unwrapping it
+ok 34 - pattern page preserves top-level pagination metadata instead of unwrapping it
+  ---
+  duration_ms: 0.284118
+  type: 'test'
+  ...
+# Subtest: pattern page exposes all strategy BUY SELL and SKIP context by symbol
+ok 35 - pattern page exposes all strategy BUY SELL and SKIP context by symbol
+  ---
+  duration_ms: 0.358314
+  type: 'test'
+  ...
+# node:internal/modules/package_json_reader:314
+#   throw new ERR_MODULE_NOT_FOUND(packageName, fileURLToPath(base), null);
+#         ^
+# Error [ERR_MODULE_NOT_FOUND]: Cannot find package 'typescript' imported from /tmp/vector-apo-stage0-20261111/source/frontend/tests/profitability_research.test.js
+#     at Object.getPackageJSONURL (node:internal/modules/package_json_reader:314:9)
+#     at packageResolve (node:internal/modules/esm/resolve:772:81)
+#     at moduleResolve (node:internal/modules/esm/resolve:859:18)
+#     at defaultResolve (node:internal/modules/esm/resolve:989:11)
+#     at \#cachedDefaultResolve (node:internal/modules/esm/loader:747:20)
+#     at ModuleLoader.resolve (node:internal/modules/esm/loader:724:38)
+#     at ModuleLoader.getModuleJobForImport (node:internal/modules/esm/loader:320:38)
+#     at ModuleJob._link (node:internal/modules/esm/module_job:182:49) {
+#   code: 'ERR_MODULE_NOT_FOUND'
+# }
+# Node.js v22.23.4
+# Subtest: /tmp/vector-apo-stage0-20261111/source/frontend/tests/profitability_research.test.js
+not ok 7 - /tmp/vector-apo-stage0-20261111/source/frontend/tests/profitability_research.test.js
+  ---
+  duration_ms: 88.123148
+  type: 'test'
+  location: '/tmp/vector-apo-stage0-20261111/source/frontend/tests/profitability_research.test.js:1:1'
+  failureType: 'testCodeFailure'
+  exitCode: 1
+  signal: ~
+  error: 'test failed'
+  code: 'ERR_TEST_FAILURE'
+  ...
+# Subtest: quote integrity page is routed and listed in navigation
+ok 37 - quote integrity page is routed and listed in navigation
+  ---
+  duration_ms: 1.305321
+  type: 'test'
+  ...
+# Subtest: status banner enforces mandatory disclaimers and cross-source unavailable panel
+ok 38 - status banner enforces mandatory disclaimers and cross-source unavailable panel
+  ---
+  duration_ms: 0.215564
+  type: 'test'
+  ...
+# Subtest: evidence import enforces SHA-256 disclaimer and no auto-promotion invariant
+ok 39 - evidence import enforces SHA-256 disclaimer and no auto-promotion invariant
+  ---
+  duration_ms: 1.310931
+  type: 'test'
+  ...
+# Subtest: quote integrity main page orchestrates all L1 components
+ok 40 - quote integrity main page orchestrates all L1 components
+  ---
+  duration_ms: 0.23867
+  type: 'test'
+  ...
+# Subtest: quote integrity api service exports all required endpoints and types
+ok 41 - quote integrity api service exports all required endpoints and types
+  ---
+  duration_ms: 0.269585
+  type: 'test'
+  ...
+# Subtest: f22 quote integrity handles error propagation, visible banner, and stale state
+ok 42 - f22 quote integrity handles error propagation, visible banner, and stale state
+  ---
+  duration_ms: 0.192787
+  type: 'test'
+  ...
+# Subtest: unavailable queues are not misreported as empty
+ok 43 - unavailable queues are not misreported as empty
+  ---
+  duration_ms: 0.738695
+  type: 'test'
+  ...
+# Subtest: visual builder produces deterministic EMA/RSI DSL without hosted provider
+ok 44 - visual builder produces deterministic EMA/RSI DSL without hosted provider
+  ---
+  duration_ms: 1.85773
+  type: 'test'
+  ...
+# Subtest: nested visual rules have readable previews and precise version differences
+ok 45 - nested visual rules have readable previews and precise version differences
+  ---
+  duration_ms: 0.448975
+  type: 'test'
+  ...
+# Subtest: types/index.ts exports complete TradingMethod and parameter interfaces
+ok 46 - types/index.ts exports complete TradingMethod and parameter interfaces
+  ---
+  duration_ms: 1.483229
+  type: 'test'
+  ...
+# Subtest: api service exports strategy catalog and exchange assignment endpoints
+ok 47 - api service exports strategy catalog and exchange assignment endpoints
+  ---
+  duration_ms: 0.36677
+  type: 'test'
+  ...
+# Subtest: StrategiesPage provides 50-method catalog tab with Family A-F and type filters
+ok 48 - StrategiesPage provides 50-method catalog tab with Family A-F and type filters
+  ---
+  duration_ms: 1.411664
+  type: 'test'
+  ...
+# Subtest: StrategiesPage displays method cards with honest status badges and blocker callouts
+ok 49 - StrategiesPage displays method cards with honest status badges and blocker callouts
+  ---
+  duration_ms: 0.386973
+  type: 'test'
+  ...
+# Subtest: StrategiesPage provides parameter schemas and diagnostics details dialog
+ok 50 - StrategiesPage provides parameter schemas and diagnostics details dialog
+  ---
+  duration_ms: 0.543837
+  type: 'test'
+  ...
+# Subtest: VisualDefinitionEditor integrates method selection, parameter configuration, and explicit exchange assignment
+ok 51 - VisualDefinitionEditor integrates method selection, parameter configuration, and explicit exchange assignment
+  ---
+  duration_ms: 0.401707
+  type: 'test'
+  ...
+# Subtest: strategy monitor page is routed and listed in drawer navigation
+not ok 52 - strategy monitor page is routed and listed in drawer navigation
+  ---
+  duration_ms: 0.811806
+  type: 'test'
+  location: '/tmp/vector-apo-stage0-20261111/source/frontend/tests/strategy_monitor.test.js:6:1'
+  failureType: 'testCodeFailure'
+  error: "ENOENT: no such file or directory, open '/home/thunder/work/traderbybit/src/router/index.ts'"
+  code: 'ENOENT'
+  stack: |-
+    readFileSync (node:fs:440:20)
+    TestContext.<anonymous> (file:///tmp/vector-apo-stage0-20261111/source/frontend/tests/strategy_monitor.test.js:7:21)
+    Test.runInAsyncScope (node:async_hooks:214:14)
+    Test.run (node:internal/test_runner/test:1047:25)
+    Test.start (node:internal/test_runner/test:944:17)
+    startSubtestAfterBootstrap (node:internal/test_runner/harness:296:17)
+  ...
+# Subtest: strategy monitor enforces research mode and virtual paper disclaimer
+not ok 53 - strategy monitor enforces research mode and virtual paper disclaimer
+  ---
+  duration_ms: 0.173822
+  type: 'test'
+  location: '/tmp/vector-apo-stage0-20261111/source/frontend/tests/strategy_monitor.test.js:15:1'
+  failureType: 'testCodeFailure'
+  error: "ENOENT: no such file or directory, open '/home/thunder/work/traderbybit/src/pages/StrategyMonitorPage.vue'"
+  code: 'ENOENT'
+  stack: |-
+    readFileSync (node:fs:440:20)
+    TestContext.<anonymous> (file:///tmp/vector-apo-stage0-20261111/source/frontend/tests/strategy_monitor.test.js:16:19)
+    Test.runInAsyncScope (node:async_hooks:214:14)
+    Test.run (node:internal/test_runner/test:1047:25)
+    Test.processPendingSubtests (node:internal/test_runner/test:744:18)
+    Test.postRun (node:internal/test_runner/test:1173:19)
+    Test.run (node:internal/test_runner/test:1101:12)
+    async startSubtestAfterBootstrap (node:internal/test_runner/harness:296:3)
+  ...
+# Subtest: strategy monitor contains decision explainability, sizing, and timeline panels
+not ok 54 - strategy monitor contains decision explainability, sizing, and timeline panels
+  ---
+  duration_ms: 0.418838
+  type: 'test'
+  location: '/tmp/vector-apo-stage0-20261111/source/frontend/tests/strategy_monitor.test.js:22:1'
+  failureType: 'testCodeFailure'
+  error: "ENOENT: no such file or directory, open '/home/thunder/work/traderbybit/src/pages/StrategyMonitorPage.vue'"
+  code: 'ENOENT'
+  stack: |-
+    readFileSync (node:fs:440:20)
+    TestContext.<anonymous> (file:///tmp/vector-apo-stage0-20261111/source/frontend/tests/strategy_monitor.test.js:23:19)
+    Test.runInAsyncScope (node:async_hooks:214:14)
+    Test.run (node:internal/test_runner/test:1047:25)
+    Test.processPendingSubtests (node:internal/test_runner/test:744:18)
+    Test.postRun (node:internal/test_runner/test:1173:19)
+    Test.run (node:internal/test_runner/test:1101:12)
+    async Test.processPendingSubtests (node:internal/test_runner/test:744:7)
+  ...
+# Subtest: strategy monitor shows account-scoped decisions and positions without collapsing financial history
+not ok 55 - strategy monitor shows account-scoped decisions and positions without collapsing financial history
+  ---
+  duration_ms: 0.284051
+  type: 'test'
+  location: '/tmp/vector-apo-stage0-20261111/source/frontend/tests/strategy_monitor.test.js:32:1'
+  failureType: 'testCodeFailure'
+  error: "ENOENT: no such file or directory, open '/home/thunder/work/traderbybit/src/pages/StrategyMonitorPage.vue'"
+  code: 'ENOENT'
+  stack: |-
+    readFileSync (node:fs:440:20)
+    TestContext.<anonymous> (file:///tmp/vector-apo-stage0-20261111/source/frontend/tests/strategy_monitor.test.js:33:15)
+    Test.runInAsyncScope (node:async_hooks:214:14)
+    Test.run (node:internal/test_runner/test:1047:25)
+    Test.processPendingSubtests (node:internal/test_runner/test:744:18)
+    Test.postRun (node:internal/test_runner/test:1173:19)
+    Test.run (node:internal/test_runner/test:1101:12)
+    async Test.processPendingSubtests (node:internal/test_runner/test:744:7)
+  ...
+# Subtest: strategy monitor protects against stale filter and timeline responses
+not ok 56 - strategy monitor protects against stale filter and timeline responses
+  ---
+  duration_ms: 1.408945
+  type: 'test'
+  location: '/tmp/vector-apo-stage0-20261111/source/frontend/tests/strategy_monitor.test.js:41:1'
+  failureType: 'testCodeFailure'
+  error: "ENOENT: no such file or directory, open '/home/thunder/work/traderbybit/src/pages/StrategyMonitorPage.vue'"
+  code: 'ENOENT'
+  stack: |-
+    readFileSync (node:fs:440:20)
+    TestContext.<anonymous> (file:///tmp/vector-apo-stage0-20261111/source/frontend/tests/strategy_monitor.test.js:42:15)
+    Test.runInAsyncScope (node:async_hooks:214:14)
+    Test.run (node:internal/test_runner/test:1047:25)
+    Test.processPendingSubtests (node:internal/test_runner/test:744:18)
+    Test.postRun (node:internal/test_runner/test:1173:19)
+    Test.run (node:internal/test_runner/test:1101:12)
+    async Test.processPendingSubtests (node:internal/test_runner/test:744:7)
+  ...
+# node:internal/modules/package_json_reader:314
+#   throw new ERR_MODULE_NOT_FOUND(packageName, fileURLToPath(base), null);
+#         ^
+# Error [ERR_MODULE_NOT_FOUND]: Cannot find package 'typescript' imported from /tmp/vector-apo-stage0-20261111/source/frontend/tests/ui.test.js
+#     at Object.getPackageJSONURL (node:internal/modules/package_json_reader:314:9)
+#     at packageResolve (node:internal/modules/esm/resolve:772:81)
+#     at moduleResolve (node:internal/modules/esm/resolve:859:18)
+#     at defaultResolve (node:internal/modules/esm/resolve:989:11)
+#     at \#cachedDefaultResolve (node:internal/modules/esm/loader:747:20)
+#     at ModuleLoader.resolve (node:internal/modules/esm/loader:724:38)
+#     at ModuleLoader.getModuleJobForImport (node:internal/modules/esm/loader:320:38)
+#     at ModuleJob._link (node:internal/modules/esm/module_job:182:49) {
+#   code: 'ERR_MODULE_NOT_FOUND'
+# }
+# Node.js v22.23.4
+# Subtest: /tmp/vector-apo-stage0-20261111/source/frontend/tests/ui.test.js
+not ok 13 - /tmp/vector-apo-stage0-20261111/source/frontend/tests/ui.test.js
+  ---
+  duration_ms: 57.310237
+  type: 'test'
+  location: '/tmp/vector-apo-stage0-20261111/source/frontend/tests/ui.test.js:1:1'
+  failureType: 'testCodeFailure'
+  exitCode: 1
+  signal: ~
+  error: 'test failed'
+  code: 'ERR_TEST_FAILURE'
+  ...
+1..57
+# tests 57
+# suites 0
+# pass 37
+# fail 20
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 184.668983

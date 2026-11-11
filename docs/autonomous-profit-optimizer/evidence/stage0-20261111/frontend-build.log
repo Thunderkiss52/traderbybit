@@ -1,0 +1,70 @@
+
+> build
+> vue-tsc --noEmit && vite build
+
+vite v7.3.7 building client environment for production...
+transforming...
+✓ 981 modules transformed.
+rendering chunks...
+computing gzip size...
+dist/index.html                                                                  0.39 kB │ gzip:   0.20 kB
+dist/assets/flUhRq6tzZclQEJ-Vdg-IuiaDsNcIhQ8tQ-D-x-0Q06.woff2                  128.62 kB
+dist/assets/flUhRq6tzZclQEJ-Vdg-IuiaDsNa-OUIwM9U8.woff                         175.41 kB
+dist/assets/StrategyMonitorPage-BxadPDxd.css                                     0.04 kB │ gzip:   0.06 kB
+dist/assets/RiskPage-DXmgDROV.css                                                0.04 kB │ gzip:   0.06 kB
+dist/assets/TablePage-BWTdXden.css                                               0.13 kB │ gzip:   0.11 kB
+dist/assets/HistoricalDataPage-BaGoam4z.css                                      0.14 kB │ gzip:   0.13 kB
+dist/assets/ResearchOpportunitiesPage-DKTIDCBm.css                               0.17 kB │ gzip:   0.15 kB
+dist/assets/ResearchCalibrationPage-COeKYDg_.css                                 0.17 kB │ gzip:   0.15 kB
+dist/assets/ResearchLearningPage-B90LkR7O.css                                    0.17 kB │ gzip:   0.15 kB
+dist/assets/ProfitabilityResearchPage-Co_fisA2.css                               0.17 kB │ gzip:   0.14 kB
+dist/assets/ExchangesPage-QfHcWEZU.css                                           0.25 kB │ gzip:   0.18 kB
+dist/assets/ResearchReplayPage-BRfSXOF5.css                                      0.28 kB │ gzip:   0.22 kB
+dist/assets/ResearchMonitoringPage-CREhw8AL.css                                  0.32 kB │ gzip:   0.23 kB
+dist/assets/StrategiesPage-CORewgvR.css                                          0.34 kB │ gzip:   0.23 kB
+dist/assets/QuoteIntegrityPage-BdK7lSyz.css                                      0.41 kB │ gzip:   0.23 kB
+dist/assets/index-D_ls-rCD.css                                                   3.35 kB │ gzip:   1.32 kB
+dist/assets/quasar-DH_Tr-ug.css                                                213.71 kB │ gzip:  36.68 kB
+dist/assets/charts-p0UO1Vr3.js                                                   0.10 kB │ gzip:   0.11 kB
+dist/assets/EmptyState-CnlxcR_m.js                                               0.34 kB │ gzip:   0.27 kB
+dist/assets/usePolling-BdM5qc9b.js                                               0.51 kB │ gzip:   0.35 kB
+dist/assets/MetricCard.vue_vue_type_script_setup_true_lang-9styJ3iM.js           1.39 kB │ gzip:   0.63 kB
+dist/assets/EquityChart.vue_vue_type_script_setup_true_lang-Ckk5hx3X.js          1.41 kB │ gzip:   0.81 kB
+dist/assets/SettingsPage-BQM-v-ln.js                                             1.83 kB │ gzip:   0.75 kB
+dist/assets/PerformanceCharts.vue_vue_type_script_setup_true_lang-AgchgbMV.js    1.96 kB │ gzip:   1.03 kB
+dist/assets/BacktestsPage-BcFzy-MT.js                                            4.16 kB │ gzip:   1.76 kB
+dist/assets/RecordDetailPage-CGwOsikj.js                                         4.73 kB │ gzip:   1.95 kB
+dist/assets/AuditPage-BTENGWHt.js                                                4.99 kB │ gzip:   2.05 kB
+dist/assets/ResearchCalibrationPage-CqzuSUEH.js                                  5.30 kB │ gzip:   1.99 kB
+dist/assets/ResearchReplayPage-oF_cP1_v.js                                       5.52 kB │ gzip:   2.09 kB
+dist/assets/BacktestDetailPage-CSiZFQG5.js                                       5.63 kB │ gzip:   2.13 kB
+dist/assets/JournalPage-pjx-Q2dj.js                                              6.11 kB │ gzip:   2.60 kB
+dist/assets/StatisticsPage-Cs5a5C-J.js                                           7.93 kB │ gzip:   3.30 kB
+dist/assets/ResearchPage-ByP3J6TY.js                                             8.19 kB │ gzip:   3.29 kB
+dist/assets/TablePage-DCYkiCl-.js                                                8.69 kB │ gzip:   3.33 kB
+dist/assets/ResearchHealthPage-CQIMmaCA.js                                       8.81 kB │ gzip:   3.13 kB
+dist/assets/MarketPage-CIF4F0jN.js                                               8.87 kB │ gzip:   3.67 kB
+dist/assets/ResearchOpportunitiesPage-DQhXUuDV.js                                9.16 kB │ gzip:   2.87 kB
+dist/assets/HistoricalDataPage-C_S8XEzy.js                                      15.34 kB │ gzip:   5.20 kB
+dist/assets/PatternsPage-Cgh-1CfH.js                                            16.33 kB │ gzip:   5.37 kB
+dist/assets/RiskPage-BP0cUpTg.js                                                16.51 kB │ gzip:   5.02 kB
+dist/assets/ResearchLearningPage-DYPvz96T.js                                    18.22 kB │ gzip:   5.45 kB
+dist/assets/StrategyMonitorPage-Cl_nPktx.js                                     19.06 kB │ gzip:   6.09 kB
+dist/assets/ResearchMonitoringPage-DB180kOc.js                                  21.63 kB │ gzip:   6.33 kB
+dist/assets/QuoteIntegrityPage-wtphoNEN.js                                      22.75 kB │ gzip:   7.15 kB
+dist/assets/DashboardPage-DBXOANeq.js                                           24.19 kB │ gzip:   7.81 kB
+dist/assets/ExchangesPage-DmayEm4z.js                                           46.78 kB │ gzip:  12.16 kB
+dist/assets/StrategiesPage-C4pSZ5gT.js                                          56.97 kB │ gzip:  16.14 kB
+dist/assets/ProfitabilityResearchPage-QKEXBt_K.js                               62.44 kB │ gzip:  15.40 kB
+dist/assets/index-CbCCObcc.js                                                   73.60 kB │ gzip:  26.88 kB
+dist/assets/vue-vendor-Cvzt2RuF.js                                             167.62 kB │ gzip:  61.85 kB
+dist/assets/zrender-CrzwNTfZ.js                                                175.93 kB │ gzip:  58.56 kB
+dist/assets/lightweight-charts-BwFsYrSP.js                                     180.26 kB │ gzip:  58.27 kB
+dist/assets/quasar-B6NyZLph.js                                                 268.80 kB │ gzip:  89.41 kB
+dist/assets/echarts-DuKtSdDE.js                                                362.20 kB │ gzip: 124.75 kB
+✓ built in 9.37s
+npm notice
+npm notice New major version of npm available! 10.9.9 -> 12.2.2
+npm notice Changelog: https://github.com/npm/cli/releases/tag/v12.2.2
+npm notice To update run: npm install -g npm@12.2.2
+npm notice

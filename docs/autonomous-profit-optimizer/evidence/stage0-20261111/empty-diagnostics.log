@@ -1,0 +1,3 @@
+Xdebug: [Step Debug] Time-out connecting to debugging client, waited: 200 ms. Tried: 127.0.0.1:9003 (through xdebug.client_host/xdebug.client_port).
+PASS 1: all six empty timeframe cohorts yield no exception or fabricated warning
+PASS 2: present negative expectancy still yields its warning

@@ -1,0 +1,14 @@
+<?php
+$files = [];
+foreach (['app','tests','database','config','routes','bootstrap'] as $dir) {
+ foreach (new RecursiveIteratorIterator(new RecursiveDirectoryIterator($dir, FilesystemIterator::SKIP_DOTS)) as $file) {
+  if ($file->getExtension() === 'php') $files[] = $file->getPathname();
+ }
+}
+$failures = 0;
+foreach ($files as $file) {
+ $output = []; exec(escapeshellarg(PHP_BINARY).' -l '.escapeshellarg($file).' 2>&1', $output, $code);
+ if ($code !== 0) { echo implode("\n", $output)."\n"; $failures++; }
+}
+echo count($files)." PHP files; failures: ".$failures."\n";
+exit($failures === 0 ? 0 : 1);

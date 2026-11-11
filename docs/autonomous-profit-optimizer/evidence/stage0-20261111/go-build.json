@@ -1,0 +1,12 @@
+{
+  "name": "go-build",
+  "command": [
+    "go",
+    "build",
+    "./..."
+  ],
+  "started_utc": "2026-11-11T14:46:21.652145+00:00",
+  "duration_seconds": 0.59,
+  "exit_code": 0,
+  "host_working_directory": "/tmp/vector-apo-stage0-20261111/source/research-go"
+}

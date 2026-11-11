@@ -1,0 +1,11 @@
+{
+  "name": "empty-diagnostics",
+  "command": [
+    "php",
+    "AUDIT_CLOSURE/ROUND8/verify_empty_diagnostics.php"
+  ],
+  "started_utc": "2026-11-11T14:46:20.985568+00:00",
+  "duration_seconds": 0.248,
+  "exit_code": 0,
+  "host_working_directory": "/tmp/vector-apo-stage0-20261111/source"
+}

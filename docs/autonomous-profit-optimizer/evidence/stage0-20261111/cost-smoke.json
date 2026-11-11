@@ -1,0 +1,11 @@
+{
+  "name": "cost-smoke",
+  "command": [
+    "php",
+    "scripts/tests/historical_execution_cost_contract_smoke.php"
+  ],
+  "started_utc": "2026-11-11T14:46:21.891906+00:00",
+  "duration_seconds": 0.25,
+  "exit_code": 0,
+  "host_working_directory": "/tmp/vector-apo-stage0-20261111/source"
+}

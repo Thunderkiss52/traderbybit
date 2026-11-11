@@ -1,0 +1,75 @@
+## main...origin/main [ahead 9]
+M  .gitignore
+ M app/Audit/Backtest/BacktestAuditCsv.php
+ M app/Backtest/Application/BacktestRunService.php
+ M app/Exchanges/Application/ExchangeCapabilityValidator.php
+ M app/Exchanges/Application/ExchangeCatalogService.php
+ M app/Exchanges/Application/ExchangeStrategyCompatibilityService.php
+ M app/Exchanges/Domain/ExchangeManifest.php
+ M app/Exchanges/Domain/ExchangeManifestValidator.php
+ M app/Exchanges/ExchangeComparisonService.php
+ M app/Exchanges/ExchangeRegistry.php
+ M app/Exchanges/Http/ExchangeComparisonController.php
+ M app/Exchanges/Infrastructure/AbstractExchangeAdapter.php
+ M app/Exchanges/Infrastructure/DeclarativeExchangeAdapter.php
+ M app/Http/Controllers/Api/V1/ProfitabilityResearchController.php
+ M app/Http/Controllers/Api/V1/StrategyMonitorController.php
+ M app/Http/Controllers/Api/V1/StrategyResearchController.php
+ M app/MarketData/Jobs/RecoverCandleGapsJob.php
+ M app/PaperTrading/Application/PaperExecutionEligibilityService.php
+ M app/PaperTrading/Application/PaperExecutionEngine.php
+ M app/PaperTrading/Application/PaperProcessingService.php
+ M app/PaperTrading/Application/PaperTopologySynchronizer.php
+ M app/PaperTrading/Application/PositionLifecycleService.php
+ M app/PaperTrading/Application/PreExecutionQualityRiskGate.php
+ M app/PaperTrading/Application/TradeRiskClassificationService.php
+ M app/Research/Application/LearningFeatureStoreService.php
+ M app/Research/Application/LearningPredictorService.php
+ M app/Research/Application/ModelAdvisoryService.php
+ M app/Research/Application/ResearchJobService.php
+ M app/Research/Application/SignalQualityAnalyticsService.php
+ M app/Research/Application/StrategyEvolutionService.php
+ M app/Research/Jobs/EvaluateStrategyCandidateJob.php
+ M app/Research/Jobs/ProcessAutonomousLearningJob.php
+ M app/Security/ExchangeUrlSecurityValidator.php
+ M app/Strategy/Application/PreEntryStrategyEvidenceService.php
+ M app/Strategy/Application/StrategyCompletenessService.php
+ M app/Strategy/Application/StrategyExchangeAssignmentService.php
+ M app/Strategy/Application/UniversalMarketContextCollector.php
+ M app/Trading/Application/TradingPipelineEventService.php
+ M app/Trading/Application/TradingPipelineRecoveryService.php
+ M app/Trading/Jobs/ProcessClosedCandleEventJob.php
+ M app/Trading/Jobs/ProcessPaperPipelineJob.php
+ M frontend/src/pages/ProfitabilityResearchPage.vue
+ M frontend/src/pages/StrategyMonitorPage.vue
+ M frontend/tests/profitability_research.test.js
+ M frontend/tests/strategy_monitor.test.js
+ M research-go/internal/jobscope/exchange.go
+ M research-go/internal/jobscope/exchange_test.go
+ M tests/Feature/Audit/SystemUiApiReconciliationAuditTest.php
+ M tests/Feature/Exchanges/MultiExchangeComparisonTest.php
+ M tests/Feature/PaperTrading/DirectionalPerformanceAndRiskGateTest.php
+ M tests/Feature/PaperTrading/QualityRiskGateAndProfitabilityVerificationTest.php
+ M tests/Feature/PaperTrading/StrategyTopologyIsolationAndAssignmentTest.php
+ M tests/Feature/Research/SignalQualityAnalyticsAndMultiTimeframeProfitabilityTest.php
+ M tests/Unit/Audit/BacktestAuditCsvR8Test.php
+ M tests/Unit/PaperTrading/PreExecutionQualityRiskGateTest.php
+ M tests/Unit/Research/LearningFeatureStoreServiceTest.php
+ M tests/Unit/Research/LearningPredictorServiceTest.php
+?? AUDIT_CLOSURE/
+?? REPOSITORY_STATE.txt
+?? app/Backtest/Application/HistoricalExecutionCostPolicy.php
+?? app/Exchanges/Application/ExchangePaperApprovalPolicy.php
+?? app/Exchanges/Application/PaperExecutionModelContract.php
+?? app/Trading/Application/CanonicalObservationCompleteness.php
+?? app/Trading/Application/TradingQueueResolver.php
+?? database/migrations/2026_11_11_000001_add_paper_account_block_origin.php
+?? scripts/audit/native_exchange_safety_check.php
+?? scripts/tests/historical_execution_cost_contract_smoke.php
+?? scripts/tests/strategy_exchange_topology_contract_smoke.php
+?? tests/Unit/Backtest/HistoricalExecutionCostPolicyTest.php
+?? tests/Unit/Exchanges/ExchangePaperApprovalPolicyTest.php
+?? tests/Unit/Exchanges/ExchangeRegistryFailClosedTest.php
+?? tests/Unit/Exchanges/PaperExecutionModelContractTest.php
+?? tests/Unit/Research/LearningSafetyInvariantsTest.php
+?? vector-git-history.txt

@@ -1,0 +1,22 @@
+{
+  "name": "php-runtime",
+  "command": [
+    "docker",
+    "run",
+    "--rm",
+    "--network",
+    "none",
+    "--entrypoint",
+    "php",
+    "-v",
+    "/tmp/vector-apo-stage0-20261111/source:/app:ro",
+    "-w",
+    "/app",
+    "traderbybit-php85-test:local",
+    "scripts/verify-php-runtime.php"
+  ],
+  "started_utc": "2026-11-11T14:55:54.717450+00:00",
+  "duration_seconds": 0.37,
+  "exit_code": 0,
+  "host_working_directory": "/home/thunder/work/traderbybit"
+}

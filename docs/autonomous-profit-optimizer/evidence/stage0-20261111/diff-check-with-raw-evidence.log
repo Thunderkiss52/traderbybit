@@ -1,0 +1,691 @@
+docs/autonomous-profit-optimizer/SPECIFICATION_EN.md:5: trailing whitespace.
++**Project:** VECTOR / traderbybit  
+docs/autonomous-profit-optimizer/SPECIFICATION_EN.md:6: trailing whitespace.
++**Component:** Autonomous Profit Optimizer (APO)  
+docs/autonomous-profit-optimizer/SPECIFICATION_EN.md:7: trailing whitespace.
++**Priority:** Critical  
+docs/autonomous-profit-optimizer/SPECIFICATION_EN.md:8: trailing whitespace.
++**Implementation:** Incremental enhancement of the existing application  
+docs/autonomous-profit-optimizer/SPECIFICATION_EN.md:9: trailing whitespace.
++**Architecture:** Go-first, Laravel API, Vue 3 + Quasar, PostgreSQL, Redis  
+docs/autonomous-profit-optimizer/SPECIFICATION_EN.md:10: trailing whitespace.
++**Trading mode:** PAPER ONLY  
+docs/autonomous-profit-optimizer/evidence/stage0-20261111/go-database-migrations.log:2: trailing whitespace.
++   INFO  Preparing database.  
+docs/autonomous-profit-optimizer/evidence/stage0-20261111/go-database-migrations.log:6: trailing whitespace.
++   INFO  Running migrations.  
+docs/autonomous-profit-optimizer/evidence/stage0-20261111/go-database-migrations.log:96: new blank line at EOF.
+docs/autonomous-profit-optimizer/evidence/stage0-20261111/imported-source.patch:7: trailing whitespace.
++ 
+docs/autonomous-profit-optimizer/evidence/stage0-20261111/imported-source.patch:24: trailing whitespace.
++ 
+docs/autonomous-profit-optimizer/evidence/stage0-20261111/imported-source.patch:84: trailing whitespace.
++ 
+docs/autonomous-profit-optimizer/evidence/stage0-20261111/imported-source.patch:86: trailing whitespace.
++ 
+docs/autonomous-profit-optimizer/evidence/stage0-20261111/imported-source.patch:89: trailing whitespace.
++ 
+docs/autonomous-profit-optimizer/evidence/stage0-20261111/imported-source.patch:126: trailing whitespace.
++ 
+docs/autonomous-profit-optimizer/evidence/stage0-20261111/imported-source.patch:129: trailing whitespace.
++ 
+docs/autonomous-profit-optimizer/evidence/stage0-20261111/imported-source.patch:131: trailing whitespace.
++ 
+docs/autonomous-profit-optimizer/evidence/stage0-20261111/imported-source.patch:147: trailing whitespace.
++ 
+docs/autonomous-profit-optimizer/evidence/stage0-20261111/imported-source.patch:173: trailing whitespace.
++ 
+docs/autonomous-profit-optimizer/evidence/stage0-20261111/imported-source.patch:195: trailing whitespace.
++ 
+docs/autonomous-profit-optimizer/evidence/stage0-20261111/imported-source.patch:212: trailing whitespace.
++ 
+docs/autonomous-profit-optimizer/evidence/stage0-20261111/imported-source.patch:235: trailing whitespace.
++ 
+docs/autonomous-profit-optimizer/evidence/stage0-20261111/imported-source.patch:239: trailing whitespace.
++ 
+docs/autonomous-profit-optimizer/evidence/stage0-20261111/imported-source.patch:250: trailing whitespace.
++ 
+docs/autonomous-profit-optimizer/evidence/stage0-20261111/imported-source.patch:258: trailing whitespace.
++ 
+docs/autonomous-profit-optimizer/evidence/stage0-20261111/imported-source.patch:280: trailing whitespace.
++ 
+docs/autonomous-profit-optimizer/evidence/stage0-20261111/imported-source.patch:303: trailing whitespace.
++ 
+docs/autonomous-profit-optimizer/evidence/stage0-20261111/imported-source.patch:317: trailing whitespace.
++ 
+docs/autonomous-profit-optimizer/evidence/stage0-20261111/imported-source.patch:319: trailing whitespace.
++ 
+docs/autonomous-profit-optimizer/evidence/stage0-20261111/imported-source.patch:355: trailing whitespace.
++ 
+docs/autonomous-profit-optimizer/evidence/stage0-20261111/imported-source.patch:366: trailing whitespace.
++ 
+docs/autonomous-profit-optimizer/evidence/stage0-20261111/imported-source.patch:401: trailing whitespace.
++ 
+docs/autonomous-profit-optimizer/evidence/stage0-20261111/imported-source.patch:422: trailing whitespace.
++ 
+docs/autonomous-profit-optimizer/evidence/stage0-20261111/imported-source.patch:442: trailing whitespace.
++ 
+docs/autonomous-profit-optimizer/evidence/stage0-20261111/imported-source.patch:449: trailing whitespace.
++ 
+docs/autonomous-profit-optimizer/evidence/stage0-20261111/imported-source.patch:462: trailing whitespace.
++ 
+docs/autonomous-profit-optimizer/evidence/stage0-20261111/imported-source.patch:466: trailing whitespace.
++ 
+docs/autonomous-profit-optimizer/evidence/stage0-20261111/imported-source.patch:480: trailing whitespace.
++ 
+docs/autonomous-profit-optimizer/evidence/stage0-20261111/imported-source.patch:528: trailing whitespace.
++ 
+docs/autonomous-profit-optimizer/evidence/stage0-20261111/imported-source.patch:593: trailing whitespace.
++ 
+docs/autonomous-profit-optimizer/evidence/stage0-20261111/imported-source.patch:603: trailing whitespace.
++ 
+docs/autonomous-profit-optimizer/evidence/stage0-20261111/imported-source.patch:611: trailing whitespace.
++ 
+docs/autonomous-profit-optimizer/evidence/stage0-20261111/imported-source.patch:621: trailing whitespace.
++ 
+docs/autonomous-profit-optimizer/evidence/stage0-20261111/imported-source.patch:627: trailing whitespace.
++ 
+docs/autonomous-profit-optimizer/evidence/stage0-20261111/imported-source.patch:629: trailing whitespace.
++ 
+docs/autonomous-profit-optimizer/evidence/stage0-20261111/imported-source.patch:658: trailing whitespace.
++ 
+docs/autonomous-profit-optimizer/evidence/stage0-20261111/imported-source.patch:660: trailing whitespace.
++ 
+docs/autonomous-profit-optimizer/evidence/stage0-20261111/imported-source.patch:665: trailing whitespace.
++ 
+docs/autonomous-profit-optimizer/evidence/stage0-20261111/imported-source.patch:670: trailing whitespace.
++ 
+docs/autonomous-profit-optimizer/evidence/stage0-20261111/imported-source.patch:705: trailing whitespace.
++ 
+docs/autonomous-profit-optimizer/evidence/stage0-20261111/imported-source.patch:707: trailing whitespace.
++ 
+docs/autonomous-profit-optimizer/evidence/stage0-20261111/imported-source.patch:714: trailing whitespace.
++ 
+docs/autonomous-profit-optimizer/evidence/stage0-20261111/imported-source.patch:726: trailing whitespace.
++ 
+docs/autonomous-profit-optimizer/evidence/stage0-20261111/imported-source.patch:742: trailing whitespace.
++ 
+docs/autonomous-profit-optimizer/evidence/stage0-20261111/imported-source.patch:746: trailing whitespace.
++ 
+docs/autonomous-profit-optimizer/evidence/stage0-20261111/imported-source.patch:777: trailing whitespace.
++ 
+docs/autonomous-profit-optimizer/evidence/stage0-20261111/imported-source.patch:786: trailing whitespace.
++ 
+docs/autonomous-profit-optimizer/evidence/stage0-20261111/imported-source.patch:795: trailing whitespace.
++ 
+docs/autonomous-profit-optimizer/evidence/stage0-20261111/imported-source.patch:835: trailing whitespace.
++ 
+docs/autonomous-profit-optimizer/evidence/stage0-20261111/imported-source.patch:847: trailing whitespace.
++ 
+docs/autonomous-profit-optimizer/evidence/stage0-20261111/imported-source.patch:889: trailing whitespace.
++ 
+docs/autonomous-profit-optimizer/evidence/stage0-20261111/imported-source.patch:898: trailing whitespace.
++ 
+docs/autonomous-profit-optimizer/evidence/stage0-20261111/imported-source.patch:901: trailing whitespace.
++ 
+docs/autonomous-profit-optimizer/evidence/stage0-20261111/imported-source.patch:932: trailing whitespace.
++ 
+docs/autonomous-profit-optimizer/evidence/stage0-20261111/imported-source.patch:969: trailing whitespace.
++ 
+docs/autonomous-profit-optimizer/evidence/stage0-20261111/imported-source.patch:981: trailing whitespace.
++ 
+docs/autonomous-profit-optimizer/evidence/stage0-20261111/imported-source.patch:995: trailing whitespace.
++ 
+docs/autonomous-profit-optimizer/evidence/stage0-20261111/imported-source.patch:999: trailing whitespace.
++ 
+docs/autonomous-profit-optimizer/evidence/stage0-20261111/imported-source.patch:1025: trailing whitespace.
++ 
+docs/autonomous-profit-optimizer/evidence/stage0-20261111/imported-source.patch:1035: trailing whitespace.
++ 
+docs/autonomous-profit-optimizer/evidence/stage0-20261111/imported-source.patch:1041: trailing whitespace.
++ 
+docs/autonomous-profit-optimizer/evidence/stage0-20261111/imported-source.patch:1043: trailing whitespace.
++ 
+docs/autonomous-profit-optimizer/evidence/stage0-20261111/imported-source.patch:1086: trailing whitespace.
++ 
+docs/autonomous-profit-optimizer/evidence/stage0-20261111/imported-source.patch:1094: trailing whitespace.
++ 
+docs/autonomous-profit-optimizer/evidence/stage0-20261111/imported-source.patch:1099: trailing whitespace.
++ 
+docs/autonomous-profit-optimizer/evidence/stage0-20261111/imported-source.patch:1104: trailing whitespace.
++ 
+docs/autonomous-profit-optimizer/evidence/stage0-20261111/imported-source.patch:1108: trailing whitespace.
++ 
+docs/autonomous-profit-optimizer/evidence/stage0-20261111/imported-source.patch:1124: trailing whitespace.
++ 
+docs/autonomous-profit-optimizer/evidence/stage0-20261111/imported-source.patch:1148: trailing whitespace.
++ 
+docs/autonomous-profit-optimizer/evidence/stage0-20261111/imported-source.patch:1163: trailing whitespace.
++ 
+docs/autonomous-profit-optimizer/evidence/stage0-20261111/imported-source.patch:1175: trailing whitespace.
++ 
+docs/autonomous-profit-optimizer/evidence/stage0-20261111/imported-source.patch:1190: trailing whitespace.
++ 
+docs/autonomous-profit-optimizer/evidence/stage0-20261111/imported-source.patch:1198: trailing whitespace.
++ 
+docs/autonomous-profit-optimizer/evidence/stage0-20261111/imported-source.patch:1240: trailing whitespace.
++ 
+docs/autonomous-profit-optimizer/evidence/stage0-20261111/imported-source.patch:1287: trailing whitespace.
++ 
+docs/autonomous-profit-optimizer/evidence/stage0-20261111/imported-source.patch:1307: trailing whitespace.
++ 
+docs/autonomous-profit-optimizer/evidence/stage0-20261111/imported-source.patch:1321: trailing whitespace.
++ 
+docs/autonomous-profit-optimizer/evidence/stage0-20261111/imported-source.patch:1338: trailing whitespace.
++ 
+docs/autonomous-profit-optimizer/evidence/stage0-20261111/imported-source.patch:1346: trailing whitespace.
++ 
+docs/autonomous-profit-optimizer/evidence/stage0-20261111/imported-source.patch:1364: trailing whitespace.
++ 
+docs/autonomous-profit-optimizer/evidence/stage0-20261111/imported-source.patch:1391: trailing whitespace.
++ 
+docs/autonomous-profit-optimizer/evidence/stage0-20261111/imported-source.patch:1406: trailing whitespace.
++ 
+docs/autonomous-profit-optimizer/evidence/stage0-20261111/imported-source.patch:1416: trailing whitespace.
++ 
+docs/autonomous-profit-optimizer/evidence/stage0-20261111/imported-source.patch:1423: trailing whitespace.
++ 
+docs/autonomous-profit-optimizer/evidence/stage0-20261111/imported-source.patch:1456: trailing whitespace.
++ 
+docs/autonomous-profit-optimizer/evidence/stage0-20261111/imported-source.patch:1468: trailing whitespace.
++ 
+docs/autonomous-profit-optimizer/evidence/stage0-20261111/imported-source.patch:1475: trailing whitespace.
++ 
+docs/autonomous-profit-optimizer/evidence/stage0-20261111/imported-source.patch:1496: trailing whitespace.
++ 
+docs/autonomous-profit-optimizer/evidence/stage0-20261111/imported-source.patch:1507: trailing whitespace.
++ 
+docs/autonomous-profit-optimizer/evidence/stage0-20261111/imported-source.patch:1518: trailing whitespace.
++ 
+docs/autonomous-profit-optimizer/evidence/stage0-20261111/imported-source.patch:1530: trailing whitespace.
++ 
+docs/autonomous-profit-optimizer/evidence/stage0-20261111/imported-source.patch:1561: trailing whitespace.
++ 
+docs/autonomous-profit-optimizer/evidence/stage0-20261111/imported-source.patch:1580: trailing whitespace.
++ 
+docs/autonomous-profit-optimizer/evidence/stage0-20261111/imported-source.patch:1602: trailing whitespace.
++ 
+docs/autonomous-profit-optimizer/evidence/stage0-20261111/imported-source.patch:1621: trailing whitespace.
++ 
+docs/autonomous-profit-optimizer/evidence/stage0-20261111/imported-source.patch:1630: trailing whitespace.
++ 
+docs/autonomous-profit-optimizer/evidence/stage0-20261111/imported-source.patch:1635: trailing whitespace.
++ 
+docs/autonomous-profit-optimizer/evidence/stage0-20261111/imported-source.patch:1671: trailing whitespace.
++ 
+docs/autonomous-profit-optimizer/evidence/stage0-20261111/imported-source.patch:1706: trailing whitespace.
++ 
+docs/autonomous-profit-optimizer/evidence/stage0-20261111/imported-source.patch:1713: trailing whitespace.
++ 
+docs/autonomous-profit-optimizer/evidence/stage0-20261111/imported-source.patch:1748: trailing whitespace.
++ 
+docs/autonomous-profit-optimizer/evidence/stage0-20261111/imported-source.patch:1752: trailing whitespace.
++ 
+docs/autonomous-profit-optimizer/evidence/stage0-20261111/imported-source.patch:1780: trailing whitespace.
++ 
+docs/autonomous-profit-optimizer/evidence/stage0-20261111/imported-source.patch:1784: trailing whitespace.
++ 
+docs/autonomous-profit-optimizer/evidence/stage0-20261111/imported-source.patch:1791: trailing whitespace.
++ 
+docs/autonomous-profit-optimizer/evidence/stage0-20261111/imported-source.patch:1800: trailing whitespace.
++ 
+docs/autonomous-profit-optimizer/evidence/stage0-20261111/imported-source.patch:1806: trailing whitespace.
++ 
+docs/autonomous-profit-optimizer/evidence/stage0-20261111/imported-source.patch:1812: trailing whitespace.
++ 
+docs/autonomous-profit-optimizer/evidence/stage0-20261111/imported-source.patch:1846: trailing whitespace.
++ 
+docs/autonomous-profit-optimizer/evidence/stage0-20261111/imported-source.patch:1923: trailing whitespace.
++ 
+docs/autonomous-profit-optimizer/evidence/stage0-20261111/imported-source.patch:2082: trailing whitespace.
++ 
+docs/autonomous-profit-optimizer/evidence/stage0-20261111/imported-source.patch:2098: trailing whitespace.
++ 
+docs/autonomous-profit-optimizer/evidence/stage0-20261111/imported-source.patch:2117: trailing whitespace.
++ 
+docs/autonomous-profit-optimizer/evidence/stage0-20261111/imported-source.patch:2121: trailing whitespace.
++ 
+docs/autonomous-profit-optimizer/evidence/stage0-20261111/imported-source.patch:2136: trailing whitespace.
++ 
+docs/autonomous-profit-optimizer/evidence/stage0-20261111/imported-source.patch:2162: trailing whitespace.
++ 
+docs/autonomous-profit-optimizer/evidence/stage0-20261111/imported-source.patch:2237: trailing whitespace.
++ 
+docs/autonomous-profit-optimizer/evidence/stage0-20261111/imported-source.patch:2286: trailing whitespace.
++ 
+docs/autonomous-profit-optimizer/evidence/stage0-20261111/imported-source.patch:2292: trailing whitespace.
++ 
+docs/autonomous-profit-optimizer/evidence/stage0-20261111/imported-source.patch:2296: trailing whitespace.
++ 
+docs/autonomous-profit-optimizer/evidence/stage0-20261111/imported-source.patch:2301: trailing whitespace.
++ 
+docs/autonomous-profit-optimizer/evidence/stage0-20261111/imported-source.patch:2309: trailing whitespace.
++ 
+docs/autonomous-profit-optimizer/evidence/stage0-20261111/imported-source.patch:2324: trailing whitespace.
++ 
+docs/autonomous-profit-optimizer/evidence/stage0-20261111/imported-source.patch:2330: trailing whitespace.
++ 
+docs/autonomous-profit-optimizer/evidence/stage0-20261111/imported-source.patch:2335: trailing whitespace.
++ 
+docs/autonomous-profit-optimizer/evidence/stage0-20261111/imported-source.patch:2348: trailing whitespace.
++ 
+docs/autonomous-profit-optimizer/evidence/stage0-20261111/imported-source.patch:2352: trailing whitespace.
++ 
+docs/autonomous-profit-optimizer/evidence/stage0-20261111/imported-source.patch:2356: trailing whitespace.
++ 
+docs/autonomous-profit-optimizer/evidence/stage0-20261111/imported-source.patch:2361: trailing whitespace.
++ 
+docs/autonomous-profit-optimizer/evidence/stage0-20261111/imported-source.patch:2365: trailing whitespace.
++ 
+docs/autonomous-profit-optimizer/evidence/stage0-20261111/imported-source.patch:2376: trailing whitespace.
++ 
+docs/autonomous-profit-optimizer/evidence/stage0-20261111/imported-source.patch:2378: trailing whitespace.
++ 
+docs/autonomous-profit-optimizer/evidence/stage0-20261111/imported-source.patch:2380: trailing whitespace.
++ 
+docs/autonomous-profit-optimizer/evidence/stage0-20261111/imported-source.patch:2386: trailing whitespace.
++ 
+docs/autonomous-profit-optimizer/evidence/stage0-20261111/imported-source.patch:2433: trailing whitespace.
++ 
+docs/autonomous-profit-optimizer/evidence/stage0-20261111/imported-source.patch:2441: trailing whitespace.
++ 
+docs/autonomous-profit-optimizer/evidence/stage0-20261111/imported-source.patch:2443: trailing whitespace.
++ 
+docs/autonomous-profit-optimizer/evidence/stage0-20261111/imported-source.patch:2447: trailing whitespace.
++ 
+docs/autonomous-profit-optimizer/evidence/stage0-20261111/imported-source.patch:2461: trailing whitespace.
++ 
+docs/autonomous-profit-optimizer/evidence/stage0-20261111/imported-source.patch:2483: trailing whitespace.
++ 
+docs/autonomous-profit-optimizer/evidence/stage0-20261111/imported-source.patch:2497: trailing whitespace.
++ 
+docs/autonomous-profit-optimizer/evidence/stage0-20261111/imported-source.patch:2500: trailing whitespace.
++ 
+docs/autonomous-profit-optimizer/evidence/stage0-20261111/imported-source.patch:2514: trailing whitespace.
++ 
+docs/autonomous-profit-optimizer/evidence/stage0-20261111/imported-source.patch:2574: trailing whitespace.
++ 
+docs/autonomous-profit-optimizer/evidence/stage0-20261111/imported-source.patch:2618: trailing whitespace.
++ 
+docs/autonomous-profit-optimizer/evidence/stage0-20261111/imported-source.patch:2653: trailing whitespace.
++ 
+docs/autonomous-profit-optimizer/evidence/stage0-20261111/imported-source.patch:2662: trailing whitespace.
++ 
+docs/autonomous-profit-optimizer/evidence/stage0-20261111/imported-source.patch:2674: trailing whitespace.
++ 
+docs/autonomous-profit-optimizer/evidence/stage0-20261111/imported-source.patch:2691: trailing whitespace.
++ 
+docs/autonomous-profit-optimizer/evidence/stage0-20261111/imported-source.patch:2701: trailing whitespace.
++ 
+docs/autonomous-profit-optimizer/evidence/stage0-20261111/imported-source.patch:2707: trailing whitespace.
++ 
+docs/autonomous-profit-optimizer/evidence/stage0-20261111/imported-source.patch:2716: trailing whitespace.
++ 
+docs/autonomous-profit-optimizer/evidence/stage0-20261111/imported-source.patch:2738: trailing whitespace.
++ 
+docs/autonomous-profit-optimizer/evidence/stage0-20261111/imported-source.patch:2754: trailing whitespace.
++ 
+docs/autonomous-profit-optimizer/evidence/stage0-20261111/imported-source.patch:2774: trailing whitespace.
++ 
+docs/autonomous-profit-optimizer/evidence/stage0-20261111/imported-source.patch:2811: trailing whitespace.
++ 
+docs/autonomous-profit-optimizer/evidence/stage0-20261111/imported-source.patch:2820: trailing whitespace.
++ 
+docs/autonomous-profit-optimizer/evidence/stage0-20261111/imported-source.patch:2824: trailing whitespace.
++ 
+docs/autonomous-profit-optimizer/evidence/stage0-20261111/imported-source.patch:2842: trailing whitespace.
++ 
+docs/autonomous-profit-optimizer/evidence/stage0-20261111/imported-source.patch:2853: trailing whitespace.
++ 
+docs/autonomous-profit-optimizer/evidence/stage0-20261111/imported-source.patch:2871: trailing whitespace.
++ 
+docs/autonomous-profit-optimizer/evidence/stage0-20261111/imported-source.patch:2873: trailing whitespace.
++ 
+docs/autonomous-profit-optimizer/evidence/stage0-20261111/imported-source.patch:2880: trailing whitespace.
++ 
+docs/autonomous-profit-optimizer/evidence/stage0-20261111/imported-source.patch:2884: trailing whitespace.
++ 
+docs/autonomous-profit-optimizer/evidence/stage0-20261111/imported-source.patch:2912: trailing whitespace.
++ 
+docs/autonomous-profit-optimizer/evidence/stage0-20261111/imported-source.patch:2915: trailing whitespace.
++ 
+docs/autonomous-profit-optimizer/evidence/stage0-20261111/imported-source.patch:2933: trailing whitespace.
++ 
+docs/autonomous-profit-optimizer/evidence/stage0-20261111/imported-source.patch:2942: trailing whitespace.
++ 
+docs/autonomous-profit-optimizer/evidence/stage0-20261111/imported-source.patch:2947: trailing whitespace.
++ 
+docs/autonomous-profit-optimizer/evidence/stage0-20261111/imported-source.patch:2963: trailing whitespace.
++ 
+docs/autonomous-profit-optimizer/evidence/stage0-20261111/imported-source.patch:2978: trailing whitespace.
++ 
+docs/autonomous-profit-optimizer/evidence/stage0-20261111/imported-source.patch:2996: trailing whitespace.
++ 
+docs/autonomous-profit-optimizer/evidence/stage0-20261111/imported-source.patch:3001: trailing whitespace.
++ 
+docs/autonomous-profit-optimizer/evidence/stage0-20261111/imported-source.patch:3013: trailing whitespace.
++ 
+docs/autonomous-profit-optimizer/evidence/stage0-20261111/imported-source.patch:3034: trailing whitespace.
++ 
+docs/autonomous-profit-optimizer/evidence/stage0-20261111/imported-source.patch:3037: trailing whitespace.
++ 
+docs/autonomous-profit-optimizer/evidence/stage0-20261111/imported-source.patch:3053: trailing whitespace.
++ 
+docs/autonomous-profit-optimizer/evidence/stage0-20261111/imported-source.patch:3093: trailing whitespace.
++ 
+docs/autonomous-profit-optimizer/evidence/stage0-20261111/imported-source.patch:3102: trailing whitespace.
++ 
+docs/autonomous-profit-optimizer/evidence/stage0-20261111/imported-source.patch:3104: trailing whitespace.
++ 
+docs/autonomous-profit-optimizer/evidence/stage0-20261111/imported-source.patch:3120: trailing whitespace.
++ 
+docs/autonomous-profit-optimizer/evidence/stage0-20261111/imported-source.patch:3172: trailing whitespace.
++ 
+docs/autonomous-profit-optimizer/evidence/stage0-20261111/imported-source.patch:3242: trailing whitespace.
++ 
+docs/autonomous-profit-optimizer/evidence/stage0-20261111/imported-source.patch:3265: trailing whitespace.
++ 
+docs/autonomous-profit-optimizer/evidence/stage0-20261111/imported-source.patch:3273: trailing whitespace.
++ 
+docs/autonomous-profit-optimizer/evidence/stage0-20261111/imported-source.patch:3282: trailing whitespace.
++ 
+docs/autonomous-profit-optimizer/evidence/stage0-20261111/imported-source.patch:3300: trailing whitespace.
++ 
+docs/autonomous-profit-optimizer/evidence/stage0-20261111/imported-source.patch:3306: trailing whitespace.
++ 
+docs/autonomous-profit-optimizer/evidence/stage0-20261111/imported-source.patch:3318: trailing whitespace.
++ 
+docs/autonomous-profit-optimizer/evidence/stage0-20261111/imported-source.patch:3337: trailing whitespace.
++ 
+docs/autonomous-profit-optimizer/evidence/stage0-20261111/imported-source.patch:3348: trailing whitespace.
++ 
+docs/autonomous-profit-optimizer/evidence/stage0-20261111/imported-source.patch:3384: trailing whitespace.
++ 
+docs/autonomous-profit-optimizer/evidence/stage0-20261111/imported-source.patch:3407: trailing whitespace.
++ 
+docs/autonomous-profit-optimizer/evidence/stage0-20261111/imported-source.patch:3428: trailing whitespace.
++ 
+docs/autonomous-profit-optimizer/evidence/stage0-20261111/imported-source.patch:3431: trailing whitespace.
++ 
+docs/autonomous-profit-optimizer/evidence/stage0-20261111/imported-source.patch:3451: trailing whitespace.
++ 
+docs/autonomous-profit-optimizer/evidence/stage0-20261111/imported-source.patch:3485: trailing whitespace.
++ 
+docs/autonomous-profit-optimizer/evidence/stage0-20261111/imported-source.patch:3493: trailing whitespace.
++ 
+docs/autonomous-profit-optimizer/evidence/stage0-20261111/imported-source.patch:3517: trailing whitespace.
++ 
+docs/autonomous-profit-optimizer/evidence/stage0-20261111/imported-source.patch:3522: trailing whitespace.
++ 
+docs/autonomous-profit-optimizer/evidence/stage0-20261111/imported-source.patch:3533: trailing whitespace.
++ 
+docs/autonomous-profit-optimizer/evidence/stage0-20261111/imported-source.patch:3543: trailing whitespace.
++ 
+docs/autonomous-profit-optimizer/evidence/stage0-20261111/imported-source.patch:3547: trailing whitespace.
++ 
+docs/autonomous-profit-optimizer/evidence/stage0-20261111/imported-source.patch:3559: trailing whitespace.
++ 
+docs/autonomous-profit-optimizer/evidence/stage0-20261111/imported-source.patch:3564: trailing whitespace.
++ 
+docs/autonomous-profit-optimizer/evidence/stage0-20261111/imported-source.patch:3598: trailing whitespace.
++ 
+docs/autonomous-profit-optimizer/evidence/stage0-20261111/imported-source.patch:3607: trailing whitespace.
++ 
+docs/autonomous-profit-optimizer/evidence/stage0-20261111/imported-source.patch:3645: trailing whitespace.
++ 
+docs/autonomous-profit-optimizer/evidence/stage0-20261111/imported-source.patch:3657: trailing whitespace.
++ 
+docs/autonomous-profit-optimizer/evidence/stage0-20261111/imported-source.patch:3660: trailing whitespace.
++ 
+docs/autonomous-profit-optimizer/evidence/stage0-20261111/imported-source.patch:3673: trailing whitespace.
++ 
+docs/autonomous-profit-optimizer/evidence/stage0-20261111/imported-source.patch:3689: trailing whitespace.
++ 
+docs/autonomous-profit-optimizer/evidence/stage0-20261111/imported-source.patch:3700: trailing whitespace.
++ 
+docs/autonomous-profit-optimizer/evidence/stage0-20261111/imported-source.patch:3739: trailing whitespace.
++ 
+docs/autonomous-profit-optimizer/evidence/stage0-20261111/imported-source.patch:3748: trailing whitespace.
++ 
+docs/autonomous-profit-optimizer/evidence/stage0-20261111/imported-source.patch:3754: trailing whitespace.
++ 
+docs/autonomous-profit-optimizer/evidence/stage0-20261111/imported-source.patch:3757: trailing whitespace.
++ 
+docs/autonomous-profit-optimizer/evidence/stage0-20261111/imported-source.patch:3763: trailing whitespace.
++ 
+docs/autonomous-profit-optimizer/evidence/stage0-20261111/imported-source.patch:3769: trailing whitespace.
++ 
+docs/autonomous-profit-optimizer/evidence/stage0-20261111/imported-source.patch:3781: trailing whitespace.
++ 
+docs/autonomous-profit-optimizer/evidence/stage0-20261111/imported-source.patch:3789: trailing whitespace.
++ 
+docs/autonomous-profit-optimizer/evidence/stage0-20261111/imported-source.patch:3793: trailing whitespace.
++ 
+docs/autonomous-profit-optimizer/evidence/stage0-20261111/imported-source.patch:3807: trailing whitespace.
++ 
+docs/autonomous-profit-optimizer/evidence/stage0-20261111/imported-source.patch:3824: trailing whitespace.
++ 
+docs/autonomous-profit-optimizer/evidence/stage0-20261111/imported-source.patch:3834: trailing whitespace.
++ 
+docs/autonomous-profit-optimizer/evidence/stage0-20261111/imported-source.patch:3848: trailing whitespace.
++ 
+docs/autonomous-profit-optimizer/evidence/stage0-20261111/imported-source.patch:3856: trailing whitespace.
++ 
+docs/autonomous-profit-optimizer/evidence/stage0-20261111/imported-source.patch:3864: trailing whitespace.
++ 
+docs/autonomous-profit-optimizer/evidence/stage0-20261111/imported-source.patch:3915: trailing whitespace.
++ 
+docs/autonomous-profit-optimizer/evidence/stage0-20261111/imported-source.patch:3952: trailing whitespace.
++ 
+docs/autonomous-profit-optimizer/evidence/stage0-20261111/imported-source.patch:3990: trailing whitespace.
++ 
+docs/autonomous-profit-optimizer/evidence/stage0-20261111/imported-source.patch:4030: trailing whitespace.
++ 
+docs/autonomous-profit-optimizer/evidence/stage0-20261111/imported-source.patch:4032: trailing whitespace.
++ 
+docs/autonomous-profit-optimizer/evidence/stage0-20261111/imported-source.patch:4040: trailing whitespace.
++ 
+docs/autonomous-profit-optimizer/evidence/stage0-20261111/imported-source.patch:4044: trailing whitespace.
++ 
+docs/autonomous-profit-optimizer/evidence/stage0-20261111/imported-source.patch:4070: trailing whitespace.
++ 
+docs/autonomous-profit-optimizer/evidence/stage0-20261111/imported-source.patch:4078: trailing whitespace.
++ 
+docs/autonomous-profit-optimizer/evidence/stage0-20261111/imported-source.patch:4093: trailing whitespace.
++ 
+docs/autonomous-profit-optimizer/evidence/stage0-20261111/imported-source.patch:4101: trailing whitespace.
++ 
+docs/autonomous-profit-optimizer/evidence/stage0-20261111/imported-source.patch:4104: trailing whitespace.
++ 
+docs/autonomous-profit-optimizer/evidence/stage0-20261111/imported-source.patch:4109: trailing whitespace.
++ 
+docs/autonomous-profit-optimizer/evidence/stage0-20261111/imported-source.patch:4164: trailing whitespace.
++ 
+docs/autonomous-profit-optimizer/evidence/stage0-20261111/imported-source.patch:4250: space before tab in indent.
++ 	"errors"
+docs/autonomous-profit-optimizer/evidence/stage0-20261111/imported-source.patch:4251: space before tab in indent.
++ 	"fmt"
+docs/autonomous-profit-optimizer/evidence/stage0-20261111/imported-source.patch:4253: space before tab in indent.
++ 	"strings"
+docs/autonomous-profit-optimizer/evidence/stage0-20261111/imported-source.patch:4255: trailing whitespace.
++ 
+docs/autonomous-profit-optimizer/evidence/stage0-20261111/imported-source.patch:4257: space before tab in indent.
++ 		exchange = next
+docs/autonomous-profit-optimizer/evidence/stage0-20261111/imported-source.patch:4258: space before tab in indent.
++ 	}
+docs/autonomous-profit-optimizer/evidence/stage0-20261111/imported-source.patch:4259: trailing whitespace.
++ 
+docs/autonomous-profit-optimizer/evidence/stage0-20261111/imported-source.patch:4264: space before tab in indent.
++ 	}
+docs/autonomous-profit-optimizer/evidence/stage0-20261111/imported-source.patch:4265: trailing whitespace.
++ 
+docs/autonomous-profit-optimizer/evidence/stage0-20261111/imported-source.patch:4266: space before tab in indent.
++ 	return exchange, nil
+docs/autonomous-profit-optimizer/evidence/stage0-20261111/imported-source.patch:4272: space before tab in indent.
++ 		{"nil payload", nil, "", true},
+docs/autonomous-profit-optimizer/evidence/stage0-20261111/imported-source.patch:4273: space before tab in indent.
++ 		{"conflicting", map[string]interface{}{"exchange": "bybit", "exchange_id": "binance"}, "", true},
+docs/autonomous-profit-optimizer/evidence/stage0-20261111/imported-source.patch:4274: space before tab in indent.
++ 		{"conflicting dataset exchange", map[string]interface{}{"exchange": "bybit", "dataset": map[string]interface{}{"exchange": "binance"}}, "", true},
+docs/autonomous-profit-optimizer/evidence/stage0-20261111/imported-source.patch:4279: space before tab in indent.
++ 		{"invalid type", map[string]interface{}{"exchange": 100}, "", true},
+docs/autonomous-profit-optimizer/evidence/stage0-20261111/imported-source.patch:4280: space before tab in indent.
++ 		{"empty", map[string]interface{}{"exchange": " "}, "", true},
+docs/autonomous-profit-optimizer/evidence/stage0-20261111/imported-source.patch:4281: space before tab in indent.
++ 	} {
+docs/autonomous-profit-optimizer/evidence/stage0-20261111/imported-source.patch:4298: trailing whitespace.
++ 
+docs/autonomous-profit-optimizer/evidence/stage0-20261111/imported-source.patch:4304: trailing whitespace.
++ 
+docs/autonomous-profit-optimizer/evidence/stage0-20261111/imported-source.patch:4365: trailing whitespace.
++ 
+docs/autonomous-profit-optimizer/evidence/stage0-20261111/imported-source.patch:4425: trailing whitespace.
++ 
+docs/autonomous-profit-optimizer/evidence/stage0-20261111/imported-source.patch:4431: trailing whitespace.
++ 
+docs/autonomous-profit-optimizer/evidence/stage0-20261111/imported-source.patch:4466: trailing whitespace.
++ 
+docs/autonomous-profit-optimizer/evidence/stage0-20261111/imported-source.patch:4473: trailing whitespace.
++ 
+docs/autonomous-profit-optimizer/evidence/stage0-20261111/imported-source.patch:4484: trailing whitespace.
++ 
+docs/autonomous-profit-optimizer/evidence/stage0-20261111/imported-source.patch:4499: trailing whitespace.
++ 
+docs/autonomous-profit-optimizer/evidence/stage0-20261111/imported-source.patch:4512: trailing whitespace.
++ 
+docs/autonomous-profit-optimizer/evidence/stage0-20261111/imported-source.patch:4518: trailing whitespace.
++ 
+docs/autonomous-profit-optimizer/evidence/stage0-20261111/imported-source.patch:4530: trailing whitespace.
++ 
+docs/autonomous-profit-optimizer/evidence/stage0-20261111/imported-source.patch:4564: trailing whitespace.
++ 
+docs/autonomous-profit-optimizer/evidence/stage0-20261111/imported-source.patch:4573: trailing whitespace.
++ 
+docs/autonomous-profit-optimizer/evidence/stage0-20261111/imported-source.patch:4580: trailing whitespace.
++ 
+docs/autonomous-profit-optimizer/evidence/stage0-20261111/imported-source.patch:4585: trailing whitespace.
++ 
+docs/autonomous-profit-optimizer/evidence/stage0-20261111/imported-source.patch:4594: trailing whitespace.
++ 
+docs/autonomous-profit-optimizer/evidence/stage0-20261111/imported-source.patch:4622: trailing whitespace.
++ 
+docs/autonomous-profit-optimizer/evidence/stage0-20261111/imported-source.patch:4631: trailing whitespace.
++ 
+docs/autonomous-profit-optimizer/evidence/stage0-20261111/imported-source.patch:4641: trailing whitespace.
++ 
+docs/autonomous-profit-optimizer/evidence/stage0-20261111/imported-source.patch:4650: trailing whitespace.
++ 
+docs/autonomous-profit-optimizer/evidence/stage0-20261111/imported-source.patch:4686: trailing whitespace.
++ 
+docs/autonomous-profit-optimizer/evidence/stage0-20261111/imported-source.patch:5059: trailing whitespace.
++ 
+docs/autonomous-profit-optimizer/evidence/stage0-20261111/imported-source.patch:5070: trailing whitespace.
++ 
+docs/autonomous-profit-optimizer/evidence/stage0-20261111/imported-source.patch:5080: trailing whitespace.
++ 
+docs/autonomous-profit-optimizer/evidence/stage0-20261111/imported-source.patch:5087: trailing whitespace.
++ 
+docs/autonomous-profit-optimizer/evidence/stage0-20261111/imported-source.patch:5099: trailing whitespace.
++ 
+docs/autonomous-profit-optimizer/evidence/stage0-20261111/imported-source.patch:5110: trailing whitespace.
++ 
+docs/autonomous-profit-optimizer/evidence/stage0-20261111/imported-source.patch:5131: trailing whitespace.
++ 
+docs/autonomous-profit-optimizer/evidence/stage0-20261111/imported-source.patch:5138: trailing whitespace.
++ 
+docs/autonomous-profit-optimizer/evidence/stage0-20261111/imported-source.patch:5141: trailing whitespace.
++ 
+docs/autonomous-profit-optimizer/evidence/stage0-20261111/imported-source.patch:5147: trailing whitespace.
++ 
+docs/autonomous-profit-optimizer/evidence/stage0-20261111/imported-source.patch:5158: trailing whitespace.
++ 
+docs/autonomous-profit-optimizer/evidence/stage0-20261111/imported-source.patch:5164: trailing whitespace.
++ 
+docs/autonomous-profit-optimizer/evidence/stage0-20261111/imported-source.patch:5175: trailing whitespace.
++ 
+docs/autonomous-profit-optimizer/evidence/stage0-20261111/imported-source.patch:5182: trailing whitespace.
++ 
+docs/autonomous-profit-optimizer/evidence/stage0-20261111/imported-source.patch:5191: trailing whitespace.
++ 
+docs/autonomous-profit-optimizer/evidence/stage0-20261111/imported-source.patch:5195: trailing whitespace.
++ 
+docs/autonomous-profit-optimizer/evidence/stage0-20261111/imported-source.patch:5204: trailing whitespace.
++ 
+docs/autonomous-profit-optimizer/evidence/stage0-20261111/imported-source.patch:5208: trailing whitespace.
++ 
+docs/autonomous-profit-optimizer/evidence/stage0-20261111/imported-source.patch:5212: trailing whitespace.
++ 
+docs/autonomous-profit-optimizer/evidence/stage0-20261111/imported-source.patch:5215: trailing whitespace.
++ 
+docs/autonomous-profit-optimizer/evidence/stage0-20261111/imported-source.patch:5220: trailing whitespace.
++ 
+docs/autonomous-profit-optimizer/evidence/stage0-20261111/imported-source.patch:5233: trailing whitespace.
++ 
+docs/autonomous-profit-optimizer/evidence/stage0-20261111/initial-staged.patch:7: trailing whitespace.
++ 
+docs/autonomous-profit-optimizer/evidence/stage0-20261111/pint.log:16: trailing whitespace.
++  ──────────────────────────────────────────────────────────────────── Laravel  
+docs/autonomous-profit-optimizer/evidence/stage0-20261111/pint.log:17: trailing whitespace.
++    FAIL   ........................................ 981 files, 28 style issues  
+docs/autonomous-profit-optimizer/evidence/stage0-20261111/pint.log:18: trailing whitespace.
++  ⨯ AUDIT_CLOSURE/ROUND3/test_signal_scope_standalone.php class_attributes_se…  
+docs/autonomous-profit-optimizer/evidence/stage0-20261111/pint.log:19: trailing whitespace.
++  ⨯ AUDIT_CLOSURE/ROUND7/verify_fail_closed.php new_with_parentheses, method_…  
+docs/autonomous-profit-optimizer/evidence/stage0-20261111/pint.log:20: trailing whitespace.
++  ⨯ AUDIT_CLOSURE/ROUND8/verify_empty_diagnostics.php new_with_parentheses, f…  
+docs/autonomous-profit-optimizer/evidence/stage0-20261111/pint.log:21: trailing whitespace.
++  ⨯ app/Backtest/Application/BacktestRunService.php fully_qualified_strict_ty…  
+docs/autonomous-profit-optimizer/evidence/stage0-20261111/pint.log:22: trailing whitespace.
++  ⨯ app/Backtest/Application/HistoricalExecutionCostPolicy.php unary_operator…  
+docs/autonomous-profit-optimizer/evidence/stage0-20261111/pint.log:23: trailing whitespace.
++  ⨯ app/Exchanges/Application/ExchangeCapabilityValidator.php unary_operator_…  
+docs/autonomous-profit-optimizer/evidence/stage0-20261111/pint.log:24: trailing whitespace.
++  ⨯ app/Exchanges/Domain/ExchangeManifestValidator.php single_quote, unary_op…  
+docs/autonomous-profit-optimizer/evidence/stage0-20261111/pint.log:25: trailing whitespace.
++  ⨯ app/Exchanges/ExchangeComparisonService.php unary_operator_spaces, not_op…  
+docs/autonomous-profit-optimizer/evidence/stage0-20261111/pint.log:26: trailing whitespace.
++  ⨯ app/Exchanges/Http/ExchangeComparisonController.php unary_operator_spaces…  
+docs/autonomous-profit-optimizer/evidence/stage0-20261111/pint.log:27: trailing whitespace.
++  ⨯ app/Http/Controllers/Api/V1/ProfitabilityResearchController.php unary_ope…  
+docs/autonomous-profit-optimizer/evidence/stage0-20261111/pint.log:28: trailing whitespace.
++  ⨯ app/Http/Controllers/Api/V1/StrategyResearchController.php fully_qualifie…  
+docs/autonomous-profit-optimizer/evidence/stage0-20261111/pint.log:29: trailing whitespace.
++  ⨯ app/PaperTrading/Application/PaperExecutionEligibilityService.php unary_o…  
+docs/autonomous-profit-optimizer/evidence/stage0-20261111/pint.log:30: trailing whitespace.
++  ⨯ app/PaperTrading/Application/PaperTopologySynchronizer.php unary_operator…  
+docs/autonomous-profit-optimizer/evidence/stage0-20261111/pint.log:31: trailing whitespace.
++  ⨯ app/PaperTrading/Application/TradeRiskClassificationService.php statement…  
+docs/autonomous-profit-optimizer/evidence/stage0-20261111/pint.log:32: trailing whitespace.
++  ⨯ app/Research/Application/LearningFeatureStoreService.php unary_operator_s…  
+docs/autonomous-profit-optimizer/evidence/stage0-20261111/pint.log:33: trailing whitespace.
++  ⨯ app/Research/Application/LearningPredictorService.php unary_operator_spac…  
+docs/autonomous-profit-optimizer/evidence/stage0-20261111/pint.log:34: trailing whitespace.
++  ⨯ app/Research/Jobs/EvaluateStrategyCandidateJob.php unary_operator_spaces,…  
+docs/autonomous-profit-optimizer/evidence/stage0-20261111/pint.log:35: trailing whitespace.
++  ⨯ app/Research/Jobs/ProcessAutonomousLearningJob.php unary_operator_spaces,…  
+docs/autonomous-profit-optimizer/evidence/stage0-20261111/pint.log:36: trailing whitespace.
++  ⨯ app/Trading/Application/CanonicalObservationCompleteness.php blank_line_b…  
+docs/autonomous-profit-optimizer/evidence/stage0-20261111/pint.log:37: trailing whitespace.
++  ⨯ app/Trading/Application/TradingQueueResolver.php unary_operator_spaces, n…  
+docs/autonomous-profit-optimizer/evidence/stage0-20261111/pint.log:38: trailing whitespace.
++  ⨯ app/Trading/Jobs/ProcessClosedCandleEventJob.php unary_operator_spaces, b…  
+docs/autonomous-profit-optimizer/evidence/stage0-20261111/pint.log:39: trailing whitespace.
++  ⨯ app/Trading/Jobs/ProcessPaperPipelineJob.php fully_qualified_strict_types…  
+docs/autonomous-profit-optimizer/evidence/stage0-20261111/pint.log:40: trailing whitespace.
++  ⨯ scripts/audit/native_exchange_safety_check.php class_definition, fully_qu…  
+docs/autonomous-profit-optimizer/evidence/stage0-20261111/pint.log:41: trailing whitespace.
++  ⨯ scripts/tests/historical_execution_cost_contract_smoke.php control_struct…  
+docs/autonomous-profit-optimizer/evidence/stage0-20261111/pint.log:42: trailing whitespace.
++  ⨯ scripts/tests/strategy_exchange_topology_contract_smoke.php class_definit…  
+docs/autonomous-profit-optimizer/evidence/stage0-20261111/pint.log:43: trailing whitespace.
++  ⨯ tests/Feature/Exchanges/MultiExchangeComparisonTest.php class_attributes_…  
+docs/autonomous-profit-optimizer/evidence/stage0-20261111/pint.log:44: trailing whitespace.
++  ⨯ tests/Feature/PaperTrading/StrategyTopologyIsolationAndAssignmentTest.php class_definition, fully_qualified_strict_types, braces_position, ordered_imports  
+docs/autonomous-profit-optimizer/evidence/stage0-20261111/pint.log:45: trailing whitespace.
++  ⨯ tests/Feature/Research/SignalQualityAnalyticsAndMultiTimeframeProfitabilityTest.php fully_qualified_strict_types, ordered_imports  
+docs/autonomous-profit-optimizer/evidence/stage0-20261111/pint.log:46: new blank line at EOF.
+docs/autonomous-profit-optimizer/evidence/stage0-20261111/postgres-final-identity.log:1: trailing whitespace.
++                                                       version                                                        | current_database | current_user 
+docs/autonomous-profit-optimizer/evidence/stage0-20261111/postgres-final-identity.log:6: trailing whitespace.
++ applied_migrations 
+docs/autonomous-profit-optimizer/evidence/stage0-20261111/postgres-final-identity.log:10: new blank line at EOF.

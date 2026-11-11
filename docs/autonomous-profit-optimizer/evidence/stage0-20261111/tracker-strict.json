@@ -1,0 +1,14 @@
+{
+  "name": "tracker-strict",
+  "command": [
+    "python3",
+    "scripts/vector_progress.py",
+    "--strict",
+    "--base-ref",
+    "9615a620d693bf46d5465619e576db2e1e5b4016"
+  ],
+  "started_utc": "2026-11-11T15:03:14.325180+00:00",
+  "duration_seconds": 6.806,
+  "exit_code": 0,
+  "host_working_directory": "/home/thunder/work/traderbybit"
+}

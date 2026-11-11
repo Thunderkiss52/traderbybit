@@ -1222,7 +1222,7 @@
       ],
       "last_verified_commit": "e393304d14b07890870e560c07516eccfc033254",
       "last_verified_environment": "isolated_postgresql",
-      "last_evidence_update": "2026-11-06",
+      "last_evidence_update": "2026-11-11",
       "notes": [
         "No credit inferred from old pass counts. Runtime source atom credit does not prove integrated target behavior.",
         "2026-10-27 evidence closure: Workflow service declaration reviewed; fresh PostgreSQL 17 cluster identity verified before fixtures. Real child-process candle insertion races, uniqueness negatives, migration preservation/idempotency and PHP-to-Go persistence executed with zero PostgreSQL skips. Procedure: No additional local infrastructure test needed. Obtain the operator-approved deployed release/schema provenance separately; local execution does not prove GitHub Actions ran.",
@@ -1232,7 +1232,8 @@
         "2026-10-30 P1 V4 local PostgreSQL recovery/concurrency evidence: docs/reports/P1_CANDLE_INTEGRITY_V4_20261030.md and docs/progress/evidence/p1-candle-integrity-v4-20261030/. This is task-specific regression evidence, not new credit for the complete frozen infrastructure obligation; production and product acceptance remain pending.",
         "2026-11-05 CI isolation stage: see docs/progress/evidence/cicd-20261105/local-verification.json and reports/agent/CICD_TEST_INVENTORY.md. All 1294 original PHP IDs remain scheduled; 1293 pass, the original optional public API case skips, no mandatory PostgreSQL/Redis case skips, and nine real server pairs have distinct identities. The frozen workflow watch mapping still references deploy.yml; no scope/watch revision or fresh platform credit is inferred from this CI-specific evidence.",
         "2026-11-05 inventory completion: four standalone PHP harnesses, actual runtime/extension verification and source redaction checks are now required. Local evidence retains 139 pure assertions and five genuine PostgreSQL races plus configuration/version variants. Legacy analysis remains disabled in production; fixture entrypoints reject non-testing environments before bootstrap. No platform acceptance credit is inferred.",
-        "2026-11-06 deployment remediation: digest-suffix defect reproduced with original validator and real isolated registry/Compose; per-service image identity, deferred scoped retention, exact schema rollback guard and monotonic timing implemented. See reports/agent/DEPLOYMENT_DRIFT_ROOT_CAUSE.md and DEPLOYMENT_ROLLBACK_SAFETY.md. Local targeted and synthetic PostgreSQL checks do not satisfy frozen production obligations; no new acceptance credit, production access, push or deployment."
+        "2026-11-06 deployment remediation: digest-suffix defect reproduced with original validator and real isolated registry/Compose; per-service image identity, deferred scoped retention, exact schema rollback guard and monotonic timing implemented. See reports/agent/DEPLOYMENT_DRIFT_ROOT_CAUSE.md and DEPLOYMENT_ROLLBACK_SAFETY.md. Local targeted and synthetic PostgreSQL checks do not satisfy frozen production obligations; no new acceptance credit, production access, push or deployment.",
+        "2026-11-11 APO Stage 0: target PHP 8.5.12, PostgreSQL 17.11 and Redis are available in task-owned disposable infrastructure. See docs/autonomous-profit-optimizer/STAGE_0_AUDIT.md and retained commands/JUnit; baseline failures are not integration acceptance."
       ],
       "assessed_commit": "d9a0aeb5d14233fc95e9e5cc55d8748814362f59",
       "roadmap_reference": "docs/roadmap/VECTOR_POST_REMEDIATION_IMPLEMENTATION_ROADMAP.md",
@@ -1357,7 +1358,7 @@
       ],
       "last_verified_commit": null,
       "last_verified_environment": null,
-      "last_evidence_update": "2026-11-06",
+      "last_evidence_update": "2026-11-11",
       "notes": [
         "No credit inferred from old pass counts. Runtime source atom credit does not prove integrated target behavior.",
         "2026-10-27 evidence closure: Both atomic criteria require operator-authorized current-release evidence and independent acceptance. None was collected. Procedure: Collect the production packets below, map each acceptance ID, obtain explicit responsible-actor acceptance and retain authorization. Local fixtures cannot satisfy this obligation.",
@@ -1367,7 +1368,8 @@
         "2026-10-30 deployment attempt at 39ca806 failed M9 and application rolled back to 671f72f; additive migrations remain. Local 2deae21 prevents new partial Binance provisioning on an M9 failure, but production account rows and prior side effects remain unverified. Gate remains BLOCKED. See docs/reports/M9_DEPLOYMENT_FAILURE_20261030.md.",
         "2026-11-05 CI/CD stage: exact-SHA/current-main aggregate/artifact/digest guards and rollback retention controls pass local negative tests. Hosted CI, branch rules, GHCR publication, production execution, owner approval and the 30-second target remain unverified. See docs/progress/evidence/cicd-20261105/local-verification.json and reports/agent/CICD_DEPLOYMENT_SAFETY.md. Existing production acceptance and product states remain unchanged.",
         "2026-11-06 deployment remediation: digest-suffix defect reproduced with original validator and real isolated registry/Compose; per-service image identity, deferred scoped retention, exact schema rollback guard and monotonic timing implemented. See reports/agent/DEPLOYMENT_DRIFT_ROOT_CAUSE.md and DEPLOYMENT_ROLLBACK_SAFETY.md. Local targeted and synthetic PostgreSQL checks do not satisfy frozen production obligations; no new acceptance credit, production access, push or deployment.",
-        "2026-11-06 performance follow-up: digest-only cached pulls retain registry pulls for tag-only references; local registry offline/negative controls passed. Stage timing distinguishes full runner/remote wall time from service transition, and no production speed claim or acceptance credit is assigned. Core local fix commit: 13dc72f0018522e3297b312a41b45033bb07143c. See DEPLOYMENT_PERFORMANCE_ANALYSIS.md and final acceptance evidence."
+        "2026-11-06 performance follow-up: digest-only cached pulls retain registry pulls for tag-only references; local registry offline/negative controls passed. Stage timing distinguishes full runner/remote wall time from service transition, and no production speed claim or acceptance credit is assigned. Core local fix commit: 13dc72f0018522e3297b312a41b45033bb07143c. See DEPLOYMENT_PERFORMANCE_ANALYSIS.md and final acceptance evidence.",
+        "2026-11-11 APO Stage 0: actual deployment job is in .github/workflows/ci.yml; policy names a missing deploy.yml. No remote workflow, production check, push or deployment was performed. Production acceptance remains unavailable."
       ],
       "assessed_commit": "d9a0aeb5d14233fc95e9e5cc55d8748814362f59",
       "roadmap_reference": "docs/roadmap/VECTOR_POST_REMEDIATION_IMPLEMENTATION_ROADMAP.md",
@@ -1483,13 +1485,14 @@
       ],
       "last_verified_commit": null,
       "last_verified_environment": null,
-      "last_evidence_update": "2026-11-05",
+      "last_evidence_update": "2026-11-11",
       "notes": [
         "No credit inferred from old pass counts. Runtime source atom credit does not prove integrated target behavior.",
         "2026-10-27 evidence closure: Ingestion benchmark measured 500-new-row P95 65.641ms against the roadmap <50ms gate. Effective shared-host limits and PAPER latency under research load remain unmeasured. Procedure: Repeat scripts/benchmark-binance-ingestion.php --runs=30 --warmup=5 in the verified environment with PHP lint idle; retain every run. Separately measure PAPER P50/P95, RSS and SQL counts with/without bounded research over 30 repetitions and effective task-owned limits. A timing failure needs a separately scoped fix, not altered thresholds.",
         "Measured ingestion gate failed twice; idle-task repeat P95 74.860 ms. No implementation change or credit. See performance-assessment.json.",
         "Phase 0 Final Closure: VEC-P0-009-V1 strictly retained as FAILED (Binance Ingestion P95 = 52.161 ms > 50.000 ms threshold; threshold never relaxed).",
-        "2026-11-05 local CI benchmark: complete PHP case inventory passes with two workers in 375.43s and four workers in 240.32s on an eight-CPU task host, with fresh isolated services. These are CI fixture timings, not ingestion P95 or forward-PAPER/shared-VPS latency evidence; existing failed/unavailable frozen obligations remain unchanged. See reports/agent/CICD_PERFORMANCE_COMPARISON.md."
+        "2026-11-05 local CI benchmark: complete PHP case inventory passes with two workers in 375.43s and four workers in 240.32s on an eight-CPU task host, with fresh isolated services. These are CI fixture timings, not ingestion P95 or forward-PAPER/shared-VPS latency evidence; existing failed/unavailable frozen obligations remain unchanged. See reports/agent/CICD_PERFORMANCE_COMPARISON.md.",
+        "2026-11-11 APO Stage 0: elapsed local check durations are not realistic 4-vCPU/8-GiB VPS benchmarks. No performance or resource acceptance credit is awarded."
       ],
       "assessed_commit": "d9a0aeb5d14233fc95e9e5cc55d8748814362f59",
       "roadmap_reference": "docs/roadmap/VECTOR_POST_REMEDIATION_IMPLEMENTATION_ROADMAP.md",
@@ -7261,9 +7264,10 @@
       ],
       "last_verified_commit": null,
       "last_verified_environment": null,
-      "last_evidence_update": "2026-10-27",
+      "last_evidence_update": "2026-11-11",
       "notes": [
-        "No credit inferred from old pass counts. Runtime source atom credit does not prove integrated target behavior."
+        "No credit inferred from old pass counts. Runtime source atom credit does not prove integrated target behavior.",
+        "2026-11-11 APO Stage 0 APO-001/F19: SignalQualityAnalyticsService::analyze still materializes unbounded signals, positions and risk-decision IDs. SQL/streaming reconciliation and a measured memory bound remain required."
       ],
       "assessed_commit": "d9a0aeb5d14233fc95e9e5cc55d8748814362f59",
       "roadmap_reference": "docs/roadmap/VECTOR_POST_REMEDIATION_IMPLEMENTATION_ROADMAP.md",
@@ -7911,9 +7915,10 @@
       ],
       "last_verified_commit": null,
       "last_verified_environment": null,
-      "last_evidence_update": "2026-10-27",
+      "last_evidence_update": "2026-11-11",
       "notes": [
-        "No credit inferred from old pass counts. Runtime source atom credit does not prove integrated target behavior."
+        "No credit inferred from old pass counts. Runtime source atom credit does not prove integrated target behavior.",
+        "2026-11-11 APO Stage 0: focused signal analytics/export suite executed 20 cases with 177 assertions: 19 passed and 1 fixture error (attempted update of immutable risk_decisions). Preserve immutability; seed malicious CSV data at creation. See evidence/stage0-20261111/phpunit-v8-focused.xml under docs/autonomous-profit-optimizer."
       ],
       "assessed_commit": "d9a0aeb5d14233fc95e9e5cc55d8748814362f59",
       "roadmap_reference": "docs/roadmap/VECTOR_POST_REMEDIATION_IMPLEMENTATION_ROADMAP.md",
@@ -8021,9 +8026,10 @@
       ],
       "last_verified_commit": null,
       "last_verified_environment": null,
-      "last_evidence_update": "2026-10-27",
+      "last_evidence_update": "2026-11-11",
       "notes": [
-        "No credit inferred from old pass counts. Runtime source atom credit does not prove integrated target behavior."
+        "No credit inferred from old pass counts. Runtime source atom credit does not prove integrated target behavior.",
+        "2026-11-11 APO Stage 0: four-hour SIGNAL_PROXY_V2 labels are distinct from actual ledger outcomes and do not implement the requested independent source-timeframe/evaluation-horizon matrix. Six UI rows are not six live engines."
       ],
       "assessed_commit": "d9a0aeb5d14233fc95e9e5cc55d8748814362f59",
       "roadmap_reference": "docs/roadmap/VECTOR_POST_REMEDIATION_IMPLEMENTATION_ROADMAP.md",
@@ -8115,9 +8121,10 @@
       ],
       "last_verified_commit": null,
       "last_verified_environment": null,
-      "last_evidence_update": "2026-10-27",
+      "last_evidence_update": "2026-11-11",
       "notes": [
-        "No credit inferred from old pass counts. Runtime source atom credit does not prove integrated target behavior."
+        "No credit inferred from old pass counts. Runtime source atom credit does not prove integrated target behavior.",
+        "2026-11-11 APO Stage 0: current 99/99 frontend Node tests and vue-tsc/Vite build pass on Node 22.23.4. This is not browser acceptance, full optimizer implementation or production accounting reconciliation."
       ],
       "assessed_commit": "d9a0aeb5d14233fc95e9e5cc55d8748814362f59",
       "roadmap_reference": "docs/roadmap/VECTOR_POST_REMEDIATION_IMPLEMENTATION_ROADMAP.md",
@@ -8879,9 +8886,10 @@
       ],
       "last_verified_commit": null,
       "last_verified_environment": null,
-      "last_evidence_update": "2026-10-27",
+      "last_evidence_update": "2026-11-11",
       "notes": [
-        "No credit inferred from old pass counts. Runtime source atom credit does not prove integrated target behavior."
+        "No credit inferred from old pass counts. Runtime source atom credit does not prove integrated target behavior.",
+        "2026-11-11 APO Stage 0 APO-005: scheduler loops active exchanges for baseline/15m proxy training but calls generateCandidate(family) with default Bybit scope. Dynamic exchange research scheduling remains incomplete."
       ],
       "assessed_commit": "d9a0aeb5d14233fc95e9e5cc55d8748814362f59",
       "roadmap_reference": "docs/roadmap/VECTOR_POST_REMEDIATION_IMPLEMENTATION_ROADMAP.md",
@@ -10236,10 +10244,11 @@
       ],
       "last_verified_commit": null,
       "last_verified_environment": null,
-      "last_evidence_update": "2026-10-27",
+      "last_evidence_update": "2026-11-11",
       "notes": [
         "No credit inferred from old pass counts. Runtime source atom credit does not prove integrated target behavior.",
-        "rollbackCandidate explicitly rejects a promoted account; do not count the rejection guard as implemented operational rollback."
+        "rollbackCandidate explicitly rejects a promoted account; do not count the rejection guard as implemented operational rollback.",
+        "2026-11-11 APO Stage 0 APO-006: strategy PAPER promotion correctly refuses automatic activation without operational rollback; rollbackCandidate explicitly refuses PAPER_ELIGIBLE reversal. Model artifact rollback is not operational strategy rollback."
       ],
       "assessed_commit": "d9a0aeb5d14233fc95e9e5cc55d8748814362f59",
       "roadmap_reference": "docs/roadmap/VECTOR_POST_REMEDIATION_IMPLEMENTATION_ROADMAP.md",
@@ -10642,9 +10651,10 @@
       ],
       "last_verified_commit": null,
       "last_verified_environment": null,
-      "last_evidence_update": "2026-10-27",
+      "last_evidence_update": "2026-11-11",
       "notes": [
-        "No credit inferred from old pass counts. Runtime source atom credit does not prove integrated target behavior."
+        "No credit inferred from old pass counts. Runtime source atom credit does not prove integrated target behavior.",
+        "2026-11-11 APO Stage 0 APO-004: EnsureStrategyHistoryJob still loops over Bybit/Binance. Ten registered adapters do not demonstrate ten immutable ingestion/recovery/closed-candle event pipelines."
       ],
       "assessed_commit": "d9a0aeb5d14233fc95e9e5cc55d8748814362f59",
       "roadmap_reference": "docs/roadmap/VECTOR_POST_REMEDIATION_IMPLEMENTATION_ROADMAP.md",

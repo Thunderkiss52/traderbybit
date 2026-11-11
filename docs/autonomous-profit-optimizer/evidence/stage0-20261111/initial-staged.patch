@@ -1,0 +1,11 @@
+diff --git a/.gitignore b/.gitignore
+index 54032c2..2d42fba 100644
+--- a/.gitignore
++++ b/.gitignore
+@@ -73,3 +73,6 @@ __pycache__/
+ /research-go/bin/historical-import
+ 
+ /research-go/bin/historical-replay
++
++# Allow evidence archive for phase 2.1
++!evidence_phase_2.1.zip

@@ -1,0 +1,893 @@
+PHPUnit 12.5.40 by Sebastian Bergmann and contributors.
+
+Runtime:       PHP 8.5.12
+Configuration: /app/phpunit.xml
+
+......................................[41;37mF[0m[41;37mF[0m[41;37mF[0m[41;37mF[0m...................   61 / 1583 (  3%)
+.............................................................  122 / 1583 (  7%)
+.............................................................  183 / 1583 ( 11%)
+......................................................[41;37mF[0m......  244 / 1583 ( 15%)
+.............................................................  305 / 1583 ( 19%)
+...............[41;37mF[0m[41;37mF[0m[41;37mF[0m...........................................  366 / 1583 ( 23%)
+...................................................[41;37mF[0m..[41;37mF[0m......  427 / 1583 ( 26%)
+[31;1mE[0m[41;37mF[0m[41;37mF[0m......................................[41;37mF[0m.....[41;37mF[0m.............  488 / 1583 ( 30%)
+.............................................................  549 / 1583 ( 34%)
+..................................[41;37mF[0m.......[31;1mE[0m[31;1mE[0m........[31;1mE[0m........  610 / 1583 ( 38%)
+..........[31;1mE[0m[41;37mF[0m[31;1mE[0m................................................  671 / 1583 ( 42%)
+....................................................[41;37mF[0m[41;37mF[0m[41;37mF[0m[41;37mF[0m[41;37mF[0m....  732 / 1583 ( 46%)
+...........[41;37mF[0m.................................................  793 / 1583 ( 50%)
+.................................[41;37mF[0m...........................  854 / 1583 ( 53%)
+...............................................[41;37mF[0m[41;37mF[0m.[41;37mF[0m..........  915 / 1583 ( 57%)
+..........[41;37mF[0m...[41;37mF[0m.....
+[SCALABILITY BENCHMARK] Scale:   13 strategies |   130 accounts | Sync:   54.15 ms | Query:  2.70 ms | Mem:  0.00 MB
+
+[SCALABILITY BENCHMARK] Scale:   63 strategies |   630 accounts | Sync:  222.88 ms | Query:  2.71 ms | Mem:  0.00 MB
+
+[SCALABILITY BENCHMARK] Scale:  100 strategies |  1000 accounts | Sync:  186.74 ms | Query:  4.34 ms | Mem:  0.00 MB
+
+[SCALABILITY BENCHMARK] Scale:  500 strategies |  5000 accounts | Sync: 1630.02 ms | Query: 10.48 ms | Mem:  6.00 MB
+
+[SCALABILITY BENCHMARK] Scale: 1000 strategies | 10000 accounts | Sync: 2118.74 ms | Query: 23.77 ms | Mem: 22.00 MB
+.[31;1mE[0m..[31;1mE[0m.............[31;1mE[0m[31;1mE[0m[31;1mE[0m[31;1mE[0m.[41;37mF[0m..[31;1mE[0m.[41;37mF[0m.......[41;37mF[0m[41;37mF[0m.[41;37mF[0m.  976 / 1583 ( 61%)
+.[41;37mF[0m....[31;1mE[0m.[31;1mE[0m[31;1mE[0m...[31;1mE[0m[31;1mE[0m[31;1mE[0m..[31;1mE[0m[31;1mE[0m[41;37mF[0m[41;37mF[0m[41;37mF[0m[31;1mE[0m.[31;1mE[0m......[31;1mE[0m.[31;1mE[0m[31;1mE[0m[31;1mE[0m[31;1mE[0m[31;1mE[0m........[41;37mF[0m.........[31;1mE[0m..[41;37mF[0m 1037 / 1583 ( 65%)
+....[41;37mF[0m[41;37mF[0m.......[41;37mF[0m..[31;1mE[0m[31;1mE[0m[31;1mE[0m....[41;37mF[0m.[41;37mF[0m[41;37mF[0m[41;37mF[0m[31;1mE[0m[41;37mF[0m[41;37mF[0m....[41;37mF[0m[41;37mF[0m........................ 1098 / 1583 ( 69%)
+..[41;37mF[0m.[41;37mF[0m.......................[41;37mF[0m................................ 1159 / 1583 ( 73%)
+..........[41;37mF[0m[41;37mF[0m[41;37mF[0m[31;1mE[0m..[41;37mF[0m[41;37mF[0m......[41;37mF[0m[41;37mF[0m................................... 1220 / 1583 ( 77%)
+...............[41;37mF[0m.........[41;37mF[0m[41;37mF[0m...............[41;37mF[0m.......[41;37mF[0m.......... 1281 / 1583 ( 80%)
+..................[31;1mE[0m.......................................... 1342 / 1583 ( 84%)
+................................[41;37mF[0m.................[41;37mF[0m[41;37mF[0m.....[41;37mF[0m... 1403 / 1583 ( 88%)
+....[41;37mF[0m...[41;37mF[0m.........[41;37mF[0m.[41;37mF[0m........[41;37mF[0m[41;37mF[0m[31;1mE[0m.[31;1mE[0m[31;1mE[0m.........................{"durability":"VERIFIED","main_pid":4430,"observer_pid":4431,"outer_rollback":false,"quarantine":false,"committed_conflicts":1}
+. 1464 / 1583 ( 92%)
+{"durability":"VERIFIED","main_pid":4435,"observer_pid":4436,"outer_rollback":false,"quarantine":true,"committed_conflicts":1}
+.{"durability":"VERIFIED","main_pid":4440,"observer_pid":4441,"outer_rollback":true,"quarantine":false,"committed_conflicts":1}
+.{"durability":"VERIFIED","main_pid":4445,"observer_pid":4446,"outer_rollback":true,"quarantine":true,"committed_conflicts":1}
+...............[36;1mS[0m{"recovery_durability":"VERIFIED","main_pid":4538,"observer_pid":4539,"after_outer_rollback":true,"count":1}
+.{"recovery_concurrency":"VERIFIED","independent_pids":["4552","4550","4551","4549"],"count":1}
+.{"recovery_crash":"crash-after-claim","committed_before_kill":{"state":"IN_PROGRESS","writer_pid":4563},"exit":137,"final_count":1,"final_attempts":2}
+.{"recovery_crash":"crash-during-apply","committed_before_kill":{"state":"IN_PROGRESS","uncommitted_count":1},"exit":137,"final_count":1,"final_attempts":2}
+.{"recovery_crash":"crash-after-commit","committed_before_kill":{"state":"RECOVERED","writer_pid":4579},"exit":137,"final_count":1,"final_attempts":1}
+.............[31;1mE[0m.........[41;37mF[0m[41;37mF[0m..........[41;37mF[0m[41;37mF[0m.. 1525 / 1583 ( 96%)
+[41;37mF[0m.................................{"fresh_process_integrity":"VERIFIED","parent_pid":1,"worker":{"status":"UNAVAILABLE","reason_code":"CANDLE_JOURNAL_PENDING","pid":735,"db_pid":4778}}
+........................    1583 / 1583 (100%)
+
+Time: 11:46.853, Memory: 116.50 MB
+
+There were 40 errors:
+
+1) Tests\Unit\Research\ModelAdvisoryIntegrationTest::test_shadow_mode_records_predictions_without_altering_trading_decisions
+ErrorException: Undefined array key "recommendation"
+
+/app/vendor/laravel/framework/src/Illuminate/Foundation/Bootstrap/HandleExceptions.php:265
+/app/tests/Unit/Research/ModelAdvisoryIntegrationTest.php:133
+
+2) Tests\Feature\Audit\AuditInvariantTest::test_peak_equity_never_falls_below_starting_balance_and_drawdown_is_positive_on_loss
+Illuminate\Database\Eloquent\ModelNotFoundException: No query results for model [App\PaperTrading\Infrastructure\Persistence\VirtualPositionRecord].
+
+/app/vendor/laravel/framework/src/Illuminate/Database/Eloquent/Builder.php:829
+/app/tests/Feature/Audit/AuditInvariantTest.php:47
+
+3) Tests\Feature\Audit\AuditInvariantTest::test_mark_to_market_drawdown_is_positive_on_unrealized_loss
+Illuminate\Database\Eloquent\ModelNotFoundException: No query results for model [App\PaperTrading\Infrastructure\Persistence\VirtualPositionRecord].
+
+/app/vendor/laravel/framework/src/Illuminate/Database/Eloquent/Builder.php:829
+/app/tests/Feature/Audit/AuditInvariantTest.php:82
+
+4) Tests\Feature\Audit\SystemUiApiReconciliationAuditTest::test_strategy_completeness_matrix_covers_all_registered_strategies_and_exchanges
+Illuminate\Contracts\Container\BindingResolutionException: Target class [App\Strategy\Application\PaperExecutionEligibilityService] does not exist.
+
+/app/vendor/laravel/framework/src/Illuminate/Container/Container.php:1153
+/app/vendor/laravel/framework/src/Illuminate/Container/Container.php:939
+/app/vendor/laravel/framework/src/Illuminate/Foundation/Application.php:1086
+/app/vendor/laravel/framework/src/Illuminate/Container/Container.php:867
+/app/vendor/laravel/framework/src/Illuminate/Foundation/Application.php:1066
+/app/vendor/laravel/framework/src/Illuminate/Foundation/helpers.php:138
+/app/app/Strategy/Application/StrategyCompletenessService.php:41
+/app/tests/Feature/Audit/SystemUiApiReconciliationAuditTest.php:27
+
+Caused by
+ReflectionException: Class "App\Strategy\Application\PaperExecutionEligibilityService" does not exist
+
+/app/vendor/laravel/framework/src/Illuminate/Container/Container.php:1151
+/app/vendor/laravel/framework/src/Illuminate/Container/Container.php:939
+/app/vendor/laravel/framework/src/Illuminate/Foundation/Application.php:1086
+/app/vendor/laravel/framework/src/Illuminate/Container/Container.php:867
+/app/vendor/laravel/framework/src/Illuminate/Foundation/Application.php:1066
+/app/vendor/laravel/framework/src/Illuminate/Foundation/helpers.php:138
+/app/app/Strategy/Application/StrategyCompletenessService.php:41
+/app/tests/Feature/Audit/SystemUiApiReconciliationAuditTest.php:27
+
+5) Tests\Feature\Backtest\BacktestRunServiceTest::test_binance_run_optimization_and_reports_are_isolated_and_idempotent
+RuntimeException: Historical execution cost unavailable for binance: maker_rate.
+
+/app/app/Backtest/Application/HistoricalExecutionCostPolicy.php:29
+/app/app/Backtest/Application/BacktestRunService.php:78
+/app/tests/Feature/Backtest/BacktestRunServiceTest.php:61
+
+6) Tests\Feature\Backtest\BacktestRunServiceTest::test_binance_walk_forward_run_persists_exchange_and_walk_type
+RuntimeException: Historical execution cost unavailable for binance: maker_rate.
+
+/app/app/Backtest/Application/HistoricalExecutionCostPolicy.php:29
+/app/app/Backtest/Application/BacktestRunService.php:78
+/app/tests/Feature/Backtest/BacktestRunServiceTest.php:115
+
+7) Tests\Feature\PaperTrading\EndToEndSyntheticPaperLifecycleTest::test_complete_synthetic_paper_lifecycle_from_candle_to_tp2_exit
+Illuminate\Database\Eloquent\ModelNotFoundException: No query results for model [App\PaperTrading\Infrastructure\Persistence\VirtualPositionRecord].
+
+/app/vendor/laravel/framework/src/Illuminate/Database/Eloquent/Builder.php:829
+/app/tests/Feature/PaperTrading/EndToEndSyntheticPaperLifecycleTest.php:156
+
+8) Tests\Feature\PaperTrading\EndToEndSyntheticPaperLifecycleTest::test_stop_loss_scenario_exits_position_and_returns_risk_capital
+Illuminate\Database\Eloquent\ModelNotFoundException: No query results for model [App\PaperTrading\Infrastructure\Persistence\VirtualPositionRecord].
+
+/app/vendor/laravel/framework/src/Illuminate/Database/Eloquent/Builder.php:829
+/app/tests/Feature/PaperTrading/EndToEndSyntheticPaperLifecycleTest.php:423
+
+9) Tests\Feature\PaperTrading\FullPaperTradingPipelineE2ETest::test_e2e_complete_trading_lifecycle_bybit_and_binance_with_tp1_tp2_funding_and_reconciliation
+Illuminate\Database\Eloquent\ModelNotFoundException: No query results for model [App\PaperTrading\Infrastructure\Persistence\VirtualPositionRecord].
+
+/app/vendor/laravel/framework/src/Illuminate/Database/Eloquent/Builder.php:829
+/app/tests/Feature/PaperTrading/FullPaperTradingPipelineE2ETest.php:135
+
+10) Tests\Feature\PaperTrading\FullPaperTradingPipelineE2ETest::test_e2e_stop_loss_exit_with_realized_loss_and_double_entry_journaling
+Illuminate\Database\Eloquent\ModelNotFoundException: No query results for model [App\PaperTrading\Infrastructure\Persistence\VirtualPositionRecord].
+
+/app/vendor/laravel/framework/src/Illuminate/Database/Eloquent/Builder.php:829
+/app/tests/Feature/PaperTrading/FullPaperTradingPipelineE2ETest.php:256
+
+11) Tests\Feature\PaperTrading\FullPaperTradingPipelineE2ETest::test_e2e_timeout_exit_when_maximum_holding_time_exceeded
+Illuminate\Database\Eloquent\ModelNotFoundException: No query results for model [App\PaperTrading\Infrastructure\Persistence\VirtualPositionRecord].
+
+/app/vendor/laravel/framework/src/Illuminate/Database/Eloquent/Builder.php:829
+/app/tests/Feature/PaperTrading/FullPaperTradingPipelineE2ETest.php:309
+
+12) Tests\Feature\PaperTrading\FullPaperTradingPipelineE2ETest::test_defensive_zero_sized_tp1_prevented_without_corrupting_position_state
+DomainException: Entry ineligible: missing_or_stale_validated_edge_or_cost_evidence
+
+/app/app/PaperTrading/Application/PaperExecutionEligibilityService.php:294
+/app/app/PaperTrading/Application/PositionLifecycleService.php:45
+/app/tests/Feature/PaperTrading/FullPaperTradingPipelineE2ETest.php:350
+
+13) Tests\Feature\PaperTrading\FullSystemRemediationAcceptanceVerificationTest::test_virtual_position_persists_complete_sizing_snapshot
+DomainException: Entry ineligible: missing_or_stale_validated_edge_or_cost_evidence
+
+/app/app/PaperTrading/Application/PaperExecutionEligibilityService.php:294
+/app/app/PaperTrading/Application/PositionLifecycleService.php:45
+/app/tests/Feature/PaperTrading/FullSystemRemediationAcceptanceVerificationTest.php:147
+
+14) Tests\Feature\PaperTrading\PaperLifecycleTest::test_blocked_account_still_closes_existing_paper_position
+Illuminate\Database\Eloquent\ModelNotFoundException: No query results for model [App\PaperTrading\Infrastructure\Persistence\VirtualPositionRecord].
+
+/app/vendor/laravel/framework/src/Illuminate/Database/Eloquent/Builder.php:829
+/app/tests/Feature/PaperTrading/PaperLifecycleTest.php:60
+
+15) Tests\Feature\PaperTrading\PaperLifecycleTest::test_complete_buy_lifecycle_entry_tp1_tp2_is_idempotent_and_journaled
+Illuminate\Database\Eloquent\ModelNotFoundException: No query results for model [App\PaperTrading\Infrastructure\Persistence\VirtualPositionRecord].
+
+/app/vendor/laravel/framework/src/Illuminate/Database/Eloquent/Builder.php:829
+/app/tests/Feature/PaperTrading/PaperLifecycleTest.php:96
+
+16) Tests\Feature\PaperTrading\PaperLifecycleTest::test_non_baseline_actionable_signal_reaches_isolated_paper_execution
+Illuminate\Database\Eloquent\ModelNotFoundException: No query results for model [App\PaperTrading\Infrastructure\Persistence\VirtualPositionRecord].
+
+/app/vendor/laravel/framework/src/Illuminate/Database/Eloquent/Builder.php:829
+/app/tests/Feature/PaperTrading/PaperLifecycleTest.php:130
+
+17) Tests\Feature\PaperTrading\PaperLifecycleTest::test_buy_and_sell_close_at_stop#0 with data ('BUY')
+Illuminate\Database\Eloquent\ModelNotFoundException: No query results for model [App\PaperTrading\Infrastructure\Persistence\VirtualPositionRecord].
+
+/app/vendor/laravel/framework/src/Illuminate/Database/Eloquent/Builder.php:829
+/app/tests/Feature/PaperTrading/PaperLifecycleTest.php:202
+
+18) Tests\Feature\PaperTrading\PaperLifecycleTest::test_buy_and_sell_close_at_stop#1 with data ('SELL')
+Illuminate\Database\Eloquent\ModelNotFoundException: No query results for model [App\PaperTrading\Infrastructure\Persistence\VirtualPositionRecord].
+
+/app/vendor/laravel/framework/src/Illuminate/Database/Eloquent/Builder.php:829
+/app/tests/Feature/PaperTrading/PaperLifecycleTest.php:202
+
+19) Tests\Feature\PaperTrading\PaperLifecycleTest::test_sell_can_take_tp1_then_stop_remaining_quantity
+Illuminate\Database\Eloquent\ModelNotFoundException: No query results for model [App\PaperTrading\Infrastructure\Persistence\VirtualPositionRecord].
+
+/app/vendor/laravel/framework/src/Illuminate/Database/Eloquent/Builder.php:829
+/app/tests/Feature/PaperTrading/PaperLifecycleTest.php:221
+
+20) Tests\Feature\PaperTrading\PaperLifecycleTest::test_timeout_waits_for_next_available_closed_bar_without_lookahead
+Illuminate\Database\Eloquent\ModelNotFoundException: No query results for model [App\PaperTrading\Infrastructure\Persistence\VirtualPositionRecord].
+
+/app/vendor/laravel/framework/src/Illuminate/Database/Eloquent/Builder.php:829
+/app/tests/Feature/PaperTrading/PaperLifecycleTest.php:268
+
+21) Tests\Feature\PaperTrading\PaperLifecycleTest::test_gap_stops_processing_and_marks_position_waiting_for_data
+Illuminate\Database\Eloquent\ModelNotFoundException: No query results for model [App\PaperTrading\Infrastructure\Persistence\VirtualPositionRecord].
+
+/app/vendor/laravel/framework/src/Illuminate/Database/Eloquent/Builder.php:829
+/app/tests/Feature/PaperTrading/PaperLifecycleTest.php:283
+
+22) Tests\Feature\PaperTrading\PaperLifecycleTest::test_recorded_execution_and_risk_decision_are_immutable_across_configuration_changes
+Illuminate\Database\Eloquent\ModelNotFoundException: No query results for model [App\PaperTrading\Infrastructure\Persistence\VirtualExecutionRecord].
+
+/app/vendor/laravel/framework/src/Illuminate/Database/Eloquent/Builder.php:829
+/app/tests/Feature/PaperTrading/PaperLifecycleTest.php:351
+
+23) Tests\Feature\PaperTrading\PaperReconcileFundingCommandTest::test_paper_reconcile_funding_command_dry_run_previews_without_mutating
+DomainException: Entry ineligible: missing_or_stale_validated_edge_or_cost_evidence
+
+/app/app/PaperTrading/Application/PaperExecutionEligibilityService.php:294
+/app/app/PaperTrading/Application/PositionLifecycleService.php:45
+/app/tests/Feature/PaperTrading/PaperReconcileFundingCommandTest.php:73
+
+24) Tests\Feature\PaperTrading\Phase0DiagnosticPackageTest::test_checklist_maps_exactly_45_frozen_v2_obligations
+ErrorException: file_get_contents(/app/docs/progress/vector-requirements.json): Failed to open stream: No such file or directory
+
+/app/vendor/laravel/framework/src/Illuminate/Foundation/Bootstrap/HandleExceptions.php:265
+/app/tests/Feature/PaperTrading/Phase0DiagnosticPackageTest.php:73
+
+25) Tests\Feature\PaperTrading\PositionLifecycleStageBTest::test_tp1_zero_quantity_is_safely_skipped_without_creating_execution
+DomainException: Entry ineligible: missing_or_stale_validated_edge_or_cost_evidence
+
+/app/app/PaperTrading/Application/PaperExecutionEligibilityService.php:294
+/app/app/PaperTrading/Application/PositionLifecycleService.php:45
+/app/tests/Feature/PaperTrading/PositionLifecycleStageBTest.php:49
+
+26) Tests\Feature\PaperTrading\PositionLifecycleStageBTest::test_standard_tp1_and_tp2_execute_correct_fractions_and_preserve_identities
+DomainException: Entry ineligible: missing_or_stale_validated_edge_or_cost_evidence
+
+/app/app/PaperTrading/Application/PaperExecutionEligibilityService.php:294
+/app/app/PaperTrading/Application/PositionLifecycleService.php:45
+/app/tests/Feature/PaperTrading/PositionLifecycleStageBTest.php:97
+
+27) Tests\Feature\PaperTrading\PositionLifecycleStageBTest::test_late_arriving_funding_settles_on_closed_position_with_correct_historical_quantity
+DomainException: Entry ineligible: missing_or_stale_validated_edge_or_cost_evidence
+
+/app/app/PaperTrading/Application/PaperExecutionEligibilityService.php:294
+/app/app/PaperTrading/Application/PositionLifecycleService.php:45
+/app/tests/Feature/PaperTrading/PositionLifecycleStageBTest.php:156
+
+28) Tests\Feature\PaperTrading\PositionLifecycleStageBTest::test_funding_completeness_evaluates_correctly_for_zero_settlement_lifetime
+DomainException: Entry ineligible: missing_or_stale_validated_edge_or_cost_evidence
+
+/app/app/PaperTrading/Application/PaperExecutionEligibilityService.php:294
+/app/app/PaperTrading/Application/PositionLifecycleService.php:45
+/app/tests/Feature/PaperTrading/PositionLifecycleStageBTest.php:251
+
+29) Tests\Feature\PaperTrading\PositionLifecycleStageBTest::test_out_of_order_funding_preserves_prior_settlements_and_execution_history
+DomainException: Entry ineligible: missing_or_stale_validated_edge_or_cost_evidence
+
+/app/app/PaperTrading/Application/PaperExecutionEligibilityService.php:294
+/app/app/PaperTrading/Application/PositionLifecycleService.php:45
+/app/tests/Feature/PaperTrading/PositionLifecycleStageBTest.php:270
+
+30) Tests\Feature\PaperTrading\QualityRiskGateAndProfitabilityVerificationTest::test_duplicate_signal_cannot_open_twice
+DomainException: Entry ineligible: missing_or_stale_validated_edge_or_cost_evidence
+
+/app/app/PaperTrading/Application/PaperExecutionEligibilityService.php:294
+/app/app/PaperTrading/Application/PositionLifecycleService.php:45
+/app/tests/Feature/PaperTrading/QualityRiskGateAndProfitabilityVerificationTest.php:276
+
+31) Tests\Feature\PaperTrading\StrategyTopologyIsolationAndAssignmentTest::test_new_exchange_automatically_provisions_all_registered_strategies_without_authorizing_execution
+InvalidArgumentException: Exchange manifest validation failed: price_precision must be explicitly specified and non-negative.; qty_precision must be explicitly specified and non-negative.; min_qty must be explicitly specified as a positive numeric value.; min_notional must be explicitly specified as a positive numeric value.
+
+/app/app/Exchanges/Domain/ExchangeManifestValidator.php:131
+/app/app/Exchanges/Application/ExchangeCatalogService.php:83
+/app/tests/Feature/PaperTrading/StrategyTopologyIsolationAndAssignmentTest.php:74
+
+32) Tests\Feature\PaperTrading\StrategyTopologyIsolationAndAssignmentTest::test_explicit_operator_veto_blocks_execution_without_erasing_provisioned_history
+InvalidArgumentException: Exchange manifest validation failed: price_precision must be explicitly specified and non-negative.; qty_precision must be explicitly specified and non-negative.; min_qty must be explicitly specified as a positive numeric value.; min_notional must be explicitly specified as a positive numeric value.
+
+/app/app/Exchanges/Domain/ExchangeManifestValidator.php:131
+/app/app/Exchanges/Application/ExchangeCatalogService.php:83
+/app/tests/Feature/PaperTrading/StrategyTopologyIsolationAndAssignmentTest.php:103
+
+33) Tests\Feature\PaperTrading\StrategyTopologyIsolationAndAssignmentTest::test_preexisting_operator_veto_never_suppresses_new_venues_historical_account_topology
+InvalidArgumentException: Exchange manifest validation failed: price_precision must be explicitly specified and non-negative.; qty_precision must be explicitly specified and non-negative.; min_qty must be explicitly specified as a positive numeric value.; min_notional must be explicitly specified as a positive numeric value.
+
+/app/app/Exchanges/Domain/ExchangeManifestValidator.php:131
+/app/app/Exchanges/Application/ExchangeCatalogService.php:83
+/app/tests/Feature/PaperTrading/StrategyTopologyIsolationAndAssignmentTest.php:136
+
+34) Tests\Feature\PaperTrading\TemporalIntegrityAndCausalityTest::test_risk_decision_decided_at_reflects_actual_evaluation_timestamp_in_forward_mode
+Illuminate\Database\Eloquent\ModelNotFoundException: No query results for model [App\PaperTrading\Infrastructure\Persistence\RiskDecisionRecord].
+
+/app/vendor/laravel/framework/src/Illuminate/Database/Eloquent/Builder.php:829
+/app/tests/Feature/PaperTrading/TemporalIntegrityAndCausalityTest.php:329
+
+35) Tests\Feature\Research\LegacyActiveModelSafetyTest::test_ineligible_legacy_active_model_under_allow_unfiltered_proceeds_to_risk_gate
+ErrorException: Undefined array key "recommendation"
+
+/app/vendor/laravel/framework/src/Illuminate/Foundation/Bootstrap/HandleExceptions.php:265
+/app/tests/Feature/Research/LegacyActiveModelSafetyTest.php:239
+
+36) Tests\Feature\Research\SignalQualityAnalyticsAndMultiTimeframeProfitabilityTest::test_signal_explorer_csv_export_escapes_spreadsheet_formulas_without_corrupting_numeric_values
+LogicException: Risk decisions are immutable.
+
+/app/app/PaperTrading/Infrastructure/Persistence/RiskDecisionRecord.php:26
+/app/vendor/laravel/framework/src/Illuminate/Events/Dispatcher.php:498
+/app/vendor/laravel/framework/src/Illuminate/Events/Dispatcher.php:328
+/app/vendor/laravel/framework/src/Illuminate/Events/Dispatcher.php:308
+/app/vendor/laravel/framework/src/Illuminate/Events/Dispatcher.php:268
+/app/vendor/laravel/framework/src/Illuminate/Database/Eloquent/Concerns/HasEvents.php:224
+/app/vendor/laravel/framework/src/Illuminate/Database/Eloquent/Model.php:1532
+/app/vendor/laravel/framework/src/Illuminate/Database/Eloquent/Model.php:1431
+/app/vendor/laravel/framework/src/Illuminate/Database/Eloquent/Model.php:1186
+/app/tests/Feature/Research/SignalQualityAnalyticsAndMultiTimeframeProfitabilityTest.php:497
+
+37) Tests\Feature\Trading\TradingPipelineForwardCausalityTest::test_ambiguous_entry_bar_does_not_exit_before_the_next_closed_bar
+Illuminate\Database\Eloquent\ModelNotFoundException: No query results for model [App\PaperTrading\Infrastructure\Persistence\VirtualPositionRecord].
+
+/app/vendor/laravel/framework/src/Illuminate/Database/Eloquent/Builder.php:829
+/app/tests/Feature/Trading/TradingPipelineForwardCausalityTest.php:123
+
+38) Tests\Feature\Trading\TradingPipelineForwardCausalityTest::test_stale_event_does_not_block_scheduled_management_of_existing_position
+Illuminate\Database\Eloquent\ModelNotFoundException: No query results for model [App\PaperTrading\Infrastructure\Persistence\VirtualPositionRecord].
+
+/app/vendor/laravel/framework/src/Illuminate/Database/Eloquent/Builder.php:829
+/app/tests/Feature/Trading/TradingPipelineForwardCausalityTest.php:168
+
+39) Tests\Feature\Trading\TradingPipelineForwardCausalityTest::test_binance_forward_fill_reconciles_130_accounts_and_preserves_other_venues
+Illuminate\Database\Eloquent\ModelNotFoundException: No query results for model [App\PaperTrading\Infrastructure\Persistence\VirtualPositionRecord].
+
+/app/vendor/laravel/framework/src/Illuminate/Database/Eloquent/Builder.php:829
+/app/tests/Feature/Trading/TradingPipelineForwardCausalityTest.php:214
+
+40) Tests\Integration\ConcurrentPaperEntryGlobalRiskPostgresIntegrationTest::test_two_concurrent_entries_across_different_accounts_reject_excess_risk
+DomainException: Entry ineligible: missing_or_stale_validated_edge_or_cost_evidence
+
+/app/app/PaperTrading/Application/PaperExecutionEligibilityService.php:294
+/app/app/PaperTrading/Application/PositionLifecycleService.php:45
+/app/tests/Integration/ConcurrentPaperEntryGlobalRiskPostgresIntegrationTest.php:112
+
+--
+
+There were 80 failures:
+
+1) Tests\Unit\DevOps\DockerComposeImageResolutionTest::test_docker_compose_config_resolves_all_services_with_sha_tagged_ghcr_images
+Docker compose config must succeed: sh: docker: not found
+Failed asserting that 127 is identical to 0.
+
+/app/tests/Unit/DevOps/DockerComposeImageResolutionTest.php:111
+
+2) Tests\Unit\DevOps\DockerComposeImageResolutionTest::test_docker_compose_config_fails_when_research_worker_image_missing
+Failed asserting that 'sh: docker: not found' [ASCII](length: 21) contains "RESEARCH_WORKER_IMAGE is required" [ASCII](length: 33).
+
+/app/tests/Unit/DevOps/DockerComposeImageResolutionTest.php:182
+
+3) Tests\Unit\DevOps\DockerComposeImageResolutionTest::test_docker_compose_config_fails_when_app_image_missing
+Failed asserting that 'sh: docker: not found' [ASCII](length: 21) contains "APP_IMAGE is required" [ASCII](length: 21).
+
+/app/tests/Unit/DevOps/DockerComposeImageResolutionTest.php:226
+
+4) Tests\Unit\DevOps\DockerComposeImageResolutionTest::test_docker_compose_config_fails_when_web_image_missing
+Failed asserting that 'sh: docker: not found' [ASCII](length: 21) contains "WEB_IMAGE is required" [ASCII](length: 21).
+
+/app/tests/Unit/DevOps/DockerComposeImageResolutionTest.php:270
+
+5) Tests\Unit\PaperTrading\TradeRiskClassificationTest::test_low_risk_classification
+Failed asserting that two variables reference the same object.
+--- Expected
++++ Actual
+@@ @@
+-App\PaperTrading\Domain\TradeRiskClass Enum #16057 (Low, 'LOW')
++App\PaperTrading\Domain\TradeRiskClass Enum #23182 (Medium, 'MEDIUM')
+
+/app/tests/Unit/PaperTrading/TradeRiskClassificationTest.php:41
+
+6) Tests\Unit\Research\ChampionChallengerLifecycleTest::test_initial_champion_model_is_promoted_when_validation_passes
+Failed asserting that null is not null.
+
+/app/tests/Unit/Research/ChampionChallengerLifecycleTest.php:42
+
+7) Tests\Unit\Research\ChampionChallengerLifecycleTest::test_challenger_is_evaluated_against_active_champion
+Failed asserting that null is not null.
+
+/app/tests/Unit/Research/ChampionChallengerLifecycleTest.php:63
+
+8) Tests\Unit\Research\ChampionChallengerLifecycleTest::test_concept_drift_detection
+Failed asserting that null is not null.
+
+/app/tests/Unit/Research/ChampionChallengerLifecycleTest.php:91
+
+9) Tests\Unit\Research\LogisticRegressionTrainingTest::test_train_model_optimizes_weights_via_gradient_descent_not_hardcoded
+Failed asserting that null is not null.
+
+/app/tests/Unit/Research/LogisticRegressionTrainingTest.php:70
+
+10) Tests\Unit\Research\LogisticRegressionTrainingTest::test_matured_labels_never_cross_exchange_boundaries
+Failed asserting that null is not null.
+
+/app/tests/Unit/Research/LogisticRegressionTrainingTest.php:186
+
+11) Tests\Unit\Research\ModelAdvisoryIntegrationTest::test_active_mode_vetoes_low_probability_trades_to_skip
+Failed asserting that an array contains 'ml_advisory_low_probability'.
+
+/app/tests/Unit/Research/ModelAdvisoryIntegrationTest.php:165
+
+12) Tests\Unit\Research\ModelAdvisoryIntegrationTest::test_active_mode_allows_high_probability_trades
+Failed asserting that two variables reference the same object.
+--- Expected
++++ Actual
+@@ @@
+-App\Strategy\Domain\SignalSide Enum #21054 (Buy, 'BUY')
++App\Strategy\Domain\SignalSide Enum #29970 (Skip, 'SKIP')
+
+/app/tests/Unit/Research/ModelAdvisoryIntegrationTest.php:201
+
+13) Tests\Unit\Research\ResearchJobServiceTest::test_rejects_go_kind_missing_exchange
+Failed asserting that exception message 'Research job kind 'BACKTEST' requires explicit source exchange provenance.' contains 'Research job kind 'BACKTEST' requires explicit exchange provenance ('bybit' or 'binance').'.
+
+14) Tests\Unit\Research\ResearchJobServiceTest::test_rejects_unsupported_exchange_identity
+Failed asserting that exception of type "InvalidArgumentException" is thrown.
+
+15) Tests\Feature\Api\ResearchApiTest::test_statistics_cache_contains_portable_arrays_not_domain_objects
+Failed asserting that null is of type array.
+
+/app/tests/Feature/Api/ResearchApiTest.php:216
+
+16) Tests\Feature\Backtest\BacktestRunServiceTest::test_binance_run_rejects_missing_costs_before_persisting_a_run
+Failed asserting that two strings are identical.
+--- Expected
++++ Actual
+@@ @@
+-'Binance historical execution cost unavailable: paper_taker_rate'
++'Historical execution cost unavailable for binance: maker_rate.'
+
+/app/tests/Feature/Backtest/BacktestRunServiceTest.php:96
+
+17) Tests\Feature\Exchanges\DynamicExchangeOnboardingAndUnlimitedArchitectureTest::test_declarative_onboarding_automatically_provisions_independent_strategy_accounts
+Expected response status code [201] but received 422.
+Failed asserting that 422 is identical to 201.
+
+/app/vendor/laravel/framework/src/Illuminate/Testing/TestResponseAssert.php:46
+/app/vendor/laravel/framework/src/Illuminate/Testing/TestResponse.php:183
+/app/tests/Feature/Exchanges/DynamicExchangeOnboardingAndUnlimitedArchitectureTest.php:227
+
+18) Tests\Feature\Exchanges\DynamicExchangeOnboardingAndUnlimitedArchitectureTest::test_connectivity_check_endpoint
+Expected response status code [201] but received 422.
+Failed asserting that 422 is identical to 201.
+
+/app/vendor/laravel/framework/src/Illuminate/Testing/TestResponseAssert.php:46
+/app/vendor/laravel/framework/src/Illuminate/Testing/TestResponse.php:183
+/app/tests/Feature/Exchanges/DynamicExchangeOnboardingAndUnlimitedArchitectureTest.php:262
+
+19) Tests\Feature\Exchanges\DynamicExchangeOnboardingAndUnlimitedArchitectureTest::test_premature_paper_approval_is_strictly_rejected_when_requirements_missing
+Expected response status code [201] but received 422.
+Failed asserting that 422 is identical to 201.
+
+/app/vendor/laravel/framework/src/Illuminate/Testing/TestResponseAssert.php:46
+/app/vendor/laravel/framework/src/Illuminate/Testing/TestResponse.php:183
+/app/tests/Feature/Exchanges/DynamicExchangeOnboardingAndUnlimitedArchitectureTest.php:289
+
+20) Tests\Feature\Exchanges\DynamicExchangeOnboardingAndUnlimitedArchitectureTest::test_exchange_deactivation_lifecycle_blocks_paper_and_preserves_historical_records
+Expected response status code [201] but received 422.
+Failed asserting that 422 is identical to 201.
+
+/app/vendor/laravel/framework/src/Illuminate/Testing/TestResponseAssert.php:46
+/app/vendor/laravel/framework/src/Illuminate/Testing/TestResponse.php:183
+/app/tests/Feature/Exchanges/DynamicExchangeOnboardingAndUnlimitedArchitectureTest.php:327
+
+21) Tests\Feature\Exchanges\DynamicExchangeOnboardingAndUnlimitedArchitectureTest::test_exchange_pause_lifecycle_blocks_new_entries
+Expected response status code [201] but received 422.
+Failed asserting that 422 is identical to 201.
+
+/app/vendor/laravel/framework/src/Illuminate/Testing/TestResponseAssert.php:46
+/app/vendor/laravel/framework/src/Illuminate/Testing/TestResponse.php:183
+/app/tests/Feature/Exchanges/DynamicExchangeOnboardingAndUnlimitedArchitectureTest.php:377
+
+22) Tests\Feature\Exchanges\ExchangeRiskSizingTest::test_exchange_costs_drive_risk_and_fill_sizing_and_reconcile_after_retry
+Failed asserting that false is true.
+
+/app/tests/Feature/Exchanges/ExchangeRiskSizingTest.php:50
+
+23) Tests\Feature\HistoricalData\AcquisitionTest::test_official_zip_to_postgres_is_resumable_and_does_not_touch_any_paper_records
+Failed asserting that 1 is identical to 0.
+
+/app/tests/Feature/HistoricalData/AcquisitionTest.php:87
+
+24) Tests\Feature\PaperTrading\AllThirteenStrategiesExecutionTest::test_btc_eth_lead_lag_and_funding_squeeze_execute_simulated_paper_positions_on_bybit
+Failed asserting that 0 is equal to 1 or is greater than 1.
+
+/app/tests/Feature/PaperTrading/AllThirteenStrategiesExecutionTest.php:145
+
+25) Tests\Feature\PaperTrading\AllThirteenStrategiesExecutionTest::test_all_thirteen_strategies_execute_simulated_paper_positions_on_binance_when_approved
+Binance baseline should be entry eligible.
+Failed asserting that false is true.
+
+/app/tests/Feature/PaperTrading/AllThirteenStrategiesExecutionTest.php:202
+
+26) Tests\Feature\PaperTrading\AllThirteenStrategiesExecutionTest::test_isolation_between_bybit_and_binance_is_strictly_enforced_for_all_strategies
+Failed asserting that 0 is identical to 1.
+
+/app/tests/Feature/PaperTrading/AllThirteenStrategiesExecutionTest.php:306
+
+27) Tests\Feature\PaperTrading\DirectionalPerformanceAndRiskGateTest::test_end_to_end_paper_processing_respects_quality_risk_gate
+Failed asserting that false is true.
+
+/app/tests/Feature/PaperTrading/DirectionalPerformanceAndRiskGateTest.php:255
+
+28) Tests\Feature\PaperTrading\DynamicStrategyRegistrationAndPaperExecutionTest::test_dynamic_strategy_registration_and_full_paper_execution_lifecycle
+Failed asserting that two strings are identical.
+--- Expected
++++ Actual
+@@ @@
+-'BLOCKED'
++'ACTIVE'
+
+/app/tests/Feature/PaperTrading/DynamicStrategyRegistrationAndPaperExecutionTest.php:88
+
+29) Tests\Feature\PaperTrading\FullPaperTradingPipelineE2ETest::test_pipeline_idempotency_duplicate_signals_and_duplicate_processing_ticks
+Failed asserting that 0 is identical to 1.
+
+/app/tests/Feature/PaperTrading/FullPaperTradingPipelineE2ETest.php:435
+
+30) Tests\Feature\PaperTrading\FullSystemRemediationAcceptanceVerificationTest::test_profitability_summary_active_and_blocked_accounts_counts
+Failed asserting that 26 is identical to 13.
+
+/app/tests/Feature/PaperTrading/FullSystemRemediationAcceptanceVerificationTest.php:202
+
+31) Tests\Feature\PaperTrading\GlobalCapitalAndTopologyR6Test::test_topology_sync_provisions_all_registered_pairs_without_execution_approval
+Failed asserting that 0 is identical to 13.
+
+/app/tests/Feature/PaperTrading/GlobalCapitalAndTopologyR6Test.php:48
+
+32) Tests\Feature\PaperTrading\GlobalCapitalAndTopologyR6Test::test_fourteenth_strategy_is_added_to_all_ten_exchanges_without_mutating_existing_accounts
+Failed asserting that two strings are identical.
+--- Expected
++++ Actual
+@@ @@
+-'BLOCKED'
++'ACTIVE'
+
+/app/tests/Feature/PaperTrading/GlobalCapitalAndTopologyR6Test.php:80
+
+33) Tests\Feature\PaperTrading\GlobalCapitalAndTopologyR6Test::test_registration_expands_to_143_then_154_accounts_without_capital_or_history_changes
+Failed asserting that 104 is identical to 117.
+
+/app/tests/Feature/PaperTrading/GlobalCapitalAndTopologyR6Test.php:152
+
+34) Tests\Feature\PaperTrading\MultiExchangeCrossProductTopologyExecutionTest::test_complete_130_portfolio_topology_is_provisioned_with_account_isolation
+Failed asserting that two strings are identical.
+--- Expected
++++ Actual
+@@ @@
+-'BLOCKED'
++'ACTIVE'
+
+/app/tests/Feature/PaperTrading/MultiExchangeCrossProductTopologyExecutionTest.php:76
+
+35) Tests\Feature\PaperTrading\PaperLifecycleTest::test_funding_event_is_applied_once
+Failed asserting that 0 is identical to 1.
+
+/app/tests/Feature/PaperTrading/PaperLifecycleTest.php:300
+
+36) Tests\Feature\PaperTrading\PaperLifecycleTest::test_three_completed_losses_start_a_sixty_minute_cooldown
+Failed asserting that null is identical to '2026-10-14T11:55:00+00:00'.
+
+/app/tests/Feature/PaperTrading/PaperLifecycleTest.php:316
+
+37) Tests\Feature\PaperTrading\PaperLifecycleTest::test_losing_streak_cooldown_is_monotonic_and_resilient_to_out_of_order_signal_states
+Failed asserting that null is identical to '2026-10-14T11:55:00+00:00'.
+
+/app/tests/Feature/PaperTrading/PaperLifecycleTest.php:332
+
+38) Tests\Feature\PaperTrading\QualityRiskGateAndProfitabilityVerificationTest::test_high_quality_low_risk_negative_edge_is_rejected
+Failed asserting that two variables reference the same object.
+--- Expected
++++ Actual
+@@ @@
+-App\PaperTrading\Domain\QualityRiskGateDecision Enum #19780 (Rejected, 'REJECTED')
++App\PaperTrading\Domain\QualityRiskGateDecision Enum #19869 (InsufficientEvidence, 'INSUFFICIENT_EVIDENCE')
+
+/app/tests/Feature/PaperTrading/QualityRiskGateAndProfitabilityVerificationTest.php:57
+
+39) Tests\Feature\PaperTrading\QualityRiskGateAndProfitabilityVerificationTest::test_missing_fee_model_fails_closed
+Failed asserting that two variables reference the same object.
+--- Expected
++++ Actual
+@@ @@
+-App\PaperTrading\Domain\QualityRiskGateDecision Enum #19780 (Rejected, 'REJECTED')
++App\PaperTrading\Domain\QualityRiskGateDecision Enum #19869 (InsufficientEvidence, 'INSUFFICIENT_EVIDENCE')
+
+/app/tests/Feature/PaperTrading/QualityRiskGateAndProfitabilityVerificationTest.php:359
+
+40) Tests\Feature\PaperTrading\QualityRiskGateAndProfitabilityVerificationTest::test_all_130_combination_gate_paths
+Failed asserting that 104 is identical to 117.
+
+/app/tests/Feature/PaperTrading/QualityRiskGateAndProfitabilityVerificationTest.php:459
+
+41) Tests\Feature\PaperTrading\QualityRiskGateAndProfitabilityVerificationTest::test_out_of_sample_baseline_versus_filtered_comparison
+Failed asserting that 0 is identical to 6.
+
+/app/tests/Feature/PaperTrading/QualityRiskGateAndProfitabilityVerificationTest.php:560
+
+42) Tests\Feature\PaperTrading\StrategyPipelineFunnelVerificationTest::test_binance_directional_signals_blocked_at_prerisk_when_execution_unapproved
+Failed asserting that two strings are identical.
+--- Expected
++++ Actual
+@@ @@
+-'binance_account_not_executable'
++'exchange_execution_model_unverified'
+
+/app/tests/Feature/PaperTrading/StrategyPipelineFunnelVerificationTest.php:481
+
+43) Tests\Feature\PaperTrading\StrategyTopologyIsolationAndAssignmentTest::test_ssrf_validator_strictly_rejects_internal_private_and_metadata_addresses
+Failed asserting that 'Resolved IP address '127.0.0.1' is private or reserved address (SSRF protection).' [ASCII](length: 81) contains "loopback" [ASCII](length: 8).
+
+/app/tests/Feature/PaperTrading/StrategyTopologyIsolationAndAssignmentTest.php:301
+
+44) Tests\Feature\PaperTrading\TemporalIntegrityAndCausalityTest::test_forward_paper_never_fills_on_candle_closed_before_state_creation
+Failed asserting that two strings are identical.
+--- Expected
++++ Actual
+@@ @@
+-'PENDING_ENTRY'
++'REJECTED'
+
+/app/tests/Feature/PaperTrading/TemporalIntegrityAndCausalityTest.php:171
+
+45) Tests\Feature\PaperTrading\TemporalIntegrityAndCausalityTest::test_forward_paper_never_fills_on_candle_exceeding_max_forward_fill_lag
+Failed asserting that two strings are identical.
+--- Expected
++++ Actual
+@@ @@
+-'PENDING_ENTRY'
++'REJECTED'
+
+/app/tests/Feature/PaperTrading/TemporalIntegrityAndCausalityTest.php:222
+
+46) Tests\Feature\PaperTrading\TemporalIntegrityAndCausalityTest::test_signal_expired_during_pending_entry_is_marked_expired
+Failed asserting that two strings are identical.
+--- Expected
++++ Actual
+@@ @@
+-'PENDING_ENTRY'
++'REJECTED'
+
+/app/tests/Feature/PaperTrading/TemporalIntegrityAndCausalityTest.php:275
+
+47) Tests\Feature\PaperTrading\TemporalIntegrityAndCausalityTest::test_historical_mode_preserves_deterministic_backtest_replay
+Failed asserting that 0 is equal to 1 or is greater than 1.
+
+/app/tests/Feature/PaperTrading/TemporalIntegrityAndCausalityTest.php:376
+
+48) Tests\Feature\PaperTrading\TemporalIntegrityAndCausalityTest::test_idempotent_processing_under_duplicate_runs_and_retries
+Failed asserting that 0 is identical to 1.
+
+/app/tests/Feature/PaperTrading/TemporalIntegrityAndCausalityTest.php:422
+
+49) Tests\Feature\PaperTrading\TwentySixPaperAccountsVerificationTest::test_scenario_a_twenty_six_primary_accounts_isolated_and_funded
+Failed asserting that two strings are identical.
+--- Expected
++++ Actual
+@@ @@
+-'BLOCKED'
++'ACTIVE'
+
+/app/tests/Feature/PaperTrading/TwentySixPaperAccountsVerificationTest.php:72
+
+50) Tests\Feature\PaperTrading\TwentySixPaperAccountsVerificationTest::test_scenario_b_register_additional_strategy_onboards_compatibly_without_mutating_existing
+Failed asserting that two strings are identical.
+--- Expected
++++ Actual
+@@ @@
+-'BLOCKED'
++'ACTIVE'
+
+/app/tests/Feature/PaperTrading/TwentySixPaperAccountsVerificationTest.php:111
+
+51) Tests\Feature\Research\AutonomousLearningPipelineTest::test_full_autonomous_learning_pipeline_execution
+Failed asserting that two strings are identical.
+--- Expected
++++ Actual
+@@ @@
+-'PENDING'
++'INVALID'
+
+/app/tests/Feature/Research/AutonomousLearningPipelineTest.php:65
+
+52) Tests\Feature\Research\AutonomousLearningPipelineTest::test_f18_training_purging_fallback_activates_without_future_label_leakage
+Model should train successfully using purging fallback
+Failed asserting that null is not null.
+
+/app/tests/Feature/Research/AutonomousLearningPipelineTest.php:243
+
+53) Tests\Feature\Research\CandidateExchangeTest::test_candidate_api_persists_exchange_and_rejects_unknown_identity
+Expected response status code [422] but received 200.
+Failed asserting that 200 is identical to 422.
+
+/app/vendor/laravel/framework/src/Illuminate/Testing/TestResponseAssert.php:46
+/app/vendor/laravel/framework/src/Illuminate/Testing/TestResponse.php:183
+/app/vendor/laravel/framework/src/Illuminate/Testing/Concerns/AssertsStatusCodes.php:221
+/app/tests/Feature/Research/CandidateExchangeTest.php:27
+
+54) Tests\Feature\Research\LearningPredictorRollbackTest::test_model_rollback_restores_previous_champion
+Failed asserting that two strings are identical.
+--- Expected
++++ Actual
+@@ @@
+-'CALIBRATED'
++'INSUFFICIENT_DATA'
+
+/app/tests/Feature/Research/LearningPredictorRollbackTest.php:54
+
+55) Tests\Feature\Research\LearningPredictorRollbackTest::test_model_rollback_without_previous_champion_gracefully_retires
+Failed asserting that two strings are identical.
+--- Expected
++++ Actual
+@@ @@
+-'ROLLED_BACK'
++'ACTIVE'
+
+/app/tests/Feature/Research/LearningPredictorRollbackTest.php:99
+
+56) Tests\Feature\Research\LegacyActiveModelSafetyTest::test_ineligible_legacy_active_model_under_fail_closed_skip_converts_to_skip
+Failed asserting that an array contains 'ml_advisory_no_eligible_model_fail_closed'.
+
+/app/tests/Feature/Research/LegacyActiveModelSafetyTest.php:187
+
+57) Tests\Feature\Research\LegacyActiveModelSafetyTest::test_inference_exception_under_fail_closed_skip_converts_to_skip
+Failed asserting that an array contains 'ml_advisory_inference_error_fail_closed'.
+
+/app/tests/Feature/Research/LegacyActiveModelSafetyTest.php:347
+
+58) Tests\Feature\Research\LegacyActiveModelSafetyTest::test_invalid_model_artifact_gates_breached_under_fail_closed_skip
+Failed asserting that an array contains 'ml_advisory_corrupt_model_fail_closed'.
+
+/app/tests/Feature/Research/LegacyActiveModelSafetyTest.php:393
+
+59) Tests\Feature\Research\ModelAdvisoryDecisionVetoTest::test_active_model_vetoes_buy_to_skip_and_respects_fail_closed_and_authorized_fallback
+Failed asserting that an array contains 'ml_advisory_low_probability'.
+
+/app/tests/Feature/Research/ModelAdvisoryDecisionVetoTest.php:136
+
+60) Tests\Feature\Research\ModelAdvisoryDecisionVetoTest::test_champion_rollback_restores_previous_champion_if_available
+Failed asserting that null is not null.
+
+/app/tests/Feature/Research/ModelAdvisoryDecisionVetoTest.php:220
+
+61) Tests\Feature\Research\ProfitabilityResearchApiTest::test_profitability_summary_returns_separated_accounting_scopes_and_gated_placeholders
+Failed asserting that two strings are identical.
+--- Expected
++++ Actual
+@@ @@
+-'IMPLEMENTED_VERIFIED'
++'NOT_GENERATED'
+
+/app/tests/Feature/Research/ProfitabilityResearchApiTest.php:82
+
+62) Tests\Feature\Research\ProfitabilityResearchApiTest::test_f05_gated_module_statuses_consistent_with_evidence_and_prohibitions
+Failed asserting that two strings are identical.
+--- Expected
++++ Actual
+@@ @@
+-'IMPLEMENTED_VERIFIED'
++'NOT_GENERATED'
+
+/app/tests/Feature/Research/ProfitabilityResearchApiTest.php:268
+
+63) Tests\Feature\Research\PromotedCandidateExecutionTest::test_promoted_strategy_candidate_receives_signals_and_virtual_executions
+Failed asserting that two strings are identical.
+--- Expected
++++ Actual
+@@ @@
+-'ACTIVE'
++'REJECTED'
+
+/app/tests/Feature/Research/PromotedCandidateExecutionTest.php:154
+
+64) Tests\Feature\Research\ResearchBenchmarkCommandTest::test_can_run_research_benchmark_command
+Expected status code 0 but received 1.
+Failed asserting that 1 matches expected 0.
+
+/app/vendor/laravel/framework/src/Illuminate/Testing/PendingCommand.php:464
+/app/vendor/laravel/framework/src/Illuminate/Testing/PendingCommand.php:676
+/app/tests/Feature/Research/ResearchBenchmarkCommandTest.php:17
+
+65) Tests\Feature\Research\ResearchJobApiTest::test_rejects_go_job_submission_with_unsupported_exchange
+Expected response status code [422] but received 202.
+Failed asserting that 202 is identical to 422.
+
+/app/vendor/laravel/framework/src/Illuminate/Testing/TestResponseAssert.php:46
+/app/vendor/laravel/framework/src/Illuminate/Testing/TestResponse.php:183
+/app/tests/Feature/Research/ResearchJobApiTest.php:101
+
+66) Tests\Feature\Strategy\SupportResistanceStrategiesTest::test_sr_signals_execute_in_isolated_strategy_paper_account
+Failed asserting that null is not null.
+
+/app/tests/Feature/Strategy/SupportResistanceStrategiesTest.php:149
+
+67) Tests\Feature\StrategyBuilder\PaperExecutionTest::test_owner_can_fund_and_authorize_only_the_new_strategy_then_forward_paper_executes
+Failed asserting that two strings are identical.
+--- Expected
++++ Actual
+@@ @@
+-'BLOCKED'
++'ACTIVE'
+
+/app/tests/Feature/StrategyBuilder/PaperExecutionTest.php:56
+
+68) Tests\Feature\StrategyBuilder\PaperGovernanceTest::test_approved_fourteenth_strategy_is_unfunded_blocked_and_never_expands_budget
+Failed asserting that two strings are identical.
+--- Expected
++++ Actual
+@@ @@
+-'BLOCKED'
++'ACTIVE'
+
+/app/tests/Feature/StrategyBuilder/PaperGovernanceTest.php:57
+
+69) Tests\Feature\Trading\BinanceObservationContentionTest::test_simultaneous_job_reuses_completed_canonical_observations_and_advances_pipeline
+Failed asserting that two strings are identical.
+--- Expected
++++ Actual
+@@ @@
+-'DISPATCHED'
++'PENDING'
+
+/app/tests/Feature/Trading/BinanceObservationContentionTest.php:158
+
+70) Tests\Feature\Trading\BinancePipelineFreshnessAndConcurrencyTest::test_process_closed_candle_event_reuses_existing_canonical_observations
+Failed asserting that null is not null.
+
+/app/tests/Feature/Trading/BinancePipelineFreshnessAndConcurrencyTest.php:165
+
+71) Tests\Feature\Trading\BinancePipelineFreshnessAndConcurrencyTest::test_is_decision_already_serviced_detects_existing_observations
+Failed asserting that false is true.
+
+/app/tests/Feature/Trading/BinancePipelineFreshnessAndConcurrencyTest.php:304
+
+72) Tests\Feature\Trading\TradingPipelineConcurrencyAndSafetyTest::test_duplicate_paper_jobs_do_not_produce_duplicate_positions_or_financial_writes
+Failed asserting that 0 is identical to 1.
+
+/app/tests/Feature/Trading/TradingPipelineConcurrencyAndSafetyTest.php:151
+
+73) Tests\Feature\Trading\TradingPipelineConcurrencyAndSafetyTest::test_existing_open_positions_continue_lifecycle_even_when_new_entries_are_blocked
+Failed asserting that null is not null.
+
+/app/tests/Feature/Trading/TradingPipelineConcurrencyAndSafetyTest.php:298
+
+74) Tests\Feature\Trading\TradingPipelineForwardCausalityTest::test_forward_paper_does_not_fill_a_bar_that_closed_before_order_activation
+Failed asserting that two strings are identical.
+--- Expected
++++ Actual
+@@ @@
+-'PENDING_ENTRY'
++'REJECTED'
+
+/app/tests/Feature/Trading/TradingPipelineForwardCausalityTest.php:73
+
+75) Tests\Feature\Trading\TradingPipelineForwardCausalityTest::test_forward_paper_rejects_a_pending_fill_older_than_the_freshness_window
+Failed asserting that two strings are identical.
+--- Expected
++++ Actual
+@@ @@
+-'PENDING_ENTRY'
++'REJECTED'
+
+/app/tests/Feature/Trading/TradingPipelineForwardCausalityTest.php:103
+
+76) Tests\Integration\GoResearchWorkerIntegrationTest::test_go_worker_persists_failure_and_sanitized_error_when_job_invalid
+Failed asserting that 'insufficient candles for backtest warmup: got 0, need >= 50' [ASCII](length: 59) contains "research job exchange is missing or unsupported" [ASCII](length: 47).
+
+/app/tests/Integration/GoResearchWorkerIntegrationTest.php:276
+
+77) Tests\Integration\GoResearchWorkerIntegrationTest::test_go_worker_requeues_job_when_retries_remain
+Failed asserting that 'insufficient candles for backtest warmup: got 0, need >= 50' [ASCII](length: 59) contains "research job exchange is missing or unsupported" [ASCII](length: 47).
+
+/app/tests/Integration/GoResearchWorkerIntegrationTest.php:350
+
+78) Tests\Integration\MlAuthorityAndProperScoringPostgresIntegrationTest::test_legacy_active_model_lacks_authority_and_fails_closed_or_bypasses
+Failed asserting that an array contains 'ml_advisory_no_eligible_model_fail_closed'.
+
+/app/tests/Integration/MlAuthorityAndProperScoringPostgresIntegrationTest.php:147
+
+79) Tests\Integration\MlAuthorityAndProperScoringPostgresIntegrationTest::test_proper_scoring_rule_training_prevalence_baseline_and_bss
+Model must be trained from matured snapshots.
+Failed asserting that null is not null.
+
+/app/tests/Integration/MlAuthorityAndProperScoringPostgresIntegrationTest.php:223
+
+80) Tests\Integration\PaperPipelineConcurrentWorkersIntegrationTest::test_two_workers_commit_one_fill_and_one_financial_journal_sequence
+Failed asserting that 0 is identical to 1.
+
+/app/tests/Integration/PaperPipelineConcurrentWorkersIntegrationTest.php:109
+
+[37;41mERRORS![0m
+[37;41mTests: 1583[0m[37;41m, Assertions: 19218[0m[37;41m, Errors: 40[0m[37;41m, Failures: 80[0m[37;41m, Skipped: 1[0m[37;41m.[0m

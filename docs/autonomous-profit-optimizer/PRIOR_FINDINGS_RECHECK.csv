@@ -1,0 +1,25 @@
+finding_id,requirement,status,source,evidence_and_limitations
+F01,Positive edge required,PARTIAL_VERIFIED,app/PaperTrading/Application/PreExecutionQualityRiskGate.php,26 standalone fail-closed probes pass; broad fill regressions require valid scoped fixtures and diagnosis
+F02,Round-trip cost dimensions,IMPLEMENTED_BUT_INCOMPLETE,app/PaperTrading/Application/TradeRiskClassificationService.php,Source uses round-trip cost/reward dimensions; fee/slippage/TP1 integration is not accepted
+F03,Venue and instrument evidence scope,IMPLEMENTED_BUT_INCOMPLETE,app/Strategy/Application/PreEntryStrategyEvidenceService.php,Exchange symbol side and closed_at scopes exist; source timeframe and strategy version are not query arguments
+F04,Point-in-time features,IMPLEMENTED_BUT_INCOMPLETE,app/Research/Application/LearningFeatureStoreService.php,Closed-bar bounds and cohort version exist; availability-time provenance needs independent fixture/DB proof
+F05,Direction-aware labels,PARTIAL_VERIFIED,app/Research/Application/LearningFeatureStoreService.php,Direction-aware four-hour proxy source present; not executed profits or full horizon engine
+F06,Continuous ten-venue ingestion,OPEN,app/MarketData/Jobs/EnsureStrategyHistoryJob.php,Only Bybit/Binance warmup loop; no ten-venue E2E evidence
+F07,Dynamic research scope,IMPLEMENTED_BUT_INCOMPLETE,app/Research/Jobs/ProcessAutonomousLearningJob.php,Go scope accepts dynamic identities; scheduler candidate generation still defaults to Bybit
+F08,Elapsed label horizon,IMPLEMENTED_BUT_INCOMPLETE,app/Research/Application/LearningFeatureStoreService.php,Four-hour contiguous closed-bar proxy implemented; full maturity/direction/cost fixture audit pending
+F09,RSI monotone input,VERIFIED_SCOPED,app/Research/Application/LearningFeatureStoreService.php,Standalone rising/falling/flat/balanced cases pass; not complete feature pipeline acceptance
+F10,Versioned separated ML cohorts,IMPLEMENTED_BUT_INCOMPLETE,app/Research/Application/LearningPredictorService.php,Exchange/category/symbol/strategy/version/timeframe/side/policy scoping present; training regressions require diagnosis
+F11,Spot PAPER execution,OPEN,app/Exchanges/Application/PaperExecutionModelContract.php,Spot deliberately unsupported; Coinbase/Upbit must remain research-only
+F12,Native derivative funding,OPEN,config/market_data.php,Only Bybit/Binance schedules declared; effective-dated native schedules not certified elsewhere
+F13,Eight-venue recovery,OPEN,app/MarketData/Jobs/EnsureStrategyHistoryJob.php,Registry adapters do not implement a verified generic immutable warmup/recovery lifecycle
+F14,Queue routing,PARTIAL_VERIFIED,app/Trading/Application/TradingQueueResolver.php,Standalone routing checks pass; Compose consumes default/market-ingest and dedicated Bybit/Binance queues; deployed worker state unverified
+F15,Canonical observation completeness,PARTIAL_VERIFIED,app/Trading/Application/CanonicalObservationCompleteness.php,Canonical identity/version checks and smoke tests exist; full pipeline acceptance pending
+F16,As-of native context,OPEN,app/Strategy/Application/UniversalMarketContextCollector.php,No independent ten-venue proof of capture timing and funding/orderbook context; never backdate observations
+F17,P-1 verification badge,IMPLEMENTED_BUT_INCOMPLETE,app/Http/Controllers/Api/V1/ProfitabilityResearchController.php,Badge derives from scoped generation status; browser and historical reconciliation pending
+F18,Unknown venue fallback,PARTIAL_VERIFIED,app/Http/Controllers/Api/V1/ProfitabilityResearchController.php,Registry validation replaces silent Bybit substitution; complete affected route negative tests pending
+F19,Unbounded analytics,OPEN,app/Research/Application/SignalQualityAnalyticsService.php,Overview get/pluck materializes all matching rows; streamed explorer export does not close it
+F20,Six timeframe engines,OPEN,app/Trading/Jobs/ProcessClosedCandleEventJob.php,15m decision/5m execution dispatch; truthful six display rows are not six live engines
+F21,Candle readiness coverage,IMPLEMENTED_BUT_INCOMPLETE,app/Exchanges/Application/ExchangeCapabilityValidator.php,Requires fresh contiguous three-bar coverage per symbol and required interval; full warmup/native readiness still separate
+F22,Missing metric versus zero,VERIFIED_SCOPED,app/Research/Application/SignalQualityAnalyticsService.php,Focused empty/null backend cases and 99 frontend tests pass; not every analytics metric/browser cohort certified
+F23,Historical venue costs,PARTIAL_VERIFIED,app/Backtest/Application/HistoricalExecutionCostPolicy.php,11 standalone cost checks pass; missing maker rates fail closed and expose incomplete older fixtures
+F24,Fixed risk policy,POLICY_PRESERVED,config/paper.php,5% entry block and 10% halt retained; no owner unblock or adaptive relaxation authorized

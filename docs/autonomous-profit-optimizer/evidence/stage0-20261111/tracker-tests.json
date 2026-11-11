@@ -1,0 +1,18 @@
+{
+  "name": "tracker-tests",
+  "command": [
+    "python3",
+    "-m",
+    "unittest",
+    "discover",
+    "-s",
+    "scripts/tests",
+    "-p",
+    "test_vector_progress.py",
+    "-v"
+  ],
+  "started_utc": "2026-11-11T14:47:18.769536+00:00",
+  "duration_seconds": 0.737,
+  "exit_code": 0,
+  "host_working_directory": "/home/thunder/work/traderbybit"
+}

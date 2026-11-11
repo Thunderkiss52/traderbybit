@@ -1,0 +1,27 @@
+{
+    "php": "8.5.12",
+    "sapi": "cli",
+    "extensions": {
+        "bcmath": "8.5.12",
+        "ctype": "8.5.12",
+        "curl": "8.5.12",
+        "dom": "20031129",
+        "fileinfo": "8.5.12",
+        "filter": "8.5.12",
+        "intl": "8.5.12",
+        "mbstring": "8.5.12",
+        "openssl": "8.5.12",
+        "pcntl": "8.5.12",
+        "pdo_pgsql": "8.5.12",
+        "pdo_sqlite": "8.5.12",
+        "redis": "6.3.0",
+        "session": "8.5.12",
+        "sodium": "8.5.12",
+        "tokenizer": "8.5.12",
+        "xml": "8.5.12",
+        "xmlwriter": "8.5.12",
+        "zip": "1.22.8",
+        "Zend OPcache": "8.5.12"
+    },
+    "errors": []
+}

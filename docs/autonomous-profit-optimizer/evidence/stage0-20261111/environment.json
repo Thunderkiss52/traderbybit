@@ -1,0 +1,33 @@
+{
+  "source_head": "9615a620d693bf46d5465619e576db2e1e5b4016",
+  "source_state": "inherited dirty working tree; source-sha256.json and imported-source.patch identify it",
+  "php": "8.5.12",
+  "phpunit": "12.5.40",
+  "postgresql": "17.11",
+  "node": "22.23.4",
+  "go_supplemental": "1.18.1",
+  "go_target": "1.27.3 (toolchain copied from local golang:1.27.3-alpine3.24 image)",
+  "php_test_image_id": "sha256:8ebcc09ccc0258cab847564961ed8bb8cc3281e0479092930b6cab10c81982ae",
+  "postgres_image_id": "sha256:81edcaa5ff2923f7be9c1f43d3e5076f29c6c9c216c86964b5fd038959404429",
+  "redis_image_id": "sha256:f84b0c4678011602b9b98c227a4dcd5468bf8b088b02fdd4165cb7758bad8058",
+  "synthetic": true,
+  "production_evidence": false,
+  "paper_forward_evidence": false,
+  "network": "task-owned PostgreSQL and Redis; internal initial network, corrected checks network allows DNS/public data; no published ports",
+  "database_names": [
+    "bybit_test",
+    "bybit_test_apo_focus",
+    "bybit_test_apo_go",
+    "bybit_test_apo_full"
+  ],
+  "root_env": "original .env never copied or booted; snapshot uses .env.example",
+  "schema": "88 migrations applied on disposable PostgreSQL; includes inherited block-origin migration",
+  "original_source_mutated_by_stage0": false,
+  "redis": "7.4.11",
+  "final_database": "bybit_test",
+  "final_pg_loopback_port": 44620,
+  "final_redis_loopback_port": 44621,
+  "final_network_mode": "host; no Docker socket mounted; all database endpoints task-owned",
+  "prebuilt_go_binaries": "Go 1.27.3; CGO_ENABLED=0; see four *-binary.json files",
+  "final_source_snapshot": "/tmp/vector-apo-stage0-20261111/source-final"
+}

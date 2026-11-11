@@ -1,0 +1,23 @@
+{
+  "name": "go-target-race",
+  "command": [
+    "env",
+    "DB_HOST=172.24.0.2",
+    "DB_PORT=5432",
+    "DB_DATABASE=bybit_test_apo_go",
+    "DB_USERNAME=postgres",
+    "DB_PASSWORD=testpass",
+    "/tmp/vector-apo-stage0-20261111/go1.27.3/bin/go",
+    "test",
+    "-race",
+    "-count=1",
+    "-json",
+    "-timeout",
+    "120s",
+    "./..."
+  ],
+  "started_utc": "2026-11-11T14:57:22.017570+00:00",
+  "duration_seconds": 19.065,
+  "exit_code": 0,
+  "host_working_directory": "/tmp/vector-apo-stage0-20261111/source/research-go"
+}

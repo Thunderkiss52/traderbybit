@@ -1,0 +1,14 @@
+{
+  "name": "redis-final-version",
+  "command": [
+    "docker",
+    "exec",
+    "vector-apo-stage0-final-redis-20261111",
+    "redis-server",
+    "--version"
+  ],
+  "started_utc": "2026-11-11T15:03:43.182107+00:00",
+  "duration_seconds": 0.161,
+  "exit_code": 0,
+  "host_working_directory": "/home/thunder/work/traderbybit"
+}

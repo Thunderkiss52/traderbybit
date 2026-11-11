@@ -1,0 +1,21 @@
+{
+  "name": "php-lint-scripts",
+  "command": [
+    "docker",
+    "run",
+    "--rm",
+    "--network",
+    "none",
+    "--entrypoint",
+    "php",
+    "-v",
+    "/tmp/vector-apo-stage0-20261111/source:/app:ro",
+    "-w",
+    "/app",
+    "traderbybit-php85-test:local",
+    "lint-scripts.php"
+  ],
+  "started_utc": "2026-11-11T15:11:17.233589+00:00",
+  "duration_seconds": 1.455,
+  "exit_code": 0
+}

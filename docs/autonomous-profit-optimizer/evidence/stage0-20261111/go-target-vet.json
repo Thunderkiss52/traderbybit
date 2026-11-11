@@ -1,0 +1,12 @@
+{
+  "name": "go-target-vet",
+  "command": [
+    "/tmp/vector-apo-stage0-20261111/go1.27.3/bin/go",
+    "vet",
+    "./..."
+  ],
+  "started_utc": "2026-11-11T14:58:35.990304+00:00",
+  "duration_seconds": 9.057,
+  "exit_code": 0,
+  "host_working_directory": "/tmp/vector-apo-stage0-20261111/source/research-go"
+}

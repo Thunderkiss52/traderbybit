@@ -1,0 +1,14 @@
+{
+  "name": "frontend-build",
+  "command": [
+    "env",
+    "PATH=/home/thunder/.nvm/versions/node/v22.23.4/bin:/usr/local/bin:/usr/bin:/bin",
+    "npm",
+    "run",
+    "build"
+  ],
+  "started_utc": "2026-11-11T14:45:29.805531+00:00",
+  "duration_seconds": 18.489,
+  "exit_code": 0,
+  "host_working_directory": "/tmp/vector-apo-stage0-20261111/source/frontend"
+}

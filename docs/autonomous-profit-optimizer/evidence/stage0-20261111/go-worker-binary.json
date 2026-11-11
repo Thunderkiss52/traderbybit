@@ -1,0 +1,17 @@
+{
+  "name": "go-worker-binary",
+  "command": [
+    "env",
+    "CGO_ENABLED=0",
+    "/tmp/vector-apo-stage0-20261111/go1.27.3/bin/go",
+    "build",
+    "-trimpath",
+    "-o",
+    "../bin/research-worker",
+    "./cmd/research-worker"
+  ],
+  "started_utc": "2026-11-11T15:01:56.852706+00:00",
+  "duration_seconds": 3.113,
+  "exit_code": 0,
+  "host_working_directory": "/tmp/vector-apo-stage0-20261111/source-final/research-go"
+}

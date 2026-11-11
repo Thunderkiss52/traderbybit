@@ -1,0 +1,12 @@
+{
+  "name": "diff-check-with-raw-evidence",
+  "command": [
+    "git",
+    "diff",
+    "--cached",
+    "--check"
+  ],
+  "host_working_directory": "/home/thunder/work/traderbybit",
+  "execution_timestamp": "2026-11-11T15:14:12.931052+00:00",
+  "exit_code": 2
+}

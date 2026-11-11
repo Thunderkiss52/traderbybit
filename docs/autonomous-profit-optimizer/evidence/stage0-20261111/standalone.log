@@ -1,0 +1,27 @@
+Xdebug: [Step Debug] Time-out connecting to debugging client, waited: 200 ms. Tried: 127.0.0.1:9003 (through xdebug.client_host/xdebug.client_port).
+PASS 1: no historical edge is not a trade
+PASS 2: missing status cannot enable entry
+PASS 3: scoped validated high/low can pass
+PASS 4: stale evidence blocked
+PASS 5: inadequate sample blocked
+PASS 6: negative edge blocked
+PASS 7: missing cost drag blocked
+PASS 8: costs exceed TP1 reward
+PASS 9: low quality observation only
+PASS 10: high risk blocked
+PASS 11: RSI all gains
+PASS 12: RSI all losses
+PASS 13: RSI flat
+PASS 14: RSI balanced
+PASS 15: 15 minute format
+PASS 16: 1 hour format
+PASS 17: bad timeframe rejected
+PASS 18: Bybit dedicated queue
+PASS 19: new exchange uses shared staffed queue
+PASS 20: Binance dedicated queue
+PASS 21: OKX provenance
+PASS 22: conflicting provenance blocked
+PASS 23: model names isolate exchange and side
+PASS 24: model name fits database column
+PASS 25: legacy unchecked override cannot bypass edge requirement
+PASS 26: versioned learning identity isolates changes

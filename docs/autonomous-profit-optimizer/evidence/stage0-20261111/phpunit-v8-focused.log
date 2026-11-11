@@ -1,0 +1,27 @@
+PHPUnit 12.5.40 by Sebastian Bergmann and contributors.
+
+Runtime:       PHP 8.5.12
+Configuration: /app/phpunit.xml
+
+..................[31;1mE[0m.                                              20 / 20 (100%)
+
+Time: 00:03.640, Memory: 26.00 MB
+
+There was 1 error:
+
+1) Tests\Feature\Research\SignalQualityAnalyticsAndMultiTimeframeProfitabilityTest::test_signal_explorer_csv_export_escapes_spreadsheet_formulas_without_corrupting_numeric_values
+LogicException: Risk decisions are immutable.
+
+/app/app/PaperTrading/Infrastructure/Persistence/RiskDecisionRecord.php:26
+/app/vendor/laravel/framework/src/Illuminate/Events/Dispatcher.php:498
+/app/vendor/laravel/framework/src/Illuminate/Events/Dispatcher.php:328
+/app/vendor/laravel/framework/src/Illuminate/Events/Dispatcher.php:308
+/app/vendor/laravel/framework/src/Illuminate/Events/Dispatcher.php:268
+/app/vendor/laravel/framework/src/Illuminate/Database/Eloquent/Concerns/HasEvents.php:224
+/app/vendor/laravel/framework/src/Illuminate/Database/Eloquent/Model.php:1532
+/app/vendor/laravel/framework/src/Illuminate/Database/Eloquent/Model.php:1431
+/app/vendor/laravel/framework/src/Illuminate/Database/Eloquent/Model.php:1186
+/app/tests/Feature/Research/SignalQualityAnalyticsAndMultiTimeframeProfitabilityTest.php:497
+
+[37;41mERRORS![0m
+[37;41mTests: 20[0m[37;41m, Assertions: 177[0m[37;41m, Errors: 1[0m[37;41m.[0m

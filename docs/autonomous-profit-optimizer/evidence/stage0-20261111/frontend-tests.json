@@ -1,0 +1,24 @@
+{
+  "name": "frontend-tests",
+  "command": [
+    "/home/thunder/.nvm/versions/node/v22.23.4/bin/node",
+    "--test",
+    "/tmp/vector-apo-stage0-20261111/source/frontend/tests/account_selection.test.js",
+    "/tmp/vector-apo-stage0-20261111/source/frontend/tests/candidate_lab_lifecycle.test.js",
+    "/tmp/vector-apo-stage0-20261111/source/frontend/tests/exchange_instrument_isolation.test.js",
+    "/tmp/vector-apo-stage0-20261111/source/frontend/tests/exchanges.test.js",
+    "/tmp/vector-apo-stage0-20261111/source/frontend/tests/exchangesExpanded.test.js",
+    "/tmp/vector-apo-stage0-20261111/source/frontend/tests/patterns.test.js",
+    "/tmp/vector-apo-stage0-20261111/source/frontend/tests/profitability_research.test.js",
+    "/tmp/vector-apo-stage0-20261111/source/frontend/tests/quote_integrity.test.js",
+    "/tmp/vector-apo-stage0-20261111/source/frontend/tests/reliability_visibility.test.js",
+    "/tmp/vector-apo-stage0-20261111/source/frontend/tests/strategyBuilder.test.js",
+    "/tmp/vector-apo-stage0-20261111/source/frontend/tests/strategyLibrary.test.js",
+    "/tmp/vector-apo-stage0-20261111/source/frontend/tests/strategy_monitor.test.js",
+    "/tmp/vector-apo-stage0-20261111/source/frontend/tests/ui.test.js"
+  ],
+  "started_utc": "2026-11-11T14:44:55.169846+00:00",
+  "duration_seconds": 0.352,
+  "exit_code": 1,
+  "host_working_directory": "/home/thunder/work/traderbybit"
+}

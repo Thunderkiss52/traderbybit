@@ -1,0 +1,21 @@
+{
+  "name": "postgres-final-identity",
+  "command": [
+    "docker",
+    "exec",
+    "vector-apo-stage0-final-pg-20261111",
+    "psql",
+    "-U",
+    "postgres",
+    "-d",
+    "bybit_test",
+    "-P",
+    "pager=off",
+    "-c",
+    "SELECT version(), current_database(), current_user; SELECT COUNT(*) AS applied_migrations FROM migrations;"
+  ],
+  "started_utc": "2026-11-11T15:03:42.948456+00:00",
+  "duration_seconds": 0.2,
+  "exit_code": 0,
+  "host_working_directory": "/home/thunder/work/traderbybit"
+}

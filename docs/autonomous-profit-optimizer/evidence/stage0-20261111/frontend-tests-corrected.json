@@ -1,0 +1,24 @@
+{
+  "name": "frontend-tests-corrected",
+  "command": [
+    "/home/thunder/.nvm/versions/node/v22.23.4/bin/node",
+    "--test",
+    "tests/account_selection.test.js",
+    "tests/candidate_lab_lifecycle.test.js",
+    "tests/exchange_instrument_isolation.test.js",
+    "tests/exchanges.test.js",
+    "tests/exchangesExpanded.test.js",
+    "tests/patterns.test.js",
+    "tests/profitability_research.test.js",
+    "tests/quote_integrity.test.js",
+    "tests/reliability_visibility.test.js",
+    "tests/strategyBuilder.test.js",
+    "tests/strategyLibrary.test.js",
+    "tests/strategy_monitor.test.js",
+    "tests/ui.test.js"
+  ],
+  "started_utc": "2026-11-11T14:45:04.923939+00:00",
+  "duration_seconds": 0.673,
+  "exit_code": 0,
+  "host_working_directory": "/tmp/vector-apo-stage0-20261111/source/frontend"
+}

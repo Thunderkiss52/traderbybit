@@ -1,0 +1,32 @@
+[
+  {
+    "path": "app/Research/Application/SignalQualityAnalyticsService.php",
+    "expected": "efe596883de8ff3582103f3e1bc41eb3f0bd00505acc5bef822c8e38bcd4e6fe",
+    "actual": "efe596883de8ff3582103f3e1bc41eb3f0bd00505acc5bef822c8e38bcd4e6fe",
+    "matches": true
+  },
+  {
+    "path": "app/Http/Controllers/Api/V1/ProfitabilityResearchController.php",
+    "expected": "9c74edc269b78dd3b102e0ce8275ce1d016ee5d7bd80437e6ef65dc3edc51c1f",
+    "actual": "9c74edc269b78dd3b102e0ce8275ce1d016ee5d7bd80437e6ef65dc3edc51c1f",
+    "matches": true
+  },
+  {
+    "path": "frontend/src/pages/ProfitabilityResearchPage.vue",
+    "expected": "4550088d3a8187e3a9907ab79706260f611c05ba6f9b2b50cd6c97d7adc3e51b",
+    "actual": "4550088d3a8187e3a9907ab79706260f611c05ba6f9b2b50cd6c97d7adc3e51b",
+    "matches": true
+  },
+  {
+    "path": "tests/Feature/Research/SignalQualityAnalyticsAndMultiTimeframeProfitabilityTest.php",
+    "expected": "93d7dc720a1ed466a39ed18220e4f5253a5df048bcc53350f7cf27ec925b5db7",
+    "actual": "93d7dc720a1ed466a39ed18220e4f5253a5df048bcc53350f7cf27ec925b5db7",
+    "matches": true
+  },
+  {
+    "path": "frontend/tests/profitability_research.test.js",
+    "expected": "39ce0df4f2bda8ec27ccefe81cd371ff69995ad08d33f3a0aa2ce265444b3637",
+    "actual": "39ce0df4f2bda8ec27ccefe81cd371ff69995ad08d33f3a0aa2ce265444b3637",
+    "matches": true
+  }
+]

@@ -1,0 +1,17 @@
+{
+  "name": "diff-check-audit-documents",
+  "command": [
+    "git",
+    "diff",
+    "--cached",
+    "--check",
+    "--",
+    "docs/autonomous-profit-optimizer/STAGE_0_AUDIT.md",
+    "docs/autonomous-profit-optimizer/REQUIREMENT_MATRIX.csv",
+    "docs/autonomous-profit-optimizer/PRIOR_FINDINGS_RECHECK.csv",
+    "docs/progress"
+  ],
+  "host_working_directory": "/home/thunder/work/traderbybit",
+  "execution_timestamp": "2026-11-11T15:14:12.906787+00:00",
+  "exit_code": 0
+}

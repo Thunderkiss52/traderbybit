@@ -1,0 +1,15 @@
+?   	github.com/traderbybit/research-go/cmd/historical-import	[no test files]
+?   	github.com/traderbybit/research-go/cmd/historical-replay	[no test files]
+?   	github.com/traderbybit/research-go/cmd/research-bench	[no test files]
+?   	github.com/traderbybit/research-go/cmd/research-candidates	[no test files]
+?   	github.com/traderbybit/research-go/cmd/research-worker	[no test files]
+?   	github.com/traderbybit/research-go/cmd/strategy-dsl	[no test files]
+ok  	github.com/traderbybit/research-go/internal/algorithms	0.151s
+ok  	github.com/traderbybit/research-go/internal/auditdata	0.025s
+ok  	github.com/traderbybit/research-go/internal/backtest	0.127s
+ok  	github.com/traderbybit/research-go/internal/candidates	3.098s
+?   	github.com/traderbybit/research-go/internal/contracts	[no test files]
+ok  	github.com/traderbybit/research-go/internal/dataset/importer	0.172s
+?   	github.com/traderbybit/research-go/internal/datasets	[no test files]
+ok  	github.com/traderbybit/research-go/internal/decimal	0.028s
+ok  	github.com/traderbybit/research-go/internal/historical	0.059s
