@@ -123,7 +123,14 @@ stored under `/home/thunder/work/.vector-apo-evidence-20261112/root/`.
 An independent code review also identified potential gaps in allocated-margin
 availability and concurrent revalidation of correlation and signal-quality gates.
 These findings require reproduction and resolution before capital controls can be
-accepted.
+accepted. The existing test named for concurrent entries serializes its two entry
+calls; it does not prove competing full entry transactions are safe.
+
+The review also identified two unverified research-metric issues: the current
+descriptive profit factor uses normalized returns and can differ from the ratio
+of winning to losing PnL when notionals differ; cohort provenance does not
+independently establish which classifier binary produced the profile. Resolve
+both before treating the metric or classifier reproducibility as verified.
 
 ## Remaining work
 
