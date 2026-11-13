@@ -111,12 +111,19 @@ The runtime also interpreted unset sizing differently from the API's fixed-5 def
 Uncommitted changes now attempt to normalize runtime settings, recompute and
 validate the supplied size at the final entry boundary, enforce leverage and price
 tick constraints, and include outstanding reservations in global risk accounting.
-An earlier isolated snapshot passed 47 tests / 265 assertions. The current
-`PaperProcessingService` and sizing test file differ from that tested snapshot;
-therefore the latest implementation is **NOT VERIFIED**. An earlier related run
-had eight errors and one failure in legacy fixtures; their intended owner sizing,
-causal market context and independent accounting assertions need to be reconciled
-and rerun. Exit handling and existing financial history must remain protected.
+The current focused sizing, tick-precision and lifecycle checks pass in isolated
+PostgreSQL: **75 tests / 499 assertions** (`current-sizing-check-2`, PHP 8.5.12).
+An earlier run of those checks found a duplicate synthetic signal timestamp; the
+fixture was corrected before this rerun. This focused result does not establish
+full integration or release readiness. An earlier broader run had eight errors
+and one failure in legacy fixtures; their intended owner sizing, causal market
+context and independent accounting assertions need to be reconciled and rerun.
+Exit handling and existing financial history must remain protected. Evidence is
+stored under `/home/thunder/work/.vector-apo-evidence-20261112/root/`.
+An independent code review also identified potential gaps in allocated-margin
+availability and concurrent revalidation of correlation and signal-quality gates.
+These findings require reproduction and resolution before capital controls can be
+accepted.
 
 ## Remaining work
 
