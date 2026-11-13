@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuites>
+  <testsuite name="CLI Arguments" tests="7" assertions="238" errors="0" failures="0" skipped="0" time="9.846630">
+    <testsuite name="Tests\Unit\PaperTrading\NewPrimaryCapitalPolicyTest" file="/app/tests/Unit/PaperTrading/NewPrimaryCapitalPolicyTest.php" tests="1" assertions="6" errors="0" failures="0" skipped="0" time="0.283980">
+      <testcase name="test_discovery_cannot_fund_additional_portfolios_from_default_or_template" file="/app/tests/Unit/PaperTrading/NewPrimaryCapitalPolicyTest.php" line="12" class="Tests\Unit\PaperTrading\NewPrimaryCapitalPolicyTest" classname="Tests.Unit.PaperTrading.NewPrimaryCapitalPolicyTest" assertions="6" time="0.283980"/>
+    </testsuite>
+    <testsuite name="Tests\Feature\PaperTrading\GlobalCapitalAndTopologyR6Test" file="/app/tests/Feature/PaperTrading/GlobalCapitalAndTopologyR6Test.php" tests="6" assertions="232" errors="0" failures="0" skipped="0" time="9.562650">
+      <testcase name="test_topology_sync_provisions_all_registered_pairs_without_execution_approval" file="/app/tests/Feature/PaperTrading/GlobalCapitalAndTopologyR6Test.php" line="33" class="Tests\Feature\PaperTrading\GlobalCapitalAndTopologyR6Test" classname="Tests.Feature.PaperTrading.GlobalCapitalAndTopologyR6Test" assertions="15" time="2.417247"/>
+      <testcase name="test_fourteenth_strategy_is_added_to_all_ten_exchanges_without_mutating_existing_accounts" file="/app/tests/Feature/PaperTrading/GlobalCapitalAndTopologyR6Test.php" line="61" class="Tests\Feature\PaperTrading\GlobalCapitalAndTopologyR6Test" classname="Tests.Feature.PaperTrading.GlobalCapitalAndTopologyR6Test" assertions="145" time="0.911452"/>
+      <testcase name="test_new_public_exchange_gets_only_blocked_unfunded_placeholders" file="/app/tests/Feature/PaperTrading/GlobalCapitalAndTopologyR6Test.php" line="93" class="Tests\Feature\PaperTrading\GlobalCapitalAndTopologyR6Test" classname="Tests.Feature.PaperTrading.GlobalCapitalAndTopologyR6Test" assertions="41" time="0.120901"/>
+      <testcase name="test_registration_expands_to_143_then_154_accounts_without_capital_or_history_changes" file="/app/tests/Feature/PaperTrading/GlobalCapitalAndTopologyR6Test.php" line="144" class="Tests\Feature\PaperTrading\GlobalCapitalAndTopologyR6Test" classname="Tests.Feature.PaperTrading.GlobalCapitalAndTopologyR6Test" assertions="18" time="2.945421"/>
+      <testcase name="test_m9_reconciles_130_and_rejects_foreign_financial_provenance" file="/app/tests/Feature/PaperTrading/GlobalCapitalAndTopologyR6Test.php" line="182" class="Tests\Feature\PaperTrading\GlobalCapitalAndTopologyR6Test" classname="Tests.Feature.PaperTrading.GlobalCapitalAndTopologyR6Test" assertions="6" time="2.937618"/>
+      <testcase name="test_global_five_percent_drawdown_and_reserved_risk_budget_are_independent_fail_closed_gates" file="/app/tests/Feature/PaperTrading/GlobalCapitalAndTopologyR6Test.php" line="202" class="Tests\Feature\PaperTrading\GlobalCapitalAndTopologyR6Test" classname="Tests.Feature.PaperTrading.GlobalCapitalAndTopologyR6Test" assertions="7" time="0.230011"/>
+    </testsuite>
+  </testsuite>
+</testsuites>

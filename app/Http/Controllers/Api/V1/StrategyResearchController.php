@@ -107,8 +107,8 @@ final class StrategyResearchController extends Controller
             abort(404, 'Unknown strategy.');
         }
         $exchange = request()->header('X-Exchange') ?: request()->string('exchange', 'bybit')->toString();
-        if (! in_array($exchange, ['bybit', 'binance'], true)) {
-            $exchange = 'bybit';
+        if (! in_array($exchange, app(ExchangeRegistry::class)->registeredIds(), true)) {
+            abort(422, 'Unknown exchange identifier.');
         }
         $accounts = PaperAccountRecord::query()->where('exchange_id', $exchange)->where('strategy_id', $id)->orderBy('created_at')->get();
 

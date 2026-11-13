@@ -1,0 +1,12 @@
+{
+  "command": [
+    "env",
+    "PATH=/home/thunder/.nvm/versions/node/v22.23.4/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin",
+    "npm",
+    "run",
+    "build"
+  ],
+  "start_utc": "2026-11-12T08:54:30.417685+00:00",
+  "seconds": 19.648706263999998,
+  "exit_code": 0
+}

@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers\Api\V1;
 
+use App\Exchanges\ExchangeRegistry;
 use App\Http\Controllers\Controller;
 use App\Http\Resources\V1\ResearchResource;
 use App\Research\Application\AutonomyPermissionService;
@@ -20,6 +21,7 @@ use Carbon\CarbonImmutable;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
 use Symfony\Component\HttpFoundation\Response;
 use Throwable;
@@ -193,7 +195,10 @@ final class AutonomousLearningController extends Controller
 
     public function generateCandidate(Request $request, StrategyEvolutionService $evolution): ResearchResource|JsonResponse
     {
-        $validated = $request->validate(['exchange' => ['sometimes', 'string']]);
+        if (is_string($request->input('exchange'))) {
+            $request->merge(['exchange' => strtolower(trim($request->input('exchange')))]);
+        }
+        $validated = $request->validate(['exchange' => ['sometimes', 'string', Rule::in(app(ExchangeRegistry::class)->registeredIds())]]);
         try {
             $parentStrategyId = $request->string('parent_strategy_id', 'trend_pullback')->toString();
             $seed = $request->has('seed') ? $request->integer('seed') : null;

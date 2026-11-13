@@ -27,6 +27,9 @@ final class ExchangeUrlSecurityValidator
         if ($parts === false || ! isset($parts['scheme'], $parts['host'])) {
             return ['safe' => false, 'reason' => 'Malformed URL structure', 'ip' => null];
         }
+        if (isset($parts['user']) || isset($parts['pass']) || isset($parts['fragment'])) {
+            return ['safe' => false, 'reason' => 'Embedded credentials and fragments are prohibited', 'ip' => null];
+        }
 
         $scheme = strtolower($parts['scheme']);
         if (! in_array($scheme, self::ALLOWED_SCHEMES, true)) {
@@ -50,12 +53,14 @@ final class ExchangeUrlSecurityValidator
         if (filter_var($host, FILTER_VALIDATE_IP)) {
             $ips = [$host];
         } else {
-            $records = @dns_get_record($host, DNS_A);
+            $records = @dns_get_record($host, DNS_A | DNS_AAAA);
             $ips = [];
             if (is_array($records)) {
                 foreach ($records as $r) {
                     if (isset($r['ip'])) {
                         $ips[] = $r['ip'];
+                    } elseif (isset($r['ipv6'])) {
+                        $ips[] = $r['ipv6'];
                     }
                 }
             }
@@ -99,6 +104,35 @@ final class ExchangeUrlSecurityValidator
      */
     public function isPrivateOrReservedIp(string $ip): array
     {
+        // PHP does not consider all special-purpose blocks reserved (notably
+        // 100.64/10, benchmarking and documentation ranges). Deny those below.
+        if (! filter_var($ip, FILTER_VALIDATE_IP, FILTER_FLAG_NO_PRIV_RANGE | FILTER_FLAG_NO_RES_RANGE)) {
+            return ['prohibited' => true, 'category' => 'private or reserved address'];
+        }
+
+        if (filter_var($ip, FILTER_VALIDATE_IP, FILTER_FLAG_IPV4)) {
+            $number = ip2long($ip);
+            foreach ([
+                ['100.64.0.0', 10],
+                ['192.0.0.0', 24],
+                ['192.0.2.0', 24],
+                ['198.18.0.0', 15],
+                ['198.51.100.0', 24],
+                ['203.0.113.0', 24],
+            ] as [$network, $prefix]) {
+                $mask = (0xFFFFFFFF << (32 - $prefix)) & 0xFFFFFFFF;
+                if (($number & $mask) === (ip2long($network) & $mask)) {
+                    return ['prohibited' => true, 'category' => 'special-purpose IPv4'];
+                }
+            }
+        }
+        if (filter_var($ip, FILTER_VALIDATE_IP, FILTER_FLAG_IPV6)) {
+            $bytes = inet_pton($ip);
+            // Documentation IPv6 prefix 2001:db8::/32 cannot be an exchange endpoint.
+            if (substr($bytes, 0, 4) === hex2bin('20010db8')) {
+                return ['prohibited' => true, 'category' => 'documentation IPv6'];
+            }
+        }
         if (filter_var($ip, FILTER_VALIDATE_IP, FILTER_FLAG_IPV4)) {
             $long = ip2long($ip);
             if ($long === false) {

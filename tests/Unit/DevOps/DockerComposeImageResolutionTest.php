@@ -5,6 +5,8 @@ declare(strict_types=1);
 namespace Tests\Unit\DevOps;
 
 use PHPUnit\Framework\TestCase;
+use Symfony\Component\Process\ExecutableFinder;
+use Symfony\Component\Process\Process;
 
 final class DockerComposeImageResolutionTest extends TestCase
 {
@@ -66,10 +68,7 @@ final class DockerComposeImageResolutionTest extends TestCase
 
     public function test_docker_compose_config_resolves_all_services_with_sha_tagged_ghcr_images(): void
     {
-        $composeCheck = exec('which docker 2>/dev/null');
-        if (empty($composeCheck)) {
-            self::markTestSkipped('Docker is not available in the execution environment');
-        }
+        $composeCommand = $this->composeCommand();
 
         $repoRoot = dirname(__DIR__, 3);
         $envExample = $repoRoot.'/.env.production.example';
@@ -96,17 +95,7 @@ final class DockerComposeImageResolutionTest extends TestCase
             );
             file_put_contents($tmpEnv, $envContent);
 
-            $cmd = sprintf(
-                'ENV_FILE=%s IMAGE_TAG=sha-1234567890ab docker compose --env-file %s -f %s config --format json 2>&1',
-                escapeshellarg($tmpEnv),
-                escapeshellarg($tmpEnv),
-                escapeshellarg($this->composePath)
-            );
-
-            $output = [];
-            $exitCode = 0;
-            exec($cmd, $output, $exitCode);
-            $outputStr = implode("\n", $output);
+            [$exitCode, $outputStr] = $this->runCompose($composeCommand, $tmpEnv, true);
 
             self::assertSame(0, $exitCode, 'Docker compose config must succeed: '.$outputStr);
 
@@ -148,10 +137,7 @@ final class DockerComposeImageResolutionTest extends TestCase
 
     public function test_docker_compose_config_fails_when_research_worker_image_missing(): void
     {
-        $composeCheck = exec('which docker 2>/dev/null');
-        if (empty($composeCheck)) {
-            self::markTestSkipped('Docker is not available in the execution environment');
-        }
+        $composeCommand = $this->composeCommand();
 
         $repoRoot = dirname(__DIR__, 3);
         $tmpDir = sys_get_temp_dir().'/vector_compose_test_'.uniqid();
@@ -166,17 +152,7 @@ final class DockerComposeImageResolutionTest extends TestCase
             );
             file_put_contents($tmpEnv, implode("\n", $filteredLines));
 
-            $cmd = sprintf(
-                'ENV_FILE=%s IMAGE_TAG=sha-1234567890ab docker compose --env-file %s -f %s config 2>&1',
-                escapeshellarg($tmpEnv),
-                escapeshellarg($tmpEnv),
-                escapeshellarg($this->composePath)
-            );
-
-            $output = [];
-            $exitCode = 0;
-            exec($cmd, $output, $exitCode);
-            $outputStr = implode("\n", $output);
+            [$exitCode, $outputStr] = $this->runCompose($composeCommand, $tmpEnv, false);
 
             self::assertNotSame(0, $exitCode, 'Docker compose config must fail when RESEARCH_WORKER_IMAGE is missing');
             self::assertStringContainsString('RESEARCH_WORKER_IMAGE is required', $outputStr);
@@ -192,10 +168,7 @@ final class DockerComposeImageResolutionTest extends TestCase
 
     public function test_docker_compose_config_fails_when_app_image_missing(): void
     {
-        $composeCheck = exec('which docker 2>/dev/null');
-        if (empty($composeCheck)) {
-            self::markTestSkipped('Docker is not available in the execution environment');
-        }
+        $composeCommand = $this->composeCommand();
 
         $repoRoot = dirname(__DIR__, 3);
         $tmpDir = sys_get_temp_dir().'/vector_compose_test_'.uniqid();
@@ -210,17 +183,7 @@ final class DockerComposeImageResolutionTest extends TestCase
             );
             file_put_contents($tmpEnv, implode("\n", $filteredLines));
 
-            $cmd = sprintf(
-                'ENV_FILE=%s IMAGE_TAG=sha-1234567890ab docker compose --env-file %s -f %s config 2>&1',
-                escapeshellarg($tmpEnv),
-                escapeshellarg($tmpEnv),
-                escapeshellarg($this->composePath)
-            );
-
-            $output = [];
-            $exitCode = 0;
-            exec($cmd, $output, $exitCode);
-            $outputStr = implode("\n", $output);
+            [$exitCode, $outputStr] = $this->runCompose($composeCommand, $tmpEnv, false);
 
             self::assertNotSame(0, $exitCode, 'Docker compose config must fail when APP_IMAGE is missing');
             self::assertStringContainsString('APP_IMAGE is required', $outputStr);
@@ -236,10 +199,7 @@ final class DockerComposeImageResolutionTest extends TestCase
 
     public function test_docker_compose_config_fails_when_web_image_missing(): void
     {
-        $composeCheck = exec('which docker 2>/dev/null');
-        if (empty($composeCheck)) {
-            self::markTestSkipped('Docker is not available in the execution environment');
-        }
+        $composeCommand = $this->composeCommand();
 
         $repoRoot = dirname(__DIR__, 3);
         $tmpDir = sys_get_temp_dir().'/vector_compose_test_'.uniqid();
@@ -254,17 +214,7 @@ final class DockerComposeImageResolutionTest extends TestCase
             );
             file_put_contents($tmpEnv, implode("\n", $filteredLines));
 
-            $cmd = sprintf(
-                'ENV_FILE=%s IMAGE_TAG=sha-1234567890ab docker compose --env-file %s -f %s config 2>&1',
-                escapeshellarg($tmpEnv),
-                escapeshellarg($tmpEnv),
-                escapeshellarg($this->composePath)
-            );
-
-            $output = [];
-            $exitCode = 0;
-            exec($cmd, $output, $exitCode);
-            $outputStr = implode("\n", $output);
+            [$exitCode, $outputStr] = $this->runCompose($composeCommand, $tmpEnv, false);
 
             self::assertNotSame(0, $exitCode, 'Docker compose config must fail when WEB_IMAGE is missing');
             self::assertStringContainsString('WEB_IMAGE is required', $outputStr);
@@ -276,5 +226,48 @@ final class DockerComposeImageResolutionTest extends TestCase
                 rmdir($tmpDir);
             }
         }
+    }
+
+    /** Find a usable CLI, including a standalone plugin in musl-based PHP test images. */
+    private function composeCommand(): array
+    {
+        $docker = (new ExecutableFinder)->find('docker');
+        $candidates = $docker === null ? [] : [[$docker, 'compose']];
+        foreach (['/usr/local/lib/docker/cli-plugins/docker-compose', '/usr/libexec/docker/cli-plugins/docker-compose', '/usr/lib/docker/cli-plugins/docker-compose'] as $plugin) {
+            if (is_executable($plugin)) {
+                $candidates[] = [$plugin];
+            }
+        }
+        foreach ($candidates as $command) {
+            $version = new Process([...$command, 'version']);
+            $version->setTimeout(10);
+            $version->run();
+            if ($version->isSuccessful()) {
+                return $command;
+            }
+        }
+        if ($candidates === []) {
+            self::markTestSkipped('Docker Compose is not installed in the execution environment.');
+        }
+        self::fail('Installed Docker Compose commands are not executable on this runtime.');
+    }
+
+    private function runCompose(array $command, string $environmentFile, bool $json): array
+    {
+        $process = new Process([
+            ...$command, '--env-file', $environmentFile, '-f', $this->composePath, 'config',
+            ...($json ? ['--format', 'json'] : []),
+        ], dirname($this->composePath), [
+            'ENV_FILE' => $environmentFile,
+            'IMAGE_TAG' => 'sha-1234567890ab',
+            // A developer shell cannot satisfy a deliberately omitted fixture variable.
+            'APP_IMAGE' => false,
+            'WEB_IMAGE' => false,
+            'RESEARCH_WORKER_IMAGE' => false,
+        ]);
+        $process->setTimeout(30);
+        $exitCode = $process->run();
+
+        return [$exitCode, $process->getOutput().$process->getErrorOutput()];
     }
 }

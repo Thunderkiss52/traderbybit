@@ -84,6 +84,28 @@ final readonly class PaperExecutionEngine
         ];
     }
 
+    /** @return array{estimated_costs: string, cost_drag_percent: float|null} */
+    public function estimateRoundTripTp1Costs(string $entryPrice, string $targetPrice, string $quantity, string $exchangeId = 'bybit'): array
+    {
+        $entry = $this->d($entryPrice);
+        $target = $this->d($targetPrice);
+        $qty = $this->d($quantity);
+        if (! $entry->isPositive() || ! $target->isPositive() || ! $qty->isPositive()) {
+            throw new \DomainException('Positive prices and quantity required for PAPER cost evidence.');
+        }
+        $rates = $this->costs($exchangeId);
+        $rate = $this->d($rates['taker_rate'])->plus($rates['slippage_rate']);
+        $cost = $entry->plus($target)->multipliedBy($qty)->multipliedBy($rate);
+        $gross = $target->minus($entry)->abs()->multipliedBy($qty);
+
+        return [
+            'estimated_costs' => (string) $cost,
+            'cost_drag_percent' => $gross->isPositive()
+                ? $cost->dividedBy($gross, 8, RoundingMode::HalfEven)->multipliedBy(100)->toFloat()
+                : null,
+        ];
+    }
+
     public function grossPnl(string $side, string $entryPrice, string $exitPrice, string $quantity): string
     {
         $move = $side === 'BUY' ? $this->d($exitPrice)->minus($entryPrice) : $this->d($entryPrice)->minus($exitPrice);
@@ -129,7 +151,8 @@ final readonly class PaperExecutionEngine
         // 1. Direct config override (e.g. exchanges.binance.paper_taker_rate)
         $value = config('exchanges.'.$exchangeId.'.'.$key);
         if (is_string($value) && preg_match('/^(?:0|[0-9]+)(?:\.[0-9]+)?$/D', $value)
-            && BigDecimal::of($value)->isGreaterThan('0')) {
+            && BigDecimal::of($value)->isGreaterThanOrEqualTo('0')
+            && BigDecimal::of($value)->isLessThan('0.1')) {
             return $value;
         }
 
@@ -143,7 +166,8 @@ final readonly class PaperExecutionEngine
             ?? ExchangeRecord::query()->find($exchangeId)?->cost_model;
         if (is_array($model) && isset($model[$shortKey]) && is_string($model[$shortKey])
             && preg_match('/^(?:0|[0-9]+)(?:\.[0-9]+)?$/D', $model[$shortKey])
-            && BigDecimal::of($model[$shortKey])->isGreaterThan('0')) {
+            && BigDecimal::of($model[$shortKey])->isGreaterThanOrEqualTo('0')
+            && BigDecimal::of($model[$shortKey])->isLessThan('0.1')) {
             return $model[$shortKey];
         }
 

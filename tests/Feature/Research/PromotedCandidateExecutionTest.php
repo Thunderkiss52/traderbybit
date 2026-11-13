@@ -12,22 +12,28 @@ use App\PaperTrading\Infrastructure\Persistence\VirtualPositionRecord;
 use App\Research\Infrastructure\Persistence\LearningCandidateStrategyRecord;
 use App\Strategy\Infrastructure\Persistence\MarketContextRecord;
 use App\Strategy\Infrastructure\Persistence\SignalRecord;
+use Carbon\CarbonImmutable;
 use DateTimeImmutable;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
+use PHPUnit\Framework\Attributes\DataProvider;
 use Ramsey\Uuid\Uuid;
+use Tests\Concerns\SeedsValidatedPaperEvidence;
 use Tests\TestCase;
 
 final class PromotedCandidateExecutionTest extends TestCase
 {
     use RefreshDatabase;
+    use SeedsValidatedPaperEvidence;
 
-    public function test_promoted_strategy_candidate_receives_signals_and_virtual_executions(): void
+    #[DataProvider('evidenceAvailability')]
+    public function test_promoted_strategy_candidate_receives_signals_and_virtual_executions(bool $hasEvidence): void
     {
         $parentStrategyId = 'trend_pullback';
         $candidateVersion = 'trend_pullback_v2_promoted';
         $timeStr = '2026-10-14T10:15:00Z';
         $decisionTime = new DateTimeImmutable($timeStr);
+        $this->travelTo(CarbonImmutable::instance($decisionTime)->subMinute());
 
         // 1. Provision dedicated forward paper trading account for the candidate
         $accountService = $this->app->make(PaperAccountService::class);
@@ -56,7 +62,7 @@ final class PromotedCandidateExecutionTest extends TestCase
                 'validation_run_id' => 'run-val-1',
                 'sample_size' => 45,
                 'expectancy_r' => 0.42,
-                'max_drawdown_percent' => 6.5,
+                'max_drawdown_percent' => 2.0,
                 'ece' => 0.04,
             ],
             'validation_gates' => [
@@ -66,6 +72,8 @@ final class PromotedCandidateExecutionTest extends TestCase
 
         $this->assertSame('PAPER_PROMOTED', $candidateRecord->status);
         $this->assertSame($candidateAccount->id, $candidateRecord->paper_account_id);
+
+        $this->travelTo(CarbonImmutable::instance($decisionTime));
 
         // 3. Create a candidate signal tagged with candidate's version
         $signal = SignalRecord::query()->create([
@@ -116,6 +124,15 @@ final class PromotedCandidateExecutionTest extends TestCase
             'min_notional_value' => '5',
         ]);
 
+        if ($hasEvidence) {
+            $this->seedValidatedPaperEvidence($signal);
+        }
+
+        // Establish PENDING_ENTRY before the execution candle has closed.
+        $processingService = $this->app->make(PaperProcessingService::class);
+        $processingService->process(accountId: $candidateAccount->id, symbol: 'BTCUSDT', at: $decisionTime, historical: false);
+        $this->travelTo(CarbonImmutable::instance($decisionTime)->addMinutes(5));
+
         // 5. Create 5m execution candle within entry zone
         DB::table('market_candles')->insert([
             'exchange' => 'bybit',
@@ -135,11 +152,11 @@ final class PromotedCandidateExecutionTest extends TestCase
         ]);
 
         // 6. Process paper trading specifically for this candidate account
-        $processingService = $this->app->make(PaperProcessingService::class);
         $result = $processingService->process(
             accountId: $candidateAccount->id,
             symbol: 'BTCUSDT',
-            at: $decisionTime->modify('+5 minutes')
+            at: $decisionTime->modify('+5 minutes'),
+            historical: false,
         );
 
         $this->assertSame($candidateAccount->id, $result['account_id']);
@@ -151,7 +168,17 @@ final class PromotedCandidateExecutionTest extends TestCase
             ->first();
 
         $this->assertNotNull($state, 'Candidate account must ingest its version-matched signal.');
-        $this->assertSame('ACTIVE', $state->status);
+        if (! $hasEvidence) {
+            self::assertSame('REJECTED', $state->status);
+            self::assertSame('missing_or_stale_validated_edge_or_cost_evidence', $state->reason);
+            self::assertFalse(VirtualPositionRecord::query()->where('paper_account_id', $candidateAccount->id)->where('signal_id', $signal->id)->exists());
+            self::assertFalse(VirtualExecutionRecord::query()->whereIn('position_id',
+                VirtualPositionRecord::query()->select('id')->where('paper_account_id', $candidateAccount->id)
+            )->exists());
+
+            return;
+        }
+        $this->assertSame('ACTIVE', $state->status, 'Stored rejection reason: '.($state->reason ?? 'none'));
 
         // Verify open virtual position created for candidate account
         $position = VirtualPositionRecord::query()
@@ -172,5 +199,10 @@ final class PromotedCandidateExecutionTest extends TestCase
         $this->assertNotNull($execution, 'Virtual execution must be created for the position.');
         $this->assertSame('ENTRY', $execution->type);
         $this->assertSame('BUY', $execution->side);
+    }
+
+    public static function evidenceAvailability(): array
+    {
+        return ['matured_scoped_history' => [true], 'missing_history_blocks_entry' => [false]];
     }
 }

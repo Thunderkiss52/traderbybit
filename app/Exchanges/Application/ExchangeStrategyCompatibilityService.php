@@ -202,12 +202,12 @@ final readonly class ExchangeStrategyCompatibilityService
                 ->where('exchange', $exchange->id)
                 ->where('symbol', $symbol)
                 ->exists();
+            // Registration and a connected adapter do not prove an instrument
+            // exists on the actual exchange. Until exchange-identified candles
+            // are present, do not classify the strategy as instrument-ready.
             if (! $candleExists) {
-                // If no candle data yet, check if exchange is connected and supports standard linear pairs
-                if ($exchange->lifecycle_status === 'OFFLINE_DATA_SOURCE' && ! $candleExists) {
-                    $instrumentsCompatible = false;
-                    $missingSymbols[] = $symbol;
-                }
+                $instrumentsCompatible = false;
+                $missingSymbols[] = $symbol;
             }
         }
 

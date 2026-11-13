@@ -121,14 +121,6 @@ final class StrategyMonitorController extends Controller
         $totalEvaluations = (int) ($obsAgg?->total_evaluations ?? 0);
         $totalSkips = (int) ($obsAgg?->total_skips ?? 0);
 
-        $posAgg = (clone $posQuery)
-            ->selectRaw("
-                COUNT(*) FILTER (WHERE status IN ('OPEN', 'PARTIALLY_CLOSED')) as active_positions,
-                COUNT(*) FILTER (WHERE status IN ('CLOSED', 'CLOSED_TP', 'CLOSED_SL', 'CLOSED_TIMEOUT', 'CLOSED_RISK', 'RESOLVED')) as closed_positions
-            ")->first();
-        $activePositions = (int) ($posAgg?->active_positions ?? 0);
-        $closedPositions = (int) ($posAgg?->closed_positions ?? 0);
-
         $sigAgg = (clone $sigQuery)
             ->selectRaw("
                 COUNT(*) FILTER (WHERE side IN ('BUY', 'SELL')) as total_signals,
@@ -160,6 +152,16 @@ final class StrategyMonitorController extends Controller
             'UNKNOWN' => (int) ($sigAgg?->r_unknown ?? 0),
         ];
 
+        // Every risk decision and position must belong to the same filtered signal cohort.
+        // Counting by venue alone leaks PnL/execution metrics across strategies and risk filters.
+        $filteredSignalIds = (clone $sigQuery)->select('id');
+        $posQuery->whereIn('signal_id', clone $filteredSignalIds);
+        $riskQuery->whereIn('signal_id', clone $filteredSignalIds);
+        $posAgg = (clone $posQuery)
+            ->selectRaw("COUNT(*) FILTER (WHERE status IN ('OPEN', 'PARTIALLY_CLOSED')) as active_positions, COUNT(*) FILTER (WHERE status IN ('CLOSED', 'CLOSED_TP', 'CLOSED_SL', 'CLOSED_TIMEOUT', 'CLOSED_RISK', 'RESOLVED')) as closed_positions")
+            ->first();
+        $activePositions = (int) ($posAgg?->active_positions ?? 0);
+        $closedPositions = (int) ($posAgg?->closed_positions ?? 0);
         $riskApproved = (clone $riskQuery)->where('allowed', true)->count();
 
         // Feed items: BUY/SELL from SignalRecord or SKIP from StrategyObservationRecord
@@ -191,6 +193,10 @@ final class StrategyMonitorController extends Controller
                     'diagnostics' => data_get($obs->analysis, 'diagnostics'),
                     'risk_decision' => null,
                     'position' => null,
+                    'risk_decision_count' => 0,
+                    'position_count' => 0,
+                    'risk_decisions' => [],
+                    'positions' => [],
                 ];
             }
         } else {
@@ -203,19 +209,27 @@ final class StrategyMonitorController extends Controller
             $paginator = $signalsBuilder->latest('decision_time')->latest('id')->paginate($perPage);
 
             $signalIds = collect($paginator->items())->pluck('id')->all();
-            $riskDecisions = RiskDecisionRecord::query()->whereIn('signal_id', $signalIds)->get()->keyBy('signal_id');
-            $positions = VirtualPositionRecord::query()->whereIn('signal_id', $signalIds)->get()->keyBy('signal_id');
+            $riskDecisions = RiskDecisionRecord::query()->whereIn('signal_id', $signalIds)
+                ->orderBy('decided_at')->orderBy('id')->get()->groupBy('signal_id');
+            $positions = VirtualPositionRecord::query()->whereIn('signal_id', $signalIds)
+                ->orderBy('opened_at')->orderBy('id')->get()->groupBy('signal_id');
 
             foreach ($paginator->items() as $sig) {
                 $rules = data_get($sig->contract, 'rules') ?? data_get($sig->indicator_snapshot, 'rules') ?? [];
-                $riskRecord = $riskDecisions->get($sig->id);
-                $pos = $positions->get($sig->id);
+                $signalRiskDecisions = $riskDecisions->get($sig->id, collect());
+                $signalPositions = $positions->get($sig->id, collect());
+                // Legacy singular fields are unambiguous only for one account.
+                $riskRecord = $signalRiskDecisions->count() === 1 ? $signalRiskDecisions->first() : null;
+                $pos = $signalPositions->count() === 1 ? $signalPositions->first() : null;
 
-                $entryMid = BigDecimal::of((string) ($sig->entry_low ?? $sig->stop_loss ?? '1'))
-                    ->plus(BigDecimal::of((string) ($sig->entry_high ?? $sig->stop_loss ?? '1')))
-                    ->dividedBy(2, 8, RoundingMode::HalfEven);
+                // No fabricated 0% stop distance when the entry plan is missing.
+                $entryMid = ($sig->entry_low !== null && $sig->entry_high !== null)
+                    ? BigDecimal::of((string) $sig->entry_low)
+                        ->plus(BigDecimal::of((string) $sig->entry_high))
+                        ->dividedBy(2, 8, RoundingMode::HalfEven)
+                    : null;
                 $stopDistPercent = null;
-                if (! $entryMid->isZero() && $sig->stop_loss !== null) {
+                if ($entryMid !== null && $entryMid->isPositive() && $sig->stop_loss !== null) {
                     $dist = BigDecimal::of((string) $sig->stop_loss)->minus($entryMid)->abs();
                     $stopDistPercent = (string) $dist->dividedBy($entryMid, 6, RoundingMode::HalfEven)->multipliedBy(100);
                 }
@@ -223,12 +237,14 @@ final class StrategyMonitorController extends Controller
                 $riskSnapshot = $riskRecord ? (is_array($riskRecord->snapshot) ? $riskRecord->snapshot : (json_decode((string) $riskRecord->snapshot, true) ?? [])) : [];
                 $riskCapital = $riskSnapshot['risk_capital'] ?? null;
                 $notional = $riskSnapshot['notional_after'] ?? $riskSnapshot['notional'] ?? null;
-                $margin = $riskSnapshot['margin'] ?? ($notional !== null ? (string) BigDecimal::of((string) $notional)->dividedBy(10, 8, RoundingMode::HalfEven) : null);
+                // Margin must come from persisted sizing evidence, never a synthetic 10x leverage assumption.
+                $margin = $riskSnapshot['margin'] ?? $riskSnapshot['margin_usdt'] ?? null;
                 $signalQualityVal = $sig->signal_quality ?? ($sig->quality_class ? match ($sig->quality_class) {
                     'A' => 'HIGH', 'B' => 'MEDIUM', 'C' => 'LOW', default => 'UNKNOWN'
                 } : 'UNKNOWN');
                 $tradeRiskVal = $sig->trade_risk ?? $riskRecord?->trade_risk ?? $riskSnapshot['trade_risk'] ?? 'UNKNOWN';
-                $gateDecision = $riskSnapshot['gate_decision'] ?? ($riskRecord ? ($riskRecord->allowed ? 'ELIGIBLE' : 'REJECTED') : null);
+                $gateDecision = $signalRiskDecisions->count() > 1 ? 'MULTI_ACCOUNT' :
+                    ($riskSnapshot['gate_decision'] ?? ($riskRecord ? ($riskRecord->allowed ? 'ELIGIBLE' : 'REJECTED') : null));
                 $expectedNetEdge = $riskSnapshot['expected_net_edge'] ?? null;
 
                 $items[] = [
@@ -266,6 +282,31 @@ final class StrategyMonitorController extends Controller
                     'decision_time' => $sig->decision_time?->toIso8601String(),
                     'candle_close_time' => $sig->candle_close_time?->toIso8601String(),
                     'candle_id' => $sig->candle_id,
+                    'risk_decision_count' => $signalRiskDecisions->count(),
+                    'position_count' => $signalPositions->count(),
+                    'risk_decisions' => $signalRiskDecisions->map(fn ($decision) => [
+                        'id' => $decision->id,
+                        'paper_account_id' => $decision->paper_account_id,
+                        'exchange_id' => $decision->exchange_id,
+                        'allowed' => $decision->allowed,
+                        'reasons' => $decision->reasons,
+                        'snapshot' => $decision->snapshot,
+                        'decided_at' => $decision->decided_at?->toIso8601String(),
+                    ])->values()->all(),
+                    'positions' => $signalPositions->map(fn ($position) => [
+                        'id' => $position->id,
+                        'paper_account_id' => $position->paper_account_id,
+                        'exchange_id' => $position->exchange_id,
+                        'status' => $position->status,
+                        'entry_price' => $position->entry_price,
+                        'initial_quantity' => $position->initial_quantity,
+                        'remaining_quantity' => $position->remaining_quantity,
+                        'fees' => $position->fees,
+                        'gross_pnl' => $position->gross_pnl,
+                        'net_pnl' => $position->net_pnl,
+                        'opened_at' => $position->opened_at?->toIso8601String(),
+                        'closed_at' => $position->closed_at?->toIso8601String(),
+                    ])->values()->all(),
                     'risk_decision' => $riskRecord ? [
                         'id' => $riskRecord->id,
                         'allowed' => $riskRecord->allowed,
@@ -350,8 +391,8 @@ final class StrategyMonitorController extends Controller
                     if ($candle !== null) {
                         $timeline[] = [
                             'stage' => 'CANDLE_CLOSED',
-                            'title' => 'Closed 15m Market Candle Ingested',
-                            'timestamp' => $candle->open_time?->addMinutes(15)->toIso8601String(),
+                            'title' => 'Closed Market Candle Ingested',
+                            'timestamp' => $signal->candle_close_time?->toIso8601String(),
                             'details' => [
                                 'exchange' => $candle->exchange,
                                 'symbol' => $candle->symbol,
@@ -405,14 +446,17 @@ final class StrategyMonitorController extends Controller
                 ];
 
                 // 4. Risk decision
-                $risk = RiskDecisionRecord::query()->where('signal_id', $signal->id)->latest('decided_at')->first();
-                if ($risk !== null) {
+                $riskRecords = RiskDecisionRecord::query()->where('signal_id', $signal->id)
+                    ->orderBy('decided_at')->orderBy('id')->get();
+                foreach ($riskRecords as $risk) {
                     $timeline[] = [
                         'stage' => 'RISK_DECISION',
                         'title' => $risk->allowed ? 'Risk Guardrails Approved' : 'Risk Guardrails Rejected',
                         'timestamp' => $risk->decided_at?->toIso8601String(),
                         'details' => [
                             'allowed' => $risk->allowed,
+                            'paper_account_id' => $risk->paper_account_id,
+                            'exchange_id' => $risk->exchange_id,
                             'reasons' => $risk->reasons,
                             'sizing' => data_get($risk->snapshot, 'sizing') ?? $risk->snapshot,
                         ],
@@ -422,11 +466,15 @@ final class StrategyMonitorController extends Controller
                 }
 
                 // 5. Journal and execution events
+                // The timeline endpoint has a bounded response even for signals
+                // with years of journal history. Return recent events in time order.
                 $journalEvents = JournalEventRecord::query()
                     ->where('signal_id', $signal->id)
-                    ->orderBy('occurred_at')
-                    ->orderBy('sequence')
-                    ->get();
+                    ->orderByDesc('occurred_at')
+                    ->orderByDesc('sequence')
+                    ->limit($limit)
+                    ->get()
+                    ->reverse();
 
                 foreach ($journalEvents as $je) {
                     $timeline[] = [

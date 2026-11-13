@@ -60,3 +60,17 @@ provided; the four PARTIAL and 316 STALE rows require row-level production
 disposition. No historical financial data was repaired. See
 [remediation](evidence/phase0-production-acceptance/REMEDIATION_20261029.md) and
 [validation](evidence/phase0-production-acceptance/VALIDATION_20261029.md).
+
+
+## APO signal intelligence increment — 2026-11-12
+
+Local source baseline `4846221053bee52f8e819dfc22e92fe73c032a6e` plus the ongoing
+APO implementation adds auditable hypothetical horizon evidence, bounded scoped
+analytics and financial safety regressions. Current raw execution artifacts and
+unresolved full-suite status are recorded in
+[the checkpoint](../autonomous-profit-optimizer/IMPLEMENTATION_CHECKPOINT.md).
+No runtime or product credit is inferred from source changes or synthetic tests.
+Scores remain I=0.0000%, V=0.0000%, P=0.0000% under unchanged scope/weights because
+old dependency fingerprints are stale and no new product/production acceptance
+was admitted. Snapshot: [local increment](history/apo-signal-intelligence-20261112.json).
+No deployment, account activation or financial history mutation occurred.

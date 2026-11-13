@@ -55,6 +55,16 @@ final class AcquisitionTest extends TestCase
         app(PaperTopologySynchronizer::class)->sync(true);
         DB::table('paper_accounts')->update(['status' => 'BLOCKED']);
         $accounts = DB::table('paper_accounts')->orderBy('id')->get()->toJson();
+        // Existing forward-pipeline evidence must survive a separate historical import.
+        DB::table('trading_pipeline_events')->insert([
+            'event_key' => 'synthetic:historical-acquisition-preservation-canary',
+            'exchange' => 'bybit', 'symbol' => 'BTCUSDT', 'timeframe' => '15',
+            'stage' => 'CANDLE_CLOSED', 'status' => 'STALE',
+            'candle_close_at' => '2024-01-14T00:00:00Z',
+            'payload' => json_encode(['synthetic_test_only' => true, 'source' => 'forward-pipeline-preservation-canary'], JSON_THROW_ON_ERROR),
+            'created_at' => now('UTC'), 'updated_at' => now('UTC'),
+        ]);
+        $pipelineEvents = DB::table('trading_pipeline_events')->orderBy('id')->get()->toJson();
         $risk = config('paper.global_capital');
         $this->fixtureTransport();
         $batch = app(BatchRepository::class)->create(self::smallPlan(), 'fixture-import');
@@ -84,7 +94,7 @@ final class AcquisitionTest extends TestCase
         self::assertSame(2, DB::table('historical_funding_observations')->count());
         self::assertSame(0, DB::table('market_funding_events')->count());
         self::assertSame(0, DB::table('virtual_positions')->count());
-        self::assertSame(0, DB::table('trading_pipeline_events')->count());
+        $this->assertPipelineEventsUnchanged($pipelineEvents);
         self::assertSame($accounts, DB::table('paper_accounts')->orderBy('id')->get()->toJson());
         self::assertSame($risk, config('paper.global_capital'));
         $other = app(BatchRepository::class)->create(self::smallPlan(), 'second-import');
@@ -94,7 +104,17 @@ final class AcquisitionTest extends TestCase
         }
         self::assertSame(12, DB::table('market_candles')->where('exchange', 'binance')->count());
         self::assertSame(11, (int) DB::table('historical_download_entries')->where('batch_id', $other->id)->where('family', 'klines')->value('duplicate_rows'));
+        $this->assertPipelineEventsUnchanged($pipelineEvents);
         Http::assertNothingSent();
+    }
+
+    private function assertPipelineEventsUnchanged(string $before): void
+    {
+        $after = DB::table('trading_pipeline_events')->orderBy('id')->get()->toJson();
+        self::assertSame($before, $after, json_encode([
+            'pipeline_events_before_import' => json_decode($before, true, flags: JSON_THROW_ON_ERROR),
+            'pipeline_events_after_import' => json_decode($after, true, flags: JSON_THROW_ON_ERROR),
+        ], JSON_THROW_ON_ERROR));
     }
 
     public function test_claims_are_fenced_and_pause_prevents_claiming_or_downloading(): void

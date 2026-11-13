@@ -17,6 +17,7 @@ use DateInterval;
 use DateTimeImmutable;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Str;
+use PHPUnit\Framework\Attributes\DataProvider;
 use Tests\TestCase;
 
 final class ModelAdvisoryIntegrationTest extends TestCase
@@ -62,12 +63,13 @@ final class ModelAdvisoryIntegrationTest extends TestCase
     {
         return LearningModelArtifactRecord::query()->create([
             'id' => (string) Str::uuid(),
-            'name' => "Logistic_TP_BEFORE_SL_{$symbol}",
+            'name' => LearningPredictorService::scopedModelName('TP_BEFORE_SL', $symbol, 'bybit', strategyVersion: '1.3.0'),
             'model_type' => 'LOGISTIC_REGRESSION',
             'target_event' => 'TP_BEFORE_SL',
             'version' => 'v1.0.0',
             'parameters' => [
-                'exchange' => 'bybit',
+                'exchange' => 'bybit', 'category' => 'linear', 'side' => 'BUY',
+                'strategy_id' => 'baseline', 'strategy_version' => '1.3.0', 'timeframe' => '15',
                 'target_event' => 'TP_BEFORE_SL',
                 'symbol' => $symbol,
                 'approved_for_advisory' => true,
@@ -122,7 +124,7 @@ final class ModelAdvisoryIntegrationTest extends TestCase
             ]
         );
 
-        $advised = $service->advise($decision, ['hl_spread_pct' => 0.5, 'rsi_14' => 30.0]);
+        $advised = $service->advise($decision, ['hl_spread_pct' => 0.5, 'rsi_14' => 30.0, 'recent_volatility' => 0.5, 'volume_ratio' => 1.0]);
 
         // In SHADOW mode, BUY is NOT altered even if probability is low!
         $this->assertSame(SignalSide::Buy, $advised->side);
@@ -158,7 +160,7 @@ final class ModelAdvisoryIntegrationTest extends TestCase
             ]
         );
 
-        $advised = $service->advise($decision, ['hl_spread_pct' => 0.5, 'rsi_14' => 30.0]);
+        $advised = $service->advise($decision, ['hl_spread_pct' => 0.5, 'rsi_14' => 30.0, 'recent_volatility' => 0.5, 'volume_ratio' => 1.0]);
 
         // In ACTIVE mode with low prob, BUY is transformed to SKIP!
         $this->assertSame(SignalSide::Skip, $advised->side);
@@ -195,7 +197,7 @@ final class ModelAdvisoryIntegrationTest extends TestCase
             ]
         );
 
-        $advised = $service->advise($decision, ['hl_spread_pct' => 2.5, 'rsi_14' => 60.0]);
+        $advised = $service->advise($decision, ['hl_spread_pct' => 2.5, 'rsi_14' => 60.0, 'recent_volatility' => 0.5, 'volume_ratio' => 1.0]);
 
         // High probability trade is permitted to proceed
         $this->assertSame(SignalSide::Buy, $advised->side);
@@ -210,5 +212,41 @@ final class ModelAdvisoryIntegrationTest extends TestCase
 
         $event = AutonomyApprovalEventRecord::query()->where('action', 'MODEL_ADVISORY_PASSED')->first();
         $this->assertNotNull($event);
+    }
+
+    #[DataProvider('invalidPredictionResults')]
+    public function test_active_advisory_fails_closed_without_a_finite_calibrated_probability(array $prediction): void
+    {
+        $model = $this->seedActiveModel('BTCUSDT');
+        $predictor = $this->createMock(LearningPredictorService::class);
+        $predictor->expects(self::once())->method('predictCalibrated')->willReturn($prediction);
+        $advisor = new ModelAdvisoryService(
+            predictor: $predictor, autonomy: $this->autonomy,
+            config: ['enabled' => true, 'mode' => 'ACTIVE', 'fallback_policy' => 'FAIL_CLOSED_SKIP']
+        );
+        $advised = $advisor->advise($this->makeDecision('BTCUSDT', SignalSide::Buy), []);
+        self::assertSame(SignalSide::Skip, $advised->side);
+        self::assertNull($advised->pricePlan);
+        self::assertContains('ml_advisory_inference_error_fail_closed', $advised->reasons);
+        self::assertSame('INFERENCE_ERROR', $advised->indicatorSnapshot['model_advisory']['status']);
+        self::assertNull($advised->indicatorSnapshot['model_advisory']['calibrated_probability']);
+        self::assertTrue($advised->indicatorSnapshot['model_advisory']['altered_decision']);
+        self::assertSame('ACTIVE', $model->fresh()->status);
+        self::assertTrue(AutonomyApprovalEventRecord::query()->where('target_id', $model->id)
+            ->where('action', 'MODEL_ADVISORY_FAIL_CLOSED')->exists());
+    }
+
+    public static function invalidPredictionResults(): array
+    {
+        return [
+            'unavailable' => [['status' => 'INSUFFICIENT_DATA', 'probability' => null]],
+            'uncalibrated' => [['status' => 'CANDIDATE', 'probability' => 0.9]],
+            'missing_probability' => [['status' => 'CALIBRATED']],
+            'infinity' => [['status' => 'CALIBRATED', 'probability' => INF]],
+            'nan' => [['status' => 'CALIBRATED', 'probability' => NAN]],
+            'negative' => [['status' => 'CALIBRATED', 'probability' => -0.1]],
+            'above_one' => [['status' => 'CALIBRATED', 'probability' => 1.1]],
+            'malformed' => [['status' => 'CALIBRATED', 'probability' => 'not-a-number']],
+        ];
     }
 }

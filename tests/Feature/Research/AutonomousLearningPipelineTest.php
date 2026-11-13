@@ -15,9 +15,11 @@ use App\Research\Infrastructure\Persistence\LearningFeatureSnapshotRecord;
 use App\Research\Infrastructure\Persistence\LearningModelArtifactRecord;
 use App\Research\Jobs\EvaluateStrategyCandidateJob;
 use App\Research\Jobs\ProcessAutonomousLearningJob;
+use App\Strategy\Application\StrategyRegistry;
 use App\Strategy\Domain\QualityClass;
 use App\Strategy\Domain\SignalDecision;
 use App\Strategy\Domain\SignalSide;
+use App\Strategy\Infrastructure\Persistence\SignalRecord;
 use Carbon\CarbonImmutable;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Queue;
@@ -32,6 +34,7 @@ final class AutonomousLearningPipelineTest extends TestCase
     {
         $symbol = 'BTCUSDT';
         $t0 = CarbonImmutable::parse('2026-10-18 00:00:00');
+        $baselineVersion = app(StrategyRegistry::class)->get('baseline')->version();
 
         // 1. Seed closed historical candles
         for ($i = 0; $i < 30; $i++) {
@@ -51,6 +54,18 @@ final class AutonomousLearningPipelineTest extends TestCase
             ]);
         }
 
+        // Directional proxy labels require an immutable signal with an actual trade plan.
+        SignalRecord::query()->create([
+            'id' => (string) Uuid::uuid4(), 'exchange' => 'bybit', 'category' => 'linear',
+            'symbol' => $symbol, 'strategy_id' => 'trend_pullback', 'strategy_version' => '1.0.0',
+            'timeframe' => '15', 'side' => 'BUY', 'quality_class' => 'A', 'score' => 85,
+            'entry_low' => '60400', 'entry_high' => '60450', 'stop_loss' => '59000',
+            'take_profit_1' => '62000', 'take_profit_2' => '63000',
+            'decision_time' => $t0->addMinutes(20 * 15), 'candle_close_time' => $t0->addMinutes(20 * 15),
+            'expires_at' => $t0->addMinutes(22 * 15), 'maximum_holding_minutes' => 240,
+            'reasons' => [], 'risks' => [], 'indicator_snapshot' => [], 'contract' => [], 'schema_version' => '1.0.0',
+        ]);
+
         // 2. Feature store assembles point-in-time feature snapshot
         $featureStore = app(LearningFeatureStoreService::class);
         $snapshot = $featureStore->assembleSnapshot(
@@ -67,14 +82,14 @@ final class AutonomousLearningPipelineTest extends TestCase
         $this->assertArrayHasKey('recent_volatility', $snapshot->features);
         $this->assertTrue($snapshot->data_quality['no_look_ahead_verified']);
 
-        // 3. Seed additional matured snapshots so training threshold (10) is satisfied
+        // 3. Seed a complete, causal cohort above the 12-observation training threshold
         for ($j = 0; $j < 15; $j++) {
             LearningFeatureSnapshotRecord::query()->create([
                 'id' => (string) Uuid::uuid5(Uuid::NAMESPACE_URL, "snap-matured-{$j}"),
                 'symbol' => $symbol,
                 'timeframe' => '15',
                 'decision_time' => $t0->addMinutes($j * 15),
-                'available_at' => $t0->addMinutes($j * 15 + 15),
+                'available_at' => $t0->addMinutes($j * 15),
                 'feature_schema_version' => '1.0.0',
                 'strategy_id' => 'baseline',
                 'regime' => 'BULLISH_TREND',
@@ -91,7 +106,8 @@ final class AutonomousLearningPipelineTest extends TestCase
                 'label_r_multiple' => $j % 2 === 0 ? 1.87 : -1.13,
                 'outcome_at' => $t0->addMinutes(($j + 4) * 15),
                 'data_quality' => [
-                    'exchange' => 'bybit',
+                    'exchange' => 'bybit', 'category' => 'linear', 'side' => 'BUY',
+                    'strategy_version' => $baselineVersion, 'label_policy_version' => 'SIGNAL_PROXY_V2',
                     'candles_evaluated' => 20,
                     'missing_bars' => 0,
                     'no_look_ahead_verified' => true,
@@ -99,11 +115,11 @@ final class AutonomousLearningPipelineTest extends TestCase
             ]);
         }
 
-        // 4. Enable auto_promote_paper in autonomy settings for test
+        // 4. Enable research capabilities while retaining the production drawdown limit
         $autonomy = app(AutonomyPermissionService::class);
         $autonomy->updateSettings(
-            capabilities: ['auto_promote_paper' => true, 'discover_hypotheses' => true, 'retrain_models' => true],
-            limits: ['max_allowed_drawdown_percent' => 12.0],
+            capabilities: ['auto_promote_paper' => false, 'discover_hypotheses' => true, 'retrain_models' => true],
+            limits: ['max_allowed_drawdown_percent' => 5.0],
             actor: 'USER_OPERATOR'
         );
 
@@ -112,16 +128,17 @@ final class AutonomousLearningPipelineTest extends TestCase
         $job = new ProcessAutonomousLearningJob;
         app()->call([$job, 'handle']);
 
-        // 6. Assert machine learning model was trained and champion artifact created
-        $activeModel = LearningModelArtifactRecord::query()
+        // 6. Proxy training produces research candidates without active trading authority
+        $proxyModel = LearningModelArtifactRecord::query()
             ->where('target_event', 'TP_BEFORE_SL')
-            ->where('name', "Logistic_TP_BEFORE_SL_{$symbol}")
-            ->where('status', 'ACTIVE')
+            ->where('name', LearningPredictorService::scopedModelName('TP_BEFORE_SL', $symbol, 'bybit', strategyVersion: $baselineVersion))
+            ->where('status', 'CANDIDATE')
             ->first();
 
-        $this->assertNotNull($activeModel);
-        $this->assertNotNull($activeModel->weights);
-        $this->assertArrayHasKey('brier_score', $activeModel->metrics);
+        $this->assertNotNull($proxyModel);
+        $this->assertNotNull($proxyModel->weights);
+        $this->assertArrayHasKey('brier_score', $proxyModel->metrics);
+        $this->assertFalse(LearningModelArtifactRecord::query()->where('status', 'ACTIVE')->exists());
 
         // 7. Assert strategy candidate was evolved and evaluated
         $candidate = LearningCandidateStrategyRecord::query()->first();
@@ -134,7 +151,7 @@ final class AutonomousLearningPipelineTest extends TestCase
         $auditCount = AutonomyApprovalEventRecord::query()->count();
         $this->assertGreaterThan(0, $auditCount);
 
-        // 9. Assert subsequent decision is evaluated and attributed to the active model artifact
+        // 9. A proxy candidate cannot masquerade as an active advisory model
         $advisory = app(ModelAdvisoryService::class);
         $decision = new SignalDecision(
             id: 'test-advisory-decision',
@@ -154,7 +171,7 @@ final class AutonomousLearningPipelineTest extends TestCase
             reasons: ['test_setup'],
             risks: [],
             indicatorSnapshot: [],
-            strategyVersion: '1.0.0',
+            strategyVersion: $baselineVersion,
             schemaVersion: '1.0.0'
         );
 
@@ -168,7 +185,10 @@ final class AutonomousLearningPipelineTest extends TestCase
         ]);
 
         $this->assertArrayHasKey('model_advisory', $advised->indicatorSnapshot);
-        $this->assertSame($activeModel->id, $advised->indicatorSnapshot['model_advisory']['model_id']);
+        $this->assertSame('NO_ACTIVE_MODEL', $advised->indicatorSnapshot['model_advisory']['status']);
+        $this->assertFalse($advised->indicatorSnapshot['model_advisory']['eligible_for_advisory']);
+        $this->assertNull($advised->indicatorSnapshot['model_advisory']['calibrated_probability']);
+        $this->assertSame('CANDIDATE', $proxyModel->fresh()->status);
         $this->assertArrayHasKey('calibrated_probability', $advised->indicatorSnapshot['model_advisory']);
     }
 
@@ -212,7 +232,7 @@ final class AutonomousLearningPipelineTest extends TestCase
                 'symbol' => $symbol,
                 'timeframe' => '15',
                 'decision_time' => $decTime,
-                'available_at' => $decTime->addMinutes(15),
+                'available_at' => $decTime,
                 'feature_schema_version' => '1.0.0',
                 'strategy_id' => 'baseline',
                 'regime' => 'BULLISH_TREND',
@@ -229,7 +249,8 @@ final class AutonomousLearningPipelineTest extends TestCase
                 'label_r_multiple' => $j % 2 === 0 ? 1.87 : -1.13,
                 'outcome_at' => $outcomeTime,
                 'data_quality' => [
-                    'exchange' => 'bybit',
+                    'exchange' => 'bybit', 'category' => 'linear', 'side' => 'BUY',
+                    'strategy_version' => 'UNVERSIONED', 'label_policy_version' => 'SIGNAL_PROXY_V2',
                     'candles_evaluated' => 20,
                     'missing_bars' => 0,
                     'no_look_ahead_verified' => true,

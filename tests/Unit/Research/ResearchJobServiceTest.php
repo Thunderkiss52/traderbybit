@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Tests\Unit\Research;
 
+use App\Exchanges\Infrastructure\Persistence\ExchangeRecord;
 use App\Research\Application\ResearchJobService;
 use App\Research\Infrastructure\Persistence\ResearchJobRecord;
 use Carbon\CarbonImmutable;
@@ -231,7 +232,7 @@ final class ResearchJobServiceTest extends TestCase
     public function test_rejects_go_kind_missing_exchange(): void
     {
         $this->expectException(InvalidArgumentException::class);
-        $this->expectExceptionMessage("Research job kind 'BACKTEST' requires explicit exchange provenance ('bybit' or 'binance').");
+        $this->expectExceptionMessage("Research job kind 'BACKTEST' requires explicit source exchange provenance.");
         $this->service->submitJob([
             'kind' => 'BACKTEST',
             'payload' => ['symbol' => 'BTCUSDT'],
@@ -306,11 +307,22 @@ final class ResearchJobServiceTest extends TestCase
     public function test_rejects_unsupported_exchange_identity(): void
     {
         $this->expectException(InvalidArgumentException::class);
-        $this->expectExceptionMessage("Research job exchange 'okx' is unsupported. Strictly 'bybit' or 'binance' required.");
+        $this->expectExceptionMessage("Research job exchange 'unknown_venue' is not registered.");
         $this->service->submitJob([
             'kind' => 'BACKTEST',
-            'payload' => ['exchange' => 'okx'],
+            'payload' => ['exchange' => 'unknown_venue'],
         ]);
+    }
+
+    public function test_registered_additional_and_dynamic_exchange_identities_are_accepted(): void
+    {
+        ExchangeRecord::query()->create(['id' => 'research_fixture', 'name' => 'Isolated Research Venue', 'market_type' => 'spot', 'capabilities' => []]);
+        foreach ([' OKX ' => 'okx', 'research_fixture' => 'research_fixture'] as $input => $normalized) {
+            $job = $this->service->submitJob(['kind' => 'BACKTEST', 'payload' => ['exchange' => $input]]);
+            self::assertSame($normalized, $job->payload['exchange']);
+            self::assertSame($normalized, $job->payload['exchange_id']);
+            self::assertSame('QUEUED', $job->status);
+        }
     }
 
     public function test_rejects_empty_or_non_string_exchange(): void

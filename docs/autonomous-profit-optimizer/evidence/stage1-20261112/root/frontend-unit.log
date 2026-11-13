@@ -1,0 +1,608 @@
+
+> test
+> node --test tests/*.test.js
+
+TAP version 13
+# Subtest: dashboard provides exchange-qualified account selection and aggregate vs account distinction
+ok 1 - dashboard provides exchange-qualified account selection and aggregate vs account distinction
+  ---
+  duration_ms: 1.201508
+  type: 'test'
+  ...
+# Subtest: risk page provides exchange-qualified account selection and prevents stale responses
+ok 2 - risk page provides exchange-qualified account selection and prevents stale responses
+  ---
+  duration_ms: 0.471304
+  type: 'test'
+  ...
+# Subtest: statistics page provides exchange-qualified account selection and prevents stale responses
+ok 3 - statistics page provides exchange-qualified account selection and prevents stale responses
+  ---
+  duration_ms: 0.292516
+  type: 'test'
+  ...
+# Subtest: journal page provides account selection synced with settings store
+ok 4 - journal page provides account selection synced with settings store
+  ---
+  duration_ms: 0.290022
+  type: 'test'
+  ...
+# Subtest: table page provides account filter for signals and positions
+ok 5 - table page provides account filter for signals and positions
+  ---
+  duration_ms: 0.303142
+  type: 'test'
+  ...
+# Subtest: settings store clears account on exchange toggle to prevent cross-exchange contamination
+ok 6 - settings store clears account on exchange toggle to prevent cross-exchange contamination
+  ---
+  duration_ms: 0.330575
+  type: 'test'
+  ...
+# Subtest: dashboard aggregate mode and multi-page exchange reactivity are verified
+ok 7 - dashboard aggregate mode and multi-page exchange reactivity are verified
+  ---
+  duration_ms: 0.732573
+  type: 'test'
+  ...
+# Subtest: candidate lab displays validation lifecycle, evidence metrics and rejection reasons
+ok 8 - candidate lab displays validation lifecycle, evidence metrics and rejection reasons
+  ---
+  duration_ms: 1.234587
+  type: 'test'
+  ...
+# Subtest: settings store provides reactive instrument selection and canonical symbol resolution
+ok 9 - settings store provides reactive instrument selection and canonical symbol resolution
+  ---
+  duration_ms: 2.148329
+  type: 'test'
+  ...
+# Subtest: api service request interceptor sets X-Exchange, X-Instrument, and X-Symbol headers
+ok 10 - api service request interceptor sets X-Exchange, X-Instrument, and X-Symbol headers
+  ---
+  duration_ms: 0.678298
+  type: 'test'
+  ...
+# Subtest: MainLayout provides top-bar global instrument selector alongside exchange selector
+ok 11 - MainLayout provides top-bar global instrument selector alongside exchange selector
+  ---
+  duration_ms: 2.551847
+  type: 'test'
+  ...
+# Subtest: ProfitabilityResearchPage reacts to exchange and instrument changes with scope isolation
+ok 12 - ProfitabilityResearchPage reacts to exchange and instrument changes with scope isolation
+  ---
+  duration_ms: 1.522544
+  type: 'test'
+  ...
+# Subtest: operational pages watch settings.instrument and pass symbol filters to backend
+ok 13 - operational pages watch settings.instrument and pass symbol filters to backend
+  ---
+  duration_ms: 1.608983
+  type: 'test'
+  ...
+# Subtest: exchanges page is routed and listed in drawer navigation
+ok 14 - exchanges page is routed and listed in drawer navigation
+  ---
+  duration_ms: 2.004385
+  type: 'test'
+  ...
+# Subtest: types/index.ts exports complete universal exchange onboarding interfaces
+ok 15 - types/index.ts exports complete universal exchange onboarding interfaces
+  ---
+  duration_ms: 1.538798
+  type: 'test'
+  ...
+# Subtest: api service exports all required exchange onboarding endpoints
+ok 16 - api service exports all required exchange onboarding endpoints
+  ---
+  duration_ms: 0.456553
+  type: 'test'
+  ...
+# Subtest: ExchangesPage enforces mandatory research mode and virtual paper disclaimer
+ok 17 - ExchangesPage enforces mandatory research mode and virtual paper disclaimer
+  ---
+  duration_ms: 0.741437
+  type: 'test'
+  ...
+# Subtest: ExchangesPage supports capability-based lifecycle states and diagnostics
+ok 18 - ExchangesPage supports capability-based lifecycle states and diagnostics
+  ---
+  duration_ms: 0.763038
+  type: 'test'
+  ...
+# Subtest: ExchangesPage provides CSV upload, owner approval, and topology sync dialogs
+ok 19 - ExchangesPage provides CSV upload, owner approval, and topology sync dialogs
+  ---
+  duration_ms: 0.618427
+  type: 'test'
+  ...
+# Subtest: MainLayout provides dynamic navbar exchange selector with live/offline status indicator and aggregate mode
+ok 20 - MainLayout provides dynamic navbar exchange selector with live/offline status indicator and aggregate mode
+  ---
+  duration_ms: 0.691097
+  type: 'test'
+  ...
+# Subtest: settings store provides dynamic exchanges registry and exchange status helper
+ok 21 - settings store provides dynamic exchanges registry and exchange status helper
+  ---
+  duration_ms: 0.48875
+  type: 'test'
+  ...
+# Subtest: ExchangesPage provides strategy compatibility matrix and reconcile action
+ok 22 - ExchangesPage provides strategy compatibility matrix and reconcile action
+  ---
+  duration_ms: 0.876745
+  type: 'test'
+  ...
+# Subtest: types/index.ts exports MarketType and CapabilityStatus interfaces
+ok 23 - types/index.ts exports MarketType and CapabilityStatus interfaces
+  ---
+  duration_ms: 1.313761
+  type: 'test'
+  ...
+# Subtest: api service exports getExchangeCapabilities and getExchangeInstruments
+ok 24 - api service exports getExchangeCapabilities and getExchangeInstruments
+  ---
+  duration_ms: 1.293881
+  type: 'test'
+  ...
+# Subtest: ExchangesPage renders badges for supported market types across target exchanges
+ok 25 - ExchangesPage renders badges for supported market types across target exchanges
+  ---
+  duration_ms: 0.555669
+  type: 'test'
+  ...
+# Subtest: ExchangesPage provides Market Capabilities matrix inspector with explicit status values
+ok 26 - ExchangesPage provides Market Capabilities matrix inspector with explicit status values
+  ---
+  duration_ms: 0.496248
+  type: 'test'
+  ...
+# Subtest: ExchangesPage provides Instrument Discovery dialog with market type selector
+ok 27 - ExchangesPage provides Instrument Discovery dialog with market type selector
+  ---
+  duration_ms: 0.587038
+  type: 'test'
+  ...
+# Subtest: ExchangesPage strictly enforces research and virtual paper disclaimers without live trading status
+ok 28 - ExchangesPage strictly enforces research and virtual paper disclaimers without live trading status
+  ---
+  duration_ms: 0.500473
+  type: 'test'
+  ...
+# Subtest: pattern page is routed and listed
+ok 29 - pattern page is routed and listed
+  ---
+  duration_ms: 1.523121
+  type: 'test'
+  ...
+# Subtest: paginated pattern research uses bounded server requests
+ok 30 - paginated pattern research uses bounded server requests
+  ---
+  duration_ms: 1.516747
+  type: 'test'
+  ...
+# Subtest: pattern UI distinguishes observations from trading signals
+ok 31 - pattern UI distinguishes observations from trading signals
+  ---
+  duration_ms: 0.688375
+  type: 'test'
+  ...
+# Subtest: pattern discovery starts with a safe complete window and explains asynchronous empty states
+ok 32 - pattern discovery starts with a safe complete window and explains asynchronous empty states
+  ---
+  duration_ms: 0.557401
+  type: 'test'
+  ...
+# Subtest: pattern page shows automatic discovery readiness instead of an unexplained empty table
+ok 33 - pattern page shows automatic discovery readiness instead of an unexplained empty table
+  ---
+  duration_ms: 0.500595
+  type: 'test'
+  ...
+# Subtest: pattern page preserves top-level pagination metadata instead of unwrapping it
+ok 34 - pattern page preserves top-level pagination metadata instead of unwrapping it
+  ---
+  duration_ms: 0.337698
+  type: 'test'
+  ...
+# Subtest: pattern page exposes all strategy BUY SELL and SKIP context by symbol
+ok 35 - pattern page exposes all strategy BUY SELL and SKIP context by symbol
+  ---
+  duration_ms: 0.346496
+  type: 'test'
+  ...
+# Subtest: router exposes /research/profitability route mapping to ProfitabilityResearchPage
+ok 36 - router exposes /research/profitability route mapping to ProfitabilityResearchPage
+  ---
+  duration_ms: 1.953978
+  type: 'test'
+  ...
+# Subtest: main layout sidebar contains link to profitability page
+ok 37 - main layout sidebar contains link to profitability page
+  ---
+  duration_ms: 2.106447
+  type: 'test'
+  ...
+# Subtest: profitability research page enforces disclaimers and scope separation
+ok 38 - profitability research page enforces disclaimers and scope separation
+  ---
+  duration_ms: 0.941997
+  type: 'test'
+  ...
+# Subtest: profitability research page includes P-1 slippage attribution and hypothetical counterfactual
+ok 39 - profitability research page includes P-1 slippage attribution and hypothetical counterfactual
+  ---
+  duration_ms: 1.26493
+  type: 'test'
+  ...
+# Subtest: P-1 counterfactual semantics never render unavailable values as zero
+ok 40 - P-1 counterfactual semantics never render unavailable values as zero
+  ---
+  duration_ms: 0.573593
+  type: 'test'
+  ...
+# Subtest: P-1 counterfactual semantics preserve a legitimate zero
+ok 41 - P-1 counterfactual semantics preserve a legitimate zero
+  ---
+  duration_ms: 0.238017
+  type: 'test'
+  ...
+# Subtest: P-1 counterfactual semantics do not trust the legacy reconciled status
+ok 42 - P-1 counterfactual semantics do not trust the legacy reconciled status
+  ---
+  duration_ms: 0.474721
+  type: 'test'
+  ...
+# Subtest: profitability payload validation rejects missing HTTP 200 data and preserves measured zero
+ok 43 - profitability payload validation rejects missing HTTP 200 data and preserves measured zero
+  ---
+  duration_ms: 12.661796
+  type: 'test'
+  ...
+# Subtest: signal explorer defaults to ten rows and unknown profitability is not rendered as 0%
+ok 44 - signal explorer defaults to ten rows and unknown profitability is not rendered as 0%
+  ---
+  duration_ms: 1.088992
+  type: 'test'
+  ...
+# Subtest: quote integrity page is routed and listed in navigation
+ok 45 - quote integrity page is routed and listed in navigation
+  ---
+  duration_ms: 6.281326
+  type: 'test'
+  ...
+# Subtest: status banner enforces mandatory disclaimers and cross-source unavailable panel
+ok 46 - status banner enforces mandatory disclaimers and cross-source unavailable panel
+  ---
+  duration_ms: 0.373402
+  type: 'test'
+  ...
+# Subtest: evidence import enforces SHA-256 disclaimer and no auto-promotion invariant
+ok 47 - evidence import enforces SHA-256 disclaimer and no auto-promotion invariant
+  ---
+  duration_ms: 2.856396
+  type: 'test'
+  ...
+# Subtest: quote integrity main page orchestrates all L1 components
+ok 48 - quote integrity main page orchestrates all L1 components
+  ---
+  duration_ms: 0.429451
+  type: 'test'
+  ...
+# Subtest: quote integrity api service exports all required endpoints and types
+ok 49 - quote integrity api service exports all required endpoints and types
+  ---
+  duration_ms: 0.534965
+  type: 'test'
+  ...
+# Subtest: f22 quote integrity handles error propagation, visible banner, and stale state
+ok 50 - f22 quote integrity handles error propagation, visible banner, and stale state
+  ---
+  duration_ms: 0.455043
+  type: 'test'
+  ...
+# Subtest: unavailable queues are not misreported as empty
+ok 51 - unavailable queues are not misreported as empty
+  ---
+  duration_ms: 1.672594
+  type: 'test'
+  ...
+# Subtest: visual builder produces deterministic EMA/RSI DSL without hosted provider
+ok 52 - visual builder produces deterministic EMA/RSI DSL without hosted provider
+  ---
+  duration_ms: 3.349186
+  type: 'test'
+  ...
+# Subtest: nested visual rules have readable previews and precise version differences
+ok 53 - nested visual rules have readable previews and precise version differences
+  ---
+  duration_ms: 1.004534
+  type: 'test'
+  ...
+# Subtest: types/index.ts exports complete TradingMethod and parameter interfaces
+ok 54 - types/index.ts exports complete TradingMethod and parameter interfaces
+  ---
+  duration_ms: 2.993677
+  type: 'test'
+  ...
+# Subtest: api service exports strategy catalog and exchange assignment endpoints
+ok 55 - api service exports strategy catalog and exchange assignment endpoints
+  ---
+  duration_ms: 0.774921
+  type: 'test'
+  ...
+# Subtest: StrategiesPage provides 50-method catalog tab with Family A-F and type filters
+ok 56 - StrategiesPage provides 50-method catalog tab with Family A-F and type filters
+  ---
+  duration_ms: 1.466868
+  type: 'test'
+  ...
+# Subtest: StrategiesPage displays method cards with honest status badges and blocker callouts
+ok 57 - StrategiesPage displays method cards with honest status badges and blocker callouts
+  ---
+  duration_ms: 0.548772
+  type: 'test'
+  ...
+# Subtest: StrategiesPage provides parameter schemas and diagnostics details dialog
+ok 58 - StrategiesPage provides parameter schemas and diagnostics details dialog
+  ---
+  duration_ms: 0.619509
+  type: 'test'
+  ...
+# Subtest: VisualDefinitionEditor integrates method selection, parameter configuration, and explicit exchange assignment
+ok 59 - VisualDefinitionEditor integrates method selection, parameter configuration, and explicit exchange assignment
+  ---
+  duration_ms: 0.445585
+  type: 'test'
+  ...
+# Subtest: strategy monitor page is routed and listed in drawer navigation
+ok 60 - strategy monitor page is routed and listed in drawer navigation
+  ---
+  duration_ms: 1.557078
+  type: 'test'
+  ...
+# Subtest: strategy monitor enforces research mode and virtual paper disclaimer
+ok 61 - strategy monitor enforces research mode and virtual paper disclaimer
+  ---
+  duration_ms: 1.71865
+  type: 'test'
+  ...
+# Subtest: strategy monitor contains decision explainability, sizing, and timeline panels
+ok 62 - strategy monitor contains decision explainability, sizing, and timeline panels
+  ---
+  duration_ms: 0.721124
+  type: 'test'
+  ...
+# Subtest: strategy monitor shows account-scoped decisions and positions without collapsing financial history
+ok 63 - strategy monitor shows account-scoped decisions and positions without collapsing financial history
+  ---
+  duration_ms: 0.596906
+  type: 'test'
+  ...
+# Subtest: strategy monitor protects against stale filter and timeline responses
+ok 64 - strategy monitor protects against stale filter and timeline responses
+  ---
+  duration_ms: 0.434654
+  type: 'test'
+  ...
+# Subtest: SignalCard renders BUY SELL and SKIP semantics
+ok 65 - SignalCard renders BUY SELL and SKIP semantics
+  ---
+  duration_ms: 1.660512
+  type: 'test'
+  ...
+# Subtest: SignalCard contains entry, SL and both targets
+ok 66 - SignalCard contains entry, SL and both targets
+  ---
+  duration_ms: 0.296001
+  type: 'test'
+  ...
+# Subtest: signal expiration is deterministic at an injected timestamp
+ok 67 - signal expiration is deterministic at an injected timestamp
+  ---
+  duration_ms: 0.268227
+  type: 'test'
+  ...
+# Subtest: position table has a detailed audit route
+ok 68 - position table has a detailed audit route
+  ---
+  duration_ms: 0.2384
+  type: 'test'
+  ...
+# Subtest: position detail exposes partial executions through backend payload
+ok 69 - position detail exposes partial executions through backend payload
+  ---
+  duration_ms: 0.369193
+  type: 'test'
+  ...
+# Subtest: net PnL and portfolio PnL are rendered without frontend calculation
+ok 70 - net PnL and portfolio PnL are rendered without frontend calculation
+  ---
+  duration_ms: 0.336083
+  type: 'test'
+  ...
+# Subtest: equity chart maps backend timestamps and equity values
+ok 71 - equity chart maps backend timestamps and equity values
+  ---
+  duration_ms: 0.246703
+  type: 'test'
+  ...
+# Subtest: finite metric formatting preserves zero and rejects null
+ok 72 - finite metric formatting preserves zero and rejects null
+  ---
+  duration_ms: 17.104171
+  type: 'test'
+  ...
+# Subtest: non-finite metrics are not displayed as numbers
+ok 73 - non-finite metrics are not displayed as numbers
+  ---
+  duration_ms: 0.464927
+  type: 'test'
+  ...
+# Subtest: API errors use a unified human-readable fallback with request IDs
+ok 74 - API errors use a unified human-readable fallback with request IDs
+  ---
+  duration_ms: 0.505088
+  type: 'test'
+  ...
+# Subtest: stale data handling has a configurable threshold
+ok 75 - stale data handling has a configurable threshold
+  ---
+  duration_ms: 0.20612
+  type: 'test'
+  ...
+# Subtest: pagination parameters remain server-side
+ok 76 - pagination parameters remain server-side
+  ---
+  duration_ms: 0.736507
+  type: 'test'
+  ...
+# Subtest: signals filters and debounced search are sent to API
+ok 77 - signals filters and debounced search are sent to API
+  ---
+  duration_ms: 0.184021
+  type: 'test'
+  ...
+# Subtest: UTC timestamps can be converted with an explicit timezone
+ok 78 - UTC timestamps can be converted with an explicit timezone
+  ---
+  duration_ms: 5.473085
+  type: 'test'
+  ...
+# Subtest: Russian and English translations exist
+ok 79 - Russian and English translations exist
+  ---
+  duration_ms: 0.564385
+  type: 'test'
+  ...
+# Subtest: polling reconnect uses bounded exponential backoff
+ok 80 - polling reconnect uses bounded exponential backoff
+  ---
+  duration_ms: 0.535902
+  type: 'test'
+  ...
+# Subtest: research mode warning is globally mounted
+ok 81 - research mode warning is globally mounted
+  ---
+  duration_ms: 0.233113
+  type: 'test'
+  ...
+# Subtest: backtest form queues only a research job and shows status
+ok 82 - backtest form queues only a research job and shows status
+  ---
+  duration_ms: 0.125945
+  type: 'test'
+  ...
+# Subtest: frontend contains no real order or trading action
+ok 83 - frontend contains no real order or trading action
+  ---
+  duration_ms: 0.304103
+  type: 'test'
+  ...
+# Subtest: all required application routes exist
+ok 84 - all required application routes exist
+  ---
+  duration_ms: 0.231943
+  type: 'test'
+  ...
+# Subtest: research lab uses paginated real API results and labels missing evaluations
+ok 85 - research lab uses paginated real API results and labels missing evaluations
+  ---
+  duration_ms: 0.188012
+  type: 'test'
+  ...
+# Subtest: research lab provides a safe fast-start window and explains asynchronous evaluation
+ok 86 - research lab provides a safe fast-start window and explains asynchronous evaluation
+  ---
+  duration_ms: 0.235683
+  type: 'test'
+  ...
+# Subtest: research lab declares all thirteen strategies and the four-timeframe hierarchy
+ok 87 - research lab declares all thirteen strategies and the four-timeframe hierarchy
+  ---
+  duration_ms: 0.200841
+  type: 'test'
+  ...
+# Subtest: dashboard displays actual account summary and paper-return fields
+ok 88 - dashboard displays actual account summary and paper-return fields
+  ---
+  duration_ms: 0.258328
+  type: 'test'
+  ...
+# Subtest: statistics expose backend data quality flags, not nonexistent aliases
+ok 89 - statistics expose backend data quality flags, not nonexistent aliases
+  ---
+  duration_ms: 0.128816
+  type: 'test'
+  ...
+# Subtest: period PnL chart maps persisted net and cumulative PnL without fabricated points
+ok 90 - period PnL chart maps persisted net and cumulative PnL without fabricated points
+  ---
+  duration_ms: 0.162997
+  type: 'test'
+  ...
+# Subtest: statistics charts guard against non-array payloads and PHP incomplete classes
+ok 91 - statistics charts guard against non-array payloads and PHP incomplete classes
+  ---
+  duration_ms: 0.274544
+  type: 'test'
+  ...
+# Subtest: dashboard explains real SKIP reasons instead of hiding strategy evaluations
+ok 92 - dashboard explains real SKIP reasons instead of hiding strategy evaluations
+  ---
+  duration_ms: 0.479458
+  type: 'test'
+  ...
+# Subtest: all ledger pages request ten records and use server-side pagination
+ok 93 - all ledger pages request ten records and use server-side pagination
+  ---
+  duration_ms: 0.457284
+  type: 'test'
+  ...
+# Subtest: statistics paginates equity, R distribution, and reporting periods
+ok 94 - statistics paginates equity, R distribution, and reporting periods
+  ---
+  duration_ms: 0.150565
+  type: 'test'
+  ...
+# Subtest: daily paper performance is bounded, timezone aware, and disposes charts
+ok 95 - daily paper performance is bounded, timezone aware, and disposes charts
+  ---
+  duration_ms: 0.337114
+  type: 'test'
+  ...
+# Subtest: market chart limits history and permits window navigation
+ok 96 - market chart limits history and permits window navigation
+  ---
+  duration_ms: 0.160532
+  type: 'test'
+  ...
+# Subtest: backtest details use bounded independent endpoints and lazy optimizations
+ok 97 - backtest details use bounded independent endpoints and lazy optimizations
+  ---
+  duration_ms: 0.13591
+  type: 'test'
+  ...
+# Subtest: research monitoring page exposes compute workers and tasks management
+ok 98 - research monitoring page exposes compute workers and tasks management
+  ---
+  duration_ms: 0.152335
+  type: 'test'
+  ...
+# Subtest: api client exposes research job management endpoints
+ok 99 - api client exposes research job management endpoints
+  ---
+  duration_ms: 0.172191
+  type: 'test'
+  ...
+1..99
+# tests 99
+# suites 0
+# pass 99
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 800.158597

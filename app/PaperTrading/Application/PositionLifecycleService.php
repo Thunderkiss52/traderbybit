@@ -731,10 +731,13 @@ final readonly class PositionLifecycleService
         $halt = BigDecimal::min(BigDecimal::of((string) $this->config['drawdown']['halt_percent']), BigDecimal::of('10'));
         $block = BigDecimal::min(BigDecimal::of((string) $this->config['drawdown']['block_new_entries_percent']), BigDecimal::of('5'));
         $status = $account->status;
+        $riskBlockOrigin = null;
         if ($drawdown->isGreaterThanOrEqualTo($halt)) {
             $status = 'HALTED';
+            $riskBlockOrigin = 'RISK_EMERGENCY';
         } elseif ($drawdown->isGreaterThanOrEqualTo($block) && $status !== 'HALTED') {
             $status = 'BLOCKED';
+            $riskBlockOrigin = 'RISK_DRAWDOWN';
         }
 
         $payload = [
@@ -747,6 +750,9 @@ final readonly class PositionLifecycleService
             'status' => $status,
             'drawdown_override' => false,
         ];
+        if ($riskBlockOrigin !== null) {
+            $payload['execution_block_origin'] = $riskBlockOrigin;
+        }
         if ($reservedRisk !== null) {
             $payload['reserved_risk'] = (string) BigDecimal::max($reservedRisk, BigDecimal::zero());
         }

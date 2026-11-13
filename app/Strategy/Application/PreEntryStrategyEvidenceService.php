@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Strategy\Application;
 
+use App\HistoricalData\UniversalAcquisitionService;
 use App\PaperTrading\Infrastructure\Persistence\VirtualPositionRecord;
 use Brick\Math\BigDecimal;
 use Brick\Math\RoundingMode;
@@ -39,7 +40,9 @@ final class PreEntryStrategyEvidenceService
         string $exchangeId,
         string $symbol,
         string $side,
-        DateTimeImmutable $asOf
+        DateTimeImmutable $asOf,
+        ?string $strategyVersion = null,
+        ?string $sourceTimeframe = null,
     ): array {
         if (! Schema::hasTable('virtual_positions') || ! Schema::hasTable('paper_accounts')) {
             return $this->insufficientEvidenceResult('INSUFFICIENT_SAMPLE_SIZE');
@@ -56,28 +59,30 @@ final class PreEntryStrategyEvidenceService
                     })
                     ->where('exchange_id', $exchangeId);
             })
+            ->where('symbol', strtoupper($symbol))
+            ->where('side', strtoupper($side))
+            ->when($strategyVersion !== null, fn ($query) => $query->where('strategy_version', $strategyVersion))
+            ->when($sourceTimeframe !== null, function ($query) use ($sourceTimeframe): void {
+                $interval = UniversalAcquisitionService::normalizeInterval($sourceTimeframe);
+                $aliases = array_unique([$interval, UniversalAcquisitionService::displayInterval($interval), strtolower(trim($sourceTimeframe))]);
+                $query->whereExists(function ($signals) use ($aliases): void {
+                    $signals->selectRaw('1')->from('signals')
+                        ->whereColumn('signals.id', 'virtual_positions.signal_id')
+                        ->whereIn('signals.timeframe', $aliases);
+                });
+            })
             ->whereNotNull('closed_at')
+            ->where('funding_complete', true)
             ->where('closed_at', '<', $asOf)
+            ->where('created_at', '<=', $asOf)
+            ->where('updated_at', '<=', $asOf)
+            ->orderByDesc('closed_at')
+            ->limit(1000)
             ->get(['id', 'side', 'net_pnl', 'gross_pnl', 'fees', 'funding', 'r_multiple', 'closed_at']);
 
-        // 2. If venue-specific sample is small (< 10), broaden to cross-venue evidence for this strategy prior to asOf
-        if ($positions->count() < 10) {
-            $positions = VirtualPositionRecord::query()
-                ->whereIn('paper_account_id', function ($query) use ($strategyId): void {
-                    $query->select('id')
-                        ->from('paper_accounts')
-                        ->where(function ($q) use ($strategyId): void {
-                            $q->where('strategy_id', $strategyId)
-                                ->orWhere('primary_strategy_id', $strategyId);
-                        });
-                })
-                ->whereNotNull('closed_at')
-                ->where('closed_at', '<', $asOf)
-                ->get(['id', 'side', 'net_pnl', 'gross_pnl', 'fees', 'funding', 'r_multiple', 'closed_at']);
-        }
-
+        // Never augment a small cohort with data from other venues, symbols, or directions.
         $sampleSize = $positions->count();
-        if ($sampleSize < 5) {
+        if ($sampleSize < 10) {
             return $this->insufficientEvidenceResult('INSUFFICIENT_SAMPLE_SIZE', $sampleSize);
         }
 
@@ -120,7 +125,7 @@ final class PreEntryStrategyEvidenceService
         $winRate = (float) round($winCount / $sampleSize, 4);
         $profitFactor = $grossLoss->isPositive()
             ? (float) round($grossProfit->dividedBy($grossLoss, 4, RoundingMode::HalfEven)->toFloat(), 2)
-            : ($grossProfit->isPositive() ? 999.99 : null);
+            : null;
         $averageR = $rCount > 0 ? (float) round($rTotal->dividedBy($rCount, 4, RoundingMode::HalfEven)->toFloat(), 2) : null;
 
         // Aggregate directional cohort metrics
@@ -147,7 +152,7 @@ final class PreEntryStrategyEvidenceService
             $dirWinRate = (float) round($dirWins / $dirSampleSize, 4);
             $dirProfitFactor = $dirGrossLoss->isPositive()
                 ? (float) round($dirGrossProfit->dividedBy($dirGrossLoss, 4, RoundingMode::HalfEven)->toFloat(), 2)
-                : ($dirGrossProfit->isPositive() ? 999.99 : null);
+                : null;
         }
 
         $rejectionReason = null;
@@ -156,7 +161,7 @@ final class PreEntryStrategyEvidenceService
         if ($isStale) {
             $status = 'STALE';
             $rejectionReason = 'STALE_PERFORMANCE_EVIDENCE';
-        } elseif ($expectedNetEdge < 0.0) {
+        } elseif ($expectedNetEdge <= 0.0) {
             $status = 'NEGATIVE_EDGE';
             $rejectionReason = 'INSUFFICIENT_VALIDATED_EDGE';
         }

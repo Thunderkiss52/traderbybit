@@ -15,6 +15,7 @@ use App\Strategy\Infrastructure\Persistence\SignalRecord;
 use Brick\Math\BigDecimal;
 use Carbon\CarbonImmutable;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\DB;
 use Ramsey\Uuid\Uuid;
 use Tests\TestCase;
 
@@ -27,6 +28,35 @@ final class SignalQualityAnalyticsAndMultiTimeframeProfitabilityTest extends Tes
         parent::setUp();
         config(['paper.topology.auto_sync_enabled' => false]);
         $this->app->make(PaperTopologySynchronizer::class)->sync(true);
+    }
+
+    public function test_empty_signal_cohort_has_undefined_metrics_without_server_error(): void
+    {
+        // A never-used strategy on a registered exchange has no signals,
+        // including for 1m/3m/5m/30m/60m. Empty timeframe expectancy must
+        // never be sent to BigDecimal::of('') in diagnostics.
+        $response = $this->getJson('/api/v1/research/profitability/signal-analytics?exchange=bybit&strategy=does_not_exist');
+        $response->assertOk()
+            ->assertJsonPath('data.overview.total_signals', 0)
+            ->assertJsonPath('data.overview.outcome_distribution.good_percent', null)
+            ->assertJsonPath('data.overview.win_rate', null)
+            ->assertJsonPath('data.overview.profit_factor', null);
+
+        self::assertSame([], $response->json('data.diagnostics'));
+        $rows = $response->json('data.timeframe_comparison');
+        self::assertCount(6, $rows);
+        foreach ($rows as $row) {
+            self::assertSame(0, $row['signals']);
+            self::assertNull($row['expectancy']);
+            self::assertNull($row['win_rate']);
+        }
+    }
+
+    public function test_signal_explorer_uses_ten_rows_by_default(): void
+    {
+        $this->getJson('/api/v1/research/profitability/signal-explorer')
+            ->assertOk()
+            ->assertJsonPath('per_page', 10);
     }
 
     public function test_signal_analytics_endpoint_returns_six_canonical_timeframes(): void
@@ -176,7 +206,477 @@ final class SignalQualityAnalyticsAndMultiTimeframeProfitabilityTest extends Tes
         self::assertStringContainsString('ETHUSDT', $content);
     }
 
-    private function seedSampleSignalCohorts(): void
+    public function test_strategy_and_timeframe_filters_do_not_leak_other_signal_positions(): void
+    {
+        $this->seedSampleSignalCohorts();
+
+        // Introduce a second strategy on the same exchange, symbol and timeframe
+        // with a deliberately different PnL to expose independently scoped
+        // signal/position queries.
+        $source = SignalRecord::query()->where('exchange', 'bybit')->where('retrospective_outcome', 'GOOD')->firstOrFail();
+        $sourcePosition = VirtualPositionRecord::query()->where('signal_id', $source->id)->firstOrFail();
+        $baselineAccount = PaperAccountRecord::query()->where('exchange_id', 'bybit')
+            ->where('primary_strategy_id', 'baseline')->firstOrFail();
+
+        $otherSignal = $source->replicate();
+        $otherSignal->id = Uuid::uuid4()->toString();
+        $otherSignal->strategy_id = 'baseline';
+        $otherSignal->decision_time = CarbonImmutable::now('UTC')->subMinutes(180);
+        $otherSignal->candle_close_time = $otherSignal->decision_time;
+        $otherSignal->save();
+
+        $otherPosition = $sourcePosition->replicate();
+        $otherPosition->id = Uuid::uuid4()->toString();
+        $otherPosition->signal_id = $otherSignal->id;
+        $otherPosition->paper_account_id = $baselineAccount->id;
+        $otherPosition->net_pnl = '999.00000000';
+        $otherPosition->save();
+
+        $trend = $this->getJson('/api/v1/research/profitability/signal-analytics?exchange=bybit&strategy=trend_pullback');
+        $trend->assertOk();
+        self::assertSame(5, $trend->json('data.overview.total_signals'));
+        self::assertSame(1, $trend->json('data.overview.executed_trades'));
+        self::assertSame('50.00', (string) BigDecimal::of((string) $trend->json('data.overview.overall_net_pnl'))->toScale(2));
+
+        $baseline = $this->getJson('/api/v1/research/profitability/signal-analytics?exchange=bybit&strategy=baseline');
+        $baseline->assertOk();
+        self::assertSame(1, $baseline->json('data.overview.total_signals'));
+        self::assertSame('999.00', (string) BigDecimal::of((string) $baseline->json('data.overview.overall_net_pnl'))->toScale(2));
+
+        // The 3m signal is rejected/not executed. No 15m or 5m PnL can leak.
+        $timeframe = $this->getJson('/api/v1/research/profitability/signal-analytics?exchange=bybit&timeframe=3m');
+        $timeframe->assertOk();
+        self::assertSame(1, $timeframe->json('data.overview.total_signals'));
+        self::assertSame(0, $timeframe->json('data.overview.executed_trades'));
+        self::assertSame('0', (string) $timeframe->json('data.overview.overall_net_pnl'));
+        self::assertNull($timeframe->json('data.overview.max_drawdown'));
+    }
+
+    public function test_signal_detail_displays_historical_recorded_risk_decision_not_current_policy(): void
+    {
+        $this->seedSampleSignalCohorts();
+        $signal = SignalRecord::query()->where('exchange', 'bybit')->where('timeframe', '30m')->firstOrFail();
+        $account = PaperAccountRecord::query()->where('exchange_id', 'bybit')
+            ->where('primary_strategy_id', 'trend_pullback')->firstOrFail();
+
+        RiskDecisionRecord::query()->create([
+            'id' => Uuid::uuid4()->toString(),
+            'paper_account_id' => $account->id,
+            'signal_id' => $signal->id,
+            'risk_version' => 'historical.1',
+            'signal_quality' => 'HIGH',
+            'trade_risk' => 'LOW',
+            'allowed' => false,
+            'reasons' => ['ACCOUNT_BLOCKED'],
+            'snapshot' => [
+                'gate_decision' => 'REJECTED',
+                'expected_net_edge' => 0.7,
+                'gate_version' => 'historical.1',
+            ],
+            'decided_at' => CarbonImmutable::now('UTC')->subMinutes(50),
+        ]);
+
+        $response = $this->getJson("/api/v1/research/profitability/signal-explorer/{$signal->id}");
+        $response->assertOk();
+        self::assertSame('REJECTED', $response->json('data.gate_decision'));
+        self::assertFalse($response->json('data.gate_allowed'));
+        self::assertSame(['ACCOUNT_BLOCKED'], $response->json('data.gate_reasons'));
+        self::assertSame('PERSISTED_RISK_DECISION', $response->json('data.gate_evidence_source'));
+    }
+
+    public function test_missing_trade_evidence_never_invents_best_exchange_or_timeframe(): void
+    {
+        $response = $this->getJson('/api/v1/research/profitability/signal-analytics?exchange=okx');
+        $response->assertOk();
+
+        self::assertNull($response->json('data.overview.best_exchange'));
+        self::assertNull($response->json('data.overview.worst_exchange'));
+        self::assertNull($response->json('data.overview.best_timeframe'));
+        self::assertNull($response->json('data.overview.worst_timeframe'));
+    }
+
+    public function test_gate_and_execution_status_filters_are_applied_to_real_signal_cohorts(): void
+    {
+        $this->seedSampleSignalCohorts();
+
+        $eligible = $this->getJson('/api/v1/research/profitability/signal-analytics?exchange=bybit&gate_decision=ELIGIBLE');
+        $eligible->assertOk();
+        self::assertSame(1, $eligible->json('data.overview.total_signals'));
+        self::assertSame('50.00', (string) BigDecimal::of((string) $eligible->json('data.overview.overall_net_pnl'))->toScale(2));
+
+        $executed = $this->getJson('/api/v1/research/profitability/signal-analytics?exchange=bybit&execution_status=EXECUTED');
+        $executed->assertOk();
+        self::assertSame(1, $executed->json('data.overview.total_signals'));
+        self::assertSame(1, $executed->json('data.overview.executed_trades'));
+
+        $pending = $this->getJson('/api/v1/research/profitability/signal-analytics?exchange=bybit&gate_decision=PENDING');
+        $pending->assertOk();
+        self::assertSame(4, $pending->json('data.overview.total_signals'));
+        self::assertSame(0, $pending->json('data.overview.executed_trades'));
+
+        $nonsense = $this->getJson('/api/v1/research/profitability/signal-analytics?exchange=bybit&gate_decision=NOT_A_REAL_STATE');
+        $nonsense->assertOk();
+        self::assertSame(0, $nonsense->json('data.overview.total_signals'));
+
+        $unknownVenue = $this->getJson('/api/v1/research/profitability/signal-analytics?exchange=unregistered_fake_exchange');
+        $unknownVenue->assertStatus(422);
+    }
+
+    public function test_rejection_count_requires_persisted_risk_decision(): void
+    {
+        $this->seedSampleSignalCohorts();
+
+        // Historical rejected signals are not inferred from a missing position.
+        $initial = $this->getJson('/api/v1/research/profitability/signal-analytics?exchange=bybit');
+        $initial->assertOk();
+        self::assertSame(0, $initial->json('data.overview.rejected_signals'));
+
+        $signal = SignalRecord::query()->where('exchange', 'bybit')->where('timeframe', '30m')->firstOrFail();
+        $account = PaperAccountRecord::query()->where('exchange_id', 'bybit')
+            ->where('primary_strategy_id', 'trend_pullback')->firstOrFail();
+        RiskDecisionRecord::query()->create([
+            'id' => Uuid::uuid4()->toString(),
+            'paper_account_id' => $account->id,
+            'signal_id' => $signal->id,
+            'risk_version' => 'rejected-test',
+            'allowed' => false,
+            'reasons' => ['ACCOUNT_BLOCKED'],
+            'snapshot' => ['gate_decision' => 'REJECTED'],
+            'decided_at' => CarbonImmutable::now('UTC'),
+        ]);
+
+        $response = $this->getJson('/api/v1/research/profitability/signal-analytics?exchange=bybit');
+        $response->assertOk();
+        self::assertSame(1, $response->json('data.overview.rejected_signals'));
+        $matrix = collect($response->json('data.quality_risk_matrix'));
+        self::assertSame(1, $matrix->sum('rejected'));
+
+        $rejected = $this->getJson('/api/v1/research/profitability/signal-analytics?exchange=bybit&execution_status=REJECTED');
+        $rejected->assertOk();
+        self::assertSame(1, $rejected->json('data.overview.total_signals'));
+        self::assertSame(0, $rejected->json('data.overview.executed_trades'));
+    }
+
+    public function test_shared_signal_multiple_accounts_are_not_collapsed_in_financial_comparisons(): void
+    {
+        $this->seedSampleSignalCohorts();
+        $signal = SignalRecord::query()->where('exchange', 'bybit')->where('retrospective_outcome', 'GOOD')->firstOrFail();
+        $original = VirtualPositionRecord::query()->where('signal_id', $signal->id)->firstOrFail();
+        $secondAccount = PaperAccountRecord::query()->where('exchange_id', 'bybit')
+            ->where('primary_strategy_id', 'baseline')->firstOrFail();
+
+        $second = $original->replicate();
+        $second->id = Uuid::uuid4()->toString();
+        $second->paper_account_id = $secondAccount->id;
+        $second->gross_pnl = '8.00000000';
+        $second->fees = '0.75000000';
+        $second->funding = '0';
+        $second->net_pnl = '7.25000000';
+        $second->save();
+
+        $response = $this->getJson('/api/v1/research/profitability/signal-analytics?exchange=bybit');
+        $response->assertOk();
+        $overview = $response->json('data.overview');
+        self::assertSame(2, $overview['executed_trades']);
+        self::assertSame(2, $overview['closed_trades']);
+        self::assertSame('57.25', (string) BigDecimal::of($overview['overall_net_pnl'])->toScale(2));
+
+        $exchange = collect($response->json('data.exchange_comparison'))->firstWhere('exchange', 'bybit');
+        self::assertSame(2, $exchange['executed']);
+        self::assertSame('57.25', (string) BigDecimal::of($exchange['net_pnl'])->toScale(2));
+        $strategy = collect($response->json('data.strategy_comparison'))->firstWhere('strategy', 'trend_pullback');
+        self::assertSame(2, $strategy['executed']);
+        self::assertSame('57.25', (string) BigDecimal::of($strategy['net_pnl'])->toScale(2));
+        $timeframe = collect($response->json('data.timeframe_comparison'))->firstWhere('timeframe', '15m');
+        self::assertSame(2, $timeframe['executed']);
+        self::assertSame('57.25', (string) BigDecimal::of($timeframe['net_pnl'])->toScale(2));
+        $matrix = collect($response->json('data.quality_risk_matrix'))
+            ->first(fn (array $row) => $row['quality'] === 'HIGH' && $row['trade_risk'] === 'LOW');
+        self::assertSame(2, $matrix['executed']);
+        self::assertSame('57.25', (string) BigDecimal::of($matrix['net_pnl'])->toScale(2));
+
+        $explorer = $this->getJson('/api/v1/research/profitability/signal-explorer?exchange=bybit');
+        $explorer->assertOk();
+        $row = collect($explorer->json('data'))->firstWhere('id', $signal->id);
+        self::assertSame(2, $row['position_count']);
+        self::assertSame('57.25', (string) BigDecimal::of($row['net_pnl'])->toScale(2));
+
+        $detail = $this->getJson("/api/v1/research/profitability/signal-explorer/{$signal->id}");
+        $detail->assertOk();
+        self::assertSame(2, $detail->json('data.position_count'));
+        self::assertCount(2, $detail->json('data.positions'));
+        self::assertNull($detail->json('data.position')); // Never display a random account as the only execution.
+
+        $risk = RiskDecisionRecord::query()->where('signal_id', $signal->id)->firstOrFail();
+        $secondRisk = $risk->replicate();
+        $secondRisk->id = Uuid::uuid4()->toString();
+        $secondRisk->paper_account_id = $secondAccount->id;
+        $secondRisk->allowed = false;
+        $secondRisk->reasons = ['ACCOUNT_BLOCKED'];
+        $secondRisk->snapshot = ['gate_decision' => 'REJECTED'];
+        $secondRisk->save();
+
+        $detail = $this->getJson("/api/v1/research/profitability/signal-explorer/{$signal->id}");
+        $detail->assertOk();
+        self::assertSame('MULTIPLE_ACCOUNTS', $detail->json('data.gate_decision'));
+        self::assertCount(2, $detail->json('data.risk_decisions'));
+        self::assertNull($detail->json('data.risk_decision')); // No arbitrary account risk verdict.
+    }
+
+    public function test_partially_closed_position_counts_posted_realized_pnl_but_not_as_closed_win(): void
+    {
+        $this->seedSampleSignalCohorts();
+        $position = VirtualPositionRecord::query()->where('exchange_id', 'bybit')->firstOrFail();
+        $position->status = PositionStatus::PartiallyClosed->value;
+        $position->net_pnl = '12.00000000';
+        $position->gross_pnl = '14.00000000';
+        $position->fees = '2.00000000';
+        $position->funding = '0';
+        $position->remaining_quantity = '0.05';
+        $position->closed_at = null;
+        $position->save();
+
+        $response = $this->getJson('/api/v1/research/profitability/signal-analytics?exchange=bybit');
+        $response->assertOk();
+        self::assertSame(1, $response->json('data.overview.executed_trades'));
+        self::assertSame(0, $response->json('data.overview.closed_trades'));
+        self::assertSame('12.00', (string) BigDecimal::of((string) $response->json('data.overview.overall_net_pnl'))->toScale(2));
+        self::assertSame('POSTED_REALIZED_TO_DATE_EXCLUDES_UNREALIZED', $response->json('data.overview.pnl_scope'));
+        $timeframe = collect($response->json('data.timeframe_comparison'))->firstWhere('timeframe', '15m');
+        self::assertSame(0, $timeframe['closed']);
+        self::assertSame('12.00', (string) BigDecimal::of((string) $timeframe['net_pnl'])->toScale(2));
+
+        $signal = SignalRecord::query()->where('exchange', 'bybit')->where('retrospective_outcome', 'GOOD')->firstOrFail();
+        $explorer = $this->getJson('/api/v1/research/profitability/signal-explorer?exchange=bybit');
+        $explorer->assertOk();
+        $row = collect($explorer->json('data'))->firstWhere('id', $signal->id);
+        self::assertSame('12.00', (string) BigDecimal::of((string) $row['net_pnl'])->toScale(2));
+        self::assertSame(0, $row['closed_position_count']);
+    }
+
+    public function test_profit_factor_is_not_fabricated_as_999_when_there_are_no_losses(): void
+    {
+        $this->seedSampleSignalCohorts();
+        $response = $this->getJson('/api/v1/research/profitability/signal-analytics?exchange=bybit');
+        $response->assertOk();
+        self::assertNull($response->json('data.overview.profit_factor'));
+        $tf = collect($response->json('data.timeframe_comparison'))->firstWhere('timeframe', '15m');
+        self::assertNull($tf['profit_factor']);
+    }
+
+    public function test_observation_only_counts_require_recorded_gate_evidence(): void
+    {
+        $this->seedSampleSignalCohorts();
+        $before = $this->getJson('/api/v1/research/profitability/signal-analytics?exchange=bybit');
+        $before->assertOk();
+        self::assertSame(0, $before->json('data.overview.observation_only_signals'));
+
+        $signal = SignalRecord::query()->where('exchange', 'bybit')->where('signal_quality', 'LOW')->firstOrFail();
+        $account = PaperAccountRecord::query()->where('exchange_id', 'bybit')
+            ->where('primary_strategy_id', 'trend_pullback')->firstOrFail();
+        RiskDecisionRecord::query()->create([
+            'id' => Uuid::uuid4()->toString(),
+            'paper_account_id' => $account->id,
+            'signal_id' => $signal->id,
+            'risk_version' => 'observation-only-test',
+            'allowed' => false,
+            'reasons' => ['LOW_SIGNAL_QUALITY'],
+            'snapshot' => ['gate_decision' => 'OBSERVATION_ONLY'],
+            'decided_at' => CarbonImmutable::now('UTC'),
+        ]);
+        $after = $this->getJson('/api/v1/research/profitability/signal-analytics?exchange=bybit');
+        $after->assertOk();
+        self::assertSame(1, $after->json('data.overview.observation_only_signals'));
+        self::assertSame(0, $after->json('data.overview.rejected_signals'));
+    }
+
+    public function test_signal_explorer_csv_export_escapes_spreadsheet_formulas_without_corrupting_numeric_values(): void
+    {
+        $this->seedSampleSignalCohorts(['=HYPERLINK("https://invalid.example", "click")']);
+
+        $response = $this->get('/api/v1/research/profitability/signal-explorer/export?exchange=bybit');
+        $response->assertOk();
+        $stream = fopen('php://temp', 'w+');
+        fwrite($stream, $response->streamedContent());
+        rewind($stream);
+        $header = fgetcsv($stream, 0, ',', '"', '');
+        self::assertCount(21, $header);
+        $reasonIndex = array_search('Rejection Reason', $header, true);
+        $netPnlIndex = array_search('Net PnL', $header, true);
+        $found = false;
+        while (($row = fgetcsv($stream, 0, ',', '"', '')) !== false) {
+            if (str_contains((string) $row[$reasonIndex], 'HYPERLINK')) {
+                self::assertStringStartsWith("'=HYPERLINK", $row[$reasonIndex]);
+                self::assertTrue(is_numeric($row[$netPnlIndex]));
+                $found = true;
+            }
+        }
+        fclose($stream);
+        self::assertTrue($found, 'Fixture formula must appear escaped in the streamed CSV.');
+    }
+
+    public function test_signal_explorer_csv_export_does_not_stop_after_first_thousand_signals(): void
+    {
+        $this->seedSampleSignalCohorts();
+        $template = SignalRecord::query()->where('exchange', 'bybit')->firstOrFail();
+        $attrs = $template->getAttributes();
+        $stamp = CarbonImmutable::now('UTC')->subDays(7);
+        $batch = [];
+        for ($i = 0; $i < 1003; $i++) {
+            $row = $attrs;
+            $row['id'] = Uuid::uuid4()->toString();
+            $row['decision_time'] = $stamp->addSeconds($i)->toDateTimeString();
+            $row['candle_close_time'] = $stamp->addSeconds($i)->toDateTimeString();
+            $row['created_at'] = $stamp->toDateTimeString();
+            $row['updated_at'] = $stamp->toDateTimeString();
+            $batch[] = $row;
+            if (count($batch) === 100) {
+                DB::table('signals')->insert($batch);
+                $batch = [];
+            }
+        }
+        if ($batch !== []) {
+            DB::table('signals')->insert($batch);
+        }
+
+        $response = $this->get('/api/v1/research/profitability/signal-explorer/export?exchange=bybit');
+        $response->assertOk();
+        $content = $response->streamedContent();
+        // Five Bybit fixture signals, plus 1,003 bulk records and the header.
+        self::assertSame(1009, substr_count($content, "\n"));
+    }
+
+    public function test_analytics_aggregates_large_cohorts_without_hydrating_signal_or_position_models(): void
+    {
+        $this->seedSampleSignalCohorts();
+        $template = SignalRecord::query()->where('exchange', 'bybit')->firstOrFail()->getAttributes();
+        $stamp = CarbonImmutable::now('UTC')->subDays(7);
+        for ($batch = 0; $batch < 10; $batch++) {
+            $rows = [];
+            for ($i = 0; $i < 250; $i++) {
+                $row = $template;
+                $row['id'] = Uuid::uuid4()->toString();
+                $row['decision_time'] = $stamp->addSeconds($batch * 250 + $i)->toDateTimeString();
+                $row['candle_close_time'] = $row['decision_time'];
+                $row['indicator_snapshot'] = json_encode(['payload' => str_repeat('x', 2048)], JSON_THROW_ON_ERROR);
+                $rows[] = $row;
+            }
+            DB::table('signals')->insert($rows);
+        }
+        $events = app('events');
+        $names = ['eloquent.retrieved: '.SignalRecord::class, 'eloquent.retrieved: '.VirtualPositionRecord::class];
+        foreach ($names as $name) {
+            $events->listen($name, static fn () => throw new \LogicException('Analytics must not hydrate unbounded history.'));
+        }
+        try {
+            $start = hrtime(true);
+            $memory = memory_get_usage(true);
+            $response = $this->getJson('/api/v1/research/profitability/signal-analytics?exchange=bybit');
+            $response->assertOk()->assertJsonPath('data.overview.total_signals', 2505)
+                ->assertJsonPath('data.overview.executed_trades', 1);
+            self::assertDecimalSame('50', $response->json('data.overview.overall_net_pnl'));
+            fwrite(STDOUT, json_encode(['analytics_rows' => 2505, 'payload_bytes_per_signal' => 2048,
+                'elapsed_ms' => (hrtime(true) - $start) / 1000000,
+                'php_allocated_delta_bytes' => memory_get_usage(true) - $memory], JSON_THROW_ON_ERROR)."\n");
+        } finally {
+            foreach ($names as $name) {
+                $events->forget($name);
+            }
+        }
+    }
+
+    public function test_analytics_group_limit_returns_an_explicit_error_instead_of_partial_totals(): void
+    {
+        $this->seedSampleSignalCohorts();
+        config(['research.analytics.maximum_groups' => 1]);
+        $this->getJson('/api/v1/research/profitability/signal-analytics')
+            ->assertUnprocessable()->assertJsonValidationErrors('filters');
+    }
+
+    public function test_legacy_quality_interpretation_matches_explorer_and_aggregate_filters(): void
+    {
+        $this->seedSampleSignalCohorts();
+        $signal = SignalRecord::query()->where('exchange', 'bybit')->where('retrospective_outcome', 'GOOD')->firstOrFail();
+        $signal->update(['signal_quality' => null]);
+        self::assertSame('HIGH', $signal->refresh()->signal_quality);
+        $response = $this->getJson('/api/v1/research/profitability/signal-analytics?exchange=bybit&signal_quality=HIGH');
+        $response->assertOk();
+        self::assertDecimalSame('50', $response->json('data.overview.overall_net_pnl'));
+        self::assertSame($response->json('data.overview.total_signals'), $response->json('data.overview.quality_distribution.HIGH'));
+        $unknown = $this->getJson('/api/v1/research/profitability/signal-explorer?exchange=bybit&signal_quality=UNKNOWN');
+        $unknown->assertOk();
+        self::assertNotContains($signal->id, array_column($unknown->json('data'), 'id'));
+    }
+
+    public function test_inconsistent_account_exchange_cannot_contaminate_profitability(): void
+    {
+        $this->seedSampleSignalCohorts();
+        $position = VirtualPositionRecord::query()->where('exchange_id', 'bybit')->firstOrFail();
+        $foreign = PaperAccountRecord::query()->where('exchange_id', 'binance')->firstOrFail();
+        // Deliberately corrupt only a disposable fixture, modelling a legacy attribution defect.
+        DB::table('virtual_positions')->where('id', $position->id)
+            ->update(['paper_account_id' => $foreign->id]);
+        $response = $this->getJson('/api/v1/research/profitability/signal-analytics?exchange=bybit');
+        $response->assertOk()->assertJsonPath('data.overview.invalid_attribution_positions', 1)
+            ->assertJsonPath('data.overview.net_pnl_verification_status', 'INVALID_DATA')
+            ->assertJsonPath('data.overview.executed_trades', 0);
+        self::assertDecimalSame('0', $response->json('data.overview.overall_net_pnl'));
+        self::assertContains('INVALID_POSITION_ATTRIBUTION', array_column($response->json('data.diagnostics'), 'type'));
+        $explorer = $this->getJson('/api/v1/research/profitability/signal-explorer?exchange=bybit')->assertOk();
+        $row = collect($explorer->json('data'))->firstWhere('id', $position->signal_id);
+        self::assertSame(0, $row['position_count']);
+        self::assertSame(1, $row['invalid_attribution_positions']);
+        self::assertSame('INVALID_DATA', $row['attribution_verification_status']);
+        self::assertDecimalSame('0', $row['net_pnl']);
+        $this->getJson('/api/v1/research/profitability/signal-explorer/'.$position->signal_id)
+            ->assertOk()->assertJsonPath('data.position_count', 0)
+            ->assertJsonPath('data.invalid_attribution_positions', 1)
+            ->assertJsonPath('data.attribution_verification_status', 'INVALID_DATA');
+        $export = $this->get('/api/v1/research/profitability/signal-explorer/export?exchange=bybit')->assertOk();
+        self::assertStringContainsString('Data Verification', $export->streamedContent());
+        self::assertStringContainsString('INVALID_DATA', $export->streamedContent());
+        self::assertSame($foreign->id, $position->refresh()->paper_account_id);
+    }
+
+    public function test_an_observation_on_another_account_cannot_hide_a_genuine_rejection(): void
+    {
+        $this->seedSampleSignalCohorts();
+        $signal = SignalRecord::query()->where('exchange', 'bybit')->where('retrospective_outcome', 'UNPROVEN')->firstOrFail();
+        foreach (['baseline' => 'REJECTED', 'trend_pullback' => 'OBSERVATION_ONLY'] as $strategy => $decision) {
+            $account = PaperAccountRecord::query()->where('exchange_id', 'bybit')->where('primary_strategy_id', $strategy)->firstOrFail();
+            RiskDecisionRecord::query()->create([
+                'id' => Uuid::uuid4()->toString(), 'paper_account_id' => $account->id, 'signal_id' => $signal->id,
+                'risk_version' => '1.0.0', 'allowed' => false, 'reasons' => [$decision],
+                'snapshot' => ['gate_decision' => $decision], 'decided_at' => now('UTC'),
+            ]);
+        }
+        $this->getJson('/api/v1/research/profitability/signal-analytics?exchange=bybit')
+            ->assertOk()->assertJsonPath('data.overview.rejected_signals', 1)
+            ->assertJsonPath('data.overview.observation_only_signals', 1);
+    }
+
+    public function test_foreign_account_risk_decisions_cannot_reject_or_filter_a_local_signal(): void
+    {
+        $this->seedSampleSignalCohorts();
+        $signal = SignalRecord::query()->where('exchange', 'bybit')->where('retrospective_outcome', 'UNPROVEN')->firstOrFail();
+        $foreign = PaperAccountRecord::query()->where('exchange_id', 'binance')->firstOrFail();
+        RiskDecisionRecord::query()->create([
+            'id' => Uuid::uuid4()->toString(), 'paper_account_id' => $foreign->id, 'signal_id' => $signal->id,
+            'risk_version' => '1.0.0', 'allowed' => false, 'reasons' => ['FOREIGN_ACCOUNT'],
+            'snapshot' => ['gate_decision' => 'REJECTED'], 'decided_at' => now('UTC'),
+        ]);
+        $this->getJson('/api/v1/research/profitability/signal-analytics?exchange=bybit')
+            ->assertOk()->assertJsonPath('data.overview.rejected_signals', 0)
+            ->assertJsonPath('data.overview.invalid_risk_decisions', 1);
+        $this->getJson('/api/v1/research/profitability/signal-explorer?exchange=bybit&gate_decision=REJECTED')
+            ->assertOk()->assertJsonPath('total', 0);
+        $this->getJson('/api/v1/research/profitability/signal-explorer/'.$signal->id)
+            ->assertOk()->assertJsonCount(0, 'data.risk_decisions')->assertJsonPath('data.gate_allowed', false)
+            ->assertJsonPath('data.invalid_risk_decisions', 1)
+            ->assertJsonPath('data.attribution_verification_status', 'INVALID_DATA');
+    }
+
+    private function seedSampleSignalCohorts(array $approvedReasons = ['GATE_APPROVED']): void
     {
         $bybitAccount = PaperAccountRecord::query()->where('exchange_id', 'bybit')->where('primary_strategy_id', 'trend_pullback')->firstOrFail();
         $binanceAccount = PaperAccountRecord::query()->where('exchange_id', 'binance')->where('primary_strategy_id', 'trend_pullback')->firstOrFail();
@@ -225,7 +725,7 @@ final class SignalQualityAnalyticsAndMultiTimeframeProfitabilityTest extends Tes
             'signal_quality' => 'HIGH',
             'trade_risk' => 'LOW',
             'allowed' => true,
-            'reasons' => ['GATE_APPROVED'],
+            'reasons' => $approvedReasons,
             'snapshot' => ['gate_decision' => 'ELIGIBLE', 'expected_net_edge' => 0.15],
             'decided_at' => $now->subMinutes(120),
         ]);

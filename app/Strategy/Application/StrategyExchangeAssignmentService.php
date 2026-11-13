@@ -12,8 +12,8 @@ use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Schema;
 
 /**
- * Manages explicit strategy-to-exchange assignment and topology isolation.
- * Prevents unintended automatic cross-product account creation.
+ * Manages operator strategy/exchange execution vetoes and explicit assignments.
+ * Topology provisioning is automatic for registered executable strategies.
  */
 final class StrategyExchangeAssignmentService
 {
@@ -90,138 +90,74 @@ final class StrategyExchangeAssignmentService
     }
 
     /**
-     * Check if a strategy is actively assigned to an exchange.
+     * Execution assignment is a separate control from PAPER account provisioning.
+     * Accounts are provisioned for every registered strategy/exchange pair, but
+     * an explicit operator veto or a strategy's supported-venue restriction
+     * still prevents entry. Missing catalog or strategy evidence fails closed.
      */
     public function hasAssignment(string $strategyId, string $exchangeId, string $marketType = 'perpetual'): bool
     {
         $strategyId = trim($strategyId);
         $exchangeId = strtolower(trim($exchangeId));
-
-        if (! Schema::hasTable('strategy_exchange_assignments')) {
-            return true;
-        }
-
-        $record = DB::table('strategy_exchange_assignments')
-            ->where('strategy_id', $strategyId)
-            ->where('exchange_id', $exchangeId)
-            ->first();
-
-        if ($record !== null) {
-            return (bool) $record->is_active;
-        }
-
-        // If this exchange has any explicit assignments in the table, any other strategy is unassigned
-        $hasAnyAssignments = DB::table('strategy_exchange_assignments')
-            ->where('exchange_id', $exchangeId)
-            ->where('is_active', true)
-            ->exists();
-        if ($hasAnyAssignments) {
+        $registry = app(StrategyRegistry::class);
+        if (! $registry->has($strategyId) || ! in_array($exchangeId, $this->exchanges->registeredIds(), true)) {
             return false;
         }
 
-        // If exchange was declaratively onboarded without assignments, return false
-        try {
-            if (Schema::hasTable('exchanges')) {
-                $exRecord = DB::table('exchanges')->where('id', $exchangeId)->first();
-                if ($exRecord !== null) {
-                    $meta = json_decode((string) $exRecord->metadata, true) ?: [];
-                    if (! empty($meta['onboarded_declaratively'])) {
-                        return false;
-                    }
-                }
+        if (Schema::hasTable('strategy_exchange_assignments')) {
+            $record = DB::table('strategy_exchange_assignments')
+                ->where('strategy_id', $strategyId)
+                ->where('exchange_id', $exchangeId)
+                ->where('market_type', $marketType)
+                ->first();
+            if ($record !== null) {
+                return (bool) $record->is_active;
             }
-        } catch (\Throwable) {
-            // Fall through
         }
 
-        // Check if strategy restricts target exchanges
-        try {
-            $strategyObj = app(StrategyRegistry::class)->get($strategyId);
-            if (method_exists($strategyObj, 'targetExchanges')) {
-                $targets = $strategyObj->targetExchanges();
-                if ($targets !== null && ! in_array($exchangeId, (array) $targets, true)) {
-                    return false;
-                }
+        // A strategy with an explicit supported-venue restriction may still
+        // have a PAPER account elsewhere for transparent topology accounting,
+        // but it is not allowed to trade outside that supported set.
+        $strategy = $registry->get($strategyId);
+        if (method_exists($strategy, 'targetExchanges')) {
+            $targets = $strategy->targetExchanges();
+            if ($targets !== null && ! in_array($exchangeId, (array) $targets, true)) {
+                return false;
             }
-        } catch (\Throwable) {
-            return true;
         }
 
         return true;
     }
 
     /**
-     * Get list of strategy IDs actively assigned to an exchange.
+     * Active execution-assignment projection. An assignment on one venue must
+     * not implicitly suppress compatible strategies on another. Explicit
+     * operator unassignments are respected. Account topology deliberately uses
+     * the complete strategy/exchange matrix independently of this projection:
+     * an execution veto must never delete or omit a historical PAPER account.
      *
      * @return list<string>
      */
     public function assignedStrategiesForExchange(string $exchangeId): array
     {
         $exchangeId = strtolower(trim($exchangeId));
+        if (! in_array($exchangeId, $this->exchanges->registeredIds(), true)) {
+            return [];
+        }
 
+        $allStrategies = app(StrategyRegistry::class)->ids();
         if (! Schema::hasTable('strategy_exchange_assignments')) {
-            return app(StrategyRegistry::class)->ids();
+            return $allStrategies;
         }
 
-        // 1. If explicit active assignments exist in table, return them
-        $activeAssignments = DB::table('strategy_exchange_assignments')
-            ->where('exchange_id', $exchangeId)
-            ->where('is_active', true)
-            ->pluck('strategy_id')
-            ->all();
-
-        if (! empty($activeAssignments)) {
-            return array_values(array_unique($activeAssignments));
-        }
-
-        // 2. Check if exchange was onboarded declaratively
-        try {
-            if (Schema::hasTable('exchanges')) {
-                $record = DB::table('exchanges')->where('id', $exchangeId)->first();
-                if ($record !== null) {
-                    $capabilities = json_decode((string) $record->capabilities, true) ?: [];
-                    if (array_key_exists('assigned_strategies', $capabilities)) {
-                        return (array) $capabilities['assigned_strategies'];
-                    }
-                    $meta = json_decode((string) $record->metadata, true) ?: [];
-                    if (! empty($meta['onboarded_declaratively'])) {
-                        // Declaratively onboarded exchange without explicit strategy assignments gets 0 accounts
-                        return [];
-                    }
-                }
-            }
-        } catch (\Throwable) {
-            // Fall through
-        }
-
-        // 3. For canonical baseline exchanges, return all un-disabled strategies respecting targetExchanges
         $disabled = DB::table('strategy_exchange_assignments')
             ->where('exchange_id', $exchangeId)
+            ->where('market_type', 'perpetual')
             ->where('is_active', false)
             ->pluck('strategy_id')
             ->all();
 
-        $allStrategies = app(StrategyRegistry::class)->ids();
-        $eligible = [];
-        foreach ($allStrategies as $strategyId) {
-            if (in_array($strategyId, $disabled, true)) {
-                continue;
-            }
-            try {
-                $strategyObj = app(StrategyRegistry::class)->get($strategyId);
-                if (method_exists($strategyObj, 'targetExchanges')) {
-                    $targets = $strategyObj->targetExchanges();
-                    if ($targets !== null && ! in_array($exchangeId, (array) $targets, true)) {
-                        continue;
-                    }
-                }
-            } catch (\Throwable) {
-                // Keep eligible
-            }
-            $eligible[] = $strategyId;
-        }
-
-        return $eligible;
+        return array_values(array_diff($allStrategies, $disabled));
     }
 
     /**
@@ -233,17 +169,16 @@ final class StrategyExchangeAssignmentService
     {
         $strategyId = trim($strategyId);
 
-        if (! Schema::hasTable('strategy_exchange_assignments')) {
-            return $this->exchanges->registeredIds();
+        // Explicit rows alone are not authoritative: canonical exchanges may
+        // still use implicit legacy assignments. Match the actual entry gate.
+        $result = [];
+        foreach ($this->exchanges->registeredIds() as $exchangeId) {
+            if ($this->hasAssignment($strategyId, $exchangeId)) {
+                $result[] = $exchangeId;
+            }
         }
 
-        return DB::table('strategy_exchange_assignments')
-            ->where('strategy_id', $strategyId)
-            ->where('is_active', true)
-            ->pluck('exchange_id')
-            ->unique()
-            ->values()
-            ->all();
+        return $result;
     }
 
     /**
@@ -257,11 +192,10 @@ final class StrategyExchangeAssignmentService
         $exchanges = $this->exchanges->registeredIds();
 
         $assignments = [];
-        if (Schema::hasTable('strategy_exchange_assignments')) {
-            $rows = DB::table('strategy_exchange_assignments')->where('is_active', true)->get();
-            foreach ($rows as $row) {
-                $assignments[$row->exchange_id][$row->strategy_id] = true;
-            }
+        foreach ($exchanges as $exchange) {
+            // Use the same assignment policy as the real execution gate.
+            // Do not mark canonical implicit assignments as missing in the UI.
+            $assignments[$exchange] = array_fill_keys($this->assignedStrategiesForExchange($exchange), true);
         }
 
         $accounts = [];
@@ -303,29 +237,26 @@ final class StrategyExchangeAssignmentService
         $canonical = (array) config('paper.primary_strategies', []);
         $canonicalExchanges = (array) config('exchanges.enabled', ['bybit', 'binance', 'coinbase', 'upbit', 'okx', 'bitget', 'gate', 'kucoin', 'kraken', 'htx']);
 
-        // 1. Assign canonical PRIMARY strategies to canonical initial exchanges
+        // 1. Seed only missing canonical assignments. Never reactivate a row
+        // explicitly disabled by the operator or rewrite its audit metadata.
         foreach ($canonicalExchanges as $exchangeId) {
             foreach ($canonical as $strategyId) {
-                DB::table('strategy_exchange_assignments')->updateOrInsert(
-                    [
-                        'strategy_id' => $strategyId,
-                        'exchange_id' => $exchangeId,
-                        'market_type' => 'perpetual',
-                    ],
-                    [
-                        'assigned_by' => 'canonical_initial_matrix',
-                        'assigned_at' => $now,
-                        'is_active' => true,
-                        'metadata' => json_encode(['source' => 'canonical_exchanges_enabled'], JSON_THROW_ON_ERROR),
-                        'created_at' => $now,
-                        'updated_at' => $now,
-                    ]
-                );
+                DB::table('strategy_exchange_assignments')->insertOrIgnore([
+                    'strategy_id' => $strategyId,
+                    'exchange_id' => $exchangeId,
+                    'market_type' => 'perpetual',
+                    'assigned_by' => 'canonical_initial_matrix',
+                    'assigned_at' => $now,
+                    'is_active' => true,
+                    'metadata' => json_encode(['source' => 'canonical_exchanges_enabled'], JSON_THROW_ON_ERROR),
+                    'created_at' => $now,
+                    'updated_at' => $now,
+                ]);
             }
         }
 
-        // 2. For any other exchange that already has existing primary accounts in paper_accounts,
-        // preserve their active assignment to avoid breaking historical records!
+        // 2. Preserve missing assignment records for existing primary accounts,
+        // without changing a historical explicit is_active=false veto.
         if (Schema::hasTable('paper_accounts')) {
             $existingAccounts = PaperAccountRecord::query()
                 ->where('is_primary', true)
@@ -334,21 +265,17 @@ final class StrategyExchangeAssignmentService
 
             foreach ($existingAccounts as $acc) {
                 if ($acc->primary_strategy_id !== null && $acc->exchange_id !== null) {
-                    DB::table('strategy_exchange_assignments')->updateOrInsert(
-                        [
-                            'strategy_id' => $acc->primary_strategy_id,
-                            'exchange_id' => $acc->exchange_id,
-                            'market_type' => 'perpetual',
-                        ],
-                        [
-                            'assigned_by' => 'existing_portfolio_reconciliation',
-                            'assigned_at' => $now,
-                            'is_active' => true,
-                            'metadata' => json_encode(['source' => 'paper_accounts_existing'], JSON_THROW_ON_ERROR),
-                            'created_at' => $now,
-                            'updated_at' => $now,
-                        ]
-                    );
+                    DB::table('strategy_exchange_assignments')->insertOrIgnore([
+                        'strategy_id' => $acc->primary_strategy_id,
+                        'exchange_id' => $acc->exchange_id,
+                        'market_type' => 'perpetual',
+                        'assigned_by' => 'existing_portfolio_reconciliation',
+                        'assigned_at' => $now,
+                        'is_active' => true,
+                        'metadata' => json_encode(['source' => 'paper_accounts_existing'], JSON_THROW_ON_ERROR),
+                        'created_at' => $now,
+                        'updated_at' => $now,
+                    ]);
                 }
             }
         }

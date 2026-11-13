@@ -22,11 +22,13 @@ use Carbon\CarbonImmutable;
 use DateTimeImmutable;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Ramsey\Uuid\Uuid;
+use Tests\Concerns\SeedsValidatedPaperEvidence;
 use Tests\TestCase;
 
 final class TradingPipelineConcurrencyAndSafetyTest extends TestCase
 {
     use RefreshDatabase;
+    use SeedsValidatedPaperEvidence;
 
     protected function setUp(): void
     {
@@ -83,7 +85,7 @@ final class TradingPipelineConcurrencyAndSafetyTest extends TestCase
         // Pre-create a signal
         $signalId = Uuid::uuid4()->toString();
         $now = CarbonImmutable::now('UTC');
-        SignalRecord::query()->create([
+        $signal = SignalRecord::query()->create([
             'id' => $signalId,
             'exchange' => 'bybit',
             'category' => 'linear',
@@ -117,6 +119,7 @@ final class TradingPipelineConcurrencyAndSafetyTest extends TestCase
             'created_at' => $now,
             'updated_at' => $now,
         ]);
+        $this->seedValidatedPaperEvidence($signal);
 
         // Seed 5m execution bar matching the entry zone
         CandleRecord::query()->create([
@@ -188,7 +191,7 @@ final class TradingPipelineConcurrencyAndSafetyTest extends TestCase
         ]);
 
         $signalId = Uuid::uuid4()->toString();
-        SignalRecord::query()->create([
+        $signal = SignalRecord::query()->create([
             'id' => $signalId,
             'exchange' => 'bybit',
             'category' => 'linear',
@@ -222,6 +225,7 @@ final class TradingPipelineConcurrencyAndSafetyTest extends TestCase
         ]);
 
         $paperService = app(PaperProcessingService::class);
+        $this->seedValidatedPaperEvidence($signal);
         $paperService->process($account->id, 'BTCUSDT', $decisionTime);
 
         // Position cannot be opened by the past candle
@@ -240,7 +244,7 @@ final class TradingPipelineConcurrencyAndSafetyTest extends TestCase
 
         $now = CarbonImmutable::now('UTC');
         $signalId = Uuid::uuid4()->toString();
-        SignalRecord::query()->create([
+        $signal = SignalRecord::query()->create([
             'id' => $signalId,
             'exchange' => 'bybit',
             'category' => 'linear',
@@ -272,6 +276,8 @@ final class TradingPipelineConcurrencyAndSafetyTest extends TestCase
             'created_at' => $now,
             'updated_at' => $now,
         ]);
+
+        $this->seedValidatedPaperEvidence($signal);
 
         // Entry candle at 10:15..10:20
         CandleRecord::query()->create([

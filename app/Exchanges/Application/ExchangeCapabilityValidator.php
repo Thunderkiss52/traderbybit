@@ -90,21 +90,60 @@ final readonly class ExchangeCapabilityValidator
 
         $hasLiveAdapter = $this->registry->hasAdapter($exchange->id);
 
-        $hasCandleData = CandleRecord::query()->where('exchange', $exchange->id)->exists();
+        $hasCandleData = false; // A single historical row does not establish usable coverage.
 
         $supportedTimeframes = array_map(UniversalAcquisitionService::normalizeInterval(...), (array) ($capabilities['supported_timeframes'] ?? []));
         $requiredTimeframes = ['5', '15', '30', '60'];
         $hasTimeframes = count(array_intersect($requiredTimeframes, $supportedTimeframes)) === count($requiredTimeframes);
+        $missingCandleCoverage = [];
+        $marketCategory = (string) $exchange->market_type === 'spot' ? 'spot' : 'linear';
+        $coverageSymbols = (array) config('market_data.symbols', ['BTCUSDT', 'ETHUSDT']);
+        $hasCandleData = $coverageSymbols !== [];
+        foreach ($coverageSymbols as $symbol) {
+            foreach ($requiredTimeframes as $interval) {
+                $minutes = (int) $interval;
+                $lastThree = CandleRecord::query()
+                    ->where('exchange', $exchange->id)
+                    ->where('category', $marketCategory)
+                    ->where('symbol', $symbol)
+                    ->where('interval', $interval)
+                    ->where('is_closed', true)
+                    ->orderByDesc('open_time')
+                    ->limit(3)
+                    ->get(['open_time']);
+                $valid = $lastThree->count() === 3;
+                if ($valid) {
+                    $openTimes = $lastThree->map(fn ($row): int => $row->open_time->getTimestamp())->all();
+                    $step = $minutes * 60;
+                    $expectedLatestOpen = intdiv(now('UTC')->getTimestamp(), $step) * $step - $step;
+                    $valid = $openTimes[0] <= $expectedLatestOpen
+                        && $openTimes[0] >= $expectedLatestOpen - (2 * $step)
+                        && $step === $openTimes[0] - $openTimes[1]
+                        && $step === $openTimes[1] - $openTimes[2];
+                }
+                if (! $valid) {
+                    $missingCandleCoverage[] = $symbol.':'.$interval;
+                    $hasCandleData = false;
+                }
+            }
+        }
+        $hasTimeframes = $hasTimeframes && $hasCandleData;
 
         $hasCostModel = $this->validRate($costModel['taker_rate'] ?? null)
             && $this->validRate($costModel['slippage_rate'] ?? null);
 
         $hasPrecision = isset($capabilities['price_precision']) && isset($capabilities['qty_precision']);
 
-        // Execution model is supported when paper execution is configured/approved and market type has cost structure.
-        $hasExecutionModel = ((bool) config("exchanges.{$exchange->id}.paper_execution_approved", false)
-            || ($exchange->id === 'bybit' && in_array($exchange->market_type, ['linear_perpetual', 'linear'], true)))
-            && in_array($exchange->market_type, ['linear_perpetual', 'linear', 'spot'], true);
+        // Technical execution support must be independently verifiable BEFORE
+        // operator approval; checking paper_execution_approved here creates an
+        // impossible circular dependency for dynamically onboarded venues.
+        $hasExecutionModel = PaperExecutionModelContract::supported(
+            (string) $exchange->market_type,
+            $capabilities,
+            (array) ($exchange->paper_execution_assumptions ?? []),
+            $costModel,
+            $hasLiveAdapter,
+        );
         $isSpot = ($exchange->market_type === 'spot') || empty($capabilities['has_funding']);
 
         $symbols = (array) config('market_data.symbols', ['BTCUSDT', 'ETHUSDT']);
@@ -159,7 +198,7 @@ final readonly class ExchangeCapabilityValidator
             $reasonsMissing[] = 'MISSING_LIVE_ADAPTER: Dedicated REST/WebSocket adapter class is not compiled or registered in ExchangeRegistry.';
         }
         if (! $hasCandleData) {
-            $reasonsMissing[] = 'NO_CANDLE_DATA: No historical or public candles exist in the database for this exchange.';
+            $reasonsMissing[] = 'INCOMPLETE_OR_STALE_CANDLE_COVERAGE: Required three contiguous fresh closed bars missing for '.implode(', ', $missingCandleCoverage).'.';
         }
         if (! $hasTimeframes) {
             $missing = array_diff($requiredTimeframes, $supportedTimeframes);

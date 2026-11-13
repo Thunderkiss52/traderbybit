@@ -1,0 +1,29 @@
+{
+  "summary": {
+    "name": "/app/phpunit.xml",
+    "tests": "1677",
+    "assertions": "22233",
+    "errors": "0",
+    "failures": "1",
+    "skipped": "1",
+    "time": "1270.977358",
+    "warnings": "3"
+  },
+  "exit": 1,
+  "wall_seconds": 1272.694,
+  "inventory": {
+    "expected": 1677,
+    "executed": 1677,
+    "missing": [],
+    "unexpected": []
+  },
+  "source_drift": [],
+  "source_manifest_sha256": "c6c9b878c91e1564e16a21a3fad14e4c5df8f62a66f66b8d2d6ec934250dcc2d",
+  "junit_sha256": "e279e177096f45692e87951b351745b1f67332c17ef7fe18a8557416e49b1ea4",
+  "classification": {
+    "status": "FAILED_HARNESS_BASELINE_ONLY",
+    "failure_and_warning_cause": "Frozen source omitted tracked public .env.production.example; actual repository file was preserved.",
+    "application_result": "No other failing or errored test; the complete suite is not green. Subsequent current-source sizing and Stage1 changes are outside this frozen baseline.",
+    "next_run": "Root coordination required; no new full run started."
+  }
+}

@@ -78,8 +78,9 @@ final class EvaluateStrategyCandidateJob implements ShouldQueue
         $requiredDays = $minimumDays;
 
         try {
-            if (! in_array($exchange, ['bybit', 'binance'], true)) {
-                throw new \InvalidArgumentException('Unsupported candidate exchange.');
+            $exchange = is_string($exchange) ? strtolower(trim($exchange)) : '';
+            if (! preg_match('/^[a-z0-9][a-z0-9_-]{1,31}$/D', $exchange)) {
+                throw new \InvalidArgumentException('Invalid candidate exchange identity.');
             }
 
             $availableDays = $this->resolveAvailableCandleDays($exchange, $symbols, $to, $backtests, $metadata, $targetDays);

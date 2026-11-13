@@ -36,7 +36,8 @@ final readonly class TradeRiskClassificationService
      *     bid?: string|float|int|null,
      *     ask?: string|float|int|null,
      *     correlation?: string|float|int|null,
-     *     estimated_costs?: string|float|int|null
+     *     estimated_costs?: string|float|int|null,
+     *     estimated_cost_drag_percent?: float|null
      * } $input
      * @return array{
      *     risk_class: TradeRiskClass,
@@ -270,33 +271,25 @@ final readonly class TradeRiskClassificationService
             }
 
             // 9. Execution Cost Drag (Weight: 5)
-            if (isset($input['estimated_costs'], $input['take_profit_1']) && is_numeric($input['estimated_costs']) && is_numeric($input['take_profit_1'])) {
-                $tp1 = BigDecimal::of((string) $input['take_profit_1']);
-                $costs = BigDecimal::of((string) $input['estimated_costs']);
-                $targetGain = $tp1->minus($entry)->abs();
-                if ($targetGain->isPositive()) {
-                    $costDrag = $costs->dividedBy($targetGain, 4, RoundingMode::HalfEven)->toFloat();
-                    if ($costDrag > 0.20) {
-                        $level = 'HIGH';
-                        $score = 80;
-                        $highCount++;
-                        $warnings[] = "High execution cost drag ({$costDrag} of TP1).";
-                    } elseif ($costDrag > 0.10) {
-                        $level = 'MEDIUM';
-                        $score = 45;
-                    } else {
-                        $level = 'LOW';
-                        $score = 10;
-                    }
-                    $factors['execution_cost_drag'] = ['value' => round($costDrag, 3), 'level' => $level, 'weight' => 5, 'score' => $score];
-                    $totalScore += $score * 5;
-                    $totalWeight += 5;
+            if (isset($input['estimated_cost_drag_percent']) && is_numeric($input['estimated_cost_drag_percent'])
+                && is_finite((float) $input['estimated_cost_drag_percent']) && (float) $input['estimated_cost_drag_percent'] >= 0.0) {
+                // The upstream estimate includes quantity, entry and TP1 notionals.
+                $costDrag = (float) $input['estimated_cost_drag_percent'] / 100.0;
+                if ($costDrag > 0.20) {
+                    $level = 'HIGH';
+                    $score = 80;
+                    $highCount++;
+                    $warnings[] = "High execution cost drag ({$costDrag} of TP1).";
+                } elseif ($costDrag > 0.10) {
+                    $level = 'MEDIUM';
+                    $score = 45;
                 } else {
-                    $missingFactors[] = 'execution_cost_drag';
-                    $factors['execution_cost_drag'] = ['value' => null, 'level' => 'UNAVAILABLE', 'weight' => 5, 'score' => 50];
-                    $totalScore += 50 * 5;
-                    $totalWeight += 5;
+                    $level = 'LOW';
+                    $score = 10;
                 }
+                $factors['execution_cost_drag'] = ['value' => round($costDrag, 3), 'level' => $level, 'weight' => 5, 'score' => $score];
+                $totalScore += $score * 5;
+                $totalWeight += 5;
             } else {
                 $missingFactors[] = 'execution_cost_drag';
                 $factors['execution_cost_drag'] = ['value' => null, 'level' => 'UNAVAILABLE', 'weight' => 5, 'score' => 50];

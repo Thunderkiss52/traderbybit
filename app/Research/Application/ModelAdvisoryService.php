@@ -42,7 +42,7 @@ final class ModelAdvisoryService
         // Query active champion model for this target event & symbol
         $model = LearningModelArtifactRecord::query()
             ->where('target_event', $targetEvent)
-            ->where('name', LearningPredictorService::scopedModelName($targetEvent, $decision->symbol, $decision->exchange))
+            ->where('name', LearningPredictorService::scopedModelName($targetEvent, $decision->symbol, $decision->exchange, 'baseline', $decision->timeframe, $decision->side->value, $decision->category, $decision->strategyVersion))
             ->where('status', 'ACTIVE')
             ->latest('created_at')
             ->first();
@@ -89,6 +89,9 @@ final class ModelAdvisoryService
                 'original_decision_side' => $decision->side->value,
                 'altered_decision' => $altered,
                 'eligible_for_advisory' => false,
+                'calibrated_probability' => null,
+                'recommendation' => $isAllowUnfiltered ? 'ALLOW_UNFILTERED' : 'FAIL_CLOSED_SKIP',
+                'ineligibility_reason' => 'NO_ACTIVE_MODEL',
             ];
 
             return new SignalDecision(
@@ -128,14 +131,13 @@ final class ModelAdvisoryService
             $reasonText = "Shadow evaluation of ineligible legacy model {$model->version}: bypassed.";
 
             // Predict probability for shadow observation and research logs only
-            $prob = 0.50;
+            $prob = null;
             try {
-                $pred = $this->predictor->predictCalibrated($targetEvent, $features, $decision->symbol, $decision->exchange);
-                $prob = $pred['probability'] !== null ? (float) $pred['probability'] : 0.50;
+                $pred = $this->predictor->predictCalibrated($targetEvent, $features, $decision->symbol, $decision->exchange, 'baseline', $decision->timeframe, $decision->side->value, $decision->category, $decision->strategyVersion);
+                $prob = $pred['probability'] !== null ? (float) $pred['probability'] : null;
             } catch (\Throwable) {
                 // Ignore prediction errors for ineligible model
             }
-            $recommendation = $prob >= $threshold ? 'ALLOW' : 'VETO_LOW_PROBABILITY';
 
             if ($mode === 'ACTIVE' && $decision->side !== SignalSide::Skip) {
                 if (! $isAllowUnfiltered) {
@@ -210,12 +212,17 @@ final class ModelAdvisoryService
         // Predict calibrated probability using model weights with exception protection
         $inferenceException = null;
         try {
-            $pred = $this->predictor->predictCalibrated($targetEvent, $features, $decision->symbol, $decision->exchange);
-            $prob = $pred['probability'] !== null ? (float) $pred['probability'] : 0.50;
+            $pred = $this->predictor->predictCalibrated($targetEvent, $features, $decision->symbol, $decision->exchange, 'baseline', $decision->timeframe, $decision->side->value, $decision->category, $decision->strategyVersion);
+            if (($pred['status'] ?? null) !== 'CALIBRATED' || ! isset($pred['probability'])
+                || ! is_numeric($pred['probability']) || ! is_finite((float) $pred['probability'])
+                || (float) $pred['probability'] < 0 || (float) $pred['probability'] > 1) {
+                throw new \RuntimeException('Calibrated model probability unavailable.');
+            }
+            $prob = (float) $pred['probability'];
             $recommendation = $prob >= $threshold ? 'ALLOW' : 'VETO_LOW_PROBABILITY';
         } catch (\Throwable $e) {
             $inferenceException = $e;
-            $prob = 0.50;
+            $prob = null;
             $recommendation = 'INFERENCE_ERROR';
         }
 

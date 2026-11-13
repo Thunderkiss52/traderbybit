@@ -25,6 +25,12 @@ final class DynamicExchangeOnboardingAndUnlimitedArchitectureTest extends TestCa
     use CleansCandleConflictEvidence;
     use RefreshDatabase;
 
+    // Synthetic fixture limits, not verified specifications for a public venue.
+    private const SYNTHETIC_INSTRUMENT_LIMITS = [
+        'price_precision' => 2, 'qty_precision' => 4,
+        'min_qty' => '0.0001', 'min_notional' => '5.0',
+    ];
+
     protected function setUp(): void
     {
         parent::setUp();
@@ -212,6 +218,7 @@ final class DynamicExchangeOnboardingAndUnlimitedArchitectureTest extends TestCa
             'description' => 'dYdX Cosmos app-chain orderbook.',
             'base_url' => 'https://indexer.dydx.trade',
             'supported_timeframes' => ['5', '15', '30', '60'],
+            ...self::SYNTHETIC_INSTRUMENT_LIMITS,
             'cost_model' => [
                 'version' => 'dydx-v4-2026.1',
                 'market' => 'USDC Perpetuals',
@@ -249,6 +256,7 @@ final class DynamicExchangeOnboardingAndUnlimitedArchitectureTest extends TestCa
                 'market_type' => 'linear_perpetual',
                 'base_url' => 'https://api.bybit.com',
                 'supported_timeframes' => ['5m', '15m', '30m', '1h'],
+                ...self::SYNTHETIC_INSTRUMENT_LIMITS,
                 'cost_model' => [
                     'version' => 'test-2026.1',
                     'market' => 'Linear',
@@ -276,6 +284,7 @@ final class DynamicExchangeOnboardingAndUnlimitedArchitectureTest extends TestCa
                 'name' => 'Incomplete Venue',
                 'market_type' => 'linear_perpetual',
                 'supported_timeframes' => ['5m', '15m', '30m', '1h'],
+                ...self::SYNTHETIC_INSTRUMENT_LIMITS,
                 'cost_model' => [
                     'version' => 'inc-2026.1',
                     'market' => 'Linear',
@@ -314,6 +323,7 @@ final class DynamicExchangeOnboardingAndUnlimitedArchitectureTest extends TestCa
                 'name' => 'Deactivate Test Venue',
                 'market_type' => 'linear_perpetual',
                 'supported_timeframes' => ['5m', '15m', '30m', '1h'],
+                ...self::SYNTHETIC_INSTRUMENT_LIMITS,
                 'cost_model' => [
                     'version' => 'deact-2026.1',
                     'market' => 'Linear',
@@ -364,6 +374,7 @@ final class DynamicExchangeOnboardingAndUnlimitedArchitectureTest extends TestCa
                 'name' => 'Pause Test Venue',
                 'market_type' => 'linear_perpetual',
                 'supported_timeframes' => ['5m', '15m', '30m', '1h'],
+                ...self::SYNTHETIC_INSTRUMENT_LIMITS,
                 'cost_model' => [
                     'version' => 'pause-2026.1',
                     'market' => 'Linear',

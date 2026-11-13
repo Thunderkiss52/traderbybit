@@ -5,6 +5,8 @@ declare(strict_types=1);
 namespace Tests\Feature\PaperTrading;
 
 use App\Exchanges\Binance\BinanceDeploymentInitializer;
+use App\Exchanges\Domain\ExchangeLifecycleStatus;
+use App\Exchanges\Infrastructure\Persistence\ExchangeRecord;
 use App\MarketData\Infrastructure\Persistence\CandleRecord;
 use App\PaperTrading\Application\PaperProcessingService;
 use App\PaperTrading\Domain\PositionStatus;
@@ -20,11 +22,13 @@ use DateTimeImmutable;
 use DateTimeZone;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Ramsey\Uuid\Uuid;
+use Tests\Concerns\SeedsValidatedPaperEvidence;
 use Tests\TestCase;
 
 final class TemporalIntegrityAndCausalityTest extends TestCase
 {
     use RefreshDatabase;
+    use SeedsValidatedPaperEvidence;
 
     protected function setUp(): void
     {
@@ -43,6 +47,15 @@ final class TemporalIntegrityAndCausalityTest extends TestCase
     {
         $createdAt ??= new DateTimeImmutable('2026-10-25 17:00:00', new DateTimeZone('UTC'));
         $this->travelTo($createdAt);
+        // This isolated fixture explicitly authorizes the exchange as well as its accounts.
+        $exchange = ExchangeRecord::query()->findOrFail('binance');
+        $exchange->update([
+            'paper_approved' => true,
+            'lifecycle_status' => ExchangeLifecycleStatus::ActivePaper->value,
+            'paper_approved_at' => $createdAt,
+            // Synthetic fixture contract; no claim about a production fee tier.
+            'cost_model' => array_replace((array) $exchange->cost_model, ['maker_rate' => '0.0002']),
+        ]);
         $initializer = $this->app->make(BinanceDeploymentInitializer::class);
         $initializer->initialize('10000', 'OWNER-VECTOR-20261023');
         PaperAccountRecord::query()->where('exchange_id', 'binance')->update([
@@ -67,8 +80,8 @@ final class TemporalIntegrityAndCausalityTest extends TestCase
 
         $account = PaperAccountRecord::query()
             ->where('exchange_id', 'binance')
-            ->where('strategy_id', 'momentum')
             ->where('is_primary', true)
+            ->where('strategy_id', 'momentum')
             ->firstOrFail();
 
         // 1. Context observed at 17:44:00 (before 17:45:00 decision time)
@@ -134,6 +147,7 @@ final class TemporalIntegrityAndCausalityTest extends TestCase
 
         $account = PaperAccountRecord::query()
             ->where('exchange_id', 'binance')
+            ->where('is_primary', true)
             ->where('strategy_id', 'trend_pullback')
             ->firstOrFail();
 
@@ -168,7 +182,7 @@ final class TemporalIntegrityAndCausalityTest extends TestCase
         self::assertSame(0, VirtualPositionRecord::query()->where('paper_account_id', $account->id)->count());
 
         $state = PaperSignalStateRecord::query()->where('paper_account_id', $account->id)->where('signal_id', $signal->id)->firstOrFail();
-        self::assertSame(SignalLifecycle::PendingEntry->value, $state->status);
+        self::assertSame(SignalLifecycle::PendingEntry->value, $state->status, (string) $state->reason);
 
         // Now subsequent 5m candle closing at 18:05:00 arrives (after state creation)
         $this->createCandle('binance', 'BTCUSDT', '2026-10-25 18:00:00', '65020', '65080', '64990', '65050');
@@ -192,6 +206,7 @@ final class TemporalIntegrityAndCausalityTest extends TestCase
 
         $account = PaperAccountRecord::query()
             ->where('exchange_id', 'binance')
+            ->where('is_primary', true)
             ->where('strategy_id', 'bollinger_mean_reversion')
             ->firstOrFail();
 
@@ -245,6 +260,7 @@ final class TemporalIntegrityAndCausalityTest extends TestCase
 
         $account = PaperAccountRecord::query()
             ->where('exchange_id', 'binance')
+            ->where('is_primary', true)
             ->where('strategy_id', 'regime_switching')
             ->firstOrFail();
 
@@ -300,6 +316,7 @@ final class TemporalIntegrityAndCausalityTest extends TestCase
 
         $account = PaperAccountRecord::query()
             ->where('exchange_id', 'binance')
+            ->where('is_primary', true)
             ->where('strategy_id', 'momentum')
             ->firstOrFail();
 
@@ -343,6 +360,7 @@ final class TemporalIntegrityAndCausalityTest extends TestCase
 
         $account = PaperAccountRecord::query()
             ->where('exchange_id', 'binance')
+            ->where('is_primary', true)
             ->where('strategy_id', 'donchian_atr_breakout')
             ->firstOrFail();
 
@@ -388,6 +406,7 @@ final class TemporalIntegrityAndCausalityTest extends TestCase
 
         $account = PaperAccountRecord::query()
             ->where('exchange_id', 'binance')
+            ->where('is_primary', true)
             ->where('strategy_id', 'support_resistance_bounce')
             ->firstOrFail();
 
@@ -472,6 +491,7 @@ final class TemporalIntegrityAndCausalityTest extends TestCase
         foreach ($primaryStrategies as $strategyId) {
             $account = PaperAccountRecord::query()
                 ->where('exchange_id', 'binance')
+                ->where('is_primary', true)
                 ->where('strategy_id', $strategyId)
                 ->firstOrFail();
 
@@ -481,7 +501,7 @@ final class TemporalIntegrityAndCausalityTest extends TestCase
             self::assertSame(0, VirtualPositionRecord::query()->where('paper_account_id', $account->id)->count(), "Strategy {$strategyId} opened an illegal retrospective position!");
         }
 
-        self::assertSame(0, VirtualPositionRecord::query()->count());
+        self::assertSame(0, VirtualPositionRecord::query()->whereIn('paper_account_id', PaperAccountRecord::query()->where('exchange_id', 'binance')->where('is_primary', true)->select('id'))->count());
         self::assertSame(13, PaperSignalStateRecord::query()->where('status', SignalLifecycle::Expired->value)->count());
     }
 
@@ -500,7 +520,7 @@ final class TemporalIntegrityAndCausalityTest extends TestCase
     ): SignalRecord {
         $strategy = $this->app->make(StrategyRegistry::class)->get($strategyId);
 
-        return SignalRecord::query()->create([
+        $signal = SignalRecord::query()->create([
             'id' => Uuid::uuid5(Uuid::NAMESPACE_URL, "temporal-test:{$exchange}:{$strategyId}:{$symbol}:{$decisionTime->format('U')}")->toString(),
             'exchange' => $exchange,
             'category' => 'linear',
@@ -531,6 +551,11 @@ final class TemporalIntegrityAndCausalityTest extends TestCase
             'created_at' => $createdAt,
             'updated_at' => $createdAt,
         ]);
+        if (in_array($signal->side, ['BUY', 'SELL'], true)) {
+            $this->seedValidatedPaperEvidence($signal);
+        }
+
+        return $signal;
     }
 
     private function createContext(string $exchange, string $symbol, string $observedAt): void

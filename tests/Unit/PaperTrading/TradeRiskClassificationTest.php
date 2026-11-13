@@ -33,7 +33,8 @@ final class TradeRiskClassificationTest extends TestCase
             'bid' => '49995.00',
             'ask' => '50005.00', // spread 0.02% (LOW)
             'correlation' => '0.1', // LOW
-            'estimated_costs' => '1.50', // cost drag 0.1% (LOW)
+            'estimated_costs' => '1.50', // 0.03 quantity gives 45 USDT TP1 gain.
+            'estimated_cost_drag_percent' => 3.33333333,
         ];
 
         $result = $this->service->classify($input);
@@ -49,6 +50,12 @@ final class TradeRiskClassificationTest extends TestCase
         $this->assertArrayHasKey('spread_drag_percent', $result['factors']);
         $this->assertArrayHasKey('correlation', $result['factors']);
         $this->assertArrayHasKey('execution_cost_drag', $result['factors']);
+
+        unset($input['estimated_cost_drag_percent']);
+        $unverified = $this->service->classify($input);
+        $this->assertNotSame(TradeRiskClass::Low, $unverified['risk_class']);
+        $this->assertContains('execution_cost_drag', $unverified['missing_factors']);
+        $this->assertNull($unverified['factors']['execution_cost_drag']['value']);
     }
 
     public function test_medium_risk_classification(): void
@@ -67,6 +74,7 @@ final class TradeRiskClassificationTest extends TestCase
             'ask' => '50005.00', // 0.05% (MEDIUM)
             'correlation' => '0.55', // MEDIUM
             'estimated_costs' => '6.00',
+            'estimated_cost_drag_percent' => 2.5, // 0.16 quantity gives 240 USDT TP1 gain.
         ];
 
         $result = $this->service->classify($input);
@@ -91,7 +99,8 @@ final class TradeRiskClassificationTest extends TestCase
             'bid' => '49900.00',
             'ask' => '50100.00', // 0.40% spread (HIGH)
             'correlation' => '0.85', // HIGH
-            'estimated_costs' => '40.00', // cost drag > 20% of TP1 (HIGH)
+            'estimated_costs' => '40.00',
+            'estimated_cost_drag_percent' => 10.0, // 0.4 quantity gives 400 USDT TP1 gain.
         ];
 
         $result = $this->service->classify($input);

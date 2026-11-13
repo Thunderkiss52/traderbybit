@@ -20,6 +20,7 @@ import (
 	"github.com/traderbybit/research-go/internal/jobscope"
 	"github.com/traderbybit/research-go/internal/patterns"
 	"github.com/traderbybit/research-go/internal/replay"
+	"github.com/traderbybit/research-go/internal/signalintel"
 	"github.com/traderbybit/research-go/internal/simulation"
 	"github.com/traderbybit/research-go/internal/telemetry"
 	"github.com/traderbybit/research-go/internal/walkforward"
@@ -178,6 +179,12 @@ func (r *Runner) ClaimNextJob(ctx context.Context, leaseDuration time.Duration) 
 		Payload:           payload,
 		CreatedBy:         createdBy,
 		RequestedAtUTC:    reqAt.Format(time.RFC3339),
+	}
+	if asOfUTC.Valid {
+		req.AsOfUTC = asOfUTC.Time.UTC().Format(time.RFC3339Nano)
+	}
+	if cutoffUTC.Valid {
+		req.TrainingCutoffUTC = cutoffUTC.Time.UTC().Format(time.RFC3339Nano)
 	}
 
 	return req, newFencingToken, nil
@@ -484,11 +491,29 @@ func IsSupportedKind(kind string) bool {
 		contracts.KindMonteCarlo,
 		contracts.KindReplay,
 		contracts.KindSkipOutcomes,
-		contracts.KindFeatureBuild:
+		contracts.KindFeatureBuild,
+		contracts.KindSignalMarkout:
 		return true
 	default:
 		return false
 	}
+}
+
+// Research sources require persisted registry membership, independently of any
+// PAPER execution eligibility or owner approval flags.
+func (r *Runner) resolveRegisteredExchange(ctx context.Context, payload map[string]interface{}) (string, error) {
+	exchange, err := jobscope.ResolveExchange(payload)
+	if err != nil {
+		return "", err
+	}
+	var registered bool
+	if err := r.db.QueryRowContext(ctx, "SELECT EXISTS (SELECT 1 FROM exchanges WHERE id = $1)", exchange).Scan(&registered); err != nil {
+		return "", fmt.Errorf("research exchange registry is unavailable: %w", err)
+	}
+	if !registered {
+		return "", fmt.Errorf("research job exchange is missing or unsupported: %q", exchange)
+	}
+	return exchange, nil
 }
 
 // ExecuteJob runs a single job and handles heartbeat, telemetry, execution, and completion
@@ -538,6 +563,103 @@ func (r *Runner) ExecuteJob(ctx context.Context, req *contracts.JobRequest, fenc
 		}
 	}()
 
+	if strings.EqualFold(req.Kind, contracts.KindSignalMarkout) {
+		if req.ResearchMode != "HYPOTHETICAL" {
+			err := fmt.Errorf("signal markout requires hypothetical research mode")
+			_ = r.FailJob(ctx, req.JobID, fencingToken, err)
+			return err
+		}
+		data, err := json.Marshal(req.Payload["signal_intelligence"])
+		if err != nil {
+			_ = r.FailJob(ctx, req.JobID, fencingToken, err)
+			return err
+		}
+		packet, err := signalintel.DecodeRequest(data)
+		if err != nil {
+			_ = r.FailJob(ctx, req.JobID, fencingToken, err)
+			return err
+		}
+		exchange, err := r.resolveRegisteredExchange(ctx, req.Payload)
+		if err != nil {
+			_ = r.FailJob(ctx, req.JobID, fencingToken, err)
+			return err
+		}
+		var sourceExchange, strategy, version, configuration, revision string
+		if packet.Evaluation != nil {
+			e := packet.Evaluation
+			sourceExchange = e.Signal.Exchange
+			strategy = e.Signal.StrategyID
+			version = e.Signal.StrategyVersion
+			configuration = e.Provenance.ConfigurationHash
+			revision = e.Provenance.CodeRevision
+			if e.Provenance.DatasetHash != req.DatasetSHA256 || e.Provenance.DatasetID != req.DatasetID {
+				err = fmt.Errorf("signal markout dataset provenance mismatch")
+			}
+		} else if packet.Cohort != nil {
+			sc := packet.Cohort.Scope
+			sourceExchange = sc.Exchange
+			strategy = sc.StrategyID
+			version = sc.StrategyVersion
+			configuration = sc.ConfigurationHash
+			revision = sc.CodeRevision
+			provenance := packet.Cohort.Provenance
+			datasetHash, datasetErr := signalintel.CohortDatasetHash(packet.Cohort.Observations)
+			if datasetErr != nil || provenance == nil || strings.TrimSpace(provenance.DatasetID) == "" || provenance.DatasetID != req.DatasetID || provenance.DatasetHash != req.DatasetSHA256 ||
+				provenance.DatasetHash != datasetHash || provenance.ConfigurationHash != configuration || provenance.CodeRevision != revision {
+				err = fmt.Errorf("signal markout cohort dataset provenance mismatch")
+			}
+		}
+		cutoff, timeErr := time.Parse(time.RFC3339Nano, req.AsOfUTC)
+		innerAsOf := int64(0)
+		inputRows := 0
+		if packet.Evaluation != nil {
+			innerAsOf = packet.Evaluation.AsOfMS
+			inputRows = len(packet.Evaluation.Candles)
+		} else if packet.Cohort != nil {
+			innerAsOf = packet.Cohort.AsOfMS
+			inputRows = len(packet.Cohort.Observations)
+		}
+		if timeErr != nil || innerAsOf != cutoff.UnixMilli() || req.Limits.MaxRows <= 0 || inputRows > req.Limits.MaxRows {
+			err = fmt.Errorf("signal intelligence cutoff or row limit mismatch")
+			_ = r.FailJob(ctx, req.JobID, fencingToken, err)
+			return err
+		}
+		if err != nil || sourceExchange != exchange || strategy != req.StrategyID || version != req.StrategyVersion || configuration != req.ConfigurationHash || revision != req.CodeRevision {
+			err = fmt.Errorf("signal intelligence immutable job scope mismatch")
+			_ = r.FailJob(ctx, req.JobID, fencingToken, err)
+			return err
+		}
+		duration := req.Limits.MaxDurationS
+		if duration <= 0 || duration > 30 {
+			duration = 30
+		}
+		bounded, cancel := context.WithTimeout(ctx, time.Duration(duration)*time.Second)
+		defer cancel()
+		report, err := signalintel.Run(bounded, packet)
+		if err != nil {
+			_ = r.FailJob(ctx, req.JobID, fencingToken, err)
+			return err
+		}
+		if packet.Evaluation != nil {
+			rowsProcessed = len(packet.Evaluation.Candles)
+		} else if packet.Cohort != nil {
+			rowsProcessed = len(packet.Cohort.Observations)
+		}
+		reportBytes, err := json.Marshal(report)
+		if err != nil {
+			_ = r.FailJob(ctx, req.JobID, fencingToken, err)
+			return err
+		}
+		reportHash, err := contracts.ComputeManifestHash(json.RawMessage(reportBytes))
+		if err != nil {
+			_ = r.FailJob(ctx, req.JobID, fencingToken, err)
+			return err
+		}
+		result := contracts.JobResult{JobID: req.JobID, Kind: req.Kind, Status: contracts.StatusSucceeded,
+			Metrics: map[string]interface{}{"signal_intelligence_json": string(reportBytes), "signal_intelligence_sha256": reportHash, "research_only": true}, RuntimeStats: tracker.Stop(rowsProcessed), CompletedAt: contracts.FormatNowUTC()}
+		return r.CompleteJob(ctx, req.JobID, fencingToken, result)
+	}
+
 	// Extract parameters
 	symbol := "BTCUSDT"
 	interval := "5"
@@ -572,7 +694,7 @@ func (r *Runner) ExecuteJob(ctx context.Context, req *contracts.JobRequest, fenc
 
 	// Market-data source is an explicit job contract: never silently read Bybit
 	// candles for a Binance research job (or an unidentified dataset).
-	exchange, err := jobscope.ResolveExchange(req.Payload)
+	exchange, err := r.resolveRegisteredExchange(ctx, req.Payload)
 	if err != nil {
 		if fjErr := r.FailJob(ctx, req.JobID, fencingToken, err); fjErr != nil {
 			log.Printf("[jobrunner] FailJob error for job %s: %v", req.JobID, fjErr)

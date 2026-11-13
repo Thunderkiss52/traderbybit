@@ -30,16 +30,22 @@ class LearningPredictorService
      * Train and calibrate an outcome prediction model on matured labels.
      * Uses a purged temporal train/validation split and executes champion/challenger evaluation.
      */
-    public function trainModel(string $targetEvent = 'TP_BEFORE_SL', string $symbol = 'BTCUSDT', string $exchange = 'bybit'): ?LearningModelArtifactRecord
+    public function trainModel(string $targetEvent = 'TP_BEFORE_SL', string $symbol = 'BTCUSDT', string $exchange = 'bybit', string $strategyId = 'baseline', string $timeframe = '15', string $side = 'BUY', string $category = 'linear', string $strategyVersion = 'UNVERSIONED'): ?LearningModelArtifactRecord
     {
         $this->assertTrainingAllowed();
-        $modelName = self::scopedModelName($targetEvent, $symbol, $exchange);
+        $modelName = self::scopedModelName($targetEvent, $symbol, $exchange, $strategyId, $timeframe, $side, $category, $strategyVersion);
 
         // Legacy snapshots without a verified exchange are deliberately excluded.
         // They must not be presumed Bybit when the same symbol exists on Binance.
         $snapshots = LearningFeatureSnapshotRecord::query()
             ->where('symbol', $symbol)
             ->where('data_quality->exchange', $exchange)
+            ->where('data_quality->category', $category)
+            ->where('data_quality->side', $side)
+            ->where('data_quality->label_policy_version', 'SIGNAL_PROXY_V2')
+            ->where('data_quality->strategy_version', $strategyVersion)
+            ->where('strategy_id', $strategyId)
+            ->where('timeframe', $timeframe)
             ->where('label_status', 'MATURED')
             ->orderBy('decision_time')
             ->get();
@@ -50,18 +56,11 @@ class LearningPredictorService
 
         $allData = [];
         foreach ($snapshots as $snap) {
-            $feat = (array) $snap->features;
-            $allData[] = [
-                'decision_time' => $snap->decision_time,
-                'outcome_at' => $snap->outcome_at ? CarbonImmutable::parse($snap->outcome_at) : null,
-                'y' => $snap->label_outcome === 'TP' ? 1.0 : 0.0,
-                'r_multiple' => (float) ($snap->label_r_multiple ?? ($snap->label_outcome === 'TP' ? 1.87 : -1.13)),
-                'hl_spread_pct' => (float) ($feat['hl_spread_pct'] ?? 0.0),
-                'body_spread_pct' => (float) ($feat['body_spread_pct'] ?? 0.0),
-                'recent_volatility' => (float) ($feat['recent_volatility'] ?? 0.0),
-                'rsi_14' => (float) ($feat['rsi_14'] ?? 50.0),
-                'volume_ratio' => (float) ($feat['volume_ratio'] ?? 1.0),
-            ];
+            $row = $this->maturedObservation($snap);
+            if ($row === null) {
+                return null; // Incomplete, immature or noncausal labels cannot train a model.
+            }
+            $allData[] = $row;
         }
 
         $totalCount = count($allData);
@@ -146,6 +145,9 @@ class LearningPredictorService
                 $variance += ($diff * $diff);
             }
             $std = sqrt($variance / $m);
+            if (! is_finite($mean) || ! is_finite($std)) {
+                return null;
+            }
             if ($std < 1e-4) {
                 $std = 1.0;
             }
@@ -214,7 +216,7 @@ class LearningPredictorService
         // Evaluate on untouched out-of-sample Validation slice
         $valMetrics = $this->evaluateDataset($valSlice, $weights);
 
-        $artifactHash = hash('sha256', json_encode($weights).':'.$totalCount.':'.$exchange.':'.$symbol);
+        $artifactHash = hash('sha256', json_encode($weights).':'.$totalCount.':'.$modelName);
         $version = 'v'.date('Ymd.His');
 
         // Check if active champion model exists
@@ -267,14 +269,18 @@ class LearningPredictorService
             if ($improvesBrier && $improvesLogLoss && $improvesBaseline) {
                 $status = 'ACTIVE';
                 $promotionReason = "Challenger outperformed champion on holdout: Brier {$valMetrics['brier_score']} vs {$champValMetrics['brier_score']}, beats baseline {$baselineBrier}.";
-                $champion->update(['status' => 'RETIRED']);
-                $this->recordAutonomyEvent('CHAMPION_RETIRED', $champion->id, 'ACTIVE', 'RETIRED', "Replaced by superior challenger {$version}.");
+                // Proxy labels are not executed ledger evidence. Never retire
+                // an active model using only hypothetical signal outcomes.
             } else {
                 $status = 'CHALLENGER_REJECTED';
                 $promotionReason = "Challenger failed to beat champion and baseline on holdout: Brier {$valMetrics['brier_score']} vs {$champValMetrics['brier_score']} (baseline {$baselineBrier}).";
             }
         }
 
+        if ($status === 'ACTIVE') {
+            $status = 'CANDIDATE';
+            $promotionReason = 'Directional proxy-label models require independent executed-ledger validation before activation.';
+        }
         $candidate = LearningModelArtifactRecord::query()->create([
             'id' => (string) Str::uuid(),
             'name' => $modelName,
@@ -285,7 +291,13 @@ class LearningPredictorService
                 'target_event' => $targetEvent,
                 'symbol' => $symbol,
                 'exchange' => $exchange,
-                'label_source' => 'PROXY_FIXED_BARRIERS',
+                'label_source' => 'DIRECTIONAL_SIGNAL_PROXY_V2',
+                'strategy_id' => $strategyId,
+                'strategy_version' => $strategyVersion,
+                'timeframe' => $timeframe,
+                'side' => $side,
+                'category' => $category,
+                'feature_schema_version' => '1.0.0',
                 'total_sample_size' => $totalCount,
                 'train_sample_size' => count($trainSlice),
                 'validation_sample_size' => count($valSlice),
@@ -315,7 +327,7 @@ class LearningPredictorService
             'status' => $status,
         ]);
 
-        if ($promotionReason !== null) {
+        if ($promotionReason !== null && $status !== 'CANDIDATE') {
             $this->recordAutonomyEvent(
                 action: $status === 'ACTIVE' ? 'MODEL_PROMOTION' : 'CHALLENGER_REJECTED',
                 targetId: $candidate->id,
@@ -327,6 +339,39 @@ class LearningPredictorService
         }
 
         return $candidate;
+    }
+
+    /** @return array<string, mixed>|null */
+    private function maturedObservation(LearningFeatureSnapshotRecord $snapshot): ?array
+    {
+        $rMultiple = $snapshot->getRawOriginal('label_r_multiple');
+        if ($snapshot->feature_schema_version !== '1.0.0'
+            || ($snapshot->data_quality['no_look_ahead_verified'] ?? false) !== true
+            || ! in_array($snapshot->label_outcome, ['TP', 'SL', 'TIMEOUT'], true)
+            || $snapshot->decision_time === null || $snapshot->available_at === null
+            || $snapshot->outcome_at === null
+            || $snapshot->available_at->greaterThan($snapshot->decision_time)
+            || $snapshot->outcome_at->lessThan($snapshot->decision_time)
+            || $snapshot->outcome_at->greaterThan(CarbonImmutable::now('UTC'))
+            || ! is_numeric($rMultiple)
+            || ! is_finite((float) $rMultiple)) {
+            return null;
+        }
+        $features = (array) $snapshot->features;
+        $row = [
+            'decision_time' => $snapshot->decision_time,
+            'outcome_at' => $snapshot->outcome_at,
+            'y' => $snapshot->label_outcome === 'TP' ? 1.0 : 0.0,
+            'r_multiple' => (float) $rMultiple,
+        ];
+        foreach (['hl_spread_pct', 'recent_volatility', 'rsi_14', 'volume_ratio'] as $key) {
+            if (! isset($features[$key]) || ! is_numeric($features[$key]) || ! is_finite((float) $features[$key])) {
+                return null;
+            }
+            $row[$key] = (float) $features[$key];
+        }
+
+        return $row;
     }
 
     /**
@@ -427,9 +472,9 @@ class LearningPredictorService
     /**
      * Detect concept drift on the active champion model.
      */
-    public function detectConceptDrift(string $symbol = 'BTCUSDT', string $targetEvent = 'TP_BEFORE_SL', string $exchange = 'bybit'): array
+    public function detectConceptDrift(string $symbol = 'BTCUSDT', string $targetEvent = 'TP_BEFORE_SL', string $exchange = 'bybit', string $strategyId = 'baseline', string $timeframe = '15', string $side = 'BUY', string $category = 'linear', string $strategyVersion = 'UNVERSIONED'): array
     {
-        $modelName = self::scopedModelName($targetEvent, $symbol, $exchange);
+        $modelName = self::scopedModelName($targetEvent, $symbol, $exchange, $strategyId, $timeframe, $side, $category, $strategyVersion);
         $champion = LearningModelArtifactRecord::query()
             ->where('target_event', $targetEvent)
             ->where('name', $modelName)
@@ -449,6 +494,12 @@ class LearningPredictorService
         $recentMatured = LearningFeatureSnapshotRecord::query()
             ->where('symbol', $symbol)
             ->where('data_quality->exchange', $exchange)
+            ->where('data_quality->category', $category)
+            ->where('data_quality->side', $side)
+            ->where('data_quality->label_policy_version', 'SIGNAL_PROXY_V2')
+            ->where('data_quality->strategy_version', $strategyVersion)
+            ->where('strategy_id', $strategyId)
+            ->where('timeframe', $timeframe)
             ->where('label_status', 'MATURED')
             ->latest('decision_time')
             ->limit(15)
@@ -465,12 +516,17 @@ class LearningPredictorService
 
         $data = [];
         foreach ($recentMatured as $snap) {
-            $feat = (array) $snap->features;
-            $data[] = [
-                'y' => $snap->label_outcome === 'TP' ? 1.0 : 0.0,
-                'r_multiple' => (float) ($snap->label_r_multiple ?? 0.0),
-                'hl_spread_pct' => (float) ($feat['hl_spread_pct'] ?? 0.0),
-                'recent_volatility' => (float) ($feat['recent_volatility'] ?? 0.0),
+            $row = $this->maturedObservation($snap);
+            if ($row !== null) {
+                $data[] = $row;
+            }
+        }
+        if (count($data) < 10) {
+            return [
+                'drift_detected' => false,
+                'status' => 'INSUFFICIENT_RECENT_DATA',
+                'sample_size' => count($data),
+                'recommendation' => 'WAIT',
             ];
         }
 
@@ -491,9 +547,9 @@ class LearningPredictorService
     /**
      * Calibrate probability for a new observation vector using the active model.
      */
-    public function predictCalibrated(string $targetEvent, array $featureVector, string $symbol = 'BTCUSDT', string $exchange = 'bybit'): array
+    public function predictCalibrated(string $targetEvent, array $featureVector, string $symbol = 'BTCUSDT', string $exchange = 'bybit', string $strategyId = 'baseline', string $timeframe = '15', string $side = 'BUY', string $category = 'linear', string $strategyVersion = 'UNVERSIONED'): array
     {
-        $modelName = self::scopedModelName($targetEvent, $symbol, $exchange);
+        $modelName = self::scopedModelName($targetEvent, $symbol, $exchange, $strategyId, $timeframe, $side, $category, $strategyVersion);
         $model = LearningModelArtifactRecord::query()
             ->where('target_event', $targetEvent)
             ->where('name', $modelName)
@@ -516,6 +572,19 @@ class LearningPredictorService
         $means = (array) ($weights['means'] ?? []);
         $stds = (array) ($weights['stds'] ?? []);
 
+        if (! isset($weights['intercept']) || ! is_numeric($weights['intercept']) || ! is_finite($w0)) {
+            throw new \DomainException('Model intercept must be finite.');
+        }
+        $requiredCoefficients = $coefficients !== [] ? $coefficients : array_intersect_key($weights, array_flip(['hl_spread_pct', 'recent_volatility']));
+        foreach ($requiredCoefficients as $key => $coefficient) {
+            if (! is_numeric($coefficient) || ! is_finite((float) $coefficient)
+                || ! isset($featureVector[$key]) || ! is_numeric($featureVector[$key]) || ! is_finite((float) $featureVector[$key])
+                || (isset($means[$key]) && (! is_numeric($means[$key]) || ! is_finite((float) $means[$key])))
+                || (isset($stds[$key]) && (! is_numeric($stds[$key]) || ! is_finite((float) $stds[$key]) || (float) $stds[$key] <= 0.0))) {
+                throw new \DomainException('Model inference requires finite features and valid scaling.');
+            }
+        }
+
         $logit = $w0;
         if (! empty($coefficients)) {
             foreach ($coefficients as $k => $coeff) {
@@ -535,6 +604,9 @@ class LearningPredictorService
             $logit += ($wSpread * $spread) + ($wVol * $vol);
         }
 
+        if (! is_finite($logit)) {
+            throw new \DomainException('Model inference produced a nonfinite score.');
+        }
         $prob = 1.0 / (1.0 + exp(-max(-15.0, min(15.0, $logit))));
         $prob = max(0.01, min(0.99, $prob));
 
@@ -550,9 +622,9 @@ class LearningPredictorService
     /**
      * Rollback the active champion model to the previous champion (or retire it if none exists).
      */
-    public function rollbackModel(string $targetEvent = 'TP_BEFORE_SL', string $symbol = 'BTCUSDT', string $reason = 'Manual rollback or concept drift detected', string $exchange = 'bybit'): ?LearningModelArtifactRecord
+    public function rollbackModel(string $targetEvent = 'TP_BEFORE_SL', string $symbol = 'BTCUSDT', string $reason = 'Manual rollback or concept drift detected', string $exchange = 'bybit', string $strategyId = 'baseline', string $timeframe = '15', string $side = 'BUY', string $category = 'linear', string $strategyVersion = 'UNVERSIONED'): ?LearningModelArtifactRecord
     {
-        $modelName = self::scopedModelName($targetEvent, $symbol, $exchange);
+        $modelName = self::scopedModelName($targetEvent, $symbol, $exchange, $strategyId, $timeframe, $side, $category, $strategyVersion);
         $current = LearningModelArtifactRecord::query()
             ->where('target_event', $targetEvent)
             ->where('name', $modelName)
@@ -604,13 +676,17 @@ class LearningPredictorService
      * Scope model identity to its exchange. Legacy Bybit names remain visible
      * for audit, but unscoped artifacts cannot be used for calibration.
      */
-    public static function scopedModelName(string $targetEvent, string $symbol, string $exchange): string
+    public static function scopedModelName(string $targetEvent, string $symbol, string $exchange, string $strategyId = 'baseline', string $timeframe = '15', string $side = 'BUY', string $category = 'linear', string $strategyVersion = 'UNVERSIONED'): string
     {
-        if (! in_array($exchange, ['bybit', 'binance'], true)) {
-            throw new \InvalidArgumentException('Unsupported ML model exchange.');
+        $identity = [$targetEvent, $symbol, $exchange, $strategyId, $strategyVersion, $timeframe, $side, $category, 'SIGNAL_PROXY_V2'];
+        foreach ($identity as $field) {
+            if (! preg_match('/^[a-zA-Z0-9._-]{1,64}$/D', $field)) {
+                throw new \InvalidArgumentException('Invalid ML cohort identity.');
+            }
         }
+        $prefix = substr('Logistic_'.$targetEvent.'_'.$symbol.'_'.$exchange, 0, 44);
 
-        return "Logistic_{$targetEvent}_{$symbol}".($exchange === 'bybit' ? '' : '_binance');
+        return $prefix.'_'.substr(hash('sha256', implode('|', $identity)), 0, 16);
     }
 
     private function recordAutonomyEvent(string $action, string $targetId, string $prevState, string $newState, string $reason, ?array $evidence = null): void

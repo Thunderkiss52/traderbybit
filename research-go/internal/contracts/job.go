@@ -9,14 +9,15 @@ import (
 
 // Job kinds
 const (
-	KindBacktest     = "BACKTEST"
-	KindWalkForward  = "WALK_FORWARD"
-	KindPatternMine  = "PATTERN_MINE"
-	KindReplay       = "REPLAY"
-	KindSkipOutcomes = "SKIP_OUTCOMES"
-	KindMonteCarlo   = "MONTE_CARLO"
-	KindFeatureBuild = "FEATURE_BUILD"
-	KindModelTrain   = "MODEL_TRAIN"
+	KindBacktest      = "BACKTEST"
+	KindWalkForward   = "WALK_FORWARD"
+	KindPatternMine   = "PATTERN_MINE"
+	KindReplay        = "REPLAY"
+	KindSkipOutcomes  = "SKIP_OUTCOMES"
+	KindMonteCarlo    = "MONTE_CARLO"
+	KindFeatureBuild  = "FEATURE_BUILD"
+	KindModelTrain    = "MODEL_TRAIN"
+	KindSignalMarkout = "SIGNAL_MARKOUT"
 )
 
 // Job states

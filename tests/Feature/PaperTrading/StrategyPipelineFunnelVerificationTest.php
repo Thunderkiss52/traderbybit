@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Tests\Feature\PaperTrading;
 
 use App\Exchanges\Binance\BinanceDeploymentInitializer;
+use App\Exchanges\Infrastructure\Persistence\ExchangeRecord;
 use App\PaperTrading\Application\PaperExecutionEligibilityService;
 use App\PaperTrading\Application\PaperProcessingService;
 use App\PaperTrading\Domain\SignalLifecycle;
@@ -466,6 +467,10 @@ final class StrategyPipelineFunnelVerificationTest extends TestCase
 
     public function test_binance_directional_signals_blocked_at_prerisk_when_execution_unapproved(): void
     {
+        // Complete synthetic technical assumptions so the negative control
+        // specifically reaches the independent owner execution-approval gate.
+        $venue = ExchangeRecord::query()->findOrFail('binance');
+        $venue->update(['cost_model' => array_merge((array) $venue->cost_model, ['maker_rate' => '0.0002'])]);
         $initializer = $this->app->make(BinanceDeploymentInitializer::class);
         $initializer->initialize('10000', 'OWNER-VECTOR-20261027');
 

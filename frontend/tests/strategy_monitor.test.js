@@ -27,3 +27,20 @@ test('strategy monitor contains decision explainability, sizing, and timeline pa
   assert.match(pageSrc, /Chronological Audit Timeline/);
   assert.match(pageSrc, /q-timeline/);
 });
+
+
+test('strategy monitor shows account-scoped decisions and positions without collapsing financial history', () => {
+  const src = readFileSync(resolve('src/pages/StrategyMonitorPage.vue'), 'utf-8');
+  assert.match(src, /risk_decision_count > 1/);
+  assert.match(src, /position_count > 1/);
+  assert.match(src, /v-for="decision in selectedItem\.risk_decisions"/);
+  assert.match(src, /selectedItem\.positions\?\.length/);
+  assert.match(src, /position\.paper_account_id/);
+});
+
+test('strategy monitor protects against stale filter and timeline responses', () => {
+  const src = readFileSync(resolve('src/pages/StrategyMonitorPage.vue'), 'utf-8');
+  assert.match(src, /currentController !== controller \|\| controller\.signal\.aborted/);
+  assert.match(src, /requestId === timelineRequestId/);
+  assert.match(src, /selectItem\(null\);/);
+});

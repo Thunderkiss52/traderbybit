@@ -176,6 +176,61 @@ final class SlippageAttributionApiTest extends TestCase
             ->assertJsonPath('error.code', 'IDEMPOTENCY_CONFLICT');
     }
 
+    public function test_scoped_generation_verifies_only_its_selected_market_and_retries_idempotently(): void
+    {
+        $payload = [
+            'idempotency_key' => 'api-scoped-retry', 'package_code' => 'P-1',
+            'exchange' => ' BYBIT ', 'symbol' => ' btcusdt ',
+        ];
+        $headers = ['X-Research-Token' => $this->validToken];
+        $created = $this->postJson('/api/v1/research/profitability/generations', $payload, $headers)
+            ->assertCreated()->assertJsonPath('data.generation.metadata.exchange', 'bybit')
+            ->assertJsonPath('data.generation.metadata.symbol', 'BTCUSDT');
+        $this->travel(2)->seconds();
+        $this->postJson('/api/v1/research/profitability/generations', $payload, $headers)
+            ->assertCreated()->assertJsonPath('data.generation.id', $created->json('data.generation.id'));
+        $this->getJson('/api/v1/research/profitability/summary?exchange=bybit&symbol=BTCUSDT')
+            ->assertOk()->assertJsonPath('data.gated_modules.P-1.status', 'IMPLEMENTED_VERIFIED');
+        $this->getJson('/api/v1/research/profitability/slippage-attribution?exchange=bybit&symbol=BTCUSDT')
+            ->assertOk()->assertJsonPath('data.generation_id', $created->json('data.generation.id'));
+        foreach ([['exchange' => 'binance'], ['symbol' => 'ETHUSDT']] as $change) {
+            $this->postJson('/api/v1/research/profitability/generations', array_replace($payload, $change), $headers)
+                ->assertConflict()->assertJsonPath('error.code', 'IDEMPOTENCY_CONFLICT');
+        }
+        foreach (['exchange=binance&symbol=BTCUSDT', 'exchange=bybit&symbol=ETHUSDT', 'exchange=bybit', 'exchange=all&symbol=BTCUSDT', 'exchange=all'] as $scope) {
+            $this->getJson('/api/v1/research/profitability/summary?'.$scope)
+                ->assertOk()->assertJsonPath('data.gated_modules.P-1.status', 'NOT_GENERATED');
+            $this->getJson('/api/v1/research/profitability/slippage-attribution?'.$scope)
+                ->assertOk()->assertJsonPath('data.status', 'NO_GENERATION_AVAILABLE');
+        }
+        $this->postJson('/api/v1/research/profitability/generations', array_replace($payload, ['exchange' => 'unknown_venue']), $headers)
+            ->assertUnprocessable()->assertJsonValidationErrors('exchange');
+    }
+
+    public function test_global_generation_does_not_certify_selected_markets_or_window_only_evidence(): void
+    {
+        $headers = ['X-Research-Token' => $this->validToken];
+        $payload = [
+            'idempotency_key' => 'api-global-generation', 'package_code' => 'P-1',
+            'exchange' => 'all', 'symbol' => 'ALL',
+        ];
+        $this->postJson('/api/v1/research/profitability/generations', $payload, $headers)->assertCreated();
+        $this->getJson('/api/v1/research/profitability/summary?exchange=all')
+            ->assertOk()->assertJsonPath('data.gated_modules.P-1.status', 'IMPLEMENTED_VERIFIED');
+        foreach (['exchange=bybit', 'exchange=bybit&symbol=BTCUSDT', 'exchange=all&symbol=BTCUSDT'] as $scope) {
+            $this->getJson('/api/v1/research/profitability/summary?'.$scope)
+                ->assertOk()->assertJsonPath('data.gated_modules.P-1.status', 'NOT_GENERATED');
+            $this->getJson('/api/v1/research/profitability/slippage-attribution?'.$scope)
+                ->assertOk()->assertJsonPath('data.status', 'NO_GENERATION_AVAILABLE');
+        }
+        $this->postJson('/api/v1/research/profitability/generations', array_replace($payload, [
+            'idempotency_key' => 'api-window-generation', 'exchange' => 'bybit', 'symbol' => 'BTCUSDT',
+            'accounting_scope' => 'WINDOW_FLOW', 'window_start' => '2026-10-19T00:00:00Z', 'window_end' => '2026-10-20T00:00:00Z',
+        ]), $headers)->assertCreated();
+        $this->getJson('/api/v1/research/profitability/summary?exchange=bybit&symbol=BTCUSDT')
+            ->assertOk()->assertJsonPath('data.gated_modules.P-1.status', 'NOT_GENERATED');
+    }
+
     public function test_f24_slippage_position_trace_scopes_accounts_and_exchanges_without_foreign_fills(): void
     {
         // Initialize Binance accounts

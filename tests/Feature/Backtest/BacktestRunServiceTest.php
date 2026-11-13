@@ -6,6 +6,7 @@ namespace Tests\Feature\Backtest;
 
 use App\Backtest\Application\BacktestRunService;
 use App\Backtest\Infrastructure\Persistence\BacktestRunRecord;
+use App\Exchanges\Infrastructure\Persistence\ExchangeRecord;
 use App\MarketData\Infrastructure\Persistence\CandleRecord;
 use DateTimeImmutable;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -50,8 +51,7 @@ final class BacktestRunServiceTest extends TestCase
         config()->set('backtest.optimization.minimum_trades', 0);
         config()->set('backtest.stress.fee_multipliers', ['2']);
         config()->set('backtest.stress.slippage_multipliers', ['2']);
-        config()->set('exchanges.binance.paper_taker_rate', '0.0004');
-        config()->set('exchanges.binance.paper_slippage_rate', '0.0002');
+        $this->seedBinanceResearchCosts();
         $service = app(BacktestRunService::class);
         $from = new DateTimeImmutable('2026-01-01T00:00:00Z');
         $to = new DateTimeImmutable('2026-01-01T01:00:00Z');
@@ -88,14 +88,16 @@ final class BacktestRunServiceTest extends TestCase
     {
         $this->seedCompleteHour('binance');
         config()->set('backtest.warmup_bars', 0);
-        config()->set('exchanges.binance.paper_taker_rate', null);
+        $this->seedBinanceResearchCosts(['taker_rate' => null]);
         try {
             app(BacktestRunService::class)->run(['BTCUSDT'], new DateTimeImmutable('2026-01-01T00:00:00Z'), new DateTimeImmutable('2026-01-01T01:00:00Z'), exchange: 'binance');
             self::fail('Missing costs accepted.');
         } catch (\RuntimeException $exception) {
-            self::assertSame('Binance historical execution cost unavailable: paper_taker_rate', $exception->getMessage());
+            self::assertSame('Historical execution cost unavailable for binance: taker_rate.', $exception->getMessage());
         }
         self::assertSame(0, BacktestRunRecord::query()->count());
+        self::assertSame(0, DB::table('paper_accounts')->count());
+        self::assertSame(0, DB::table('virtual_positions')->count());
     }
 
     public function test_binance_walk_forward_run_persists_exchange_and_walk_type(): void
@@ -105,8 +107,7 @@ final class BacktestRunServiceTest extends TestCase
         config()->set('backtest.walk_forward', ['train_minutes' => 30, 'validation_minutes' => 15, 'test_minutes' => 15, 'step_minutes' => 15]);
         config()->set('backtest.optimization.grid', ['trend.adx_min' => ['20']]);
         config()->set('backtest.optimization.minimum_trades', 0);
-        config()->set('exchanges.binance.paper_taker_rate', '0.0004');
-        config()->set('exchanges.binance.paper_slippage_rate', '0.0002');
+        $this->seedBinanceResearchCosts();
 
         $from = new DateTimeImmutable('2026-01-01T00:00:00Z');
         $to = new DateTimeImmutable('2026-01-01T01:00:00Z');
@@ -164,6 +165,22 @@ final class BacktestRunServiceTest extends TestCase
             self::assertSame('Historical inputs changed during backtest.', $error->getMessage());
         }
         self::assertSame('FAILED', BacktestRunRecord::query()->firstOrFail()->status);
+    }
+
+    /** @param array<string, string|null> $overrides */
+    private function seedBinanceResearchCosts(array $overrides = []): void
+    {
+        // Synthetic research assumptions only; these do not verify Binance fees.
+        ExchangeRecord::query()->findOrFail('binance')->update([
+            'market_type' => 'linear_perpetual',
+            'cost_model' => array_replace([
+                'version' => 'synthetic-binance-backtest-test-v1',
+                'maker_rate' => '0.00013', 'taker_rate' => '0.0004', 'slippage_rate' => '0.0002',
+            ], $overrides),
+        ]);
+        config()->set('exchanges.binance.cost_model', null);
+        config()->set('exchanges.binance.paper_taker_rate', null);
+        config()->set('exchanges.binance.paper_slippage_rate', null);
     }
 
     private function seedCompleteHour(string $exchange = 'bybit'): void

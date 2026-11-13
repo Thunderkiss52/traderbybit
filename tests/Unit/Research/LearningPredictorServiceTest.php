@@ -51,20 +51,13 @@ final class LearningPredictorServiceTest extends TestCase
         }
 
         $model = $service->trainModel('TP_BEFORE_SL', 'BTCUSDT');
-        self::assertNotNull($model);
-        self::assertSame('ACTIVE', $model->status);
-        self::assertArrayHasKey('brier_score', $model->metrics);
-        self::assertArrayHasKey('ece', $model->metrics);
-        self::assertNotEmpty($model->artifact_hash);
-
-        // Predict calibrated probability
+        self::assertNull($model); // Legacy unlabeled samples cannot train an execution-authoritative model
+        // Do not calibrate using an unversioned mixed-strategy legacy cohort.
         $pred = $service->predictCalibrated('TP_BEFORE_SL', [
             'hl_spread_pct' => 1.6,
             'recent_volatility' => 1.1,
         ]);
-
-        self::assertSame('CALIBRATED', $pred['status']);
-        self::assertGreaterThanOrEqual(0.01, $pred['probability']);
-        self::assertLessThanOrEqual(0.99, $pred['probability']);
+        self::assertSame('INSUFFICIENT_DATA', $pred['status']);
+        self::assertNull($pred['probability']);
     }
 }

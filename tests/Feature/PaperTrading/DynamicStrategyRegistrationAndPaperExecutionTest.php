@@ -23,11 +23,13 @@ use DateTimeImmutable;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
 use Ramsey\Uuid\Uuid;
+use Tests\Concerns\SeedsValidatedPaperEvidence;
 use Tests\TestCase;
 
 final class DynamicStrategyRegistrationAndPaperExecutionTest extends TestCase
 {
     use RefreshDatabase;
+    use SeedsValidatedPaperEvidence;
 
     protected function setUp(): void
     {
@@ -38,6 +40,7 @@ final class DynamicStrategyRegistrationAndPaperExecutionTest extends TestCase
 
     public function test_dynamic_strategy_registration_and_full_paper_execution_lifecycle(): void
     {
+        $this->travelTo(new DateTimeImmutable('2026-10-14T10:00:00Z'));
         // 1. Initial state: synchronize canonical topology (13 strategies)
         $synchronizer = app(PaperTopologySynchronizer::class);
         $syncResult = $synchronizer->sync(true);
@@ -81,13 +84,38 @@ final class DynamicStrategyRegistrationAndPaperExecutionTest extends TestCase
         $bybitAccount = PaperAccountRecord::query()->where('exchange_id', 'bybit')->where('primary_strategy_id', $strategyId)->firstOrFail();
         $binanceAccount = PaperAccountRecord::query()->where('exchange_id', 'binance')->where('primary_strategy_id', $strategyId)->firstOrFail();
 
-        self::assertSame('ACTIVE', $bybitAccount->status);
-        self::assertDecimalSame('10000', (string) $bybitAccount->starting_balance);
-        self::assertDecimalSame('10000', (string) $bybitAccount->current_equity);
+        self::assertSame('BLOCKED', $bybitAccount->status);
+        self::assertSame('READINESS_PENDING', $bybitAccount->execution_block_origin);
+        self::assertDecimalSame('0', (string) $bybitAccount->starting_balance);
+        self::assertDecimalSame('0', (string) $bybitAccount->current_equity);
 
         self::assertSame('BLOCKED', $binanceAccount->status);
-        self::assertDecimalSame('10000', (string) $binanceAccount->starting_balance);
-        self::assertDecimalSame('10000', (string) $binanceAccount->current_equity);
+        self::assertSame('READINESS_PENDING', $binanceAccount->execution_block_origin);
+        self::assertDecimalSame('0', (string) $binanceAccount->starting_balance);
+        self::assertDecimalSame('0', (string) $binanceAccount->current_equity);
+        self::assertSame(0, DB::table('paper_capital_events')->whereIn('paper_account_id', [$bybitAccount->id, $binanceAccount->id])->count());
+
+        // Explicit synthetic owner allocation for this fresh Bybit test portfolio only.
+        $approvedAt = new DateTimeImmutable('2026-10-14T10:10:00Z');
+        $this->travelTo($approvedAt);
+        $capitalId = Uuid::uuid4()->toString();
+        DB::table('paper_capital_events')->insert([
+            'id' => $capitalId, 'paper_account_id' => $bybitAccount->id, 'exchange_id' => 'bybit',
+            'amount' => '10000', 'approval_reference' => 'SYNTHETIC-DYNAMIC-BYBIT-OWNER-APPROVAL',
+            'reason' => 'OWNER_APPROVED_PAPER_ALLOCATION', 'occurred_at' => $approvedAt,
+            'created_at' => $approvedAt, 'updated_at' => $approvedAt,
+        ]);
+        $bybitAccount->update([
+            'starting_balance' => '10000', 'current_equity' => '10000', 'peak_equity' => '10000',
+            'status' => 'ACTIVE', 'execution_block_origin' => null,
+        ]);
+        DB::table('equity_snapshots')->insert([
+            'paper_account_id' => $bybitAccount->id, 'exchange_id' => 'bybit', 'recorded_at' => $approvedAt,
+            'equity' => '10000', 'realized_pnl' => '0', 'unrealized_pnl' => '0', 'drawdown_percent' => '0',
+            'valued_through' => $approvedAt, 'valuation_fresh' => true,
+            'source_event_key' => 'owner-paper-capital:'.$capitalId,
+            'created_at' => $approvedAt, 'updated_at' => $approvedAt,
+        ]);
 
         // 3. Simulate market data and signal evaluation for the 14th strategy on Bybit
         $this->travelTo(new DateTimeImmutable('2026-10-14T10:15:00Z'));
@@ -258,7 +286,7 @@ final class DynamicStrategyRegistrationAndPaperExecutionTest extends TestCase
         $at = new DateTimeImmutable("2026-10-14T{$time}:00Z");
         $buy = $side === 'BUY';
 
-        return SignalRecord::query()->create([
+        $signal = SignalRecord::query()->create([
             'id' => Uuid::uuid5(Uuid::NAMESPACE_URL, "dyn-test:{$symbol}:{$side}:{$time}:{$strategyId}")->toString(),
             'exchange' => 'bybit',
             'category' => 'linear',
@@ -287,6 +315,9 @@ final class DynamicStrategyRegistrationAndPaperExecutionTest extends TestCase
             'schema_version' => '1.0.0',
             'strategy_id' => $strategyId,
         ]);
+        $this->seedValidatedPaperEvidence($signal);
+
+        return $signal;
     }
 
     private function createContext(string $symbol, string $time): void

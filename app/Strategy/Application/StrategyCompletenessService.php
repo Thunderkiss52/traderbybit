@@ -5,8 +5,10 @@ declare(strict_types=1);
 namespace App\Strategy\Application;
 
 use App\Exchanges\ExchangeRegistry;
+use App\PaperTrading\Application\PaperExecutionEligibilityService;
 use App\PaperTrading\Infrastructure\Persistence\PaperAccountRecord;
 use App\Strategy\Infrastructure\Persistence\StrategyObservationRecord;
+use Throwable;
 
 final readonly class StrategyCompletenessService
 {
@@ -38,6 +40,7 @@ final readonly class StrategyCompletenessService
             ->pluck('count', 'strategy_id')
             ->all();
 
+        $eligibility = app(PaperExecutionEligibilityService::class);
         $matrix = [];
         $totalCells = count($strategyIds) * count($exchangeIds);
         $provisionedCells = 0;
@@ -63,6 +66,15 @@ final readonly class StrategyCompletenessService
 
                 $isProvisioned = $account !== null;
                 $isActive = $account !== null && $account->status === 'ACTIVE';
+                $entryBlockedReason = $account === null ? 'account_not_provisioned' : 'account_not_active';
+                if ($isActive) {
+                    try {
+                        $entryBlockedReason = $eligibility->accountEntryRejectionReason($account);
+                    } catch (Throwable) {
+                        // An unavailable catalog, market model, or risk service can never certify an entry.
+                        $entryBlockedReason = 'eligibility_check_unavailable';
+                    }
+                }
 
                 if ($isProvisioned) {
                     $provisionedCells++;
@@ -80,7 +92,8 @@ final readonly class StrategyCompletenessService
                     'current_equity' => $account ? (string) $account->current_equity : '0',
                     'realized_pnl' => $account ? (string) $account->realized_pnl : '0',
                     'unrealized_pnl' => $account ? (string) $account->unrealized_pnl : '0',
-                    'execution_eligible' => ($meta['execution_eligible'] ?? true) && ($exchangeId === 'bybit' || ($exchangeId === 'binance' && config('exchanges.binance_paper_execution_approved') === true)),
+                    'execution_eligible' => ($meta['execution_eligible'] ?? true) && $entryBlockedReason === null,
+                    'execution_block_reason' => ($meta['execution_eligible'] ?? true) ? $entryBlockedReason : 'strategy_execution_disabled',
                     'api_visible' => true,
                     'ui_visible' => true,
                 ];

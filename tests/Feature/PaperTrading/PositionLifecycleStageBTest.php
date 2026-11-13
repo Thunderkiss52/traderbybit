@@ -5,6 +5,8 @@ declare(strict_types=1);
 namespace Tests\Feature\PaperTrading;
 
 use App\PaperTrading\Application\PaperAccountService;
+use App\PaperTrading\Application\PaperExecutionEligibilityService;
+use App\PaperTrading\Application\PaperExecutionEngine;
 use App\PaperTrading\Application\PerformanceStatisticsService;
 use App\PaperTrading\Application\PositionLifecycleService;
 use App\PaperTrading\Domain\ExecutionQuote;
@@ -18,14 +20,18 @@ use App\PaperTrading\Infrastructure\Persistence\VirtualExecutionRecord;
 use App\Strategy\Infrastructure\Persistence\SignalRecord;
 use Brick\Math\BigDecimal;
 use DateTimeImmutable;
+use DomainException;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
+use PHPUnit\Framework\Attributes\DataProvider;
 use Ramsey\Uuid\Uuid;
+use Tests\Concerns\SeedsValidatedPaperEvidence;
 use Tests\TestCase;
 
 final class PositionLifecycleStageBTest extends TestCase
 {
     use RefreshDatabase;
+    use SeedsValidatedPaperEvidence;
 
     public function test_tp1_zero_quantity_is_safely_skipped_without_creating_execution(): void
     {
@@ -94,6 +100,8 @@ final class PositionLifecycleStageBTest extends TestCase
         $size = new PositionSize(true, '0.010', '100', '10', '600', qtyStep: '0.001');
         $entryQuote = new ExecutionQuote(ExecutionType::Entry, '60000', '60000', '0', 'test', false);
 
+        $archivedEvidence = DB::table('virtual_positions')->where('paper_account_id', '!=', $account->id)->orderBy('id')->get()->toJson();
+
         $position = $lifecycle->open($account, $state, $signal, $size, $entryQuote, $openTime);
 
         // TP1 execution
@@ -131,6 +139,7 @@ final class PositionLifecycleStageBTest extends TestCase
         self::assertDecimalSame((string) $fullyClosed->fees, $closedMetrics['fees']);
         self::assertDecimalSame('0', $closedMetrics['open_position_fees']);
         self::assertDecimalSame('0', (string) $fullyClosed->unrealized_pnl);
+        self::assertSame($archivedEvidence, DB::table('virtual_positions')->where('paper_account_id', '!=', $account->id)->orderBy('id')->get()->toJson());
     }
 
     public function test_late_arriving_funding_settles_on_closed_position_with_correct_historical_quantity(): void
@@ -304,11 +313,117 @@ final class PositionLifecycleStageBTest extends TestCase
         self::assertDecimalSame((string) BigDecimal::of($account->starting_balance)->plus($account->fresh()->realized_pnl), (string) $account->fresh()->current_equity);
     }
 
-    private function createSignal(string $exchange, string $symbol, string $side): SignalRecord
+    #[DataProvider('ineligibleEvidenceCohorts')]
+    public function test_final_entry_rejects_out_of_scope_or_unavailable_evidence(string $case): void
+    {
+        $account = app(PaperAccountService::class)->default();
+        $signal = $this->createSignal('bybit', 'BTCUSDT', 'BUY', seedEvidence: false);
+        $cohort = $signal->replicate();
+        $asOf = $signal->decision_time->toDateTimeImmutable();
+        $latest = null;
+        $available = null;
+        $restated = null;
+        match ($case) {
+            'exchange' => $cohort->exchange = 'binance',
+            'strategy' => $cohort->strategy_id = 'trend_pullback',
+            'symbol' => $cohort->symbol = 'ETHUSDT',
+            'direction' => $cohort->side = 'SELL',
+            'version' => $cohort->strategy_version = 'unrelated-version',
+            'timeframe' => $cohort->timeframe = '5',
+            'future_close' => $latest = $asOf->modify('+1 hour'),
+            'stale' => $latest = $asOf->modify('-31 days'),
+            'late_creation' => $available = $asOf->modify('+1 second'),
+            'late_restatement' => $restated = $asOf->modify('+1 second'),
+            'none', 'incomplete_funding' => null,
+        };
+        if ($case !== 'none') {
+            $archive = $this->seedValidatedPaperEvidence($cohort, $latest, $available, $restated, fundingComplete: $case !== 'incomplete_funding');
+            if ($case === 'incomplete_funding') {
+                self::assertTrue(BigDecimal::of((string) $archive->realized_pnl)->isPositive());
+                self::assertSame(10, DB::table('virtual_positions')->where('paper_account_id', $archive->id)->where('funding_complete', false)->count());
+            }
+        }
+        $state = PaperSignalStateRecord::query()->create([
+            'id' => Uuid::uuid4()->toString(), 'paper_account_id' => $account->id,
+            'signal_id' => $signal->id, 'status' => 'PENDING_ENTRY',
+        ]);
+        $before = DB::table('virtual_positions')->orderBy('id')->get()->toJson();
+        try {
+            app(PaperExecutionEligibilityService::class)->assertOpenEligible($account, $state, $signal, $asOf->modify('+5 minutes'));
+            self::fail('Out-of-scope evidence authorized a PAPER entry.');
+        } catch (DomainException $exception) {
+            self::assertSame('Entry ineligible: missing_or_stale_validated_edge_or_cost_evidence', $exception->getMessage());
+        }
+        self::assertSame($before, DB::table('virtual_positions')->orderBy('id')->get()->toJson());
+        self::assertSame(0, DB::table('virtual_positions')->where('paper_account_id', $account->id)->count());
+        self::assertDecimalSame('0', (string) $account->fresh()->realized_pnl);
+    }
+
+    public static function ineligibleEvidenceCohorts(): array
+    {
+        return array_map(fn (string $case): array => [$case], [
+            'none', 'exchange', 'strategy', 'symbol', 'direction', 'version', 'timeframe',
+            'future_close', 'stale', 'late_creation', 'late_restatement', 'incomplete_funding',
+        ]);
+    }
+
+    public function test_final_entry_accepts_matching_minute_alias_and_preserves_archived_evidence(): void
+    {
+        $account = app(PaperAccountService::class)->default();
+        $signal = $this->createSignal('bybit', 'BTCUSDT', 'BUY', seedEvidence: false);
+        $cohort = $signal->replicate();
+        $cohort->timeframe = '15m';
+        $archive = $this->seedValidatedPaperEvidence($cohort);
+        $state = PaperSignalStateRecord::query()->create([
+            'id' => Uuid::uuid4()->toString(), 'paper_account_id' => $account->id,
+            'signal_id' => $signal->id, 'status' => 'PENDING_ENTRY',
+        ]);
+        $before = DB::table('virtual_positions')->where('paper_account_id', $archive->id)->orderBy('id')->get()->toJson();
+        app(PaperExecutionEligibilityService::class)->assertOpenEligible($account, $state, $signal, $signal->decision_time->toDateTimeImmutable());
+        self::assertSame($before, DB::table('virtual_positions')->where('paper_account_id', $archive->id)->orderBy('id')->get()->toJson());
+        self::assertDecimalSame((string) BigDecimal::of($archive->starting_balance)->plus($archive->realized_pnl), (string) $archive->current_equity);
+        self::assertDecimalSame((string) $archive->realized_pnl, (string) DB::table('virtual_positions')->where('paper_account_id', $archive->id)->sum('net_pnl'));
+        foreach (DB::table('virtual_positions')->where('paper_account_id', $archive->id)->get() as $prior) {
+            self::assertDecimalSame((string) BigDecimal::of($prior->gross_pnl)->minus($prior->fees)->plus($prior->funding), $prior->net_pnl);
+        }
+    }
+
+    public function test_final_entry_rejects_missing_or_excessive_tp1_cost_evidence(): void
+    {
+        $account = app(PaperAccountService::class)->default();
+        $signal = $this->createSignal('bybit', 'BTCUSDT', 'BUY');
+        $state = PaperSignalStateRecord::query()->create([
+            'id' => Uuid::uuid4()->toString(), 'paper_account_id' => $account->id,
+            'signal_id' => $signal->id, 'status' => 'PENDING_ENTRY',
+        ]);
+        foreach (['60100' => 'missing_or_stale_validated_edge_or_cost_evidence', '60100.01' => 'execution_cost_drag_exceeds_edge'] as $target => $reason) {
+            // Explicit risk classification keeps this control focused on the final cost gate.
+            $signal->forceFill(['take_profit_1' => (string) $target, 'trade_risk' => 'LOW'])->save();
+            try {
+                app(PaperExecutionEligibilityService::class)->assertOpenEligible($account, $state, $signal, $signal->decision_time->toDateTimeImmutable());
+                self::fail('Missing or excessive costs authorized a PAPER entry.');
+            } catch (DomainException $exception) {
+                self::assertSame('Entry ineligible: '.$reason, $exception->getMessage());
+            }
+        }
+    }
+
+    public function test_round_trip_tp1_cost_estimate_uses_fee_and_slippage_once_and_is_quantity_invariant(): void
+    {
+        $engine = app(PaperExecutionEngine::class);
+        $large = $engine->estimateRoundTripTp1Costs('101', '105', '10');
+        $small = $engine->estimateRoundTripTp1Costs('101', '105', '0.001');
+        self::assertDecimalSame('1.545', $large['estimated_costs']);
+        self::assertDecimalSame('0.0001545', $small['estimated_costs']);
+        self::assertSame(3.8625, $large['cost_drag_percent']);
+        self::assertSame($large['cost_drag_percent'], $small['cost_drag_percent']);
+    }
+
+    private function createSignal(string $exchange, string $symbol, string $side, bool $seedEvidence = true): SignalRecord
     {
         $at = new DateTimeImmutable('2026-10-26T23:30:00Z');
 
-        return SignalRecord::query()->create([
+        $signal = SignalRecord::query()->create([
             'id' => Uuid::uuid4()->toString(),
             'exchange' => $exchange,
             'category' => 'linear',
@@ -337,5 +452,10 @@ final class PositionLifecycleStageBTest extends TestCase
             'strategy_version' => '1.0.0',
             'schema_version' => '1.0.0',
         ]);
+        if ($seedEvidence && in_array($signal->side, ['BUY', 'SELL'], true)) {
+            $this->seedValidatedPaperEvidence($signal);
+        }
+
+        return $signal;
     }
 }

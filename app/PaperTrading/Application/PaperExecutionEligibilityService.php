@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace App\PaperTrading\Application;
 
+use App\Exchanges\Application\ExchangePaperApprovalPolicy;
+use App\Exchanges\Application\PaperExecutionModelContract;
 use App\Exchanges\Binance\BinancePaperSafety;
 use App\Exchanges\Domain\ExchangeLifecycleStatus;
 use App\Exchanges\ExchangeRegistry;
@@ -14,6 +16,7 @@ use App\PaperTrading\Infrastructure\Persistence\PaperAccountRecord;
 use App\PaperTrading\Infrastructure\Persistence\PaperSignalStateRecord;
 use App\PaperTrading\Infrastructure\Persistence\RiskDecisionRecord;
 use App\Research\Infrastructure\Persistence\LearningCandidateStrategyRecord;
+use App\Strategy\Application\PreEntryStrategyEvidenceService;
 use App\Strategy\Application\StrategyExchangeAssignmentService;
 use App\Strategy\Application\StrategyRegistry;
 use App\Strategy\Domain\QualityClass;
@@ -62,9 +65,20 @@ final readonly class PaperExecutionEligibilityService
             if ($exchangeRecord->lifecycle_status === ExchangeLifecycleStatus::Paused->value) {
                 return 'exchange_paused';
             }
-            if (! $exchangeRecord->paper_approved && $account->exchange_id !== 'bybit' && ! (bool) config("exchanges.{$account->exchange_id}.paper_execution_approved", false)) {
+            if (! ExchangePaperApprovalPolicy::allowsEntries($exchangeRecord)) {
                 return 'exchange_not_paper_approved';
             }
+            if (! PaperExecutionModelContract::supported(
+                (string) $exchangeRecord->market_type,
+                (array) ($exchangeRecord->capabilities ?? []),
+                (array) ($exchangeRecord->paper_execution_assumptions ?? []),
+                (array) ($exchangeRecord->cost_model ?? []),
+                app(ExchangeRegistry::class)->hasAdapter($account->exchange_id),
+            )) {
+                return 'exchange_execution_model_unverified';
+            }
+        } else {
+            return 'exchange_catalog_record_missing';
         }
 
         if ($account->exchange_id === 'binance') {
@@ -268,12 +282,36 @@ final readonly class PaperExecutionEligibilityService
             throw new DomainException('Entry ineligible: unknown_trade_risk');
         }
 
+        // Recompute from persisted, scoped evidence under the caller's account lock.
+        // A pending decision cannot borrow outcomes that became known after its signal.
+        $asOf = $signal->decision_time->toDateTimeImmutable();
+        if ($at !== null && $at < $asOf) {
+            $asOf = $at;
+        }
+        if (trim((string) $signal->strategy_version) === '' || trim((string) $signal->timeframe) === '') {
+            throw new DomainException('Entry ineligible: missing_evidence_identity');
+        }
+        $evidence = app(PreEntryStrategyEvidenceService::class)->computePreEntryEvidence(
+            $account->strategy_id, $account->exchange_id, $signal->symbol, $signal->side,
+            $asOf, (string) $signal->strategy_version, (string) $signal->timeframe,
+        );
+        $cost = app(PaperExecutionEngine::class)->estimateRoundTripTp1Costs(
+            (string) ($signal->side === 'BUY' ? $signal->entry_high : $signal->entry_low),
+            (string) $signal->take_profit_1, '1', $account->exchange_id,
+        );
         $gate = app(PreExecutionQualityRiskGate::class);
         $gateEval = $gate->evaluate([
             'signal_quality' => $quality,
             'trade_risk' => $tradeRisk,
             'drawdown_percent' => $account->current_drawdown_percent,
             'side' => $signal->side,
+            'expected_net_edge' => $evidence['expected_net_edge'],
+            'sample_size' => $evidence['sample_size'],
+            'evidence_status' => $evidence['status'],
+            'directional_win_rate' => $evidence['directional_win_rate'],
+            'directional_profit_factor' => $evidence['directional_profit_factor'],
+            'directional_sample_size' => $evidence['directional_sample_size'],
+            'cost_drag_percent' => $cost['cost_drag_percent'],
         ]);
 
         if (! $gateEval['decision']->isPermitted()) {

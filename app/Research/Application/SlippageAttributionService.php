@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Research\Application;
 
 use App\PaperTrading\Application\PaperAccountService;
+use App\PaperTrading\Infrastructure\Persistence\PaperAccountRecord;
 use App\PaperTrading\Infrastructure\Persistence\VirtualExecutionRecord;
 use App\PaperTrading\Infrastructure\Persistence\VirtualPositionRecord;
 use App\Research\Domain\ResearchGenerationRecord;
@@ -37,20 +38,32 @@ final class SlippageAttributionService
     {
         $idempotencyKey = (string) ($parameters['idempotency_key'] ?? Uuid::uuid4()->toString());
         $accountingScope = (string) ($parameters['accounting_scope'] ?? 'FULL_LIFECYCLE');
+        $exchangeFilter = strtolower(trim((string) ($parameters['exchange'] ?? $parameters['exchange_id'] ?? 'all'))) ?: 'all';
+        $symbolFilter = strtoupper(trim((string) ($parameters['symbol'] ?? 'ALL'))) ?: 'ALL';
+        $existing = ResearchGenerationRecord::query()->where('idempotency_key', $idempotencyKey)->first();
         $asOf = isset($parameters['as_of'])
-            ? CarbonImmutable::parse($parameters['as_of'], 'UTC')
-            : CarbonImmutable::now('UTC');
+            ? CarbonImmutable::parse($parameters['as_of'], 'UTC')->utc()
+            : ($existing?->as_of ?? CarbonImmutable::now('UTC'));
 
         $normalizedParams = [
             'package_code' => 'P-1',
             'accounting_scope' => $accountingScope,
             'as_of' => $asOf->toIso8601String(),
             'algorithm_version' => self::ALGORITHM_VERSION,
+            'exchange' => $exchangeFilter,
+            'symbol' => $symbolFilter,
         ];
+        if ($accountingScope === 'WINDOW_FLOW') {
+            foreach (['window_start', 'window_end'] as $boundary) {
+                $normalizedParams[$boundary] = isset($parameters[$boundary])
+                    ? CarbonImmutable::parse($parameters[$boundary], 'UTC')->utc()->toIso8601String()
+                    : null;
+            }
+        }
         $payloadHash = hash('sha256', json_encode($normalizedParams, JSON_THROW_ON_ERROR));
+        $scopeMetadata = array_intersect_key($normalizedParams, array_flip(['exchange', 'symbol', 'window_start', 'window_end']));
 
         // Idempotency check
-        $existing = ResearchGenerationRecord::query()->where('idempotency_key', $idempotencyKey)->first();
         if ($existing !== null) {
             if ($existing->request_payload_hash !== $payloadHash) {
                 throw new IdempotencyConflictException(
@@ -77,26 +90,25 @@ final class SlippageAttributionService
             ],
             'heartbeat_at' => CarbonImmutable::now('UTC'),
             'stale_after_seconds' => 300,
+            'metadata' => $scopeMetadata,
         ]);
 
         try {
-            // Retrieve the configured independent primary accounts.
-            $exchangeFilter = $parameters['exchange'] ?? $parameters['exchange_id'] ?? null;
-            $symbolFilter = $parameters['symbol'] ?? null;
-            $accounts = $this->accountService->allPrimaryAccounts();
-            if ($exchangeFilter !== null && $exchangeFilter !== 'all') {
-                $accounts = $accounts->where('exchange_id', $exchangeFilter);
+            // Attribution observes persisted portfolios without provisioning or funding accounts.
+            $accountsQuery = PaperAccountRecord::query()->where('is_primary', true);
+            if ($exchangeFilter !== 'all') {
+                $accountsQuery->where('exchange_id', $exchangeFilter);
             }
-            $accountIds = $accounts->pluck('id')->filter()->all();
+            $accountIds = $accountsQuery->pluck('id')->all();
 
             // Query positions based on scope
             $positionsQuery = VirtualPositionRecord::query()->whereIn('paper_account_id', $accountIds);
-            if ($symbolFilter !== null && $symbolFilter !== 'all' && $symbolFilter !== 'ALL') {
+            if ($symbolFilter !== 'ALL') {
                 $positionsQuery->where('symbol', $symbolFilter);
             }
             if ($accountingScope === 'WINDOW_FLOW' && isset($parameters['window_start'], $parameters['window_end'])) {
-                $positionsQuery->where('opened_at', '>=', $parameters['window_start'])
-                    ->where('opened_at', '<', $parameters['window_end']);
+                $positionsQuery->where('opened_at', '>=', $normalizedParams['window_start'])
+                    ->where('opened_at', '<', $normalizedParams['window_end']);
             }
             $positions = $positionsQuery->get();
             $positionIds = $positions->pluck('id')->all();
@@ -278,9 +290,9 @@ final class SlippageAttributionService
                     'fills' => count($fillsData),
                     'positions' => count($positionRecords),
                 ],
-                'metadata' => [
+                'metadata' => array_merge($scopeMetadata, [
                     'summary' => $summaryResult,
-                ],
+                ]),
                 'heartbeat_at' => CarbonImmutable::now('UTC'),
             ]);
 
@@ -304,10 +316,14 @@ final class SlippageAttributionService
      */
     public function getLatestSummary(string $accountingScope = 'FULL_LIFECYCLE', ?string $exchange = null, ?string $symbol = null): array
     {
+        $exchange = strtolower(trim($exchange ?? 'all')) ?: 'all';
+        $symbol = strtoupper(trim($symbol ?? 'ALL')) ?: 'ALL';
         $generation = ResearchGenerationRecord::query()
             ->where('package_code', 'P-1')
             ->where('status', 'SUCCEEDED')
             ->where('accounting_scope', $accountingScope)
+            ->where('metadata->exchange', $exchange)
+            ->where('metadata->symbol', $symbol)
             ->latest('created_at')
             ->first();
 

@@ -23,7 +23,7 @@ final class BacktestAuditCsv
         if (preg_match('/^[+\-]?(?:[0-9]+)(?:\.[0-9]+)?$/D', $text)) {
             return $text;
         }
-        if (preg_match('/^[\s]*[=+\-@]/u', $text)) {
+        if (preg_match('/^[\s\p{Z}\p{Cf}]*[=+\-@]/u', $text)) {
             return "'".$text;
         }
 

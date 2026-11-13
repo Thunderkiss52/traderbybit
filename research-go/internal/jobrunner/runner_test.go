@@ -138,6 +138,9 @@ func (s *mockStmt) Query(args []driver.Value) (driver.Rows, error) {
 	if qErr != nil {
 		return nil, qErr
 	}
+	if strings.Contains(s.query, "SELECT EXISTS (SELECT 1 FROM exchanges WHERE id = $1)") {
+		return &mockRows{singleVal: true}, nil
+	}
 	if strings.Contains(s.query, "generation_token") {
 		if genToken == 0 {
 			genToken = 1

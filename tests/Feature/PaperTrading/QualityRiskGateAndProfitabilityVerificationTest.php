@@ -30,11 +30,13 @@ use DateTimeImmutable;
 use DomainException;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Ramsey\Uuid\Uuid;
+use Tests\Concerns\SeedsValidatedPaperEvidence;
 use Tests\TestCase;
 
 final class QualityRiskGateAndProfitabilityVerificationTest extends TestCase
 {
     use RefreshDatabase;
+    use SeedsValidatedPaperEvidence;
 
     protected function setUp(): void
     {
@@ -52,6 +54,9 @@ final class QualityRiskGateAndProfitabilityVerificationTest extends TestCase
             'signal_quality' => SignalQuality::High,
             'trade_risk' => TradeRiskClass::Low,
             'expected_net_edge' => -2.5,
+            'sample_size' => 25,
+            'evidence_status' => 'VALIDATED',
+            'cost_drag_percent' => 2.0,
         ]);
 
         self::assertSame(QualityRiskGateDecision::Rejected, $result['decision']);
@@ -75,7 +80,7 @@ final class QualityRiskGateAndProfitabilityVerificationTest extends TestCase
 
         self::assertSame(QualityRiskGateDecision::InsufficientEvidence, $result['decision']);
         self::assertFalse($result['allowed']);
-        self::assertContains('insufficient_expectancy_evidence', $result['rejection_reasons']);
+        self::assertContains('missing_or_stale_validated_edge_or_cost_evidence', $result['rejection_reasons']);
     }
 
     /**
@@ -87,6 +92,8 @@ final class QualityRiskGateAndProfitabilityVerificationTest extends TestCase
         $result = $gate->evaluate([
             'signal_quality' => SignalQuality::High,
             'trade_risk' => TradeRiskClass::Medium,
+            'evidence_status' => 'VALIDATED',
+            'cost_drag_percent' => 4.0,
             'expected_net_edge' => 15.0,
             'sample_size' => 25,
         ]);
@@ -140,6 +147,8 @@ final class QualityRiskGateAndProfitabilityVerificationTest extends TestCase
         $result = $gate->evaluate([
             'signal_quality' => SignalQuality::Medium,
             'trade_risk' => TradeRiskClass::Medium,
+            'evidence_status' => 'VALIDATED',
+            'cost_drag_percent' => 4.0,
             'expected_net_edge' => 0.15,
             'sample_size' => 20,
             'drawdown_percent' => 1.2,
@@ -255,8 +264,10 @@ final class QualityRiskGateAndProfitabilityVerificationTest extends TestCase
      */
     public function test_duplicate_signal_cannot_open_twice(): void
     {
+        $this->travelTo(new DateTimeImmutable('2026-11-09T12:00:00Z'));
         $account = $this->createAccount('bybit', 'trend_pullback');
         $signal = $this->createSignal($account, 'BTCUSDT', 'BUY', 'A', 'HIGH', 'LOW', 95);
+        $this->seedValidatedPaperEvidence($signal);
         $state = PaperSignalStateRecord::query()->create([
             'id' => Uuid::uuid4()->toString(),
             'paper_account_id' => $account->id,
@@ -350,6 +361,9 @@ final class QualityRiskGateAndProfitabilityVerificationTest extends TestCase
             'signal_quality' => SignalQuality::High,
             'trade_risk' => TradeRiskClass::Low,
             'cost_drag_percent' => 150.0, // Fee model indicates excessive cost drag >= 100%
+            'expected_net_edge' => 2.5,
+            'sample_size' => 25,
+            'evidence_status' => 'VALIDATED',
         ]);
 
         self::assertSame(QualityRiskGateDecision::Rejected, $result['decision']);
@@ -463,7 +477,7 @@ final class QualityRiskGateAndProfitabilityVerificationTest extends TestCase
     /**
      * Scenario 20: Out-of-sample baseline versus filtered comparison.
      */
-    public function test_out_of_sample_baseline_versus_filtered_comparison(): void
+    public function test_synthetic_policy_comparison_remains_descriptive(): void
     {
         $comparisonService = app(PolicyComparisonEvaluationService::class);
 
@@ -548,6 +562,7 @@ final class QualityRiskGateAndProfitabilityVerificationTest extends TestCase
 
         // Replicate signals to exceed statistical sample >= 10
         $replicated = array_merge($testSignals, $testSignals, $testSignals);
+        $replicated = array_map(fn (array $row): array => $row + ['evidence_status' => 'VALIDATED', 'cost_drag_percent' => 2.0], $replicated);
 
         $comparison = $comparisonService->compare($replicated);
 
@@ -561,7 +576,13 @@ final class QualityRiskGateAndProfitabilityVerificationTest extends TestCase
         // Policy B Net PnL = 3 * (142 + 80) = +666
         self::assertGreaterThan(0, (float) $comparison['policy_b_filtered']['net_pnl']);
         self::assertLessThan(0, (float) $comparison['policy_a_baseline']['net_pnl']);
-        self::assertSame('VERIFIED_IMPROVED_RISK_ADJUSTED_PERFORMANCE', $comparison['verdict']);
+        self::assertSame('DESCRIPTIVE_IMPROVEMENT_REQUIRES_VALIDATION', $comparison['verdict']);
+        self::assertSame('DESCRIPTIVE_ONLY', $comparison['validation_status']);
+        self::assertFalse($comparison['causality_verified']);
+        self::assertFalse($comparison['independence_verified']);
+        self::assertFalse($comparison['entry_authority']);
+        self::assertSame(4, $comparison['unique_signal_count']);
+        self::assertNull($comparison['policy_b_filtered']['profit_factor']);
     }
 
     private function createAccount(string $exchange, string $strategy): PaperAccountRecord

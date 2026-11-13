@@ -1,0 +1,14 @@
+{
+  "research-go/internal/signalintel/benchmark_test.go": "8914e9511e4db389757f33cc5908b4f4189035b373894446b9ad02687160c0ed",
+  "research-go/internal/signalintel/classify.go": "e3bc10b0b8c2d634dc1f51567e9447cde3f5e0758cd9c814483496e58ebd198d",
+  "research-go/internal/signalintel/decimal.go": "b9d565e0719636a6e90d53d3632c75cd23ca8383060488f0ee2fc29ea5c5a93b",
+  "research-go/internal/signalintel/evaluate.go": "ca6e140c2de6bc4460f11ae7b2ddb117a44292cb3a09534fc8ab907259311cc9",
+  "research-go/internal/signalintel/request.go": "5dfdcc881af2efd5e46f16e218bc7ce5aff9f8e27bbc94c38a15a1f63c58ee7a",
+  "research-go/internal/signalintel/signalintel_test.go": "7e4cf066da576bbf5f057e2b3aef4bf10cc3578d288906fe2d9f9cff42b18493",
+  "research-go/internal/signalintel/types.go": "1185d9850aadb8144fba2a32aec305b8db67bdeb6702db78dad510e466b3302f",
+  "research-go/internal/jobrunner/runner.go": "7c2adbc3416a1d1e00fbdf21c54e4700da502819af66b5153021421248bd2db7",
+  "research-go/internal/jobrunner/runner_test.go": "c6450efed49e28cc7e9654ab5e71281fac12e02bb4673e73daf842a35bd03e32",
+  "research-go/internal/jobrunner/signal_markout_test.go": "08e5f238bd992607ee035e05860b7eeb6250d0b284ff930dff6c96bf0ae96f81",
+  "research-go/internal/contracts/job.go": "e23bb10291078b714d84067d4c805bf3f10fc72c2b167321cdf1746798c5cd86",
+  "research-go/internal/jobscope/exchange.go": "879230d57e94e1a4a5b006d4a3e483329e9e5a8eddefa3c0bdb4e2c4fe845c77"
+}

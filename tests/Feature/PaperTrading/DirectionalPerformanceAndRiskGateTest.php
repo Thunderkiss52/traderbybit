@@ -15,11 +15,13 @@ use App\Strategy\Infrastructure\Persistence\MarketContextRecord;
 use App\Strategy\Infrastructure\Persistence\SignalRecord;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Ramsey\Uuid\Uuid;
+use Tests\Concerns\SeedsValidatedPaperEvidence;
 use Tests\TestCase;
 
 final class DirectionalPerformanceAndRiskGateTest extends TestCase
 {
     use RefreshDatabase;
+    use SeedsValidatedPaperEvidence;
 
     protected function setUp(): void
     {
@@ -136,7 +138,59 @@ final class DirectionalPerformanceAndRiskGateTest extends TestCase
         $this->assertSame('HIGH', $firstSig['signal_quality']);
         $this->assertSame('LOW', $firstSig['trade_risk']);
         $this->assertNotNull($firstSig['planned_stop_loss']);
+        $this->assertNull($firstSig['margin'], 'Margin must not be guessed as 10x of notional.');
         $this->assertStringStartsWith('49500', (string) $firstSig['planned_stop_loss']['price']);
+    }
+
+    public function test_strategy_monitor_preserves_every_accounts_decision_and_position_for_one_signal(): void
+    {
+        $firstAccount = $this->createAccount('bybit', 'trend_pullback');
+        $secondAccount = $this->createAccount('bybit', 'trend_pullback');
+        // A secondary independent PAPER account can receive the same strategy signal.
+        $secondAccount->update(['is_primary' => false]);
+        $otherStrategyAccount = $this->createAccount('bybit', 'momentum');
+        $signal = $this->createSignal($firstAccount, 'BTCUSDT', 'BUY', 'A', 'HIGH', 'LOW', 91);
+        $otherSignal = $this->createSignal($otherStrategyAccount, 'BTCUSDT', 'SELL', 'B', 'MEDIUM', 'MEDIUM', 70);
+
+        foreach ([$firstAccount, $secondAccount] as $index => $account) {
+            RiskDecisionRecord::query()->create([
+                'paper_account_id' => $account->id,
+                'exchange_id' => 'bybit',
+                'signal_id' => $signal->id,
+                'allowed' => $index === 0,
+                'risk_version' => '1.0.0',
+                'reasons' => [$index === 0 ? 'approved' : 'blocked'],
+                'snapshot' => ['gate_decision' => $index === 0 ? 'ELIGIBLE' : 'REJECTED'],
+                'decided_at' => now()->subMinute(),
+            ]);
+            $this->createPosition($account, $signal, 'BUY', 'A', 'HIGH', 'LOW', 'CLOSED_TP', '20.00', '18.00', '2.00');
+        }
+        $this->createPosition($otherStrategyAccount, $otherSignal, 'SELL', 'B', 'MEDIUM', 'MEDIUM', 'CLOSED_SL', '-10.00', '-12.00', '2.00');
+
+        $response = $this->getJson('/api/v1/strategy-monitor?exchange=bybit&strategy_id=trend_pullback&quality=HIGH&risk=LOW');
+        $response->assertOk();
+        $response->assertJsonPath('data.metrics.total_signals', 1);
+        $response->assertJsonPath('data.metrics.risk_approved', 1);
+        $response->assertJsonPath('data.metrics.closed_positions', 2);
+        $response->assertJsonPath('data.signals.data.0.risk_decision_count', 2);
+        $response->assertJsonPath('data.signals.data.0.position_count', 2);
+        $response->assertJsonPath('data.signals.data.0.gate_decision', 'MULTI_ACCOUNT');
+        $this->assertNull($response->json('data.signals.data.0.position'));
+        $this->assertNull($response->json('data.signals.data.0.risk_decision'));
+        $this->assertCount(2, $response->json('data.signals.data.0.positions'));
+        $this->assertCount(2, $response->json('data.signals.data.0.risk_decisions'));
+        $this->assertEqualsCanonicalizing(
+            [$firstAccount->id, $secondAccount->id],
+            array_column($response->json('data.signals.data.0.positions'), 'paper_account_id'),
+        );
+        $this->assertNotContains(
+            $otherStrategyAccount->id,
+            array_column($response->json('data.signals.data.0.positions'), 'paper_account_id'),
+        );
+        $timeline = $this->getJson('/api/v1/strategy-monitor/timeline?signal_id='.$signal->id);
+        $timeline->assertOk();
+        $riskEvents = collect($timeline->json('data.timeline'))->where('stage', 'RISK_DECISION');
+        $this->assertCount(2, $riskEvents);
     }
 
     public function test_end_to_end_paper_processing_respects_quality_risk_gate(): void
@@ -193,6 +247,7 @@ final class DirectionalPerformanceAndRiskGateTest extends TestCase
             'schema_version' => '1.0.0',
             'expires_at' => now()->addMinutes(30),
         ]);
+        $this->seedValidatedPaperEvidence($eligibleSignal);
 
         $service = app(PaperProcessingService::class);
         $service->process($account->id, 'BTCUSDT', now()->toDateTimeImmutable(), true, true);

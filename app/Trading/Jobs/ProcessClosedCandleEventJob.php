@@ -12,7 +12,9 @@ use App\Strategy\Contracts\MarketContextRepository;
 use App\Strategy\Exceptions\StrategyObservationActiveException;
 use App\Strategy\Infrastructure\Persistence\StrategyObservationRecord;
 use App\StrategyBuilder\PrimaryStrategies;
+use App\Trading\Application\CanonicalObservationCompleteness;
 use App\Trading\Application\TradingPipelineEventService;
+use App\Trading\Application\TradingQueueResolver;
 use App\Trading\Infrastructure\Persistence\TradingPipelineEventRecord;
 use Carbon\CarbonImmutable;
 use DateTimeImmutable;
@@ -180,8 +182,8 @@ final class ProcessClosedCandleEventJob implements ShouldQueue
         $this->ensureMarketContext($closeAt);
         $this->ensureBinanceHtfCandles($this->symbol, $closeAt);
 
-        // 2. Generate signals for all 13 strategies for this exchange and symbol.
-        $canonicalStrategies = PrimaryStrategies::ids();
+        // 2. Generate signals for the assigned strategies for this exchange and symbol.
+        $canonicalStrategies = PrimaryStrategies::ids($this->exchange);
         $existingObservations = StrategyObservationRecord::query()
             ->where('exchange', $this->exchange)
             ->where('category', 'linear')
@@ -191,7 +193,7 @@ final class ProcessClosedCandleEventJob implements ShouldQueue
             ->get();
 
         $signalsCount = 0;
-        if (! empty($canonicalStrategies) && $existingObservations->count() >= count($canonicalStrategies)) {
+        if (! empty($canonicalStrategies) && CanonicalObservationCompleteness::isComplete($existingObservations, $this->exchange)) {
             // The canonical observations already exist from a peer worker. Reuse without lock contention.
             $signalsCount = $existingObservations->count();
         } else {
@@ -214,7 +216,7 @@ final class ProcessClosedCandleEventJob implements ShouldQueue
                     ->whereNull('superseded_by')
                     ->get();
 
-                if (! empty($canonicalStrategies) && $rechecked->count() >= count($canonicalStrategies)) {
+                if (! empty($canonicalStrategies) && CanonicalObservationCompleteness::isComplete($rechecked, $this->exchange)) {
                     // The competing worker completed canonical observations.
                     // Reuse existing observations to advance the pipeline without duplicate execution.
                     $signalsCount = $rechecked->count();
@@ -296,7 +298,7 @@ final class ProcessClosedCandleEventJob implements ShouldQueue
     ): void {
         // 5m bars drive position lifecycle updates (stop loss, take profit, trailing, pending entry fills).
         if ($pipelineService->isEventDriven()) {
-            $queue = (string) config("trading.queues.{$this->exchange}", $this->exchange === 'binance' ? 'trading-binance' : 'trading-bybit');
+            $queue = TradingQueueResolver::forExchange($this->exchange);
             ProcessPaperPipelineJob::dispatch($this->exchange, $this->symbol, $this->candleCloseAtIso)
                 ->onQueue($queue);
 

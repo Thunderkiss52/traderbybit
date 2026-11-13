@@ -21,6 +21,9 @@ abstract class AbstractExchangeAdapter implements ExtendedExchangeAdapter
 
     protected int $maxRetries = 3;
 
+    /** Opt-in for untrusted declarative endpoints: pin the validated DNS address. */
+    protected bool $pinValidatedAddress = false;
+
     abstract public function id(): string;
 
     abstract public function name(): string;
@@ -35,8 +38,38 @@ abstract class AbstractExchangeAdapter implements ExtendedExchangeAdapter
             ? $path
             : rtrim($this->baseUrl, '/').'/'.ltrim($path, '/');
 
-        // Enforce SSRF protection on every outbound request
-        app(ExchangeUrlSecurityValidator::class)->assertSafe($url);
+        // Resolve and validate DNS before every request. For untrusted dynamic
+        // exchange manifests, pin the SAME validated address at the HTTP client
+        // layer to eliminate the DNS-rebinding gap between validation and GET.
+        $security = app(ExchangeUrlSecurityValidator::class)->validateUrl($url);
+        if (! $security['safe']) {
+            throw new InvalidArgumentException("Unsafe exchange URL: {$security['reason']}");
+        }
+        $requestOptions = [];
+        if ($this->pinValidatedAddress) {
+            if (! extension_loaded('curl') || ! defined('CURLOPT_RESOLVE')) {
+                throw new RuntimeException('Declarative public-data endpoints require cURL DNS pinning.');
+            }
+            $parts = parse_url($url);
+            $base = parse_url($this->baseUrl);
+            if (! is_array($parts) || ! is_array($base)
+                || strtolower((string) ($parts['host'] ?? '')) !== strtolower((string) ($base['host'] ?? ''))
+                || strtolower((string) ($parts['scheme'] ?? '')) !== 'https') {
+                throw new RuntimeException('Declarative endpoint must use the validated HTTPS exchange host.');
+            }
+            $address = (string) ($security['ip'] ?? '');
+            if ($address === '') {
+                throw new RuntimeException('Validated exchange address missing: fail closed.');
+            }
+            $ipForCurl = str_contains($address, ':') ? '['.$address.']' : $address;
+            $port = (int) ($parts['port'] ?? 443);
+            $host = (string) $parts['host'];
+            $requestOptions = [
+                'proxy' => '',
+                'allow_redirects' => false,
+                'curl' => [CURLOPT_RESOLVE => ["{$host}:{$port}:{$ipForCurl}"]],
+            ];
+        }
 
         $delayMs = 150;
 
@@ -48,6 +81,7 @@ abstract class AbstractExchangeAdapter implements ExtendedExchangeAdapter
                         'User-Agent' => 'VECTOR-Research/1.0 (Public Market Data; Non-Trading)',
                         'Accept' => 'application/json',
                     ], $headers))
+                    ->withOptions($requestOptions)
                     ->get($url, $query);
 
                 if ($response->status() === 429) {

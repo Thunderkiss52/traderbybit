@@ -1,0 +1,6 @@
+.....................
+----------------------------------------------------------------------
+Ran 21 tests in 1.597s
+
+OK
+Verified 2 isolated PostgreSQL/Redis shard pairs

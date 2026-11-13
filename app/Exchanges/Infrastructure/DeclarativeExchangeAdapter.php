@@ -10,6 +10,7 @@ use App\Exchanges\Domain\MarketCapability;
 use App\Exchanges\Domain\MarketType;
 use App\HistoricalData\UniversalAcquisitionService;
 use DateTimeImmutable;
+use RuntimeException;
 use Throwable;
 
 /**
@@ -28,6 +29,7 @@ class DeclarativeExchangeAdapter extends AbstractExchangeAdapter implements Exte
         private readonly array $config = [],
     ) {
         $this->baseUrl = $this->exchangeBaseUrl;
+        $this->pinValidatedAddress = true;
         $this->timeoutSeconds = (int) ($this->config['timeout_seconds'] ?? 8);
         $this->maxRetries = 3;
     }
@@ -45,7 +47,7 @@ class DeclarativeExchangeAdapter extends AbstractExchangeAdapter implements Exte
     public function fetchCandles(string $symbol, string $interval, int $limit, ?int $startMs = null, ?int $endMs = null): array
     {
         $normalizedTf = UniversalAcquisitionService::normalizeInterval($interval);
-        $endpoint = $this->config['endpoints']['candles'] ?? '/api/v1/klines';
+        $endpoint = $this->endpoint('candles', '/api/v1/klines');
 
         $query = [
             'symbol' => $symbol,
@@ -76,7 +78,11 @@ class DeclarativeExchangeAdapter extends AbstractExchangeAdapter implements Exte
 
                 // Handle standard OHLCV array format [time, open, high, low, close, volume]
                 if (isset($c[0], $c[1], $c[2], $c[3], $c[4])) {
-                    $ts = is_numeric($c[0]) ? (int) $c[0] : (int) (strtotime((string) $c[0]) * 1000);
+                    $parsedTime = is_numeric($c[0]) ? (int) $c[0] : strtotime((string) $c[0]);
+                    if ($parsedTime === false || $parsedTime <= 0) {
+                        continue;
+                    }
+                    $ts = is_numeric($c[0]) ? $parsedTime : $parsedTime * 1000;
                     if ($ts < 1_000_000_000_000) {
                         $ts *= 1000;
                     }
@@ -95,8 +101,15 @@ class DeclarativeExchangeAdapter extends AbstractExchangeAdapter implements Exte
                     ];
                 } elseif (isset($c['open'], $c['high'], $c['low'], $c['close'])) {
                     // Object format
-                    $rawTime = $c['time'] ?? ($c['open_time'] ?? ($c['timestamp'] ?? time()));
-                    $ts = is_numeric($rawTime) ? (int) $rawTime : (int) (strtotime((string) $rawTime) * 1000);
+                    $rawTime = $c['time'] ?? ($c['open_time'] ?? ($c['timestamp'] ?? null));
+                    if ($rawTime === null || $rawTime === '') {
+                        continue; // Never fabricate exchange timestamps.
+                    }
+                    $parsedTime = is_numeric($rawTime) ? (int) $rawTime : strtotime((string) $rawTime);
+                    if ($parsedTime === false || $parsedTime <= 0) {
+                        continue;
+                    }
+                    $ts = is_numeric($rawTime) ? $parsedTime : $parsedTime * 1000;
                     if ($ts < 1_000_000_000_000) {
                         $ts *= 1000;
                     }
@@ -124,7 +137,7 @@ class DeclarativeExchangeAdapter extends AbstractExchangeAdapter implements Exte
 
     public function fetchFundingHistory(string $symbol, ?int $startMs = null, ?int $endMs = null): array
     {
-        $endpoint = $this->config['endpoints']['funding'] ?? '/api/v1/funding-rate';
+        $endpoint = $this->endpoint('funding', '/api/v1/funding-rate');
         try {
             $query = ['symbol' => $symbol];
             if ($startMs !== null) {
@@ -143,7 +156,7 @@ class DeclarativeExchangeAdapter extends AbstractExchangeAdapter implements Exte
 
     public function fetchOpenInterest(string $symbol, string $interval, ?int $startMs = null, ?int $endMs = null): array
     {
-        $endpoint = $this->config['endpoints']['open_interest'] ?? '/api/v1/open-interest';
+        $endpoint = $this->endpoint('open_interest', '/api/v1/open-interest');
         try {
             $query = ['symbol' => $symbol, 'interval' => $interval];
             if ($startMs !== null) {
@@ -162,74 +175,63 @@ class DeclarativeExchangeAdapter extends AbstractExchangeAdapter implements Exte
 
     public function fetchOrderBook(string $symbol, int $depth = 20): array
     {
-        $endpoint = $this->config['endpoints']['order_book'] ?? '/api/v1/depth';
-        try {
-            $raw = $this->get($endpoint, ['symbol' => $symbol, 'limit' => $depth]);
-            $data = $raw['data'] ?? ($raw['result'] ?? $raw);
-
-            return [
-                'exchange_id' => $this->exchangeId,
-                'symbol' => $symbol,
-                'timestamp_utc' => now('UTC')->toISOString(),
-                'bids' => (array) ($data['bids'] ?? []),
-                'asks' => (array) ($data['asks'] ?? []),
-                'raw_source_hash' => hash('sha256', (string) json_encode($data)),
-            ];
-        } catch (Throwable) {
-            return [
-                'exchange_id' => $this->exchangeId,
-                'symbol' => $symbol,
-                'timestamp_utc' => now('UTC')->toISOString(),
-                'bids' => [],
-                'asks' => [],
-                'raw_source_hash' => hash('sha256', ''),
-            ];
+        $raw = $this->get($this->endpoint('order_book', '/api/v1/depth'), ['symbol' => $symbol, 'limit' => $depth]);
+        $data = $raw['data'] ?? ($raw['result'] ?? $raw);
+        if (! is_array($data) || ! isset($data['bids'], $data['asks']) || ! is_array($data['bids']) || ! is_array($data['asks'])) {
+            throw new RuntimeException("Invalid order book response for {$this->exchangeId}:{$symbol}.");
         }
+
+        return [
+            'exchange_id' => $this->exchangeId,
+            'symbol' => $symbol,
+            'timestamp_utc' => now('UTC')->toISOString(),
+            'bids' => $data['bids'],
+            'asks' => $data['asks'],
+            'raw_source_hash' => hash('sha256', json_encode($data, JSON_THROW_ON_ERROR)),
+        ];
     }
 
     public function fetchTicker(string $symbol): array
     {
-        $endpoint = $this->config['endpoints']['ticker'] ?? '/api/v1/ticker';
-        try {
-            $raw = $this->get($endpoint, ['symbol' => $symbol]);
-            $item = $raw['data'] ?? ($raw['result'] ?? $raw);
-
-            return [
-                'symbol' => $symbol,
-                'bid' => (string) ($item['bid'] ?? ($item['bidPrice'] ?? ($item['best_bid'] ?? '0'))),
-                'ask' => (string) ($item['ask'] ?? ($item['askPrice'] ?? ($item['best_ask'] ?? '0'))),
-                'last_price' => (string) ($item['last'] ?? ($item['lastPrice'] ?? ($item['price'] ?? '0'))),
-                'mark_price' => (string) ($item['mark_price'] ?? ($item['markPrice'] ?? ($item['last'] ?? '0'))),
-                'index_price' => (string) ($item['index_price'] ?? ($item['indexPrice'] ?? '0')),
-                'funding_rate' => (string) ($item['funding_rate'] ?? ($item['fundingRate'] ?? '0.0001')),
-                'open_interest' => (string) ($item['open_interest'] ?? ($item['openInterest'] ?? '0')),
-                'timestamp_ms' => (int) (microtime(true) * 1000),
-            ];
-        } catch (Throwable) {
-            return [
-                'symbol' => $symbol,
-                'bid' => '0',
-                'ask' => '0',
-                'last_price' => '0',
-                'mark_price' => '0',
-                'index_price' => '0',
-                'funding_rate' => '0.0001',
-                'open_interest' => '0',
-                'timestamp_ms' => (int) (microtime(true) * 1000),
-            ];
+        $raw = $this->get($this->endpoint('ticker', '/api/v1/ticker'), ['symbol' => $symbol]);
+        $item = $raw['data'] ?? ($raw['result'] ?? $raw);
+        if (! is_array($item)) {
+            throw new RuntimeException("Invalid ticker response for {$this->exchangeId}:{$symbol}.");
         }
+
+        $bid = $item['bid'] ?? ($item['bidPrice'] ?? ($item['best_bid'] ?? null));
+        $ask = $item['ask'] ?? ($item['askPrice'] ?? ($item['best_ask'] ?? null));
+        if (! is_numeric($bid) || ! is_numeric($ask) || (float) $bid <= 0 || (float) $ask < (float) $bid) {
+            throw new RuntimeException("Missing or invalid bid/ask for {$this->exchangeId}:{$symbol}; cannot infer an executable quote.");
+        }
+
+        return [
+            'symbol' => $symbol,
+            'bid' => (string) $bid,
+            'ask' => (string) $ask,
+            'last_price' => (string) ($item['last'] ?? $item['lastPrice'] ?? $item['price'] ?? ''),
+            'mark_price' => isset($item['mark_price']) ? (string) $item['mark_price'] : (isset($item['markPrice']) ? (string) $item['markPrice'] : null),
+            'index_price' => isset($item['index_price']) ? (string) $item['index_price'] : (isset($item['indexPrice']) ? (string) $item['indexPrice'] : null),
+            'funding_rate' => isset($item['funding_rate']) ? (string) $item['funding_rate'] : (isset($item['fundingRate']) ? (string) $item['fundingRate'] : null),
+            'open_interest' => isset($item['open_interest']) ? (string) $item['open_interest'] : (isset($item['openInterest']) ? (string) $item['openInterest'] : null),
+            'timestamp_ms' => (int) (microtime(true) * 1000),
+        ];
     }
 
     public function fetchSymbols(): array
     {
-        $inst = $this->fetchInstruments(MarketType::Perpetual);
+        $types = $this->supportedMarketTypes();
+        if ($types === []) {
+            return [];
+        }
+        $inst = $this->fetchInstruments($types[0]);
 
         return array_map(static fn ($row): string => (string) $row['symbol'], $inst);
     }
 
     public function fetchInstruments(MarketType $marketType): array
     {
-        $endpoint = $this->config['endpoints']['instruments'] ?? '/api/v1/instruments';
+        $endpoint = $this->endpoint('instruments', '/api/v1/instruments');
         try {
             $raw = $this->get($endpoint, ['type' => $marketType->value]);
             $list = $raw['data'] ?? ($raw['result'] ?? ($raw['instruments'] ?? ($raw['symbols'] ?? [])));
@@ -245,64 +247,42 @@ class DeclarativeExchangeAdapter extends AbstractExchangeAdapter implements Exte
                 }
                 $res[] = [
                     'symbol' => $sym,
-                    'base_asset' => (string) ($row['base_asset'] ?? ($row['base'] ?? ($row['baseCurrency'] ?? ''))),
-                    'quote_asset' => (string) ($row['quote_asset'] ?? ($row['quote'] ?? ($row['quoteCurrency'] ?? 'USDT'))),
+                    'base_asset' => (string) ($row['base_asset'] ?? ($row['base_currency'] ?? ($row['base'] ?? ($row['baseCurrency'] ?? '')))),
+                    'quote_asset' => (string) ($row['quote_asset'] ?? ($row['quote_currency'] ?? ($row['quote'] ?? ($row['quoteCurrency'] ?? '')))),
                     'market_type' => $marketType->value,
-                    'tick_size' => (string) ($row['tick_size'] ?? ($row['price_tick'] ?? ($this->config['capabilities']['price_precision'] ? '0.'.str_repeat('0', max(0, $this->config['capabilities']['price_precision'] - 1)).'1' : '0.01'))),
-                    'lot_size' => (string) ($row['lot_size'] ?? ($row['qty_step'] ?? ($this->config['capabilities']['qty_precision'] ? '0.'.str_repeat('0', max(0, $this->config['capabilities']['qty_precision'] - 1)).'1' : '0.001'))),
-                    'min_order_qty' => (string) ($row['min_order_qty'] ?? ($this->config['capabilities']['min_qty'] ?? '0.001')),
-                    'max_order_qty' => (string) ($row['max_order_qty'] ?? '1000'),
-                    'min_notional' => (string) ($row['min_notional'] ?? ($this->config['capabilities']['min_notional'] ?? '5.0')),
+                    'tick_size' => $row['tick_size'] ?? ($row['price_tick'] ?? (isset($this->config['capabilities']['price_precision']) ? '0.'.str_repeat('0', max(0, (int) $this->config['capabilities']['price_precision'] - 1)).'1' : null)),
+                    'lot_size' => $row['lot_size'] ?? ($row['qty_step'] ?? (isset($this->config['capabilities']['qty_precision']) ? '0.'.str_repeat('0', max(0, (int) $this->config['capabilities']['qty_precision'] - 1)).'1' : null)),
+                    'min_order_qty' => isset($row['min_order_qty']) ? (string) $row['min_order_qty'] : (isset($this->config['capabilities']['min_qty']) ? (string) $this->config['capabilities']['min_qty'] : null),
+                    'max_order_qty' => isset($row['max_order_qty']) ? (string) $row['max_order_qty'] : null,
+                    'min_notional' => isset($row['min_notional']) ? (string) $row['min_notional'] : (isset($this->config['capabilities']['min_notional']) ? (string) $this->config['capabilities']['min_notional'] : null),
                     'is_active' => (bool) ($row['is_active'] ?? true),
                     'contract_type' => strtolower($marketType->value),
                 ];
             }
 
             return $res;
-        } catch (Throwable) {
-            // Default configured symbols fallback
-            return [
-                [
-                    'symbol' => 'BTCUSDT',
-                    'base_asset' => 'BTC',
-                    'quote_asset' => 'USDT',
-                    'market_type' => $marketType->value,
-                    'tick_size' => '0.01',
-                    'lot_size' => '0.001',
-                    'min_order_qty' => '0.001',
-                    'max_order_qty' => '1000',
-                    'min_notional' => '5.0',
-                    'is_active' => true,
-                    'contract_type' => strtolower($marketType->value),
-                ],
-                [
-                    'symbol' => 'ETHUSDT',
-                    'base_asset' => 'ETH',
-                    'quote_asset' => 'USDT',
-                    'market_type' => $marketType->value,
-                    'tick_size' => '0.01',
-                    'lot_size' => '0.01',
-                    'min_order_qty' => '0.01',
-                    'max_order_qty' => '5000',
-                    'min_notional' => '5.0',
-                    'is_active' => true,
-                    'contract_type' => strtolower($marketType->value),
-                ],
-            ];
+        } catch (Throwable $error) {
+            // An unavailable instrument endpoint must not invent executable markets.
+            throw new RuntimeException("Unable to discover actual instruments for {$this->exchangeId}.", 0, $error);
         }
     }
 
     public function getMarketCapabilities(MarketType $marketType): array
     {
-        $hasFunding = ! empty($this->config['capabilities']['has_funding'])
-            || str_contains(strtolower($marketType->value), 'perpetual');
+        $caps = (array) ($this->config['capabilities'] ?? []);
+        $endpoints = $this->configuredEndpoints();
+        $types = $this->supportedMarketTypes();
+        $supportsType = in_array($marketType, $types, true);
+        $supported = static fn (bool $value): CapabilityStatus => $value
+            ? CapabilityStatus::Supported : CapabilityStatus::Unsupported;
+        $hasFunding = $supportsType && $marketType->hasFunding() && ! empty($caps['has_funding']);
 
         return [
-            MarketCapability::Candles->value => CapabilityStatus::Supported,
-            MarketCapability::OrderBookL2->value => CapabilityStatus::Supported,
-            MarketCapability::Ticker->value => CapabilityStatus::Supported,
-            MarketCapability::FundingHistory->value => $hasFunding ? CapabilityStatus::Supported : CapabilityStatus::Unsupported,
-            MarketCapability::OpenInterest->value => $hasFunding ? CapabilityStatus::Supported : CapabilityStatus::Unsupported,
+            MarketCapability::Candles->value => $supported($supportsType && ! empty($caps['has_candles']) && isset($endpoints['candles'])),
+            MarketCapability::OrderBookL2->value => $supported($supportsType && isset($endpoints['order_book'])),
+            MarketCapability::Ticker->value => $supported($supportsType && isset($endpoints['ticker'])),
+            MarketCapability::FundingHistory->value => $supported($hasFunding && isset($endpoints['funding'])),
+            MarketCapability::OpenInterest->value => $supported($supportsType && ! empty($caps['has_open_interest']) && isset($endpoints['open_interest'])),
         ];
     }
 
@@ -318,7 +298,29 @@ class DeclarativeExchangeAdapter extends AbstractExchangeAdapter implements Exte
             }
         }
 
-        return $result !== [] ? $result : [MarketType::Perpetual];
+        return array_values(array_unique($result, SORT_REGULAR));
+    }
+
+    /** @return array<string, string> */
+    private function configuredEndpoints(): array
+    {
+        $nested = (array) ($this->config['capabilities']['endpoints'] ?? []);
+        $direct = (array) ($this->config['endpoints'] ?? []);
+
+        return array_filter(array_merge($nested, $direct), static fn (mixed $value): bool => is_string($value) && trim($value) !== '');
+    }
+
+    private function endpoint(string $key, string $default): string
+    {
+        $path = $this->configuredEndpoints()[$key] ?? $default;
+        // A declarative endpoint must remain on its exchange's configured host.
+        // Absolute/protocol-relative URLs bypass per-exchange provenance.
+        if (preg_match('~^[a-z][a-z0-9+.-]*:~i', $path) || str_starts_with($path, '//')
+            || str_contains($path, "\0") || preg_match('/[\r\n]/', $path)) {
+            throw new \InvalidArgumentException("Invalid cross-host endpoint '{$key}' for {$this->exchangeId}.");
+        }
+
+        return $path;
     }
 
     public function healthCheck(): array
@@ -343,7 +345,7 @@ class DeclarativeExchangeAdapter extends AbstractExchangeAdapter implements Exte
     {
         $start = microtime(true);
         try {
-            $pingPath = $this->config['endpoints']['ping'] ?? ($this->config['endpoints']['time'] ?? '');
+            $pingPath = $this->endpoint('ping', $this->endpoint('time', ''));
             $this->get($pingPath, []);
             $elapsedMs = round((microtime(true) - $start) * 1000, 2);
 

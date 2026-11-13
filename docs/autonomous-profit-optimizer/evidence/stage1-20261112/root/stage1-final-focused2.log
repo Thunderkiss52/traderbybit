@@ -1,0 +1,11 @@
+PHPUnit 12.5.40 by Sebastian Bergmann and contributors.
+
+Runtime:       PHP 8.5.12
+Configuration: /app/phpunit.xml
+
+..................................{"analytics_rows":2505,"payload_bytes_per_signal":2048,"elapsed_ms":65.201641,"php_allocated_delta_bytes":0}
+......                          40 / 40 (100%)
+
+Time: 00:10.494, Memory: 30.00 MB
+
+[30;42mOK (40 tests, 442 assertions)[0m

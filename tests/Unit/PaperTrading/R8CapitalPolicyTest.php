@@ -53,26 +53,26 @@ final class R8CapitalPolicyTest extends TestCase
         $this->policy->openingBalance('bybit', 'baseline');
     }
 
-    public function test_new_standalone_strategies_receive_capital_across_all_exchanges(): void
+    public function test_new_standalone_discovery_cannot_allocate_capital_across_exchanges(): void
     {
         config(['paper.new_primary_default_starting_balance' => '10000']);
-        // Bybit receives configured starting balance
-        self::assertSame('10000', $this->policy->openingBalance('bybit', 'new_registered_strategy'));
+        // Discovery templates cannot substitute for independent funding approval.
+        self::assertSame('0', $this->policy->openingBalance('bybit', 'new_registered_strategy'));
 
-        // All registered venues receive configured starting balance regardless of execution approval status
+        // Registered venues remain unfunded until a separate owner allocation.
         config(['exchanges.okx_paper_execution_approved' => false]);
         config(['exchanges.binance_paper_execution_approved' => false]);
-        self::assertSame('10000', $this->policy->openingBalance('okx', 'baseline'));
-        self::assertSame('10000', $this->policy->openingBalance('binance', 'baseline'));
+        self::assertSame('0', $this->policy->openingBalance('okx', 'baseline'));
+        self::assertSame('0', $this->policy->openingBalance('binance', 'baseline'));
 
-        // Supports exchange-specific configuration override
+        // Even configured templates alone cannot fund a new venue.
         config(['paper.new_primary_initial_balances.okx' => '15000']);
-        self::assertSame('15000', $this->policy->openingBalance('okx', 'baseline'));
+        self::assertSame('0', $this->policy->openingBalance('okx', 'baseline'));
 
-        // Supports strategy-specific configuration override
+        // Strategy-specific templates have the same discovery boundary.
         config(['paper.new_primary_initial_balances.bitget.trend_pullback' => '25000']);
-        self::assertSame('25000', $this->policy->openingBalance('bitget', 'trend_pullback'));
-        self::assertSame('10000', $this->policy->openingBalance('bitget', 'baseline'));
+        self::assertSame('0', $this->policy->openingBalance('bitget', 'trend_pullback'));
+        self::assertSame('0', $this->policy->openingBalance('bitget', 'baseline'));
     }
 
     public function test_activation_capital_accepts_zero_without_implicitly_funding(): void

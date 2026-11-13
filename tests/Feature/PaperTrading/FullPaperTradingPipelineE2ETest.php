@@ -7,6 +7,7 @@ namespace Tests\Feature\PaperTrading;
 use App\Exchanges\Binance\BinanceDeploymentInitializer;
 use App\Exchanges\Binance\BinancePaperActivation;
 use App\Exchanges\Binance\ExchangePaperReconciliation;
+use App\Exchanges\Infrastructure\Persistence\ExchangeRecord;
 use App\MarketData\Infrastructure\Persistence\CandleRecord;
 use App\PaperTrading\Application\GlobalPaperCapitalGuard;
 use App\PaperTrading\Application\PaperAccountService;
@@ -32,11 +33,13 @@ use DateTimeImmutable;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
 use Ramsey\Uuid\Uuid;
+use Tests\Concerns\SeedsValidatedPaperEvidence;
 use Tests\TestCase;
 
 final class FullPaperTradingPipelineE2ETest extends TestCase
 {
     use RefreshDatabase;
+    use SeedsValidatedPaperEvidence;
 
     protected function setUp(): void
     {
@@ -52,6 +55,15 @@ final class FullPaperTradingPipelineE2ETest extends TestCase
             'exchanges.binance.paper_execution_approved' => true,
             'exchanges.binance.research_cycle_enabled' => true,
             'exchanges.binance_paper_provisioning_approved' => true,
+        ]);
+        // Explicit synthetic catalog approval and fill-cost evidence for this cohort.
+        $binance = ExchangeRecord::query()->findOrFail('binance');
+        $binance->update([
+            'lifecycle_status' => 'ACTIVE_PAPER', 'paper_approved' => true,
+            'paper_approved_at' => now('UTC'),
+            'cost_model' => array_replace((array) $binance->cost_model, [
+                'maker_rate' => '0.0002', 'taker_rate' => '0.0005', 'slippage_rate' => '0.0002',
+            ]),
         ]);
     }
 
@@ -433,7 +445,8 @@ final class FullPaperTradingPipelineE2ETest extends TestCase
 
         // Exactly one position, exactly one execution
         self::assertSame(1, VirtualPositionRecord::query()->where('paper_account_id', $account->id)->count());
-        self::assertSame(1, VirtualExecutionRecord::query()->where('position_id', VirtualPositionRecord::query()->first()->id)->count());
+        $position = VirtualPositionRecord::query()->where('paper_account_id', $account->id)->firstOrFail();
+        self::assertSame(1, VirtualExecutionRecord::query()->where('position_id', $position->id)->count());
         self::assertSame(1, PaperSignalStateRecord::query()->where('signal_id', $signal->id)->count());
     }
 
@@ -477,7 +490,7 @@ final class FullPaperTradingPipelineE2ETest extends TestCase
     ): SignalRecord {
         $strategy = $this->app->make(StrategyRegistry::class)->get($strategyId);
 
-        return SignalRecord::query()->create([
+        $signal = SignalRecord::query()->create([
             'id' => (string) Uuid::uuid4(),
             'exchange' => $exchange,
             'category' => 'linear',
@@ -508,6 +521,9 @@ final class FullPaperTradingPipelineE2ETest extends TestCase
             'created_at' => $decisionTime,
             'updated_at' => $decisionTime,
         ]);
+        $this->seedValidatedPaperEvidence($signal);
+
+        return $signal;
     }
 
     private function createMarketContext(

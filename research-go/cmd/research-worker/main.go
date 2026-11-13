@@ -231,6 +231,7 @@ func main() {
 		"monte_carlo",
 		"feature_build",
 		"skip_outcomes",
+		"signal_markout",
 	}
 
 	// Register worker in PostgreSQL research_workers table with generation token

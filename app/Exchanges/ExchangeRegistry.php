@@ -118,7 +118,7 @@ final class ExchangeRegistry
     {
         try {
             if (! Schema::hasTable('exchanges')) {
-                return (array) config('exchanges.enabled', []);
+                return []; // Catalog state cannot be inferred from enabled configuration.
             }
 
             return DB::table('exchanges')
@@ -127,7 +127,7 @@ final class ExchangeRegistry
                 ->pluck('id')
                 ->all();
         } catch (Throwable) {
-            return (array) config('exchanges.enabled', []);
+            return []; // Fail closed during catalog/database outages.
         }
     }
 
@@ -136,7 +136,7 @@ final class ExchangeRegistry
     {
         try {
             if (! Schema::hasTable('exchanges')) {
-                return ['bybit'];
+                return []; // Never manufacture PAPER approval for an unavailable catalog.
             }
 
             return DB::table('exchanges')
@@ -146,7 +146,7 @@ final class ExchangeRegistry
                 ->pluck('id')
                 ->all();
         } catch (Throwable) {
-            return ['bybit'];
+            return []; // No approved venue can be proven without its persisted state.
         }
     }
 

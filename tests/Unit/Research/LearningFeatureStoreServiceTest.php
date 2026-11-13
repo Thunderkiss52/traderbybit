@@ -41,7 +41,7 @@ final class LearningFeatureStoreServiceTest extends TestCase
         $snapshot = $service->assembleSnapshot('BTCUSDT', '15', $t0, 'trend_pullback', 'TREND_BULLISH');
 
         self::assertNotNull($snapshot);
-        self::assertSame('PENDING', $snapshot->label_status);
+        self::assertSame('INVALID', $snapshot->label_status); // No historical signal/trade plan: never invent a LONG label
         self::assertSame('1.0.0', $snapshot->feature_schema_version);
         self::assertArrayHasKey('hl_spread_pct', $snapshot->features);
         self::assertArrayHasKey('recent_volatility', $snapshot->features);
@@ -63,12 +63,12 @@ final class LearningFeatureStoreServiceTest extends TestCase
         ]);
 
         $matured = $service->maturePendingLabels();
-        self::assertSame(1, $matured);
+        self::assertSame(0, $matured);
 
         $snapshot->refresh();
-        self::assertSame('MATURED', $snapshot->label_status);
-        self::assertSame('TP', $snapshot->label_outcome);
-        self::assertSame('1.8700', (string) $snapshot->label_r_multiple);
+        self::assertSame('INVALID', $snapshot->label_status);
+        self::assertNull($snapshot->label_outcome);
+        self::assertNull($snapshot->label_r_multiple);
     }
 
     public function test_f17_learning_feature_store_isolates_exchanges_without_cross_contamination(): void
@@ -161,15 +161,15 @@ final class LearningFeatureStoreServiceTest extends TestCase
         ]);
 
         $matured = $service->maturePendingLabels();
-        self::assertSame(2, $matured);
+        self::assertSame(0, $matured);
 
         $bybitSnapshot->refresh();
         $binanceSnapshot->refresh();
 
-        self::assertSame('MATURED', $bybitSnapshot->label_status);
-        self::assertSame('TP', $bybitSnapshot->label_outcome);
+        self::assertSame('INVALID', $bybitSnapshot->label_status);
+        self::assertNull($bybitSnapshot->label_outcome);
 
-        self::assertSame('MATURED', $binanceSnapshot->label_status);
-        self::assertSame('SL', $binanceSnapshot->label_outcome);
+        self::assertSame('INVALID', $binanceSnapshot->label_status);
+        self::assertNull($binanceSnapshot->label_outcome);
     }
 }

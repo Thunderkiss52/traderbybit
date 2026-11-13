@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Tests\Feature\PaperTrading;
 
 use App\Exchanges\ExchangeRegistry;
+use App\Exchanges\Infrastructure\Persistence\ExchangeRecord;
 use App\MarketData\Infrastructure\Persistence\CandleRecord;
 use App\PaperTrading\Application\PaperProcessingService;
 use App\PaperTrading\Domain\PositionStatus;
@@ -19,11 +20,13 @@ use Brick\Math\BigDecimal;
 use Carbon\CarbonImmutable;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Ramsey\Uuid\Uuid;
+use Tests\Concerns\SeedsValidatedPaperEvidence;
 use Tests\TestCase;
 
 final class EndToEndSyntheticPaperLifecycleTest extends TestCase
 {
     use RefreshDatabase;
+    use SeedsValidatedPaperEvidence;
 
     protected function setUp(): void
     {
@@ -123,6 +126,7 @@ final class EndToEndSyntheticPaperLifecycleTest extends TestCase
         ]);
 
         $this->assertEquals($candle->id, $signal->candle_id);
+        $this->seedSyntheticApprovalAndEvidence($signal);
 
         // 4. Market context at entry time
         MarketContextRecord::query()->create([
@@ -394,6 +398,8 @@ final class EndToEndSyntheticPaperLifecycleTest extends TestCase
             'updated_at' => $t0,
         ]);
 
+        $this->seedSyntheticApprovalAndEvidence($signal);
+
         MarketContextRecord::query()->create([
             'exchange' => 'kucoin',
             'category' => 'linear',
@@ -434,6 +440,18 @@ final class EndToEndSyntheticPaperLifecycleTest extends TestCase
         // Account reserved risk returned to zero
         $account->refresh();
         $this->assertTrue(BigDecimal::of($account->reserved_risk)->isZero());
+    }
+
+    private function seedSyntheticApprovalAndEvidence(SignalRecord $signal): void
+    {
+        // Test-local approval and execution assumptions are not venue readiness evidence.
+        ExchangeRecord::query()->findOrFail($signal->exchange)->update([
+            'paper_approved' => true,
+            'paper_approved_at' => $signal->decision_time,
+            'lifecycle_status' => 'ACTIVE_PAPER',
+            'paper_execution_assumptions' => ['execution_model' => 'NEXT_CANDLE_OPEN'],
+        ]);
+        $this->seedValidatedPaperEvidence($signal);
     }
 
     private function createCandle(string $exchange, string $symbol, string $interval, CarbonImmutable $openTime, string $open, string $high, string $low, string $close): CandleRecord

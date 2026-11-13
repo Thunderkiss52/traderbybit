@@ -94,12 +94,23 @@ final class ResearchJobApiTest extends TestCase
             'kind' => 'BACKTEST',
             'strategy_id' => 'trend_pullback',
             'payload' => [
-                'exchange' => 'okx',
+                'exchange' => 'unknown_venue',
             ],
         ]);
 
         $response->assertStatus(422);
         $response->assertJsonValidationErrors(['exchange']);
+    }
+
+    public function test_registered_okx_research_job_remains_supported(): void
+    {
+        $response = $this->postJson('/api/v1/research/jobs', [
+            'kind' => 'BACKTEST', 'strategy_id' => 'trend_pullback',
+            'payload' => ['exchange' => 'okx', 'symbol' => 'BTCUSDT'],
+        ])->assertAccepted();
+        $job = ResearchJobRecord::query()->where('job_id', $response->json('data.job_id'))->firstOrFail();
+        self::assertSame('okx', $job->payload['exchange']);
+        self::assertSame('okx', $job->payload['exchange_id']);
     }
 
     public function test_accepts_go_job_submission_with_binance_and_dataset_provenance(): void

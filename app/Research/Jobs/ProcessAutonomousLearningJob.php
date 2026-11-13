@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Research\Jobs;
 
+use App\Exchanges\ExchangeRegistry;
 use App\Research\Application\AutonomyPermissionService;
 use App\Research\Application\LearningFeatureStoreService;
 use App\Research\Application\LearningPredictorService;
@@ -11,6 +12,7 @@ use App\Research\Application\ResearchJobService;
 use App\Research\Application\StrategyDegradationService;
 use App\Research\Application\StrategyEvolutionService;
 use App\Research\Infrastructure\Persistence\LearningCandidateStrategyRecord;
+use App\Research\Infrastructure\Persistence\LearningFeatureSnapshotRecord;
 use App\Strategy\Application\StrategyRegistry;
 use Carbon\CarbonImmutable;
 use Illuminate\Bus\Queueable;
@@ -62,14 +64,34 @@ final class ProcessAutonomousLearningJob implements ShouldQueue
 
         // 2. Continuous machine learning model training & champion/challenger lifecycle
         $symbols = (array) config('market_data.symbols', ['BTCUSDT', 'ETHUSDT']);
-        foreach (['bybit', 'binance'] as $exchange) {
+        $baselineVersion = $strategyRegistry->get('baseline')->version();
+        $venues = app(ExchangeRegistry::class);
+        foreach ($venues->activeIds() as $exchange) {
+            if (! $venues->hasAdapter($exchange)) {
+                Log::warning('[AutonomousLearning] Skipping exchange without a registered public-data adapter.', ['exchange' => $exchange]);
+
+                continue;
+            }
             foreach ($symbols as $symbol) {
-                $drift = $predictor->detectConceptDrift($symbol, 'TP_BEFORE_SL', $exchange);
-                if ($autonomy->isAllowed('retrain_models') && ($drift['drift_detected'] || $drift['recommendation'] === 'TRAIN_INITIAL')) {
-                    Log::info("[AutonomousLearning] Initiating model training for {$exchange}:{$symbol} (trigger: {$drift['recommendation']}).");
-                    $artifact = $predictor->trainModel('TP_BEFORE_SL', $symbol, $exchange);
-                    if ($artifact) {
-                        Log::info("[AutonomousLearning] Trained model {$artifact->name} {$artifact->version} status: {$artifact->status}.");
+                foreach (['BUY', 'SELL'] as $side) {
+                    $maturedCount = LearningFeatureSnapshotRecord::query()
+                        ->where('symbol', $symbol)
+                        ->where('strategy_id', 'baseline')
+                        ->where('timeframe', '15')
+                        ->where('data_quality->exchange', $exchange)
+                        ->where('data_quality->category', 'linear')
+                        ->where('data_quality->side', $side)
+                        ->where('data_quality->label_policy_version', 'SIGNAL_PROXY_V2')
+                        ->where('data_quality->strategy_version', $baselineVersion)
+                        ->where('label_status', 'MATURED')
+                        ->count();
+                    if ($maturedCount < 12) {
+                        continue;
+                    }
+                    $drift = $predictor->detectConceptDrift($symbol, 'TP_BEFORE_SL', $exchange, 'baseline', '15', $side, 'linear', $baselineVersion);
+                    if ($autonomy->isAllowed('retrain_models') && ($drift['drift_detected'] || $drift['recommendation'] === 'TRAIN_INITIAL')) {
+                        Log::info('[AutonomousLearning] Training segregated proxy cohort.', ['exchange' => $exchange, 'symbol' => $symbol, 'side' => $side]);
+                        $predictor->trainModel('TP_BEFORE_SL', $symbol, $exchange, 'baseline', '15', $side, 'linear', $baselineVersion);
                     }
                 }
             }

@@ -1,0 +1,7 @@
+{
+  "command_exit_code": 0,
+  "unformatted_files": [
+    "cmd/signal-intelligence/main.go"
+  ],
+  "passed": false
+}

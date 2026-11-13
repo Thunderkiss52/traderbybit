@@ -14,7 +14,8 @@ use Brick\Math\RoundingMode;
  * Policy A (Baseline without quality/risk filter) vs
  * Policy B (Filtered with Signal Quality + Trade Risk + Validated Net-Edge gate).
  *
- * Enforces chronological causality and zero forward-looking bias.
+ * Descriptive analysis of caller-supplied outcomes. This interface cannot verify
+ * chronological splits, decision-time feature availability or independent evidence.
  */
 final readonly class PolicyComparisonEvaluationService
 {
@@ -40,7 +41,9 @@ final readonly class PolicyComparisonEvaluationService
      *     r_multiple?: float|null,
      *     drawdown_at_entry?: float|null,
      *     expected_net_edge?: float|null,
-     *     sample_size?: int|null
+     *     sample_size?: int|null,
+     *     evidence_status?: string|null,
+     *     cost_drag_percent?: float|null
      * }> $signals
      * @return array<string, mixed>
      */
@@ -70,6 +73,8 @@ final readonly class PolicyComparisonEvaluationService
                 'drawdown_percent' => $trade['drawdown_at_entry'] ?? 0.0,
                 'expected_net_edge' => $trade['expected_net_edge'] ?? null,
                 'sample_size' => $trade['sample_size'] ?? 0,
+                'evidence_status' => $trade['evidence_status'] ?? 'UNKNOWN',
+                'cost_drag_percent' => $trade['cost_drag_percent'] ?? null,
                 'side' => $trade['side'],
             ]);
 
@@ -89,17 +94,17 @@ final readonly class PolicyComparisonEvaluationService
         $deltaNetPnl = BigDecimal::of((string) $metricsB['net_pnl'])->minus((string) $metricsA['net_pnl']);
         $deltaDrawdown = BigDecimal::of((string) $metricsB['max_drawdown'])->minus((string) $metricsA['max_drawdown']);
 
-        // Determine verdict based on statistical evidence
+        // A difference on supplied rows is descriptive, not statistical validation.
         $totalSample = count($signals);
         if ($totalSample < 10) {
             $verdict = 'INSUFFICIENT_EVIDENCE_TO_DETERMINE_IMPROVEMENT';
-            $verdictExplanation = 'Sample size is below the statistical minimum threshold of 10 closed observations.';
+            $verdictExplanation = 'Fewer than ten supplied observations; independence and out-of-sample validity are unverified.';
         } elseif ($deltaNetPnl->isPositive() && $deltaDrawdown->isLessThanOrEqualTo(0)) {
-            $verdict = 'VERIFIED_IMPROVED_RISK_ADJUSTED_PERFORMANCE';
-            $verdictExplanation = 'Policy B achieved higher net PnL and lower or equal maximum drawdown compared to Baseline Policy A.';
+            $verdict = 'DESCRIPTIVE_IMPROVEMENT_REQUIRES_VALIDATION';
+            $verdictExplanation = 'Supplied rows show higher net PnL and no greater drawdown; independent research and forward validation remain required.';
         } elseif ($deltaNetPnl->isPositive()) {
-            $verdict = 'VERIFIED_IMPROVED_NET_PROFITABILITY';
-            $verdictExplanation = 'Policy B achieved higher net PnL after modeled execution costs.';
+            $verdict = 'DESCRIPTIVE_IMPROVEMENT_REQUIRES_VALIDATION';
+            $verdictExplanation = 'Supplied rows show higher net PnL with increased drawdown; risk-constrained improvement is unverified.';
         } else {
             $verdict = 'GATE_CORRECT_BUT_PROFITABILITY_UNPROVEN';
             $verdictExplanation = 'Policy B filtered low quality and high risk trades correctly, but net profitability was neutral or unproven on this sample.';
@@ -107,6 +112,11 @@ final readonly class PolicyComparisonEvaluationService
 
         return [
             'total_signals_evaluated' => $totalSample,
+            'unique_signal_count' => count(array_unique(array_column($signals, 'signal_id'))),
+            'validation_status' => 'DESCRIPTIVE_ONLY',
+            'causality_verified' => false,
+            'independence_verified' => false,
+            'entry_authority' => false,
             'policy_a_baseline' => $metricsA,
             'policy_b_filtered' => array_merge($metricsB, [
                 'rejections_count' => $policyBRejections,
@@ -204,7 +214,7 @@ final readonly class PolicyComparisonEvaluationService
         $winRate = $count > 0 ? (float) round(($wins / $count) * 100, 2) : null;
         $profitFactor = $grossLosses->isPositive()
             ? (float) round($grossWins->dividedBy($grossLosses, 4, RoundingMode::HalfEven)->toFloat(), 2)
-            : ($grossWins->isPositive() ? 999.99 : null);
+            : null;
         $avgR = $rCount > 0 ? (float) round($rTotal->dividedBy($rCount, 4, RoundingMode::HalfEven)->toFloat(), 2) : null;
         $expectancy = (string) $net->dividedBy($count, 4, RoundingMode::HalfEven);
 

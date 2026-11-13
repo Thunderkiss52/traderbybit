@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuites>
+  <testsuite name="CLI Arguments" tests="11" assertions="34" errors="0" failures="0" skipped="0" time="0.710378">
+    <testsuite name="Tests\Unit\PaperTrading\R8CapitalPolicyTest" file="/app/tests/Unit/PaperTrading/R8CapitalPolicyTest.php" tests="6" assertions="15" errors="0" failures="0" skipped="0" time="0.286175">
+      <testcase name="test_default_virtual_starting_balance_is_10000" file="/app/tests/Unit/PaperTrading/R8CapitalPolicyTest.php" line="21" class="Tests\Unit\PaperTrading\R8CapitalPolicyTest" classname="Tests.Unit.PaperTrading.R8CapitalPolicyTest" assertions="1" time="0.251462"/>
+      <testcase name="test_strategy_specific_configuration_override" file="/app/tests/Unit/PaperTrading/R8CapitalPolicyTest.php" line="28" class="Tests\Unit\PaperTrading\R8CapitalPolicyTest" classname="Tests.Unit.PaperTrading.R8CapitalPolicyTest" assertions="2" time="0.005695"/>
+      <testcase name="test_rejects_zero_or_negative_starting_balance" file="/app/tests/Unit/PaperTrading/R8CapitalPolicyTest.php" line="40" class="Tests\Unit\PaperTrading\R8CapitalPolicyTest" classname="Tests.Unit.PaperTrading.R8CapitalPolicyTest" assertions="2" time="0.005455"/>
+      <testcase name="test_rejects_malformed_starting_balance" file="/app/tests/Unit/PaperTrading/R8CapitalPolicyTest.php" line="48" class="Tests\Unit\PaperTrading\R8CapitalPolicyTest" classname="Tests.Unit.PaperTrading.R8CapitalPolicyTest" assertions="2" time="0.008448"/>
+      <testcase name="test_new_standalone_discovery_cannot_allocate_capital_across_exchanges" file="/app/tests/Unit/PaperTrading/R8CapitalPolicyTest.php" line="56" class="Tests\Unit\PaperTrading\R8CapitalPolicyTest" classname="Tests.Unit.PaperTrading.R8CapitalPolicyTest" assertions="6" time="0.006758"/>
+      <testcase name="test_activation_capital_accepts_zero_without_implicitly_funding" file="/app/tests/Unit/PaperTrading/R8CapitalPolicyTest.php" line="78" class="Tests\Unit\PaperTrading\R8CapitalPolicyTest" classname="Tests.Unit.PaperTrading.R8CapitalPolicyTest" assertions="2" time="0.008358"/>
+    </testsuite>
+    <testsuite name="Tests\Unit\PaperTrading\GlobalPaperCapitalGuardCanonicalRiskTest" file="/app/tests/Unit/PaperTrading/GlobalPaperCapitalGuardCanonicalRiskTest.php" tests="4" assertions="13" errors="0" failures="0" skipped="0" time="0.418202">
+      <testcase name="test_blocked_accounts_cannot_expand_global_risk_budget" file="/app/tests/Unit/PaperTrading/GlobalPaperCapitalGuardCanonicalRiskTest.php" line="22" class="Tests\Unit\PaperTrading\GlobalPaperCapitalGuardCanonicalRiskTest" classname="Tests.Unit.PaperTrading.GlobalPaperCapitalGuardCanonicalRiskTest" assertions="9" time="0.205822"/>
+      <testcase name="test_unapproved_exchanges_cannot_expand_global_risk_budget" file="/app/tests/Unit/PaperTrading/GlobalPaperCapitalGuardCanonicalRiskTest.php" line="71" class="Tests\Unit\PaperTrading\GlobalPaperCapitalGuardCanonicalRiskTest" classname="Tests.Unit.PaperTrading.GlobalPaperCapitalGuardCanonicalRiskTest" assertions="2" time="0.078420"/>
+      <testcase name="test_global_loss_limit_triggers_on_active_portfolio_drawdown" file="/app/tests/Unit/PaperTrading/GlobalPaperCapitalGuardCanonicalRiskTest.php" line="94" class="Tests\Unit\PaperTrading\GlobalPaperCapitalGuardCanonicalRiskTest" classname="Tests.Unit.PaperTrading.GlobalPaperCapitalGuardCanonicalRiskTest" assertions="1" time="0.064695"/>
+      <testcase name="test_all_blocked_accounts_returns_no_active_risk_capital" file="/app/tests/Unit/PaperTrading/GlobalPaperCapitalGuardCanonicalRiskTest.php" line="117" class="Tests\Unit\PaperTrading\GlobalPaperCapitalGuardCanonicalRiskTest" classname="Tests.Unit.PaperTrading.GlobalPaperCapitalGuardCanonicalRiskTest" assertions="1" time="0.069264"/>
+    </testsuite>
+    <testsuite name="Tests\Unit\PaperTrading\NewPrimaryCapitalPolicyTest" file="/app/tests/Unit/PaperTrading/NewPrimaryCapitalPolicyTest.php" tests="1" assertions="6" errors="0" failures="0" skipped="0" time="0.006001">
+      <testcase name="test_discovery_cannot_fund_additional_portfolios_from_default_or_template" file="/app/tests/Unit/PaperTrading/NewPrimaryCapitalPolicyTest.php" line="12" class="Tests\Unit\PaperTrading\NewPrimaryCapitalPolicyTest" classname="Tests.Unit.PaperTrading.NewPrimaryCapitalPolicyTest" assertions="6" time="0.006001"/>
+    </testsuite>
+  </testsuite>
+</testsuites>

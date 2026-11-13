@@ -52,17 +52,17 @@ final class TradingPipelineRecoveryService
             return true;
         }
 
-        $canonicalStrategies = PrimaryStrategies::ids();
+        $canonicalStrategies = PrimaryStrategies::ids($exchange);
         if (! empty($canonicalStrategies)) {
-            $existingCount = StrategyObservationRecord::query()
+            $existingObservations = StrategyObservationRecord::query()
                 ->where('exchange', strtolower($exchange))
                 ->where('category', 'linear')
                 ->where('symbol', strtoupper($symbol))
                 ->where('decision_time', $closeAt)
                 ->whereNull('superseded_by')
-                ->count();
+                ->get(['strategy_id', 'strategy_version', 'configuration_hash']);
 
-            if ($existingCount >= count($canonicalStrategies)) {
+            if (CanonicalObservationCompleteness::isComplete($existingObservations, $exchange)) {
                 return true;
             }
         }
@@ -204,7 +204,7 @@ final class TradingPipelineRecoveryService
             }
 
             // Re-dispatch fresh pending/uncompleted event
-            $queue = (string) config("trading.queues.{$event->exchange}", "trading-{$event->exchange}");
+            $queue = TradingQueueResolver::forExchange($event->exchange);
 
             try {
                 if ($event->stage === TradingPipelineEventRecord::STAGE_CANDLE_CLOSED) {
@@ -246,10 +246,9 @@ final class TradingPipelineRecoveryService
         // 2. Discover unrecorded closed 15m candles from the last 5 minutes
         $symbols = (array) config('trading.symbols', ['BTCUSDT', 'ETHUSDT']);
         $registry = $this->exchangeRegistry ?? app(ExchangeRegistry::class);
+        // When all venues are paused/deactivated, recovery must not silently
+        // dispatch work to historical default exchanges.
         $exchanges = $registry->activeIds();
-        if ($exchanges === []) {
-            $exchanges = ['bybit', 'binance'];
-        }
         $candlesRecovered = 0;
 
         foreach ($exchanges as $exchange) {

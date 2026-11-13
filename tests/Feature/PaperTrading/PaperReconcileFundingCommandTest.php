@@ -17,14 +17,17 @@ use App\Strategy\Infrastructure\Persistence\SignalRecord;
 use DateTimeImmutable;
 use Illuminate\Foundation\Testing\DatabaseTransactions;
 use Ramsey\Uuid\Uuid;
+use Tests\Concerns\SeedsValidatedPaperEvidence;
 use Tests\TestCase;
 
 final class PaperReconcileFundingCommandTest extends TestCase
 {
     use DatabaseTransactions;
+    use SeedsValidatedPaperEvidence;
 
     public function test_paper_reconcile_funding_command_dry_run_previews_without_mutating(): void
     {
+        $this->travelTo(new DateTimeImmutable('2026-10-26T23:30:00Z'));
         $lifecycle = app(PositionLifecycleService::class);
         $account = app(PaperAccountService::class)->default();
         $account->update(['exchange_id' => 'bybit', 'is_primary' => true, 'status' => 'ACTIVE']);
@@ -36,6 +39,8 @@ final class PaperReconcileFundingCommandTest extends TestCase
             'symbol' => 'BTCUSDT',
             'side' => 'BUY',
             'quality_class' => 'A',
+            'signal_quality' => 'HIGH',
+            'trade_risk' => 'LOW',
             'score' => 90,
             'timeframe' => '15',
             'entry_low' => '59900',
@@ -58,6 +63,8 @@ final class PaperReconcileFundingCommandTest extends TestCase
             'strategy_id' => 'baseline',
             'strategy_version' => '1.0.0',
         ]);
+
+        $this->seedValidatedPaperEvidence($signal);
 
         $state = PaperSignalStateRecord::query()->create([
             'id' => Uuid::uuid4()->toString(),

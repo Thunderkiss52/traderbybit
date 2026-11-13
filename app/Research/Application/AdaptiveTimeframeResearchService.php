@@ -7,9 +7,15 @@ namespace App\Research\Application;
 use App\MarketData\Domain\Interval;
 use App\MarketData\Infrastructure\Persistence\CandleRecord;
 use Carbon\CarbonImmutable;
+use DateTimeImmutable;
+use InvalidArgumentException;
 
 final readonly class AdaptiveTimeframeResearchService
 {
+    public const VERSION = '1.1.0';
+
+    public const MAX_LOOKBACK_BARS = 1000;
+
     /**
      * Supported research intervals for Bybit USDT-perpetuals.
      */
@@ -18,16 +24,30 @@ final readonly class AdaptiveTimeframeResearchService
     /**
      * Analyze empirical market characteristics across all supported timeframes for a given symbol.
      */
-    public function analyzeTimeframes(string $symbol = 'BTCUSDT', int $lookbackBars = 100): array
+    public function analyzeTimeframes(string $symbol = 'BTCUSDT', int $lookbackBars = 100, string $exchange = 'bybit', string $category = 'linear', ?DateTimeImmutable $asOf = null): array
     {
+        $symbol = strtoupper(trim($symbol));
+        $exchange = strtolower(trim($exchange));
+        $category = strtolower(trim($category));
+        if ($lookbackBars < 2 || $lookbackBars > self::MAX_LOOKBACK_BARS
+            || $symbol === '' || $exchange === '' || ! in_array($category, ['linear', 'spot', 'inverse'], true)) {
+            throw new InvalidArgumentException('A market scope and lookback of 2 to 1000 bars are required.');
+        }
+        $asOf = CarbonImmutable::instance($asOf ?? CarbonImmutable::now('UTC'))->utc();
         $results = [];
 
         foreach (self::SUPPORTED_INTERVALS as $intervalStr) {
             $interval = Interval::parse($intervalStr);
             $candles = CandleRecord::query()
+                ->where('exchange', $exchange)
+                ->where('category', $category)
                 ->where('symbol', $symbol)
                 ->where('interval', $intervalStr)
                 ->where('is_closed', true)
+                // Present-day is_closed cannot establish historical availability.
+                ->where('open_time', '<=', $asOf->subSeconds($interval->seconds()))
+                ->where('created_at', '<=', $asOf)
+                ->where('updated_at', '<=', $asOf)
                 ->latest('open_time')
                 ->limit($lookbackBars)
                 ->get()
@@ -98,7 +118,11 @@ final readonly class AdaptiveTimeframeResearchService
         }
 
         return [
+            'analysis_version' => self::VERSION,
+            'exchange' => $exchange,
+            'category' => $category,
             'symbol' => $symbol,
+            'as_of' => $asOf->toIso8601String(),
             'lookback_bars' => $lookbackBars,
             'timestamp' => CarbonImmutable::now('UTC')->toIso8601String(),
             'intervals' => $results,

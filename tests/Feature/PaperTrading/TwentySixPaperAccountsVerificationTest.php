@@ -104,13 +104,14 @@ final class TwentySixPaperAccountsVerificationTest extends TestCase
             self::assertSame($expected, [(string) $current->starting_balance, (string) $current->current_equity, $current->status]);
         }
 
-        // New strategy is created as ACTIVE on approved Bybit paper exchange, BLOCKED on Binance
+        // Venue approval cannot fund or activate an unvalidated new strategy.
         $newBybit = PaperAccountRecord::query()->where('exchange_id', 'bybit')->where('primary_strategy_id', 'volatility_arbitrage_v1')->firstOrFail();
         $newBinance = PaperAccountRecord::query()->where('exchange_id', 'binance')->where('primary_strategy_id', 'volatility_arbitrage_v1')->firstOrFail();
-        self::assertSame('ACTIVE', $newBybit->status);
+        self::assertSame('BLOCKED', $newBybit->status);
         self::assertSame('BLOCKED', $newBinance->status);
-        self::assertDecimalSame('10000', (string) $newBinance->starting_balance);
-        self::assertDecimalSame('10000', (string) $newBybit->starting_balance);
+        self::assertDecimalSame('0', (string) $newBinance->starting_balance);
+        self::assertDecimalSame('0', (string) $newBybit->starting_balance);
+        self::assertSame('READINESS_PENDING', $newBybit->execution_block_origin);
     }
 
     public function test_scenario_c_research_only_exchange_onboards_with_zero_capital_and_blocked_status(): void
@@ -167,8 +168,8 @@ final class TwentySixPaperAccountsVerificationTest extends TestCase
         $eligibility = app(PaperExecutionEligibilityService::class);
         foreach ($okxAccounts as $account) {
             self::assertSame('BLOCKED', $account->status);
-            self::assertDecimalSame('10000', (string) $account->starting_balance);
-            self::assertDecimalSame('10000', (string) $account->current_equity);
+            self::assertDecimalSame('0', (string) $account->starting_balance);
+            self::assertDecimalSame('0', (string) $account->current_equity);
             self::assertFalse($eligibility->isAccountEntryEligible($account));
         }
     }

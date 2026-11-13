@@ -74,6 +74,14 @@ final class RecoverCandleGapsJob implements ShouldQueue
             return;
         }
 
+        // SyncCandlesJob is bound to the BYBIT market-data client and writer.
+        // Routing a new exchange through it silently stores the wrong venue's
+        // candles. Until a proven exchange-specific immutable writer is wired
+        // in, fail explicitly instead of fabricating recovered exchange data.
+        if ($targetExchange !== 'bybit') {
+            throw new RuntimeException("No verified immutable recovery writer for exchange '{$targetExchange}'. Use that exchange's audited ingestion path.");
+        }
+
         // Bybit candle gap recovery
         $toMs = (int) floor(microtime(true) * 1000);
         $fromMs = $toMs - (6 * 60 * 60 * 1000);

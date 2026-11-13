@@ -9,9 +9,11 @@ use App\MarketData\Infrastructure\Persistence\CandleRecord;
 use App\PaperTrading\Application\PaperProcessingService;
 use App\PaperTrading\Infrastructure\Persistence\PaperAccountRecord;
 use App\Strategy\Application\StrategyObservationService;
+use App\Strategy\Application\StrategyRegistry;
 use App\Strategy\Exceptions\StrategyObservationActiveException;
 use App\Strategy\Infrastructure\Persistence\StrategyObservationRecord;
 use App\Strategy\Jobs\ObserveStrategiesJob;
+use App\StrategyBuilder\PrimaryStrategies;
 use App\Trading\Application\TradingPipelineEventService;
 use App\Trading\Application\TradingPipelineRecoveryService;
 use App\Trading\Infrastructure\Persistence\TradingPipelineEventRecord;
@@ -119,13 +121,14 @@ final class BinanceObservationContentionTest extends TestCase
         self::assertNotNull($record);
 
         // Simulate Worker 1 having completed observations for all 13 canonical strategies
-        $strategies = (array) config('paper.primary_strategies', []);
+        $strategies = PrimaryStrategies::ids('binance');
         self::assertCount(13, $strategies);
 
         foreach ($strategies as $strategyId) {
+            $strategy = app(StrategyRegistry::class)->get($strategyId);
             $id = Uuid::uuid5(Uuid::NAMESPACE_URL, implode('|', [
                 'traderbybit:strategy-observation', 'binance', 'linear', 'BTCUSDT',
-                $strategyId, '1.0.0', $at->format('U.u'),
+                $strategyId, $strategy->version(), $at->format('U.u'),
             ]))->toString();
 
             StrategyObservationRecord::query()->create([
@@ -134,8 +137,8 @@ final class BinanceObservationContentionTest extends TestCase
                 'category' => 'linear',
                 'symbol' => 'BTCUSDT',
                 'strategy_id' => $strategyId,
-                'strategy_version' => '1.0.0',
-                'configuration_hash' => hash('sha256', $strategyId),
+                'strategy_version' => $strategy->version(),
+                'configuration_hash' => StrategyRegistry::hash($strategy->parameters()),
                 'side' => 'BUY',
                 'quality_class' => 'A',
                 'score' => 80,

@@ -202,6 +202,8 @@ Route::prefix('v1')->middleware('throttle:api')->group(function () {
     Route::get('research/profitability/decision-gate', [ProfitabilityResearchController::class, 'decisionGate']);
     Route::post('research/profitability/generations/p6', [ProfitabilityResearchController::class, 'storeP6Generation'])->middleware('research.token');
     Route::get('research/profitability/signal-analytics', [ProfitabilityResearchController::class, 'signalAnalytics']);
+    Route::get('research/profitability/signal-horizons', [ProfitabilityResearchController::class, 'signalHorizonEvidence']);
+    Route::get('research/profitability/signal-quality-profiles', [ProfitabilityResearchController::class, 'signalQualityProfiles']);
     Route::get('research/profitability/signal-explorer', [ProfitabilityResearchController::class, 'signalExplorer']);
     Route::get('research/profitability/signal-explorer/export', [ProfitabilityResearchController::class, 'signalExplorerExport']);
     Route::get('research/profitability/signal-explorer/{id}', [ProfitabilityResearchController::class, 'signalDetail']);

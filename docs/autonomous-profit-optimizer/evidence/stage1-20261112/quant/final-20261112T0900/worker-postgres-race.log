@@ -1,0 +1,72 @@
+=== RUN   TestSignalMarkoutPostgresClaimAndComplete
+2026/11/12 11:55:50 [jobrunner] Starting job signal-markout-job kind=SIGNAL_MARKOUT strategy=baseline
+--- PASS: TestSignalMarkoutPostgresClaimAndComplete (0.14s)
+=== RUN   TestSignalMarkoutPostgresRejectsTamperedImmutableInputs
+=== RUN   TestSignalMarkoutPostgresRejectsTamperedImmutableInputs/missing_row_limit
+2026/11/12 11:55:50 [jobrunner] Starting job signal-markout-job kind=SIGNAL_MARKOUT strategy=baseline
+=== RUN   TestSignalMarkoutPostgresRejectsTamperedImmutableInputs/paper_forward_mode
+2026/11/12 11:55:50 [jobrunner] Starting job signal-markout-job kind=SIGNAL_MARKOUT strategy=baseline
+=== RUN   TestSignalMarkoutPostgresRejectsTamperedImmutableInputs/live_mode
+2026/11/12 11:55:50 [jobrunner] Starting job signal-markout-job kind=SIGNAL_MARKOUT strategy=baseline
+=== RUN   TestSignalMarkoutPostgresRejectsTamperedImmutableInputs/exchange
+2026/11/12 11:55:50 [jobrunner] Starting job signal-markout-job kind=SIGNAL_MARKOUT strategy=baseline
+=== RUN   TestSignalMarkoutPostgresRejectsTamperedImmutableInputs/strategy
+2026/11/12 11:55:50 [jobrunner] Starting job signal-markout-job kind=SIGNAL_MARKOUT strategy=baseline
+=== RUN   TestSignalMarkoutPostgresRejectsTamperedImmutableInputs/configuration
+2026/11/12 11:55:50 [jobrunner] Starting job signal-markout-job kind=SIGNAL_MARKOUT strategy=baseline
+=== RUN   TestSignalMarkoutPostgresRejectsTamperedImmutableInputs/dataset_id
+2026/11/12 11:55:50 [jobrunner] Starting job signal-markout-job kind=SIGNAL_MARKOUT strategy=baseline
+=== RUN   TestSignalMarkoutPostgresRejectsTamperedImmutableInputs/dataset_hash
+2026/11/12 11:55:50 [jobrunner] Starting job signal-markout-job kind=SIGNAL_MARKOUT strategy=baseline
+=== RUN   TestSignalMarkoutPostgresRejectsTamperedImmutableInputs/row_limit
+2026/11/12 11:55:51 [jobrunner] Starting job signal-markout-job kind=SIGNAL_MARKOUT strategy=baseline
+=== RUN   TestSignalMarkoutPostgresRejectsTamperedImmutableInputs/strategy_version
+2026/11/12 11:55:51 [jobrunner] Starting job signal-markout-job kind=SIGNAL_MARKOUT strategy=baseline
+=== RUN   TestSignalMarkoutPostgresRejectsTamperedImmutableInputs/revision
+2026/11/12 11:55:51 [jobrunner] Starting job signal-markout-job kind=SIGNAL_MARKOUT strategy=baseline
+=== RUN   TestSignalMarkoutPostgresRejectsTamperedImmutableInputs/inner_cutoff
+2026/11/12 11:55:51 [jobrunner] Starting job signal-markout-job kind=SIGNAL_MARKOUT strategy=baseline
+=== RUN   TestSignalMarkoutPostgresRejectsTamperedImmutableInputs/outer_cutoff
+2026/11/12 11:55:51 [jobrunner] Starting job signal-markout-job kind=SIGNAL_MARKOUT strategy=baseline
+--- PASS: TestSignalMarkoutPostgresRejectsTamperedImmutableInputs (1.43s)
+    --- PASS: TestSignalMarkoutPostgresRejectsTamperedImmutableInputs/missing_row_limit (0.12s)
+    --- PASS: TestSignalMarkoutPostgresRejectsTamperedImmutableInputs/paper_forward_mode (0.11s)
+    --- PASS: TestSignalMarkoutPostgresRejectsTamperedImmutableInputs/live_mode (0.11s)
+    --- PASS: TestSignalMarkoutPostgresRejectsTamperedImmutableInputs/exchange (0.12s)
+    --- PASS: TestSignalMarkoutPostgresRejectsTamperedImmutableInputs/strategy (0.11s)
+    --- PASS: TestSignalMarkoutPostgresRejectsTamperedImmutableInputs/configuration (0.10s)
+    --- PASS: TestSignalMarkoutPostgresRejectsTamperedImmutableInputs/dataset_id (0.10s)
+    --- PASS: TestSignalMarkoutPostgresRejectsTamperedImmutableInputs/dataset_hash (0.10s)
+    --- PASS: TestSignalMarkoutPostgresRejectsTamperedImmutableInputs/row_limit (0.12s)
+    --- PASS: TestSignalMarkoutPostgresRejectsTamperedImmutableInputs/strategy_version (0.10s)
+    --- PASS: TestSignalMarkoutPostgresRejectsTamperedImmutableInputs/revision (0.10s)
+    --- PASS: TestSignalMarkoutPostgresRejectsTamperedImmutableInputs/inner_cutoff (0.10s)
+    --- PASS: TestSignalMarkoutPostgresRejectsTamperedImmutableInputs/outer_cutoff (0.11s)
+=== RUN   TestSignalMarkoutPostgresAcceptsSupportedLowercaseKind
+2026/11/12 11:55:51 [jobrunner] Starting job signal-markout-job kind=signal_markout strategy=baseline
+--- PASS: TestSignalMarkoutPostgresAcceptsSupportedLowercaseKind (0.10s)
+=== RUN   TestSignalMarkoutPostgresCohortClaimAndComplete
+2026/11/12 11:55:51 [jobrunner] Starting job signal-markout-job kind=SIGNAL_MARKOUT strategy=baseline
+--- PASS: TestSignalMarkoutPostgresCohortClaimAndComplete (0.11s)
+=== RUN   TestSignalMarkoutPostgresCohortRejectsTamperedProvenance
+=== RUN   TestSignalMarkoutPostgresCohortRejectsTamperedProvenance/dataset_hash
+2026/11/12 11:55:51 [jobrunner] Starting job signal-markout-job kind=SIGNAL_MARKOUT strategy=baseline
+=== RUN   TestSignalMarkoutPostgresCohortRejectsTamperedProvenance/configuration
+2026/11/12 11:55:51 [jobrunner] Starting job signal-markout-job kind=SIGNAL_MARKOUT strategy=baseline
+=== RUN   TestSignalMarkoutPostgresCohortRejectsTamperedProvenance/revision
+2026/11/12 11:55:52 [jobrunner] Starting job signal-markout-job kind=SIGNAL_MARKOUT strategy=baseline
+=== RUN   TestSignalMarkoutPostgresCohortRejectsTamperedProvenance/observation
+2026/11/12 11:55:52 [jobrunner] Starting job signal-markout-job kind=SIGNAL_MARKOUT strategy=baseline
+=== RUN   TestSignalMarkoutPostgresCohortRejectsTamperedProvenance/missing_provenance
+2026/11/12 11:55:52 [jobrunner] Starting job signal-markout-job kind=SIGNAL_MARKOUT strategy=baseline
+=== RUN   TestSignalMarkoutPostgresCohortRejectsTamperedProvenance/dataset_id
+2026/11/12 11:55:52 [jobrunner] Starting job signal-markout-job kind=SIGNAL_MARKOUT strategy=baseline
+--- PASS: TestSignalMarkoutPostgresCohortRejectsTamperedProvenance (0.69s)
+    --- PASS: TestSignalMarkoutPostgresCohortRejectsTamperedProvenance/dataset_hash (0.11s)
+    --- PASS: TestSignalMarkoutPostgresCohortRejectsTamperedProvenance/configuration (0.11s)
+    --- PASS: TestSignalMarkoutPostgresCohortRejectsTamperedProvenance/revision (0.13s)
+    --- PASS: TestSignalMarkoutPostgresCohortRejectsTamperedProvenance/observation (0.11s)
+    --- PASS: TestSignalMarkoutPostgresCohortRejectsTamperedProvenance/missing_provenance (0.12s)
+    --- PASS: TestSignalMarkoutPostgresCohortRejectsTamperedProvenance/dataset_id (0.11s)
+PASS
+ok  	github.com/traderbybit/research-go/internal/jobrunner	3.493s

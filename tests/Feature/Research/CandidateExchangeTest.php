@@ -6,6 +6,7 @@ namespace Tests\Feature\Research;
 
 use App\Backtest\Application\BacktestRunService;
 use App\Backtest\Infrastructure\Persistence\BacktestRunRecord;
+use App\Exchanges\Infrastructure\Persistence\ExchangeRecord;
 use App\Research\Application\PromotionPolicyService;
 use App\Research\Application\StrategyEvolutionService;
 use App\Research\Jobs\EvaluateStrategyCandidateJob;
@@ -26,6 +27,33 @@ final class CandidateExchangeTest extends TestCase
         $before = DB::table('learning_candidate_strategies')->count();
         $this->postJson('/api/v1/research/learning/candidates/generate', ['exchange' => 'unknown'])->assertUnprocessable();
         self::assertSame($before, DB::table('learning_candidate_strategies')->count());
+    }
+
+    public function test_unregistered_candidate_exchange_is_rejected_at_the_service_boundary(): void
+    {
+        $before = DB::table('learning_candidate_strategies')->count();
+        try {
+            app(StrategyEvolutionService::class)->generateCandidate('trend_pullback', 7777, 'unknown');
+            self::fail('Unregistered venue must not generate a candidate.');
+        } catch (\InvalidArgumentException $exception) {
+            self::assertSame("Candidate exchange 'unknown' is not registered.", $exception->getMessage());
+        }
+        self::assertSame($before, DB::table('learning_candidate_strategies')->count());
+    }
+
+    public function test_dynamic_registered_offline_venue_can_generate_research_without_paper_approval(): void
+    {
+        $venue = ExchangeRecord::query()->create([
+            'id' => 'research_fixture', 'name' => 'Isolated Research Venue',
+            'market_type' => 'spot', 'capabilities' => [],
+        ]);
+        $accountsBefore = DB::table('paper_accounts')->count();
+        $this->postJson('/api/v1/research/learning/candidates/generate', [
+            'parent_strategy_id' => 'trend_pullback', 'seed' => 7777, 'exchange' => ' RESEARCH_FIXTURE ',
+        ])->assertOk()->assertJsonPath('data.search_metadata.exchange', 'research_fixture')
+            ->assertJsonPath('data.status', 'RESEARCH_ONLY');
+        self::assertFalse($venue->fresh()->paper_approved);
+        self::assertSame($accountsBefore, DB::table('paper_accounts')->count());
     }
 
     public function test_binance_candidate_passes_exchange_and_rejects_foreign_run(): void

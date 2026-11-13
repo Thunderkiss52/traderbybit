@@ -30,18 +30,20 @@ enum SignalQuality: string
         }
 
         if ($score !== null) {
-            if ($score >= 80) {
-                return self::High;
-            }
-            if ($score >= 60) {
-                return self::Medium;
-            }
-            if ($score >= 40) {
-                return self::Low;
+            foreach (self::scoreThresholds() as $quality => $minimum) {
+                if ($score >= $minimum) {
+                    return self::from($quality);
+                }
             }
         }
 
         return self::Unknown;
+    }
+
+    /** Ordered policy shared by legacy record interpretation and SQL analytics. */
+    public static function scoreThresholds(): array
+    {
+        return [self::High->value => 80, self::Medium->value => 60, self::Low->value => 40];
     }
 
     public static function fromString(?string $value): self

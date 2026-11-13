@@ -1,0 +1,11 @@
+Quantitative QA handoff at HEAD 4846221053bee52f8e819dfc22e92fe73c032a6e (dirty worktree preserved).
+
+Implemented Go cohort provenance/content binding to immutable job headers; exact scope/config/revision/cutoff/row limits remain enforced. SIGNAL_MARKOUT rejects every research mode except HYPOTHETICAL. Pure classifier calls retain optional provenance. Real PostgreSQL tests cover evaluation/cohort completion, lowercase kind, 13 immutable/mode negatives and six cohort provenance/content negatives. Added bounded standalone benchmarks.
+
+Final verification: Go 1.27.3, Linux amd64, GOMAXPROCS=2; owned PostgreSQL17 container vector-apo-quant-pg-20261111, label com.vector.task=apo-quant-review, port50082. SIGNAL_MARKOUT_TEST_DSN selected signal_markout_test/private per-test schemas; legacy lifecycle tests selected separately migrated bybit_test on the same owned instance. Full race 108 root tests +98 subtests across16 passing packages, zero skips/failures, exit0 in15.196s. Full vet/build exit0. Final gofmt output empty and CLI compile/diff checks exit0. Raw outputs, commands, exit statuses and source hashes are adjacent JSON/log files.
+
+Benchmark runs are synthetic local compute only, excluding database/queue/network/deployment. CPU12th Gen Intel i5-12500H, GOMAXPROCS2: 60candle/six-horizon evaluation 1044502–1072541ns/op; 488361–488826B/op;15738allocs/op. Classifier4096 observations29919504–32239423ns/op;22687921–24329425B/op;61638–61642allocs/op. Three500ms runs; noVPS or end-to-end throughput claim.
+
+Earlier full-race baseline at recheck-20261112T0849 failed because default legacy DB port25432 was inaccessible; owned test process was terminated with SIGQUIT after capturing stack trace, then actual migrations and explicit DB vars resolved the environment. No test was weakened or skipped.
+
+Read-only Laravel review identified and root corrected missing import-created_at cutoff in backdated cohorts. Root also added matching cohort provenance packet/hash handling. Laravel current SHA256 snapshot attached; root owns cross-language PHP verification. No additional concrete Go defect found in final review. No staging, commits, pushes, deployments, production financial mutations or other-project resource actions performed by this agent.

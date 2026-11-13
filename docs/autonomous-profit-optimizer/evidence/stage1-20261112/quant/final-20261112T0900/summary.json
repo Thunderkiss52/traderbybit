@@ -1,0 +1,12 @@
+{
+  "root_tests_passed": 108,
+  "subtests_passed": 98,
+  "skips": [],
+  "failed": [],
+  "packages_passed": 16,
+  "source_unchanged": true,
+  "changed_sources": [],
+  "gomaxprocs": 2,
+  "cpu_model": "12th Gen Intel(R) Core(TM) i5-12500H",
+  "cpu_affinity_count": 8
+}

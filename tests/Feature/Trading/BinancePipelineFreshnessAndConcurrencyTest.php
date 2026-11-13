@@ -6,7 +6,10 @@ namespace Tests\Feature\Trading;
 
 use App\Exchanges\Binance\BinanceCandleIngestion;
 use App\PaperTrading\Application\PaperProcessingService;
+use App\Strategy\Application\StrategyExchangeAssignmentService;
+use App\Strategy\Application\StrategyRegistry;
 use App\Strategy\Infrastructure\Persistence\StrategyObservationRecord;
+use App\StrategyBuilder\PrimaryStrategies;
 use App\Trading\Application\TradingPipelineEventService;
 use App\Trading\Application\TradingPipelineRecoveryService;
 use App\Trading\Infrastructure\Persistence\TradingPipelineEventRecord;
@@ -20,6 +23,7 @@ use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Queue;
+use PHPUnit\Framework\Attributes\DataProvider;
 use Ramsey\Uuid\Uuid;
 use Tests\TestCase;
 
@@ -125,31 +129,10 @@ final class BinancePipelineFreshnessAndConcurrencyTest extends TestCase
         self::assertNotNull($record);
 
         // Pre-seed 13 canonical strategy observations
-        $strategies = (array) config('paper.primary_strategies', []);
+        $strategies = PrimaryStrategies::ids('binance');
         self::assertCount(13, $strategies);
 
-        foreach ($strategies as $strategyId) {
-            $id = Uuid::uuid5(Uuid::NAMESPACE_URL, implode('|', [
-                'traderbybit:strategy-observation', 'binance', 'linear', 'BTCUSDT',
-                $strategyId, '1.0.0', $at->format('U.u'),
-            ]))->toString();
-
-            StrategyObservationRecord::query()->create([
-                'id' => $id,
-                'exchange' => 'binance',
-                'category' => 'linear',
-                'symbol' => 'BTCUSDT',
-                'strategy_id' => $strategyId,
-                'strategy_version' => '1.0.0',
-                'configuration_hash' => hash('sha256', $strategyId),
-                'side' => 'SKIP',
-                'quality_class' => 'A',
-                'score' => 50,
-                'decision_time' => $at,
-                'reasons' => ['context' => 'pre_computed'],
-                'analysis' => ['diagnostics' => ['ok' => true]],
-            ]);
-        }
+        $this->seedCanonicalObservations($at);
 
         // Lock is held by an external observer or process
         $lock = Cache::lock('strategy-observations:binance:linear:BTCUSDT:'.$at->format('U.u'), 660);
@@ -275,33 +258,76 @@ final class BinancePipelineFreshnessAndConcurrencyTest extends TestCase
 
         self::assertFalse($recovery->isDecisionAlreadyServiced('binance', 'BTCUSDT', $at));
 
-        // Seed 13 canonical strategy observations
-        $strategies = (array) config('paper.primary_strategies', []);
-        foreach ($strategies as $strategyId) {
-            $id = Uuid::uuid5(Uuid::NAMESPACE_URL, implode('|', [
-                'traderbybit:strategy-observation', 'binance', 'linear', 'BTCUSDT',
-                $strategyId, '1.0.0', $at->format('U.u'),
-            ]))->toString();
-
-            StrategyObservationRecord::query()->create([
-                'id' => $id,
-                'exchange' => 'binance',
-                'category' => 'linear',
-                'symbol' => 'BTCUSDT',
-                'strategy_id' => $strategyId,
-                'strategy_version' => '1.0.0',
-                'configuration_hash' => hash('sha256', $strategyId),
-                'side' => 'SKIP',
-                'quality_class' => 'A',
-                'score' => 50,
-                'decision_time' => $at,
-                'reasons' => ['test' => true],
-                'analysis' => ['diagnostics' => ['ok' => true]],
-            ]);
-        }
+        $this->seedCanonicalObservations($at);
 
         // Now must return true even without trading_pipeline_events record
         self::assertTrue($recovery->isDecisionAlreadyServiced('binance', 'BTCUSDT', $at));
+    }
+
+    #[DataProvider('invalidCanonicalObservationProvider')]
+    public function test_incomplete_or_foreign_observations_never_service_or_advance_a_decision(string $field, string $value): void
+    {
+        CarbonImmutable::setTestNow('2026-10-31T21:16:05Z');
+        Queue::fake();
+        Http::preventStrayRequests();
+        $at = new DateTimeImmutable('2026-10-31T21:15:00Z');
+        $observations = $this->seedCanonicalObservations($at);
+        $observations[0]->update([$field => $value]);
+        // An extra candidate preserves the row count but cannot replace a primary identity.
+        $candidate = $observations[1]->replicate();
+        $candidate->id = Uuid::uuid4()->toString();
+        $candidate->strategy_id = 'unregistered_candidate';
+        $candidate->save();
+
+        self::assertFalse(app(TradingPipelineRecoveryService::class)->isDecisionAlreadyServiced('binance', 'BTCUSDT', $at, includeInFlight: false));
+        $events = app(TradingPipelineEventService::class);
+        $record = $events->recordCandleClosed('binance', 'BTCUSDT', '15', $at);
+        self::assertNotNull($record);
+        $lock = Cache::lock('strategy-observations:binance:linear:BTCUSDT:'.$at->format('U.u'), 660);
+        self::assertTrue($lock->get());
+        try {
+            (new ProcessClosedCandleEventJob($record->id, 'binance', 'BTCUSDT', '15', $at->format(DATE_ATOM)))->handle($events);
+            self::assertSame(TradingPipelineEventRecord::STATUS_PENDING, $record->fresh()->status);
+            self::assertSame(0, DB::table('trading_pipeline_events')->where('stage', TradingPipelineEventRecord::STAGE_SIGNALS_EVALUATED)->count());
+            self::assertSame(0, DB::table('virtual_executions')->count());
+            Queue::assertNotPushed(ProcessPaperPipelineJob::class);
+        } finally {
+            $lock->release();
+        }
+    }
+
+    public static function invalidCanonicalObservationProvider(): array
+    {
+        return [
+            'candidate identity' => ['strategy_id', 'candidate_replacement'],
+            'obsolete version' => ['strategy_version', 'retired-0.0.0'],
+            'configuration mismatch' => ['configuration_hash', hash('sha256', 'stale parameters')],
+            'foreign exchange' => ['exchange', 'bybit'],
+            'foreign category' => ['category', 'spot'],
+            'foreign symbol' => ['symbol', 'ETHUSDT'],
+            'foreign decision time' => ['decision_time', '2026-10-31T21:00:00Z'],
+            'superseded observation' => ['superseded_by', '00000000-0000-0000-0000-000000000001'],
+        ];
+    }
+
+    public function test_completeness_uses_exchange_assignments_without_borrowing_another_venues_observation(): void
+    {
+        CarbonImmutable::setTestNow('2026-10-31T21:16:05Z');
+        $at = new DateTimeImmutable('2026-10-31T21:15:00Z');
+        $observations = $this->seedCanonicalObservations($at);
+        $removed = $observations[0];
+        $removed->delete();
+        $recovery = app(TradingPipelineRecoveryService::class);
+        self::assertFalse($recovery->isDecisionAlreadyServiced('binance', 'BTCUSDT', $at, includeInFlight: false));
+
+        app(StrategyExchangeAssignmentService::class)->unassign($removed->strategy_id, 'binance');
+        self::assertTrue($recovery->isDecisionAlreadyServiced('binance', 'BTCUSDT', $at, includeInFlight: false));
+        self::assertFalse($recovery->isDecisionAlreadyServiced('bybit', 'BTCUSDT', $at, includeInFlight: false));
+
+        foreach (PrimaryStrategies::ids('binance') as $strategyId) {
+            app(StrategyExchangeAssignmentService::class)->unassign($strategyId, 'binance');
+        }
+        self::assertFalse($recovery->isDecisionAlreadyServiced('binance', 'BTCUSDT', $at, includeInFlight: false));
     }
 
     /**
@@ -402,5 +428,36 @@ final class BinancePipelineFreshnessAndConcurrencyTest extends TestCase
         Queue::assertPushed(ProcessClosedCandleEventJob::class, function ($job) use ($bybitRecord) {
             return $job->exchange === 'bybit' && $job->eventId === $bybitRecord->id;
         });
+    }
+
+    /** @return list<StrategyObservationRecord> */
+    private function seedCanonicalObservations(DateTimeImmutable $at): array
+    {
+        $observations = [];
+        foreach (PrimaryStrategies::ids('binance') as $strategyId) {
+            $strategy = app(StrategyRegistry::class)->get($strategyId);
+            $id = Uuid::uuid5(Uuid::NAMESPACE_URL, implode('|', [
+                'traderbybit:strategy-observation', 'binance', 'linear', 'BTCUSDT',
+                $strategyId, $strategy->version(), $at->format('U.u'),
+            ]))->toString();
+
+            $observations[] = StrategyObservationRecord::query()->create([
+                'id' => $id,
+                'exchange' => 'binance',
+                'category' => 'linear',
+                'symbol' => 'BTCUSDT',
+                'strategy_id' => $strategyId,
+                'strategy_version' => $strategy->version(),
+                'configuration_hash' => StrategyRegistry::hash($strategy->parameters()),
+                'side' => 'SKIP',
+                'quality_class' => 'A',
+                'score' => 50,
+                'decision_time' => $at,
+                'reasons' => ['context' => 'pre_computed'],
+                'analysis' => ['diagnostics' => ['ok' => true]],
+            ]);
+        }
+
+        return $observations;
     }
 }

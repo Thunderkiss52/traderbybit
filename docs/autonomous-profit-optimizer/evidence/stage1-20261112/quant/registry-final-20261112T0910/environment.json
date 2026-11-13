@@ -1,0 +1,9 @@
+{
+  "head": "4846221053bee52f8e819dfc22e92fe73c032a6e",
+  "postgres_container": "vector-apo-quant-pg-20261111",
+  "postgres_port": "50082",
+  "database": "signal_markout_test",
+  "lifecycle_database": "bybit_test",
+  "gomaxprocs": 2,
+  "final_exit_code": 0
+}

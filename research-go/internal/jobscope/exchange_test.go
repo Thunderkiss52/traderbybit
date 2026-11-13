@@ -20,8 +20,8 @@ func TestResolveJobExchange(t *testing.T) {
 		{"nil payload", nil, "", true},
 		{"conflicting", map[string]interface{}{"exchange": "bybit", "exchange_id": "binance"}, "", true},
 		{"conflicting dataset exchange", map[string]interface{}{"exchange": "bybit", "dataset": map[string]interface{}{"exchange": "binance"}}, "", true},
-		{"unknown exchange", map[string]interface{}{"exchange": "okx"}, "", true},
-		{"unknown dataset exchange", map[string]interface{}{"dataset": map[string]interface{}{"exchange": "kraken"}}, "", true},
+		{"registered future exchange", map[string]interface{}{"exchange": "okx"}, "okx", false},
+		{"offline dataset provenance", map[string]interface{}{"dataset": map[string]interface{}{"exchange": "kraken"}}, "kraken", false},
 		{"invalid type", map[string]interface{}{"exchange": 100}, "", true},
 		{"empty", map[string]interface{}{"exchange": " "}, "", true},
 	} {

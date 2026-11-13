@@ -23,11 +23,13 @@ use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
 use PHPUnit\Framework\Attributes\DataProvider;
 use Ramsey\Uuid\Uuid;
+use Tests\Concerns\SeedsValidatedPaperEvidence;
 use Tests\TestCase;
 
 final class PaperLifecycleTest extends TestCase
 {
     use RefreshDatabase;
+    use SeedsValidatedPaperEvidence;
 
     public function test_automatic_forward_paper_does_not_replay_signals_before_account_creation(): void
     {
@@ -57,7 +59,7 @@ final class PaperLifecycleTest extends TestCase
         $this->app->make(PaperProcessingService::class)->process(
             accountId: $account->id, symbol: 'BTCUSDT', at: new DateTimeImmutable('2026-10-14T10:25:00Z')
         );
-        self::assertSame(PositionStatus::ClosedSl->value, VirtualPositionRecord::query()->firstOrFail()->status);
+        self::assertSame(PositionStatus::ClosedSl->value, VirtualPositionRecord::query()->where('paper_account_id', $this->app->make(PaperAccountService::class)->default()->id)->firstOrFail()->status);
     }
 
     public function test_late_backfilled_signal_cannot_create_forward_entry(): void
@@ -75,7 +77,7 @@ final class PaperLifecycleTest extends TestCase
             'status' => 'LATE_SIGNAL_NOT_EXECUTABLE',
             'reason' => 'late_signal_not_executable',
         ]);
-        $this->assertDatabaseCount('virtual_positions', 0);
+        self::assertSame(0, VirtualPositionRecord::query()->where('paper_account_id', $account->id)->count());
         $this->assertDatabaseHas('risk_decisions', [
             'allowed' => false,
         ]);
@@ -93,7 +95,7 @@ final class PaperLifecycleTest extends TestCase
         $service->process(symbol: 'BTCUSDT', at: new DateTimeImmutable('2026-10-14T10:30:00Z'));
         $service->process(symbol: 'BTCUSDT', at: new DateTimeImmutable('2026-10-14T10:30:00Z'));
 
-        $position = VirtualPositionRecord::query()->firstOrFail();
+        $position = VirtualPositionRecord::query()->where('paper_account_id', $this->app->make(PaperAccountService::class)->default()->id)->firstOrFail();
         self::assertSame(PositionStatus::ClosedTp->value, $position->status);
         self::assertTrue(BigDecimal::of((string) $position->remaining_quantity)->isEqualTo(0));
         self::assertTrue(BigDecimal::of((string) $position->net_pnl)->isEqualTo('51.43027179678'));
@@ -102,7 +104,7 @@ final class PaperLifecycleTest extends TestCase
         $this->assertDatabaseHas('virtual_executions', ['type' => 'TAKE_PROFIT_1']);
         $this->assertDatabaseHas('virtual_executions', ['type' => 'TAKE_PROFIT_2']);
         self::assertSame('COMPLETED', PaperSignalStateRecord::query()->where('signal_id', $signal->id)->value('status'));
-        self::assertSame(3, JournalEventRecord::query()->whereNotNull('position_id')->count());
+        self::assertSame(3, JournalEventRecord::query()->where('paper_account_id', $position->paper_account_id)->whereNotNull('position_id')->count());
         $this->getJson('/api/v1/positions/'.$position->id)->assertOk()
             ->assertJsonPath('data.mode', 'FORWARD_PAPER')
             ->assertJsonPath('data.position.id', $position->id)
@@ -116,8 +118,7 @@ final class PaperLifecycleTest extends TestCase
             '1.2.0',
             ['version' => '1.2.0'],
         );
-        $signal = $this->signal('BUY', strategyId: 'trend_pullback');
-        $signal->update(['strategy_version' => '1.2.0']);
+        $signal = $this->signal('BUY', strategyId: 'trend_pullback', strategyVersion: '1.2.0');
         $this->context();
         $this->candle('10:15', '100.5', '102', '100.5', '101.2');
 
@@ -127,12 +128,34 @@ final class PaperLifecycleTest extends TestCase
             at: new DateTimeImmutable('2026-10-14T10:20:00Z'),
         );
 
-        $position = VirtualPositionRecord::query()->firstOrFail();
+        $position = VirtualPositionRecord::query()->where('paper_account_id', $account->id)->firstOrFail();
         self::assertSame($account->id, $position->paper_account_id);
         self::assertSame($signal->id, $position->signal_id);
         self::assertSame(PositionStatus::Open->value, $position->status);
         $this->assertDatabaseHas('risk_decisions', ['paper_account_id' => $account->id, 'signal_id' => $signal->id, 'allowed' => true]);
         $this->assertDatabaseCount('virtual_executions', 1);
+    }
+
+    #[DataProvider('incompatibleEvidenceIdentities')]
+    public function test_processing_rejects_evidence_from_another_version_or_source_timeframe(string $identity): void
+    {
+        $signal = $this->signal('BUY', seedEvidence: false);
+        $cohort = $signal->replicate();
+        $cohort->{$identity} = $identity === 'strategy_version' ? 'unrelated-version' : '5';
+        $this->seedValidatedPaperEvidence($cohort);
+        $this->context();
+        $this->process('10:15');
+
+        $decision = RiskDecisionRecord::query()->where('signal_id', $signal->id)->sole();
+        self::assertFalse($decision->allowed);
+        self::assertContains('missing_or_stale_validated_edge_or_cost_evidence', $decision->reasons);
+        self::assertSame('REJECTED', PaperSignalStateRecord::query()->where('signal_id', $signal->id)->value('status'));
+        self::assertFalse(VirtualPositionRecord::query()->where('paper_account_id', $decision->paper_account_id)->exists());
+    }
+
+    public static function incompatibleEvidenceIdentities(): array
+    {
+        return [['strategy_version'], ['timeframe']];
     }
 
     public function test_spot_sell_is_risk_rejected_and_never_opens_a_short(): void
@@ -146,7 +169,7 @@ final class PaperLifecycleTest extends TestCase
             at: new DateTimeImmutable('2026-10-14T10:15:00Z'),
         );
 
-        self::assertFalse(VirtualPositionRecord::query()->exists());
+        self::assertFalse(VirtualPositionRecord::query()->where('paper_account_id', $this->app->make(PaperAccountService::class)->default()->id)->exists());
         self::assertSame('REJECTED', PaperSignalStateRecord::query()->where('signal_id', $signal->id)->value('status'));
         self::assertContains('spot_short_unsupported', RiskDecisionRecord::query()->where('signal_id', $signal->id)->firstOrFail()->reasons);
     }
@@ -160,7 +183,7 @@ final class PaperLifecycleTest extends TestCase
         $processor->process(symbol: 'BTCUSDT', at: new DateTimeImmutable('2026-10-14T10:15:00Z'));
         $processor->process(symbol: 'BTCUSDT', at: new DateTimeImmutable('2026-10-14T10:15:00Z'));
 
-        self::assertFalse(VirtualPositionRecord::query()->exists());
+        self::assertFalse(VirtualPositionRecord::query()->where('paper_account_id', $this->app->make(PaperAccountService::class)->default()->id)->exists());
         self::assertSame('REJECTED', PaperSignalStateRecord::query()->where('signal_id', $signal->id)->value('status'));
         self::assertContains('unsupported_market_category', RiskDecisionRecord::query()->where('signal_id', $signal->id)->firstOrFail()->reasons);
         self::assertSame(1, PaperSignalStateRecord::query()->where('signal_id', $signal->id)->count());
@@ -183,7 +206,7 @@ final class PaperLifecycleTest extends TestCase
         self::assertFalse($decision->allowed);
         self::assertContains('extreme_funding_rate', $decision->reasons);
         self::assertContains('extreme_open_interest_change', $decision->reasons);
-        self::assertFalse(VirtualPositionRecord::query()->exists());
+        self::assertFalse(VirtualPositionRecord::query()->where('paper_account_id', $this->app->make(PaperAccountService::class)->default()->id)->exists());
     }
 
     #[DataProvider('stopSides')]
@@ -199,7 +222,7 @@ final class PaperLifecycleTest extends TestCase
             $this->candle('10:20', '100', '106', '98', '104');
         }
         $this->process('10:25');
-        $position = VirtualPositionRecord::query()->firstOrFail();
+        $position = VirtualPositionRecord::query()->where('paper_account_id', $this->app->make(PaperAccountService::class)->default()->id)->firstOrFail();
         self::assertSame(PositionStatus::ClosedSl->value, $position->status);
         self::assertLessThan(0, (float) $position->net_pnl);
     }
@@ -218,7 +241,7 @@ final class PaperLifecycleTest extends TestCase
         $this->candle('10:25', '96', '106', '96', '104');
         $this->process('10:30');
 
-        $position = VirtualPositionRecord::query()->firstOrFail();
+        $position = VirtualPositionRecord::query()->where('paper_account_id', $this->app->make(PaperAccountService::class)->default()->id)->firstOrFail();
         self::assertSame(PositionStatus::ClosedSl->value, $position->status);
         self::assertSame(3, VirtualExecutionRecord::query()->count());
         self::assertTrue(VirtualExecutionRecord::query()->where('type', 'TAKE_PROFIT_1')->exists());
@@ -234,7 +257,7 @@ final class PaperLifecycleTest extends TestCase
         }
         $this->process('10:50');
         self::assertSame('EXPIRED', PaperSignalStateRecord::query()->where('signal_id', $signal->id)->value('status'));
-        self::assertFalse(VirtualPositionRecord::query()->exists());
+        self::assertFalse(VirtualPositionRecord::query()->where('paper_account_id', $this->app->make(PaperAccountService::class)->default()->id)->exists());
 
         $other = $this->signal('BUY', 'ETHUSDT', '11:15');
         $this->process('11:15', 'ETHUSDT');
@@ -265,12 +288,12 @@ final class PaperLifecycleTest extends TestCase
         }
         $service = $this->app->make(PaperProcessingService::class);
         $service->process(symbol: 'BTCUSDT', at: new DateTimeImmutable('2026-10-14T10:20:00Z'));
-        self::assertSame('OPEN', VirtualPositionRecord::query()->firstOrFail()->status);
+        self::assertSame('OPEN', VirtualPositionRecord::query()->where('paper_account_id', $this->app->make(PaperAccountService::class)->default()->id)->firstOrFail()->status);
         self::assertSame(1, VirtualExecutionRecord::query()->count());
 
         $service->process(symbol: 'BTCUSDT', at: new DateTimeImmutable('2026-10-14T14:20:00Z'));
-        self::assertSame(PositionStatus::ClosedTimeout->value, VirtualPositionRecord::query()->firstOrFail()->status);
-        self::assertSame(0, VirtualPositionRecord::query()->firstOrFail()->timeout_delay_seconds);
+        self::assertSame(PositionStatus::ClosedTimeout->value, VirtualPositionRecord::query()->where('paper_account_id', $this->app->make(PaperAccountService::class)->default()->id)->firstOrFail()->status);
+        self::assertSame(0, VirtualPositionRecord::query()->where('paper_account_id', $this->app->make(PaperAccountService::class)->default()->id)->firstOrFail()->timeout_delay_seconds);
     }
 
     public function test_gap_stops_processing_and_marks_position_waiting_for_data(): void
@@ -280,7 +303,7 @@ final class PaperLifecycleTest extends TestCase
         $this->candle('10:15', '100.5', '102', '100', '101');
         $this->candle('10:25', '101', '111', '100', '110');
         $this->process('10:30');
-        $position = VirtualPositionRecord::query()->firstOrFail();
+        $position = VirtualPositionRecord::query()->where('paper_account_id', $this->app->make(PaperAccountService::class)->default()->id)->firstOrFail();
         self::assertSame('OPEN', $position->status);
         self::assertTrue($position->awaiting_market_data);
         self::assertSame(1, VirtualExecutionRecord::query()->count());
@@ -298,7 +321,7 @@ final class PaperLifecycleTest extends TestCase
         $this->process('10:25');
         $this->process('10:25');
         self::assertSame(1, DB::table('position_funding_events')->count());
-        self::assertLessThan(0, (float) VirtualPositionRecord::query()->firstOrFail()->funding);
+        self::assertLessThan(0, (float) VirtualPositionRecord::query()->where('paper_account_id', $this->app->make(PaperAccountService::class)->default()->id)->firstOrFail()->funding);
         self::assertSame(1, JournalEventRecord::query()->where('event_type', 'FUNDING_APPLIED')->count());
     }
 
@@ -314,7 +337,7 @@ final class PaperLifecycleTest extends TestCase
         $this->process('10:55');
         $account = $this->app->make(PaperAccountService::class)->default()->refresh();
         self::assertSame('2026-10-14T11:55:00+00:00', $account->cooldown_until?->format(DATE_ATOM));
-        self::assertSame(3, VirtualPositionRecord::query()->where('status', 'CLOSED_SL')->count());
+        self::assertSame(3, VirtualPositionRecord::query()->where('paper_account_id', $this->app->make(PaperAccountService::class)->default()->id)->where('status', 'CLOSED_SL')->count());
     }
 
     public function test_losing_streak_cooldown_is_monotonic_and_resilient_to_out_of_order_signal_states(): void
@@ -369,20 +392,25 @@ final class PaperLifecycleTest extends TestCase
         (new ProcessPaperTradingJob(at: '2026-10-14T10:15:00Z'))->handle($this->app->make(PaperProcessingService::class));
     }
 
-    private function signal(string $side, string $symbol = 'BTCUSDT', string $time = '10:15', string $strategyId = 'baseline'): SignalRecord
+    private function signal(string $side, string $symbol = 'BTCUSDT', string $time = '10:15', string $strategyId = 'baseline', string $strategyVersion = '1.0.0', bool $seedEvidence = true): SignalRecord
     {
         $at = new DateTimeImmutable("2026-10-14T{$time}:00Z");
         $buy = $side === 'BUY';
 
-        return SignalRecord::query()->create([
+        $signal = SignalRecord::query()->create([
             'id' => Uuid::uuid5(Uuid::NAMESPACE_URL, "test:{$symbol}:{$side}:{$time}")->toString(), 'exchange' => 'bybit', 'category' => 'linear', 'symbol' => $symbol,
             'timeframe' => '15', 'side' => $side, 'quality_class' => 'A', 'score' => 90, 'decision_time' => $at, 'candle_close_time' => $at,
             'entry_low' => $buy ? '100' : '99', 'entry_high' => $buy ? '101' : '100', 'stop_loss' => $buy ? '95' : '105',
             'take_profit_1' => $buy ? '105' : '95', 'take_profit_2' => $buy ? '110' : '90', 'risk_reward_1' => '1.5', 'risk_reward_2' => '2.5',
             'model_risk_percent' => '0.50', 'expires_at' => $at->modify('+30 minutes'), 'maximum_holding_minutes' => 240,
             'reasons' => ['fixture'], 'risks' => [], 'indicator_snapshot' => ['15m' => ['atr_14' => '1', 'close' => '100']], 'contract' => ['research_mode' => true],
-            'strategy_version' => '1.0.0', 'schema_version' => '1.0.0', 'strategy_id' => $strategyId,
+            'strategy_version' => $strategyVersion, 'schema_version' => '1.0.0', 'strategy_id' => $strategyId,
         ]);
+        if ($seedEvidence && in_array($signal->side, ['BUY', 'SELL'], true)) {
+            $this->seedValidatedPaperEvidence($signal);
+        }
+
+        return $signal;
     }
 
     private function context(string $symbol = 'BTCUSDT', string $time = '10:15'): void

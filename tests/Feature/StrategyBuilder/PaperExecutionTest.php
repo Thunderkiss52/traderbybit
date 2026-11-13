@@ -11,6 +11,7 @@ use App\Strategy\Application\StrategyInputFactory;
 use App\Strategy\Application\StrategyRegistry;
 use App\Strategy\Contracts\SignalRepository;
 use App\Strategy\Infrastructure\Persistence\MarketContextRecord;
+use App\Strategy\Infrastructure\Persistence\SignalRecord;
 use App\StrategyBuilder\AccountAuthorization;
 use App\StrategyBuilder\DefinitionStore;
 use App\StrategyBuilder\HistoricalResearch;
@@ -22,11 +23,13 @@ use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Http;
 use Tests\Concerns\SeedsDslHistory;
+use Tests\Concerns\SeedsValidatedPaperEvidence;
 use Tests\TestCase;
 
 final class PaperExecutionTest extends TestCase
 {
     use RefreshDatabase, SeedsDslHistory;
+    use SeedsValidatedPaperEvidence;
 
     public function test_owner_can_fund_and_authorize_only_the_new_strategy_then_forward_paper_executes(): void
     {
@@ -35,6 +38,9 @@ final class PaperExecutionTest extends TestCase
         config(['exchanges.binance_paper_provisioning_approved' => true]);
         app(PaperTopologySynchronizer::class)->sync(true);
         DB::table('paper_accounts')->update(['status' => 'BLOCKED']);
+        // Keep one independently approved legacy allocation active as the risk
+        // budget. Funding a custom strategy must never enlarge that budget.
+        DB::table('paper_accounts')->where('exchange_id', 'bybit')->where('primary_strategy_id', 'baseline')->update(['status' => 'ACTIVE']);
         $original = DB::table('paper_accounts')->orderBy('id')->get();
         $this->seedDslHistory('2026-01-14T00:00:00Z', '2026-01-15T00:00:00Z', lowVolatility: true);
         $at = new DateTimeImmutable('2026-01-15T00:00:00Z');
@@ -59,18 +65,21 @@ final class PaperExecutionTest extends TestCase
         $account = DB::table('paper_accounts')->where('primary_strategy_id', $d['id'])->where('exchange_id', 'bybit')->first();
         $otherVenues = DB::table('paper_accounts')->where('primary_strategy_id', $d['id'])->where('exchange_id', '!=', 'bybit')->orderBy('id')->get()->toJson();
         $capital = app(GlobalPaperCapitalGuard::class);
-        self::assertSame('global_risk_budget_exceeded', $capital->entryRejectionReason('65001'));
+        self::assertNull($capital->entryRejectionReason('500'));
+        self::assertSame('global_risk_budget_exceeded', $capital->entryRejectionReason('501'));
         $allocation = app(AccountAuthorization::class);
         $allocation->fund($definition->id, $account->id, '10000', 'OWNER-TEST-CAPITAL');
         $allocation->fund($definition->id, $account->id, '10000', 'OWNER-TEST-CAPITAL');
         self::assertSame(1, DB::table('paper_capital_events')->where('paper_account_id', $account->id)->count());
-        self::assertSame('global_risk_budget_exceeded', $capital->entryRejectionReason('65001'));
+        self::assertNull($capital->entryRejectionReason('500'));
+        self::assertSame('global_risk_budget_exceeded', $capital->entryRejectionReason('501'));
         $governance->activate($definition->id, $definition->checksum, 'OWNER-TEST-STRATEGY-ACTIVE', false);
         $allocation->authorize($definition->id, $account->id, 'OWNER-TEST-ACCOUNT-ACTIVE');
         $decision = app(StrategyRegistry::class)->get($d['id'])->evaluate(app(StrategyInputFactory::class)->make('bybit', 'linear', 'BTCUSDT', $at));
         self::assertSame('BUY', $decision->side->value);
         self::assertNotNull($decision->indicatorSnapshot['15m']['atr_14']);
         app(SignalRepository::class)->createIfAbsent($decision);
+        $this->seedValidatedPaperEvidence(SignalRecord::query()->findOrFail($decision->id));
         app(PaperProcessingService::class)->process($account->id, 'BTCUSDT');
         $this->travelTo(CarbonImmutable::parse('2026-01-15T00:05:00Z'));
         DB::table('market_candles')->insert(['exchange' => 'bybit', 'category' => 'linear', 'symbol' => 'BTCUSDT', 'interval' => '5', 'open_time' => '2026-01-15T00:00:00Z', 'open' => $close, 'high' => '125', 'low' => '95', 'close' => $close, 'volume' => '10', 'turnover' => '1000', 'is_closed' => true, 'created_at' => now(), 'updated_at' => now()]);

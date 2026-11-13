@@ -7267,7 +7267,8 @@
       "last_evidence_update": "2026-11-11",
       "notes": [
         "No credit inferred from old pass counts. Runtime source atom credit does not prove integrated target behavior.",
-        "2026-11-11 APO Stage 0 APO-001/F19: SignalQualityAnalyticsService::analyze still materializes unbounded signals, positions and risk-decision IDs. SQL/streaming reconciliation and a measured memory bound remain required."
+        "2026-11-11 APO Stage 0 APO-001/F19: SignalQualityAnalyticsService::analyze still materializes unbounded signals, positions and risk-decision IDs. SQL/streaming reconciliation and a measured memory bound remain required.",
+        "2026-11-12 APO Stage 1 local increment: bounded SQL statement snapshots and exact scoped profitability attribution; synthetic PostgreSQL signal analytics and concurrent-commit controls are recorded in docs/autonomous-profit-optimizer/SIGNAL_INTELLIGENCE.md. Full repository and forward PAPER acceptance remain separate."
       ],
       "assessed_commit": "d9a0aeb5d14233fc95e9e5cc55d8748814362f59",
       "roadmap_reference": "docs/roadmap/VECTOR_POST_REMEDIATION_IMPLEMENTATION_ROADMAP.md",
@@ -7807,7 +7808,8 @@
       "last_verified_environment": null,
       "last_evidence_update": "2026-10-27",
       "notes": [
-        "No credit inferred from old pass counts. Runtime source atom credit does not prove integrated target behavior."
+        "No credit inferred from old pass counts. Runtime source atom credit does not prove integrated target behavior.",
+        "2026-11-12 APO Stage 1 local increment: immutable hypothetical horizon outcomes and quality profiles bind dataset/configuration/code, execution assumptions, policy and input hashes to fenced research jobs. This is not PAPER trading authority or forward profitability evidence."
       ],
       "assessed_commit": "d9a0aeb5d14233fc95e9e5cc55d8748814362f59",
       "roadmap_reference": "docs/roadmap/VECTOR_POST_REMEDIATION_IMPLEMENTATION_ROADMAP.md",
@@ -8029,7 +8031,8 @@
       "last_evidence_update": "2026-11-11",
       "notes": [
         "No credit inferred from old pass counts. Runtime source atom credit does not prove integrated target behavior.",
-        "2026-11-11 APO Stage 0: four-hour SIGNAL_PROXY_V2 labels are distinct from actual ledger outcomes and do not implement the requested independent source-timeframe/evaluation-horizon matrix. Six UI rows are not six live engines."
+        "2026-11-11 APO Stage 0: four-hour SIGNAL_PROXY_V2 labels are distinct from actual ledger outcomes and do not implement the requested independent source-timeframe/evaluation-horizon matrix. Six UI rows are not six live engines.",
+        "2026-11-12 APO Stage 1 local increment: Go source-timeframe/horizon labels and conditional bounded-return classification added; missing/future/conflicted data cannot produce mature money. Purging does not prove independence; default Hoeffding bounds and the 4096-row cap limit sensitivity. Six accepted timeframe values are not six live signal engines."
       ],
       "assessed_commit": "d9a0aeb5d14233fc95e9e5cc55d8748814362f59",
       "roadmap_reference": "docs/roadmap/VECTOR_POST_REMEDIATION_IMPLEMENTATION_ROADMAP.md",

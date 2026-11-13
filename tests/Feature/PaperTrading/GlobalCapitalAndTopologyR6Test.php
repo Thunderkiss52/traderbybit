@@ -45,7 +45,7 @@ final class GlobalCapitalAndTopologyR6Test extends TestCase
         self::assertSame(104, $first['created_other_blocked_unfunded']);
         self::assertTrue($first['binance_pending_approval']);
         self::assertSame(13, PaperAccountRecord::query()->where('exchange_id', 'bybit')->count());
-        self::assertSame(13, PaperAccountRecord::query()->where('exchange_id', 'binance')->where('status', 'BLOCKED')->where('starting_balance', '10000')->count());
+        self::assertSame(13, PaperAccountRecord::query()->where('exchange_id', 'binance')->where('status', 'BLOCKED')->where('starting_balance', '0')->count());
         self::assertSame(130, PaperAccountRecord::query()->where('is_primary', true)->count());
 
         config(['exchanges.binance_paper_provisioning_approved' => true]);
@@ -75,17 +75,17 @@ final class GlobalCapitalAndTopologyR6Test extends TestCase
         self::assertSame(8, $result['created_other_blocked_unfunded']);
         $bybit = PaperAccountRecord::query()->where('exchange_id', 'bybit')->where('primary_strategy_id', 'sample_new_strategy')->firstOrFail();
         $binance = PaperAccountRecord::query()->where('exchange_id', 'binance')->where('primary_strategy_id', 'sample_new_strategy')->firstOrFail();
-        self::assertSame('ACTIVE', $bybit->status);
-        self::assertDecimalSame('10000', $bybit->starting_balance);
+        self::assertSame('BLOCKED', $bybit->status);
+        self::assertDecimalSame('0', $bybit->starting_balance);
         self::assertSame('BLOCKED', $binance->status);
-        self::assertDecimalSame('10000', $binance->starting_balance);
+        self::assertDecimalSame('0', $binance->starting_balance);
         foreach ($oldAccounts as $id => $expected) {
             $original = PaperAccountRecord::query()->findOrFail($id);
             self::assertSame($expected, [$original->status, (string) $original->starting_balance, (string) $original->current_equity]);
         }
         $funding = app(BinancePaperCapital::class)->allocate('10000', 'OWNER-NEW-STRATEGY-20261103');
-        self::assertSame(0, $funding['accounts_allocated']);
-        self::assertSame(14, $funding['idempotent_repeats']);
+        self::assertSame(1, $funding['accounts_allocated']);
+        self::assertSame(13, $funding['idempotent_repeats']);
         self::assertSame('BLOCKED', $binance->refresh()->status);
         self::assertDecimalSame('10000', $binance->starting_balance);
     }
@@ -137,7 +137,7 @@ final class GlobalCapitalAndTopologyR6Test extends TestCase
         $accounts = PaperAccountRecord::query()->where('exchange_id', 'new_public_exchange')->get();
         foreach ($accounts as $account) {
             self::assertSame('BLOCKED', $account->status);
-            self::assertDecimalSame('10000', $account->starting_balance);
+            self::assertDecimalSame('0', $account->starting_balance);
         }
     }
 
@@ -149,7 +149,8 @@ final class GlobalCapitalAndTopologyR6Test extends TestCase
         $legacy = DB::table('paper_accounts')->whereIn('exchange_id', ['bybit', 'binance'])->orderBy('id')->get();
         self::assertCount(26, $legacy);
         self::assertSame(26, $legacy->where('starting_balance', '>', 0)->count());
-        self::assertSame(117, DB::table('paper_accounts')->where('starting_balance', '10000')->where('status', 'BLOCKED')->count());
+        self::assertSame(13, DB::table('paper_accounts')->where('starting_balance', '10000')->where('status', 'BLOCKED')->count());
+        self::assertSame(104, DB::table('paper_accounts')->where('starting_balance', '0')->where('status', 'BLOCKED')->count());
         $blocked = $legacy->where('exchange_id', 'bybit')->take(5)->pluck('id');
         DB::table('paper_accounts')->whereIn('id', $blocked)->update(['status' => 'BLOCKED', 'current_drawdown_percent' => '5']);
         $legacy = DB::table('paper_accounts')->whereIn('exchange_id', ['bybit', 'binance'])->orderBy('id')->get();
@@ -170,7 +171,7 @@ final class GlobalCapitalAndTopologyR6Test extends TestCase
         self::assertSame(154, $pairs->unique(fn ($row) => $row->exchange_id.'|'.$row->primary_strategy_id)->count());
         $new = PaperAccountRecord::query()->where('exchange_id', 'new_venue')->where('primary_strategy_id', 'sample_new_strategy')->firstOrFail();
         self::assertSame(Uuid::uuid5(Uuid::NAMESPACE_URL, 'traderbybit:paper:primary:new_venue:sample_new_strategy')->toString(), $new->id);
-        self::assertDecimalSame('10000', $new->starting_balance);
+        self::assertDecimalSame('0', $new->starting_balance);
         self::assertSame('BLOCKED', $new->status);
         $m9 = app(ExchangePaperReconciliation::class)->inspect();
         self::assertSame('LEDGER_PASS_ONLY', $m9['status'], json_encode($m9['issues']));
@@ -205,17 +206,19 @@ final class GlobalCapitalAndTopologyR6Test extends TestCase
         }
         $sync = app(PaperTopologySynchronizer::class);
         $sync->sync(true);
-        PaperAccountRecord::query()->where('is_primary', true)->update(['status' => 'ACTIVE']);
+        $funded = PaperAccountRecord::query()->where('is_primary', true)->where('starting_balance', '>', 0);
+        self::assertSame(13, (clone $funded)->count());
         $guard = app(GlobalPaperCapitalGuard::class);
         self::assertNull($guard->entryRejectionReason());
-        // 130 x 10,000 initial -> 1,300,000 total virtual capital, 5% cap = 65,000.
-        PaperAccountRecord::query()->where('is_primary', true)->update(['current_equity' => '9500.01']);
+        // Only 13 funded Bybit accounts bear risk; unfunded discovery does not
+        // inflate either the protected capital or the owner's five-percent cap.
+        (clone $funded)->update(['current_equity' => '9500.01']);
         self::assertNull($guard->entryRejectionReason());
-        PaperAccountRecord::query()->where('is_primary', true)->update(['current_equity' => '9500']);
+        (clone $funded)->update(['current_equity' => '9500']);
         self::assertSame('global_capital_loss_limit_exceeded', $guard->entryRejectionReason());
-        PaperAccountRecord::query()->where('is_primary', true)->update(['current_equity' => '10000', 'reserved_risk' => '499']);
-        self::assertNull($guard->entryRejectionReason('130'));
-        self::assertSame('global_risk_budget_exceeded', $guard->entryRejectionReason('131'));
+        (clone $funded)->update(['current_equity' => '10000', 'reserved_risk' => '499']);
+        self::assertNull($guard->entryRejectionReason('13'));
+        self::assertSame('global_risk_budget_exceeded', $guard->entryRejectionReason('14'));
         self::assertSame('global_risk_budget_unverified', $guard->entryRejectionReason('-1'));
     }
 

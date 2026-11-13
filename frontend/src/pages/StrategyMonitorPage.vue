@@ -48,8 +48,8 @@ const columns: QTableColumn[] = [
   { name: 'side', label: 'Decision', field: 'side', align: 'center', sortable: true },
   { name: 'signal_quality', label: 'Signal Quality', field: (r: any) => r.signal_quality || 'UNKNOWN', align: 'center', sortable: true },
   { name: 'trade_risk', label: 'Trade Risk', field: (r: any) => r.trade_risk || 'UNKNOWN', align: 'center', sortable: true },
-  { name: 'risk_decision', label: 'Risk Guardrail', field: (r: any) => r.risk_decision ? (r.risk_decision.allowed ? 'APPROVED' : 'REJECTED') : '—', align: 'center' },
-  { name: 'position', label: 'Virtual Execution', field: (r: any) => r.position?.status || (r.side === 'SKIP' ? 'NOT_ATTEMPTED' : 'PENDING'), align: 'center' },
+  { name: 'risk_decision', label: 'Risk Guardrail', field: (r: any) => r.risk_decision_count > 1 ? `${r.risk_decision_count} ACCOUNT DECISIONS` : (r.risk_decision ? (r.risk_decision.allowed ? 'APPROVED' : 'REJECTED') : '—'), align: 'center' },
+  { name: 'position', label: 'Virtual Execution', field: (r: any) => r.position_count > 1 ? `${r.position_count} ACCOUNT POSITIONS` : (r.position?.status || (r.side === 'SKIP' ? 'NOT_ATTEMPTED' : 'PENDING')), align: 'center' },
   { name: 'actions', label: '', field: 'id', align: 'right' },
 ];
 
@@ -102,7 +102,8 @@ let currentController: AbortController | undefined;
 
 async function loadMonitor() {
   currentController?.abort();
-  currentController = new AbortController();
+  const controller = new AbortController();
+  currentController = controller;
   loading.value = true;
   error.value = '';
 
@@ -130,41 +131,47 @@ async function loadMonitor() {
       params.risk = selectedRisk.value;
     }
 
-    const res: any = await get('/strategy-monitor', params, currentController.signal);
+    const res: any = await get('/strategy-monitor', params, controller.signal);
+    if (currentController !== controller || controller.signal.aborted) return;
     monitorData.value = res;
-
-    // Auto-select first item if none selected or selection not in page
-    if (!selectedItem.value && res.signals?.data?.length > 0) {
-      selectItem(res.signals.data[0]);
+    const items = res.signals?.data || [];
+    if (!items.some((item: any) => item.id === selectedItem.value?.id)) {
+      selectItem(items[0] || null);
+    } else {
+      // Refresh the inspector with data from the currently selected filter/page.
+      selectItem(items.find((item: any) => item.id === selectedItem.value.id));
     }
   } catch (err: any) {
-    if (!currentController.signal.aborted) {
+    if (currentController === controller && !controller.signal.aborted) {
       error.value = err.message || 'Failed to load strategy monitor.';
     }
   } finally {
-    loading.value = false;
+    if (currentController === controller) loading.value = false;
   }
 }
 
+let timelineRequestId = 0;
 async function selectItem(item: any) {
+  const requestId = ++timelineRequestId;
   selectedItem.value = item;
+  timelineEvents.value = [];
+  timelineLoading.value = !!item?.id;
   if (!item?.id) return;
 
-  timelineLoading.value = true;
-  timelineEvents.value = [];
   try {
     const res: any = await get('/strategy-monitor/timeline', { signal_id: item.id });
-    timelineEvents.value = res.timeline || [];
+    if (requestId === timelineRequestId) timelineEvents.value = res.timeline || [];
   } catch {
-    timelineEvents.value = [];
+    if (requestId === timelineRequestId) timelineEvents.value = [];
   } finally {
-    timelineLoading.value = false;
+    if (requestId === timelineRequestId) timelineLoading.value = false;
   }
 }
 
 function resetPagination() {
-  page.value = 1;
-  loadMonitor();
+  selectItem(null);
+  if (page.value === 1) loadMonitor();
+  else page.value = 1; // page watcher performs the single request
 }
 
 watch([selectedExchange, selectedStrategy, selectedSymbol, selectedSide, selectedQuality, selectedRisk], resetPagination);
@@ -184,6 +191,7 @@ onMounted(() => {
 
 onBeforeUnmount(() => {
   currentController?.abort();
+  ++timelineRequestId;
 });
 
 function qualityColor(quality: string) {
@@ -365,6 +373,11 @@ function riskColor(risk: string) {
                 :color="props.row.risk_decision.allowed ? 'positive' : 'negative'"
                 :label="props.row.risk_decision.allowed ? 'PASSED' : 'BLOCKED'"
               />
+              <q-badge
+                v-else-if="props.row.risk_decision_count > 1"
+                color="info"
+                :label="`${props.row.risk_decision_count} ACCOUNT DECISIONS`"
+              />
               <span v-else class="text-grey">—</span>
             </q-td>
           </template>
@@ -375,6 +388,11 @@ function riskColor(risk: string) {
                 v-if="props.row.position"
                 :color="props.row.position.status === 'OPEN' ? 'teal' : 'purple'"
                 :label="props.row.position.status"
+              />
+              <q-badge
+                v-else-if="props.row.position_count > 1"
+                color="info"
+                :label="`${props.row.position_count} ACCOUNT POSITIONS`"
               />
               <span v-else class="text-caption text-grey">{{ props.row.side === 'SKIP' ? 'SKIPPED' : 'NO POSITION' }}</span>
             </q-td>
@@ -498,20 +516,27 @@ function riskColor(risk: string) {
                     <div class="text-caption text-grey-4">Gate Matrix Decision:</div>
                     <q-badge
                       :color="selectedItem.gate_decision === 'ELIGIBLE' ? 'positive' : (selectedItem.gate_decision === 'CONDITIONALLY_ELIGIBLE' ? 'info' : (selectedItem.gate_decision === 'INSUFFICIENT_EVIDENCE' ? 'warning' : 'negative'))"
-                      :label="selectedItem.gate_decision || (selectedItem.risk_decision?.allowed ? 'ELIGIBLE' : 'BLOCKED')"
+                      :label="selectedItem.gate_decision || (selectedItem.risk_decision ? (selectedItem.risk_decision.allowed ? 'ELIGIBLE' : 'BLOCKED') : 'NO DECISION')"
                     />
                   </div>
                   <div class="col-6">
                     <div class="text-caption text-grey-4">Guardrail Status:</div>
                     <q-badge
-                      :color="selectedItem.risk_decision?.allowed ? 'positive' : 'negative'"
-                      :label="selectedItem.risk_decision?.allowed ? 'PASSED ALL CHECKS' : 'REJECTED'"
+                      :color="selectedItem.risk_decision_count > 1 ? 'info' : (selectedItem.risk_decision ? (selectedItem.risk_decision.allowed ? 'positive' : 'negative') : 'grey')"
+                      :label="selectedItem.risk_decision_count > 1 ? `${selectedItem.risk_decision_count} ACCOUNT DECISIONS` : (selectedItem.risk_decision ? (selectedItem.risk_decision.allowed ? 'PASSED ALL CHECKS' : 'REJECTED') : 'NO DECISION')"
                     />
                   </div>
                 </div>
 
                 <div v-if="selectedItem.risk_decision?.reasons?.length > 0" class="text-caption text-grey-4 q-mb-xs">
                   Checks / Rejections: {{ selectedItem.risk_decision.reasons.join(', ') }}
+                </div>
+                <div v-if="selectedItem.risk_decision_count > 1" class="q-mb-sm">
+                  <div v-for="decision in selectedItem.risk_decisions" :key="decision.id" class="text-caption bg-grey-10 q-pa-xs q-mb-xs">
+                    Account {{ decision.paper_account_id }}:
+                    <q-badge :color="decision.allowed ? 'positive' : 'negative'" :label="decision.allowed ? 'PASSED' : 'BLOCKED'" />
+                    <span class="q-ml-sm">{{ (decision.reasons || []).join(', ') }}</span>
+                  </div>
                 </div>
 
                 <div class="bg-grey-10 q-pa-sm rounded-borders text-caption q-mt-xs">
@@ -520,7 +545,7 @@ function riskColor(risk: string) {
                     <div class="col-6">Planned Stop: <span class="text-negative">{{ selectedItem.planned_stop_loss?.price || selectedItem.stop_loss || '—' }} ({{ selectedItem.planned_stop_loss?.distance_percent ? selectedItem.planned_stop_loss.distance_percent + '%' : '—' }})</span></div>
                     <div class="col-6">Planned Risk $: <span class="text-warning">{{ selectedItem.planned_stop_loss?.loss_amount ? selectedItem.planned_stop_loss.loss_amount + ' USDT' : '—' }}</span></div>
                     <div class="col-6">Planned Notional: <span class="text-white">{{ selectedItem.notional ? selectedItem.notional + ' USDT' : '—' }}</span></div>
-                    <div class="col-6">Est. Margin (10x): <span class="text-cyan">{{ selectedItem.margin ? selectedItem.margin + ' USDT' : '—' }}</span></div>
+                    <div class="col-6">Margin (recorded): <span class="text-cyan">{{ selectedItem.margin ? selectedItem.margin + ' USDT' : '—' }}</span></div>
                     <div class="col-6">Target 1 (TP1): <span class="text-positive">{{ selectedItem.take_profit_1 || '—' }}</span></div>
                     <div class="col-6">Target 2 (TP2): <span class="text-positive">{{ selectedItem.take_profit_2 || '—' }}</span></div>
                     <div class="col-6">R:R (TP1/TP2): <span class="text-cyan">{{ selectedItem.risk_reward?.tp1 || '—' }} / {{ selectedItem.risk_reward?.tp2 || '—' }}</span></div>
@@ -541,17 +566,18 @@ function riskColor(risk: string) {
               header-class="text-weight-bold text-subtitle2 bg-grey-9 rounded-borders q-my-xs"
             >
               <div class="q-pa-sm">
-                <div v-if="selectedItem.position" class="bg-grey-10 q-pa-sm rounded-borders text-caption">
+                <div v-for="position in (selectedItem.positions?.length ? selectedItem.positions : (selectedItem.position ? [selectedItem.position] : []))" :key="position.id" class="bg-grey-10 q-pa-sm rounded-borders text-caption q-mb-xs">
+                  <div class="text-caption text-cyan q-mb-xs">PAPER account: {{ position.paper_account_id || 'legacy' }}</div>
                   <div class="row q-col-gutter-xs">
-                    <div class="col-6">Position Status: <q-badge color="teal" :label="selectedItem.position.status" /></div>
-                    <div class="col-6">Fill Price: <span class="text-white">{{ selectedItem.position.entry_price }}</span></div>
-                    <div class="col-6">Initial Quantity: <span class="text-white">{{ selectedItem.position.initial_quantity }}</span></div>
-                    <div class="col-6">Remaining: <span class="text-white">{{ selectedItem.position.remaining_quantity }}</span></div>
-                    <div class="col-6">Fees: <span class="text-white">{{ selectedItem.position.fees }}</span></div>
-                    <div class="col-6">Net PnL: <span :class="Number(selectedItem.position.net_pnl) >= 0 ? 'text-positive' : 'text-negative'">{{ selectedItem.position.net_pnl }}</span></div>
+                    <div class="col-6">Position Status: <q-badge color="teal" :label="position.status" /></div>
+                    <div class="col-6">Fill Price: <span class="text-white">{{ position.entry_price }}</span></div>
+                    <div class="col-6">Initial Quantity: <span class="text-white">{{ position.initial_quantity }}</span></div>
+                    <div class="col-6">Remaining: <span class="text-white">{{ position.remaining_quantity }}</span></div>
+                    <div class="col-6">Fees: <span class="text-white">{{ position.fees }}</span></div>
+                    <div class="col-6">Net PnL: <span :class="Number(position.net_pnl) >= 0 ? 'text-positive' : 'text-negative'">{{ position.net_pnl }}</span></div>
                   </div>
                 </div>
-                <div v-else class="text-caption text-grey">
+                <div v-if="!(selectedItem.positions?.length || selectedItem.position)" class="text-caption text-grey">
                   {{ selectedItem.side === 'SKIP' ? 'Strategy filtered candidate out. No virtual order placed.' : 'No execution recorded yet.' }}
                 </div>
               </div>

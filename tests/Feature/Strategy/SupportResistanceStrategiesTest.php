@@ -22,12 +22,14 @@ use DateTimeImmutable;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
 use Ramsey\Uuid\Uuid;
+use Tests\Concerns\SeedsValidatedPaperEvidence;
 use Tests\Fixtures\Strategy\StrategyFixture;
 use Tests\TestCase;
 
 final class SupportResistanceStrategiesTest extends TestCase
 {
     use RefreshDatabase;
+    use SeedsValidatedPaperEvidence;
 
     private DateTimeImmutable $at;
 
@@ -123,6 +125,7 @@ final class SupportResistanceStrategiesTest extends TestCase
 
     public function test_sr_signals_execute_in_isolated_strategy_paper_account(): void
     {
+        $this->travelTo($this->at);
         $accountService = $this->app->make(PaperAccountService::class);
         $breakoutAccount = $accountService->primaryAccount('support_resistance_breakout');
         $breakoutAccount->update(['created_at' => $this->at->modify('-1 hour')]);
@@ -138,6 +141,7 @@ final class SupportResistanceStrategiesTest extends TestCase
             'created_at' => $this->at,
             'decision_time' => $this->at,
         ]);
+        $this->seedValidatedPaperEvidence(SignalRecord::query()->findOrFail($signal->id));
 
         $this->seedContext('BTCUSDT', '10:15');
         $this->seedCandle('10:15', '103.2', '104.5', '103.0', '103.5');

@@ -56,27 +56,31 @@ class BacktestRunService
         }
         $dataset = $this->datasets->pin($datasetSymbols, $from, $to, (int) $this->config['warmup_bars'], $exchange);
         $paper = (array) config('paper');
-        if ($exchange === 'binance') {
-            foreach (['paper_taker_rate', 'paper_slippage_rate'] as $key) {
-                $value = config('exchanges.binance.'.$key);
-                if (! is_string($value) || ! preg_match('/^(?:0|[1-9][0-9]*)(?:\.[0-9]+)?$/D', $value)
-                    || BigDecimal::of($value)->isGreaterThanOrEqualTo(1)) {
-                    throw new \RuntimeException('Binance historical execution cost unavailable: '.$key);
-                }
-            }
-            $paper['fees']['taker_rate'] = config('exchanges.binance.paper_taker_rate');
-            $paper['slippage_rate'] = config('exchanges.binance.paper_slippage_rate');
-        } elseif ($exchange !== 'bybit') {
+        if ($exchange !== 'bybit') {
+            // Match PAPER execution's configured exchange cost model. Do not
+            // require Binance-only env vars or inherit another venue's rates.
             $record = DB::table('exchanges')->where('id', $exchange)->first();
-            if ($record !== null && ! empty($record->cost_model)) {
-                $cost = json_decode((string) $record->cost_model, true);
-                if (! empty($cost['taker_rate'])) {
-                    $paper['fees']['taker_rate'] = (string) $cost['taker_rate'];
-                }
-                if (! empty($cost['slippage_rate'])) {
-                    $paper['slippage_rate'] = (string) $cost['slippage_rate'];
+            $rawCost = $record?->cost_model;
+            $persistedCost = is_array($rawCost) ? $rawCost : (is_string($rawCost) ? json_decode($rawCost, true) : null);
+            $costModel = config("exchanges.{$exchange}.cost_model");
+            $costModel = is_array($costModel) ? $costModel : $persistedCost;
+            if (is_array($costModel)) {
+                // Runtime PAPER gives priority to explicit venue rate overrides.
+                foreach (['paper_taker_rate' => 'taker_rate', 'paper_slippage_rate' => 'slippage_rate'] as $key => $shortKey) {
+                    $override = config("exchanges.{$exchange}.{$key}");
+                    if (is_string($override) && preg_match('/^(?:0|[0-9]+)(?:\.[0-9]+)?$/D', $override)
+                        && BigDecimal::of($override)->isLessThan('0.1')) {
+                        $costModel[$shortKey] = $override;
+                    }
                 }
             }
+            $marketType = $record?->market_type ?? ($exchange === 'binance' ? 'linear_perpetual' : null);
+            $paper = HistoricalExecutionCostPolicy::apply(
+                $exchange,
+                $paper,
+                $marketType,
+                is_array($costModel) ? $costModel : null,
+            );
         }
         $type = $walkForward ? 'walk_forward' : 'split';
         $fingerprint = $this->fingerprint([$type, $symbols, $from->format(DATE_ATOM), $to->format(DATE_ATOM), $dataset['checksum'], $strategy, $paper, $this->config]);

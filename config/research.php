@@ -3,6 +3,25 @@
 declare(strict_types=1);
 
 return [
+    'signal_intelligence' => [
+        // Observational jobs only; labels never authorize entries or promotion.
+        'enabled' => (bool) env('RESEARCH_SIGNAL_INTELLIGENCE_ENABLED', true),
+        'code_revision' => env('RESEARCH_SIGNAL_INTELLIGENCE_CODE_REVISION'),
+        'horizons_minutes' => [15, 60],
+        'reference_notional' => '5',
+        'max_signals_per_cycle' => 8,
+        'quality_policy' => [
+            'version' => 'SIGNAL_QUALITY_HOEFFDING_V1',
+            'min_independent_samples' => 100,
+            'min_distinct_days' => 20,
+            'alpha' => 0.05,
+            'multiple_tests' => 100,
+            'embargo_ms' => 60000,
+            'return_lower_bound' => '-1',
+            'return_upper_bound' => '1',
+            'neutral_band' => '0.0001',
+        ],
+    ],
     'queue' => ['name' => 'research', 'max_concurrent' => 1, 'memory_mb' => 512, 'timeout_seconds' => 3600],
     // Legacy SKIP counterfactual analysis is quarantined. Replaying rejected
     // signals into simulated entries/targets is P-3 behaviour and is prohibited;

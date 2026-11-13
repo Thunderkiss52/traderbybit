@@ -1,0 +1,482 @@
+?   	github.com/traderbybit/research-go/cmd/historical-import	[no test files]
+?   	github.com/traderbybit/research-go/cmd/historical-replay	[no test files]
+?   	github.com/traderbybit/research-go/cmd/research-bench	[no test files]
+?   	github.com/traderbybit/research-go/cmd/research-candidates	[no test files]
+?   	github.com/traderbybit/research-go/cmd/research-worker	[no test files]
+?   	github.com/traderbybit/research-go/cmd/signal-intelligence	[no test files]
+?   	github.com/traderbybit/research-go/cmd/strategy-dsl	[no test files]
+=== RUN   TestCalculateSMA
+--- PASS: TestCalculateSMA (0.00s)
+=== RUN   TestCalculateEMA
+--- PASS: TestCalculateEMA (0.00s)
+=== RUN   TestCalculateRSI
+--- PASS: TestCalculateRSI (0.00s)
+=== RUN   TestCalculateATR
+--- PASS: TestCalculateATR (0.00s)
+=== RUN   TestCalculateBollingerBands
+--- PASS: TestCalculateBollingerBands (0.00s)
+=== RUN   TestCalculateRSIWilderReferenceParity
+--- PASS: TestCalculateRSIWilderReferenceParity (0.00s)
+=== RUN   TestCalculateRSIIntegerParityWithRationalReference
+--- PASS: TestCalculateRSIIntegerParityWithRationalReference (0.07s)
+=== RUN   TestCalculateRSIDeterministicFlatSeries
+--- PASS: TestCalculateRSIDeterministicFlatSeries (0.00s)
+PASS
+ok  	github.com/traderbybit/research-go/internal/algorithms	1.089s
+=== RUN   TestLoadCandlesDerivesTheKnowledgeTimestampFromTheClose
+--- PASS: TestLoadCandlesDerivesTheKnowledgeTimestampFromTheClose (0.00s)
+=== RUN   TestLoadCandlesRejectsAnOpenCandle
+--- PASS: TestLoadCandlesRejectsAnOpenCandle (0.00s)
+=== RUN   TestBuildDatasetReportsGapsWithoutFillingThem
+--- PASS: TestBuildDatasetReportsGapsWithoutFillingThem (0.00s)
+=== RUN   TestBuildDatasetRejectsAMissingInterval
+--- PASS: TestBuildDatasetRejectsAMissingInterval (0.00s)
+=== RUN   TestIntervalDuration
+--- PASS: TestIntervalDuration (0.00s)
+PASS
+ok  	github.com/traderbybit/research-go/internal/auditdata	1.016s
+=== RUN   TestBacktestEngineDeterministicRun
+--- PASS: TestBacktestEngineDeterministicRun (0.05s)
+=== RUN   TestBacktestInsufficientWarmup
+--- PASS: TestBacktestInsufficientWarmup (0.00s)
+=== RUN   TestBacktestGoldenParityHash
+--- PASS: TestBacktestGoldenParityHash (0.02s)
+=== RUN   TestPartialFundingAndFinalCashReconcile
+--- PASS: TestPartialFundingAndFinalCashReconcile (0.00s)
+=== RUN   TestStopPrecedesPartialAndRuleExitIsNextOpen
+--- PASS: TestStopPrecedesPartialAndRuleExitIsNextOpen (0.00s)
+=== RUN   TestLastBarEntriesCloseWithoutUnreportedExposure
+--- PASS: TestLastBarEntriesCloseWithoutUnreportedExposure (0.00s)
+=== RUN   TestExactFundingDoesNotTruncateSubEightDecimalRatesToZero
+--- PASS: TestExactFundingDoesNotTruncateSubEightDecimalRatesToZero (0.00s)
+=== RUN   TestRunSignalsFillsAtTheOpenOfTheEntryBarWithSlippage
+--- PASS: TestRunSignalsFillsAtTheOpenOfTheEntryBarWithSlippage (0.00s)
+=== RUN   TestRunSignalsDropsLookAheadAndOutOfRangeSignals
+--- PASS: TestRunSignalsDropsLookAheadAndOutOfRangeSignals (0.00s)
+=== RUN   TestRunSignalsUsesTheSameCostModelAsTheStrategyEngine
+--- PASS: TestRunSignalsUsesTheSameCostModelAsTheStrategyEngine (0.00s)
+PASS
+ok  	github.com/traderbybit/research-go/internal/backtest	1.098s
+=== RUN   TestRegistryContainsTheFiveContractCandidates
+--- PASS: TestRegistryContainsTheFiveContractCandidates (0.00s)
+=== RUN   TestLiquiditySweepReversalProducesTheCraftedSignalOnly
+--- PASS: TestLiquiditySweepReversalProducesTheCraftedSignalOnly (0.00s)
+=== RUN   TestVolatilityCompressionBreakoutRequiresCompressionAndBreakout
+--- PASS: TestVolatilityCompressionBreakoutRequiresCompressionAndBreakout (0.02s)
+=== RUN   TestFundingOpenInterestSqueezeRequiresPublishedFundingAndOpenInterest
+--- PASS: TestFundingOpenInterestSqueezeRequiresPublishedFundingAndOpenInterest (0.01s)
+=== RUN   TestMultiTimeframeTrendFollowingUsesOnlyClosedHigherTimeframeBars
+--- PASS: TestMultiTimeframeTrendFollowingUsesOnlyClosedHigherTimeframeBars (0.03s)
+=== RUN   TestBtcEthLeadLagAlignsThePeerOnCloseAndKnownTime
+--- PASS: TestBtcEthLeadLagAlignsThePeerOnCloseAndKnownTime (0.03s)
+=== RUN   TestEveryCandidatePassesTheLookAheadControls
+--- PASS: TestEveryCandidatePassesTheLookAheadControls (1.26s)
+=== RUN   TestTheCausalTestDetectsAFutureOnlyFeature
+--- PASS: TestTheCausalTestDetectsAFutureOnlyFeature (0.01s)
+=== RUN   TestHigherTimeframeBarsAreUsedOnlyAfterTheyClosed
+--- PASS: TestHigherTimeframeBarsAreUsedOnlyAfterTheyClosed (0.06s)
+=== RUN   TestPreviousBarCutoffDetectsALookingAheadCandidate
+--- PASS: TestPreviousBarCutoffDetectsALookingAheadCandidate (0.00s)
+=== RUN   TestSplitsAreChronologicalAndKeepTheTestSplitLast
+--- PASS: TestSplitsAreChronologicalAndKeepTheTestSplitLast (0.00s)
+=== RUN   TestEvaluationOfACandidateStaysResearchOnlyAndNotEligible
+--- PASS: TestEvaluationOfACandidateStaysResearchOnlyAndNotEligible (0.24s)
+=== RUN   TestEvaluationReportsDataUnavailableWhenTheInputIsMissing
+--- PASS: TestEvaluationReportsDataUnavailableWhenTheInputIsMissing (0.00s)
+=== RUN   TestPairCandidateIsNeverReportedAsExecuted
+--- PASS: TestPairCandidateIsNeverReportedAsExecuted (0.26s)
+=== RUN   TestEvaluationNeverTouchesAPrimaryPaperAccount
+--- PASS: TestEvaluationNeverTouchesAPrimaryPaperAccount (1.38s)
+PASS
+ok  	github.com/traderbybit/research-go/internal/candidates	4.329s
+?   	github.com/traderbybit/research-go/internal/contracts	[no test files]
+=== RUN   TestOfficialHeaderHeaderlessPrecisionAndDuplicates
+--- PASS: TestOfficialHeaderHeaderlessPrecisionAndDuplicates (0.03s)
+=== RUN   TestUnsafeArchivesAndMalformedRowsNeverPublish
+=== RUN   TestUnsafeArchivesAndMalformedRowsNeverPublish/zip-slip
+=== RUN   TestUnsafeArchivesAndMalformedRowsNeverPublish/absolute
+=== RUN   TestUnsafeArchivesAndMalformedRowsNeverPublish/nested
+=== RUN   TestUnsafeArchivesAndMalformedRowsNeverPublish/encrypted
+=== RUN   TestUnsafeArchivesAndMalformedRowsNeverPublish/micros
+=== RUN   TestUnsafeArchivesAndMalformedRowsNeverPublish/close
+=== RUN   TestUnsafeArchivesAndMalformedRowsNeverPublish/nan
+=== RUN   TestUnsafeArchivesAndMalformedRowsNeverPublish/bounds
+=== RUN   TestUnsafeArchivesAndMalformedRowsNeverPublish/contradiction
+=== RUN   TestUnsafeArchivesAndMalformedRowsNeverPublish/long-line
+--- PASS: TestUnsafeArchivesAndMalformedRowsNeverPublish (0.03s)
+    --- PASS: TestUnsafeArchivesAndMalformedRowsNeverPublish/zip-slip (0.00s)
+    --- PASS: TestUnsafeArchivesAndMalformedRowsNeverPublish/absolute (0.00s)
+    --- PASS: TestUnsafeArchivesAndMalformedRowsNeverPublish/nested (0.00s)
+    --- PASS: TestUnsafeArchivesAndMalformedRowsNeverPublish/encrypted (0.00s)
+    --- PASS: TestUnsafeArchivesAndMalformedRowsNeverPublish/micros (0.00s)
+    --- PASS: TestUnsafeArchivesAndMalformedRowsNeverPublish/close (0.00s)
+    --- PASS: TestUnsafeArchivesAndMalformedRowsNeverPublish/nan (0.00s)
+    --- PASS: TestUnsafeArchivesAndMalformedRowsNeverPublish/bounds (0.00s)
+    --- PASS: TestUnsafeArchivesAndMalformedRowsNeverPublish/contradiction (0.00s)
+    --- PASS: TestUnsafeArchivesAndMalformedRowsNeverPublish/long-line (0.00s)
+=== RUN   TestAbsoluteExpansionAndCancellation
+--- PASS: TestAbsoluteExpansionAndCancellation (0.00s)
+=== RUN   TestFundingArchivePreservesSignedRatesAndEventTimes
+--- PASS: TestFundingArchivePreservesSignedRatesAndEventTimes (0.00s)
+PASS
+ok  	github.com/traderbybit/research-go/internal/dataset/importer	1.078s
+?   	github.com/traderbybit/research-go/internal/datasets	[no test files]
+=== RUN   TestDecimalArithmetic
+--- PASS: TestDecimalArithmetic (0.00s)
+=== RUN   TestDecimalComparison
+--- PASS: TestDecimalComparison (0.00s)
+=== RUN   TestRatQuantizeHalfEven
+--- PASS: TestRatQuantizeHalfEven (0.00s)
+=== RUN   TestScaledIntAndFromScaledIntRoundTrip
+--- PASS: TestScaledIntAndFromScaledIntRoundTrip (0.00s)
+=== RUN   TestFromScaledIntDoesNotAliasInput
+--- PASS: TestFromScaledIntDoesNotAliasInput (0.00s)
+PASS
+ok  	github.com/traderbybit/research-go/internal/decimal	1.019s
+=== RUN   TestDeterministicReplayAndExactFundingCash
+--- PASS: TestDeterministicReplayAndExactFundingCash (0.01s)
+=== RUN   TestNoTimestampRoundingAndCancellation
+--- PASS: TestNoTimestampRoundingAndCancellation (0.01s)
+=== RUN   TestForeignOrFutureCandlesRejected
+--- PASS: TestForeignOrFutureCandlesRejected (0.01s)
+PASS
+ok  	github.com/traderbybit/research-go/internal/historical	1.043s
+=== RUN   TestIsSupportedKind
+--- PASS: TestIsSupportedKind (0.00s)
+=== RUN   TestExecuteJob_RejectsUnsupportedKind
+2026/11/12 11:56:00 [jobrunner] Starting job job-model-train-123 kind=MODEL_TRAIN strategy=
+2026/11/12 11:56:00 [jobrunner] Rejected job job-model-train-123 with unsupported kind MODEL_TRAIN: unsupported or unimplemented research job kind: MODEL_TRAIN
+--- PASS: TestExecuteJob_RejectsUnsupportedKind (0.00s)
+=== RUN   TestWorkerLifecycleMethods
+--- PASS: TestWorkerLifecycleMethods (0.00s)
+=== RUN   TestVerifyWorkerGeneration_UninitializedRejectsMutations
+--- PASS: TestVerifyWorkerGeneration_UninitializedRejectsMutations (0.00s)
+=== RUN   TestVerifyWorkerGeneration_SupersededMismatchRejectsMutations
+--- PASS: TestVerifyWorkerGeneration_SupersededMismatchRejectsMutations (0.00s)
+=== RUN   TestVerifyWorkerGeneration_DBErrorPropagates
+--- PASS: TestVerifyWorkerGeneration_DBErrorPropagates (0.00s)
+=== RUN   TestExecuteJobRejectsMissingExchangeBeforeCandleRead
+2026/11/12 11:56:00 [jobrunner] Starting job missing-exchange kind=BACKTEST strategy=
+--- PASS: TestExecuteJobRejectsMissingExchangeBeforeCandleRead (0.00s)
+=== RUN   TestBinanceJobLoadsBinanceCandles
+2026/11/12 11:56:00 [jobrunner] Starting job binance-scope kind=BACKTEST strategy=
+--- PASS: TestBinanceJobLoadsBinanceCandles (0.00s)
+=== RUN   TestFailJob_SuccessfulExecution
+--- PASS: TestFailJob_SuccessfulExecution (0.00s)
+=== RUN   TestLeaseExpiryGuardsAllWorkerStateTransitions
+=== RUN   TestLeaseExpiryGuardsAllWorkerStateTransitions/start
+=== RUN   TestLeaseExpiryGuardsAllWorkerStateTransitions/heartbeat
+=== RUN   TestLeaseExpiryGuardsAllWorkerStateTransitions/complete
+=== RUN   TestLeaseExpiryGuardsAllWorkerStateTransitions/fail
+--- PASS: TestLeaseExpiryGuardsAllWorkerStateTransitions (0.00s)
+    --- PASS: TestLeaseExpiryGuardsAllWorkerStateTransitions/start (0.00s)
+    --- PASS: TestLeaseExpiryGuardsAllWorkerStateTransitions/heartbeat (0.00s)
+    --- PASS: TestLeaseExpiryGuardsAllWorkerStateTransitions/complete (0.00s)
+    --- PASS: TestLeaseExpiryGuardsAllWorkerStateTransitions/fail (0.00s)
+=== RUN   TestSignalMarkoutPostgresClaimAndComplete
+2026/11/12 11:56:00 [jobrunner] Starting job signal-markout-job kind=SIGNAL_MARKOUT strategy=baseline
+--- PASS: TestSignalMarkoutPostgresClaimAndComplete (0.11s)
+=== RUN   TestSignalMarkoutPostgresRejectsTamperedImmutableInputs
+=== RUN   TestSignalMarkoutPostgresRejectsTamperedImmutableInputs/row_limit
+2026/11/12 11:56:00 [jobrunner] Starting job signal-markout-job kind=SIGNAL_MARKOUT strategy=baseline
+=== RUN   TestSignalMarkoutPostgresRejectsTamperedImmutableInputs/exchange
+2026/11/12 11:56:00 [jobrunner] Starting job signal-markout-job kind=SIGNAL_MARKOUT strategy=baseline
+=== RUN   TestSignalMarkoutPostgresRejectsTamperedImmutableInputs/strategy_version
+2026/11/12 11:56:00 [jobrunner] Starting job signal-markout-job kind=SIGNAL_MARKOUT strategy=baseline
+=== RUN   TestSignalMarkoutPostgresRejectsTamperedImmutableInputs/configuration
+2026/11/12 11:56:00 [jobrunner] Starting job signal-markout-job kind=SIGNAL_MARKOUT strategy=baseline
+=== RUN   TestSignalMarkoutPostgresRejectsTamperedImmutableInputs/revision
+2026/11/12 11:56:00 [jobrunner] Starting job signal-markout-job kind=SIGNAL_MARKOUT strategy=baseline
+=== RUN   TestSignalMarkoutPostgresRejectsTamperedImmutableInputs/dataset_id
+2026/11/12 11:56:00 [jobrunner] Starting job signal-markout-job kind=SIGNAL_MARKOUT strategy=baseline
+=== RUN   TestSignalMarkoutPostgresRejectsTamperedImmutableInputs/dataset_hash
+2026/11/12 11:56:01 [jobrunner] Starting job signal-markout-job kind=SIGNAL_MARKOUT strategy=baseline
+=== RUN   TestSignalMarkoutPostgresRejectsTamperedImmutableInputs/inner_cutoff
+2026/11/12 11:56:01 [jobrunner] Starting job signal-markout-job kind=SIGNAL_MARKOUT strategy=baseline
+=== RUN   TestSignalMarkoutPostgresRejectsTamperedImmutableInputs/outer_cutoff
+2026/11/12 11:56:01 [jobrunner] Starting job signal-markout-job kind=SIGNAL_MARKOUT strategy=baseline
+=== RUN   TestSignalMarkoutPostgresRejectsTamperedImmutableInputs/strategy
+2026/11/12 11:56:01 [jobrunner] Starting job signal-markout-job kind=SIGNAL_MARKOUT strategy=baseline
+=== RUN   TestSignalMarkoutPostgresRejectsTamperedImmutableInputs/missing_row_limit
+2026/11/12 11:56:01 [jobrunner] Starting job signal-markout-job kind=SIGNAL_MARKOUT strategy=baseline
+=== RUN   TestSignalMarkoutPostgresRejectsTamperedImmutableInputs/paper_forward_mode
+2026/11/12 11:56:01 [jobrunner] Starting job signal-markout-job kind=SIGNAL_MARKOUT strategy=baseline
+=== RUN   TestSignalMarkoutPostgresRejectsTamperedImmutableInputs/live_mode
+2026/11/12 11:56:01 [jobrunner] Starting job signal-markout-job kind=SIGNAL_MARKOUT strategy=baseline
+--- PASS: TestSignalMarkoutPostgresRejectsTamperedImmutableInputs (1.43s)
+    --- PASS: TestSignalMarkoutPostgresRejectsTamperedImmutableInputs/row_limit (0.11s)
+    --- PASS: TestSignalMarkoutPostgresRejectsTamperedImmutableInputs/exchange (0.12s)
+    --- PASS: TestSignalMarkoutPostgresRejectsTamperedImmutableInputs/strategy_version (0.12s)
+    --- PASS: TestSignalMarkoutPostgresRejectsTamperedImmutableInputs/configuration (0.11s)
+    --- PASS: TestSignalMarkoutPostgresRejectsTamperedImmutableInputs/revision (0.11s)
+    --- PASS: TestSignalMarkoutPostgresRejectsTamperedImmutableInputs/dataset_id (0.11s)
+    --- PASS: TestSignalMarkoutPostgresRejectsTamperedImmutableInputs/dataset_hash (0.11s)
+    --- PASS: TestSignalMarkoutPostgresRejectsTamperedImmutableInputs/inner_cutoff (0.11s)
+    --- PASS: TestSignalMarkoutPostgresRejectsTamperedImmutableInputs/outer_cutoff (0.10s)
+    --- PASS: TestSignalMarkoutPostgresRejectsTamperedImmutableInputs/strategy (0.10s)
+    --- PASS: TestSignalMarkoutPostgresRejectsTamperedImmutableInputs/missing_row_limit (0.10s)
+    --- PASS: TestSignalMarkoutPostgresRejectsTamperedImmutableInputs/paper_forward_mode (0.10s)
+    --- PASS: TestSignalMarkoutPostgresRejectsTamperedImmutableInputs/live_mode (0.11s)
+=== RUN   TestSignalMarkoutPostgresAcceptsSupportedLowercaseKind
+2026/11/12 11:56:01 [jobrunner] Starting job signal-markout-job kind=signal_markout strategy=baseline
+--- PASS: TestSignalMarkoutPostgresAcceptsSupportedLowercaseKind (0.12s)
+=== RUN   TestSignalMarkoutPostgresCohortClaimAndComplete
+2026/11/12 11:56:01 [jobrunner] Starting job signal-markout-job kind=SIGNAL_MARKOUT strategy=baseline
+--- PASS: TestSignalMarkoutPostgresCohortClaimAndComplete (0.13s)
+=== RUN   TestSignalMarkoutPostgresCohortRejectsTamperedProvenance
+=== RUN   TestSignalMarkoutPostgresCohortRejectsTamperedProvenance/missing_provenance
+2026/11/12 11:56:02 [jobrunner] Starting job signal-markout-job kind=SIGNAL_MARKOUT strategy=baseline
+=== RUN   TestSignalMarkoutPostgresCohortRejectsTamperedProvenance/dataset_id
+2026/11/12 11:56:02 [jobrunner] Starting job signal-markout-job kind=SIGNAL_MARKOUT strategy=baseline
+=== RUN   TestSignalMarkoutPostgresCohortRejectsTamperedProvenance/dataset_hash
+2026/11/12 11:56:02 [jobrunner] Starting job signal-markout-job kind=SIGNAL_MARKOUT strategy=baseline
+=== RUN   TestSignalMarkoutPostgresCohortRejectsTamperedProvenance/configuration
+2026/11/12 11:56:02 [jobrunner] Starting job signal-markout-job kind=SIGNAL_MARKOUT strategy=baseline
+=== RUN   TestSignalMarkoutPostgresCohortRejectsTamperedProvenance/revision
+2026/11/12 11:56:02 [jobrunner] Starting job signal-markout-job kind=SIGNAL_MARKOUT strategy=baseline
+=== RUN   TestSignalMarkoutPostgresCohortRejectsTamperedProvenance/observation
+2026/11/12 11:56:02 [jobrunner] Starting job signal-markout-job kind=SIGNAL_MARKOUT strategy=baseline
+--- PASS: TestSignalMarkoutPostgresCohortRejectsTamperedProvenance (0.63s)
+    --- PASS: TestSignalMarkoutPostgresCohortRejectsTamperedProvenance/missing_provenance (0.11s)
+    --- PASS: TestSignalMarkoutPostgresCohortRejectsTamperedProvenance/dataset_id (0.10s)
+    --- PASS: TestSignalMarkoutPostgresCohortRejectsTamperedProvenance/dataset_hash (0.10s)
+    --- PASS: TestSignalMarkoutPostgresCohortRejectsTamperedProvenance/configuration (0.11s)
+    --- PASS: TestSignalMarkoutPostgresCohortRejectsTamperedProvenance/revision (0.11s)
+    --- PASS: TestSignalMarkoutPostgresCohortRejectsTamperedProvenance/observation (0.10s)
+=== RUN   TestWorkerLifecycle_SupersededWorkerRejectedByPostgres
+--- PASS: TestWorkerLifecycle_SupersededWorkerRejectedByPostgres (0.06s)
+=== RUN   TestRecoverOrphanedJobs_Integration
+2026/11/12 11:56:02 [jobrunner] Auto-recovered orphaned job a1b2c3d4-1111-4111-8111-406132851946 (attempt 1/3)
+2026/11/12 11:56:02 [jobrunner] Marked exhausted orphaned job a1b2c3d4-2222-4222-8222-406132858925 as FAILED (retries 3/3)
+--- PASS: TestRecoverOrphanedJobs_Integration (0.05s)
+PASS
+ok  	github.com/traderbybit/research-go/internal/jobrunner	3.551s
+=== RUN   TestResolveJobExchange
+=== RUN   TestResolveJobExchange/bybit
+=== RUN   TestResolveJobExchange/binance
+=== RUN   TestResolveJobExchange/consistent_aliases
+=== RUN   TestResolveJobExchange/dataset_exchange
+=== RUN   TestResolveJobExchange/nested_dataset_exchange_bybit
+=== RUN   TestResolveJobExchange/nested_dataset_exchange_id_binance
+=== RUN   TestResolveJobExchange/consistent_dataset_and_top-level
+=== RUN   TestResolveJobExchange/missing
+=== RUN   TestResolveJobExchange/nil_payload
+=== RUN   TestResolveJobExchange/conflicting
+=== RUN   TestResolveJobExchange/conflicting_dataset_exchange
+=== RUN   TestResolveJobExchange/registered_future_exchange
+=== RUN   TestResolveJobExchange/offline_dataset_provenance
+=== RUN   TestResolveJobExchange/invalid_type
+=== RUN   TestResolveJobExchange/empty
+--- PASS: TestResolveJobExchange (0.01s)
+    --- PASS: TestResolveJobExchange/bybit (0.00s)
+    --- PASS: TestResolveJobExchange/binance (0.00s)
+    --- PASS: TestResolveJobExchange/consistent_aliases (0.00s)
+    --- PASS: TestResolveJobExchange/dataset_exchange (0.00s)
+    --- PASS: TestResolveJobExchange/nested_dataset_exchange_bybit (0.00s)
+    --- PASS: TestResolveJobExchange/nested_dataset_exchange_id_binance (0.00s)
+    --- PASS: TestResolveJobExchange/consistent_dataset_and_top-level (0.00s)
+    --- PASS: TestResolveJobExchange/missing (0.00s)
+    --- PASS: TestResolveJobExchange/nil_payload (0.00s)
+    --- PASS: TestResolveJobExchange/conflicting (0.00s)
+    --- PASS: TestResolveJobExchange/conflicting_dataset_exchange (0.00s)
+    --- PASS: TestResolveJobExchange/registered_future_exchange (0.00s)
+    --- PASS: TestResolveJobExchange/offline_dataset_provenance (0.00s)
+    --- PASS: TestResolveJobExchange/invalid_type (0.00s)
+    --- PASS: TestResolveJobExchange/empty (0.00s)
+PASS
+ok  	github.com/traderbybit/research-go/internal/jobscope	1.020s
+=== RUN   TestMinePatternsExecution
+--- PASS: TestMinePatternsExecution (0.05s)
+=== RUN   TestBenjaminiHochbergStepUp
+--- PASS: TestBenjaminiHochbergStepUp (0.00s)
+PASS
+ok  	github.com/traderbybit/research-go/internal/patterns	1.060s
+=== RUN   TestReconstructDecision
+--- PASS: TestReconstructDecision (0.00s)
+=== RUN   TestReconstructDecisionAmbiguity
+--- PASS: TestReconstructDecisionAmbiguity (0.00s)
+PASS
+ok  	github.com/traderbybit/research-go/internal/replay	1.017s
+=== RUN   TestEverySourceTimeframeAndHorizonPreserveDistinctAttribution
+--- PASS: TestEverySourceTimeframeAndHorizonPreserveDistinctAttribution (0.06s)
+=== RUN   TestMissingFutureForeignOrInvalidEvidenceCannotProduceMoney
+=== RUN   TestMissingFutureForeignOrInvalidEvidenceCannotProduceMoney/future_feature
+=== RUN   TestMissingFutureForeignOrInvalidEvidenceCannotProduceMoney/future_signal
+=== RUN   TestMissingFutureForeignOrInvalidEvidenceCannotProduceMoney/future_instrument
+=== RUN   TestMissingFutureForeignOrInvalidEvidenceCannotProduceMoney/foreign_instrument
+=== RUN   TestMissingFutureForeignOrInvalidEvidenceCannotProduceMoney/future_candle
+=== RUN   TestMissingFutureForeignOrInvalidEvidenceCannotProduceMoney/duplicate_candle
+=== RUN   TestMissingFutureForeignOrInvalidEvidenceCannotProduceMoney/foreign_candle
+=== RUN   TestMissingFutureForeignOrInvalidEvidenceCannotProduceMoney/open_candle
+=== RUN   TestMissingFutureForeignOrInvalidEvidenceCannotProduceMoney/missing_fee
+=== RUN   TestMissingFutureForeignOrInvalidEvidenceCannotProduceMoney/funding_unknown
+=== RUN   TestMissingFutureForeignOrInvalidEvidenceCannotProduceMoney/dataset_missing
+=== RUN   TestMissingFutureForeignOrInvalidEvidenceCannotProduceMoney/bad_ohlc
+=== RUN   TestMissingFutureForeignOrInvalidEvidenceCannotProduceMoney/subminute_availability
+--- PASS: TestMissingFutureForeignOrInvalidEvidenceCannotProduceMoney (0.05s)
+    --- PASS: TestMissingFutureForeignOrInvalidEvidenceCannotProduceMoney/future_feature (0.00s)
+    --- PASS: TestMissingFutureForeignOrInvalidEvidenceCannotProduceMoney/future_signal (0.00s)
+    --- PASS: TestMissingFutureForeignOrInvalidEvidenceCannotProduceMoney/future_instrument (0.00s)
+    --- PASS: TestMissingFutureForeignOrInvalidEvidenceCannotProduceMoney/foreign_instrument (0.00s)
+    --- PASS: TestMissingFutureForeignOrInvalidEvidenceCannotProduceMoney/future_candle (0.00s)
+    --- PASS: TestMissingFutureForeignOrInvalidEvidenceCannotProduceMoney/duplicate_candle (0.00s)
+    --- PASS: TestMissingFutureForeignOrInvalidEvidenceCannotProduceMoney/foreign_candle (0.00s)
+    --- PASS: TestMissingFutureForeignOrInvalidEvidenceCannotProduceMoney/open_candle (0.00s)
+    --- PASS: TestMissingFutureForeignOrInvalidEvidenceCannotProduceMoney/missing_fee (0.00s)
+    --- PASS: TestMissingFutureForeignOrInvalidEvidenceCannotProduceMoney/funding_unknown (0.00s)
+    --- PASS: TestMissingFutureForeignOrInvalidEvidenceCannotProduceMoney/dataset_missing (0.00s)
+    --- PASS: TestMissingFutureForeignOrInvalidEvidenceCannotProduceMoney/bad_ohlc (0.00s)
+    --- PASS: TestMissingFutureForeignOrInvalidEvidenceCannotProduceMoney/subminute_availability (0.00s)
+=== RUN   TestInteriorGapAndPendingMaturityRemainExplicit
+--- PASS: TestInteriorGapAndPendingMaturityRemainExplicit (0.01s)
+=== RUN   TestFiveUSDTMinimumConstraintNeverIncreasesExposure
+--- PASS: TestFiveUSDTMinimumConstraintNeverIncreasesExposure (0.01s)
+=== RUN   TestFlatPriceLosesAfterCostsAndDoesNotDoubleSubtractSlippage
+--- PASS: TestFlatPriceLosesAfterCostsAndDoesNotDoubleSubtractSlippage (0.00s)
+=== RUN   TestFundingHasSideCorrectSignAndMissingSettlementFailsClosed
+--- PASS: TestFundingHasSideCorrectSignAndMissingSettlementFailsClosed (0.00s)
+=== RUN   TestEvaluationReproducibilityProvenanceAndCancellation
+--- PASS: TestEvaluationReproducibilityProvenanceAndCancellation (0.03s)
+=== RUN   TestCohortSevenClassificationsAndPurging
+--- PASS: TestCohortSevenClassificationsAndPurging (0.02s)
+=== RUN   TestCohortLeakageBoundsMultiplicityAndCancellation
+--- PASS: TestCohortLeakageBoundsMultiplicityAndCancellation (0.01s)
+=== RUN   TestExecutionAssumptionsAndHorizonAnchorSeparateCohorts
+=== RUN   TestExecutionAssumptionsAndHorizonAnchorSeparateCohorts/slippage
+=== RUN   TestExecutionAssumptionsAndHorizonAnchorSeparateCohorts/funding_schedule
+=== RUN   TestExecutionAssumptionsAndHorizonAnchorSeparateCohorts/funding_offset
+=== RUN   TestExecutionAssumptionsAndHorizonAnchorSeparateCohorts/horizon_anchor
+=== RUN   TestExecutionAssumptionsAndHorizonAnchorSeparateCohorts/notional
+=== RUN   TestExecutionAssumptionsAndHorizonAnchorSeparateCohorts/quantity_step
+=== RUN   TestExecutionAssumptionsAndHorizonAnchorSeparateCohorts/minimum_quantity
+=== RUN   TestExecutionAssumptionsAndHorizonAnchorSeparateCohorts/maximum_quantity
+=== RUN   TestExecutionAssumptionsAndHorizonAnchorSeparateCohorts/minimum_notional
+=== RUN   TestExecutionAssumptionsAndHorizonAnchorSeparateCohorts/cost_source
+=== RUN   TestExecutionAssumptionsAndHorizonAnchorSeparateCohorts/fee
+=== RUN   TestExecutionAssumptionsAndHorizonAnchorSeparateCohorts/funding_interval
+=== RUN   TestExecutionAssumptionsAndHorizonAnchorSeparateCohorts/tick
+--- PASS: TestExecutionAssumptionsAndHorizonAnchorSeparateCohorts (0.03s)
+    --- PASS: TestExecutionAssumptionsAndHorizonAnchorSeparateCohorts/slippage (0.00s)
+    --- PASS: TestExecutionAssumptionsAndHorizonAnchorSeparateCohorts/funding_schedule (0.00s)
+    --- PASS: TestExecutionAssumptionsAndHorizonAnchorSeparateCohorts/funding_offset (0.00s)
+    --- PASS: TestExecutionAssumptionsAndHorizonAnchorSeparateCohorts/horizon_anchor (0.00s)
+    --- PASS: TestExecutionAssumptionsAndHorizonAnchorSeparateCohorts/notional (0.00s)
+    --- PASS: TestExecutionAssumptionsAndHorizonAnchorSeparateCohorts/quantity_step (0.00s)
+    --- PASS: TestExecutionAssumptionsAndHorizonAnchorSeparateCohorts/minimum_quantity (0.00s)
+    --- PASS: TestExecutionAssumptionsAndHorizonAnchorSeparateCohorts/maximum_quantity (0.00s)
+    --- PASS: TestExecutionAssumptionsAndHorizonAnchorSeparateCohorts/minimum_notional (0.00s)
+    --- PASS: TestExecutionAssumptionsAndHorizonAnchorSeparateCohorts/cost_source (0.00s)
+    --- PASS: TestExecutionAssumptionsAndHorizonAnchorSeparateCohorts/fee (0.00s)
+    --- PASS: TestExecutionAssumptionsAndHorizonAnchorSeparateCohorts/funding_interval (0.00s)
+    --- PASS: TestExecutionAssumptionsAndHorizonAnchorSeparateCohorts/tick (0.00s)
+=== RUN   TestCohortRequiresExecutionIdentity
+--- PASS: TestCohortRequiresExecutionIdentity (0.00s)
+=== RUN   TestNextMinuteAnchorPreservesSourceTimeframeAndUsesCausalMinuteOpen
+--- PASS: TestNextMinuteAnchorPreservesSourceTimeframeAndUsesCausalMinuteOpen (0.01s)
+=== RUN   TestBaselineRequiresIdenticalFullQualityPolicy
+=== RUN   TestBaselineRequiresIdenticalFullQualityPolicy/lower_bound
+=== RUN   TestBaselineRequiresIdenticalFullQualityPolicy/upper_bound
+=== RUN   TestBaselineRequiresIdenticalFullQualityPolicy/neutral_band
+=== RUN   TestBaselineRequiresIdenticalFullQualityPolicy/minimum_samples
+=== RUN   TestBaselineRequiresIdenticalFullQualityPolicy/minimum_days
+=== RUN   TestBaselineRequiresIdenticalFullQualityPolicy/alpha
+=== RUN   TestBaselineRequiresIdenticalFullQualityPolicy/multiplicity
+=== RUN   TestBaselineRequiresIdenticalFullQualityPolicy/embargo
+--- PASS: TestBaselineRequiresIdenticalFullQualityPolicy (0.03s)
+    --- PASS: TestBaselineRequiresIdenticalFullQualityPolicy/lower_bound (0.00s)
+    --- PASS: TestBaselineRequiresIdenticalFullQualityPolicy/upper_bound (0.00s)
+    --- PASS: TestBaselineRequiresIdenticalFullQualityPolicy/neutral_band (0.00s)
+    --- PASS: TestBaselineRequiresIdenticalFullQualityPolicy/minimum_samples (0.00s)
+    --- PASS: TestBaselineRequiresIdenticalFullQualityPolicy/minimum_days (0.00s)
+    --- PASS: TestBaselineRequiresIdenticalFullQualityPolicy/alpha (0.00s)
+    --- PASS: TestBaselineRequiresIdenticalFullQualityPolicy/multiplicity (0.00s)
+    --- PASS: TestBaselineRequiresIdenticalFullQualityPolicy/embargo (0.00s)
+=== RUN   TestBaselineEnforcesEmbargoBeforeCurrentCohort
+--- PASS: TestBaselineEnforcesEmbargoBeforeCurrentCohort (0.01s)
+=== RUN   TestUnsafeSignalTimestampsFailBeforeOutcomeDerivation
+--- PASS: TestUnsafeSignalTimestampsFailBeforeOutcomeDerivation (0.00s)
+=== RUN   TestOverflowedCandleCloseCannotMasqueradeAsClosedHistoricalData
+--- PASS: TestOverflowedCandleCloseCannotMasqueradeAsClosedHistoricalData (0.00s)
+=== RUN   TestCohortConfidenceRemainsConditionalAfterPurging
+--- PASS: TestCohortConfidenceRemainsConditionalAfterPurging (0.01s)
+PASS
+ok  	github.com/traderbybit/research-go/internal/signalintel	1.294s
+=== RUN   TestMonteCarloSimulation
+--- PASS: TestMonteCarloSimulation (0.00s)
+=== RUN   TestMonteCarloInsufficientTrades
+--- PASS: TestMonteCarloInsufficientTrades (0.00s)
+PASS
+ok  	github.com/traderbybit/research-go/internal/simulation	1.018s
+=== RUN   TestIndicatorsROCAndZScore
+--- PASS: TestIndicatorsROCAndZScore (0.00s)
+=== RUN   TestAll15IndicatorsSupportedInDSL
+--- PASS: TestAll15IndicatorsSupportedInDSL (0.09s)
+=== RUN   TestAll8ConditionOperators
+=== RUN   TestAll8ConditionOperators/gt
+=== RUN   TestAll8ConditionOperators/lt
+=== RUN   TestAll8ConditionOperators/gte_equal
+=== RUN   TestAll8ConditionOperators/lte_equal
+=== RUN   TestAll8ConditionOperators/crosses_above
+=== RUN   TestAll8ConditionOperators/crosses_below
+=== RUN   TestAll8ConditionOperators/within_true
+=== RUN   TestAll8ConditionOperators/within_false
+=== RUN   TestAll8ConditionOperators/change_pct_positive
+=== RUN   TestAll8ConditionOperators/change_pct_negative
+--- PASS: TestAll8ConditionOperators (0.00s)
+    --- PASS: TestAll8ConditionOperators/gt (0.00s)
+    --- PASS: TestAll8ConditionOperators/lt (0.00s)
+    --- PASS: TestAll8ConditionOperators/gte_equal (0.00s)
+    --- PASS: TestAll8ConditionOperators/lte_equal (0.00s)
+    --- PASS: TestAll8ConditionOperators/crosses_above (0.00s)
+    --- PASS: TestAll8ConditionOperators/crosses_below (0.00s)
+    --- PASS: TestAll8ConditionOperators/within_true (0.00s)
+    --- PASS: TestAll8ConditionOperators/within_false (0.00s)
+    --- PASS: TestAll8ConditionOperators/change_pct_positive (0.00s)
+    --- PASS: TestAll8ConditionOperators/change_pct_negative (0.00s)
+=== RUN   TestCompositeMultiRuleEvaluation
+--- PASS: TestCompositeMultiRuleEvaluation (0.00s)
+=== RUN   TestCompositeStrategyTrendRSIWithATRTrailingStop
+--- PASS: TestCompositeStrategyTrendRSIWithATRTrailingStop (0.06s)
+=== RUN   TestDeterministicBacktestNoLookaheadBias
+--- PASS: TestDeterministicBacktestNoLookaheadBias (1.02s)
+=== RUN   TestMultiTimeframeBarAlignmentNoLeakage
+--- PASS: TestMultiTimeframeBarAlignmentNoLeakage (0.02s)
+=== RUN   TestDeterminismAndCausality
+--- PASS: TestDeterminismAndCausality (0.02s)
+=== RUN   TestRejectIntegrityFailures
+=== RUN   TestRejectIntegrityFailures/open
+=== RUN   TestRejectIntegrityFailures/exchange
+=== RUN   TestRejectIntegrityFailures/gap
+=== RUN   TestRejectIntegrityFailures/future
+=== RUN   TestRejectIntegrityFailures/warmup
+=== RUN   TestRejectIntegrityFailures/unknown
+--- PASS: TestRejectIntegrityFailures (0.01s)
+    --- PASS: TestRejectIntegrityFailures/open (0.00s)
+    --- PASS: TestRejectIntegrityFailures/exchange (0.00s)
+    --- PASS: TestRejectIntegrityFailures/gap (0.00s)
+    --- PASS: TestRejectIntegrityFailures/future (0.00s)
+    --- PASS: TestRejectIntegrityFailures/warmup (0.00s)
+    --- PASS: TestRejectIntegrityFailures/unknown (0.00s)
+=== RUN   TestMultiTimeframeUsesOnlyClosedBars
+--- PASS: TestMultiTimeframeUsesOnlyClosedBars (0.01s)
+=== RUN   TestClosedSignalModeMatchesResearchDecision
+--- PASS: TestClosedSignalModeMatchesResearchDecision (0.04s)
+=== RUN   TestFundingCoverageAndAdvancedIndicators
+--- PASS: TestFundingCoverageAndAdvancedIndicators (0.10s)
+=== RUN   TestADXWilderReference
+--- PASS: TestADXWilderReference (0.00s)
+=== RUN   TestV2DecisionsRemainIdenticalAcrossMovingPaperWindows
+--- PASS: TestV2DecisionsRemainIdenticalAcrossMovingPaperWindows (0.65s)
+PASS
+ok  	github.com/traderbybit/research-go/internal/strategydsl	3.040s
+?   	github.com/traderbybit/research-go/internal/telemetry	[no test files]
+=== RUN   TestWalkForwardRun
+--- PASS: TestWalkForwardRun (0.07s)
+=== RUN   TestWalkForwardInsufficientData
+--- PASS: TestWalkForwardInsufficientData (0.00s)
+PASS
+ok  	github.com/traderbybit/research-go/internal/walkforward	1.086s
+=== RUN   TestGoldenIndicatorParity
+--- PASS: TestGoldenIndicatorParity (0.00s)
+PASS
+ok  	github.com/traderbybit/research-go/tests/golden	1.014s

@@ -1,0 +1,105 @@
+=== RUN   TestEverySourceTimeframeAndHorizonPreserveDistinctAttribution
+--- PASS: TestEverySourceTimeframeAndHorizonPreserveDistinctAttribution (0.06s)
+=== RUN   TestMissingFutureForeignOrInvalidEvidenceCannotProduceMoney
+=== RUN   TestMissingFutureForeignOrInvalidEvidenceCannotProduceMoney/open_candle
+=== RUN   TestMissingFutureForeignOrInvalidEvidenceCannotProduceMoney/future_candle
+=== RUN   TestMissingFutureForeignOrInvalidEvidenceCannotProduceMoney/missing_fee
+=== RUN   TestMissingFutureForeignOrInvalidEvidenceCannotProduceMoney/bad_ohlc
+=== RUN   TestMissingFutureForeignOrInvalidEvidenceCannotProduceMoney/foreign_instrument
+=== RUN   TestMissingFutureForeignOrInvalidEvidenceCannotProduceMoney/funding_unknown
+=== RUN   TestMissingFutureForeignOrInvalidEvidenceCannotProduceMoney/dataset_missing
+=== RUN   TestMissingFutureForeignOrInvalidEvidenceCannotProduceMoney/duplicate_candle
+=== RUN   TestMissingFutureForeignOrInvalidEvidenceCannotProduceMoney/subminute_availability
+=== RUN   TestMissingFutureForeignOrInvalidEvidenceCannotProduceMoney/future_feature
+=== RUN   TestMissingFutureForeignOrInvalidEvidenceCannotProduceMoney/future_signal
+=== RUN   TestMissingFutureForeignOrInvalidEvidenceCannotProduceMoney/future_instrument
+=== RUN   TestMissingFutureForeignOrInvalidEvidenceCannotProduceMoney/foreign_candle
+--- PASS: TestMissingFutureForeignOrInvalidEvidenceCannotProduceMoney (0.04s)
+    --- PASS: TestMissingFutureForeignOrInvalidEvidenceCannotProduceMoney/open_candle (0.00s)
+    --- PASS: TestMissingFutureForeignOrInvalidEvidenceCannotProduceMoney/future_candle (0.00s)
+    --- PASS: TestMissingFutureForeignOrInvalidEvidenceCannotProduceMoney/missing_fee (0.00s)
+    --- PASS: TestMissingFutureForeignOrInvalidEvidenceCannotProduceMoney/bad_ohlc (0.00s)
+    --- PASS: TestMissingFutureForeignOrInvalidEvidenceCannotProduceMoney/foreign_instrument (0.00s)
+    --- PASS: TestMissingFutureForeignOrInvalidEvidenceCannotProduceMoney/funding_unknown (0.00s)
+    --- PASS: TestMissingFutureForeignOrInvalidEvidenceCannotProduceMoney/dataset_missing (0.00s)
+    --- PASS: TestMissingFutureForeignOrInvalidEvidenceCannotProduceMoney/duplicate_candle (0.00s)
+    --- PASS: TestMissingFutureForeignOrInvalidEvidenceCannotProduceMoney/subminute_availability (0.00s)
+    --- PASS: TestMissingFutureForeignOrInvalidEvidenceCannotProduceMoney/future_feature (0.00s)
+    --- PASS: TestMissingFutureForeignOrInvalidEvidenceCannotProduceMoney/future_signal (0.00s)
+    --- PASS: TestMissingFutureForeignOrInvalidEvidenceCannotProduceMoney/future_instrument (0.00s)
+    --- PASS: TestMissingFutureForeignOrInvalidEvidenceCannotProduceMoney/foreign_candle (0.00s)
+=== RUN   TestInteriorGapAndPendingMaturityRemainExplicit
+--- PASS: TestInteriorGapAndPendingMaturityRemainExplicit (0.01s)
+=== RUN   TestFiveUSDTMinimumConstraintNeverIncreasesExposure
+--- PASS: TestFiveUSDTMinimumConstraintNeverIncreasesExposure (0.01s)
+=== RUN   TestFlatPriceLosesAfterCostsAndDoesNotDoubleSubtractSlippage
+--- PASS: TestFlatPriceLosesAfterCostsAndDoesNotDoubleSubtractSlippage (0.00s)
+=== RUN   TestFundingHasSideCorrectSignAndMissingSettlementFailsClosed
+--- PASS: TestFundingHasSideCorrectSignAndMissingSettlementFailsClosed (0.00s)
+=== RUN   TestEvaluationReproducibilityProvenanceAndCancellation
+--- PASS: TestEvaluationReproducibilityProvenanceAndCancellation (0.03s)
+=== RUN   TestCohortSevenClassificationsAndPurging
+--- PASS: TestCohortSevenClassificationsAndPurging (0.02s)
+=== RUN   TestCohortLeakageBoundsMultiplicityAndCancellation
+--- PASS: TestCohortLeakageBoundsMultiplicityAndCancellation (0.01s)
+=== RUN   TestExecutionAssumptionsAndHorizonAnchorSeparateCohorts
+=== RUN   TestExecutionAssumptionsAndHorizonAnchorSeparateCohorts/notional
+=== RUN   TestExecutionAssumptionsAndHorizonAnchorSeparateCohorts/tick
+=== RUN   TestExecutionAssumptionsAndHorizonAnchorSeparateCohorts/quantity_step
+=== RUN   TestExecutionAssumptionsAndHorizonAnchorSeparateCohorts/maximum_quantity
+=== RUN   TestExecutionAssumptionsAndHorizonAnchorSeparateCohorts/funding_offset
+=== RUN   TestExecutionAssumptionsAndHorizonAnchorSeparateCohorts/minimum_quantity
+=== RUN   TestExecutionAssumptionsAndHorizonAnchorSeparateCohorts/minimum_notional
+=== RUN   TestExecutionAssumptionsAndHorizonAnchorSeparateCohorts/cost_source
+=== RUN   TestExecutionAssumptionsAndHorizonAnchorSeparateCohorts/fee
+=== RUN   TestExecutionAssumptionsAndHorizonAnchorSeparateCohorts/slippage
+=== RUN   TestExecutionAssumptionsAndHorizonAnchorSeparateCohorts/funding_schedule
+=== RUN   TestExecutionAssumptionsAndHorizonAnchorSeparateCohorts/funding_interval
+=== RUN   TestExecutionAssumptionsAndHorizonAnchorSeparateCohorts/horizon_anchor
+--- PASS: TestExecutionAssumptionsAndHorizonAnchorSeparateCohorts (0.03s)
+    --- PASS: TestExecutionAssumptionsAndHorizonAnchorSeparateCohorts/notional (0.00s)
+    --- PASS: TestExecutionAssumptionsAndHorizonAnchorSeparateCohorts/tick (0.00s)
+    --- PASS: TestExecutionAssumptionsAndHorizonAnchorSeparateCohorts/quantity_step (0.00s)
+    --- PASS: TestExecutionAssumptionsAndHorizonAnchorSeparateCohorts/maximum_quantity (0.00s)
+    --- PASS: TestExecutionAssumptionsAndHorizonAnchorSeparateCohorts/funding_offset (0.00s)
+    --- PASS: TestExecutionAssumptionsAndHorizonAnchorSeparateCohorts/minimum_quantity (0.00s)
+    --- PASS: TestExecutionAssumptionsAndHorizonAnchorSeparateCohorts/minimum_notional (0.00s)
+    --- PASS: TestExecutionAssumptionsAndHorizonAnchorSeparateCohorts/cost_source (0.00s)
+    --- PASS: TestExecutionAssumptionsAndHorizonAnchorSeparateCohorts/fee (0.00s)
+    --- PASS: TestExecutionAssumptionsAndHorizonAnchorSeparateCohorts/slippage (0.00s)
+    --- PASS: TestExecutionAssumptionsAndHorizonAnchorSeparateCohorts/funding_schedule (0.00s)
+    --- PASS: TestExecutionAssumptionsAndHorizonAnchorSeparateCohorts/funding_interval (0.00s)
+    --- PASS: TestExecutionAssumptionsAndHorizonAnchorSeparateCohorts/horizon_anchor (0.00s)
+=== RUN   TestCohortRequiresExecutionIdentity
+--- PASS: TestCohortRequiresExecutionIdentity (0.00s)
+=== RUN   TestNextMinuteAnchorPreservesSourceTimeframeAndUsesCausalMinuteOpen
+--- PASS: TestNextMinuteAnchorPreservesSourceTimeframeAndUsesCausalMinuteOpen (0.01s)
+=== RUN   TestBaselineRequiresIdenticalFullQualityPolicy
+=== RUN   TestBaselineRequiresIdenticalFullQualityPolicy/embargo
+=== RUN   TestBaselineRequiresIdenticalFullQualityPolicy/lower_bound
+=== RUN   TestBaselineRequiresIdenticalFullQualityPolicy/upper_bound
+=== RUN   TestBaselineRequiresIdenticalFullQualityPolicy/neutral_band
+=== RUN   TestBaselineRequiresIdenticalFullQualityPolicy/minimum_samples
+=== RUN   TestBaselineRequiresIdenticalFullQualityPolicy/minimum_days
+=== RUN   TestBaselineRequiresIdenticalFullQualityPolicy/alpha
+=== RUN   TestBaselineRequiresIdenticalFullQualityPolicy/multiplicity
+--- PASS: TestBaselineRequiresIdenticalFullQualityPolicy (0.03s)
+    --- PASS: TestBaselineRequiresIdenticalFullQualityPolicy/embargo (0.00s)
+    --- PASS: TestBaselineRequiresIdenticalFullQualityPolicy/lower_bound (0.00s)
+    --- PASS: TestBaselineRequiresIdenticalFullQualityPolicy/upper_bound (0.00s)
+    --- PASS: TestBaselineRequiresIdenticalFullQualityPolicy/neutral_band (0.00s)
+    --- PASS: TestBaselineRequiresIdenticalFullQualityPolicy/minimum_samples (0.00s)
+    --- PASS: TestBaselineRequiresIdenticalFullQualityPolicy/minimum_days (0.00s)
+    --- PASS: TestBaselineRequiresIdenticalFullQualityPolicy/alpha (0.00s)
+    --- PASS: TestBaselineRequiresIdenticalFullQualityPolicy/multiplicity (0.00s)
+=== RUN   TestBaselineEnforcesEmbargoBeforeCurrentCohort
+--- PASS: TestBaselineEnforcesEmbargoBeforeCurrentCohort (0.01s)
+=== RUN   TestUnsafeSignalTimestampsFailBeforeOutcomeDerivation
+--- PASS: TestUnsafeSignalTimestampsFailBeforeOutcomeDerivation (0.00s)
+=== RUN   TestOverflowedCandleCloseCannotMasqueradeAsClosedHistoricalData
+--- PASS: TestOverflowedCandleCloseCannotMasqueradeAsClosedHistoricalData (0.00s)
+=== RUN   TestCohortConfidenceRemainsConditionalAfterPurging
+--- PASS: TestCohortConfidenceRemainsConditionalAfterPurging (0.01s)
+PASS
+ok  	github.com/traderbybit/research-go/internal/signalintel	1.274s
+?   	github.com/traderbybit/research-go/cmd/signal-intelligence	[no test files]

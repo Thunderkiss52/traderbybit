@@ -4,7 +4,9 @@ declare(strict_types=1);
 
 namespace App\Trading\Jobs;
 
+use App\Exchanges\Application\ExchangePaperApprovalPolicy;
 use App\Exchanges\Binance\BinancePaperSafety;
+use App\Exchanges\Infrastructure\Persistence\ExchangeRecord;
 use App\PaperTrading\Application\PaperProcessingService;
 use App\PaperTrading\Infrastructure\Persistence\PaperAccountRecord;
 use App\Trading\Application\TradingPipelineEventService;
@@ -88,7 +90,12 @@ final class ProcessPaperPipelineJob implements ShouldQueue
             return;
         }
 
-        $allowNewEntries = (bool) config("exchanges.{$this->exchange}.paper_execution_approved", $this->exchange === 'bybit');
+        // A successful operator approval lives in the exchange catalog, not
+        // in the deploy-time config array. A stale config flag must not bypass
+        // pause/deactivation or enable a venue without owner approval.
+        $allowNewEntries = ExchangePaperApprovalPolicy::allowsEntries(
+            ExchangeRecord::query()->find($this->exchange)
+        );
 
         $accountsQuery = PaperAccountRecord::query()
             ->where('exchange_id', $this->exchange)

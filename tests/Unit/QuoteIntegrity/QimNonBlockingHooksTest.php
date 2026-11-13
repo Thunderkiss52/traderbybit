@@ -15,6 +15,7 @@ use App\MarketData\Domain\Interval;
 use App\MarketData\Infrastructure\Bybit\BybitWebSocketMessageParser;
 use App\QuoteIntegrity\Application\QimRestObserver;
 use App\QuoteIntegrity\Application\QimWsObserver;
+use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Cache;
 use Mockery;
 use Psr\Log\NullLogger;
@@ -23,6 +24,9 @@ use Tests\TestCase;
 
 final class QimNonBlockingHooksTest extends TestCase
 {
+    // The real closed-candle event recorder must roll back with each fixture.
+    use RefreshDatabase;
+
     protected function tearDown(): void
     {
         Mockery::close();
@@ -66,6 +70,10 @@ final class QimNonBlockingHooksTest extends TestCase
         // Crucial test: despite QIM exception, normal ingestion must succeed and return true!
         $result = $ingestor->ingest($message);
         $this->assertTrue($result);
+        $this->assertDatabaseHas('trading_pipeline_events', [
+            'event_key' => 'bybit:BTCUSDT:5:2023-11-14T22:18:20+00:00:CANDLE_CLOSED',
+            'status' => 'STALE',
+        ]);
     }
 
     public function test_closed_candle_ingestor_captures_duplicate_attempt_before_idempotency_lock_refusal(): void

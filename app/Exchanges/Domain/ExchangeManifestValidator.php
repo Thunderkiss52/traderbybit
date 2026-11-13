@@ -52,6 +52,9 @@ final class ExchangeManifestValidator
 
         // 5. Cost Model
         $cost = $manifest->costModel;
+        if (! isset($cost['maker_rate']) || ! $this->validRate($cost['maker_rate'])) {
+            $errors[] = 'Manifest must specify a valid cost_model.maker_rate as a decimal fraction between 0.0000 and 0.1000.';
+        }
         if (! isset($cost['taker_rate']) || ! $this->validRate($cost['taker_rate'])) {
             $errors[] = 'Manifest must specify a valid cost_model.taker_rate as a decimal fraction between 0.0000 and 0.1000.';
         }
@@ -60,23 +63,43 @@ final class ExchangeManifestValidator
         }
 
         // 6. Precisions & Limits
-        if ($manifest->pricePrecision !== null && $manifest->pricePrecision < 0) {
-            $errors[] = 'price_precision cannot be negative.';
+        if ($manifest->pricePrecision === null || $manifest->pricePrecision < 0) {
+            $errors[] = 'price_precision must be explicitly specified and non-negative.';
         }
-        if ($manifest->qtyPrecision !== null && $manifest->qtyPrecision < 0) {
-            $errors[] = 'qty_precision cannot be negative.';
+        if ($manifest->qtyPrecision === null || $manifest->qtyPrecision < 0) {
+            $errors[] = 'qty_precision must be explicitly specified and non-negative.';
         }
-        if ($manifest->minQty !== null && (! is_numeric($manifest->minQty) || BigDecimal::of($manifest->minQty)->isLessThanOrEqualTo(0))) {
-            $errors[] = 'min_qty must be a positive numeric value.';
+        if ($manifest->minQty === null || ! is_numeric($manifest->minQty) || BigDecimal::of($manifest->minQty)->isLessThanOrEqualTo(0)) {
+            $errors[] = 'min_qty must be explicitly specified as a positive numeric value.';
         }
-        if ($manifest->minNotional !== null && (! is_numeric($manifest->minNotional) || BigDecimal::of($manifest->minNotional)->isLessThanOrEqualTo(0))) {
-            $errors[] = 'min_notional must be a positive numeric value.';
+        if ($manifest->minNotional === null || ! is_numeric($manifest->minNotional) || BigDecimal::of($manifest->minNotional)->isLessThanOrEqualTo(0)) {
+            $errors[] = 'min_notional must be explicitly specified as a positive numeric value.';
+        }
+
+        // Declarative endpoints must remain on the manifest's exchange host.
+        // Reject absolute/protocol-relative URLs before persisting the manifest.
+        foreach ($manifest->endpoints as $key => $path) {
+            if (! is_string($path) || trim($path) === ''
+                || preg_match('~^[a-z][a-z0-9+.-]*:~i', $path)
+                || str_starts_with($path, '//') || str_contains($path, "\0")
+                || str_contains($path, '\\') || str_contains($path, '#')
+                || str_contains($path, '?') || preg_match('~(?:^|/)\.\.(?:/|$)~', $path)
+                || preg_match('/[\r\n]/', $path)) {
+                $errors[] = "Unsafe or invalid exchange endpoint '{$key}'. Use a relative path.";
+            }
         }
 
         // 7. Base URL SSRF & Security Validation
         if ($manifest->baseUrl !== null) {
             if (! filter_var($manifest->baseUrl, FILTER_VALIDATE_URL)) {
                 $errors[] = "Invalid base_url '{$manifest->baseUrl}'.";
+            } elseif (strtolower((string) parse_url($manifest->baseUrl, PHP_URL_SCHEME)) !== 'https') {
+                $errors[] = 'Declarative exchange base_url must use HTTPS.';
+            } elseif (parse_url($manifest->baseUrl, PHP_URL_USER) !== null
+                || parse_url($manifest->baseUrl, PHP_URL_PASS) !== null
+                || parse_url($manifest->baseUrl, PHP_URL_QUERY) !== null
+                || parse_url($manifest->baseUrl, PHP_URL_FRAGMENT) !== null) {
+                $errors[] = 'Declarative exchange base_url must not include credentials, query parameters or fragments.';
             } else {
                 $security = app(ExchangeUrlSecurityValidator::class)->validateUrl($manifest->baseUrl);
                 if (! $security['safe']) {

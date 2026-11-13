@@ -144,7 +144,7 @@ final class MlAuthorityAndProperScoringPostgresIntegrationTest extends TestCase
         ]);
 
         self::assertSame(SignalSide::Skip, $evaluatedDecision->side, 'Must fail-closed to SKIP when eligible ML is required.');
-        self::assertContains('ml_advisory_no_eligible_model_fail_closed', $evaluatedDecision->reasons);
+        self::assertContains('ml_advisory_no_active_model_fail_closed', $evaluatedDecision->reasons);
         self::assertSame(85, $evaluatedDecision->score, 'Original score must be preserved for audit.');
 
         // Mode B: ALLOW_UNFILTERED
@@ -162,7 +162,7 @@ final class MlAuthorityAndProperScoringPostgresIntegrationTest extends TestCase
         ]);
 
         self::assertSame(SignalSide::Buy, $evaluatedDecisionB->side, 'Deterministic proposal must proceed unfiltered when policy authorizes.');
-        self::assertNotContains('ml_advisory_no_eligible_model_fail_closed', $evaluatedDecisionB->reasons);
+        self::assertNotContains('ml_advisory_no_active_model_fail_closed', $evaluatedDecisionB->reasons);
 
         // Verify paper accounts were not mutated by advisory evaluation
         $accountsAfter = PaperAccountRecord::query()->pluck('current_equity', 'id')->toArray();
@@ -182,7 +182,7 @@ final class MlAuthorityAndProperScoringPostgresIntegrationTest extends TestCase
         // Clean any existing models for this symbol and target
         LearningModelArtifactRecord::query()
             ->where('target_event', $targetEvent)
-            ->where('name', "Logistic_{$targetEvent}_{$symbol}")
+            ->where('name', LearningPredictorService::scopedModelName($targetEvent, $symbol, 'bybit', 'trend_pullback'))
             ->delete();
 
         // Seed 14 synthetic matured observations (10 train, 4 holdout)
@@ -213,12 +213,14 @@ final class MlAuthorityAndProperScoringPostgresIntegrationTest extends TestCase
                 'label_outcome' => $isTp ? 'TP' : 'SL',
                 'label_r_multiple' => $isTp ? 2.0 : -1.0,
                 'outcome_at' => $now->subDays(20 - $i)->addHours(2),
-                'data_quality' => ['exchange' => 'bybit', 'verified' => true],
+                'data_quality' => ['exchange' => 'bybit', 'category' => 'linear', 'side' => 'BUY',
+                    'strategy_version' => 'UNVERSIONED', 'label_policy_version' => 'SIGNAL_PROXY_V2',
+                    'no_look_ahead_verified' => true],
             ]);
         }
 
         $predictor = app(LearningPredictorService::class);
-        $model = $predictor->trainModel($targetEvent, $symbol);
+        $model = $predictor->trainModel($targetEvent, $symbol, strategyId: 'trend_pullback');
 
         self::assertNotNull($model, 'Model must be trained from matured snapshots.');
         $this->cleanUpModelIds[] = $model->id;
@@ -232,8 +234,8 @@ final class MlAuthorityAndProperScoringPostgresIntegrationTest extends TestCase
         self::assertGreaterThanOrEqual(0.0, $model->metrics['training_prevalence']);
         self::assertLessThanOrEqual(1.0, $model->metrics['training_prevalence']);
 
-        // Model that beats baseline and passes gates is ACTIVE champion
-        self::assertSame('ACTIVE', $model->status);
+        // Proxy labels can verify proper scoring without granting advisory authority
+        self::assertSame('CANDIDATE', $model->status);
         self::assertGreaterThanOrEqual(0.0, $model->metrics['brier_skill_score']);
     }
 

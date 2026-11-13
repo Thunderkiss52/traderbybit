@@ -70,6 +70,7 @@ final class ResearchJobController extends Controller
                 'strategy_version' => ['nullable', 'string', 'max:64'],
                 'configuration_hash' => ['nullable', 'string', 'max:64'],
                 'algorithm_version' => ['nullable', 'string', 'max:64'],
+                'code_revision' => ['nullable', 'string', 'max:64'],
                 'model_version' => ['nullable', 'string', 'max:64'],
                 'dataset_id' => ['nullable', 'uuid'],
                 'dataset_sha256' => ['nullable', 'string', 'size:64'],

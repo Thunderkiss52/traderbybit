@@ -140,3 +140,11 @@ test('profitability payload validation rejects missing HTTP 200 data and preserv
   }
   assert.equal(requirePayload({ net_pnl: '0.00' }, ['net_pnl']).net_pnl, '0.00');
 });
+
+
+test('signal explorer defaults to ten rows and unknown profitability is not rendered as 0%', () => {
+  const page = readFileSync(resolve(process.cwd(), 'src/pages/ProfitabilityResearchPage.vue'), 'utf8');
+  assert.match(page, /rowsPerPage:\s*10,/);
+  assert.doesNotMatch(page, /outcome_distribution\?\.good_percent\s*\?\?\s*0/);
+  assert.match(page, /outcome_distribution\?\.good_percent\s*==\s*null/);
+});

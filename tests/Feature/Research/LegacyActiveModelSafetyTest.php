@@ -35,11 +35,11 @@ final class LegacyActiveModelSafetyTest extends TestCase
 {
     use RefreshDatabase;
 
-    private function createLegacyActiveModel(string $symbol = 'BTCUSDT', string $targetEvent = 'TP_BEFORE_SL'): LearningModelArtifactRecord
+    private function createLegacyActiveModel(string $symbol = 'BTCUSDT', string $targetEvent = 'TP_BEFORE_SL', bool $scoped = false): LearningModelArtifactRecord
     {
         return LearningModelArtifactRecord::query()->create([
             'id' => '2fcc2ec5-5446-4187-8e56-cacb66ba7fcd',
-            'name' => "Logistic_{$targetEvent}_{$symbol}",
+            'name' => $scoped ? LearningPredictorService::scopedModelName($targetEvent, $symbol, 'bybit', strategyVersion: '1.3.0') : "Logistic_{$targetEvent}_{$symbol}",
             'model_type' => 'LOGISTIC_REGRESSION',
             'target_event' => $targetEvent,
             'version' => 'v20261018.145406',
@@ -162,7 +162,7 @@ final class LegacyActiveModelSafetyTest extends TestCase
         ]);
 
         // 2. Seed legacy ACTIVE model
-        $legacyModel = $this->createLegacyActiveModel($symbol, $targetEvent);
+        $legacyModel = $this->createLegacyActiveModel($symbol, $targetEvent, scoped: true);
 
         // 3. Configure ModelAdvisoryService in ACTIVE mode with FAIL_CLOSED_SKIP
         $advisory = new ModelAdvisoryService(
@@ -212,7 +212,7 @@ final class LegacyActiveModelSafetyTest extends TestCase
         $symbol = 'BTCUSDT';
         $targetEvent = 'TP_BEFORE_SL';
 
-        $legacyModel = $this->createLegacyActiveModel($symbol, $targetEvent);
+        $legacyModel = $this->createLegacyActiveModel($symbol, $targetEvent, scoped: true);
 
         // Configure ModelAdvisoryService with ALLOW_UNFILTERED
         $advisory = new ModelAdvisoryService(
@@ -246,6 +246,23 @@ final class LegacyActiveModelSafetyTest extends TestCase
         self::assertNotNull($event);
         self::assertSame('BUY', $event->previous_state);
         self::assertSame('BUY', $event->new_state);
+    }
+
+    public function test_unscoped_legacy_model_never_enters_inference_or_changes_history(): void
+    {
+        $legacy = $this->createLegacyActiveModel();
+        $predictor = $this->createMock(LearningPredictorService::class);
+        $predictor->expects(self::never())->method('predictCalibrated');
+        $advisor = new ModelAdvisoryService(
+            predictor: $predictor, autonomy: app(AutonomyPermissionService::class),
+            config: ['enabled' => true, 'mode' => 'ACTIVE', 'fallback_policy' => 'FAIL_CLOSED_SKIP']
+        );
+        $decision = $advisor->advise($this->createSampleBuyDecision(), []);
+        self::assertSame(SignalSide::Skip, $decision->side);
+        self::assertContains('ml_advisory_no_active_model_fail_closed', $decision->reasons);
+        self::assertNull($decision->indicatorSnapshot['model_advisory']['calibrated_probability']);
+        self::assertSame('ACTIVE', $legacy->fresh()->status);
+        self::assertSame('Logistic_TP_BEFORE_SL_BTCUSDT', $legacy->fresh()->name);
     }
 
     public function test_missing_model_under_mandatory_active_ml_converts_to_skip(): void
@@ -308,12 +325,13 @@ final class LegacyActiveModelSafetyTest extends TestCase
         // Create an eligible model
         LearningModelArtifactRecord::query()->create([
             'id' => (string) Uuid::uuid4(),
-            'name' => "Logistic_{$targetEvent}_{$symbol}",
+            'name' => LearningPredictorService::scopedModelName($targetEvent, $symbol, 'bybit', strategyVersion: '1.3.0'),
             'version' => 'v2.0.0',
             'model_type' => 'LOGISTIC_REGRESSION',
             'target_event' => $targetEvent,
             'parameters' => [
-                'exchange' => 'bybit',
+                'exchange' => 'bybit', 'category' => 'linear', 'strategy_id' => 'baseline',
+                'strategy_version' => '1.3.0', 'timeframe' => '15', 'side' => 'BUY',
                 'approved_for_advisory' => true,
                 'gate6_validation' => ['all_gates_passed' => true, 'policy_version' => '4.0.0'],
             ],
@@ -347,6 +365,7 @@ final class LegacyActiveModelSafetyTest extends TestCase
         self::assertContains('ml_advisory_inference_error_fail_closed', $advised->reasons);
         self::assertTrue($advised->indicatorSnapshot['model_advisory']['altered_decision']);
         self::assertSame('INFERENCE_ERROR', $advised->indicatorSnapshot['model_advisory']['status']);
+        self::assertNull($advised->indicatorSnapshot['model_advisory']['calibrated_probability']);
     }
 
     public function test_invalid_model_artifact_gates_breached_under_fail_closed_skip(): void
@@ -357,12 +376,13 @@ final class LegacyActiveModelSafetyTest extends TestCase
         // Create an approved model whose metrics breached validation gates (Brier 0.35 > 0.28)
         LearningModelArtifactRecord::query()->create([
             'id' => (string) Uuid::uuid4(),
-            'name' => "Logistic_{$targetEvent}_{$symbol}",
+            'name' => LearningPredictorService::scopedModelName($targetEvent, $symbol, 'bybit', strategyVersion: '1.3.0'),
             'version' => 'v2.0.0',
             'model_type' => 'LOGISTIC_REGRESSION',
             'target_event' => $targetEvent,
             'parameters' => [
-                'exchange' => 'bybit',
+                'exchange' => 'bybit', 'category' => 'linear', 'strategy_id' => 'baseline',
+                'strategy_version' => '1.3.0', 'timeframe' => '15', 'side' => 'BUY',
                 'approved_for_advisory' => true,
                 'gate6_validation' => ['all_gates_passed' => true, 'policy_version' => '4.0.0'],
             ],
@@ -402,7 +422,7 @@ final class LegacyActiveModelSafetyTest extends TestCase
         // Seed model in RETIRED or SUPERSEDED status
         LearningModelArtifactRecord::query()->create([
             'id' => (string) Uuid::uuid4(),
-            'name' => "Logistic_{$targetEvent}_{$symbol}",
+            'name' => LearningPredictorService::scopedModelName($targetEvent, $symbol, 'bybit', strategyVersion: '1.3.0'),
             'version' => 'v1.0.0',
             'model_type' => 'LOGISTIC_REGRESSION',
             'target_event' => $targetEvent,

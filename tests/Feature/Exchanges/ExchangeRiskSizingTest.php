@@ -7,6 +7,7 @@ namespace Tests\Feature\Exchanges;
 use App\Exchanges\Binance\BinancePaperCapital;
 use App\Exchanges\Binance\BinancePaperProvisioner;
 use App\Exchanges\Binance\ExchangePaperReconciliation;
+use App\Exchanges\Infrastructure\Persistence\ExchangeRecord;
 use App\PaperTrading\Application\PaperAccountService;
 use App\PaperTrading\Application\PaperProcessingService;
 use App\PaperTrading\Infrastructure\Persistence\PaperAccountRecord;
@@ -21,12 +22,14 @@ use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Str;
+use Tests\Concerns\SeedsValidatedPaperEvidence;
 use Tests\TestCase;
 
 /** Synthetic isolated lifecycle evidence; never prospective return evidence. */
 final class ExchangeRiskSizingTest extends TestCase
 {
     use RefreshDatabase;
+    use SeedsValidatedPaperEvidence;
 
     protected function setUp(): void
     {
@@ -39,15 +42,20 @@ final class ExchangeRiskSizingTest extends TestCase
     public function test_exchange_costs_drive_risk_and_fill_sizing_and_reconcile_after_retry(): void
     {
         $accounts = $this->accounts();
+        $signals = [];
+        foreach (['bybit', 'binance'] as $exchange) {
+            $this->market($exchange);
+            $signals[$exchange] = $this->signal($exchange);
+            $this->seedValidatedPaperEvidence($signals[$exchange]);
+        }
         $accountIds = array_map(fn (PaperAccountRecord $account) => $account->id, $accounts);
         $untouched = DB::table('paper_accounts')->whereNotIn('id', $accountIds)->orderBy('id')->get()->toJson();
         foreach (['bybit', 'binance'] as $exchange) {
-            $this->market($exchange);
-            $signal = $this->signal($exchange);
+            $signal = $signals[$exchange];
             $service = app(PaperProcessingService::class);
             $service->process($accounts[$exchange]->id, 'BTCUSDT', new DateTimeImmutable('2026-10-14T10:20:00Z'));
             $risk = RiskDecisionRecord::query()->where('signal_id', $signal->id)->firstOrFail();
-            self::assertTrue($risk->allowed);
+            self::assertTrue($risk->allowed, json_encode(['reasons' => $risk->reasons, 'snapshot' => $risk->snapshot], JSON_THROW_ON_ERROR));
             // Independent hand calculation: risk=50, reference entry=101, stop=95.
             // Binance loss/unit=6+196*(0.001+0.002)=6.588; floor to .001.
             $expectedRiskSize = $exchange === 'binance' ? '7.589' : '8.134';
@@ -89,6 +97,27 @@ final class ExchangeRiskSizingTest extends TestCase
         Http::assertNothingSent();
     }
 
+    public function test_missing_scoped_performance_evidence_blocks_both_venues_without_financial_mutations(): void
+    {
+        $accounts = $this->accounts();
+        $balances = static fn (): string => DB::table('paper_accounts')->orderBy('id')
+            ->get(['id', 'starting_balance', 'current_equity', 'realized_pnl', 'unrealized_pnl', 'reserved_risk'])->toJson();
+        $before = $balances();
+        foreach (['bybit', 'binance'] as $exchange) {
+            $this->market($exchange);
+            $signal = $this->signal($exchange);
+            app(PaperProcessingService::class)->process($accounts[$exchange]->id, 'BTCUSDT', new DateTimeImmutable('2026-10-14T10:20:00Z'));
+            $risk = RiskDecisionRecord::query()->where('signal_id', $signal->id)->sole();
+            self::assertFalse($risk->allowed);
+            self::assertContains('missing_or_stale_validated_edge_or_cost_evidence', $risk->reasons);
+            self::assertSame(0, $risk->snapshot['sample_size']);
+        }
+        self::assertSame(0, VirtualPositionRecord::query()->count());
+        self::assertSame(0, DB::table('virtual_executions')->count());
+        self::assertSame($before, $balances());
+        Http::assertNothingSent();
+    }
+
     public function test_missing_binance_costs_fail_before_any_risk_or_fill_writes(): void
     {
         $accounts = $this->accounts();
@@ -118,6 +147,23 @@ final class ExchangeRiskSizingTest extends TestCase
         // Synthetic test-only cost assumptions, not claims about exchange fees.
         config()->set('exchanges.binance.paper_taker_rate', '0.001');
         config()->set('exchanges.binance.paper_slippage_rate', '0.002');
+        ExchangeRecord::query()->findOrFail('binance')->update([
+            'market_type' => 'linear_perpetual',
+            'lifecycle_status' => 'ACTIVE_PAPER', 'paper_approved' => true,
+            'paper_approved_at' => now(),
+            'capabilities' => [
+                'has_candles' => true, 'has_funding' => true, 'has_open_interest' => true,
+                'supported_timeframes' => ['5', '15', '30', '60'],
+                'price_precision' => 1, 'qty_precision' => 3,
+                'min_qty' => '0.001', 'min_notional' => '5',
+            ],
+            'cost_model' => [
+                'version' => 'SYNTHETIC-ISOLATED-LIFECYCLE',
+                'maker_rate' => '0.0002', 'taker_rate' => '0.001', 'slippage_rate' => '0.002',
+            ],
+            'paper_execution_assumptions' => ['execution_model' => 'NEXT_CANDLE_OPEN'],
+            'metadata' => ['synthetic_test_only' => true],
+        ]);
         app(PaperAccountService::class)->allPrimaryAccounts();
         app(BinancePaperProvisioner::class)->provision();
         app(BinancePaperCapital::class)->allocate('10000', 'SYNTHETIC-ISOLATED-LIFECYCLE');

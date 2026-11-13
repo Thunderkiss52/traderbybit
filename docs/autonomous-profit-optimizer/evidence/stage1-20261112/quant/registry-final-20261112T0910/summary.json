@@ -1,0 +1,27 @@
+{
+  "head": "4846221053bee52f8e819dfc22e92fe73c032a6e",
+  "root_tests_passed": 110,
+  "subtests_passed": 100,
+  "skips": [],
+  "failed": [],
+  "packages_passed": 16,
+  "source_unchanged": true,
+  "changed_sources": [],
+  "gofmt_command": [
+    "/home/thunder/work/.vector-apo-evidence-20261112/quant/toolchain/go/bin/gofmt",
+    "-l",
+    "internal/signalintel",
+    "internal/jobrunner/runner.go",
+    "internal/jobrunner/runner_test.go",
+    "internal/jobrunner/signal_markout_test.go",
+    "cmd/signal-intelligence"
+  ],
+  "gofmt_exit_code": 0,
+  "unformatted_files": [],
+  "gomaxprocs": 2,
+  "postgres_container": "vector-apo-quant-pg-20261111",
+  "postgres_port": 50082,
+  "lifecycle_database": "bybit_test",
+  "markout_database": "signal_markout_test",
+  "benchmark_evidence": "../final-20261112T0900/benchmarks.log"
+}

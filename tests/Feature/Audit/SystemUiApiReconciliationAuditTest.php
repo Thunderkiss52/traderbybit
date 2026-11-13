@@ -40,7 +40,11 @@ class SystemUiApiReconciliationAuditTest extends TestCase
             $this->assertArrayHasKey('binance', $strat['exchanges']);
             $this->assertTrue($strat['exchanges']['bybit']['provisioned']);
             $this->assertSame('ACTIVE', $strat['exchanges']['bybit']['account_status']);
-            $this->assertTrue($strat['exchanges']['bybit']['execution_eligible']);
+            $bybit = $strat['exchanges']['bybit'];
+            $this->assertArrayHasKey('execution_block_reason', $bybit);
+            $this->assertSame($bybit['execution_block_reason'] === null, $bybit['execution_eligible']);
+            // Provisioned or ACTIVE is not equivalent to eligible: exchange approval,
+            // risk, drawdown, capital, and strategy assignment must also pass.
         }
     }
 

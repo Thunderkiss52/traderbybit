@@ -155,10 +155,14 @@ final class ExchangeStrategyCompatibilityTest extends TestCase
             ->count();
         self::assertSame(count(PrimaryStrategies::ids()), $paperAccountsCount);
         self::assertSame(0, PaperAccountRecord::query()->where('exchange_id', 'kraken_futures')->where('status', '!=', 'BLOCKED')->count());
-        self::assertTrue(BigDecimal::of((string) PaperAccountRecord::query()->where('exchange_id', 'kraken_futures')->sum('starting_balance'))->isPositive());
+        self::assertTrue(BigDecimal::of((string) PaperAccountRecord::query()->where('exchange_id', 'kraken_futures')->sum('starting_balance'))->isZero());
+        foreach (PaperAccountRecord::query()->where('exchange_id', 'kraken_futures')->get() as $account) {
+            self::assertSame('READINESS_PENDING', $account->execution_block_origin);
+        }
 
         // Invariant: Exchange lifecycle status remains unapproved for paper execution
         $freshExchange = ExchangeRecord::query()->findOrFail('kraken_futures');
+        self::assertFalse($freshExchange->paper_eligible);
         self::assertFalse($freshExchange->paper_approved, 'Newly registered exchange must NOT be paper approved automatically.');
         self::assertNotSame('ACTIVE_PAPER', $freshExchange->lifecycle_status, 'Exchange must NOT be ACTIVE_PAPER upon discovery.');
     }

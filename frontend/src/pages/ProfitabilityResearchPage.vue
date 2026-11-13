@@ -93,7 +93,7 @@ const explorerError = ref('');
 const explorerSignals = ref<any[]>([]);
 const explorerPagination = ref({
   page: 1,
-  rowsPerPage: 20,
+  rowsPerPage: 10,
   rowsNumber: 0,
   sortBy: 'decision_time',
   descending: true,
@@ -944,6 +944,26 @@ onMounted(() => {
             </div>
             <div class="col-12 col-sm-6 col-md-2">
               <q-select
+                v-model="signalGateDecision"
+                dense
+                outlined
+                label="Решение Risk Gate"
+                :options="['all', 'ELIGIBLE', 'CONDITIONALLY_ELIGIBLE', 'OBSERVATION_ONLY', 'INSUFFICIENT_EVIDENCE', 'REJECTED', 'PENDING']"
+                @update:model-value="loadSignalAnalytics(); loadSignalExplorer();"
+              />
+            </div>
+            <div class="col-12 col-sm-6 col-md-2">
+              <q-select
+                v-model="signalExecutionStatus"
+                dense
+                outlined
+                label="Статус исполнения"
+                :options="['all', 'EXECUTED', 'NON_EXECUTED', 'REJECTED', 'OBSERVATION_ONLY']"
+                @update:model-value="loadSignalAnalytics(); loadSignalExplorer();"
+              />
+            </div>
+            <div class="col-12 col-sm-6 col-md-2">
+              <q-select
                 v-model="signalOutcome"
                 dense
                 outlined
@@ -990,7 +1010,7 @@ onMounted(() => {
               <div class="text-h6 text-bold text-primary">
                 {{ signalAnalyticsData?.overview?.win_rate ?? 0 }}%
               </div>
-              <div class="text-caption text-grey-6">PF: {{ signalAnalyticsData?.overview?.profit_factor ?? 0 }} · Max DD: {{ signalAnalyticsData?.overview?.max_drawdown ?? 0 }}%</div>
+              <div class="text-caption text-grey-6">PF: {{ signalAnalyticsData?.overview?.profit_factor ?? '—' }} · {{ signalAnalyticsData?.overview?.max_drawdown_scope === 'MAX_ACCOUNT_DRAWDOWN_NOT_AGGREGATE' ? 'Max DD счёта' : 'Max DD сегмента' }}: {{ signalAnalyticsData?.overview?.max_drawdown == null ? '—' : `${signalAnalyticsData.overview.max_drawdown}%` }}</div>
             </q-card>
           </div>
 
@@ -1040,7 +1060,7 @@ onMounted(() => {
               <div class="text-caption text-bold text-grey-5 q-mb-xs">РАСПРЕДЕЛЕНИЕ ИСХОДОВ И КАЧЕСТВА:</div>
               <div class="q-gutter-xs">
                 <q-chip dense color="positive" text-color="white" icon="check_circle">
-                  GOOD: {{ signalAnalyticsData?.overview?.outcome_distribution?.GOOD ?? 0 }} ({{ signalAnalyticsData?.overview?.outcome_distribution?.good_percent ?? 0 }}%)
+                  GOOD: {{ signalAnalyticsData?.overview?.outcome_distribution?.GOOD ?? 0 }} ({{ signalAnalyticsData?.overview?.outcome_distribution?.good_percent == null ? '—' : `${signalAnalyticsData.overview.outcome_distribution.good_percent}%` }})
                 </q-chip>
                 <q-chip dense color="negative" text-color="white" icon="cancel">
                   BAD: {{ signalAnalyticsData?.overview?.outcome_distribution?.BAD ?? 0 }}
@@ -1075,11 +1095,11 @@ onMounted(() => {
               { name: 'exchange', label: 'Биржа', field: 'exchange', align: 'left', sortable: true },
               { name: 'signals', label: 'Сигналы', field: 'signals', align: 'right', sortable: true },
               { name: 'executed', label: 'Исполнено', field: 'executed', align: 'right', sortable: true },
-              { name: 'good_percent', label: 'GOOD %', field: 'good_percent', align: 'right', sortable: true, format: (v: any) => `${v}%` },
-              { name: 'win_rate', label: 'Win Rate', field: 'win_rate', align: 'right', sortable: true, format: (v: any) => `${v}%` },
+              { name: 'good_percent', label: 'GOOD %', field: 'good_percent', align: 'right', sortable: true, format: (v: any) => v === null || v === undefined ? '—' : `${v}%` },
+              { name: 'win_rate', label: 'Win Rate', field: 'win_rate', align: 'right', sortable: true, format: (v: any) => v === null || v === undefined ? '—' : `${v}%` },
               { name: 'net_pnl', label: 'Net PnL (USDT)', field: 'net_pnl', align: 'right', sortable: true },
               { name: 'expectancy', label: 'Ожидание/сигнал', field: 'expectancy', align: 'right', sortable: true },
-              { name: 'max_drawdown', label: 'Max DD', field: 'max_drawdown', align: 'right', sortable: true, format: (v: any) => `${v}%` },
+              { name: 'max_drawdown', label: 'Max DD счёта', field: 'max_drawdown', align: 'right', sortable: true, format: (v: any) => v == null ? '—' : `${v}%` },
             ]"
             :pagination="{ rowsPerPage: 10 }"
           />
@@ -1098,8 +1118,8 @@ onMounted(() => {
               { name: 'strategy', label: 'Стратегия', field: 'strategy', align: 'left', sortable: true },
               { name: 'signals', label: 'Сигналы', field: 'signals', align: 'right', sortable: true },
               { name: 'executed', label: 'Исполнено', field: 'executed', align: 'right', sortable: true },
-              { name: 'good_percent', label: 'GOOD %', field: 'good_percent', align: 'right', sortable: true, format: (v: any) => `${v}%` },
-              { name: 'win_rate', label: 'Win Rate', field: 'win_rate', align: 'right', sortable: true, format: (v: any) => `${v}%` },
+              { name: 'good_percent', label: 'GOOD %', field: 'good_percent', align: 'right', sortable: true, format: (v: any) => v === null || v === undefined ? '—' : `${v}%` },
+              { name: 'win_rate', label: 'Win Rate', field: 'win_rate', align: 'right', sortable: true, format: (v: any) => v === null || v === undefined ? '—' : `${v}%` },
               { name: 'net_pnl', label: 'Net PnL (USDT)', field: 'net_pnl', align: 'right', sortable: true },
               { name: 'expectancy', label: 'Ожидание/сигнал', field: 'expectancy', align: 'right', sortable: true },
             ]"
@@ -1109,7 +1129,8 @@ onMounted(() => {
 
         <!-- Section D: Timeframe Comparison Table -->
         <q-card flat bordered class="q-pa-md q-mb-md">
-          <div class="text-subtitle1 text-bold q-mb-sm">Секция D: Сравнение канонических таймфреймов (1m, 3m, 5m, 15m, 30m, 60m)</div>
+          <div class="text-subtitle1 text-bold q-mb-sm">Секция D: Сравнение таймфреймов (1m, 3m, 5m, 15m, 30m, 60m)</div>
+          <div class="text-caption text-grey-7 q-mb-sm">Штатный PAPER-движок формирует независимые торговые решения на 15m. Другие интервалы не считаются проверенными торговыми сигналами без отдельных записей сигналов и подтверждения источника. «—» означает отсутствие статистической выборки.</div>
           <q-table
             flat
             dense
@@ -1120,7 +1141,7 @@ onMounted(() => {
               { name: 'timeframe', label: 'Таймфрейм', field: 'timeframe', align: 'left', sortable: true },
               { name: 'signals', label: 'Сигналы', field: 'signals', align: 'right', sortable: true },
               { name: 'executed', label: 'Исполнено', field: 'executed', align: 'right', sortable: true },
-              { name: 'win_rate', label: 'Win Rate', field: 'win_rate', align: 'right', sortable: true, format: (v: any) => `${v}%` },
+              { name: 'win_rate', label: 'Win Rate', field: 'win_rate', align: 'right', sortable: true, format: (v: any) => v === null || v === undefined ? '—' : `${v}%` },
               { name: 'net_pnl', label: 'Net PnL (USDT)', field: 'net_pnl', align: 'right', sortable: true },
               { name: 'profit_factor', label: 'Profit Factor', field: 'profit_factor', align: 'right', sortable: true },
               { name: 'expectancy', label: 'Ожидание/сигнал', field: 'expectancy', align: 'right', sortable: true },
@@ -1153,7 +1174,7 @@ onMounted(() => {
               { name: 'signals', label: 'Всего сигналов', field: 'signals', align: 'right', sortable: true },
               { name: 'executed', label: 'Исполнено', field: 'executed', align: 'right', sortable: true },
               { name: 'rejected', label: 'Отклонено', field: 'rejected', align: 'right', sortable: true },
-              { name: 'win_rate', label: 'Win Rate', field: 'win_rate', align: 'right', sortable: true, format: (v: any) => `${v}%` },
+              { name: 'win_rate', label: 'Win Rate', field: 'win_rate', align: 'right', sortable: true, format: (v: any) => v === null || v === undefined ? '—' : `${v}%` },
               { name: 'net_pnl', label: 'Net PnL (USDT)', field: 'net_pnl', align: 'right', sortable: true },
               { name: 'expectancy', label: 'Ожидание/сигнал', field: 'expectancy', align: 'right', sortable: true },
             ]"
@@ -1282,7 +1303,7 @@ onMounted(() => {
                 <div class="text-caption text-grey-7">Классификация и Gate:</div>
                 <div>Качество (Quality): <strong class="text-indigo">{{ signalDetailData.signal_quality }}</strong></div>
                 <div>Риск (Trade Risk): <strong class="text-warning">{{ signalDetailData.trade_risk }}</strong></div>
-                <div>Решение Gate: <strong>{{ signalDetailData.gate_decision }}</strong> (Allowed: {{ signalDetailData.gate_allowed ? 'ДА' : 'НЕТ' }})</div>
+                <div>Решение Gate: <strong>{{ signalDetailData.gate_decision }}</strong> (Allowed: {{ signalDetailData.gate_decision === 'MULTIPLE_ACCOUNTS' ? 'ПО СЧЕТАМ' : (signalDetailData.gate_allowed ? 'ДА' : 'НЕТ') }})</div>
                 <div>Ретроспективный исход: <strong :class="signalDetailData.retrospective_outcome === 'GOOD' ? 'text-positive' : (signalDetailData.retrospective_outcome === 'BAD' ? 'text-negative' : 'text-grey')">{{ signalDetailData.retrospective_outcome }}</strong></div>
               </q-card>
             </div>
@@ -1318,6 +1339,27 @@ onMounted(() => {
           </div>
 
           <!-- Position Trace if Executed -->
+          <q-card flat bordered class="q-pa-md q-mb-md" v-if="signalDetailData.position_count > 1">
+            <div class="text-subtitle2 text-bold q-mb-sm">Позиции разных PAPER-счетов ({{ signalDetailData.position_count }})</div>
+            <div class="text-caption q-mb-sm">Результаты отображаются по каждому счёту отдельно. Единого решения Risk Gate для нескольких счетов нет.</div>
+            <q-markup-table dense flat bordered separator="horizontal">
+              <thead><tr><th>Счёт</th><th>Позиция</th><th>Статус</th><th class="text-right">Net PnL</th></tr></thead>
+              <tbody>
+                <tr v-for="p in signalDetailData.positions || []" :key="p.id">
+                  <td class="text-caption text-mono">{{ p.paper_account_id }}</td>
+                  <td class="text-caption text-mono">{{ p.id }}</td>
+                  <td>{{ p.status }}</td>
+                  <td class="text-right" :class="Number(p.net_pnl) >= 0 ? 'text-positive' : 'text-negative'">{{ p.net_pnl }} USDT</td>
+                </tr>
+              </tbody>
+            </q-markup-table>
+          </q-card>
+          <q-card flat bordered class="q-pa-md q-mb-md" v-if="signalDetailData.risk_decisions?.length > 1">
+            <div class="text-subtitle2 text-bold q-mb-sm">Сохранённые решения Risk Gate по счетам</div>
+            <div v-for="d in signalDetailData.risk_decisions" :key="d.id" class="text-caption q-mb-xs">
+              {{ d.paper_account_id }}: {{ d.allowed ? 'ALLOWED' : 'REJECTED' }} — {{ (d.reasons || []).join(', ') || '—' }}
+            </div>
+          </q-card>
           <q-card flat bordered class="q-pa-md" v-if="signalDetailData.position">
             <div class="text-subtitle2 text-bold q-mb-xs">Связанная позиция PAPER (Virtual Position):</div>
             <div class="row q-col-gutter-sm text-caption">

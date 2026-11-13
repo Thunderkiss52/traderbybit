@@ -1,0 +1,228 @@
+{
+  "head": "4846221053bee52f8e819dfc22e92fe73c032a6e",
+  "snapshot": "/home/thunder/work/.vector-apo-evidence-20261112/timeframe/full-source-2",
+  "captured_at": "2026-11-12T14:48:47.660495+00:00",
+  "build_seconds": 22.672,
+  "builds": [
+    {
+      "command": [
+        "docker",
+        "run",
+        "--rm",
+        "--label",
+        "vector.task=apo-timeframe-20261112",
+        "--memory",
+        "2g",
+        "--cpus",
+        "2",
+        "-e",
+        "CGO_ENABLED=0",
+        "-e",
+        "GOMAXPROCS=2",
+        "-e",
+        "GOCACHE=/cache",
+        "-v",
+        "/home/thunder/work/.vector-apo-evidence-20261112/timeframe/full-source-2:/app",
+        "-v",
+        "/home/thunder/work/.vector-apo-evidence-20261112/timeframe/go-cache:/cache",
+        "-w",
+        "/app/research-go",
+        "--entrypoint",
+        "go",
+        "sha256:f0f96555233b6c3b36fd9b525e8d2abcfe6226c74b499bcc6702b49e0ff3fe3c",
+        "build",
+        "-trimpath",
+        "-o",
+        "bin/research-worker",
+        "./cmd/research-worker"
+      ],
+      "exit": 0
+    },
+    {
+      "command": [
+        "docker",
+        "run",
+        "--rm",
+        "--label",
+        "vector.task=apo-timeframe-20261112",
+        "--memory",
+        "2g",
+        "--cpus",
+        "2",
+        "-e",
+        "CGO_ENABLED=0",
+        "-e",
+        "GOMAXPROCS=2",
+        "-e",
+        "GOCACHE=/cache",
+        "-v",
+        "/home/thunder/work/.vector-apo-evidence-20261112/timeframe/full-source-2:/app",
+        "-v",
+        "/home/thunder/work/.vector-apo-evidence-20261112/timeframe/go-cache:/cache",
+        "-w",
+        "/app/research-go",
+        "--entrypoint",
+        "go",
+        "sha256:f0f96555233b6c3b36fd9b525e8d2abcfe6226c74b499bcc6702b49e0ff3fe3c",
+        "build",
+        "-trimpath",
+        "-o",
+        "bin/strategy-dsl",
+        "./cmd/strategy-dsl"
+      ],
+      "exit": 0
+    },
+    {
+      "command": [
+        "docker",
+        "run",
+        "--rm",
+        "--label",
+        "vector.task=apo-timeframe-20261112",
+        "--memory",
+        "2g",
+        "--cpus",
+        "2",
+        "-e",
+        "CGO_ENABLED=0",
+        "-e",
+        "GOMAXPROCS=2",
+        "-e",
+        "GOCACHE=/cache",
+        "-v",
+        "/home/thunder/work/.vector-apo-evidence-20261112/timeframe/full-source-2:/app",
+        "-v",
+        "/home/thunder/work/.vector-apo-evidence-20261112/timeframe/go-cache:/cache",
+        "-w",
+        "/app/research-go",
+        "--entrypoint",
+        "go",
+        "sha256:f0f96555233b6c3b36fd9b525e8d2abcfe6226c74b499bcc6702b49e0ff3fe3c",
+        "build",
+        "-trimpath",
+        "-o",
+        "bin/signal-intelligence",
+        "./cmd/signal-intelligence"
+      ],
+      "exit": 0
+    },
+    {
+      "command": [
+        "docker",
+        "run",
+        "--rm",
+        "--label",
+        "vector.task=apo-timeframe-20261112",
+        "--memory",
+        "2g",
+        "--cpus",
+        "2",
+        "-e",
+        "CGO_ENABLED=0",
+        "-e",
+        "GOMAXPROCS=2",
+        "-e",
+        "GOCACHE=/cache",
+        "-v",
+        "/home/thunder/work/.vector-apo-evidence-20261112/timeframe/full-source-2:/app",
+        "-v",
+        "/home/thunder/work/.vector-apo-evidence-20261112/timeframe/go-cache:/cache",
+        "-w",
+        "/app/research-go",
+        "--entrypoint",
+        "go",
+        "sha256:f0f96555233b6c3b36fd9b525e8d2abcfe6226c74b499bcc6702b49e0ff3fe3c",
+        "build",
+        "-trimpath",
+        "-o",
+        "bin/historical-import",
+        "./cmd/historical-import"
+      ],
+      "exit": 0
+    },
+    {
+      "command": [
+        "docker",
+        "run",
+        "--rm",
+        "--label",
+        "vector.task=apo-timeframe-20261112",
+        "--memory",
+        "2g",
+        "--cpus",
+        "2",
+        "-e",
+        "CGO_ENABLED=0",
+        "-e",
+        "GOMAXPROCS=2",
+        "-e",
+        "GOCACHE=/cache",
+        "-v",
+        "/home/thunder/work/.vector-apo-evidence-20261112/timeframe/full-source-2:/app",
+        "-v",
+        "/home/thunder/work/.vector-apo-evidence-20261112/timeframe/go-cache:/cache",
+        "-w",
+        "/app/research-go",
+        "--entrypoint",
+        "go",
+        "sha256:f0f96555233b6c3b36fd9b525e8d2abcfe6226c74b499bcc6702b49e0ff3fe3c",
+        "build",
+        "-trimpath",
+        "-o",
+        "bin/historical-replay",
+        "./cmd/historical-replay"
+      ],
+      "exit": 0
+    }
+  ],
+  "manifest_sha256": "730b828f6bbbd598036903064425b90674581a732202649fcdf34a8b9b8f47fe",
+  "binaries": {
+    "bin/research-worker": "41c0463b6dbf9f6fddd47188697a5d236de06268baa4c05213d76288ea32812f",
+    "research-go/bin/historical-replay": "bf347c731b4d8861e667330c44438fb2b61a66c546aa26a375a7c0d0d735e051",
+    "research-go/bin/signal-intelligence": "3a5579988663ed2db04ccf1bf09f3fbe59a1345b57815786a5f42bd90da7facb",
+    "research-go/bin/historical-import": "6040fbdda7030679743737576fb25c48eff796136d0e73a4cd837fb218397972",
+    "research-go/bin/research-worker": "41c0463b6dbf9f6fddd47188697a5d236de06268baa4c05213d76288ea32812f",
+    "research-go/bin/strategy-dsl": "0b2d12f98a34a79084b91acbe0dd04edd220e4de8c176fae274e01463861aa14"
+  },
+  "test_inventory_count": 1677,
+  "inventory_sha256": "06c3493eca6e4517dea0c9755da890adf0abd8b7772f04ff49a24e43e212e3f2",
+  "isolation": {
+    "vector-apo-timeframe-fixtures-pg-20261112": {
+      "image_id": "sha256:79bd7c99e923138f136f8009d6bffa66e21e9d4fda5c0c561b00fc9c90cfe537",
+      "labels": {
+        "vector.role": "fixture-regression",
+        "vector.task": "apo-timeframe-20261112"
+      },
+      "ports": {
+        "5432/tcp": [
+          {
+            "HostIp": "127.0.0.1",
+            "HostPort": "50083"
+          }
+        ]
+      }
+    },
+    "vector-apo-timeframe-redis-20261112": {
+      "image_id": "sha256:f84b0c4678011602b9b98c227a4dcd5468bf8b088b02fdd4165cb7758bad8058",
+      "labels": {
+        "vector.task": "apo-timeframe-20261112"
+      },
+      "ports": {
+        "6379/tcp": [
+          {
+            "HostIp": "127.0.0.1",
+            "HostPort": "44723"
+          }
+        ]
+      }
+    }
+  },
+  "php_image": "sha256:8ebcc09ccc0258cab847564961ed8bb8cc3281e0479092930b6cab10c81982ae",
+  "git_status": " M .github/workflows/ci.yml\nM  .gitignore\n M app/Audit/Backtest/BacktestAuditCsv.php\n M app/Backtest/Application/BacktestRunService.php\n M app/Exchanges/Application/ExchangeCapabilityValidator.php\n M app/Exchanges/Application/ExchangeCatalogService.php\n M app/Exchanges/Application/ExchangeStrategyCompatibilityService.php\n M app/Exchanges/Domain/ExchangeManifest.php\n M app/Exchanges/Domain/ExchangeManifestValidator.php\n M app/Exchanges/ExchangeComparisonService.php\n M app/Exchanges/ExchangeRegistry.php\n M app/Exchanges/Http/ExchangeComparisonController.php\n M app/Exchanges/Infrastructure/AbstractExchangeAdapter.php\n M app/Exchanges/Infrastructure/DeclarativeExchangeAdapter.php\n M app/Http/Controllers/Api/V1/AutonomousLearningController.php\n M app/Http/Controllers/Api/V1/ProfitabilityResearchController.php\n M app/Http/Controllers/Api/V1/ResearchJobController.php\n M app/Http/Controllers/Api/V1/StrategyMonitorController.php\n M app/Http/Controllers/Api/V1/StrategyResearchController.php\n M app/MarketData/Jobs/RecoverCandleGapsJob.php\n M app/PaperTrading/Application/NewPrimaryCapitalPolicy.php\n M app/PaperTrading/Application/PaperExecutionEligibilityService.php\n M app/PaperTrading/Application/PaperExecutionEngine.php\n M app/PaperTrading/Application/PaperProcessingService.php\n M app/PaperTrading/Application/PaperTopologySynchronizer.php\n M app/PaperTrading/Application/PolicyComparisonEvaluationService.php\n M app/PaperTrading/Application/PositionLifecycleService.php\n M app/PaperTrading/Application/PreExecutionQualityRiskGate.php\n M app/PaperTrading/Application/TradeRiskClassificationService.php\n M app/Research/Application/AdaptiveTimeframeResearchService.php\n M app/Research/Application/LearningFeatureStoreService.php\n M app/Research/Application/LearningPredictorService.php\n M app/Research/Application/ModelAdvisoryService.php\n M app/Research/Application/ResearchJobService.php\n M app/Research/Application/SignalQualityAnalyticsService.php\n M app/Research/Application/SlippageAttributionService.php\n M app/Research/Application/StrategyEvolutionService.php\n M app/Research/Jobs/EvaluateStrategyCandidateJob.php\n M app/Research/Jobs/ProcessAutonomousLearningJob.php\n M app/Security/ExchangeUrlSecurityValidator.php\n M app/Strategy/Application/PreEntryStrategyEvidenceService.php\n M app/Strategy/Application/StrategyCompletenessService.php\n M app/Strategy/Application/StrategyExchangeAssignmentService.php\n M app/Strategy/Application/UniversalMarketContextCollector.php\n M app/Strategy/Domain/SignalQuality.php\n M app/Trading/Application/TradingPipelineEventService.php\n M app/Trading/Application/TradingPipelineRecoveryService.php\n M app/Trading/Jobs/ProcessClosedCandleEventJob.php\n M app/Trading/Jobs/ProcessPaperPipelineJob.php\n M config/research.php\n M docs/progress/vector-requirements.json\n M frontend/src/pages/ProfitabilityResearchPage.vue\n M frontend/src/pages/StrategyMonitorPage.vue\n M frontend/tests/profitability_research.test.js\n M frontend/tests/strategy_monitor.test.js\n M research-go/cmd/research-worker/main.go\n M research-go/internal/contracts/job.go\n M research-go/internal/jobrunner/runner.go\n M research-go/internal/jobrunner/runner_test.go\n M research-go/internal/jobscope/exchange.go\n M research-go/internal/jobscope/exchange_test.go\n M routes/api.php\n M routes/console.php\n M tests/Feature/Api/ResearchApiTest.php\n M tests/Feature/Audit/AuditInvariantTest.php\n M tests/Feature/Audit/SystemUiApiReconciliationAuditTest.php\n M tests/Feature/Backtest/BacktestRunServiceTest.php\n M tests/Feature/Exchanges/DynamicExchangeOnboardingAndUnlimitedArchitectureTest.php\n M tests/Feature/Exchanges/ExchangeRiskSizingTest.php\n M tests/Feature/Exchanges/ExchangeStrategyCompatibilityTest.php\n M tests/Feature/Exchanges/MultiExchangeComparisonTest.php\n M tests/Feature/HistoricalData/AcquisitionTest.php\n M tests/Feature/PaperTrading/AllThirteenStrategiesExecutionTest.php\n M tests/Feature/PaperTrading/DirectionalPerformanceAndRiskGateTest.php\n M tests/Feature/PaperTrading/DynamicStrategyRegistrationAndPaperExecutionTest.php\n M tests/Feature/PaperTrading/EndToEndSyntheticPaperLifecycleTest.php\n M tests/Feature/PaperTrading/FullPaperTradingPipelineE2ETest.php\n M tests/Feature/PaperTrading/FullSystemRemediationAcceptanceVerificationTest.php\n M tests/Feature/PaperTrading/GlobalCapitalAndTopologyR6Test.php\n M tests/Feature/PaperTrading/PaperLifecycleTest.php\n M tests/Feature/PaperTrading/PaperReconcileFundingCommandTest.php\n M tests/Feature/PaperTrading/PositionLifecycleStageBTest.php\n M tests/Feature/PaperTrading/QualityRiskGateAndProfitabilityVerificationTest.php\n M tests/Feature/PaperTrading/StrategyPipelineFunnelVerificationTest.php\n M tests/Feature/PaperTrading/StrategyTopologyIsolationAndAssignmentTest.php\n M tests/Feature/PaperTrading/TemporalIntegrityAndCausalityTest.php\n M tests/Feature/PaperTrading/TwentySixPaperAccountsVerificationTest.php\n M tests/Feature/Research/AdaptiveTimeframeResearchTest.php\n M tests/Feature/Research/AutonomousLearningPipelineTest.php\n M tests/Feature/Research/CandidateExchangeTest.php\n M tests/Feature/Research/LearningPredictorRollbackTest.php\n M tests/Feature/Research/LegacyActiveModelSafetyTest.php\n M tests/Feature/Research/ModelAdvisoryDecisionVetoTest.php\n M tests/Feature/Research/ProfitabilityResearchApiTest.php\n M tests/Feature/Research/PromotedCandidateExecutionTest.php\n M tests/Feature/Research/ResearchJobApiTest.php\n M tests/Feature/Research/SignalQualityAnalyticsAndMultiTimeframeProfitabilityTest.php\n M tests/Feature/Research/SlippageAttributionApiTest.php\n M tests/Feature/Strategy/SupportResistanceStrategiesTest.php\n M tests/Feature/StrategyBuilder/PaperExecutionTest.php\n M tests/Feature/Trading/BinanceObservationContentionTest.php\n M tests/Feature/Trading/BinancePipelineFreshnessAndConcurrencyTest.php\n M tests/Feature/Trading/TradingPipelineConcurrencyAndSafetyTest.php\n M tests/Feature/Trading/TradingPipelineForwardCausalityTest.php\n M tests/Integration/ConcurrentPaperEntryGlobalRiskPostgresIntegrationTest.php\n M tests/Integration/MlAuthorityAndProperScoringPostgresIntegrationTest.php\n M tests/Integration/PaperPipelineConcurrentWorkersIntegrationTest.php\n M tests/Unit/Audit/BacktestAuditCsvR8Test.php\n M tests/Unit/DevOps/DockerComposeImageResolutionTest.php\n M tests/Unit/PaperTrading/PreExecutionQualityRiskGateTest.php\n M tests/Unit/PaperTrading/TradeRiskClassificationTest.php\n M tests/Unit/Research/ChampionChallengerLifecycleTest.php\n M tests/Unit/Research/LearningFeatureStoreServiceTest.php\n M tests/Unit/Research/LearningPredictorServiceTest.php\n M tests/Unit/Research/LogisticRegressionTrainingTest.php\n M tests/Unit/Research/ModelAdvisoryIntegrationTest.php\n M tests/Unit/Research/ResearchJobServiceTest.php\n M tests/Unit/Research/SlippageAttributionServiceTest.php\n?? AUDIT_CLOSURE/\n?? REPOSITORY_STATE.txt\n?? app/Backtest/Application/HistoricalExecutionCostPolicy.php\n?? app/Exchanges/Application/ExchangePaperApprovalPolicy.php\n?? app/Exchanges/Application/PaperExecutionModelContract.php\n?? app/Research/Application/SignalIntelligencePacketFactory.php\n?? app/Research/Application/SignalIntelligenceResultVerifier.php\n?? app/Research/Application/SignalIntelligenceService.php\n?? app/Research/Application/SignalQualitySummary.php\n?? app/Research/Infrastructure/Persistence/SignalOutcomeEvaluationRecord.php\n?? app/Research/Infrastructure/Persistence/SignalQualityProfileRecord.php\n?? app/Research/Jobs/ProcessSignalIntelligenceJob.php\n?? app/Trading/Application/CanonicalObservationCompleteness.php\n?? app/Trading/Application/TradingQueueResolver.php\n?? database/migrations/2026_11_11_000001_add_paper_account_block_origin.php\n?? database/migrations/2026_11_11_000002_create_signal_intelligence_evidence.php\n?? research-go/cmd/signal-intelligence/\n?? research-go/internal/jobrunner/signal_markout_test.go\n?? research-go/internal/signalintel/\n?? scripts/audit/native_exchange_safety_check.php\n?? scripts/tests/historical_execution_cost_contract_smoke.php\n?? scripts/tests/strategy_exchange_topology_contract_smoke.php\n?? tests/Concerns/SeedsValidatedPaperEvidence.php\n?? tests/Feature/Research/SignalIntelligencePipelineTest.php\n?? tests/Integration/SignalAnalyticsSnapshotConsistencyTest.php\n?? tests/Unit/Backtest/HistoricalExecutionCostPolicyTest.php\n?? tests/Unit/Exchanges/ExchangePaperApprovalPolicyTest.php\n?? tests/Unit/Exchanges/ExchangeRegistryFailClosedTest.php\n?? tests/Unit/Exchanges/PaperExecutionModelContractTest.php\n?? tests/Unit/PaperTrading/NewPrimaryCapitalPolicyTest.php\n?? tests/Unit/Research/LearningSafetyInvariantsTest.php\n?? vector-git-history.txt\n",
+  "binaries_file_output": "/home/thunder/work/.vector-apo-evidence-20261112/timeframe/full-source-2/bin/research-worker:                 ELF 64-bit LSB executable, x86-64, version 1 (SYSV), statically linked, Go BuildID=HNFCgt0zfOA4S1ksgK8q/Hy2qZiSNU6OWhYTSFmg5/8TX3T00wJk-zEsTkvbp4/wZHe4MZirTEJnV_3iHBC, BuildID[sha1]=d57f09e1fbd000141adaf14c5a409b853dfc6fdb, with debug_info, not stripped\n/home/thunder/work/.vector-apo-evidence-20261112/timeframe/full-source-2/research-go/bin/historical-replay:   ELF 64-bit LSB executable, x86-64, version 1 (SYSV), statically linked, Go BuildID=x_ZWsFRJMIYGYkUg7Iam/i5lK33S3bvzUIQ8NGQdk/uV_OAF48E2yPi-1gut3X/HFRglCXYePIQQ9fA7KxQ, BuildID[sha1]=a3eb436c8e0f2cfc6405b824f86215df0964e607, with debug_info, not stripped\n/home/thunder/work/.vector-apo-evidence-20261112/timeframe/full-source-2/research-go/bin/signal-intelligence: ELF 64-bit LSB executable, x86-64, version 1 (SYSV), statically linked, Go BuildID=PaiTeeDBss7in7L4_8OO/QJVGI859e_nfZvC9DM4N/_1Ll_HqXTdQGWOFIR8W9/2XVJHsdqvoEMMWi6rDSq, BuildID[sha1]=47a551956675ebc8ebd99623ab8ed316d15fc08c, with debug_info, not stripped\n/home/thunder/work/.vector-apo-evidence-20261112/timeframe/full-source-2/research-go/bin/historical-import:   ELF 64-bit LSB executable, x86-64, version 1 (SYSV), statically linked, Go BuildID=H0okRKWljTaJavhovj_Q/Yd_XN7tkJsUOI0a_sTel/qTGTS6juRzutrkNhntV8/ePprZwrW4R3YyZKA4T9C, BuildID[sha1]=5cc85e27456a3df02d53185c8de7b35c53937d3e, with debug_info, not stripped\n/home/thunder/work/.vector-apo-evidence-20261112/timeframe/full-source-2/research-go/bin/research-worker:     ELF 64-bit LSB executable, x86-64, version 1 (SYSV), statically linked, Go BuildID=HNFCgt0zfOA4S1ksgK8q/Hy2qZiSNU6OWhYTSFmg5/8TX3T00wJk-zEsTkvbp4/wZHe4MZirTEJnV_3iHBC, BuildID[sha1]=d57f09e1fbd000141adaf14c5a409b853dfc6fdb, with debug_info, not stripped\n/home/thunder/work/.vector-apo-evidence-20261112/timeframe/full-source-2/research-go/bin/strategy-dsl:        ELF 64-bit LSB executable, x86-64, version 1 (SYSV), statically linked, Go BuildID=wh1-b_IBStPk_RE27ssk/LX_-Ymp5ToQHqDIOeMD-/P-_jNO--2AQlw6pxWwWV/qxfh2S28B48z4smnkdAR, BuildID[sha1]=5680470ec89c0bd0f7ddaa05b622b88af3b59837, with debug_info, not stripped\n",
+  "limitations": [
+    "Existing optional public Bybit network integration remains opt-in; no suite/test exclusions added.",
+    "Frozen dirty worktree: HEAD does not contain all snapshot changes; per-file source manifest is authoritative.",
+    "Source freeze preparation ignored transient PostgreSQL Unix socket files after preserving incomplete copy."
+  ]
+}

@@ -19,11 +19,13 @@ use App\Strategy\Domain\SignalQuality;
 use App\Strategy\Infrastructure\Persistence\SignalRecord;
 use Carbon\CarbonImmutable;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Tests\Concerns\SeedsValidatedPaperEvidence;
 use Tests\TestCase;
 
 final class FullSystemRemediationAcceptanceVerificationTest extends TestCase
 {
     use RefreshDatabase;
+    use SeedsValidatedPaperEvidence;
 
     protected function setUp(): void
     {
@@ -112,6 +114,7 @@ final class FullSystemRemediationAcceptanceVerificationTest extends TestCase
             'candle_close_time' => $now,
             'expires_at' => $now->addMinutes(15),
         ]);
+        $this->seedValidatedPaperEvidence($signal);
 
         $state = PaperSignalStateRecord::query()->create([
             'paper_account_id' => $account->id,

@@ -8,6 +8,7 @@ use App\Exchanges\Binance\BinanceDeploymentInitializer;
 use App\Exchanges\Binance\BinancePaperActivation;
 use App\Exchanges\Binance\BinancePaperSafety;
 use App\Exchanges\Binance\ExchangePaperReconciliation;
+use App\Exchanges\Infrastructure\Persistence\ExchangeRecord;
 use App\MarketData\Infrastructure\Persistence\CandleRecord;
 use App\PaperTrading\Application\PaperAccountService;
 use App\PaperTrading\Application\PaperExecutionEligibilityService;
@@ -27,11 +28,13 @@ use DomainException;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
 use Ramsey\Uuid\Uuid;
+use Tests\Concerns\SeedsValidatedPaperEvidence;
 use Tests\TestCase;
 
 final class AllThirteenStrategiesExecutionTest extends TestCase
 {
     use RefreshDatabase;
+    use SeedsValidatedPaperEvidence;
 
     protected function setUp(): void
     {
@@ -44,6 +47,15 @@ final class AllThirteenStrategiesExecutionTest extends TestCase
             'exchanges.binance.paper_slippage_rate' => '0.0002',
             'exchanges.binance.paper_execution_approved' => false,
             'exchanges.binance.research_cycle_enabled' => true,
+        ]);
+        // Explicit synthetic catalog approval and fill-cost evidence for this cohort.
+        $binance = ExchangeRecord::query()->findOrFail('binance');
+        $binance->update([
+            'lifecycle_status' => 'ACTIVE_PAPER', 'paper_approved' => true,
+            'paper_approved_at' => now('UTC'),
+            'cost_model' => array_replace((array) $binance->cost_model, [
+                'maker_rate' => '0.0002', 'taker_rate' => '0.0005', 'slippage_rate' => '0.0002',
+            ]),
         ]);
     }
 
@@ -319,7 +331,7 @@ final class AllThirteenStrategiesExecutionTest extends TestCase
     {
         $strategy = $this->app->make(StrategyRegistry::class)->get($strategyId);
 
-        return SignalRecord::query()->create([
+        $signal = SignalRecord::query()->create([
             'id' => (string) Uuid::uuid4(),
             'exchange' => $exchange,
             'category' => 'linear',
@@ -348,6 +360,9 @@ final class AllThirteenStrategiesExecutionTest extends TestCase
             'schema_version' => '1.0.0',
             'strategy_id' => $strategyId,
         ]);
+        $this->seedValidatedPaperEvidence($signal);
+
+        return $signal;
     }
 
     private function createMarketContext(string $exchange, string $symbol, DateTimeImmutable $at): void

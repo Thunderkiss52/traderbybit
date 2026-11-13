@@ -88,7 +88,7 @@ final class TradingPipelineEventService
             $record = TradingPipelineEventRecord::query()->where('event_key', $eventKey)->first();
 
             if ($this->isEventDriven() && $record !== null && $record->status === TradingPipelineEventRecord::STATUS_PENDING) {
-                $queue = (string) config("trading.queues.{$exchange}", $exchange === 'binance' ? 'trading-binance' : 'trading-bybit');
+                $queue = TradingQueueResolver::forExchange($exchange);
                 ProcessClosedCandleEventJob::dispatch($record->id, $exchange, $symbol, $timeframe, $closeIso)
                     ->onQueue($queue);
 
@@ -151,7 +151,7 @@ final class TradingPipelineEventService
         $record = TradingPipelineEventRecord::query()->where('event_key', $eventKey)->firstOrFail();
 
         if ($this->isEventDriven() && $record->status === TradingPipelineEventRecord::STATUS_PENDING) {
-            $queue = (string) config("trading.queues.{$exchange}", $exchange === 'binance' ? 'trading-binance' : 'trading-bybit');
+            $queue = TradingQueueResolver::forExchange($exchange);
             ProcessPaperPipelineJob::dispatch($exchange, $symbol, $closeIso)
                 ->onQueue($queue);
 

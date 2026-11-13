@@ -1,0 +1,119 @@
+[
+  {
+    "name": "go-version",
+    "command": [
+      "/home/thunder/work/.vector-apo-evidence-20261112/quant/toolchain/go/bin/go",
+      "version"
+    ],
+    "cwd": "/home/thunder/work/traderbybit/research-go",
+    "exit_code": 0,
+    "elapsed_seconds": 0.052
+  },
+  {
+    "name": "postgres-ready",
+    "command": [
+      "docker",
+      "exec",
+      "vector-apo-quant-pg-20261111",
+      "pg_isready",
+      "-U",
+      "postgres",
+      "-d",
+      "signal_markout_test"
+    ],
+    "cwd": "/home/thunder/work/traderbybit/research-go",
+    "exit_code": 0,
+    "elapsed_seconds": 0.207
+  },
+  {
+    "name": "signalintel-race",
+    "command": [
+      "/home/thunder/work/.vector-apo-evidence-20261112/quant/toolchain/go/bin/go",
+      "test",
+      "-race",
+      "-count=1",
+      "-v",
+      "./internal/signalintel",
+      "./cmd/signal-intelligence"
+    ],
+    "cwd": "/home/thunder/work/traderbybit/research-go",
+    "exit_code": 0,
+    "elapsed_seconds": 1.688
+  },
+  {
+    "name": "worker-postgres-race",
+    "command": [
+      "/home/thunder/work/.vector-apo-evidence-20261112/quant/toolchain/go/bin/go",
+      "test",
+      "-race",
+      "-count=1",
+      "-v",
+      "./internal/jobrunner",
+      "-run",
+      "TestSignalMarkoutPostgres"
+    ],
+    "cwd": "/home/thunder/work/traderbybit/research-go",
+    "exit_code": 0,
+    "elapsed_seconds": 4.918
+  },
+  {
+    "name": "full-race",
+    "command": [
+      "/home/thunder/work/.vector-apo-evidence-20261112/quant/toolchain/go/bin/go",
+      "test",
+      "-race",
+      "-count=1",
+      "-v",
+      "./..."
+    ],
+    "cwd": "/home/thunder/work/traderbybit/research-go",
+    "exit_code": 0,
+    "elapsed_seconds": 15.181
+  },
+  {
+    "name": "full-vet",
+    "command": [
+      "/home/thunder/work/.vector-apo-evidence-20261112/quant/toolchain/go/bin/go",
+      "vet",
+      "./..."
+    ],
+    "cwd": "/home/thunder/work/traderbybit/research-go",
+    "exit_code": 0,
+    "elapsed_seconds": 0.616
+  },
+  {
+    "name": "full-build",
+    "command": [
+      "/home/thunder/work/.vector-apo-evidence-20261112/quant/toolchain/go/bin/go",
+      "build",
+      "./..."
+    ],
+    "cwd": "/home/thunder/work/traderbybit/research-go",
+    "exit_code": 0,
+    "elapsed_seconds": 1.075
+  },
+  {
+    "name": "gofmt",
+    "command": [
+      "/home/thunder/work/.vector-apo-evidence-20261112/quant/toolchain/go/bin/gofmt",
+      "-l",
+      "internal/signalintel",
+      "internal/jobrunner/signal_markout_test.go",
+      "cmd/signal-intelligence"
+    ],
+    "cwd": "/home/thunder/work/traderbybit/research-go",
+    "exit_code": 0,
+    "elapsed_seconds": 0.009
+  },
+  {
+    "name": "diff-check",
+    "command": [
+      "git",
+      "diff",
+      "--check"
+    ],
+    "cwd": "/home/thunder/work/traderbybit/research-go",
+    "exit_code": 0,
+    "elapsed_seconds": 0.053
+  }
+]

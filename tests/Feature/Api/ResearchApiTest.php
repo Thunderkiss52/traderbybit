@@ -205,14 +205,16 @@ final class ResearchApiTest extends TestCase
     {
         $account = app(PaperAccountService::class)->default();
 
-        $this->getJson('/api/v1/statistics')->assertOk()->assertJsonPath('data.metrics.closed_positions', 0);
+        $this->getJson('/api/v1/statistics?exchange=bybit&account='.$account->id)->assertOk()
+            ->assertJsonPath('data.account.id', $account->id)
+            ->assertJsonPath('data.metrics.closed_positions', 0);
 
         $cached = Cache::get('paper:statistics:report:v5:'.$account->id);
         self::assertIsArray($cached);
         self::assertIsArray($cached['metrics']);
         self::assertIsArray($cached['data_quality']);
 
-        $responseCache = Cache::get("paper:statistics:response:v5:{$account->id}:1:1:1");
+        $responseCache = Cache::get("paper:statistics:response:v6:{$account->id}:1:1:1:all");
         self::assertIsArray($responseCache);
         self::assertIsArray($responseCache['equity']);
         self::assertIsArray($responseCache['breakdowns']);

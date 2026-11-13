@@ -1,0 +1,37 @@
+[
+  {
+    "name": "final-format",
+    "command": [
+      "/home/thunder/work/.vector-apo-evidence-20261112/quant/toolchain/go/bin/gofmt",
+      "-l",
+      "internal/signalintel",
+      "internal/jobrunner/signal_markout_test.go",
+      "cmd/signal-intelligence",
+      "internal/jobrunner/runner.go"
+    ],
+    "exit_code": 0,
+    "seconds": 0.01,
+    "unformatted_files": [],
+    "passed": true
+  },
+  {
+    "name": "final-cli-compile",
+    "command": [
+      "/home/thunder/work/.vector-apo-evidence-20261112/quant/toolchain/go/bin/go",
+      "test",
+      "./cmd/signal-intelligence"
+    ],
+    "exit_code": 0,
+    "seconds": 0.196
+  },
+  {
+    "name": "final-diff",
+    "command": [
+      "git",
+      "diff",
+      "--check"
+    ],
+    "exit_code": 0,
+    "seconds": 0.054
+  }
+]

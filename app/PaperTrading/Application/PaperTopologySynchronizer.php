@@ -4,8 +4,10 @@ declare(strict_types=1);
 
 namespace App\PaperTrading\Application;
 
+use App\Exchanges\Application\ExchangePaperApprovalPolicy;
 use App\Exchanges\Binance\BinancePaperProvisioner;
 use App\Exchanges\ExchangeRegistry;
+use App\Exchanges\Infrastructure\Persistence\ExchangeRecord;
 use App\PaperTrading\Infrastructure\Persistence\EquitySnapshotRecord;
 use App\PaperTrading\Infrastructure\Persistence\PaperAccountRecord;
 use App\Strategy\Application\StrategyRegistry;
@@ -52,7 +54,10 @@ final readonly class PaperTopologySynchronizer
             // A public-data adapter may be registered before PAPER readiness.
             // All non-Bybit/Binance accounts will remain unfunded and BLOCKED.
         }
-        $scopes = PrimaryStrategies::byExchange($exchangeIds);
+        // Provision the complete registered-strategy × registered-exchange
+        // matrix. Explicit operator unassignment is an execution veto, not
+        // permission to omit or erase an independent historical PAPER account.
+        $scopes = array_fill_keys($exchangeIds, $strategyIds);
         // A dry-run must not write a distributed cache lock or change PAPER state.
         $lock = $apply ? $this->cache->lock('paper:topology-sync', 120) : null;
         if ($lock !== null && ! $lock->get()) {
@@ -96,6 +101,9 @@ final readonly class PaperTopologySynchronizer
 
                 $policy = $this->capitalPolicy ?? app(NewPrimaryCapitalPolicy::class);
                 $initiallyApproved = (array) config('paper.initially_approved_bybit_strategies', []);
+                $catalogExchanges = Schema::hasTable('exchanges')
+                    ? ExchangeRecord::query()->whereIn('id', $exchangeIds)->get()->keyBy('id')
+                    : collect();
                 $createdBybit = 0;
                 $createdOther = 0;
                 $createdBinance = 0;
@@ -129,18 +137,16 @@ final readonly class PaperTopologySynchronizer
                         : Uuid::uuid5(Uuid::NAMESPACE_URL, "traderbybit:paper:primary:{$exchange}:{$id}")->toString();
 
                     $startingBalance = $policy->openingBalance($exchange, $id);
-                    $isExecutionApproved = match ($exchange) {
-                        'bybit' => true,
-                        'binance' => (bool) config('exchanges.binance.paper_execution_approved', (bool) config('exchanges.binance_paper_execution_approved', false)),
-                        default => (bool) config("exchanges.{$exchange}.paper_execution_approved", (bool) config("exchanges.{$exchange}_paper_execution_approved", false))
-                            || (bool) (Schema::hasTable('exchanges') ? DB::table('exchanges')->where('id', $exchange)->where('paper_approved', true)->value('paper_approved') : false),
-                    };
+                    $isExecutionApproved = $exchange === 'bybit' && in_array($id, $initiallyApproved, true)
+                        && ExchangePaperApprovalPolicy::allowsEntries($catalogExchanges->get($exchange))
+                        && BigDecimal::of($startingBalance)->isPositive();
                     $accountStatus = $isExecutionApproved ? 'ACTIVE' : 'BLOCKED';
 
                     $missingAccounts[] = [
                         'id' => $accountId,
                         'name' => strtoupper($exchange).' Paper '.$id,
                         'status' => $accountStatus,
+                        'execution_block_origin' => $accountStatus === 'BLOCKED' ? 'READINESS_PENDING' : null,
                         'starting_balance' => $startingBalance,
                         'current_equity' => $startingBalance,
                         'peak_equity' => $startingBalance,
@@ -218,30 +224,12 @@ final readonly class PaperTopologySynchronizer
                     }
                 }
 
-                // Ensure all existing primary accounts have at least an initial equity snapshot
-                $existingWithoutSnapshots = PaperAccountRecord::query()
-                    ->where('is_primary', true)
-                    ->whereNotIn('id', DB::table('equity_snapshots')->select('paper_account_id'))
-                    ->get();
-
-                if ($existingWithoutSnapshots->isNotEmpty()) {
-                    $recoverySnapshots = [];
-                    foreach ($existingWithoutSnapshots as $acc) {
-                        $recoverySnapshots[] = [
-                            'paper_account_id' => $acc->id,
-                            'exchange_id' => $acc->exchange_id,
-                            'recorded_at' => $acc->created_at ?? $now,
-                            'equity' => $acc->starting_balance,
-                            'realized_pnl' => '0',
-                            'unrealized_pnl' => '0',
-                            'drawdown_percent' => '0',
-                            'source_event_key' => 'account:initial',
-                            'created_at' => $now,
-                            'updated_at' => $now,
-                        ];
-                    }
-                    EquitySnapshotRecord::query()->insertOrIgnore($recoverySnapshots);
-                }
+                // Historical primary accounts with missing opening snapshots
+                // must stay INCOMPLETE until independently reconciled. Do NOT
+                // backdate an invented `account:initial` equity snapshot from
+                // today's account state or from its mutable starting_balance.
+                // The initial snapshots above are written ONLY for newly
+                // provisioned accounts within their creation transaction.
 
                 return [
                     'mode' => 'APPLIED',

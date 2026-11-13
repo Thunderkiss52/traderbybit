@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Research\Application;
 
+use App\Exchanges\ExchangeRegistry;
 use App\Research\Infrastructure\Persistence\LearningCandidateStrategyRecord;
 use App\StrategyBuilder\PrimaryStrategies;
 use Illuminate\Support\Arr;
@@ -38,9 +39,14 @@ final class StrategyEvolutionService
      */
     public function generateCandidate(string $parentStrategyId = 'trend_pullback', ?int $seed = null, string $exchange = 'bybit'): LearningCandidateStrategyRecord
     {
-        if (! in_array($exchange, ['bybit', 'binance'], true)) {
-            throw new \InvalidArgumentException('Unsupported candidate exchange.');
+        $exchange = is_string($exchange) ? strtolower(trim($exchange)) : '';
+        if (! preg_match('/^[a-z0-9][a-z0-9_-]{1,31}$/D', $exchange)) {
+            throw new \InvalidArgumentException('Invalid candidate exchange identity.');
         }
+        if (! in_array($exchange, app(ExchangeRegistry::class)->registeredIds(), true)) {
+            throw new \InvalidArgumentException("Candidate exchange '{$exchange}' is not registered.");
+        }
+
         if (! in_array($parentStrategyId, PrimaryStrategies::ids(), true)
             || ! in_array($parentStrategyId, $this->families(), true)) {
             throw new \InvalidArgumentException("Unknown strategy family: {$parentStrategyId}");

@@ -8,6 +8,7 @@ use App\Exchanges\Domain\ExchangeLifecycleStatus;
 use App\Exchanges\Domain\ExchangeManifest;
 use App\Exchanges\Domain\ExchangeManifestValidator;
 use App\Exchanges\ExchangeRegistry;
+use App\Exchanges\Infrastructure\DeclarativeExchangeAdapter;
 use App\Exchanges\Infrastructure\Persistence\ExchangeRecord;
 use App\MarketData\Infrastructure\Persistence\CandleRecord;
 use App\PaperTrading\Application\PaperTopologySynchronizer;
@@ -86,16 +87,26 @@ final readonly class ExchangeCatalogService
             throw new InvalidArgumentException("Exchange '{$id}' is already registered.");
         }
 
-        // Test connectivity if baseUrl is configured
+        // The exchange is not yet stored in the registry. Probing by ID here
+        // would always return NO_ADAPTER and incorrectly mark a reachable
+        // exchange as offline. Use a temporary adapter with the validated
+        // manifest; the probe is a public GET and does not mutate the catalog.
         $initialLifecycle = ExchangeLifecycleStatus::OfflineDataSource->value;
+        $connectivityProbe = null;
         if ($manifestObj->baseUrl !== null) {
-            $conn = $this->validator->testConnectivity($id);
-            if ($conn['reachable']) {
+            $probeAdapter = new DeclarativeExchangeAdapter(
+                exchangeId: $id,
+                exchangeName: $manifestObj->name,
+                exchangeBaseUrl: $manifestObj->baseUrl,
+                config: $manifestObj->toArray(),
+            );
+            $connectivityProbe = $probeAdapter->testConnectivity();
+            if ($connectivityProbe['reachable']) {
                 $initialLifecycle = ExchangeLifecycleStatus::ConnectedPublicData->value;
             }
         }
 
-        return DB::transaction(function () use ($manifestObj, $id, $initialLifecycle): ExchangeRecord {
+        return DB::transaction(function () use ($manifestObj, $id, $initialLifecycle, $connectivityProbe): ExchangeRecord {
             $data = $manifestObj->toArray();
             $created = ExchangeRecord::query()->create([
                 'id' => $id,
@@ -112,6 +123,7 @@ final readonly class ExchangeCatalogService
                 'metadata' => array_merge($data['metadata'], [
                     'manifest_version' => $manifestObj->manifestVersion,
                     'onboarded_declaratively' => true,
+                    'onboarding_connectivity_probe' => $connectivityProbe,
                     'onboarded_at' => now('UTC')->toISOString(),
                 ]),
             ]);
@@ -264,13 +276,25 @@ final readonly class ExchangeCatalogService
                 ]),
             ]);
 
-            // Activate primary paper accounts for this exchange
+            // Never revive risk-blocked or unknown legacy BLOCKED accounts.
+            // Only accounts explicitly blocked by exchange lifecycle changes
+            // may resume after venue approval, if still below the safety gate.
             PaperAccountRecord::query()
                 ->where('exchange_id', $id)
                 ->where('is_primary', true)
                 ->where('status', 'BLOCKED')
+                ->whereIn('execution_block_origin', [
+                    'EXCHANGE_UNAPPROVED', 'EXCHANGE_PAUSED', 'EXCHANGE_DEACTIVATED',
+                ])
+                ->where('current_drawdown_percent', '<', '5')
+                // Zero-funded accounts need an independent audited capital
+                // allocation; PAPER approval cannot turn them into tradable
+                // portfolios by merely toggling their status.
+                ->where('current_equity', '>', 0)
+                ->whereNull('cooldown_until')
                 ->update([
                     'status' => 'ACTIVE',
+                    'execution_block_origin' => null,
                     'updated_at' => $now,
                 ]);
 
@@ -301,12 +325,13 @@ final readonly class ExchangeCatalogService
                 ]),
             ]);
 
-            // Block active paper accounts for this exchange to prevent new orders/executions
+            // Block active accounts, preserving any pre-existing risk blocks.
             PaperAccountRecord::query()
                 ->where('exchange_id', $id)
                 ->where('status', 'ACTIVE')
                 ->update([
                     'status' => 'BLOCKED',
+                    'execution_block_origin' => 'EXCHANGE_DEACTIVATED',
                     'updated_at' => $now,
                 ]);
 
@@ -341,6 +366,7 @@ final readonly class ExchangeCatalogService
                 ->where('status', 'ACTIVE')
                 ->update([
                     'status' => 'BLOCKED',
+                    'execution_block_origin' => 'EXCHANGE_PAUSED',
                     'updated_at' => $now,
                 ]);
 

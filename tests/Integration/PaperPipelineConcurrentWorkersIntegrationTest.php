@@ -15,10 +15,13 @@ use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Ramsey\Uuid\Uuid;
 use Symfony\Component\Process\Process;
+use Tests\Concerns\SeedsValidatedPaperEvidence;
 use Tests\TestCase;
 
 final class PaperPipelineConcurrentWorkersIntegrationTest extends TestCase
 {
+    use SeedsValidatedPaperEvidence;
+
     public function test_two_workers_commit_one_fill_and_one_financial_journal_sequence(): void
     {
         $this->ensurePostgresTestDatabaseReady('paper_accounts');
@@ -32,12 +35,12 @@ final class PaperPipelineConcurrentWorkersIntegrationTest extends TestCase
         $account = app(PaperAccountService::class)->default();
         $accountOriginalData = (array) DB::table('paper_accounts')->where('id', $account->id)->first();
         DB::table('paper_accounts')->where('id', $account->id)->update(['created_at' => $decisionTime->subMinutes(10)]);
-        $existingOtherAccounts = DB::table('paper_accounts')->where('id', '!=', $account->id)->orderBy('id')->get()->toJson();
         $signalId = Uuid::uuid4()->toString();
         $barrier = sys_get_temp_dir().'/vector-paper-race-'.bin2hex(random_bytes(8));
         $workers = [];
         $contextId = null;
         $candleId = null;
+        $evidenceAccount = null;
 
         try {
             CarbonImmutable::setTestNow($decisionTime->addSecond());
@@ -50,7 +53,7 @@ final class PaperPipelineConcurrentWorkersIntegrationTest extends TestCase
                 'min_order_qty' => '0.001', 'max_order_qty' => '100.0',
                 'min_notional_value' => '5.0',
             ])->id;
-            SignalRecord::query()->create([
+            $signal = SignalRecord::query()->create([
                 'id' => $signalId, 'exchange' => 'bybit', 'category' => 'linear',
                 'symbol' => 'BTCUSDT', 'timeframe' => '15', 'strategy_id' => 'baseline',
                 'strategy_version' => $strategy->version(), 'schema_version' => '1.0.0',
@@ -66,6 +69,8 @@ final class PaperPipelineConcurrentWorkersIntegrationTest extends TestCase
                 'indicator_snapshot' => ['strategy_id' => 'baseline', '15m' => ['atr_14' => '2.0', 'close' => '100.0']],
                 'contract' => ['version' => '1.0.0'],
             ]);
+            $evidenceAccount = $this->seedValidatedPaperEvidence($signal);
+            $existingOtherAccounts = DB::table('paper_accounts')->where('id', '!=', $account->id)->orderBy('id')->get()->toJson();
             $candleId = CandleRecord::query()->create([
                 'exchange' => 'bybit', 'category' => 'linear', 'symbol' => 'BTCUSDT',
                 'interval' => '5', 'open_time' => $decisionTime,
@@ -134,6 +139,11 @@ final class PaperPipelineConcurrentWorkersIntegrationTest extends TestCase
             }
             if ($contextId !== null) {
                 MarketContextRecord::query()->whereKey($contextId)->delete();
+            }
+            if ($evidenceAccount !== null) {
+                $evidenceSignalIds = DB::table('virtual_positions')->where('paper_account_id', $evidenceAccount->id)->pluck('signal_id');
+                $evidenceAccount->delete();
+                SignalRecord::query()->whereIn('id', $evidenceSignalIds)->delete();
             }
         }
     }

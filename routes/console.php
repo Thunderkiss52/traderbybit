@@ -30,6 +30,7 @@ use App\Research\Application\ResearchJobService;
 use App\Research\Jobs\InvestigatePaperDrawdownJob;
 use App\Research\Jobs\ProcessAutonomousLearningJob;
 use App\Research\Jobs\ProcessPortfolioResearchLifecycleJob;
+use App\Research\Jobs\ProcessSignalIntelligenceJob;
 use App\Research\Jobs\ReconcileLedgerJob;
 use App\Strategy\Jobs\CaptureMarketContextJob;
 use App\Strategy\Jobs\EnsureResearchCoverageJob;
@@ -419,6 +420,9 @@ Schedule::job(new ProcessAutonomousLearningJob)
 
 Schedule::job(new ProcessPortfolioResearchLifecycleJob)
     ->everyFiveMinutes()->name('research:portfolio-lifecycle')->withoutOverlapping();
+
+Schedule::job(new ProcessSignalIntelligenceJob)
+    ->everyFiveMinutes()->name('research:signal-intelligence')->withoutOverlapping();
 
 // Retry durable risk events after a lost dispatch or an interrupted investigation.
 Schedule::job(new InvestigatePaperDrawdownJob)

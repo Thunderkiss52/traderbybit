@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers\Api\V1;
 
+use App\Audit\Backtest\BacktestAuditCsv;
 use App\Exchanges\ExchangeRegistry;
 use App\Http\Controllers\Controller;
 use App\PaperTrading\Application\DailyPerformanceService;
@@ -25,6 +26,8 @@ use App\Research\Domain\SlippageAttributionFillRecord;
 use App\Research\Domain\SlippageAttributionRecord;
 use App\Research\Exceptions\IdempotencyConflictException;
 use App\Research\Infrastructure\Persistence\ReconciliationRunRecord;
+use App\Research\Infrastructure\Persistence\SignalOutcomeEvaluationRecord;
+use App\Research\Infrastructure\Persistence\SignalQualityProfileRecord;
 use App\StrategyBuilder\PrimaryStrategies;
 use Brick\Math\BigDecimal;
 use Carbon\CarbonImmutable;
@@ -33,6 +36,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
+use Illuminate\Validation\Rule;
 use Symfony\Component\HttpFoundation\StreamedResponse;
 
 final class ProfitabilityResearchController extends Controller
@@ -237,19 +241,22 @@ final class ProfitabilityResearchController extends Controller
                 'gated_modules' => [
                     'P-1' => [
                         'name' => 'Slippage Attribution',
-                        'status' => (function (): string {
-                            $record = ResearchGenerationRecord::query()
-                                ->where('package_code', 'P-1')
-                                ->latest('created_at')
-                                ->first();
+                        'status' => (function () use ($exchange, $symbol): string {
+                            // The existence of a class or a generation for another
+                            // venue/instrument does not verify this selected scope.
+                            $query = ResearchGenerationRecord::query()->where('package_code', 'P-1')
+                                ->where('accounting_scope', 'FULL_LIFECYCLE')
+                                ->where('metadata->exchange', $exchange)
+                                ->where('metadata->symbol', $symbol ?? 'ALL');
+                            $record = $query->latest('created_at')->first();
 
                             return match ($record?->status) {
-                                'COMPLETED' => 'IMPLEMENTED_VERIFIED',
+                                'SUCCEEDED', 'COMPLETED' => 'IMPLEMENTED_VERIFIED',
                                 'RUNNING' => 'RUNNING',
                                 'QUEUED' => 'QUEUED',
-                                'FAILED' => 'FAILED',
+                                'FAILED', 'TIMEOUT' => 'FAILED',
                                 'STALE' => 'STALE',
-                                null => class_exists(SlippageAttributionService::class) ? 'IMPLEMENTED_VERIFIED' : 'NOT_IMPLEMENTED',
+                                null => 'NOT_GENERATED',
                                 default => (string) $record->status,
                             };
                         })(),
@@ -592,6 +599,11 @@ final class ProfitabilityResearchController extends Controller
      */
     public function storeGeneration(Request $request): JsonResponse
     {
+        foreach (['exchange' => 'strtolower', 'symbol' => 'strtoupper'] as $field => $normalize) {
+            if (is_string($request->input($field))) {
+                $request->merge([$field => $normalize(trim($request->input($field)))]);
+            }
+        }
         $payload = $request->validate([
             'idempotency_key' => 'required|string|max:160',
             'package_code' => 'required|string|in:P-1',
@@ -599,6 +611,8 @@ final class ProfitabilityResearchController extends Controller
             'as_of' => 'nullable|date',
             'window_start' => 'nullable|date',
             'window_end' => 'nullable|date',
+            'exchange' => ['nullable', 'string', Rule::in(array_merge(['all'], app(ExchangeRegistry::class)->registeredIds()))],
+            'symbol' => 'nullable|string|max:32',
         ]);
 
         try {
@@ -1047,7 +1061,11 @@ final class ProfitabilityResearchController extends Controller
         }
         $registered = app(ExchangeRegistry::class)->registeredIds();
 
-        return in_array(strtolower($exchange), $registered, true) ? strtolower($exchange) : 'all';
+        if (! in_array(strtolower($exchange), $registered, true)) {
+            abort(422, "Unknown exchange filter '{$exchange}'.");
+        }
+
+        return strtolower($exchange);
     }
 
     public function signalAnalytics(Request $request, SignalQualityAnalyticsService $service): JsonResponse
@@ -1072,6 +1090,49 @@ final class ProfitabilityResearchController extends Controller
         ]);
     }
 
+    public function signalHorizonEvidence(Request $request): JsonResponse
+    {
+        $filters = $request->validate([
+            'exchange' => ['nullable', 'string', 'max:32'], 'strategy_id' => ['nullable', 'string', 'max:64'],
+            'strategy_version' => ['nullable', 'string', 'max:64'], 'symbol' => ['nullable', 'string', 'max:32'],
+            'direction' => ['nullable', 'in:BUY,SELL'], 'source_timeframe_minutes' => ['nullable', 'integer', 'in:1,3,5,15,30,60'],
+            'horizon_minutes' => ['nullable', 'integer', 'in:1,3,5,15,30,60'], 'signal_id' => ['nullable', 'uuid'],
+            'from' => ['nullable', 'date'], 'to' => ['nullable', 'date', 'after_or_equal:from'],
+            'per_page' => ['nullable', 'integer', 'min:1', 'max:100'],
+        ]);
+        $query = SignalOutcomeEvaluationRecord::query()->where('data_source', 'HYPOTHETICAL');
+        foreach (['exchange', 'strategy_id', 'strategy_version', 'symbol', 'direction', 'source_timeframe_minutes', 'horizon_minutes', 'signal_id'] as $key) {
+            if (isset($filters[$key])) {
+                $query->where($key, $filters[$key]);
+            }
+        }
+        if (isset($filters['from'])) {
+            $query->where('available_at', '>=', CarbonImmutable::parse($filters['from'])->utc());
+        }
+        if (isset($filters['to'])) {
+            $query->where('available_at', '<=', CarbonImmutable::parse($filters['to'])->utc());
+        }
+
+        return response()->json(['data_source' => 'HYPOTHETICAL', 'entry_authority' => false,
+            'outcomes' => $query->orderByDesc('available_at')->orderByDesc('id')->paginate($filters['per_page'] ?? 10)]);
+    }
+
+    public function signalQualityProfiles(Request $request): JsonResponse
+    {
+        $filters = $request->validate(['exchange' => ['nullable', 'string', 'max:32'], 'strategy_id' => ['nullable', 'string', 'max:64'],
+            'symbol' => ['nullable', 'string', 'max:32'], 'source_timeframe_minutes' => ['nullable', 'integer', 'in:1,3,5,15,30,60'],
+            'horizon_minutes' => ['nullable', 'integer', 'in:1,3,5,15,30,60'], 'per_page' => ['nullable', 'integer', 'min:1', 'max:100']]);
+        $query = SignalQualityProfileRecord::query()->where('scope->data_source', 'HYPOTHETICAL');
+        foreach (['exchange', 'strategy_id', 'symbol', 'source_timeframe_minutes', 'horizon_minutes'] as $field) {
+            if (isset($filters[$field])) {
+                $query->where('scope->'.$field, $filters[$field]);
+            }
+        }
+
+        return response()->json(['data_source' => 'HYPOTHETICAL', 'entry_authority' => false,
+            'profiles' => $query->orderByDesc('as_of')->orderByDesc('id')->paginate($filters['per_page'] ?? 10)]);
+    }
+
     public function signalExplorer(Request $request, SignalQualityAnalyticsService $service): JsonResponse
     {
         $filters = [
@@ -1089,7 +1150,7 @@ final class ProfitabilityResearchController extends Controller
             'to' => $request->query('to'),
         ];
 
-        $perPage = max(1, min(100, (int) $request->query('per_page', 25)));
+        $perPage = max(1, min(100, (int) $request->query('per_page', 10)));
         $sortBy = (string) $request->query('sort_by', 'decision_time');
         $sortDir = (string) $request->query('sort_dir', 'desc');
 
@@ -1120,20 +1181,20 @@ final class ProfitabilityResearchController extends Controller
             'to' => $request->query('to'),
         ];
 
-        $paginator = $service->paginateSignals($filters, 1000, 'decision_time', 'desc');
-        $items = $paginator->items();
-
-        return response()->streamDownload(function () use ($items): void {
+        // Never silently truncate exports to the first 1,000 results. Iterate
+        // stable database cursor pages while retaining the original filter set.
+        return response()->streamDownload(function () use ($service, $filters): void {
             $handle = fopen('php://output', 'w');
             fputcsv($handle, [
                 'Timestamp', 'Exchange', 'Strategy', 'Instrument', 'Timeframe', 'Direction',
                 'Entry Price', 'Stop Loss', 'Take Profit 1', 'Take Profit 2',
                 'Signal Quality', 'Trade Risk', 'Gate Decision', 'Execution Status',
                 'Realized Outcome', 'Net PnL', 'Retrospective Outcome', 'Rejection Reason',
-            ]);
+                'Data Verification', 'Invalid Position Links', 'Invalid Risk Links',
+            ], ',', '"', '');
 
-            foreach ($items as $item) {
-                fputcsv($handle, [
+            foreach ($service->iterateSignalExplorer($filters) as $item) {
+                fputcsv($handle, array_map(BacktestAuditCsv::cell(...), [
                     $item['decision_time'] ?? '',
                     $item['exchange'] ?? '',
                     $item['strategy_id'] ?? '',
@@ -1152,7 +1213,10 @@ final class ProfitabilityResearchController extends Controller
                     $item['net_pnl'] ?? '',
                     $item['retrospective_outcome'] ?? '',
                     $item['rejection_reason'] ?? '',
-                ]);
+                    $item['attribution_verification_status'] ?? 'UNVERIFIED',
+                    $item['invalid_attribution_positions'] ?? 0,
+                    $item['invalid_risk_decisions'] ?? 0,
+                ]), ',', '"', '');
             }
             fclose($handle);
         }, 'vector_signal_analytics_export_'.now('UTC')->format('Ymd_His').'.csv', [

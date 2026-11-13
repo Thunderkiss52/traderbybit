@@ -22,11 +22,11 @@ final class LearningPredictorRollbackTest extends TestCase
         // Create initial champion (v1)
         $v1 = LearningModelArtifactRecord::query()->create([
             'id' => Uuid::uuid4()->toString(),
-            'name' => 'Logistic_TP_BEFORE_SL_BTCUSDT',
+            'name' => LearningPredictorService::scopedModelName('TP_BEFORE_SL', 'BTCUSDT', 'bybit'),
             'model_type' => 'LOGISTIC_REGRESSION',
             'target_event' => 'TP_BEFORE_SL',
             'version' => '1.0.0',
-            'parameters' => ['exchange' => 'bybit', 'features' => ['hl_spread_pct']],
+            'parameters' => ['exchange' => 'bybit', 'category' => 'linear', 'strategy_id' => 'baseline', 'strategy_version' => 'UNVERSIONED', 'timeframe' => '15', 'side' => 'BUY', 'approved_for_advisory' => true, 'features' => ['hl_spread_pct']],
             'weights' => ['intercept' => 0.2, 'coefficients' => ['hl_spread_pct' => 0.5]],
             'metrics' => ['brier_score' => 0.22, 'accuracy' => 0.65],
             'artifact_hash' => hash('sha256', 'v1'),
@@ -37,11 +37,11 @@ final class LearningPredictorRollbackTest extends TestCase
         // Create newly promoted champion (v2)
         $v2 = LearningModelArtifactRecord::query()->create([
             'id' => Uuid::uuid4()->toString(),
-            'name' => 'Logistic_TP_BEFORE_SL_BTCUSDT',
+            'name' => LearningPredictorService::scopedModelName('TP_BEFORE_SL', 'BTCUSDT', 'bybit'),
             'model_type' => 'LOGISTIC_REGRESSION',
             'target_event' => 'TP_BEFORE_SL',
             'version' => '2.0.0',
-            'parameters' => ['exchange' => 'bybit', 'features' => ['hl_spread_pct']],
+            'parameters' => ['exchange' => 'bybit', 'category' => 'linear', 'strategy_id' => 'baseline', 'strategy_version' => 'UNVERSIONED', 'timeframe' => '15', 'side' => 'BUY', 'approved_for_advisory' => true, 'features' => ['hl_spread_pct']],
             'weights' => ['intercept' => 0.3, 'coefficients' => ['hl_spread_pct' => 0.8]],
             'metrics' => ['brier_score' => 0.21, 'accuracy' => 0.68],
             'artifact_hash' => hash('sha256', 'v2'),
@@ -78,11 +78,11 @@ final class LearningPredictorRollbackTest extends TestCase
 
         $v1 = LearningModelArtifactRecord::query()->create([
             'id' => Uuid::uuid4()->toString(),
-            'name' => 'Logistic_TP_BEFORE_SL_BTCUSDT',
+            'name' => LearningPredictorService::scopedModelName('TP_BEFORE_SL', 'BTCUSDT', 'bybit'),
             'model_type' => 'LOGISTIC_REGRESSION',
             'target_event' => 'TP_BEFORE_SL',
             'version' => '1.0.0',
-            'parameters' => ['exchange' => 'bybit', 'features' => ['hl_spread_pct']],
+            'parameters' => ['exchange' => 'bybit', 'category' => 'linear', 'strategy_id' => 'baseline', 'strategy_version' => 'UNVERSIONED', 'timeframe' => '15', 'side' => 'BUY', 'approved_for_advisory' => true, 'features' => ['hl_spread_pct']],
             'weights' => ['intercept' => 0.2],
             'metrics' => ['brier_score' => 0.22],
             'artifact_hash' => hash('sha256', 'solo'),
@@ -101,5 +101,27 @@ final class LearningPredictorRollbackTest extends TestCase
         $fallback = $service->predictCalibrated('TP_BEFORE_SL', ['hl_spread_pct' => 1.0]);
         self::assertSame('INSUFFICIENT_DATA', $fallback['status']);
         self::assertNull($fallback['probability']);
+    }
+
+    public function test_rollback_never_restores_a_proxy_candidate_or_another_exchange(): void
+    {
+        $records = [];
+        foreach ([['bybit', 'ACTIVE'], ['bybit', 'CANDIDATE'], ['binance', 'SUPERSEDED']] as [$exchange, $status]) {
+            $records[] = LearningModelArtifactRecord::query()->create([
+                'id' => Uuid::uuid4()->toString(),
+                'name' => LearningPredictorService::scopedModelName('TP_BEFORE_SL', 'BTCUSDT', $exchange),
+                'model_type' => 'LOGISTIC_REGRESSION', 'target_event' => 'TP_BEFORE_SL',
+                'version' => $exchange.'-'.$status, 'status' => $status,
+                'parameters' => ['exchange' => $exchange, 'category' => 'linear', 'strategy_id' => 'baseline',
+                    'strategy_version' => 'UNVERSIONED', 'timeframe' => '15', 'side' => 'BUY',
+                    'approved_for_advisory' => $status !== 'CANDIDATE'],
+                'weights' => ['intercept' => 0.0], 'metrics' => ['brier_score' => 0.2, 'ece' => 0.05],
+                'artifact_hash' => hash('sha256', $exchange.$status),
+            ]);
+        }
+        self::assertNull(app(LearningPredictorService::class)->rollbackModel());
+        self::assertSame('ROLLED_BACK', $records[0]->fresh()->status);
+        self::assertSame('CANDIDATE', $records[1]->fresh()->status);
+        self::assertSame('SUPERSEDED', $records[2]->fresh()->status);
     }
 }

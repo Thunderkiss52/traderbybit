@@ -6,8 +6,10 @@ namespace Tests\Feature\Research;
 
 use App\PaperTrading\Application\PaperAccountService;
 use App\Research\Application\LedgerReconciliationService;
+use App\Research\Domain\ResearchGenerationRecord;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Str;
 use Tests\TestCase;
 
 final class ProfitabilityResearchApiTest extends TestCase
@@ -79,13 +81,34 @@ final class ProfitabilityResearchApiTest extends TestCase
         $this->assertSame('EVENT_EXECUTION', $data['accounting_scopes']['execution_slippage_diagnostic']['scope']);
 
         // Gated modules status verification (P-1 implemented, P-2 implemented, P-3 blocked, P-4/P-5/P-6 not implemented)
-        $this->assertSame('IMPLEMENTED_VERIFIED', $data['gated_modules']['P-1']['status']);
+        $this->assertSame('NOT_GENERATED', $data['gated_modules']['P-1']['status']);
         $this->assertSame('IMPLEMENTED', $data['gated_modules']['P-2']['status']);
         $this->assertSame('BLOCKED_PROHIBITED', $data['gated_modules']['P-3']['status']);
         $this->assertSame('NOT_IMPLEMENTED', $data['gated_modules']['P-6']['status']);
 
         // Double deduction prohibited verification
         $this->assertTrue($data['accounting_scopes']['execution_slippage_diagnostic']['double_deduction_prohibited']);
+    }
+
+    public function test_p1_status_requires_a_completed_generation_in_the_selected_scope(): void
+    {
+        $generation = ResearchGenerationRecord::query()->create([
+            'id' => (string) Str::uuid(), 'package_code' => 'P-1', 'accounting_scope' => 'FULL_LIFECYCLE',
+            'as_of' => now('UTC'), 'status' => 'SUCCEEDED', 'idempotency_key' => 'scoped-p1-fixture',
+            'request_payload_hash' => hash('sha256', 'bybit-BTCUSDT'),
+            'versioned_config' => ['algorithm_version' => '1.0.0'],
+            'metadata' => ['exchange' => 'bybit', 'symbol' => 'BTCUSDT'],
+        ]);
+        $path = '/api/v1/research/profitability/summary?exchange=bybit&symbol=BTCUSDT';
+        $this->getJson($path)->assertOk()->assertJsonPath('data.gated_modules.P-1.status', 'IMPLEMENTED_VERIFIED');
+        $this->getJson('/api/v1/research/profitability/summary?exchange=binance&symbol=BTCUSDT')
+            ->assertOk()->assertJsonPath('data.gated_modules.P-1.status', 'NOT_GENERATED');
+        $this->getJson('/api/v1/research/profitability/summary?exchange=bybit&symbol=ETHUSDT')
+            ->assertOk()->assertJsonPath('data.gated_modules.P-1.status', 'NOT_GENERATED');
+        $generation->update(['status' => 'RUNNING']);
+        $this->getJson($path)->assertOk()->assertJsonPath('data.gated_modules.P-1.status', 'RUNNING');
+        $generation->update(['status' => 'FAILED']);
+        $this->getJson($path)->assertOk()->assertJsonPath('data.gated_modules.P-1.status', 'FAILED');
     }
 
     public function test_profitability_strategies_lists_all_primary_accounts(): void
@@ -264,8 +287,8 @@ final class ProfitabilityResearchApiTest extends TestCase
     {
         $summary = $this->getJson('/api/v1/research/profitability/summary')->assertOk()->json('data.gated_modules');
 
-        // P-1 is implemented and verified by authentic test suite and evidence
-        self::assertSame('IMPLEMENTED_VERIFIED', $summary['P-1']['status']);
+        // No persisted scoped generation exists in this isolated fixture.
+        self::assertSame('NOT_GENERATED', $summary['P-1']['status']);
 
         // P-2 is implemented
         self::assertSame('IMPLEMENTED', $summary['P-2']['status']);

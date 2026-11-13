@@ -1,0 +1,11 @@
+{
+  "command": [
+    "python3",
+    "-m",
+    "unittest",
+    "scripts.tests.test_vector_progress"
+  ],
+  "start_utc": "2026-11-12T14:57:01.876132+00:00",
+  "seconds": 0.8921624159993371,
+  "exit_code": 0
+}

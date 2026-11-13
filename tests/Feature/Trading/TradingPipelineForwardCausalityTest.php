@@ -7,8 +7,10 @@ namespace Tests\Feature\Trading;
 use App\Exchanges\Binance\BinancePaperCapital;
 use App\Exchanges\Binance\BinancePaperProvisioner;
 use App\Exchanges\Binance\ExchangePaperReconciliation;
+use App\Exchanges\Infrastructure\Persistence\ExchangeRecord;
 use App\MarketData\Infrastructure\Persistence\CandleRecord;
 use App\PaperTrading\Application\PaperAccountService;
+use App\PaperTrading\Application\PaperExecutionEligibilityService;
 use App\PaperTrading\Application\PaperProcessingService;
 use App\PaperTrading\Application\PaperTopologySynchronizer;
 use App\PaperTrading\Domain\PositionStatus;
@@ -27,11 +29,13 @@ use DateTimeImmutable;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
 use Ramsey\Uuid\Uuid;
+use Tests\Concerns\SeedsValidatedPaperEvidence;
 use Tests\TestCase;
 
 final class TradingPipelineForwardCausalityTest extends TestCase
 {
     use RefreshDatabase;
+    use SeedsValidatedPaperEvidence;
 
     private string $strategyVersion;
 
@@ -188,16 +192,25 @@ final class TradingPipelineForwardCausalityTest extends TestCase
         app(BinancePaperProvisioner::class)->provision();
         app(BinancePaperCapital::class)->allocate('10000', 'STAGE-D-ISOLATED');
         app(PaperTopologySynchronizer::class)->sync(true);
+        $exchange = ExchangeRecord::query()->findOrFail('binance');
+        $exchange->update([
+            'paper_approved' => true, 'lifecycle_status' => 'ACTIVE_PAPER',
+            'paper_approved_at' => CarbonImmutable::now('UTC'),
+            // Isolated synthetic maker fee; no assertion about a production tier.
+            'cost_model' => array_replace((array) $exchange->cost_model, ['maker_rate' => '0.0002']),
+        ]);
         self::assertSame(130, PaperAccountRecord::query()->where('is_primary', true)->count());
         $otherVenues = DB::table('paper_accounts')->whereNotIn('exchange_id', ['bybit', 'binance'])->orderBy('id')->get();
         self::assertCount(104, $otherVenues);
         foreach ($otherVenues as $otherAccount) {
             self::assertSame('BLOCKED', $otherAccount->status);
-            self::assertDecimalSame('10000', $otherAccount->starting_balance);
+            self::assertDecimalSame('0', $otherAccount->starting_balance);
+            self::assertDecimalSame('0', $otherAccount->current_equity);
         }
         $account = PaperAccountRecord::query()->where('exchange_id', 'binance')
             ->where('primary_strategy_id', 'baseline')->firstOrFail();
         $account->update(['status' => 'ACTIVE']);
+        self::assertNull(app(PaperExecutionEligibilityService::class)->accountEntryRejectionReason($account->fresh()));
 
         $decision = new DateTimeImmutable('2026-10-26T10:15:00Z');
         $this->seedContext($decision, 'binance');
@@ -207,6 +220,8 @@ final class TradingPipelineForwardCausalityTest extends TestCase
         CarbonImmutable::setTestNow(new CarbonImmutable('2026-10-26T10:15:05Z'));
         $this->paperJob('2026-10-26T10:15:00Z', 'binance');
         self::assertSame(0, VirtualPositionRecord::query()->where('paper_account_id', $account->id)->count());
+        $state = PaperSignalStateRecord::query()->where('paper_account_id', $account->id)->firstOrFail();
+        self::assertSame('PENDING_ENTRY', $state->status, json_encode($state->toArray()));
 
         CarbonImmutable::setTestNow(new CarbonImmutable('2026-10-26T10:20:02Z'));
         $this->paperJob('2026-10-26T10:20:00Z', 'binance');
@@ -264,7 +279,7 @@ final class TradingPipelineForwardCausalityTest extends TestCase
 
     private function seedSignal(DateTimeImmutable $decision, DateTimeImmutable $createdAt, string $exchange = 'bybit', ?string $strategyVersion = null): void
     {
-        SignalRecord::query()->create([
+        $signal = SignalRecord::query()->create([
             'id' => Uuid::uuid4()->toString(),
             'exchange' => $exchange,
             'category' => 'linear',
@@ -298,6 +313,7 @@ final class TradingPipelineForwardCausalityTest extends TestCase
             'created_at' => $createdAt,
             'updated_at' => $createdAt,
         ]);
+        $this->seedValidatedPaperEvidence($signal);
     }
 
     private function seedFiveMinuteBar(DateTimeImmutable $openTime, string $high, string $low, string $close, string $exchange = 'bybit'): void

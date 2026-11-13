@@ -469,7 +469,18 @@ final readonly class PaperProcessingService
         );
 
         $tradeRiskService = app(TradeRiskClassificationService::class);
-        $costEstimate = $size !== null && $size->allowed ? $this->execution->commission((string) $size->quantity, $entry, $account->exchange_id) : '0';
+        $costEstimate = null;
+        $costDragPercent = null;
+        if ($size !== null && $size->allowed && BigDecimal::of((string) $size->quantity)->isPositive()) {
+            // Round-trip TP1 economics in USDT (not price delta per contract).
+            // Include fees and slippage once in pre-entry estimate; never deduct
+            // this estimate a second time from realized fill-price PnL.
+            $costEvidence = $this->execution->estimateRoundTripTp1Costs(
+                (string) $entry, (string) $signal->take_profit_1, (string) $size->quantity, $account->exchange_id,
+            );
+            $costEstimate = $costEvidence['estimated_costs'];
+            $costDragPercent = $costEvidence['cost_drag_percent'];
+        }
         $riskAssessmentResult = $tradeRiskService->classify([
             'equity' => $account->current_equity,
             'entry_price' => $entry,
@@ -484,6 +495,7 @@ final readonly class PaperProcessingService
             'ask' => $context?->ask,
             'correlation' => $corr,
             'estimated_costs' => $costEstimate,
+            'estimated_cost_drag_percent' => $costDragPercent,
         ]);
 
         $evidenceService = app(PreEntryStrategyEvidenceService::class);
@@ -492,7 +504,9 @@ final readonly class PaperProcessingService
             $account->exchange_id,
             $signal->symbol,
             $signal->side,
-            $signal->decision_time->toDateTimeImmutable()
+            $signal->decision_time->toDateTimeImmutable(),
+            (string) $signal->strategy_version,
+            (string) $signal->timeframe,
         );
 
         $gateService = app(PreExecutionQualityRiskGate::class);
@@ -505,7 +519,9 @@ final readonly class PaperProcessingService
             'directional_win_rate' => $strategyEvidence['directional_win_rate'],
             'directional_profit_factor' => $strategyEvidence['directional_profit_factor'],
             'directional_sample_size' => $strategyEvidence['directional_sample_size'],
-            'cost_drag_percent' => $costEstimate['cost_to_tp1_gain_percent'] ?? null,
+            'cost_drag_percent' => $costDragPercent,
+            'evidence_status' => $strategyEvidence['status'],
+            'require_validated_edge' => true,
             'side' => $signal->side,
         ]);
 

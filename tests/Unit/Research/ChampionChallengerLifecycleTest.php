@@ -33,72 +33,97 @@ final class ChampionChallengerLifecycleTest extends TestCase
         $this->assertNull($artifact);
     }
 
-    public function test_initial_champion_model_is_promoted_when_validation_passes(): void
+    public function test_validated_proxy_model_remains_candidate_without_advisory_authority(): void
     {
-        $this->seedSnapshots('BTCUSDT', 20, positiveRate: 0.6);
-
+        $this->seedSnapshots('BTCUSDT', 30);
         $model = $this->service->trainModel('TP_BEFORE_SL', 'BTCUSDT');
 
         $this->assertNotNull($model);
-        $this->assertSame('ACTIVE', $model->status);
+        $this->assertSame('CANDIDATE', $model->status);
         $this->assertArrayHasKey('brier_score', $model->metrics);
         $this->assertArrayHasKey('log_loss', $model->metrics);
         $this->assertArrayHasKey('ece', $model->metrics);
         $this->assertLessThanOrEqual(0.25, $model->metrics['brier_score']);
-
-        // Check audit event
-        $event = AutonomyApprovalEventRecord::query()
-            ->where('target_id', $model->id)
-            ->where('new_state', 'ACTIVE')
-            ->first();
-        $this->assertNotNull($event);
-        $this->assertSame('MODEL_PROMOTION', $event->action);
+        $this->assertSame('DIRECTIONAL_SIGNAL_PROXY_V2', $model->parameters['label_source']);
+        $this->assertSame(0, LearningModelArtifactRecord::query()->where('status', 'ACTIVE')->count());
+        $this->assertFalse(AutonomyApprovalEventRecord::query()->where('action', 'MODEL_PROMOTION')->exists());
+        $this->assertSame('INSUFFICIENT_DATA', $this->service->predictCalibrated('TP_BEFORE_SL', [])['status']);
     }
 
-    public function test_challenger_is_evaluated_against_active_champion(): void
+    public function test_proxy_challenger_is_compared_without_retiring_authorized_champion(): void
     {
-        // 1. Seed initial data and create champion
-        $this->seedSnapshots('BTCUSDT', 15, positiveRate: 0.5);
-        $champion = $this->service->trainModel('TP_BEFORE_SL', 'BTCUSDT');
-        $this->assertNotNull($champion);
-        $this->assertSame('ACTIVE', $champion->status);
-
-        // 2. Seed more observations with very clear positive signals to produce a superior challenger
-        $this->seedSnapshots('BTCUSDT', 20, positiveRate: 0.85);
+        $champion = $this->seedAuthorizedChampion();
+        $this->seedSnapshots('BTCUSDT', 30);
         $challenger = $this->service->trainModel('TP_BEFORE_SL', 'BTCUSDT');
 
         $this->assertNotNull($challenger);
-        // Either promoted to ACTIVE (retiring previous) or CHALLENGER_REJECTED based on out-of-sample data
-        $this->assertContains($challenger->status, ['ACTIVE', 'CHALLENGER_REJECTED']);
-
-        if ($challenger->status === 'ACTIVE') {
-            $this->assertSame('RETIRED', $champion->fresh()->status);
-        } else {
-            $this->assertSame('ACTIVE', $champion->fresh()->status);
-        }
+        $this->assertSame('CANDIDATE', $challenger->status);
+        $this->assertSame('ACTIVE', $champion->fresh()->status);
+        $this->assertLessThan(0.25, $challenger->metrics['brier_score']);
+        $this->assertFalse(AutonomyApprovalEventRecord::query()->where('action', 'CHAMPION_RETIRED')->exists());
+        $prediction = $this->service->predictCalibrated('TP_BEFORE_SL', []);
+        $this->assertSame('CALIBRATED', $prediction['status']);
+        $this->assertSame($champion->version, $prediction['model_version']);
     }
 
     public function test_concept_drift_detection(): void
     {
-        // No model yet
         $noModelDrift = $this->service->detectConceptDrift('BTCUSDT', 'TP_BEFORE_SL');
         $this->assertFalse($noModelDrift['drift_detected']);
         $this->assertSame('TRAIN_INITIAL', $noModelDrift['recommendation']);
 
-        // Seed snapshots and train champion
-        $this->seedSnapshots('BTCUSDT', 20, positiveRate: 0.7);
-        $champion = $this->service->trainModel('TP_BEFORE_SL', 'BTCUSDT');
-        $this->assertNotNull($champion);
-
-        // Recent snapshots with consistent data -> healthy
+        $this->seedAuthorizedChampion();
+        $this->seedSnapshots('BTCUSDT', 30);
         $healthyDrift = $this->service->detectConceptDrift('BTCUSDT', 'TP_BEFORE_SL');
         $this->assertFalse($healthyDrift['drift_detected']);
         $this->assertSame('HEALTHY', $healthyDrift['recommendation']);
+
+        // Mature observations that contradict the authorized champion trigger retraining.
+        LearningFeatureSnapshotRecord::query()->update(['label_outcome' => 'SL', 'label_r_multiple' => '-1']);
+        $champion = LearningModelArtifactRecord::query()->where('status', 'ACTIVE')->firstOrFail();
+        $champion->update(['weights' => ['intercept' => 3.0]]);
+        $drift = $this->service->detectConceptDrift('BTCUSDT', 'TP_BEFORE_SL');
+        $this->assertTrue($drift['drift_detected']);
+        $this->assertSame('TRIGGER_RETRAINING', $drift['recommendation']);
+    }
+
+    public function test_drift_monitor_waits_for_enough_complete_matured_observations(): void
+    {
+        $this->seedAuthorizedChampion();
+        $this->seedSnapshots('BTCUSDT', 30);
+        $incomplete = LearningFeatureSnapshotRecord::query()->latest('decision_time')->limit(6)->pluck('id');
+        LearningFeatureSnapshotRecord::query()->whereIn('id', $incomplete)->update(['label_r_multiple' => null]);
+
+        $drift = $this->service->detectConceptDrift();
+        self::assertFalse($drift['drift_detected']);
+        self::assertSame('INSUFFICIENT_RECENT_DATA', $drift['status']);
+        self::assertSame('WAIT', $drift['recommendation']);
+        self::assertSame(9, $drift['sample_size']);
+        self::assertArrayNotHasKey('recent_brier_score', $drift);
+    }
+
+    private function seedAuthorizedChampion(): LearningModelArtifactRecord
+    {
+        // Synthetic preexisting operator-approved artifact, independent of proxy training.
+        return LearningModelArtifactRecord::query()->create([
+            'id' => (string) Str::uuid(),
+            'name' => LearningPredictorService::scopedModelName('TP_BEFORE_SL', 'BTCUSDT', 'bybit'),
+            'model_type' => 'LOGISTIC_REGRESSION', 'target_event' => 'TP_BEFORE_SL',
+            'version' => 'authorized-v1', 'status' => 'ACTIVE',
+            'parameters' => [
+                'exchange' => 'bybit', 'category' => 'linear', 'symbol' => 'BTCUSDT',
+                'strategy_id' => 'baseline', 'strategy_version' => 'UNVERSIONED',
+                'timeframe' => '15', 'side' => 'BUY', 'approved_for_advisory' => true,
+            ],
+            'weights' => ['intercept' => 0.0],
+            'metrics' => ['brier_score' => 0.25, 'log_loss' => 0.6931, 'ece' => 0.05],
+            'artifact_hash' => hash('sha256', 'authorized-champion-fixture'),
+        ]);
     }
 
     public function test_training_respects_permission_and_both_kill_switches(): void
     {
-        $this->seedSnapshots('BTCUSDT', 20, positiveRate: 0.6);
+        $this->seedSnapshots('BTCUSDT', 20);
         $permissions = app(AutonomyPermissionService::class);
         $permissions->updateSettings(['retrain_models' => false]);
         $this->assertTrainingBlocked();
@@ -124,34 +149,35 @@ final class ChampionChallengerLifecycleTest extends TestCase
         self::assertSame(0, LearningModelArtifactRecord::query()->count());
     }
 
-    private function seedSnapshots(string $symbol, int $count, float $positiveRate): void
+    private function seedSnapshots(string $symbol, int $count): void
     {
         $base = CarbonImmutable::parse('2026-10-18 00:00:00');
         for ($i = 0; $i < $count; $i++) {
-            $isTp = ($i % 3) !== 0; // Evenly distributed 67% win rate across both train and validation slices
+            $isTp = $i % 2 === 0;
             LearningFeatureSnapshotRecord::query()->create([
                 'id' => (string) Str::uuid(),
                 'symbol' => $symbol,
                 'timeframe' => '15',
-                'decision_time' => $base->addMinutes($i * 15),
-                'available_at' => $base->addMinutes($i * 15 + 15),
+                'decision_time' => $base->addHours($i * 2),
+                'available_at' => $base->addHours($i * 2),
                 'feature_schema_version' => '1.0.0',
                 'strategy_id' => 'baseline',
                 'regime' => 'BULLISH_TREND',
                 'features' => [
                     'close' => 65000.0 + ($i * 10),
-                    'hl_spread_pct' => 1.2 + ($i % 3 * 0.1),
+                    'hl_spread_pct' => $isTp ? 2.5 : 0.5,
                     'body_spread_pct' => 0.8,
                     'recent_volatility' => 0.45,
-                    'rsi_14' => 55.0,
-                    'volume_ratio' => 1.1,
+                    'rsi_14' => $isTp ? 65.0 : 35.0,
+                    'volume_ratio' => $isTp ? 1.8 : 0.6,
                 ],
                 'label_status' => 'MATURED',
                 'label_outcome' => $isTp ? 'TP' : 'SL',
                 'label_r_multiple' => $isTp ? 1.87 : -1.13,
-                'outcome_at' => $base->addMinutes($i * 15 + 120),
+                'outcome_at' => $base->addHours($i * 2)->addHour(),
                 'data_quality' => [
-                    'exchange' => 'bybit',
+                    'exchange' => 'bybit', 'category' => 'linear', 'side' => 'BUY',
+                    'strategy_version' => 'UNVERSIONED', 'label_policy_version' => 'SIGNAL_PROXY_V2',
                     'candles_evaluated' => 20,
                     'missing_bars' => 0,
                     'no_look_ahead_verified' => true,

@@ -21,11 +21,13 @@ use DateTimeImmutable;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
 use Ramsey\Uuid\Uuid;
+use Tests\Concerns\SeedsValidatedPaperEvidence;
 use Tests\TestCase;
 
 final class AuditInvariantTest extends TestCase
 {
     use RefreshDatabase;
+    use SeedsValidatedPaperEvidence;
 
     public function test_peak_equity_never_falls_below_starting_balance_and_drawdown_is_positive_on_loss(): void
     {
@@ -35,7 +37,8 @@ final class AuditInvariantTest extends TestCase
         self::assertTrue(BigDecimal::of((string) $account->current_drawdown_percent)->isEqualTo(0));
 
         // Open a trade that hits SL (loss)
-        $this->signal('BUY', 'BTCUSDT', '10:15');
+        $signal = $this->signal('BUY', 'BTCUSDT', '10:15');
+        $this->seedValidatedPaperEvidence($signal);
         $this->context('BTCUSDT', '10:15');
         $this->candle('10:15', '100.5', '102', '100', '101');
         $this->candle('10:20', '101', '102', '94', '96'); // Low hits SL at 95
@@ -44,7 +47,7 @@ final class AuditInvariantTest extends TestCase
         $service->process(symbol: 'BTCUSDT', at: new DateTimeImmutable('2026-10-14T10:25:00Z'));
 
         $account->refresh();
-        $position = VirtualPositionRecord::query()->firstOrFail();
+        $position = VirtualPositionRecord::query()->where('paper_account_id', $account->id)->firstOrFail();
         self::assertSame(PositionStatus::ClosedSl->value, $position->status);
         self::assertTrue(BigDecimal::of($position->net_pnl)->isNegative());
 
@@ -72,14 +75,15 @@ final class AuditInvariantTest extends TestCase
     public function test_mark_to_market_drawdown_is_positive_on_unrealized_loss(): void
     {
         $account = $this->app->make(PaperAccountService::class)->default();
-        $this->signal('BUY', 'BTCUSDT', '10:15');
+        $signal = $this->signal('BUY', 'BTCUSDT', '10:15');
+        $this->seedValidatedPaperEvidence($signal);
         $this->context('BTCUSDT', '10:15');
         $this->candle('10:15', '100.5', '101.5', '100', '101');
 
         $service = $this->app->make(PaperProcessingService::class);
         $service->process(symbol: 'BTCUSDT', at: new DateTimeImmutable('2026-10-14T10:20:00Z'));
 
-        $position = VirtualPositionRecord::query()->firstOrFail();
+        $position = VirtualPositionRecord::query()->where('paper_account_id', $account->id)->firstOrFail();
         self::assertSame(PositionStatus::Open->value, $position->status);
 
         // Mark to market at price 98 (adverse move, below entry 100.5)

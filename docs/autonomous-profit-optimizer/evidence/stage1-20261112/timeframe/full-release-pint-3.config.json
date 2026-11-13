@@ -1,0 +1,9 @@
+{
+  "preset": "laravel",
+  "exclude": [
+    "last_development_for_full_service",
+    "reports",
+    "storage",
+    "AUDIT_CLOSURE"
+  ]
+}

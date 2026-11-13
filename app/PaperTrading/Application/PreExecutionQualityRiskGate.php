@@ -14,7 +14,7 @@ use App\Strategy\Domain\SignalQuality;
  */
 final readonly class PreExecutionQualityRiskGate
 {
-    public const VERSION = '1.1.0';
+    public const VERSION = '1.2.0';
 
     public function version(): string
     {
@@ -34,6 +34,7 @@ final readonly class PreExecutionQualityRiskGate
      *     cost_drag_percent?: float|null,
      *     prospective_net_edge_bps?: float|null,
      *     require_validated_edge?: bool,
+     *     evidence_status?: string|null,
      *     side?: string|null
      * } $context
      * @return array{
@@ -55,7 +56,9 @@ final readonly class PreExecutionQualityRiskGate
         $drawdown = (float) ($context['drawdown_percent'] ?? 0.0);
         $side = strtoupper((string) ($context['side'] ?? 'BUY'));
         $costDragPct = isset($context['cost_drag_percent']) ? (float) $context['cost_drag_percent'] : null;
-        $requireValidatedEdge = (bool) ($context['require_validated_edge'] ?? false);
+        // Historical overrides cannot disable validated-edge checks in PAPER execution.
+        $requireValidatedEdge = true;
+        $evidenceStatus = (string) ($context['evidence_status'] ?? 'UNKNOWN');
 
         $pair = "{$quality->value}_{$risk->value}";
         $reasons = [];
@@ -68,6 +71,7 @@ final readonly class PreExecutionQualityRiskGate
             'drawdown_percent' => $drawdown,
             'cost_drag_percent' => $costDragPct,
             'side' => $side,
+            'evidence_status' => $evidenceStatus,
         ];
 
         // 1. Unknown Quality or Risk: Never allow automatic entry
@@ -105,6 +109,22 @@ final readonly class PreExecutionQualityRiskGate
                 'expected_net_edge' => $expectedNetEdge,
                 'sample_size' => $sampleSize,
                 'rejection_reasons' => ['high_risk_trade_rejected'],
+                'diagnostics' => $diagnostics,
+            ];
+        }
+
+        // Fail closed before the eligibility matrix. A missing/stale/nonpositive
+        // venue+instrument+direction cohort is not statistically validated.
+        if ($requireValidatedEdge && ($evidenceStatus !== 'VALIDATED' || $sampleSize < 10
+            || $expectedNetEdge === null || ! is_finite($expectedNetEdge) || $expectedNetEdge === 0.0
+            || $costDragPct === null || ! is_finite($costDragPct) || $costDragPct < 0.0)) {
+            return [
+                'decision' => QualityRiskGateDecision::InsufficientEvidence,
+                'allowed' => false,
+                'quality_risk_pair' => $pair,
+                'expected_net_edge' => $expectedNetEdge,
+                'sample_size' => $sampleSize,
+                'rejection_reasons' => ['missing_or_stale_validated_edge_or_cost_evidence'],
                 'diagnostics' => $diagnostics,
             ];
         }

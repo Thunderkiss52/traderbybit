@@ -29,10 +29,10 @@ final readonly class ExchangeManifest implements JsonSerializable
         public ?string $baseUrl = null,
         public ?string $adapterClass = null,
         public array $supportedTimeframes = ['5m', '15m', '30m', '1h'],
-        public ?int $pricePrecision = 2,
-        public ?int $qtyPrecision = 3,
-        public ?string $minQty = '0.001',
-        public ?string $minNotional = '5.0',
+        public ?int $pricePrecision = null,
+        public ?int $qtyPrecision = null,
+        public ?string $minQty = null,
+        public ?string $minNotional = null,
         public array $costModel = [],
         public array $paperExecutionAssumptions = [
             'execution_model' => 'NEXT_CANDLE_OPEN',
@@ -59,17 +59,9 @@ final readonly class ExchangeManifest implements JsonSerializable
             throw new InvalidArgumentException('Exchange manifest must contain a non-empty "id" field.');
         }
 
+        // No manufactured exchange fee schedules. Cost configuration is mandatory
+        // and is checked by ExchangeManifestValidator before onboarding.
         $costModel = (array) ($data['cost_model'] ?? []);
-        if (empty($costModel)) {
-            $costModel = [
-                'version' => "{$id}-default-2026.1",
-                'market' => (string) ($data['market_type'] ?? 'Linear Perpetuals'),
-                'fee_tier' => 'Standard',
-                'maker_rate' => (string) ($data['maker_rate'] ?? '0.0002'),
-                'taker_rate' => (string) ($data['taker_rate'] ?? '0.0005'),
-                'slippage_rate' => (string) ($data['slippage_rate'] ?? '0.0002'),
-            ];
-        }
 
         $capabilities = (array) ($data['capabilities'] ?? []);
 
@@ -82,10 +74,10 @@ final readonly class ExchangeManifest implements JsonSerializable
             baseUrl: isset($data['base_url']) ? rtrim((string) $data['base_url'], '/') : null,
             adapterClass: isset($data['adapter_class']) ? (string) $data['adapter_class'] : ($capabilities['adapter_class'] ?? null),
             supportedTimeframes: (array) ($data['supported_timeframes'] ?? ($capabilities['supported_timeframes'] ?? ['5m', '15m', '30m', '1h'])),
-            pricePrecision: isset($data['price_precision']) ? (int) $data['price_precision'] : (isset($capabilities['price_precision']) ? (int) $capabilities['price_precision'] : 2),
-            qtyPrecision: isset($data['qty_precision']) ? (int) $data['qty_precision'] : (isset($capabilities['qty_precision']) ? (int) $capabilities['qty_precision'] : 3),
-            minQty: isset($data['min_qty']) ? (string) $data['min_qty'] : (isset($capabilities['min_qty']) ? (string) $capabilities['min_qty'] : '0.001'),
-            minNotional: isset($data['min_notional']) ? (string) $data['min_notional'] : (isset($capabilities['min_notional']) ? (string) $capabilities['min_notional'] : '5.0'),
+            pricePrecision: isset($data['price_precision']) ? (int) $data['price_precision'] : (isset($capabilities['price_precision']) ? (int) $capabilities['price_precision'] : null),
+            qtyPrecision: isset($data['qty_precision']) ? (int) $data['qty_precision'] : (isset($capabilities['qty_precision']) ? (int) $capabilities['qty_precision'] : null),
+            minQty: isset($data['min_qty']) ? (string) $data['min_qty'] : (isset($capabilities['min_qty']) ? (string) $capabilities['min_qty'] : null),
+            minNotional: isset($data['min_notional']) ? (string) $data['min_notional'] : (isset($capabilities['min_notional']) ? (string) $capabilities['min_notional'] : null),
             costModel: $costModel,
             paperExecutionAssumptions: (array) ($data['paper_execution_assumptions'] ?? [
                 'execution_model' => 'NEXT_CANDLE_OPEN',
@@ -130,10 +122,10 @@ final readonly class ExchangeManifest implements JsonSerializable
             'base_url' => $this->baseUrl,
             'adapter_class' => $this->adapterClass,
             'capabilities' => [
-                'has_candles' => true,
-                'has_funding' => str_contains($this->marketType, 'perpetual'),
-                'has_open_interest' => str_contains($this->marketType, 'perpetual'),
-                'has_live_adapter' => $this->adapterClass !== null || $this->baseUrl !== null,
+                'has_candles' => $this->adapterClass !== null || isset($this->endpoints['candles']),
+                'has_funding' => str_contains($this->marketType, 'perpetual') && ($this->adapterClass !== null || isset($this->endpoints['funding'])),
+                'has_open_interest' => str_contains($this->marketType, 'perpetual') && ($this->adapterClass !== null || isset($this->endpoints['open_interest'])),
+                'has_live_adapter' => $this->adapterClass !== null || ($this->baseUrl !== null && $this->endpoints !== []),
                 'adapter_class' => $this->adapterClass,
                 'supported_timeframes' => $this->supportedTimeframes,
                 'price_precision' => $this->pricePrecision,

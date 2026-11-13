@@ -16,21 +16,27 @@ use App\PaperTrading\Infrastructure\Persistence\PaperSignalStateRecord;
 use App\Strategy\Application\StrategyRegistry;
 use App\Strategy\Infrastructure\Persistence\SignalRecord;
 use Brick\Math\BigDecimal;
+use Carbon\CarbonImmutable;
 use DateTimeImmutable;
 use DomainException;
 use Illuminate\Support\Facades\DB;
 use Ramsey\Uuid\Uuid;
+use Tests\Concerns\SeedsValidatedPaperEvidence;
 use Tests\TestCase;
 
 final class ConcurrentPaperEntryGlobalRiskPostgresIntegrationTest extends TestCase
 {
+    use SeedsValidatedPaperEvidence;
+
     public function test_entry_decision_lock_serializes_concurrent_postgresql_transactions(): void
     {
         $this->ensurePostgresTestDatabaseReady('paper_accounts');
         $db1 = DB::connection('pgsql');
+        $db2 = DB::build(array_replace($db1->getConfig(), ['name' => 'paper-risk-contender']));
 
         // Start transaction on connection 1 and acquire advisory lock
         $db1->beginTransaction();
+        $db2->beginTransaction();
         try {
             app(GlobalPaperCapitalGuard::class)->lockEntryDecision();
 
@@ -40,11 +46,20 @@ final class ConcurrentPaperEntryGlobalRiskPostgresIntegrationTest extends TestCa
                 FROM pg_locks 
                 WHERE locktype = 'advisory' 
                   AND (classid::bigint << 32 | objid::bigint) = (20261103::bigint << 32 | 50001::bigint)
+                  AND pid = pg_backend_pid()
                   AND granted = true
             ")->n;
             self::assertGreaterThanOrEqual(1, $held);
-        } finally {
+            self::assertNotSame($db1->selectOne('SELECT pg_backend_pid() AS pid')->pid, $db2->selectOne('SELECT pg_backend_pid() AS pid')->pid);
+            self::assertFalse($db2->selectOne('SELECT pg_try_advisory_xact_lock(20261103, 50001) AS acquired')->acquired);
             $db1->rollBack();
+            self::assertTrue($db2->selectOne('SELECT pg_try_advisory_xact_lock(20261103, 50001) AS acquired')->acquired);
+        } finally {
+            if ($db1->transactionLevel() > 0) {
+                $db1->rollBack();
+            }
+            $db2->rollBack();
+            $db2->disconnect();
         }
     }
 
@@ -76,6 +91,8 @@ final class ConcurrentPaperEntryGlobalRiskPostgresIntegrationTest extends TestCa
 
         $signal1 = $this->createTestSignal('bybit', 'BTCUSDT', 'trend_pullback');
         $signal2 = $this->createTestSignal('bybit', 'ETHUSDT', 'momentum');
+        $evidenceAccount1 = $this->seedValidatedPaperEvidence($signal1);
+        $evidenceAccount2 = $this->seedValidatedPaperEvidence($signal2);
 
         $state1 = PaperSignalStateRecord::query()->create([
             'id' => Uuid::uuid4()->toString(),
@@ -123,6 +140,10 @@ final class ConcurrentPaperEntryGlobalRiskPostgresIntegrationTest extends TestCa
             }
             self::assertTrue($exceptionThrown, 'Expected DomainException global_risk_budget_exceeded was not thrown');
         } finally {
+            $evidenceAccountIds = [$evidenceAccount1->id, $evidenceAccount2->id];
+            $evidenceSignalIds = DB::table('virtual_positions')->whereIn('paper_account_id', $evidenceAccountIds)->pluck('signal_id');
+            PaperAccountRecord::query()->whereIn('id', $evidenceAccountIds)->delete();
+            SignalRecord::query()->whereIn('id', $evidenceSignalIds)->delete();
             $accountIds = array_filter([$account1->id ?? null, $account2->id ?? null]);
             $signalIds = array_filter([$signal1->id ?? null, $signal2->id ?? null]);
             $stateIds = array_filter([$state1->id ?? null, $state2->id ?? null]);
@@ -153,7 +174,7 @@ final class ConcurrentPaperEntryGlobalRiskPostgresIntegrationTest extends TestCa
     private function createTestSignal(string $exchange, string $symbol, string $strategyId): SignalRecord
     {
         $strategy = app(StrategyRegistry::class)->get($strategyId);
-        $now = now('UTC');
+        $now = CarbonImmutable::parse('2026-11-04T11:55:00Z');
 
         return SignalRecord::query()->create([
             'id' => Uuid::uuid4()->toString(),

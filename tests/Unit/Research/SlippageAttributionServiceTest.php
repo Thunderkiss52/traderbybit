@@ -9,6 +9,8 @@ use App\PaperTrading\Infrastructure\Persistence\PaperAccountRecord;
 use App\PaperTrading\Infrastructure\Persistence\VirtualExecutionRecord;
 use App\PaperTrading\Infrastructure\Persistence\VirtualPositionRecord;
 use App\Research\Application\SlippageAttributionService;
+use App\Research\Domain\ResearchGenerationRecord;
+use App\Research\Domain\SlippageAttributionFillRecord;
 use App\Research\Exceptions\IdempotencyConflictException;
 use App\Strategy\Infrastructure\Persistence\SignalRecord;
 use Brick\Math\BigDecimal;
@@ -73,6 +75,92 @@ final class SlippageAttributionServiceTest extends TestCase
 
         $this->assertSame('NO_GENERATION_AVAILABLE', $summary['status']);
         $this->assertSame('INSUFFICIENT_DATA', $summary['provenance']);
+    }
+
+    public function test_generation_scope_is_normalized_persisted_and_used_to_select_the_latest_summary(): void
+    {
+        $accountsBefore = PaperAccountRecord::query()->count();
+        $generation = $this->service->generate([
+            'idempotency_key' => 'scoped-generation', 'exchange' => ' BYBIT ', 'symbol' => ' btcusdt ',
+        ]);
+        self::assertSame('bybit', $generation->metadata['exchange']);
+        self::assertSame('BTCUSDT', $generation->metadata['symbol']);
+        self::assertSame($accountsBefore, PaperAccountRecord::query()->count());
+        self::assertSame($generation->id, $this->service->getLatestSummary('FULL_LIFECYCLE', 'bybit', 'BTCUSDT')['generation_id']);
+        self::assertSame('NO_GENERATION_AVAILABLE', $this->service->getLatestSummary('FULL_LIFECYCLE', 'binance', 'BTCUSDT')['status']);
+        self::assertSame('NO_GENERATION_AVAILABLE', $this->service->getLatestSummary('FULL_LIFECYCLE', 'bybit', 'ETHUSDT')['status']);
+        self::assertSame('NO_GENERATION_AVAILABLE', $this->service->getLatestSummary()['status']);
+
+        $this->travel(2)->seconds();
+        $this->service->generate(['exchange' => 'binance', 'symbol' => 'ETHUSDT']);
+        self::assertSame($generation->id, $this->service->getLatestSummary('FULL_LIFECYCLE', 'bybit', 'BTCUSDT')['generation_id']);
+    }
+
+    public function test_retry_without_explicit_as_of_preserves_the_first_generation_and_scope(): void
+    {
+        $generation = $this->service->generate([
+            'idempotency_key' => 'implicit-as-of-retry', 'exchange' => 'bybit', 'symbol' => 'BTCUSDT',
+        ]);
+        $this->travel(2)->seconds();
+        $retried = $this->service->generate([
+            'idempotency_key' => 'implicit-as-of-retry', 'exchange_id' => ' BYBIT ', 'symbol' => ' btcusdt ',
+        ]);
+        self::assertSame($generation->id, $retried->id);
+        self::assertSame($generation->as_of->toIso8601String(), $retried->as_of->toIso8601String());
+        self::assertSame(1, ResearchGenerationRecord::query()->count());
+    }
+
+    public function test_generation_excludes_foreign_exchange_and_symbol_fills(): void
+    {
+        $accounts = $this->accountService->allPrimaryAccounts('bybit')
+            ->concat($this->accountService->allPrimaryAccounts('binance'));
+        $openedAt = CarbonImmutable::parse('2026-10-15T10:00:00Z');
+        $selectedPositionId = null;
+        foreach ([['bybit', 'BTCUSDT'], ['bybit', 'ETHUSDT'], ['binance', 'BTCUSDT']] as [$exchange, $symbol]) {
+            $signalId = Uuid::uuid4()->toString();
+            $positionId = Uuid::uuid4()->toString();
+            $this->createSignal($signalId, $exchange, $symbol);
+            $this->createPosition($positionId, $accounts->firstWhere('exchange_id', $exchange)->id, $signalId, $openedAt, ['exchange_id' => $exchange, 'symbol' => $symbol]);
+            $this->createExecution($positionId, $openedAt);
+            $selectedPositionId ??= $positionId;
+        }
+
+        $generation = $this->service->generate(['exchange' => ' BYBIT ', 'symbol' => ' btcusdt ']);
+        self::assertSame(1, $generation->row_counts['positions']);
+        self::assertSame(1, $generation->row_counts['fills']);
+        self::assertSame([$selectedPositionId], SlippageAttributionFillRecord::query()->where('generation_id', $generation->id)->pluck('position_id')->all());
+        $summary = $this->service->getLatestSummary('FULL_LIFECYCLE', 'bybit', 'BTCUSDT');
+        self::assertSame(1, $summary['summary']['total_fills']);
+        $this->assertDecimalSame('20', $summary['summary']['total_slippage_drag_usdt']);
+        $foreignGeneration = $this->service->generate(['exchange' => 'binance', 'symbol' => 'BTCUSDT']);
+        self::assertSame(1, $foreignGeneration->row_counts['fills']);
+        self::assertNotSame($selectedPositionId, SlippageAttributionFillRecord::query()->where('generation_id', $foreignGeneration->id)->value('position_id'));
+        $allGeneration = $this->service->generate();
+        self::assertSame(3, $allGeneration->row_counts['fills']);
+    }
+
+    public function test_reused_idempotency_key_rejects_changed_exchange_symbol_and_window(): void
+    {
+        $original = [
+            'idempotency_key' => 'scope-conflicts', 'exchange' => 'bybit', 'symbol' => 'BTCUSDT',
+            'accounting_scope' => 'WINDOW_FLOW', 'as_of' => '2026-10-20T12:00:00Z',
+            'window_start' => '2026-10-19T00:00:00Z', 'window_end' => '2026-10-20T00:00:00Z',
+        ];
+        $generation = $this->service->generate($original);
+        $normalizedRetry = $this->service->generate(array_replace($original, [
+            'as_of' => '2026-10-20T14:00:00+02:00',
+            'window_start' => '2026-10-19T02:00:00+02:00', 'window_end' => '2026-10-20T02:00:00+02:00',
+        ]));
+        self::assertSame($generation->id, $normalizedRetry->id);
+        foreach ([['exchange' => 'binance'], ['symbol' => 'ETHUSDT'], ['window_start' => '2026-10-18T00:00:00Z']] as $change) {
+            try {
+                $this->service->generate(array_replace($original, $change));
+                self::fail('A different attribution population must conflict with the existing key.');
+            } catch (IdempotencyConflictException) {
+                self::assertSame($generation->request_payload_hash, $generation->fresh()->request_payload_hash);
+            }
+        }
+        self::assertSame(1, ResearchGenerationRecord::query()->count());
     }
 
     public function test_generate_computes_attribution_and_stores_immutable_generation(): void
@@ -430,13 +518,13 @@ final class SlippageAttributionServiceTest extends TestCase
         ], $overrides));
     }
 
-    private function createSignal(string $signalId): void
+    private function createSignal(string $signalId, string $exchange = 'bybit', string $symbol = 'BTCUSDT'): void
     {
         SignalRecord::query()->create([
             'id' => $signalId,
-            'exchange' => 'bybit',
+            'exchange' => $exchange,
             'category' => 'linear',
-            'symbol' => 'BTCUSDT',
+            'symbol' => $symbol,
             'timeframe' => '15',
             'side' => 'BUY',
             'quality_class' => 'A',

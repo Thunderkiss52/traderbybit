@@ -1,0 +1,20 @@
+PHPUnit 12.5.40 by Sebastian Bergmann and contributors.
+
+Runtime:       PHP 8.5.12
+Configuration: /app/phpunit.xml
+
+....
+[SCALABILITY BENCHMARK] Scale:   13 strategies |   130 accounts | Sync:   54.69 ms | Query:  2.37 ms | Mem:  2.00 MB
+
+[SCALABILITY BENCHMARK] Scale:   63 strategies |   630 accounts | Sync:  206.45 ms | Query:  2.84 ms | Mem:  2.00 MB
+
+[SCALABILITY BENCHMARK] Scale:  100 strategies |  1000 accounts | Sync:  172.32 ms | Query:  4.35 ms | Mem:  0.00 MB
+
+[SCALABILITY BENCHMARK] Scale:  500 strategies |  5000 accounts | Sync: 1422.04 ms | Query:  9.60 ms | Mem: 16.00 MB
+
+[SCALABILITY BENCHMARK] Scale: 1000 strategies | 10000 accounts | Sync: 2033.39 ms | Query: 19.29 ms | Mem: 24.00 MB
+...........                                                   15 / 15 (100%)
+
+Time: 00:07.791, Memory: 66.00 MB
+
+[30;42mOK (15 tests, 528 assertions)[0m

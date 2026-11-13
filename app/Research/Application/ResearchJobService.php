@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Research\Application;
 
+use App\Exchanges\ExchangeRegistry;
 use App\Research\Infrastructure\Persistence\ResearchJobRecord;
 use Carbon\CarbonImmutable;
 use Illuminate\Support\Facades\DB;
@@ -24,6 +25,7 @@ final readonly class ResearchJobService
         'MONTE_CARLO',
         'FEATURE_BUILD',
         'MODEL_TRAIN',
+        'SIGNAL_MARKOUT',
     ];
 
     public const GO_EXCHANGE_DEPENDENT_KINDS = [
@@ -34,6 +36,7 @@ final readonly class ResearchJobService
         'SKIP_OUTCOMES',
         'MONTE_CARLO',
         'FEATURE_BUILD',
+        'SIGNAL_MARKOUT',
     ];
 
     public const TERMINAL_STATUSES = [
@@ -46,7 +49,7 @@ final readonly class ResearchJobService
     /**
      * Resolves and validates exchange provenance across top-level, payload, and dataset keys.
      * Rejects empty, unknown, or contradictory exchange identities.
-     * Returns normalized 'bybit' or 'binance', or null if no exchange was specified.
+     * Returns the normalized source identity, or null when no exchange was supplied.
      *
      * @param  array<string, mixed>  $data
      */
@@ -96,8 +99,11 @@ final readonly class ResearchJobService
             $resolved = $normalized;
         }
 
-        if (! in_array($resolved, ['bybit', 'binance'], true)) {
-            throw new InvalidArgumentException("Research job exchange '{$resolved}' is unsupported. Strictly 'bybit' or 'binance' required.");
+        if (! preg_match('/^[a-z0-9][a-z0-9_-]{1,31}$/D', $resolved)) {
+            throw new InvalidArgumentException("Research job exchange identity '{$resolved}' is malformed.");
+        }
+        if (! in_array($resolved, app(ExchangeRegistry::class)->registeredIds(), true)) {
+            throw new InvalidArgumentException("Research job exchange '{$resolved}' is not registered.");
         }
 
         return $resolved;
@@ -114,10 +120,28 @@ final readonly class ResearchJobService
                 throw new InvalidArgumentException('Unsupported research job kind.');
             }
 
+            if ($kind === 'SIGNAL_MARKOUT' && ! preg_match('/^(?:[a-f0-9]{40}|[a-f0-9]{64})$/D', (string) ($data['code_revision'] ?? ''))) {
+                throw new InvalidArgumentException('Signal intelligence requires an immutable code revision.');
+            }
+
+            if ($kind === 'SIGNAL_MARKOUT') {
+                if (isset($data['research_mode']) && $data['research_mode'] !== 'HYPOTHETICAL') {
+                    throw new InvalidArgumentException('Signal markouts are hypothetical research only.');
+                }
+                $data['research_mode'] = 'HYPOTHETICAL';
+                $data['limits'] = array_replace(['max_rows' => 512, 'max_duration_s' => 30, 'max_memory_mib' => 256], (array) ($data['limits'] ?? []));
+                if (strlen(json_encode($data['payload'] ?? [], JSON_THROW_ON_ERROR)) > 4 * 1024 * 1024
+                    || (int) $data['limits']['max_rows'] < 1 || (int) $data['limits']['max_rows'] > 4096
+                    || (int) $data['limits']['max_duration_s'] < 1 || (int) $data['limits']['max_duration_s'] > 30
+                    || (int) $data['limits']['max_memory_mib'] < 64 || (int) $data['limits']['max_memory_mib'] > 512) {
+                    throw new InvalidArgumentException('Signal intelligence resource limits exceeded.');
+                }
+            }
+
             $resolvedExchange = $this->resolveExchangeProvenance($data);
 
             if (in_array($kind, self::GO_EXCHANGE_DEPENDENT_KINDS, true) && $resolvedExchange === null) {
-                throw new InvalidArgumentException("Research job kind '{$kind}' requires explicit exchange provenance ('bybit' or 'binance').");
+                throw new InvalidArgumentException("Research job kind '{$kind}' requires explicit source exchange provenance.");
             }
 
             if ($resolvedExchange !== null) {

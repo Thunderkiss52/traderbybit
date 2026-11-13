@@ -25,6 +25,10 @@ final class PreExecutionQualityRiskGateTest extends TestCase
         $eval = $this->gate->evaluate([
             'signal_quality' => SignalQuality::High,
             'trade_risk' => TradeRiskClass::Low,
+            'evidence_status' => 'VALIDATED',
+            'expected_net_edge' => 0.5,
+            'sample_size' => 20,
+            'cost_drag_percent' => 5.0,
         ]);
 
         $this->assertSame(QualityRiskGateDecision::Eligible, $eval['decision']);
@@ -38,6 +42,9 @@ final class PreExecutionQualityRiskGateTest extends TestCase
         $eval = $this->gate->evaluate([
             'signal_quality' => SignalQuality::High,
             'trade_risk' => TradeRiskClass::Medium,
+            'evidence_status' => 'VALIDATED',
+            'sample_size' => 20,
+            'cost_drag_percent' => 5.0,
             'expected_net_edge' => 4.5,
         ]);
 
@@ -51,6 +58,9 @@ final class PreExecutionQualityRiskGateTest extends TestCase
         $eval = $this->gate->evaluate([
             'signal_quality' => SignalQuality::High,
             'trade_risk' => TradeRiskClass::Medium,
+            'evidence_status' => 'VALIDATED',
+            'sample_size' => 20,
+            'cost_drag_percent' => 5.0,
             'expected_net_edge' => -1.2,
         ]);
 
@@ -118,6 +128,10 @@ final class PreExecutionQualityRiskGateTest extends TestCase
         $eval = $this->gate->evaluate([
             'signal_quality' => SignalQuality::Medium,
             'trade_risk' => TradeRiskClass::Low,
+            'evidence_status' => 'VALIDATED',
+            'expected_net_edge' => 0.5,
+            'sample_size' => 20,
+            'cost_drag_percent' => 5.0,
             'drawdown_percent' => 0.5,
         ]);
 
@@ -130,6 +144,10 @@ final class PreExecutionQualityRiskGateTest extends TestCase
         $eval = $this->gate->evaluate([
             'signal_quality' => SignalQuality::Medium,
             'trade_risk' => TradeRiskClass::Low,
+            'evidence_status' => 'VALIDATED',
+            'expected_net_edge' => 0.5,
+            'sample_size' => 20,
+            'cost_drag_percent' => 5.0,
             'drawdown_percent' => 3.2, // >= 2.50
         ]);
 
@@ -143,6 +161,10 @@ final class PreExecutionQualityRiskGateTest extends TestCase
         $eval = $this->gate->evaluate([
             'signal_quality' => SignalQuality::High,
             'trade_risk' => TradeRiskClass::Low,
+            'evidence_status' => 'VALIDATED',
+            'expected_net_edge' => 0.5,
+            'sample_size' => 20,
+            'cost_drag_percent' => 5.0,
             'side' => 'SELL',
             'directional_sample_size' => 15,
             'directional_win_rate' => 0.20, // < 0.30
@@ -159,6 +181,9 @@ final class PreExecutionQualityRiskGateTest extends TestCase
         $eval = $this->gate->evaluate([
             'signal_quality' => SignalQuality::High,
             'trade_risk' => TradeRiskClass::Low,
+            'evidence_status' => 'VALIDATED',
+            'sample_size' => 20,
+            'cost_drag_percent' => 5.0,
             'expected_net_edge' => -0.5,
         ]);
 
@@ -179,7 +204,7 @@ final class PreExecutionQualityRiskGateTest extends TestCase
 
         $this->assertSame(QualityRiskGateDecision::InsufficientEvidence, $eval['decision']);
         $this->assertFalse($eval['allowed']);
-        $this->assertContains('insufficient_expectancy_evidence', $eval['rejection_reasons']);
+        $this->assertContains('missing_or_stale_validated_edge_or_cost_evidence', $eval['rejection_reasons']);
     }
 
     public function test_medium_quality_medium_risk_with_small_sample_is_insufficient_evidence(): void
@@ -187,13 +212,15 @@ final class PreExecutionQualityRiskGateTest extends TestCase
         $eval = $this->gate->evaluate([
             'signal_quality' => SignalQuality::Medium,
             'trade_risk' => TradeRiskClass::Medium,
+            'evidence_status' => 'VALIDATED',
+            'cost_drag_percent' => 5.0,
             'sample_size' => 5, // < 10
             'expected_net_edge' => 0.10,
         ]);
 
         $this->assertSame(QualityRiskGateDecision::InsufficientEvidence, $eval['decision']);
         $this->assertFalse($eval['allowed']);
-        $this->assertContains('insufficient_expectancy_evidence', $eval['rejection_reasons']);
+        $this->assertContains('missing_or_stale_validated_edge_or_cost_evidence', $eval['rejection_reasons']);
     }
 
     public function test_cost_drag_exceeding_profit_target_is_rejected(): void
@@ -201,6 +228,9 @@ final class PreExecutionQualityRiskGateTest extends TestCase
         $eval = $this->gate->evaluate([
             'signal_quality' => SignalQuality::High,
             'trade_risk' => TradeRiskClass::Low,
+            'evidence_status' => 'VALIDATED',
+            'sample_size' => 20,
+            'expected_net_edge' => 0.5,
             'cost_drag_percent' => 120.0, // >= 100%
         ]);
 

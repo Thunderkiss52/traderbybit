@@ -6,6 +6,8 @@ namespace Tests\Feature\Exchanges;
 
 use App\Exchanges\Binance\BinancePortabilityMatrix;
 use App\Exchanges\ExchangeComparisonService;
+use App\Exchanges\Infrastructure\Persistence\ExchangeRecord;
+use App\MarketData\Infrastructure\Persistence\CandleRecord;
 use App\PaperTrading\Application\PaperAccountService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
@@ -72,5 +74,42 @@ final class MultiExchangeComparisonTest extends TestCase
         $firstBinance = collect($result->json('data.accounts'))->firstWhere('exchange_id', 'binance');
         self::assertNull($firstBinance['current_equity']);
         self::assertNull($firstBinance['starting_balance']);
+    }
+
+    public function test_paused_paper_exchange_is_not_reported_as_evaluating_or_awaiting_signal(): void
+    {
+        app(PaperAccountService::class)->allPrimaryAccounts();
+        $exchange = ExchangeRecord::query()->findOrFail('bybit');
+        $exchange->update(['paper_approved' => false, 'lifecycle_status' => 'PAUSED']);
+
+        $report = app(ExchangeComparisonService::class)->report();
+        $row = collect($report['accounts'])->first(fn ($item) => $item['exchange_id'] === 'bybit'
+            && $item['strategy_id'] === 'baseline');
+        self::assertNotNull($row);
+        self::assertNotSame('AWAITING_SIGNAL', $row['inactivity_reason']);
+        self::assertSame('PAPER_EXECUTION_UNAPPROVED', $row['inactivity_reason']);
+        self::assertSame('EXECUTION_BLOCKED', $row['evaluation_status']);
+    }
+
+    public function test_one_recent_btc_candle_cannot_claim_entire_exchange_market_is_fresh(): void
+    {
+        app(PaperAccountService::class)->allPrimaryAccounts();
+        $exchange = ExchangeRecord::query()->findOrFail('bybit');
+        $exchange->update(['paper_approved' => true, 'lifecycle_status' => 'ACTIVE_PAPER']);
+        CandleRecord::query()->where('exchange', 'bybit')->delete();
+        CandleRecord::query()->create([
+            'exchange' => 'bybit', 'category' => 'linear', 'symbol' => 'BTCUSDT',
+            'interval' => '5', 'open_time' => now('UTC')->subMinutes(5),
+            'open' => '100', 'high' => '101', 'low' => '99', 'close' => '100',
+            'volume' => '10', 'turnover' => '1000', 'is_closed' => true,
+        ]);
+
+        $report = app(ExchangeComparisonService::class)->report();
+        $row = collect($report['accounts'])->first(fn ($item) => $item['exchange_id'] === 'bybit'
+            && $item['strategy_id'] === 'baseline');
+        self::assertNotNull($row);
+        self::assertSame('MARKET_DATA_INCOMPLETE', $row['inactivity_reason']);
+        self::assertContains('ETHUSDT|5', $row['market_data_missing_series']);
+        self::assertContains('BTCUSDT|60', $row['market_data_missing_series']);
     }
 }

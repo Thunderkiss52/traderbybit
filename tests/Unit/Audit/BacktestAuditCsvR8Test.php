@@ -13,6 +13,8 @@ final class BacktestAuditCsvR8Test extends TestCase
     {
         self::assertSame("'=1+1", BacktestAuditCsv::cell('=1+1'));
         self::assertSame("' @SUM(A1:A2)", BacktestAuditCsv::cell(' @SUM(A1:A2)'));
+        self::assertSame("'\u{FEFF}=HYPERLINK(1)", BacktestAuditCsv::cell("\u{FEFF}=HYPERLINK(1)"));
+        self::assertSame("'\u{200B}+1+1", BacktestAuditCsv::cell("\u{200B}+1+1"));
         self::assertSame('-1.25', BacktestAuditCsv::cell('-1.25'));
         self::assertSame('0.00001', BacktestAuditCsv::cell('0.00001'));
         self::assertSame('true', BacktestAuditCsv::cell(true));

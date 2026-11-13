@@ -19,6 +19,12 @@ final class NewPrimaryCapitalPolicy
         $exchangeAmount = config("paper.new_primary_initial_balances.{$exchangeId}");
         $initiallyApproved = (array) config('paper.initially_approved_bybit_strategies', []);
 
+        // Discovery is not an owner funding instruction. Preserve the explicit
+        // legacy Bybit cohort; every additional portfolio starts unfunded.
+        if ($exchangeId !== 'bybit' || ! in_array($strategyId, $initiallyApproved, true)) {
+            return '0';
+        }
+
         $amount = is_string($strategyAmount)
             ? $strategyAmount
             : (is_string($exchangeAmount)

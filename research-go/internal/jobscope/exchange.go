@@ -3,6 +3,7 @@ package jobscope
 import (
 	"errors"
 	"fmt"
+	"regexp"
 	"strings"
 )
 
@@ -54,8 +55,8 @@ func ResolveExchange(payload map[string]interface{}) (string, error) {
 		exchange = next
 	}
 
-	if exchange != "bybit" && exchange != "binance" {
-		return "", fmt.Errorf("research job exchange is missing or unsupported: %q", exchange)
+	if !regexp.MustCompile(`^[a-z0-9][a-z0-9_-]{1,31}$`).MatchString(exchange) {
+		return "", fmt.Errorf("research job exchange identity is invalid: %q", exchange)
 	}
 
 	return exchange, nil

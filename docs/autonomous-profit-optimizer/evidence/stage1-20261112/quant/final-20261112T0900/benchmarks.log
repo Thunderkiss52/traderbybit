@@ -1,0 +1,12 @@
+goos: linux
+goarch: amd64
+pkg: github.com/traderbybit/research-go/internal/signalintel
+cpu: 12th Gen Intel(R) Core(TM) i5-12500H
+BenchmarkEvaluateSixtyCandlesSixHorizons-2   	     531	   1044502 ns/op	  488826 B/op	   15738 allocs/op
+BenchmarkEvaluateSixtyCandlesSixHorizons-2   	     537	   1059647 ns/op	  488555 B/op	   15738 allocs/op
+BenchmarkEvaluateSixtyCandlesSixHorizons-2   	     588	   1072541 ns/op	  488361 B/op	   15738 allocs/op
+BenchmarkClassify4096Observations-2          	      27	  30691791 ns/op	22687921 B/op	   61638 allocs/op
+BenchmarkClassify4096Observations-2          	      25	  29919504 ns/op	22861500 B/op	   61638 allocs/op
+BenchmarkClassify4096Observations-2          	      22	  32239423 ns/op	24329425 B/op	   61642 allocs/op
+PASS
+ok  	github.com/traderbybit/research-go/internal/signalintel	5.049s

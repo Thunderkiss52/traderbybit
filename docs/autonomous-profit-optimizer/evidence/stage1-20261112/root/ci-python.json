@@ -1,0 +1,11 @@
+{
+  "command": [
+    "python3",
+    "-m",
+    "unittest",
+    "scripts.tests.test_cicd"
+  ],
+  "start_utc": "2026-11-12T09:00:56.836340+00:00",
+  "seconds": 1.729642037000076,
+  "exit_code": 0
+}

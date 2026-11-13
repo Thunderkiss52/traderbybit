@@ -78,12 +78,13 @@ final class ModelAdvisoryDecisionVetoTest extends TestCase
         // 1. Create an active champion model with negative weights (will predict low probability < 0.40)
         $model = LearningModelArtifactRecord::query()->create([
             'id' => (string) Uuid::uuid4(),
-            'name' => "Logistic_{$targetEvent}_{$symbol}",
+            'name' => LearningPredictorService::scopedModelName($targetEvent, $symbol, 'bybit', strategyVersion: '1.2.0'),
             'version' => 'v1.0.0',
             'model_type' => 'LOGISTIC_REGRESSION',
             'target_event' => $targetEvent,
             'parameters' => [
-                'exchange' => 'bybit',
+                'exchange' => 'bybit', 'category' => 'linear', 'strategy_id' => 'baseline',
+                'strategy_version' => '1.2.0', 'timeframe' => '15', 'side' => 'BUY',
                 'features' => ['rsi_14', 'adx_14', 'relative_volume'],
                 'scaling' => ['mean' => ['rsi_14' => 50, 'adx_14' => 25, 'relative_volume' => 1.0], 'std' => ['rsi_14' => 10, 'adx_14' => 5, 'relative_volume' => 0.5]],
                 'dataset_id' => 'ds-001',
@@ -148,7 +149,7 @@ final class ModelAdvisoryDecisionVetoTest extends TestCase
         self::assertSame('SKIP', $vetoEvent->new_state);
 
         // 3. Rollback model: status transitions to ROLLED_BACK
-        $rolledBack = $this->predictor->rollbackModel($targetEvent, $symbol, 'Concept drift detected in forward monitoring');
+        $rolledBack = $this->predictor->rollbackModel($targetEvent, $symbol, 'Concept drift detected in forward monitoring', strategyVersion: '1.2.0');
         self::assertNull($rolledBack); // No prior champion exists
 
         $model->refresh();
@@ -188,11 +189,11 @@ final class ModelAdvisoryDecisionVetoTest extends TestCase
         // Incumbent champion v1.0.0 in SUPERSEDED
         $champV1 = LearningModelArtifactRecord::query()->create([
             'id' => (string) Uuid::uuid4(),
-            'name' => "Logistic_{$targetEvent}_{$symbol}",
+            'name' => LearningPredictorService::scopedModelName($targetEvent, $symbol, 'bybit', strategyVersion: '1.2.0'),
             'version' => 'v1.0.0',
             'model_type' => 'LOGISTIC_REGRESSION',
             'target_event' => $targetEvent,
-            'parameters' => ['exchange' => 'bybit', 'features' => ['rsi_14']],
+            'parameters' => ['exchange' => 'bybit', 'category' => 'linear', 'strategy_id' => 'baseline', 'strategy_version' => '1.2.0', 'timeframe' => '15', 'side' => 'BUY', 'approved_for_advisory' => true, 'features' => ['rsi_14']],
             'weights' => ['intercept' => 0.5, 'rsi_14' => 0.01],
             'metrics' => ['brier_score' => 0.20, 'ece' => 0.05],
             'status' => 'SUPERSEDED',
@@ -203,11 +204,11 @@ final class ModelAdvisoryDecisionVetoTest extends TestCase
         // Challenger v2.0.0 currently ACTIVE
         $champV2 = LearningModelArtifactRecord::query()->create([
             'id' => (string) Uuid::uuid4(),
-            'name' => "Logistic_{$targetEvent}_{$symbol}",
+            'name' => LearningPredictorService::scopedModelName($targetEvent, $symbol, 'bybit', strategyVersion: '1.2.0'),
             'version' => 'v2.0.0',
             'model_type' => 'LOGISTIC_REGRESSION',
             'target_event' => $targetEvent,
-            'parameters' => ['exchange' => 'bybit', 'features' => ['rsi_14']],
+            'parameters' => ['exchange' => 'bybit', 'category' => 'linear', 'strategy_id' => 'baseline', 'strategy_version' => '1.2.0', 'timeframe' => '15', 'side' => 'BUY', 'approved_for_advisory' => true, 'features' => ['rsi_14']],
             'weights' => ['intercept' => -2.0, 'rsi_14' => -0.05],
             'metrics' => ['brier_score' => 0.22, 'ece' => 0.06],
             'status' => 'ACTIVE',
@@ -216,7 +217,7 @@ final class ModelAdvisoryDecisionVetoTest extends TestCase
         ]);
 
         // Execute rollback of v2
-        $restored = $this->predictor->rollbackModel($targetEvent, $symbol, 'Performance deterioration in v2.0.0');
+        $restored = $this->predictor->rollbackModel($targetEvent, $symbol, 'Performance deterioration in v2.0.0', strategyVersion: '1.2.0');
         self::assertNotNull($restored);
         self::assertSame($champV1->id, $restored->id);
 

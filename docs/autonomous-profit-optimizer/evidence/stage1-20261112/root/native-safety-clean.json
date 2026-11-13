@@ -1,0 +1,20 @@
+{
+  "command": [
+    "docker",
+    "run",
+    "--rm",
+    "--label",
+    "vector.task=apo-root-20261112",
+    "--entrypoint",
+    "php",
+    "-v",
+    "/home/thunder/work/traderbybit:/app",
+    "-w",
+    "/app",
+    "traderbybit-php85-test:local",
+    "scripts/audit/native_exchange_safety_check.php"
+  ],
+  "start_utc": "2026-11-12T21:04:10.539626+00:00",
+  "seconds": 0.882564651001303,
+  "exit_code": 0
+}
