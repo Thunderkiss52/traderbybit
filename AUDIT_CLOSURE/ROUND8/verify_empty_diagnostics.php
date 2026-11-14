@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 // Dependency-free regression of the actual private analytics diagnostics method.
 // Stubs exercise the zero-sample path without claiming Laravel/DB integration.
+
 namespace Illuminate\Support {
     final class Collection
     {
@@ -46,27 +47,30 @@ namespace Brick\Math {
 }
 
 namespace {
+    use App\Research\Application\SignalQualityAnalyticsService;
+    use Illuminate\Support\Collection;
+
     require __DIR__.'/../../app/Research/Application/SignalQualityAnalyticsService.php';
 
-    $class = new \ReflectionClass(\App\Research\Application\SignalQualityAnalyticsService::class);
+    $class = new ReflectionClass(SignalQualityAnalyticsService::class);
     $service = $class->newInstanceWithoutConstructor();
     $diagnostics = $class->getMethod('computeDiagnostics');
-    $empty = new \Illuminate\Support\Collection();
+    $empty = new Collection;
 
     $emptyFrames = array_map(
         static fn (string $tf) => ['timeframe' => $tf, 'signals' => 0, 'expectancy' => null],
-        \App\Research\Application\SignalQualityAnalyticsService::CANONICAL_TIMEFRAMES,
+        SignalQualityAnalyticsService::CANONICAL_TIMEFRAMES,
     );
     $result = $diagnostics->invoke($service, $empty, $empty, $emptyFrames);
     if ($result !== []) {
-        throw new \RuntimeException('Empty timeframe cohorts must not produce diagnostics.');
+        throw new RuntimeException('Empty timeframe cohorts must not produce diagnostics.');
     }
     echo "PASS 1: all six empty timeframe cohorts yield no exception or fabricated warning\n";
 
     $negativeFrames = [...$emptyFrames, ['timeframe' => '15m', 'signals' => 3, 'expectancy' => '-0.25']];
     $result = $diagnostics->invoke($service, $empty, $empty, $negativeFrames);
     if (count($result) !== 1 || ($result[0]['type'] ?? null) !== 'NEGATIVE_TIMEFRAME_EXPECTANCY') {
-        throw new \RuntimeException('Valid negative expectancy warning regressed.');
+        throw new RuntimeException('Valid negative expectancy warning regressed.');
     }
     echo "PASS 2: present negative expectancy still yields its warning\n";
 }

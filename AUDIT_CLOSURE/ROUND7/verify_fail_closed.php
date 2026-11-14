@@ -13,22 +13,24 @@ require $root.'/app/Research/Application/ResearchJobService.php';
 require $root.'/app/Trading/Application/TradingQueueResolver.php';
 
 use App\PaperTrading\Application\PreExecutionQualityRiskGate;
-use App\PaperTrading\Domain\TradeRiskClass;
 use App\PaperTrading\Domain\QualityRiskGateDecision;
-use App\Strategy\Domain\SignalQuality;
+use App\PaperTrading\Domain\TradeRiskClass;
 use App\Research\Application\LearningFeatureStoreService;
 use App\Research\Application\LearningPredictorService;
 use App\Research\Application\ResearchJobService;
+use App\Strategy\Domain\SignalQuality;
 use App\Trading\Application\TradingQueueResolver;
 
-function config(string $key): mixed {
+function config(string $key): mixed
+{
     return match ($key) {
         'trading.queues.bybit' => 'trading-bybit',
         'trading.queues.binance' => 'trading-binance',
         default => null,
     };
 }
-function check(bool $condition, string $label): void {
+function check(bool $condition, string $label): void
+{
     static $count = 0;
     if (! $condition) {
         fwrite(STDERR, "FAIL {$label}\n");
@@ -37,7 +39,7 @@ function check(bool $condition, string $label): void {
     $count++;
     echo "PASS {$count}: {$label}\n";
 }
-$gate = new PreExecutionQualityRiskGate();
+$gate = new PreExecutionQualityRiskGate;
 $base = [
     'signal_quality' => SignalQuality::High,
     'trade_risk' => TradeRiskClass::Low,
@@ -64,7 +66,7 @@ check(LearningFeatureStoreService::intervalMinutes('foo') === null, 'bad timefra
 check(TradingQueueResolver::forExchange('bybit') === 'trading-bybit', 'Bybit dedicated queue');
 check(TradingQueueResolver::forExchange('okx') === 'default', 'new exchange uses shared staffed queue');
 check(TradingQueueResolver::forExchange('binance') === 'trading-binance', 'Binance dedicated queue');
-$source = new ResearchJobService();
+$source = new ResearchJobService;
 check($source->resolveExchangeProvenance(['exchange' => 'OKX', 'payload' => ['dataset_exchange' => 'okx']]) === 'okx', 'OKX provenance');
 try {
     $source->resolveExchangeProvenance(['exchange' => 'bybit', 'payload' => ['exchange_id' => 'binance']]);
@@ -77,6 +79,5 @@ $nameB = LearningPredictorService::scopedModelName('TP_BEFORE_SL', 'BTCUSDT', 'o
 check($nameA !== $nameB, 'model names isolate exchange and side');
 check(strlen($nameA) <= 64, 'model name fits database column');
 
-
 check($gate->evaluate($base + ['require_validated_edge' => false])['allowed'] === false, 'legacy unchecked override cannot bypass edge requirement');
-check(LearningPredictorService::scopedModelName('TP_BEFORE_SL','BTCUSDT','bybit','baseline','15','BUY','linear','1.2.0') !== LearningPredictorService::scopedModelName('TP_BEFORE_SL','BTCUSDT','bybit','baseline','15','BUY','linear','1.3.0'), 'versioned learning identity isolates changes');
+check(LearningPredictorService::scopedModelName('TP_BEFORE_SL', 'BTCUSDT', 'bybit', 'baseline', '15', 'BUY', 'linear', '1.2.0') !== LearningPredictorService::scopedModelName('TP_BEFORE_SL', 'BTCUSDT', 'bybit', 'baseline', '15', 'BUY', 'linear', '1.3.0'), 'versioned learning identity isolates changes');

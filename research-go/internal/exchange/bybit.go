@@ -9,8 +9,8 @@ import (
 	"net/url"
 	"time"
 
-	"github.com/traderbybit/research-go/internal/decimal"
 	"github.com/traderbybit/research-go/internal/datasets"
+	"github.com/traderbybit/research-go/internal/decimal"
 	"github.com/traderbybit/research-go/internal/rateLimiter"
 )
 
