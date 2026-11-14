@@ -43,7 +43,7 @@ func BenchmarkClassify4096Observations(b *testing.B) {
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
 		result, err := Classify(ctx, input)
-		if err != nil || result.IndependentSamples != MaxObservations || result.Classification == "INVALID_DATA" {
+		if err != nil || result.IndependentSamples != MaxObservations || result.DescriptiveMetrics.ObservedCount != MaxObservations || result.Classification == "INVALID_DATA" {
 			b.Fatal("benchmark must classify all mature observations", result, err)
 		}
 	}

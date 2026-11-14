@@ -73,8 +73,14 @@ final class SignalIntelligenceResultVerifier
         $ordered = ['scope' => self::ordered($input['scope'], self::SCOPE), 'as_of_ms' => $input['as_of_ms'],
             'policy' => self::ordered($input['policy'], self::POLICY),
             'observations' => array_map(static function (array $row): array {
+                $optional = $row;
                 $row = self::ordered($row, 'id input_hash scope status available_ms end_ms net_return');
                 $row['scope'] = self::ordered($row['scope'], self::SCOPE);
+                foreach (['directional_correct', 'mfe_ratio', 'mae_ratio'] as $field) {
+                    if (isset($optional[$field])) {
+                        $row[$field] = $optional[$field];
+                    }
+                }
 
                 return $row;
             }, $input['observations'])];

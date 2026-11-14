@@ -1,0 +1,86 @@
+{
+  "round": "5",
+  "utc": "2026-11-11T07:28:12.232357+00:00",
+  "input_archive": "VECTOR-AUDIT-CLOSED-V4.tar.gz",
+  "input_sha256": "d763d39ef5441b487d4c075c10ea9561471ed8f000dc43e4f30aa0e009b63ce2",
+  "preserved_repo_HEAD": "9615a62 (as recorded in original snapshot; .git is absent)",
+  "tests": [
+    {
+      "name": "PHP all-source syntax",
+      "result": "PASS",
+      "count": 974,
+      "command": "find . -name \"*.php\" -type f -print0 | xargs -0 -P 8 -n 1 sh -c 'php -l \"$0\" > /dev/null'"
+    },
+    {
+      "name": "Python syntax AST",
+      "result": "PASS",
+      "count": 44,
+      "command": "ast.parse for all scripts/**/*.py"
+    },
+    {
+      "name": "Bash syntax",
+      "result": "PASS",
+      "count": 11,
+      "command": "find scripts -name \"*.sh\" -print0 | xargs -0 -n 1 bash -n"
+    },
+    {
+      "name": "Standalone real assignment-service policy tests with in-memory DB facade",
+      "result": "PASS",
+      "count": 11,
+      "command": "php scripts/tests/strategy_exchange_topology_contract_smoke.php"
+    },
+    {
+      "name": "Native CSV spreadsheet formula cases",
+      "result": "PASS",
+      "count": 5,
+      "command": "php -r with BacktestAuditCsv::cell()"
+    },
+    {
+      "name": "Python funding tests",
+      "result": "PASS",
+      "count": 7,
+      "command": "python -m unittest discover -s scripts/tests -p test_phase0_funding_classifier.py -v"
+    },
+    {
+      "name": "Python Phase0 evidence tests",
+      "result": "PASS",
+      "count": 11,
+      "command": "python -m unittest discover -s scripts/tests -p test_assess_phase0_evidence.py -v"
+    },
+    {
+      "name": "Frontend unit tests",
+      "result": "PARTIAL",
+      "passed": 53,
+      "failed_load": 2,
+      "reason": "typescript dependency not installed; no node_modules",
+      "command": "cd frontend && node --test tests/*.test.js"
+    },
+    {
+      "name": "Go tests",
+      "result": "BLOCKED_BY_ENVIRONMENT",
+      "reason": "GOPROXY=off and github.com/lib/pq not present",
+      "command": "cd research-go && GOPROXY=off GOSUMDB=off go test ./..."
+    },
+    {
+      "name": "PHPUnit and PostgreSQL integration",
+      "result": "NOT_RUN",
+      "reason": "vendor absent, PHP 8.4.24 while project requires ~8.5.12, PostgreSQL unavailable"
+    },
+    {
+      "name": "Vite/TypeScript build and Playwright browser",
+      "result": "NOT_RUN",
+      "reason": "frontend/node_modules absent; no Laravel runtime"
+    },
+    {
+      "name": "Clean-base patch application",
+      "result": "PASS",
+      "command": "git apply --check AUDIT_CLOSURE/ROUND5/PATCH_FROM_V4.diff from clean V4 tree"
+    },
+    {
+      "name": "Production DB/reconciliation/real accounts",
+      "result": "NOT_RUN",
+      "reason": "No production access; no production writes or deployment performed"
+    }
+  ],
+  "release_status": "SOURCE_PATCHED_INTEGRATION_ACCEPTANCE_REQUIRED"
+}

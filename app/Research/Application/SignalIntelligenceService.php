@@ -34,6 +34,7 @@ final readonly class SignalIntelligenceService
         $asOf = ($asOf ?? CarbonImmutable::now('UTC'))->utc()->startOfSecond();
         $scope = $member->result['scope'];
         $query = SignalOutcomeEvaluationRecord::query()->where('status', 'MATURED')->where('data_source', 'HYPOTHETICAL')
+            ->sourceTimeframeConsistent()
             ->where('policy_version', $scope['label_policy_version'])
             ->where('evaluated_as_of', '<=', $asOf)->where('created_at', '<=', $asOf);
         foreach (['exchange', 'category', 'symbol', 'strategy_id', 'strategy_version', 'source_timeframe_minutes', 'horizon_minutes',
@@ -43,13 +44,23 @@ final readonly class SignalIntelligenceService
         // One immutable evaluation per signal; late imports cannot duplicate evidence.
         $selected = $query->selectRaw('DISTINCT ON (signal_id) *')->orderBy('signal_id')->orderByDesc('evaluated_as_of')->orderByDesc('id');
         $rows = DB::query()->fromSub($selected, 'e')->orderByDesc('available_at')->orderBy('signal_id')->limit(4096)->get();
-        $observations = $rows->map(fn ($row): array => [
-            'id' => $row->signal_id, 'input_hash' => $row->input_hash, 'scope' => $scope, 'status' => $row->status,
-            // Classifier intervals start at the declared execution anchor, which
-            // may follow original signal availability by part of a minute.
-            'available_ms' => CarbonImmutable::parse($row->entry_at)->getTimestampMs(),
-            'end_ms' => CarbonImmutable::parse($row->horizon_end_at)->getTimestampMs(), 'net_return' => $row->net_return,
-        ])->sortBy('available_ms')->values()->all();
+        $observations = $rows->map(static function ($row) use ($scope): array {
+            $observation = [
+                'id' => $row->signal_id, 'input_hash' => $row->input_hash, 'scope' => $scope, 'status' => $row->status,
+                // Classifier intervals start at the declared execution anchor,
+                // which can follow signal availability by part of a minute.
+                'available_ms' => CarbonImmutable::parse($row->entry_at)->getTimestampMs(),
+                'end_ms' => CarbonImmutable::parse($row->horizon_end_at)->getTimestampMs(), 'net_return' => $row->net_return,
+            ];
+            $outcome = is_string($row->result) ? json_decode($row->result, true, 32, JSON_THROW_ON_ERROR) : (array) $row->result;
+            foreach (['directional_correct', 'mfe_ratio', 'mae_ratio'] as $field) {
+                if (isset($outcome[$field])) {
+                    $observation[$field] = $outcome[$field];
+                }
+            }
+
+            return $observation;
+        })->sortBy('available_ms')->values()->all();
         $packet = ['operation' => 'classify', 'cohort' => ['scope' => $scope, 'as_of_ms' => $asOf->getTimestampMs(),
             'policy' => config('research.signal_intelligence.quality_policy'), 'observations' => $observations]];
         $datasetHash = SignalIntelligenceResultVerifier::cohortDatasetHash($observations);

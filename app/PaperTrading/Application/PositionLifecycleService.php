@@ -6,6 +6,7 @@ namespace App\PaperTrading\Application;
 
 use App\PaperTrading\Domain\ExecutionQuote;
 use App\PaperTrading\Domain\ExecutionType;
+use App\PaperTrading\Domain\InstrumentConstraints;
 use App\PaperTrading\Domain\PositionSize;
 use App\PaperTrading\Domain\PositionStatus;
 use App\PaperTrading\Domain\SignalLifecycle;
@@ -16,14 +17,17 @@ use App\PaperTrading\Infrastructure\Persistence\PaperSignalStateRecord;
 use App\PaperTrading\Infrastructure\Persistence\PositionFundingEventRecord;
 use App\PaperTrading\Infrastructure\Persistence\VirtualExecutionRecord;
 use App\PaperTrading\Infrastructure\Persistence\VirtualPositionRecord;
+use App\Strategy\Infrastructure\Persistence\MarketContextRecord;
 use App\Strategy\Infrastructure\Persistence\SignalRecord;
 use Brick\Math\BigDecimal;
 use Brick\Math\RoundingMode;
 use Carbon\CarbonImmutable;
 use DateTimeImmutable;
+use DomainException;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Ramsey\Uuid\Uuid;
+use Throwable;
 
 final readonly class PositionLifecycleService
 {
@@ -49,6 +53,7 @@ final readonly class PositionLifecycleService
             app(GlobalPaperCapitalGuard::class)->lockEntryDecision();
             $lockedAccount = PaperAccountRecord::query()->lockForUpdate()->findOrFail($account->id);
             $lockedState = PaperSignalStateRecord::query()->lockForUpdate()->findOrFail($state->id);
+            $signal = SignalRecord::query()->sharedLock()->findOrFail($signal->id);
 
             if ($existing = VirtualPositionRecord::query()->find($positionId)) {
                 return $existing;
@@ -58,18 +63,19 @@ final readonly class PositionLifecycleService
             // loaded ACTIVE model is not evidence that the account is still
             // permitted to open an entry when concurrent risk/jobs change it.
             $eligibility->assertOpenEligible($lockedAccount, $lockedState, $signal, $at);
+            $sizingSettings = PaperSizingSettings::effectiveForAccount($lockedAccount->sizing_settings);
+            $size = $this->verifiedEntrySize($lockedAccount, $signal, $size, $quote, $at, $sizingSettings);
             // Include the prospective position risk, not just existing reservations.
             // Guard uses a shared PostgreSQL entry lock to prevent simultaneous oversubscription.
             $aggregateReason = $lockedAccount->is_primary
                 ? app(GlobalPaperCapitalGuard::class)->entryRejectionReason((string) $size->riskCapital) : null;
             if ($aggregateReason !== null) {
-                throw new \DomainException('Entry ineligible: '.$aggregateReason);
+                throw new DomainException('Entry ineligible: '.$aggregateReason);
             }
             SignalLifecycle::from($lockedState->status)->transitionTo(SignalLifecycle::Active);
             $quantity = (string) $size->quantity;
             $fee = $this->execution->commission($quantity, $quote->price, $account->exchange_id);
-            $sizingSettings = $lockedAccount->sizing_settings;
-            $effectiveMode = $sizingSettings['mode'] ?? 'fixed_notional';
+            $effectiveMode = $sizingSettings['mode'];
             $requestedNotional = match ($effectiveMode) {
                 'fixed_margin' => (string) BigDecimal::of((string) ($sizingSettings['amount'] ?? '5'))->multipliedBy((string) ($sizingSettings['leverage'] ?? '1')),
                 'fixed_notional' => (string) ($sizingSettings['amount'] ?? '5'),
@@ -121,6 +127,136 @@ final readonly class PositionLifecycleService
         });
     }
 
+    private function verifiedEntrySize(PaperAccountRecord $account, SignalRecord $signal, PositionSize $supplied, ExecutionQuote $quote, DateTimeImmutable $at, array $settings): PositionSize
+    {
+        if (! $supplied->allowed) {
+            throw new DomainException('Entry ineligible: supplied_position_size_not_allowed');
+        }
+        if ($quote->type !== ExecutionType::Entry || ! preg_match('/^[0-9]+(?:\.[0-9]+)?$/D', $quote->price)
+            || ! BigDecimal::of($quote->price)->isPositive()) {
+            throw new DomainException('Entry ineligible: invalid_entry_quote');
+        }
+        foreach (['quantity', 'riskCapital', 'effectiveLossPerUnit', 'notional', 'qtyStep', 'allocatedMargin', 'leverage'] as $field) {
+            $value = $supplied->{$field};
+            if (! is_string($value) || ! preg_match('/^[0-9]+(?:\.[0-9]+)?$/D', $value)
+                || ! BigDecimal::of($value)->isPositive()) {
+                throw new DomainException('Entry ineligible: invalid_supplied_position_size');
+            }
+        }
+
+        // Instrument limits are execution information, available no later than the fill.
+        // Later imports or revisions cannot manufacture historical sizing authority.
+        $context = MarketContextRecord::query()->where('exchange', $account->exchange_id)
+            ->where('category', $signal->category)->where('symbol', $signal->symbol)
+            ->where('observed_at', '<=', $at)->where('created_at', '<=', $at)->where('updated_at', '<=', $at)
+            ->latest('observed_at')->sharedLock()->first();
+        if ($context === null) {
+            throw new DomainException('Entry ineligible: instrument_constraints_unavailable_as_of_execution');
+        }
+        $maximumAge = (int) $this->config['market_safety']['maximum_context_age_seconds'];
+        if ($maximumAge <= 0 || $at->getTimestamp() - $context->observed_at->getTimestamp() > $maximumAge) {
+            throw new DomainException('Entry ineligible: instrument_constraints_stale');
+        }
+        foreach (['tick_size', 'qty_step', 'min_order_qty', 'max_order_qty', 'min_notional_value'] as $field) {
+            if (! is_string($context->{$field}) || ! preg_match('/^[0-9]+(?:\.[0-9]+)?$/D', $context->{$field})) {
+                throw new DomainException('Entry ineligible: invalid_instrument_constraints');
+            }
+        }
+        $tick = BigDecimal::of($context->tick_size);
+        if (! $tick->isPositive()) {
+            throw new DomainException('Entry ineligible: invalid_instrument_constraints');
+        }
+        if (! BigDecimal::of($quote->price)->remainder($tick)->isZero()) {
+            throw new DomainException('Entry ineligible: entry_price_tick_mismatch');
+        }
+
+        try {
+            $canonical = app(PositionSizingService::class)->calculate(
+                $account->current_equity, $signal->model_risk_percent, $quote->price, $signal->stop_loss,
+                new InstrumentConstraints($context->qty_step, $context->min_order_qty, $context->max_order_qty, $context->min_notional_value),
+                $this->execution->costs($account->exchange_id), $settings,
+            );
+        } catch (Throwable $exception) {
+            throw new DomainException('Entry ineligible: position_sizing_unverified', previous: $exception);
+        }
+        if (! $canonical->allowed) {
+            throw new DomainException('Entry ineligible: '.($canonical->reason ?? 'position_sizing_rejected'));
+        }
+        foreach (['quantity', 'riskCapital', 'effectiveLossPerUnit', 'notional', 'qtyStep', 'allocatedMargin', 'leverage'] as $field) {
+            if (! BigDecimal::of($supplied->{$field})->isEqualTo($canonical->{$field})) {
+                throw new DomainException('Entry ineligible: supplied_position_size_mismatch');
+            }
+        }
+
+        $active = VirtualPositionRecord::query()->where('paper_account_id', $account->id)
+            ->whereIn('status', [PositionStatus::Open->value, PositionStatus::PartiallyClosed->value])->get();
+        $sameSymbol = $active->first(fn (VirtualPositionRecord $position): bool => $position->symbol === $signal->symbol);
+        if ($sameSymbol !== null) {
+            throw new DomainException('Entry ineligible: '.($sameSymbol->side === $signal->side ? 'position_already_open' : 'position_conflict'));
+        }
+        // The existing correlation calculation does not establish that every
+        // input candle was available at the decision time. Do not authorize
+        // correlated exposure until causal revalidation is implemented.
+        if ($active->contains(fn (VirtualPositionRecord $position): bool => $position->side === $signal->side)) {
+            throw new DomainException('Entry ineligible: correlation_revalidation_unavailable');
+        }
+        $equity = BigDecimal::of($account->current_equity);
+        $reserved = BigDecimal::of($account->reserved_risk);
+        $notional = $active->reduce(fn (BigDecimal $sum, VirtualPositionRecord $position): BigDecimal => $sum->plus(BigDecimal::of($position->entry_price)->multipliedBy($position->remaining_quantity)), BigDecimal::zero());
+        // Margin and stop-loss risk are distinct limits. The account lock makes
+        // this check serialize against every other entry for the same account.
+        $margin = $active->reduce(fn (BigDecimal $sum, VirtualPositionRecord $position): BigDecimal => $sum->plus($this->remainingMargin($position)), BigDecimal::zero());
+        $entryFee = BigDecimal::of($this->execution->commission($canonical->quantity, $quote->price, $account->exchange_id));
+        if ($margin->plus($canonical->allocatedMargin)->plus($entryFee)->isGreaterThan($equity)) {
+            throw new DomainException('Entry ineligible: insufficient_available_margin');
+        }
+        $risk = app(RiskEngine::class)->assess([
+            'account_status' => $account->status, 'cooldown_until' => $account->cooldown_until?->toDateTimeImmutable(), 'at' => $at,
+            'open_positions' => $active->count(), 'equity' => $account->current_equity,
+            'free_capital' => (string) $equity->minus($reserved)->minus($canonical->riskCapital),
+            'risk_percent' => $signal->model_risk_percent, 'quality_class' => $signal->quality_class,
+            'total_risk_percent' => (string) $reserved->dividedBy($equity, 24, RoundingMode::HalfEven)->multipliedBy(100),
+            'drawdown_percent' => $account->current_drawdown_percent,
+            'notional_after' => (string) $notional->plus($canonical->notional),
+        ]);
+        if (! $risk->allowed) {
+            throw new DomainException('Entry ineligible: '.($risk->reasons[0] ?? 'entry_risk_rejected'));
+        }
+
+        return $canonical;
+    }
+
+    private function remainingMargin(VirtualPositionRecord $position): BigDecimal
+    {
+        $initial = BigDecimal::of($position->initial_quantity);
+        $remaining = BigDecimal::of($position->remaining_quantity);
+        $price = BigDecimal::of($position->entry_price);
+        if (! $initial->isPositive() || ! $remaining->isPositive() || $remaining->isGreaterThan($initial) || ! $price->isPositive()) {
+            throw new DomainException('Entry ineligible: existing_position_margin_unverified');
+        }
+        $notional = $price->multipliedBy($remaining);
+        $snapshot = $position->sizing_snapshot;
+        $allocated = $snapshot['allocated_margin'] ?? null;
+        $leverage = $snapshot['leverage'] ?? null;
+        // Older positions have no sizing snapshot. Conservatively reserve their
+        // entire remaining entry notional, without changing historical records.
+        if (! is_string($allocated) || ! is_string($leverage)
+            || ! preg_match('/^[0-9]+(?:\.[0-9]+)?$/D', $allocated)
+            || ! preg_match('/^[0-9]+(?:\.[0-9]+)?$/D', $leverage)
+            || ! BigDecimal::of($allocated)->isPositive()
+            || BigDecimal::of($leverage)->isLessThan('1') || BigDecimal::of($leverage)->isGreaterThan('2')
+            || BigDecimal::of($allocated)->multipliedBy($leverage)->isLessThan($price->multipliedBy($initial))) {
+            return $notional;
+        }
+
+        // Never trust an understated snapshot. Round both projections upward
+        // and reserve the larger amount until the remaining position is closed.
+        return BigDecimal::max(
+            BigDecimal::of($allocated)->multipliedBy($remaining)->dividedBy($initial, 24, RoundingMode::Ceiling),
+            $notional->dividedBy($leverage, 24, RoundingMode::Ceiling),
+        );
+    }
+
     public function executeExit(VirtualPositionRecord $position, ExecutionQuote $quote, DateTimeImmutable $at): VirtualPositionRecord
     {
         return DB::transaction(function () use ($position, $quote, $at): VirtualPositionRecord {
@@ -168,7 +304,7 @@ final readonly class PositionLifecycleService
             // Verify exchange provenance before charging exchange-specific costs.
             $positionAccount = PaperAccountRecord::query()->whereKey($locked->paper_account_id)->firstOrFail();
             if ($locked->exchange_id !== $positionAccount->exchange_id) {
-                throw new \DomainException('Position/account exchange provenance mismatch.');
+                throw new DomainException('Position/account exchange provenance mismatch.');
             }
             $fee = $this->execution->commission($quantity, $quote->price, $positionAccount->exchange_id);
             $remaining = $remainingBefore->minus($quantity);
@@ -178,7 +314,7 @@ final readonly class PositionLifecycleService
                 ExecutionType::StopLoss => PositionStatus::ClosedSl,
                 ExecutionType::Timeout => PositionStatus::ClosedTimeout,
                 ExecutionType::RiskClosure => PositionStatus::ClosedRisk,
-                default => throw new \DomainException('Entry cannot be processed as an exit.'),
+                default => throw new DomainException('Entry cannot be processed as an exit.'),
             };
             $status->transitionTo($next);
             $totalGross = BigDecimal::of($locked->gross_pnl)->plus($gross);
@@ -237,7 +373,7 @@ final readonly class PositionLifecycleService
     {
         $signal = SignalRecord::query()->findOrFail($position->signal_id, ['exchange', 'category']);
         if ($signal->exchange !== $position->exchange_id || $signal->category !== 'linear') {
-            throw new \DomainException('Funding source/position exchange mismatch.');
+            throw new DomainException('Funding source/position exchange mismatch.');
         }
 
         $cutoff = $position->closed_at !== null

@@ -1,0 +1,49 @@
+{
+  "run_at_utc": "2026-11-11T08:32:45.570378+00:00",
+  "baseline": "V5 archive (not git checkout)",
+  "source_sha256": "5f0eb9a3dccf4fb2f5522594901068f653dfc379e8f8652ea156e50b2a871cbc",
+  "checks": {
+    "php_lint": {
+      "files": 977,
+      "failures": []
+    },
+    "python_ast": {
+      "files": 50,
+      "failures": []
+    },
+    "bash_lint": {
+      "files": 27,
+      "failures": []
+    },
+    "frontend_tests": {
+      "pass": 98,
+      "fail": 0,
+      "run": "node --test tests/*.test.js",
+      "setup": "temporary symlink to already installed global TypeScript, removed after tests"
+    },
+    "python_unittest": {
+      "passed": 18,
+      "command": "python3 -m unittest scripts.tests.test_phase0_funding_classifier scripts.tests.test_assess_phase0_evidence -q"
+    },
+    "cost_model_contract": {
+      "passed": 11,
+      "command": "php scripts/tests/historical_execution_cost_contract_smoke.php"
+    },
+    "assignments_contract": {
+      "passed": 11,
+      "command": "php scripts/tests/strategy_exchange_topology_contract_smoke.php"
+    },
+    "phpunit_postgresql": {
+      "status": "NOT_RUN",
+      "reason": "PHP 8.4.24 but composer requires ~8.5.12; vendor and PostgreSQL unavailable"
+    },
+    "frontend_typecheck_build_browser": {
+      "status": "NOT_RUN",
+      "reason": "missing project node_modules, Quasar/Vite/compiler-sfc; no running application"
+    },
+    "go_tests": {
+      "status": "BLOCKED",
+      "reason": "Go 1.23.2, offline github.com/lib/pq not cached"
+    }
+  }
+}

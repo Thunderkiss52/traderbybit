@@ -17,7 +17,7 @@ final readonly class PaperExecutionEngine
 {
     public function __construct(private array $config) {}
 
-    public function entry(string $side, string $entryLow, string $entryHigh, string $stop, string $tp1, string $tp2, DateTimeImmutable $signalAt, DateTimeImmutable $expiresAt, MarketBar $bar, string $exchangeId = 'bybit'): ?ExecutionQuote
+    public function entry(string $side, string $entryLow, string $entryHigh, string $stop, string $tp1, string $tp2, DateTimeImmutable $signalAt, DateTimeImmutable $expiresAt, MarketBar $bar, string $exchangeId = 'bybit', ?string $tickSize = null): ?ExecutionQuote
     {
         if (! $bar->isClosed || $bar->closeTime <= $signalAt || $bar->closeTime > $expiresAt) {
             return null;
@@ -37,6 +37,16 @@ final readonly class PaperExecutionEngine
             $source = $bar->source;
         }
         $price = $this->withSlippage($reference, $side === 'BUY', $exchangeId);
+        if ($tickSize !== null) {
+            if (! preg_match('/^[0-9]+(?:\.[0-9]+)?$/D', $tickSize) || ! $this->d($tickSize)->isPositive()) {
+                throw new \DomainException('Entry ineligible: invalid_instrument_constraints');
+            }
+            $tick = $this->d($tickSize);
+            $price = $price->dividedBy($tick, 0, $side === 'BUY' ? RoundingMode::Ceiling : RoundingMode::Floor)->multipliedBy($tick);
+            if (! $price->isPositive()) {
+                throw new \DomainException('Entry ineligible: invalid_entry_quote');
+            }
+        }
         $stopHit = $side === 'BUY' ? $this->d($bar->low)->isLessThanOrEqualTo($this->d($stop)) : $this->d($bar->high)->isGreaterThanOrEqualTo($this->d($stop));
         $targetHit = $side === 'BUY' ? $this->d($bar->high)->isGreaterThanOrEqualTo($this->d($tp1)) : $this->d($bar->low)->isLessThanOrEqualTo($this->d($tp1));
 

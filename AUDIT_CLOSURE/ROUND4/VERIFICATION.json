@@ -1,0 +1,74 @@
+{
+  "timestamp_utc": "2026-11-11T07:10:13.971031+00:00",
+  "base_archive": "VECTOR-AUDIT-CLOSED-V3.tar.gz",
+  "base_sha256": "352e10064ae0d0f26b06997b940b01b8ac165789d1d5a334b05d3e49b2a7b1a0",
+  "represented_git_head": "9615a62 (source archive; no git history)",
+  "source_changed_files": 4,
+  "checks": {
+    "input_archive_sha256": {
+      "status": "PASS",
+      "value": "352e10064ae0d0f26b06997b940b01b8ac165789d1d5a334b05d3e49b2a7b1a0"
+    },
+    "php_syntax": {
+      "status": "PASS",
+      "files": 938,
+      "command": "find app tests database config routes bootstrap -name *.php | xargs -P 8 -n 1 php -l"
+    },
+    "python_syntax": {
+      "status": "PASS",
+      "files": 44
+    },
+    "native_exchange_safety": {
+      "status": "PASS",
+      "checks": 28
+    },
+    "signal_cohort_query_construction": {
+      "status": "PASS",
+      "checks": 13,
+      "warning": "Builder double, not database execution"
+    },
+    "python_targeted_funding_and_phase0": {
+      "status": "PASS",
+      "tests": 18
+    },
+    "python_unittest_full_discovery": {
+      "status": "INCOMPLETE",
+      "reason": "Global discovery exceeded 20-second bound"
+    },
+    "frontend_node": {
+      "status": "PARTIAL",
+      "passed": 53,
+      "failed_module_imports": 2,
+      "reason": "typescript dependency not installed"
+    },
+    "go_race": {
+      "status": "BLOCKED",
+      "reason": "Offline environment lacks github.com/lib/pq v1.10.9"
+    },
+    "phpunit": {
+      "status": "NOT_RUN",
+      "reason": "Project PHP ~8.5.12 required; PHP 8.4.24 and no Composer vendor"
+    },
+    "postgresql": {
+      "status": "NOT_RUN",
+      "reason": "No isolated PostgreSQL instance or pdo_pgsql"
+    },
+    "native_http_and_browser": {
+      "status": "NOT_RUN",
+      "reason": "Laravel and Vite build dependencies unavailable"
+    },
+    "new_regression_tests": {
+      "status": "AUTHORED_NOT_EXECUTED",
+      "new_test_methods": 5,
+      "reason": "Requires Laravel/PostgreSQL integration"
+    }
+  },
+  "safety": {
+    "production_db_writes": false,
+    "git_push": false,
+    "deploy": false,
+    "live_orders": false,
+    "docker_used": false,
+    "econom_modified": false
+  }
+}

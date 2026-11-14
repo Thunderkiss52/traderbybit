@@ -24,7 +24,15 @@ final readonly class SignalIntelligencePacketFactory
     {
         $horizons = array_values(array_unique($horizons));
         sort($horizons);
-        $minutes = (int) preg_replace('/m$/', '', (string) $signal->timeframe);
+        $minutes = match ($signal->timeframe) {
+            '1', '1m' => 1,
+            '3', '3m' => 3,
+            '5', '5m' => 5,
+            '15', '15m' => 15,
+            '30', '30m' => 30,
+            '60', '60m', '1h' => 60,
+            default => null,
+        };
         if ($horizons === [] || array_diff($horizons, [1, 3, 5, 15, 30, 60]) !== []
             || ! in_array($minutes, [1, 3, 5, 15, 30, 60], true)
             || ! in_array($signal->side, ['BUY', 'SELL'], true) || $signal->category !== 'linear'

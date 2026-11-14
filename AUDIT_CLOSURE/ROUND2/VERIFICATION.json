@@ -1,0 +1,55 @@
+{
+  "timestamp_utc": "2026-11-11T06:54:45.643597+00:00",
+  "input_archive": "VECTOR-AUDIT-CLOSED.tar.gz",
+  "input_sha256": "909067e2bedf6e25c18cd649e35e2a219c2e5af100772f93d5793168381cc557",
+  "source_revision": "9615a62 (from source archive, no local .git)",
+  "source_files_changed": 18,
+  "php_syntax": {
+    "status": "PASS",
+    "count": 937,
+    "command": "find app database config routes tests bootstrap -name *.php | xargs -P 8 -n 1 php -l"
+  },
+  "native_exchange_safety": {
+    "status": "PASS",
+    "assertions": 28,
+    "command": "php scripts/audit/native_exchange_safety_check.php"
+  },
+  "native_paper_contract": {
+    "status": "PASS",
+    "assertions": 4,
+    "command": "php -d zend.assertions=1 -d assert.exception=1 [inline contract checks]"
+  },
+  "frontend": {
+    "status": "BLOCKED",
+    "passing_tests": 53,
+    "failed_module_loads": 2,
+    "reason": "typescript dependency absent; node_modules not bundled"
+  },
+  "python_syntax": {
+    "status": "PASS",
+    "files": 44
+  },
+  "shell_syntax": {
+    "status": "PASS"
+  },
+  "phpunit": {
+    "status": "NOT_RUN",
+    "reason": "PHP 8.4.24, Composer/vendor missing; project requires PHP ~8.5.12"
+  },
+  "postgresql": {
+    "status": "NOT_RUN",
+    "reason": "No isolated PostgreSQL server available"
+  },
+  "go_race": {
+    "status": "BLOCKED",
+    "reason": "GOPROXY=off and github.com/lib/pq v1.10.9 unavailable"
+  },
+  "browser_api": {
+    "status": "NOT_RUN",
+    "reason": "Laravel runtime unavailable"
+  },
+  "deploy_git_push_live_orders": {
+    "status": "NOT_RUN",
+    "reason": "Explicit safety boundary"
+  }
+}

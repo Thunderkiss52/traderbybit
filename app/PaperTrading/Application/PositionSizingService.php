@@ -50,6 +50,11 @@ final readonly class PositionSizingService
         } catch (\DomainException) {
             return new PositionSize(false, null, '0', null, null, 'invalid_sizing_settings');
         }
+        if ($d((string) ($settings['leverage'] ?? '1'))->isGreaterThan(BigDecimal::min(
+            $d((string) $this->config['portfolio']['maximum_model_leverage']), $d('2'),
+        ))) {
+            return new PositionSize(false, null, '0', null, null, 'leverage_limit_exceeded');
+        }
         if ($settings === null || $settings['mode'] === 'risk_percent') {
             $quantity = $riskCapital->dividedBy($effectiveLoss, 24, RoundingMode::Floor)
                 ->dividedBy($step, 0, RoundingMode::Floor)->multipliedBy($step);

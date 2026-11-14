@@ -16,7 +16,9 @@ use App\PaperTrading\Infrastructure\Persistence\PaperAccountRecord;
 use App\PaperTrading\Infrastructure\Persistence\PaperSignalStateRecord;
 use App\PaperTrading\Infrastructure\Persistence\VirtualPositionRecord;
 use App\Strategy\Domain\SignalQuality;
+use App\Strategy\Infrastructure\Persistence\MarketContextRecord;
 use App\Strategy\Infrastructure\Persistence\SignalRecord;
+use Brick\Math\BigDecimal;
 use Carbon\CarbonImmutable;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\Concerns\SeedsValidatedPaperEvidence;
@@ -115,6 +117,13 @@ final class FullSystemRemediationAcceptanceVerificationTest extends TestCase
             'expires_at' => $now->addMinutes(15),
         ]);
         $this->seedValidatedPaperEvidence($signal);
+        MarketContextRecord::query()->create([
+            'exchange' => 'bybit', 'category' => 'linear', 'symbol' => 'BTCUSDT',
+            'observed_at' => $now, 'created_at' => $now, 'updated_at' => $now,
+            'bid' => '60000', 'ask' => '60000', 'turnover_24h' => '100000000',
+            'tick_size' => '0.1', 'qty_step' => '0.001', 'min_order_qty' => '0.001',
+            'max_order_qty' => '1000', 'min_notional_value' => '5',
+        ]);
 
         $state = PaperSignalStateRecord::query()->create([
             'paper_account_id' => $account->id,
@@ -128,7 +137,7 @@ final class FullSystemRemediationAcceptanceVerificationTest extends TestCase
         $size = $sizingService->calculate(
             equity: (string) $account->current_equity,
             riskPercent: $signal->model_risk_percent,
-            entry: '60000',
+            entry: '60012',
             stop: $signal->stop_loss,
             limits: $limits,
             executionCosts: ['taker_rate' => '0.00055', 'slippage_rate' => '0.0002'],
@@ -161,11 +170,11 @@ final class FullSystemRemediationAcceptanceVerificationTest extends TestCase
         self::assertIsArray($snapshot, 'Position must have sizing_snapshot array persisted.');
         self::assertSame('fixed_notional', $snapshot['sizing_mode']);
         self::assertSame('100', $snapshot['requested_notional']);
-        self::assertSame((string) $size->notional, $snapshot['actual_notional']);
-        self::assertSame((string) $size->allocatedMargin, $snapshot['allocated_margin']);
-        self::assertSame((string) $size->leverage, $snapshot['leverage']);
-        self::assertSame((string) $signal->model_risk_percent, $snapshot['planned_risk']);
-        self::assertSame((string) $size->riskCapital, $snapshot['effective_risk']);
+        self::assertTrue(BigDecimal::of((string) $size->notional)->isEqualTo($snapshot['actual_notional']));
+        self::assertTrue(BigDecimal::of((string) $size->allocatedMargin)->isEqualTo($snapshot['allocated_margin']));
+        self::assertTrue(BigDecimal::of((string) $size->leverage)->isEqualTo($snapshot['leverage']));
+        self::assertTrue(BigDecimal::of((string) $signal->model_risk_percent)->isEqualTo($snapshot['planned_risk']));
+        self::assertTrue(BigDecimal::of((string) $size->riskCapital)->isEqualTo($snapshot['effective_risk']));
         self::assertSame('1.0.0', $snapshot['settings_version']);
         self::assertSame('1.0.0', $snapshot['instrument_metadata_version']);
         self::assertNotEmpty($snapshot['exchange_cost_model_version']);

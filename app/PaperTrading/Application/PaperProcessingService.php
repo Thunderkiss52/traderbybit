@@ -381,7 +381,8 @@ final readonly class PaperProcessingService
     private function assessment(PaperAccountRecord $account, SignalRecord $signal): array
     {
         $context = MarketContextRecord::query()->where('exchange', $signal->exchange)->where('category', $signal->category)->where('symbol', $signal->symbol)
-            ->where('observed_at', '<=', $signal->decision_time)->latest('observed_at')->first();
+            ->where('observed_at', '<=', $signal->decision_time)->where('created_at', '<=', $signal->decision_time)
+            ->where('updated_at', '<=', $signal->decision_time)->latest('observed_at')->first();
         $failures = [];
         if ($signal->exchange !== $account->exchange_id || $signal->strategy_id !== $account->strategy_id) {
             $failures[] = 'signal_account_provenance_mismatch';
@@ -439,7 +440,7 @@ final readonly class PaperProcessingService
             }
         }
         $entry = $signal->side === 'BUY' ? $signal->entry_high : $signal->entry_low;
-        $size = $limits === null ? null : $this->sizing->calculate($account->current_equity, $signal->model_risk_percent, $entry, $signal->stop_loss, $limits, $this->execution->costs($account->exchange_id), $account->sizing_settings);
+        $size = $limits === null ? null : $this->sizing->calculate($account->current_equity, $signal->model_risk_percent, $entry, $signal->stop_loss, $limits, $this->execution->costs($account->exchange_id), PaperSizingSettings::effectiveForAccount($account->sizing_settings));
         if ($size !== null && ! $size->allowed) {
             $failures[] = (string) $size->reason;
         }
@@ -615,7 +616,26 @@ final readonly class PaperProcessingService
                         continue;
                     }
                 }
-                $quote = $this->execution->entry($signal->side, $signal->entry_low, $signal->entry_high, $signal->stop_loss, $signal->take_profit_1, $signal->take_profit_2, $signal->decision_time->toDateTimeImmutable(), $signal->expires_at->toDateTimeImmutable(), $bar, $account->exchange_id);
+                try {
+                    $context = MarketContextRecord::query()->where('exchange', $signal->exchange)->where('category', $signal->category)
+                        ->where('symbol', $signal->symbol)->where('observed_at', '<=', $bar->closeTime)
+                        ->where('created_at', '<=', $bar->closeTime)->where('updated_at', '<=', $bar->closeTime)->latest('observed_at')->first();
+                    if ($context === null) {
+                        throw new \DomainException('Entry ineligible: instrument_constraints_unavailable_as_of_execution');
+                    }
+                    foreach (['tick_size', 'qty_step', 'min_order_qty', 'max_order_qty', 'min_notional_value'] as $field) {
+                        if (! is_string($context->{$field}) || ! preg_match('/^[0-9]+(?:\.[0-9]+)?$/D', $context->{$field})) {
+                            throw new \DomainException('Entry ineligible: invalid_instrument_constraints');
+                        }
+                    }
+                    $quote = $this->execution->entry($signal->side, $signal->entry_low, $signal->entry_high, $signal->stop_loss, $signal->take_profit_1, $signal->take_profit_2, $signal->decision_time->toDateTimeImmutable(), $signal->expires_at->toDateTimeImmutable(), $bar, $account->exchange_id, $context->tick_size);
+                } catch (\DomainException $exception) {
+                    if (! str_starts_with($exception->getMessage(), 'Entry ineligible: ')) {
+                        throw $exception;
+                    }
+                    $this->rejectEntryExecution($account, $state, $signal, $bar->closeTime, substr($exception->getMessage(), strlen('Entry ineligible: ')), 'execution_context');
+                    break;
+                }
                 $this->journal->append($account->id, $signal->id, null, 'ENTRY_EVALUATED', $bar->closeTime, [
                     'paper' => true, 'price_source' => $bar->source, 'entry_reached' => $quote !== null,
                     'bar' => ['open' => $bar->open, 'high' => $bar->high, 'low' => $bar->low, 'close' => $bar->close],
@@ -639,11 +659,9 @@ final readonly class PaperProcessingService
                         $this->journal->append($account->id, $signal->id, null, 'ENTRY_RISK_REJECTED', $bar->closeTime, $entryAssessment, "entry-risk:{$account->id}:{$signal->id}:{$bar->closeTime->format('U.u')}");
                         break;
                     }
-                    $context = MarketContextRecord::query()->where('exchange', $signal->exchange)->where('category', $signal->category)
-                        ->where('symbol', $signal->symbol)->where('observed_at', '<=', $signal->decision_time)->latest('observed_at')->firstOrFail();
                     $limits = new InstrumentConstraints($context->qty_step, $context->min_order_qty, $context->max_order_qty, $context->min_notional_value);
                     $refreshed = $account->refresh();
-                    $size = $this->sizing->calculate($refreshed->current_equity, $signal->model_risk_percent, $quote->price, $signal->stop_loss, $limits, $this->execution->costs($account->exchange_id), $refreshed->sizing_settings);
+                    $size = $this->sizing->calculate($refreshed->current_equity, $signal->model_risk_percent, $quote->price, $signal->stop_loss, $limits, $this->execution->costs($account->exchange_id), PaperSizingSettings::effectiveForAccount($refreshed->sizing_settings));
                     if (! $size->allowed) {
                         SignalLifecycle::from($state->status)->transitionTo(SignalLifecycle::Rejected);
                         $state->update(['status' => SignalLifecycle::Rejected->value, 'reason' => $size->reason, 'processed_at' => $bar->closeTime]);
@@ -653,7 +671,15 @@ final readonly class PaperProcessingService
                         ], "execution-failed:{$account->id}:{$signal->id}:{$bar->closeTime->format('U.u')}");
                         break;
                     }
-                    $position = $this->lifecycle->open($account->refresh(), $state, $signal, $size, $quote, $bar->closeTime);
+                    try {
+                        $position = $this->lifecycle->open($account->refresh(), $state, $signal, $size, $quote, $bar->closeTime);
+                    } catch (\DomainException $exception) {
+                        if (! str_starts_with($exception->getMessage(), 'Entry ineligible: ')) {
+                            throw $exception;
+                        }
+                        $this->rejectEntryExecution($account, $state, $signal, $bar->closeTime, substr($exception->getMessage(), strlen('Entry ineligible: ')), 'final_entry_boundary');
+                        break;
+                    }
                     $this->updateObservationDiagnostics($account, $signal, ['paper_execution' => 'OPENED', 'position_id' => $position->id]);
                 } else {
                     $state->update(['processed_at' => $bar->closeTime]);
@@ -716,5 +742,19 @@ final readonly class PaperProcessingService
         $analysis = $observation->analysis ?? [];
         $analysis['diagnostics'] = array_replace($analysis['diagnostics'] ?? [], $changes);
         $observation->update(['analysis' => $analysis]);
+    }
+
+    private function rejectEntryExecution(PaperAccountRecord $account, PaperSignalStateRecord $state, SignalRecord $signal, DateTimeImmutable $at, string $reason, string $stage): void
+    {
+        DB::transaction(function () use ($account, $state, $signal, $at, $reason, $stage): void {
+            $lockedState = PaperSignalStateRecord::query()->lockForUpdate()->findOrFail($state->id);
+            if ($lockedState->status !== SignalLifecycle::PendingEntry->value) {
+                return;
+            }
+            $lockedState->update(['status' => SignalLifecycle::Rejected->value, 'reason' => $reason, 'processed_at' => $at]);
+            $this->updateObservationDiagnostics($account, $signal, ['paper_execution' => 'EXECUTION_FAILED', 'execution_failure_reason' => $reason]);
+            $this->journal->append($account->id, $signal->id, null, 'EXECUTION_FAILED', $at,
+                ['stage' => $stage, 'reason' => $reason], "execution-failed:{$account->id}:{$signal->id}:{$at->format('U.u')}");
+        });
     }
 }

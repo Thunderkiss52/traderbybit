@@ -1,0 +1,65 @@
+{
+  "scope": "isolated source archive; no production connection, no runtime deployment",
+  "archive_sha256_verified": true,
+  "source_snapshot_HEAD": "9615a620d693bf46d5465619e576db2e1e5b4016",
+  "production_baseline_reported": "8ba6f82aed4aacb0ca93d32f98185af2266b4b9d",
+  "tests": {
+    "native_exchange_safety": {
+      "status": "PASS",
+      "assertions": 28,
+      "command": "php scripts/audit/native_exchange_safety_check.php"
+    },
+    "php_syntax": {
+      "status": "PASS",
+      "files": 933,
+      "command": "find app routes database tests config bootstrap -name \"*.php\" | xargs -n 1 php -l"
+    },
+    "python_compile": {
+      "status": "PASS",
+      "files": 44,
+      "command": "python3 -m py_compile scripts/**/*.py"
+    },
+    "shell_syntax": {
+      "status": "PASS",
+      "command": "bash -n for scripts/docker/.github shell scripts"
+    },
+    "frontend_no_typescript_subset": {
+      "status": "PASS",
+      "tests": 53,
+      "command": "node --test tests/*.test.js excluding two tests that require typescript"
+    },
+    "frontend_complete": {
+      "status": "BLOCKED",
+      "observed": "53 PASS, two test modules could not import typescript (node_modules excluded from supplied archive)"
+    },
+    "frontend_typescript_and_vite_build": {
+      "status": "BLOCKED",
+      "reason": "node_modules, vue-tsc and vite not installed"
+    },
+    "phpunit_and_pint": {
+      "status": "BLOCKED",
+      "reason": "vendor absent, php available 8.4.24 vs composer requirement ~8.5.12"
+    },
+    "postgresql_migrations_and_ledger": {
+      "status": "NOT_RUN",
+      "reason": "no native PostgreSQL server/client; never modified production trading data"
+    },
+    "go_race_tests": {
+      "status": "BLOCKED",
+      "reason": "GOPROXY=off cannot resolve github.com/lib/pq v1.10.9; no network download"
+    },
+    "python_unittest_full": {
+      "status": "INCOMPLETE",
+      "observed": "partial test output included E errors; interrupted due long execution; not a PASS"
+    },
+    "live_api_curl_and_browser": {
+      "status": "NOT_RUN",
+      "reason": "no runnable native Laravel server or full dependency stack available"
+    },
+    "git_commit": {
+      "status": "NOT_POSSIBLE",
+      "reason": "input archive has no .git; original source and Git metadata not modified"
+    }
+  },
+  "acceptance": "BLOCKED — code patches syntax-checked and selected safety behavior native-tested; entire system not end-to-end certified"
+}

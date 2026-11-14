@@ -11,7 +11,7 @@ return [
         'reference_notional' => '5',
         'max_signals_per_cycle' => 8,
         'quality_policy' => [
-            'version' => 'SIGNAL_QUALITY_HOEFFDING_V1',
+            'version' => 'SIGNAL_QUALITY_HOEFFDING_V2',
             'min_independent_samples' => 100,
             'min_distinct_days' => 20,
             'alpha' => 0.05,

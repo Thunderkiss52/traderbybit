@@ -1,0 +1,74 @@
+{
+  "timestamp_utc": "2026-11-11T07:03:16.668639+00:00",
+  "source_archive": "VECTOR-AUDIT-CLOSED-V2.tar.gz",
+  "source_archive_sha256": "0f632557183e87b5c2f02dd33d1983a75d64829aa66377ae74caca7a23fc57c2",
+  "recorded_git_head": "9615a62",
+  "git_commit_created": false,
+  "constraints": {
+    "production_access": false,
+    "docker_used": false,
+    "real_orders": false,
+    "push": false,
+    "deploy": false,
+    "econom_modified": false
+  },
+  "checks": {
+    "source_integrity": {
+      "status": "PASS",
+      "evidence": "Original V2 SHA256 verified via sha256sum"
+    },
+    "registry_fail_closed_runtime": {
+      "status": "PASS",
+      "assertions": 4,
+      "evidence": "php /tmp/vector_registry_runtime_check.php (source class with isolated facade stubs)"
+    },
+    "signal_scope_query_construction": {
+      "status": "PASS",
+      "assertions": 13,
+      "evidence": "php AUDIT_CLOSURE/ROUND3/test_signal_scope_standalone.php (SQL-builder double, no database)"
+    },
+    "php_syntax": {
+      "status": "PASS",
+      "files": 938,
+      "evidence": "find ... | xargs php -l"
+    },
+    "python_syntax": {
+      "status": "PASS",
+      "files": 44
+    },
+    "python_unit_funding": {
+      "status": "PASS",
+      "tests": 7
+    },
+    "python_unit_phase0": {
+      "status": "PASS",
+      "tests": 11
+    },
+    "frontend_node": {
+      "status": "PARTIAL",
+      "passed": 53,
+      "not_loaded": 2,
+      "reason": "typescript not installed; frontend/node_modules missing"
+    },
+    "go_race": {
+      "status": "BLOCKED",
+      "reason": "GOPROXY=off: github.com/lib/pq v1.10.9 unavailable locally"
+    },
+    "phpunit": {
+      "status": "NOT_RUN",
+      "reason": "PHP 8.4.24 available, composer requires ~8.5.12; vendor absent, pdo_pgsql absent"
+    },
+    "laravel_http_curl": {
+      "status": "NOT_RUN",
+      "reason": "native Laravel cannot boot; composer/PostgreSQL prerequisites absent"
+    },
+    "postgresql_migrations_financial_ledger": {
+      "status": "NOT_RUN",
+      "reason": "PostgreSQL and pdo_pgsql not installed"
+    },
+    "playwright_browser": {
+      "status": "NOT_RUN",
+      "reason": "frontend build and backend unavailable"
+    }
+  }
+}

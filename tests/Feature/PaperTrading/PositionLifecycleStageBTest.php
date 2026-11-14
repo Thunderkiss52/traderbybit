@@ -7,16 +7,21 @@ namespace Tests\Feature\PaperTrading;
 use App\PaperTrading\Application\PaperAccountService;
 use App\PaperTrading\Application\PaperExecutionEligibilityService;
 use App\PaperTrading\Application\PaperExecutionEngine;
+use App\PaperTrading\Application\PaperSizingSettings;
 use App\PaperTrading\Application\PerformanceStatisticsService;
 use App\PaperTrading\Application\PositionLifecycleService;
+use App\PaperTrading\Application\PositionSizingService;
 use App\PaperTrading\Domain\ExecutionQuote;
 use App\PaperTrading\Domain\ExecutionType;
+use App\PaperTrading\Domain\InstrumentConstraints;
 use App\PaperTrading\Domain\PositionSize;
 use App\PaperTrading\Domain\PositionStatus;
 use App\PaperTrading\Infrastructure\Persistence\MarketFundingEventRecord;
+use App\PaperTrading\Infrastructure\Persistence\PaperAccountRecord;
 use App\PaperTrading\Infrastructure\Persistence\PaperSignalStateRecord;
 use App\PaperTrading\Infrastructure\Persistence\PositionFundingEventRecord;
 use App\PaperTrading\Infrastructure\Persistence\VirtualExecutionRecord;
+use App\Strategy\Infrastructure\Persistence\MarketContextRecord;
 use App\Strategy\Infrastructure\Persistence\SignalRecord;
 use Brick\Math\BigDecimal;
 use DateTimeImmutable;
@@ -49,8 +54,8 @@ final class PositionLifecycleStageBTest extends TestCase
 
         $openTime = new DateTimeImmutable('2026-10-27T10:00:00Z');
         // Initial quantity = 0.001, step = 0.001, tp1_fraction = 0.50 -> raw tp1 quantity floors to 0
-        $size = new PositionSize(true, '0.001', '100', '10', '100', qtyStep: '0.001');
         $entryQuote = new ExecutionQuote(ExecutionType::Entry, '60000', '60000', '0', 'test', false);
+        $size = $this->canonicalEntrySize($account, $signal, $entryQuote, $openTime, '0.001');
 
         $position = $lifecycle->open($account, $state, $signal, $size, $entryQuote, $openTime);
         self::assertSame('0.001000000000', (string) $position->initial_quantity);
@@ -97,8 +102,8 @@ final class PositionLifecycleStageBTest extends TestCase
 
         $openTime = new DateTimeImmutable('2026-10-27T10:00:00Z');
         // Initial quantity = 0.010, step = 0.001, tp1_fraction = 0.50 -> 0.005 TP1, 0.005 remaining
-        $size = new PositionSize(true, '0.010', '100', '10', '600', qtyStep: '0.001');
         $entryQuote = new ExecutionQuote(ExecutionType::Entry, '60000', '60000', '0', 'test', false);
+        $size = $this->canonicalEntrySize($account, $signal, $entryQuote, $openTime, '0.010');
 
         $archivedEvidence = DB::table('virtual_positions')->where('paper_account_id', '!=', $account->id)->orderBy('id')->get()->toJson();
 
@@ -159,8 +164,8 @@ final class PositionLifecycleStageBTest extends TestCase
 
         // Position opens at 23:45 UTC on Oct 26
         $openTime = new DateTimeImmutable('2026-10-26T23:45:00Z');
-        $size = new PositionSize(true, '0.010', '100', '10', '600', qtyStep: '0.001');
         $entryQuote = new ExecutionQuote(ExecutionType::Entry, '60000', '60000', '0', 'test', false);
+        $size = $this->canonicalEntrySize($account, $signal, $entryQuote, $openTime, '0.010');
 
         $position = $lifecycle->open($account, $state, $signal, $size, $entryQuote, $openTime);
 
@@ -254,8 +259,8 @@ final class PositionLifecycleStageBTest extends TestCase
 
         // Position opens at 10:15 and closes at 10:45 (no 8h boundary: 00:00, 08:00, 16:00 falls in between)
         $openTime = new DateTimeImmutable('2026-10-27T10:15:00Z');
-        $size = new PositionSize(true, '0.010', '100', '10', '600', qtyStep: '0.001');
         $entryQuote = new ExecutionQuote(ExecutionType::Entry, '60000', '60000', '0', 'test', false);
+        $size = $this->canonicalEntrySize($account, $signal, $entryQuote, $openTime, '0.010');
 
         $position = $lifecycle->open($account, $state, $signal, $size, $entryQuote, $openTime);
         self::assertFalse($position->funding_complete); // OPEN positions are false
@@ -276,10 +281,10 @@ final class PositionLifecycleStageBTest extends TestCase
             'id' => Uuid::uuid4()->toString(), 'paper_account_id' => $account->id,
             'signal_id' => $signal->id, 'status' => 'PENDING_ENTRY',
         ]);
-        $position = $lifecycle->open($account, $state, $signal,
-            new PositionSize(true, '0.010', '100', '10', '600', qtyStep: '0.001'),
-            new ExecutionQuote(ExecutionType::Entry, '60000', '60000', '0', 'fixture', false),
-            new DateTimeImmutable('2026-10-27T07:45:00Z'));
+        $openTime = new DateTimeImmutable('2026-10-27T07:45:00Z');
+        $entryQuote = new ExecutionQuote(ExecutionType::Entry, '60000', '60000', '0', 'fixture', false);
+        $size = $this->canonicalEntrySize($account, $signal, $entryQuote, $openTime, '0.010');
+        $position = $lifecycle->open($account, $state, $signal, $size, $entryQuote, $openTime);
         $position = $lifecycle->executeExit($position,
             new ExecutionQuote(ExecutionType::TakeProfit1, '61000', '61000', '0', 'fixture', false),
             new DateTimeImmutable('2026-10-27T15:55:00Z'));
@@ -417,6 +422,30 @@ final class PositionLifecycleStageBTest extends TestCase
         self::assertDecimalSame('0.0001545', $small['estimated_costs']);
         self::assertSame(3.8625, $large['cost_drag_percent']);
         self::assertSame($large['cost_drag_percent'], $small['cost_drag_percent']);
+    }
+
+    private function canonicalEntrySize(PaperAccountRecord $account, SignalRecord $signal, ExecutionQuote $quote, DateTimeImmutable $at, string $quantity): PositionSize
+    {
+        // Explicit synthetic owner exposure preserves each lifecycle's quantity assertions.
+        $account->update(['sizing_settings' => [
+            'mode' => 'fixed_notional', 'amount' => (string) BigDecimal::of($quantity)->multipliedBy($quote->price),
+        ]]);
+        $context = MarketContextRecord::query()->create([
+            'exchange' => $account->exchange_id, 'category' => $signal->category, 'symbol' => $signal->symbol,
+            'observed_at' => $at, 'created_at' => $at, 'updated_at' => $at,
+            'bid' => $quote->price, 'ask' => $quote->price, 'turnover_24h' => '100000000',
+            'tick_size' => '0.1', 'qty_step' => '0.001', 'min_order_qty' => '0.001',
+            'max_order_qty' => '1000', 'min_notional_value' => '1',
+        ]);
+        $size = app(PositionSizingService::class)->calculate(
+            $account->current_equity, $signal->model_risk_percent, $quote->price, $signal->stop_loss,
+            new InstrumentConstraints($context->qty_step, $context->min_order_qty, $context->max_order_qty, $context->min_notional_value),
+            app(PaperExecutionEngine::class)->costs($account->exchange_id), PaperSizingSettings::effectiveForAccount($account->sizing_settings),
+        );
+        self::assertTrue($size->allowed, $size->reason ?? 'Synthetic canonical sizing failed.');
+        self::assertDecimalSame($quantity, (string) $size->quantity);
+
+        return $size;
     }
 
     private function createSignal(string $exchange, string $symbol, string $side, bool $seedEvidence = true): SignalRecord

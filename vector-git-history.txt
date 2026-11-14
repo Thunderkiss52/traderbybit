@@ -1,0 +1,25 @@
+9615a62 (HEAD -> main) feat(phase-2.1): add evidence archive and lint fixes
+0b3ef11 feat(ui): phase 2 independent ui remediation acceptance and browser verification
+900e504 feat(remediation): complete full-system remediation, topology isolation, expected edge and SSRF security
+5390325 feat(exchanges): implement dynamic exchange onboarding and unlimited architecture
+f91c91c feat(acceptance): verify full autonomous multi-exchange paper readiness across 10 canonical exchanges and complete system audit
+b4aaa97 fix(paper): full-system exchange/instrument isolation, fixed-notional sizing, and acceptance remediation
+2e16d9a feat(acceptance): complete final system acceptance audit, multi-timeframe signal analytics and 130-account topology reconciliation
+2593911 feat(strategy): verify unlimited dynamic strategy scalability, topology provisioning and profitability integrity
+d434d9f fix(research): implement full-system exchange and instrument isolation and profitability attribution
+8ba6f82 (origin/main, origin/HEAD) fix(deploy): resolve interrupted update journal and support automated pre-deploy recovery review
+0b21257 test(research): pin deterministic funding boundary timestamps in ledger reconciliation unit test
+7383722 fix(database): remediate postgresql migration locking and decouple historical candle backfill
+816926e fix(ci): extract multiline workflow summary scripts to prevent python indentation errors
+f987adc fix(topology): ensure registered standalone strategies onboard as ACTIVE on Bybit while candidate drafts start BLOCKED
+95224b8 fix(topology): resolve ci acceptance blockers, database resilience, and candidate paper lifecycle
+bb70730 docs(audit): publish independent acceptance audit for signal quality and profitability gate
+f9519f8 feat(risk): enforce mandatory gate protection, repair missing factor scoring, and add counterfactual evaluation
+139b369 docs(audit): finalize signal quality, risk classification, and drawdown attribution acceptance audit
+3ba8b71 feat(topology): complete 10-exchange dynamic paper trading topology and capital policy
+c76f7cd feat(risk): implement signal quality and trade risk gate with directional attribution
+5c39ad0 fix(vector): resolve capital policy conflict, complete 10-exchange adapter contract, and verify 130-portfolio paper topology
+36cda1a docs(vector): complete trade persistence, provenance, and strategy monitor implementation report
+8d5c954 fix(paper): enforce unapproved strategies remain unfunded in NewPrimaryCapitalPolicy
+ad41774 test(vector): add strategy monitor route verification to audit runner
+b10bf24 fix(vector): accurately aggregate active and closed position statuses in strategy monitor

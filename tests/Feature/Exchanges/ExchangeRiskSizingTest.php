@@ -59,10 +59,13 @@ final class ExchangeRiskSizingTest extends TestCase
             // Independent hand calculation: risk=50, reference entry=101, stop=95.
             // Binance loss/unit=6+196*(0.001+0.002)=6.588; floor to .001.
             $expectedRiskSize = $exchange === 'binance' ? '7.589' : '8.134';
-            $expectedFillSize = $exchange === 'binance' ? '7.363' : '8.107';
+            // Adverse tick rounding gives entry prices 101.3 and 101.1 respectively.
+            // At the fill: risk / (entry - stop + (entry + stop) * costs), floored to .001.
+            $expectedFillSize = $exchange === 'binance' ? '7.258' : '8.003';
             self::assertTrue(BigDecimal::of((string) $risk->snapshot['position_size'])->isEqualTo($expectedRiskSize));
             $position = VirtualPositionRecord::query()->where('signal_id', $signal->id)->firstOrFail();
-            self::assertTrue(BigDecimal::of((string) $position->initial_quantity)->isEqualTo($expectedFillSize));
+            self::assertTrue(BigDecimal::of((string) $position->initial_quantity)->isEqualTo($expectedFillSize),
+                "{$exchange} expected fill {$expectedFillSize}; got {$position->initial_quantity}");
             self::assertSame($exchange, $position->exchange_id);
             self::assertSame($accounts[$exchange]->id, $position->paper_account_id);
 
@@ -170,7 +173,8 @@ final class ExchangeRiskSizingTest extends TestCase
         $accounts = [];
         foreach (['bybit', 'binance'] as $exchange) {
             $account = PaperAccountRecord::query()->where('exchange_id', $exchange)->where('primary_strategy_id', 'baseline')->firstOrFail();
-            $account->update(['status' => 'ACTIVE']);
+            // This test independently checks the legacy risk-budget arithmetic.
+            $account->update(['status' => 'ACTIVE', 'sizing_settings' => ['mode' => 'risk_percent']]);
             $accounts[$exchange] = $account;
         }
 

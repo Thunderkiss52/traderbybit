@@ -1,0 +1,964 @@
+diff --git a/app/Audit/Backtest/BacktestAuditCsv.php b/app/Audit/Backtest/BacktestAuditCsv.php
+--- a/app/Audit/Backtest/BacktestAuditCsv.php
++++ b/app/Audit/Backtest/BacktestAuditCsv.php
+@@ -23,7 +23,7 @@
+         if (preg_match('/^[+\-]?(?:[0-9]+)(?:\.[0-9]+)?$/D', $text)) {
+             return $text;
+         }
+-        if (preg_match('/^[\s]*[=+\-@]/u', $text)) {
++        if (preg_match('/^[\s\p{Z}\p{Cf}]*[=+\-@]/u', $text)) {
+             return "'".$text;
+         }
+ 
+diff --git a/app/Exchanges/ExchangeComparisonService.php b/app/Exchanges/ExchangeComparisonService.php
+--- a/app/Exchanges/ExchangeComparisonService.php
++++ b/app/Exchanges/ExchangeComparisonService.php
+@@ -5,6 +5,8 @@
+ namespace App\Exchanges;
+ 
+ use App\StrategyBuilder\PrimaryStrategies;
++use App\Exchanges\Domain\ExchangeLifecycleStatus;
++use Brick\Math\BigDecimal;
+ use Carbon\CarbonImmutable;
+ use Illuminate\Support\Facades\DB;
+ use Illuminate\Support\Facades\Schema;
+@@ -18,7 +20,10 @@
+         $strategies = PrimaryStrategies::ids();
+         $registry = app(ExchangeRegistry::class);
+         $exchanges = $registry->registeredIds();
+-        $scopes = PrimaryStrategies::byExchange($exchanges);
++        // Report every registered strategy/exchange pair, even when an
++        // operator has disabled entry on that pair. Missing accounts must
++        // remain visible rather than disappearing from topology counts.
++        $scopes = array_fill_keys($exchanges, $strategies);
+         $rows = DB::table('paper_accounts')->where('is_primary', true)
+             ->whereIn('exchange_id', $exchanges)->get();
+         $byPair = [];
+@@ -40,15 +45,17 @@
+ 
+         // Preload diagnostics to classify inactivity reasons efficiently without N+1 queries
+         $exchangeApprovals = Schema::hasTable('exchanges')
+-            ? DB::table('exchanges')->pluck('paper_approved', 'id')->all()
+-            : [];
++            ? DB::table('exchanges')->get(['id', 'paper_approved', 'lifecycle_status'])->keyBy('id')
++            : collect();
+ 
+         $candleStats = Schema::hasTable('market_candles')
+             ? DB::table('market_candles')
+-                ->selectRaw('exchange, count(*) as count, max(open_time) as latest_open')
++                ->where('is_closed', true)
++                ->where('category', 'linear')
++                ->selectRaw('exchange, symbol, interval, count(*) as count, max(open_time) as latest_open')
++                ->groupBy('exchange', 'symbol', 'interval')
++                ->get()
+                 ->groupBy('exchange')
+-                ->get()
+-                ->keyBy('exchange')
+             : collect();
+ 
+         $openPositions = Schema::hasTable('virtual_positions')
+@@ -71,24 +78,56 @@
+             : [];
+ 
+         $now = CarbonImmutable::now('UTC');
++        // Resolve adapter capabilities once per venue, not once per account:
++        // large dynamic strategy matrices must not create an N+1 DB workload.
++        $adapters = [];
++        foreach ($exchanges as $exchangeId) {
++            $adapters[$exchangeId] = $registry->hasAdapter($exchangeId);
++        }
++        $scopeSets = [];
++        foreach ($scopes as $exchangeId => $strategyIds) {
++            $scopeSets[$exchangeId] = array_fill_keys($strategyIds, true);
++        }
++        $requiredSymbols = array_values(array_unique((array) config('market_data.symbols', ['BTCUSDT', 'ETHUSDT'])));
++        $requiredIntervals = array_values(array_unique(array_map('strval', (array) config('market_data.intervals', ['5', '15', '30', '60']))));
+ 
+         $result = [];
+         foreach ($strategies as $strategy) {
+             foreach ($exchanges as $exchange) {
+-                if (! in_array($strategy, $scopes[$exchange], true)) {
++                if (! isset($scopeSets[$exchange][$strategy])) {
+                     continue;
+                 }
+                 $account = $byPair[$exchange.'|'.$strategy] ?? null;
+-                $hasAdapter = $registry->hasAdapter($exchange);
+-                $isApproved = (bool) ($exchangeApprovals[$exchange] ?? false);
+-                $candleRow = $candleStats->get($exchange);
+-                $candleCount = (int) ($candleRow->count ?? 0);
+-                $latestOpen = $candleRow->latest_open ?? null;
+-                $isFresh = false;
+-                if ($latestOpen !== null) {
+-                    $diffSeconds = abs($now->getTimestamp() - CarbonImmutable::parse((string) $latestOpen)->getTimestamp());
+-                    $isFresh = ($diffSeconds <= 3600);
++                $hasAdapter = $adapters[$exchange];
++                $exchangeRecord = $exchangeApprovals->get($exchange);
++                $isApproved = $exchangeRecord !== null
++                    && (bool) $exchangeRecord->paper_approved
++                    && $exchangeRecord->lifecycle_status === ExchangeLifecycleStatus::ActivePaper->value;
++                // A single recent candle on one market must never make an entire
++                // exchange appear ready for BOTH BTC/ETH and all required timeframes.
++                $series = $candleStats->get($exchange, collect());
++                $candleCount = (int) $series->sum('count');
++                $indexedSeries = $series->keyBy(static fn ($row) => $row->symbol.'|'.$row->interval);
++                $missingSeries = [];
++                $staleSeries = [];
++                foreach ($requiredSymbols as $symbol) {
++                    foreach ($requiredIntervals as $interval) {
++                        $key = $symbol.'|'.$interval;
++                        $row = $indexedSeries->get($key);
++                        if ($row === null || $row->latest_open === null) {
++                            $missingSeries[] = $key;
++                            continue;
++                        }
++                        $lag = $now->getTimestamp() - CarbonImmutable::parse((string) $row->latest_open)->getTimestamp();
++                        // Compare each closed series against its own candle interval.
++                        // Negative lag is not evidence of a fresh CLOSED candle.
++                        $maxLag = max(120, (int) $interval * 60 * 3);
++                        if ($lag < 0 || $lag > $maxLag) {
++                            $staleSeries[] = $key;
++                        }
++                    }
+                 }
++                $isFresh = $missingSeries === [] && $staleSeries === [];
+ 
+                 $accId = $account?->id;
+                 $openCount = $accId ? (int) ($openPositions[$accId] ?? 0) : 0;
+@@ -98,7 +137,7 @@
+                 if ($account === null) {
+                     $inactivityReason = 'ACCOUNT_NOT_PROVISIONED';
+                     $inactivityDetail = 'Paper account has not been provisioned in database topology.';
+-                } elseif ($account->status === 'BLOCKED') {
++                } elseif ($account->status !== 'ACTIVE') {
+                     if (! $isApproved) {
+                         $inactivityReason = 'PAPER_EXECUTION_UNAPPROVED';
+                         $inactivityDetail = "Exchange '{$exchange}' is not approved for virtual paper trading.";
+@@ -106,15 +145,24 @@
+                         $inactivityReason = 'ACCOUNT_BLOCKED';
+                         $inactivityDetail = 'Paper account is administratively blocked.';
+                     }
++                } elseif (! $isApproved) {
++                    $inactivityReason = 'PAPER_EXECUTION_UNAPPROVED';
++                    $inactivityDetail = "Exchange '{$exchange}' lacks active owner PAPER approval.";
++                } elseif (! BigDecimal::of((string) $account->current_equity)->isPositive()) {
++                    $inactivityReason = 'ACCOUNT_UNFUNDED';
++                    $inactivityDetail = 'Account has no positive current equity for new PAPER entries.';
+                 } elseif (! $hasAdapter) {
+                     $inactivityReason = 'MARKET_DATA_OFFLINE';
+                     $inactivityDetail = "Market data adapter for '{$exchange}' is offline or not implemented.";
+                 } elseif ($candleCount === 0) {
+                     $inactivityReason = 'NO_MARKET_CANDLES';
+-                    $inactivityDetail = "No market candles ingested for '{$exchange}'.";
++                    $inactivityDetail = "No closed linear market candles ingested for '{$exchange}'.";
++                } elseif ($missingSeries !== []) {
++                    $inactivityReason = 'MARKET_DATA_INCOMPLETE';
++                    $inactivityDetail = 'Missing closed series: '.implode(', ', $missingSeries);
+                 } elseif (! $isFresh) {
+                     $inactivityReason = 'MARKET_DATA_STALE';
+-                    $inactivityDetail = "Market candle feed for '{$exchange}' is stale (> 3600s lag).";
++                    $inactivityDetail = 'Stale or future-dated closed series: '.implode(', ', $staleSeries);
+                 } elseif ($openCount > 0) {
+                     $inactivityReason = 'TRADING_ACTIVE';
+                     $inactivityDetail = "Active paper positions currently open ({$openCount}).";
+@@ -132,9 +180,13 @@
+                     'account_id' => $account?->id,
+                     'status' => $account?->status ?? 'ACCOUNT_NOT_PROVISIONED',
+                     'evaluation_status' => $account === null ? 'NOT_EVALUATED'
+-                        : ($account->status === 'ACTIVE' ? 'STRATEGY_EVALUATING' : ($exchange === 'binance' ? 'EXECUTION_BLOCKED' : 'BLOCKED')),
++                        : ($account->status === 'ACTIVE' && $isApproved ? 'STRATEGY_EVALUATING' : 'EXECUTION_BLOCKED'),
+                     'inactivity_reason' => $inactivityReason,
+                     'inactivity_detail' => $inactivityDetail,
++                    'market_data_scope' => 'CLOSED_LINEAR_BTC_ETH_REQUIRED_TIMEFRAMES',
++                    'readiness_scope' => 'CATALOG_AND_MARKET_DIAGNOSTIC_NOT_ACCOUNT_ENTRY_GATE',
++                    'market_data_missing_series' => $missingSeries,
++                    'market_data_stale_series' => $staleSeries,
+                     'starting_balance' => $account === null ? null : (string) $account->starting_balance,
+                     'current_equity' => $account === null ? null : (string) $account->current_equity,
+                     'realized_pnl' => $account === null ? null : (string) $account->realized_pnl,
+diff --git a/app/Exchanges/Http/ExchangeComparisonController.php b/app/Exchanges/Http/ExchangeComparisonController.php
+--- a/app/Exchanges/Http/ExchangeComparisonController.php
++++ b/app/Exchanges/Http/ExchangeComparisonController.php
+@@ -3,6 +3,8 @@
+ declare(strict_types=1);
+ 
+ namespace App\Exchanges\Http;
++
++use App\Audit\Backtest\BacktestAuditCsv;
+ 
+ use App\Exchanges\Binance\BinancePublicAdapter;
+ use App\Exchanges\ExchangeComparisonService;
+@@ -28,14 +30,14 @@
+             if ($file === false) {
+                 throw new \RuntimeException('Unable to stream CSV.');
+             }
+-            fputcsv($file, ['exchange_id', 'strategy_id', 'account_id', 'status', 'evaluation_status', 'inactivity_reason', 'starting_balance', 'current_equity', 'realized_pnl', 'unrealized_pnl', 'drawdown_percent']);
++            fputcsv($file, ['exchange_id', 'strategy_id', 'account_id', 'status', 'evaluation_status', 'inactivity_reason', 'starting_balance', 'current_equity', 'realized_pnl', 'unrealized_pnl', 'drawdown_percent'], ',', '"', '');
+             foreach ($report['accounts'] as $row) {
+                 // Preserve null as an empty cell; never fabricate zero or combine exchange balances.
+-                fputcsv($file, array_map(static fn ($value): string => $value === null ? '' : (string) $value, [
++                fputcsv($file, array_map(BacktestAuditCsv::cell(...), [
+                     $row['exchange_id'], $row['strategy_id'], $row['account_id'], $row['status'],
+                     $row['evaluation_status'], $row['inactivity_reason'] ?? '', $row['starting_balance'], $row['current_equity'],
+                     $row['realized_pnl'], $row['unrealized_pnl'], $row['drawdown_percent'],
+-                ]));
++                ]), ',', '"', '');
+             }
+             fclose($file);
+         }, 'vector-paper-by-exchange.csv', ['Content-Type' => 'text/csv; charset=UTF-8', 'Cache-Control' => 'no-store']);
+diff --git a/app/Http/Controllers/Api/V1/ProfitabilityResearchController.php b/app/Http/Controllers/Api/V1/ProfitabilityResearchController.php
+--- a/app/Http/Controllers/Api/V1/ProfitabilityResearchController.php
++++ b/app/Http/Controllers/Api/V1/ProfitabilityResearchController.php
+@@ -3,6 +3,8 @@
+ declare(strict_types=1);
+ 
+ namespace App\Http\Controllers\Api\V1;
++
++use App\Audit\Backtest\BacktestAuditCsv;
+ 
+ use App\Exchanges\ExchangeRegistry;
+ use App\Http\Controllers\Controller;
+@@ -1133,10 +1135,10 @@
+                 'Entry Price', 'Stop Loss', 'Take Profit 1', 'Take Profit 2',
+                 'Signal Quality', 'Trade Risk', 'Gate Decision', 'Execution Status',
+                 'Realized Outcome', 'Net PnL', 'Retrospective Outcome', 'Rejection Reason',
+-            ]);
++            ], ',', '"', '');
+ 
+             foreach ($service->iterateSignalExplorer($filters) as $item) {
+-                fputcsv($handle, [
++                fputcsv($handle, array_map(BacktestAuditCsv::cell(...), [
+                     $item['decision_time'] ?? '',
+                     $item['exchange'] ?? '',
+                     $item['strategy_id'] ?? '',
+@@ -1155,7 +1157,7 @@
+                     $item['net_pnl'] ?? '',
+                     $item['retrospective_outcome'] ?? '',
+                     $item['rejection_reason'] ?? '',
+-                ]);
++                ]), ',', '"', '');
+             }
+             fclose($handle);
+         }, 'vector_signal_analytics_export_'.now('UTC')->format('Ymd_His').'.csv', [
+diff --git a/app/PaperTrading/Application/PaperTopologySynchronizer.php b/app/PaperTrading/Application/PaperTopologySynchronizer.php
+--- a/app/PaperTrading/Application/PaperTopologySynchronizer.php
++++ b/app/PaperTrading/Application/PaperTopologySynchronizer.php
+@@ -54,7 +54,10 @@
+             // A public-data adapter may be registered before PAPER readiness.
+             // All non-Bybit/Binance accounts will remain unfunded and BLOCKED.
+         }
+-        $scopes = PrimaryStrategies::byExchange($exchangeIds);
++        // Provision the complete registered-strategy × registered-exchange
++        // matrix. Explicit operator unassignment is an execution veto, not
++        // permission to omit or erase an independent historical PAPER account.
++        $scopes = array_fill_keys($exchangeIds, $strategyIds);
+         // A dry-run must not write a distributed cache lock or change PAPER state.
+         $lock = $apply ? $this->cache->lock('paper:topology-sync', 120) : null;
+         if ($lock !== null && ! $lock->get()) {
+@@ -220,30 +223,12 @@
+                     }
+                 }
+ 
+-                // Ensure all existing primary accounts have at least an initial equity snapshot
+-                $existingWithoutSnapshots = PaperAccountRecord::query()
+-                    ->where('is_primary', true)
+-                    ->whereNotIn('id', DB::table('equity_snapshots')->select('paper_account_id'))
+-                    ->get();
+-
+-                if ($existingWithoutSnapshots->isNotEmpty()) {
+-                    $recoverySnapshots = [];
+-                    foreach ($existingWithoutSnapshots as $acc) {
+-                        $recoverySnapshots[] = [
+-                            'paper_account_id' => $acc->id,
+-                            'exchange_id' => $acc->exchange_id,
+-                            'recorded_at' => $acc->created_at ?? $now,
+-                            'equity' => $acc->starting_balance,
+-                            'realized_pnl' => '0',
+-                            'unrealized_pnl' => '0',
+-                            'drawdown_percent' => '0',
+-                            'source_event_key' => 'account:initial',
+-                            'created_at' => $now,
+-                            'updated_at' => $now,
+-                        ];
+-                    }
+-                    EquitySnapshotRecord::query()->insertOrIgnore($recoverySnapshots);
+-                }
++                // Historical primary accounts with missing opening snapshots
++                // must stay INCOMPLETE until independently reconciled. Do NOT
++                // backdate an invented `account:initial` equity snapshot from
++                // today's account state or from its mutable starting_balance.
++                // The initial snapshots above are written ONLY for newly
++                // provisioned accounts within their creation transaction.
+ 
+                 return [
+                     'mode' => 'APPLIED',
+diff --git a/app/Strategy/Application/StrategyExchangeAssignmentService.php b/app/Strategy/Application/StrategyExchangeAssignmentService.php
+--- a/app/Strategy/Application/StrategyExchangeAssignmentService.php
++++ b/app/Strategy/Application/StrategyExchangeAssignmentService.php
+@@ -12,8 +12,8 @@
+ use Illuminate\Support\Facades\Schema;
+ 
+ /**
+- * Manages explicit strategy-to-exchange assignment and topology isolation.
+- * Prevents unintended automatic cross-product account creation.
++ * Manages operator strategy/exchange execution vetoes and explicit assignments.
++ * Topology provisioning is automatic for registered executable strategies.
+  */
+ final class StrategyExchangeAssignmentService
+ {
+@@ -90,138 +90,74 @@
+     }
+ 
+     /**
+-     * Check if a strategy is actively assigned to an exchange.
++     * Execution assignment is a separate control from PAPER account provisioning.
++     * Accounts are provisioned for every registered strategy/exchange pair, but
++     * an explicit operator veto or a strategy's supported-venue restriction
++     * still prevents entry. Missing catalog or strategy evidence fails closed.
+      */
+     public function hasAssignment(string $strategyId, string $exchangeId, string $marketType = 'perpetual'): bool
+     {
+         $strategyId = trim($strategyId);
+         $exchangeId = strtolower(trim($exchangeId));
+-
+-        if (! Schema::hasTable('strategy_exchange_assignments')) {
+-            return true;
+-        }
+-
+-        $record = DB::table('strategy_exchange_assignments')
+-            ->where('strategy_id', $strategyId)
+-            ->where('exchange_id', $exchangeId)
+-            ->first();
+-
+-        if ($record !== null) {
+-            return (bool) $record->is_active;
+-        }
+-
+-        // If this exchange has any explicit assignments in the table, any other strategy is unassigned
+-        $hasAnyAssignments = DB::table('strategy_exchange_assignments')
+-            ->where('exchange_id', $exchangeId)
+-            ->where('is_active', true)
+-            ->exists();
+-        if ($hasAnyAssignments) {
++        $registry = app(StrategyRegistry::class);
++        if (! $registry->has($strategyId) || ! in_array($exchangeId, $this->exchanges->registeredIds(), true)) {
+             return false;
+         }
+ 
+-        // If exchange was declaratively onboarded without assignments, return false
+-        try {
+-            if (Schema::hasTable('exchanges')) {
+-                $exRecord = DB::table('exchanges')->where('id', $exchangeId)->first();
+-                if ($exRecord !== null) {
+-                    $meta = json_decode((string) $exRecord->metadata, true) ?: [];
+-                    if (! empty($meta['onboarded_declaratively'])) {
+-                        return false;
+-                    }
+-                }
+-            }
+-        } catch (\Throwable) {
+-            // Fall through
+-        }
+-
+-        // Check if strategy restricts target exchanges
+-        try {
+-            $strategyObj = app(StrategyRegistry::class)->get($strategyId);
+-            if (method_exists($strategyObj, 'targetExchanges')) {
+-                $targets = $strategyObj->targetExchanges();
+-                if ($targets !== null && ! in_array($exchangeId, (array) $targets, true)) {
+-                    return false;
+-                }
+-            }
+-        } catch (\Throwable) {
+-            return true;
++        if (Schema::hasTable('strategy_exchange_assignments')) {
++            $record = DB::table('strategy_exchange_assignments')
++                ->where('strategy_id', $strategyId)
++                ->where('exchange_id', $exchangeId)
++                ->where('market_type', $marketType)
++                ->first();
++            if ($record !== null) {
++                return (bool) $record->is_active;
++            }
++        }
++
++        // A strategy with an explicit supported-venue restriction may still
++        // have a PAPER account elsewhere for transparent topology accounting,
++        // but it is not allowed to trade outside that supported set.
++        $strategy = $registry->get($strategyId);
++        if (method_exists($strategy, 'targetExchanges')) {
++            $targets = $strategy->targetExchanges();
++            if ($targets !== null && ! in_array($exchangeId, (array) $targets, true)) {
++                return false;
++            }
+         }
+ 
+         return true;
+     }
+ 
+     /**
+-     * Get list of strategy IDs actively assigned to an exchange.
++     * Active execution-assignment projection. An assignment on one venue must
++     * not implicitly suppress compatible strategies on another. Explicit
++     * operator unassignments are respected. Account topology deliberately uses
++     * the complete strategy/exchange matrix independently of this projection:
++     * an execution veto must never delete or omit a historical PAPER account.
+      *
+      * @return list<string>
+      */
+     public function assignedStrategiesForExchange(string $exchangeId): array
+     {
+         $exchangeId = strtolower(trim($exchangeId));
+-
+-        if (! Schema::hasTable('strategy_exchange_assignments')) {
+-            return app(StrategyRegistry::class)->ids();
+-        }
+-
+-        // 1. If explicit active assignments exist in table, return them
+-        $activeAssignments = DB::table('strategy_exchange_assignments')
+-            ->where('exchange_id', $exchangeId)
+-            ->where('is_active', true)
+-            ->pluck('strategy_id')
+-            ->all();
+-
+-        if (! empty($activeAssignments)) {
+-            return array_values(array_unique($activeAssignments));
+-        }
+-
+-        // 2. Check if exchange was onboarded declaratively
+-        try {
+-            if (Schema::hasTable('exchanges')) {
+-                $record = DB::table('exchanges')->where('id', $exchangeId)->first();
+-                if ($record !== null) {
+-                    $capabilities = json_decode((string) $record->capabilities, true) ?: [];
+-                    if (array_key_exists('assigned_strategies', $capabilities)) {
+-                        return (array) $capabilities['assigned_strategies'];
+-                    }
+-                    $meta = json_decode((string) $record->metadata, true) ?: [];
+-                    if (! empty($meta['onboarded_declaratively'])) {
+-                        // Declaratively onboarded exchange without explicit strategy assignments gets 0 accounts
+-                        return [];
+-                    }
+-                }
+-            }
+-        } catch (\Throwable) {
+-            // Fall through
+-        }
+-
+-        // 3. For canonical baseline exchanges, return all un-disabled strategies respecting targetExchanges
++        if (! in_array($exchangeId, $this->exchanges->registeredIds(), true)) {
++            return [];
++        }
++
++        $allStrategies = app(StrategyRegistry::class)->ids();
++        if (! Schema::hasTable('strategy_exchange_assignments')) {
++            return $allStrategies;
++        }
++
+         $disabled = DB::table('strategy_exchange_assignments')
+             ->where('exchange_id', $exchangeId)
++            ->where('market_type', 'perpetual')
+             ->where('is_active', false)
+             ->pluck('strategy_id')
+             ->all();
+ 
+-        $allStrategies = app(StrategyRegistry::class)->ids();
+-        $eligible = [];
+-        foreach ($allStrategies as $strategyId) {
+-            if (in_array($strategyId, $disabled, true)) {
+-                continue;
+-            }
+-            try {
+-                $strategyObj = app(StrategyRegistry::class)->get($strategyId);
+-                if (method_exists($strategyObj, 'targetExchanges')) {
+-                    $targets = $strategyObj->targetExchanges();
+-                    if ($targets !== null && ! in_array($exchangeId, (array) $targets, true)) {
+-                        continue;
+-                    }
+-                }
+-            } catch (\Throwable) {
+-                // Keep eligible
+-            }
+-            $eligible[] = $strategyId;
+-        }
+-
+-        return $eligible;
++        return array_values(array_diff($allStrategies, $disabled));
+     }
+ 
+     /**
+diff --git a/scripts/tests/strategy_exchange_topology_contract_smoke.php b/scripts/tests/strategy_exchange_topology_contract_smoke.php
+new file mode 100644
+--- /dev/null
++++ b/scripts/tests/strategy_exchange_topology_contract_smoke.php
+@@ -0,0 +1,178 @@
++<?php
++
++declare(strict_types=1);
++
++// Standalone regression smoke for the genuine assignment service WITHOUT
++// Laravel/DB/network access. Mock persistence is intentionally in-memory.
++namespace Illuminate\Support\Facades {
++    final class Schema
++    {
++        public static bool $hasAssignments = false;
++
++        public static function hasTable(string $name): bool
++        {
++            return $name === 'strategy_exchange_assignments' && self::$hasAssignments;
++        }
++    }
++
++    final class DB
++    {
++        public static array $rows = [];
++
++        public static function table(string $name): FakeQuery
++        {
++            if ($name !== 'strategy_exchange_assignments') {
++                throw new \RuntimeException("Unexpected table: {$name}");
++            }
++
++            return new FakeQuery(self::$rows);
++        }
++    }
++
++    final class FakeQuery
++    {
++        private array $filters = [];
++
++        public function __construct(private readonly array $rows) {}
++
++        public function where(string $field, mixed $value): self
++        {
++            $this->filters[$field] = $value;
++
++            return $this;
++        }
++
++        private function matched(): array
++        {
++            return array_values(array_filter($this->rows, function (array $row): bool {
++                foreach ($this->filters as $name => $value) {
++                    if (($row[$name] ?? null) !== $value) {
++                        return false;
++                    }
++                }
++
++                return true;
++            }));
++        }
++
++        public function first(): ?object
++        {
++            $row = $this->matched()[0] ?? null;
++
++            return $row === null ? null : (object) $row;
++        }
++
++        public function pluck(string $column): FakeCollection
++        {
++            return new FakeCollection(array_column($this->matched(), $column));
++        }
++    }
++
++    final class FakeCollection
++    {
++        public function __construct(private readonly array $items) {}
++
++        public function all(): array
++        {
++            return $this->items;
++        }
++    }
++}
++
++namespace App\Exchanges {
++    final class ExchangeRegistry
++    {
++        public function registeredIds(): array
++        {
++            return ['bybit', 'newvenue'];
++        }
++    }
++}
++
++namespace App\Strategy\Application {
++    final class StrategyRegistry
++    {
++        public function ids(): array
++        {
++            return ['alpha', 'beta'];
++        }
++
++        public function has(string $id): bool
++        {
++            return in_array($id, $this->ids(), true);
++        }
++
++        public function get(string $id): object
++        {
++            if (! $this->has($id)) {
++                throw new \InvalidArgumentException('Unknown strategy');
++            }
++
++            // An empty explicit target set denies execution but must not
++            // prevent the separate account-provisioning projection.
++            return new class($id)
++            {
++                public function __construct(private readonly string $id) {}
++
++                public function targetExchanges(): ?array
++                {
++                    return $this->id === 'alpha' ? [] : null;
++                }
++            };
++        }
++    }
++}
++
++namespace {
++    use App\Exchanges\ExchangeRegistry;
++    use App\Strategy\Application\StrategyExchangeAssignmentService;
++    use App\Strategy\Application\StrategyRegistry;
++    use Illuminate\Support\Facades\DB;
++    use Illuminate\Support\Facades\Schema;
++
++    function app(string $type): object
++    {
++        return $GLOBALS['container'][$type]
++            ?? throw new \RuntimeException("Missing fake dependency: {$type}");
++    }
++
++    function check(bool $condition, string $message): void
++    {
++        if (! $condition) {
++            throw new \RuntimeException($message);
++        }
++    }
++
++    require_once dirname(__DIR__, 2).'/app/Strategy/Application/StrategyExchangeAssignmentService.php';
++
++    $GLOBALS['container'] = [StrategyRegistry::class => new StrategyRegistry];
++    $service = new StrategyExchangeAssignmentService(new ExchangeRegistry);
++    $tests = 0;
++    $verify = static function (bool $condition, string $message) use (&$tests): void {
++        check($condition, $message);
++        $tests++;
++    };
++
++    $verify($service->assignedStrategiesForExchange('newvenue') === ['alpha', 'beta'], 'No assignment table must not suppress N × M provisioning');
++    $verify(! $service->hasAssignment('alpha', 'newvenue'), 'Unsupported strategy must not execute');
++    $verify($service->hasAssignment('beta', 'newvenue'), 'Compatible strategy may be assigned by default');
++    $verify(! $service->hasAssignment('unknown', 'newvenue'), 'Unknown strategy must not be eligible');
++    $verify($service->assignedStrategiesForExchange('unknown') === [], 'Unknown exchange must not create accounts');
++
++    Schema::$hasAssignments = true;
++    DB::$rows = [
++        ['strategy_id' => 'beta', 'exchange_id' => 'bybit', 'market_type' => 'perpetual', 'is_active' => true],
++    ];
++    $verify($service->assignedStrategiesForExchange('newvenue') === ['alpha', 'beta'], 'An assignment on Bybit cannot narrow a different venue');
++    $verify($service->hasAssignment('beta', 'newvenue'), 'No other venue assignment needed for supported strategy');
++
++    DB::$rows[] = ['strategy_id' => 'alpha', 'exchange_id' => 'newvenue', 'market_type' => 'perpetual', 'is_active' => false];
++    $verify($service->assignedStrategiesForExchange('newvenue') === ['beta'], 'Operator veto must exclude a pair from auto-provisioning');
++    $verify(! $service->hasAssignment('alpha', 'newvenue'), 'Operator veto must deny execution');
++
++    DB::$rows[1]['is_active'] = true;
++    $verify($service->assignedStrategiesForExchange('newvenue') === ['alpha', 'beta'], 'Operator approval restores topology scope');
++    $verify($service->hasAssignment('alpha', 'newvenue'), 'Explicit operator assignment may override target restriction');
++
++    echo "{$tests} standalone topology policy checks PASS (no database/network)\n";
++}
+diff --git a/tests/Feature/Exchanges/MultiExchangeComparisonTest.php b/tests/Feature/Exchanges/MultiExchangeComparisonTest.php
+--- a/tests/Feature/Exchanges/MultiExchangeComparisonTest.php
++++ b/tests/Feature/Exchanges/MultiExchangeComparisonTest.php
+@@ -6,6 +6,8 @@
+ 
+ use App\Exchanges\Binance\BinancePortabilityMatrix;
+ use App\Exchanges\ExchangeComparisonService;
++use App\Exchanges\Infrastructure\Persistence\ExchangeRecord;
++use App\MarketData\Infrastructure\Persistence\CandleRecord;
+ use App\PaperTrading\Application\PaperAccountService;
+ use Illuminate\Foundation\Testing\RefreshDatabase;
+ use Tests\TestCase;
+@@ -73,4 +75,41 @@
+         self::assertNull($firstBinance['current_equity']);
+         self::assertNull($firstBinance['starting_balance']);
+     }
++    public function test_paused_paper_exchange_is_not_reported_as_evaluating_or_awaiting_signal(): void
++    {
++        app(PaperAccountService::class)->allPrimaryAccounts();
++        $exchange = ExchangeRecord::query()->findOrFail('bybit');
++        $exchange->update(['paper_approved' => false, 'lifecycle_status' => 'PAUSED']);
++
++        $report = app(ExchangeComparisonService::class)->report();
++        $row = collect($report['accounts'])->first(fn ($item) => $item['exchange_id'] === 'bybit'
++            && $item['strategy_id'] === 'baseline');
++        self::assertNotNull($row);
++        self::assertNotSame('AWAITING_SIGNAL', $row['inactivity_reason']);
++        self::assertSame('PAPER_EXECUTION_UNAPPROVED', $row['inactivity_reason']);
++        self::assertSame('EXECUTION_BLOCKED', $row['evaluation_status']);
++    }
++
++    public function test_one_recent_btc_candle_cannot_claim_entire_exchange_market_is_fresh(): void
++    {
++        app(PaperAccountService::class)->allPrimaryAccounts();
++        $exchange = ExchangeRecord::query()->findOrFail('bybit');
++        $exchange->update(['paper_approved' => true, 'lifecycle_status' => 'ACTIVE_PAPER']);
++        CandleRecord::query()->where('exchange', 'bybit')->delete();
++        CandleRecord::query()->create([
++            'exchange' => 'bybit', 'category' => 'linear', 'symbol' => 'BTCUSDT',
++            'interval' => '5', 'open_time' => now('UTC')->subMinutes(5),
++            'open' => '100', 'high' => '101', 'low' => '99', 'close' => '100',
++            'volume' => '10', 'turnover' => '1000', 'is_closed' => true,
++        ]);
++
++        $report = app(ExchangeComparisonService::class)->report();
++        $row = collect($report['accounts'])->first(fn ($item) => $item['exchange_id'] === 'bybit'
++            && $item['strategy_id'] === 'baseline');
++        self::assertNotNull($row);
++        self::assertSame('MARKET_DATA_INCOMPLETE', $row['inactivity_reason']);
++        self::assertContains('ETHUSDT|5', $row['market_data_missing_series']);
++        self::assertContains('BTCUSDT|60', $row['market_data_missing_series']);
++    }
++
+ }
+diff --git a/tests/Feature/PaperTrading/StrategyTopologyIsolationAndAssignmentTest.php b/tests/Feature/PaperTrading/StrategyTopologyIsolationAndAssignmentTest.php
+--- a/tests/Feature/PaperTrading/StrategyTopologyIsolationAndAssignmentTest.php
++++ b/tests/Feature/PaperTrading/StrategyTopologyIsolationAndAssignmentTest.php
+@@ -9,6 +9,7 @@
+ use App\PaperTrading\Application\PaperExecutionEligibilityService;
+ use App\PaperTrading\Application\PaperTopologySynchronizer;
+ use App\PaperTrading\Infrastructure\Persistence\PaperAccountRecord;
++use App\PaperTrading\Infrastructure\Persistence\EquitySnapshotRecord;
+ use App\Security\ExchangeUrlSecurityValidator;
+ use App\Strategy\Application\StrategyExchangeAssignmentService;
+ use App\Strategy\Application\StrategyRegistry;
+@@ -64,12 +65,12 @@
+         self::assertSame($canonicalCount * $strategyCount, PaperAccountRecord::query()->where('is_primary', true)->count());
+     }
+ 
+-    public function test_adding_new_exchange_without_assigned_strategies_provisions_zero_accounts(): void
++    public function test_new_exchange_automatically_provisions_all_registered_strategies_without_authorizing_execution(): void
+     {
+         $this->synchronizer->sync(true);
+         $baselineCount = PaperAccountRecord::query()->where('is_primary', true)->count();
+-
+-        // Onboard new exchange: mexc without assigning strategies
++        $strategyCount = count($this->strategies->ids());
++
+         $this->catalog->onboardManifest([
+             'id' => 'mexc',
+             'name' => 'MEXC Global',
+@@ -83,20 +84,22 @@
+                 'taker_rate' => '0.0005',
+                 'slippage_rate' => '0.0002',
+             ],
+-            // assigned_strategies omitted!
+         ]);
+ 
+-        // Invariant: Registering a new exchange must NOT automatically assign all existing strategies to it.
+-        $mexcAccounts = PaperAccountRecord::query()->where('exchange_id', 'mexc')->count();
+-        self::assertSame(0, $mexcAccounts, 'New exchange with no assigned strategies must have zero accounts provisioned.');
+-        self::assertSame($baselineCount, PaperAccountRecord::query()->where('is_primary', true)->count());
+-    }
+-
+-    public function test_enabling_strategy_on_selected_exchange_provisions_only_that_single_account(): void
+-    {
+-        $this->synchronizer->sync(true);
+-
+-        // Onboard isolated venue: kraken_isolated
++        $accounts = PaperAccountRecord::query()->where('exchange_id', 'mexc')->get();
++        self::assertCount($strategyCount, $accounts);
++        self::assertSame($baselineCount + $strategyCount, PaperAccountRecord::query()->where('is_primary', true)->count());
++        foreach ($accounts as $account) {
++            self::assertSame('BLOCKED', $account->status, 'Unapproved new venue must never enter PAPER execution.');
++            self::assertSame('0', (string) \Brick\Math\BigDecimal::of((string) $account->starting_balance)->toScale(0));
++        }
++        self::assertSame($strategyCount, count($this->assignments->assignedStrategiesForExchange('mexc')));
++        self::assertSame(0, $this->synchronizer->sync(true)['created_other'], 'Automatic onboarding must be idempotent.');
++    }
++
++    public function test_explicit_operator_veto_blocks_execution_without_erasing_provisioned_history(): void
++    {
++        $this->synchronizer->sync(true);
+         $this->catalog->onboardManifest([
+             'id' => 'kraken_iso',
+             'name' => 'Kraken Isolated',
+@@ -112,24 +115,45 @@
+             ],
+         ]);
+ 
+-        self::assertSame(0, PaperAccountRecord::query()->where('exchange_id', 'kraken_iso')->count());
+-
+-        // Explicitly assign ONLY ONE strategy: 'trend_pullback' to 'kraken_iso'
+-        $this->assignments->assign('trend_pullback', 'kraken_iso', 'test_operator');
+-        self::assertTrue($this->assignments->hasAssignment('trend_pullback', 'kraken_iso'));
++        $initial = PaperAccountRecord::query()->where('exchange_id', 'kraken_iso')->count();
++        self::assertSame(count($this->strategies->ids()), $initial);
++        $momentum = PaperAccountRecord::query()->where('exchange_id', 'kraken_iso')
++            ->where('primary_strategy_id', 'momentum')->firstOrFail();
++
++        $this->assignments->unassign('momentum', 'kraken_iso');
+         self::assertFalse($this->assignments->hasAssignment('momentum', 'kraken_iso'));
+-
+-        // Re-run topology synchronization
+-        $this->synchronizer->sync(true);
+-
+-        // Exactly ONE account created for kraken_iso
+-        $krakenAccounts = PaperAccountRecord::query()->where('exchange_id', 'kraken_iso')->get();
+-        self::assertCount(1, $krakenAccounts);
+-        self::assertSame('trend_pullback', $krakenAccounts->first()->primary_strategy_id);
+-        self::assertSame('BLOCKED', $krakenAccounts->first()->status);
+-
+-        // Verify other strategies do NOT have accounts on kraken_iso
+-        self::assertNull(PaperAccountRecord::query()->where('exchange_id', 'kraken_iso')->where('primary_strategy_id', 'momentum')->first());
++        $this->synchronizer->sync(true);
++        self::assertSame($initial, PaperAccountRecord::query()->where('exchange_id', 'kraken_iso')->count());
++        self::assertNotNull(PaperAccountRecord::query()->find($momentum->id));
++        self::assertSame('strategy_not_assigned_to_exchange',
++            app(PaperExecutionEligibilityService::class)->accountEntryRejectionReason($momentum->fresh()));
++    }
++
++    public function test_preexisting_operator_veto_never_suppresses_new_venues_historical_account_topology(): void
++    {
++        $this->synchronizer->sync(true);
++        $this->assignments->unassign('momentum', 'mexc_disabled');
++        $this->catalog->onboardManifest([
++            'id' => 'mexc_disabled',
++            'name' => 'MEXC With Disabled Strategy',
++            'market_type' => 'linear_perpetual',
++            'supported_timeframes' => ['5m', '15m', '30m', '1h'],
++            'cost_model' => [
++                'version' => 'mexc-disabled-2026.1',
++                'market' => 'Perpetuals',
++                'fee_tier' => 'Standard',
++                'maker_rate' => '0.0002',
++                'taker_rate' => '0.0005',
++                'slippage_rate' => '0.0002',
++            ],
++        ]);
++
++        self::assertSame(count($this->strategies->ids()),
++            PaperAccountRecord::query()->where('exchange_id', 'mexc_disabled')->count());
++        $account = PaperAccountRecord::query()->where('exchange_id', 'mexc_disabled')
++            ->where('primary_strategy_id', 'momentum')->firstOrFail();
++        self::assertSame('BLOCKED', $account->status);
++        self::assertFalse($this->assignments->hasAssignment('momentum', 'mexc_disabled'));
+     }
+ 
+     public function test_canonical_assignment_reseeding_preserves_explicit_operator_unassignment(): void
+@@ -170,7 +194,7 @@
+         self::assertSame('strategy_not_assigned_to_exchange', $rejection);
+     }
+ 
+-    public function test_registering_new_strategy_does_not_automatically_provision_unassigned_exchanges(): void
++    public function test_registering_new_strategy_provisions_all_exchanges_but_respects_explicit_execution_compatibility(): void
+     {
+         $this->synchronizer->sync(true);
+         $baselineAccounts = PaperAccountRecord::query()->where('is_primary', true)->count();
+@@ -231,22 +255,40 @@
+             }
+         };
+ 
+-        // Register in registry without assigning to any exchanges
++        // Registration creates one isolated PAPER account for every registered venue.
++        // The strategy explicitly supports no venues, so trade eligibility stays false.
++        $exchangeIds = $this->exchanges->registeredIds();
+         $this->strategies->register($strat);
+-
+-        // Invariant: Registering a new strategy must NOT automatically activate it on every existing exchange.
+-        $this->synchronizer->sync(true);
+-        self::assertSame($baselineAccounts, PaperAccountRecord::query()->where('is_primary', true)->count());
+-
+-        // Now explicitly assign ONLY to Bybit
++        self::assertSame($baselineAccounts + count($exchangeIds),
++            PaperAccountRecord::query()->where('is_primary', true)->count());
++        foreach ($exchangeIds as $exchangeId) {
++            $account = PaperAccountRecord::query()->where('exchange_id', $exchangeId)
++                ->where('primary_strategy_id', 'isolated_alpha_1')->firstOrFail();
++            self::assertNotNull($account->id);
++            self::assertFalse($this->assignments->hasAssignment('isolated_alpha_1', $exchangeId),
++                'Explicit targetExchanges=[] must deny execution without preventing account provisioning.');
++        }
++        self::assertSame(0, $this->synchronizer->sync(true)['created_other']);
++
++        // The owner may explicitly override the compatibility restriction on a
++        // selected exchange without creating a second account or resetting data.
+         $this->assignments->assign('isolated_alpha_1', 'bybit', 'operator');
+-        $this->synchronizer->sync(true);
+-
+-        // Exactly one new account on Bybit, zero on all other 9 exchanges
+-        self::assertSame($baselineAccounts + 1, PaperAccountRecord::query()->where('is_primary', true)->count());
+-        self::assertNotNull(PaperAccountRecord::query()->where('exchange_id', 'bybit')->where('primary_strategy_id', 'isolated_alpha_1')->first());
+-        self::assertNull(PaperAccountRecord::query()->where('exchange_id', 'binance')->where('primary_strategy_id', 'isolated_alpha_1')->first());
+-        self::assertNull(PaperAccountRecord::query()->where('exchange_id', 'coinbase')->where('primary_strategy_id', 'isolated_alpha_1')->first());
++        self::assertTrue($this->assignments->hasAssignment('isolated_alpha_1', 'bybit'));
++        $this->synchronizer->sync(true);
++        self::assertSame($baselineAccounts + count($exchangeIds),
++            PaperAccountRecord::query()->where('is_primary', true)->count());
++    }
++
++    public function test_sync_does_not_invent_historical_opening_snapshot_for_existing_accounts(): void
++    {
++        $this->synchronizer->sync(true);
++        $existing = PaperAccountRecord::query()->where('exchange_id', 'bybit')
++            ->where('primary_strategy_id', 'trend_pullback')->firstOrFail();
++        EquitySnapshotRecord::query()->where('paper_account_id', $existing->id)->delete();
++
++        $this->synchronizer->sync(true);
++        self::assertSame(0, EquitySnapshotRecord::query()->where('paper_account_id', $existing->id)->count(),
++            'Never manufacture a backdated initial equity snapshot for an existing historical account.');
+     }
+ 
+     public function test_ssrf_validator_strictly_rejects_internal_private_and_metadata_addresses(): void
+diff --git a/tests/Feature/Research/SignalQualityAnalyticsAndMultiTimeframeProfitabilityTest.php b/tests/Feature/Research/SignalQualityAnalyticsAndMultiTimeframeProfitabilityTest.php
+--- a/tests/Feature/Research/SignalQualityAnalyticsAndMultiTimeframeProfitabilityTest.php
++++ b/tests/Feature/Research/SignalQualityAnalyticsAndMultiTimeframeProfitabilityTest.php
+@@ -458,6 +458,34 @@
+         $after->assertOk();
+         self::assertSame(1, $after->json('data.overview.observation_only_signals'));
+         self::assertSame(0, $after->json('data.overview.rejected_signals'));
++    }
++
++    public function test_signal_explorer_csv_export_escapes_spreadsheet_formulas_without_corrupting_numeric_values(): void
++    {
++        $this->seedSampleSignalCohorts();
++        $decision = RiskDecisionRecord::query()->where('allowed', true)
++            ->whereIn('signal_id', SignalRecord::query()->where('exchange', 'bybit')->select('id'))->firstOrFail();
++        $decision->update(['reasons' => ['=HYPERLINK("https://invalid.example", "click")']]);
++
++        $response = $this->get('/api/v1/research/profitability/signal-explorer/export?exchange=bybit');
++        $response->assertOk();
++        $stream = fopen('php://temp', 'w+');
++        fwrite($stream, $response->streamedContent());
++        rewind($stream);
++        $header = fgetcsv($stream, 0, ',', '"', '');
++        self::assertCount(18, $header);
++        $reasonIndex = array_search('Rejection Reason', $header, true);
++        $netPnlIndex = array_search('Net PnL', $header, true);
++        $found = false;
++        while (($row = fgetcsv($stream, 0, ',', '"', '')) !== false) {
++            if (str_contains((string) $row[$reasonIndex], 'HYPERLINK')) {
++                self::assertStringStartsWith("'=HYPERLINK", $row[$reasonIndex]);
++                self::assertTrue(is_numeric($row[$netPnlIndex]));
++                $found = true;
++            }
++        }
++        fclose($stream);
++        self::assertTrue($found, 'Fixture formula must appear escaped in the streamed CSV.');
+     }
+ 
+     public function test_signal_explorer_csv_export_does_not_stop_after_first_thousand_signals(): void
+diff --git a/tests/Unit/Audit/BacktestAuditCsvR8Test.php b/tests/Unit/Audit/BacktestAuditCsvR8Test.php
+--- a/tests/Unit/Audit/BacktestAuditCsvR8Test.php
++++ b/tests/Unit/Audit/BacktestAuditCsvR8Test.php
+@@ -13,6 +13,8 @@
+     {
+         self::assertSame("'=1+1", BacktestAuditCsv::cell('=1+1'));
+         self::assertSame("' @SUM(A1:A2)", BacktestAuditCsv::cell(' @SUM(A1:A2)'));
++        self::assertSame("'\u{FEFF}=HYPERLINK(1)", BacktestAuditCsv::cell("\u{FEFF}=HYPERLINK(1)"));
++        self::assertSame("'\u{200B}+1+1", BacktestAuditCsv::cell("\u{200B}+1+1"));
+         self::assertSame('-1.25', BacktestAuditCsv::cell('-1.25'));
+         self::assertSame('0.00001', BacktestAuditCsv::cell('0.00001'));
+         self::assertSame('true', BacktestAuditCsv::cell(true));

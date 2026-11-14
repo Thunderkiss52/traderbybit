@@ -6,13 +6,16 @@ namespace Tests\Feature\PaperTrading;
 
 use App\PaperTrading\Application\DirectionalPerformanceService;
 use App\PaperTrading\Application\PaperExecutionEligibilityService;
+use App\PaperTrading\Application\PaperExecutionEngine;
 use App\PaperTrading\Application\PaperTopologySynchronizer;
 use App\PaperTrading\Application\PolicyComparisonEvaluationService;
 use App\PaperTrading\Application\PositionLifecycleService;
+use App\PaperTrading\Application\PositionSizingService;
 use App\PaperTrading\Application\PreExecutionQualityRiskGate;
 use App\PaperTrading\Application\TopologyMatrixAuditService;
 use App\PaperTrading\Domain\ExecutionQuote;
 use App\PaperTrading\Domain\ExecutionType;
+use App\PaperTrading\Domain\InstrumentConstraints;
 use App\PaperTrading\Domain\PositionSize;
 use App\PaperTrading\Domain\QualityRiskGateDecision;
 use App\PaperTrading\Domain\SignalLifecycle;
@@ -22,6 +25,7 @@ use App\PaperTrading\Infrastructure\Persistence\PaperSignalStateRecord;
 use App\PaperTrading\Infrastructure\Persistence\VirtualExecutionRecord;
 use App\PaperTrading\Infrastructure\Persistence\VirtualPositionRecord;
 use App\Strategy\Domain\SignalQuality;
+use App\Strategy\Infrastructure\Persistence\MarketContextRecord;
 use App\Strategy\Infrastructure\Persistence\SignalRecord;
 use App\Strategy\Infrastructure\Persistence\StrategyObservationRecord;
 use Brick\Math\BigDecimal;
@@ -276,7 +280,20 @@ final class QualityRiskGateAndProfitabilityVerificationTest extends TestCase
             'status' => SignalLifecycle::PendingEntry->value,
         ]);
 
-        $size = new PositionSize(true, '0.040', '20.00', '500.00', '2000.00', reason: null, qtyStep: '0.001');
+        $account->update(['sizing_settings' => ['mode' => 'fixed_notional', 'amount' => '500']]);
+        MarketContextRecord::query()->create([
+            'exchange' => 'bybit', 'category' => 'linear', 'symbol' => 'BTCUSDT',
+            'observed_at' => now(), 'created_at' => now(), 'updated_at' => now(),
+            'bid' => '50000', 'ask' => '50000', 'turnover_24h' => '100000000',
+            'tick_size' => '0.1', 'qty_step' => '0.001', 'min_order_qty' => '0.001',
+            'max_order_qty' => '1000', 'min_notional_value' => '5',
+        ]);
+        $size = app(PositionSizingService::class)->calculate(
+            $account->current_equity, $signal->model_risk_percent, '50000', $signal->stop_loss,
+            new InstrumentConstraints('0.001', '0.001', '1000', '5'),
+            app(PaperExecutionEngine::class)->costs('bybit'), $account->sizing_settings,
+        );
+        self::assertTrue($size->allowed, $size->reason ?? 'Synthetic size rejected.');
         $quote = new ExecutionQuote(ExecutionType::Entry, '50000.00', '50000.00', '0', 'test', false);
 
         $lifecycle = app(PositionLifecycleService::class);

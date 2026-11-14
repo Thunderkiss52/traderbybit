@@ -28,6 +28,16 @@ executable minute; horizons run from that entry. It never backdates a fractional
 minute signal. The engine's stricter `AVAILABILITY` anchor requires exact minute
 resolution. Source timeframe, signal availability and execution anchor remain
 distinct in persistence and reports. Malformed/overflowing times are rejected.
+The source interval is parsed from explicit supported numeric minute strings
+(`1`, `3`, `5`, `15`, `30`, `60`), their `m` suffix forms, or `1h`;
+`1h` is 60 minutes. Historical outcomes whose
+stored source interval conflicts with their originating signal, or whose signal
+was changed after job submission, are excluded from new cohorts and horizon API
+results without modifying the stored evidence. This conservative comparison does
+not prove that signal metadata was immutable before submission. The horizon API
+reports their count as `invalid_source_timeframe_count`; filters, including the
+source interval, apply to the recorded fields. The count and page are separate
+read statements and may observe concurrent imports at different instants.
 
 This is not TP/SL counterfactual replay. The legacy P-3 replay prohibition remains
 in force. Rejected directional signals may be observed without simulated PAPER
@@ -75,6 +85,36 @@ Policy/baseline hashes prevent comparing different confidence settings as if the
 were the same experiment. Automatic prior-window baseline selection is not yet
 implemented in the Laravel scheduler; the Go drift comparison requires an explicit,
 nonoverlapping compatible baseline.
+
+### Descriptive metrics and unavailable denominators
+
+`descriptive_metrics` uses only validated, matured observations retained after
+chronological overlap purging and embargo. It reports exact 12-decimal mean
+winner/loser, net expectancy and return per signal, together with quantiles and
+fixed return bins. These are fractions of executed notional, not USDT amounts.
+Both cohort `profit_factor` fields remain null: observations do not supply the
+validated PnL amounts required to sum winners and losers, and normalized return
+ratios can misrepresent the result when executed notionals differ. The descriptive
+field provides the explicit reason `OBSERVATION_PNL_AMOUNTS_NOT_PROVIDED` for an
+observed population. Small samples retain descriptive values while their
+statistical classification remains `INSUFFICIENT_DATA`.
+
+The revised classifier uses policy version `SIGNAL_QUALITY_HOEFFDING_V2`, which
+changes the cohort job identity and leaves historical profiles untouched. V1
+packets are not accepted by the V2 classifier. The configured data code revision
+does not independently attest the classifier binary; binary provenance remains
+unverified. Legacy V1 profile responses withhold the misleading profit-factor
+ratio and report an invalid effective classification with the historical
+classification separately identified, because their source-timeframe attribution
+is unverified. Their stored research evidence is not rewritten.
+
+Directional accuracy and mean favorable/adverse excursions use stored outcome
+fields, with separate observed counts for each metric. Missing values never
+become false predictions or zero excursions. Precision, false-positive rate and
+probability calibration remain null with explicit reasons when the corresponding
+binary prediction population or decision-time probabilities for this target are
+absent. A four-hour proxy model probability is not a fixed-horizon net-profit
+probability, and one minus win rate is not a false-positive rate.
 
 ## Persistence and recovery
 

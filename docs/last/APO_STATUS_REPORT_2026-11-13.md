@@ -5,6 +5,9 @@
 **Current HEAD when assessed:** `1c4fe1f247045e1bc71c1c3a21d65eb2fb3cb37a`
 **Release decision:** NOT READY FOR PRODUCTION
 
+**Later implementation update:** additional changes are in progress; assess the
+separately frozen current regression independently of the earlier baseline below.
+
 This report records work completed, work in progress, evidence, and remaining
 requirements. It does not certify the current working tree, actual PAPER
 profitability, or any production environment.
@@ -131,6 +134,22 @@ descriptive profit factor uses normalized returns and can differ from the ratio
 of winning to losing PnL when notionals differ; cohort provenance does not
 independently establish which classifier binary produced the profile. Resolve
 both before treating the metric or classifier reproducibility as verified.
+
+Subsequent work withholds the unsupported profit factor, versions the updated
+classifier policy, rejects malformed source intervals, maps `1h` to 60 minutes,
+and quarantines inconsistent or subsequently changed source-signal attribution.
+Legacy profile responses mark their effective classification invalid while
+preserving the historical source. Focused PHP research checks passed 28 tests /
+244 assertions; the full Go race suite passed 124 tests / 117 subtests, including
+isolated PostgreSQL worker tests, and Go vet passed. Classifier binary attestation
+is still not established. A complete PHP regression was started on a separately
+frozen snapshot; no result is claimed while it runs.
+
+The sizing work adds account-locked margin, entry-fee and same-symbol checks.
+Until causal correlation can be revalidated, same-direction exposure in another
+instrument is rejected conservatively; exits remain permitted. Per-position mark
+freshness, concurrent account-equity changes and actual competing-worker entry
+transactions remain outstanding safety investigations.
 
 ## Remaining work
 

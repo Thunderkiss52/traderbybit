@@ -1,0 +1,9 @@
+{
+  "created_utc": "2026-11-11T09:52:24.303301+00:00",
+  "input": "VECTOR-AUDIT-CLOSED-V6.tar.gz",
+  "changed_source_files": 30,
+  "original_head": "9615a62",
+  "production": "NOT_ACCESSED",
+  "real_orders": "NONE",
+  "full_integration": "NOT_VERIFIED"
+}

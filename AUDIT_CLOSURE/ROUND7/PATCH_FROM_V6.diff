@@ -1,0 +1,1738 @@
+--- a/AUDIT_CLOSURE/ROUND7/verify_fail_closed.php
++++ b/AUDIT_CLOSURE/ROUND7/verify_fail_closed.php
+@@ -0,0 +1,82 @@
++<?php
++
++declare(strict_types=1);
++
++$root = dirname(__DIR__, 2);
++require $root.'/app/Strategy/Domain/SignalQuality.php';
++require $root.'/app/PaperTrading/Domain/TradeRiskClass.php';
++require $root.'/app/PaperTrading/Domain/QualityRiskGateDecision.php';
++require $root.'/app/PaperTrading/Application/PreExecutionQualityRiskGate.php';
++require $root.'/app/Research/Application/LearningFeatureStoreService.php';
++require $root.'/app/Research/Application/LearningPredictorService.php';
++require $root.'/app/Research/Application/ResearchJobService.php';
++require $root.'/app/Trading/Application/TradingQueueResolver.php';
++
++use App\PaperTrading\Application\PreExecutionQualityRiskGate;
++use App\PaperTrading\Domain\TradeRiskClass;
++use App\PaperTrading\Domain\QualityRiskGateDecision;
++use App\Strategy\Domain\SignalQuality;
++use App\Research\Application\LearningFeatureStoreService;
++use App\Research\Application\LearningPredictorService;
++use App\Research\Application\ResearchJobService;
++use App\Trading\Application\TradingQueueResolver;
++
++function config(string $key): mixed {
++    return match ($key) {
++        'trading.queues.bybit' => 'trading-bybit',
++        'trading.queues.binance' => 'trading-binance',
++        default => null,
++    };
++}
++function check(bool $condition, string $label): void {
++    static $count = 0;
++    if (! $condition) {
++        fwrite(STDERR, "FAIL {$label}\n");
++        exit(1);
++    }
++    $count++;
++    echo "PASS {$count}: {$label}\n";
++}
++$gate = new PreExecutionQualityRiskGate();
++$base = [
++    'signal_quality' => SignalQuality::High,
++    'trade_risk' => TradeRiskClass::Low,
++    'side' => 'BUY',
++];
++check($gate->evaluate($base)['decision'] === QualityRiskGateDecision::InsufficientEvidence, 'no historical edge is not a trade');
++check($gate->evaluate($base + ['expected_net_edge' => 1.0, 'sample_size' => 10, 'cost_drag_percent' => 10.0])['allowed'] === false, 'missing status cannot enable entry');
++$valid = $base + ['expected_net_edge' => 1.0, 'sample_size' => 10, 'cost_drag_percent' => 10.0, 'evidence_status' => 'VALIDATED'];
++check($gate->evaluate($valid)['allowed'] === true, 'scoped validated high/low can pass');
++check($gate->evaluate(array_replace($valid, ['evidence_status' => 'STALE']))['allowed'] === false, 'stale evidence blocked');
++check($gate->evaluate(array_replace($valid, ['sample_size' => 9]))['allowed'] === false, 'inadequate sample blocked');
++check($gate->evaluate(array_replace($valid, ['expected_net_edge' => -0.2]))['allowed'] === false, 'negative edge blocked');
++check($gate->evaluate(array_replace($valid, ['cost_drag_percent' => null]))['allowed'] === false, 'missing cost drag blocked');
++check($gate->evaluate(array_replace($valid, ['cost_drag_percent' => 120]))['decision'] === QualityRiskGateDecision::Rejected, 'costs exceed TP1 reward');
++check($gate->evaluate(array_replace($valid, ['signal_quality' => SignalQuality::Low]))['decision'] === QualityRiskGateDecision::ObservationOnly, 'low quality observation only');
++check($gate->evaluate(array_replace($valid, ['trade_risk' => TradeRiskClass::High]))['allowed'] === false, 'high risk blocked');
++check(LearningFeatureStoreService::rsiFromAverages(5, 0) === 100.0, 'RSI all gains');
++check(LearningFeatureStoreService::rsiFromAverages(0, 5) === 0.0, 'RSI all losses');
++check(LearningFeatureStoreService::rsiFromAverages(0, 0) === 50.0, 'RSI flat');
++check(LearningFeatureStoreService::rsiFromAverages(1, 1) === 50.0, 'RSI balanced');
++check(LearningFeatureStoreService::intervalMinutes('15') === 15, '15 minute format');
++check(LearningFeatureStoreService::intervalMinutes('1h') === 60, '1 hour format');
++check(LearningFeatureStoreService::intervalMinutes('foo') === null, 'bad timeframe rejected');
++check(TradingQueueResolver::forExchange('bybit') === 'trading-bybit', 'Bybit dedicated queue');
++check(TradingQueueResolver::forExchange('okx') === 'default', 'new exchange uses shared staffed queue');
++check(TradingQueueResolver::forExchange('binance') === 'trading-binance', 'Binance dedicated queue');
++$source = new ResearchJobService();
++check($source->resolveExchangeProvenance(['exchange' => 'OKX', 'payload' => ['dataset_exchange' => 'okx']]) === 'okx', 'OKX provenance');
++try {
++    $source->resolveExchangeProvenance(['exchange' => 'bybit', 'payload' => ['exchange_id' => 'binance']]);
++    check(false, 'conflicting provenance blocked');
++} catch (InvalidArgumentException) {
++    check(true, 'conflicting provenance blocked');
++}
++$nameA = LearningPredictorService::scopedModelName('TP_BEFORE_SL', 'BTCUSDT', 'bybit', 'baseline', '15', 'BUY');
++$nameB = LearningPredictorService::scopedModelName('TP_BEFORE_SL', 'BTCUSDT', 'okx', 'baseline', '15', 'SELL');
++check($nameA !== $nameB, 'model names isolate exchange and side');
++check(strlen($nameA) <= 64, 'model name fits database column');
++
++
++check($gate->evaluate($base + ['require_validated_edge' => false])['allowed'] === false, 'legacy unchecked override cannot bypass edge requirement');
++check(LearningPredictorService::scopedModelName('TP_BEFORE_SL','BTCUSDT','bybit','baseline','15','BUY','linear','1.2.0') !== LearningPredictorService::scopedModelName('TP_BEFORE_SL','BTCUSDT','bybit','baseline','15','BUY','linear','1.3.0'), 'versioned learning identity isolates changes');
+--- a/app/Backtest/Application/BacktestRunService.php
++++ b/app/Backtest/Application/BacktestRunService.php
+@@ -56,27 +56,30 @@
+         }
+         $dataset = $this->datasets->pin($datasetSymbols, $from, $to, (int) $this->config['warmup_bars'], $exchange);
+         $paper = (array) config('paper');
+-        if ($exchange === 'binance') {
+-            foreach (['paper_taker_rate', 'paper_slippage_rate'] as $key) {
+-                $value = config('exchanges.binance.'.$key);
+-                if (! is_string($value) || ! preg_match('/^(?:0|[1-9][0-9]*)(?:\.[0-9]+)?$/D', $value)
+-                    || BigDecimal::of($value)->isGreaterThanOrEqualTo(1)) {
+-                    throw new \RuntimeException('Binance historical execution cost unavailable: '.$key);
+-                }
+-            }
+-            $paper['fees']['taker_rate'] = config('exchanges.binance.paper_taker_rate');
+-            $paper['slippage_rate'] = config('exchanges.binance.paper_slippage_rate');
+-        } elseif ($exchange !== 'bybit') {
+-            // Independent venue-specific costs are mandatory for credible PnL.
+-            // Missing, invalid, spot or inverse models must not fall back to Bybit assumptions.
++        if ($exchange !== 'bybit') {
++            // Match PAPER execution's configured exchange cost model. Do not
++            // require Binance-only env vars or inherit another venue's rates.
+             $record = DB::table('exchanges')->where('id', $exchange)->first();
+             $rawCost = $record?->cost_model;
+-            $cost = is_array($rawCost) ? $rawCost : (is_string($rawCost) ? json_decode($rawCost, true) : null);
++            $persistedCost = is_array($rawCost) ? $rawCost : (is_string($rawCost) ? json_decode($rawCost, true) : null);
++            $costModel = config("exchanges.{$exchange}.cost_model");
++            $costModel = is_array($costModel) ? $costModel : $persistedCost;
++            if (is_array($costModel)) {
++                // Runtime PAPER gives priority to explicit venue rate overrides.
++                foreach (['paper_taker_rate' => 'taker_rate', 'paper_slippage_rate' => 'slippage_rate'] as $key => $shortKey) {
++                    $override = config("exchanges.{$exchange}.{$key}");
++                    if (is_string($override) && preg_match('/^(?:0|[0-9]+)(?:\.[0-9]+)?$/D', $override)
++                        && \Brick\Math\BigDecimal::of($override)->isLessThan('0.1')) {
++                        $costModel[$shortKey] = $override;
++                    }
++                }
++            }
++            $marketType = $record?->market_type ?? ($exchange === 'binance' ? 'linear_perpetual' : null);
+             $paper = HistoricalExecutionCostPolicy::apply(
+                 $exchange,
+                 $paper,
+-                $record?->market_type,
+-                is_array($cost) ? $cost : null,
++                $marketType,
++                is_array($costModel) ? $costModel : null,
+             );
+         }
+         $type = $walkForward ? 'walk_forward' : 'split';
+--- a/app/Exchanges/Application/ExchangeCapabilityValidator.php
++++ b/app/Exchanges/Application/ExchangeCapabilityValidator.php
+@@ -90,11 +90,44 @@
+ 
+         $hasLiveAdapter = $this->registry->hasAdapter($exchange->id);
+ 
+-        $hasCandleData = CandleRecord::query()->where('exchange', $exchange->id)->exists();
++        $hasCandleData = false; // A single historical row does not establish usable coverage.
+ 
+         $supportedTimeframes = array_map(UniversalAcquisitionService::normalizeInterval(...), (array) ($capabilities['supported_timeframes'] ?? []));
+         $requiredTimeframes = ['5', '15', '30', '60'];
+         $hasTimeframes = count(array_intersect($requiredTimeframes, $supportedTimeframes)) === count($requiredTimeframes);
++        $missingCandleCoverage = [];
++        $marketCategory = (string) $exchange->market_type === 'spot' ? 'spot' : 'linear';
++        $coverageSymbols = (array) config('market_data.symbols', ['BTCUSDT', 'ETHUSDT']);
++        $hasCandleData = $coverageSymbols !== [];
++        foreach ($coverageSymbols as $symbol) {
++            foreach ($requiredTimeframes as $interval) {
++                $minutes = (int) $interval;
++                $lastThree = CandleRecord::query()
++                    ->where('exchange', $exchange->id)
++                    ->where('category', $marketCategory)
++                    ->where('symbol', $symbol)
++                    ->where('interval', $interval)
++                    ->where('is_closed', true)
++                    ->orderByDesc('open_time')
++                    ->limit(3)
++                    ->get(['open_time']);
++                $valid = $lastThree->count() === 3;
++                if ($valid) {
++                    $openTimes = $lastThree->map(fn ($row): int => $row->open_time->getTimestamp())->all();
++                    $step = $minutes * 60;
++                    $expectedLatestOpen = intdiv(now('UTC')->getTimestamp(), $step) * $step - $step;
++                    $valid = $openTimes[0] <= $expectedLatestOpen
++                        && $openTimes[0] >= $expectedLatestOpen - (2 * $step)
++                        && $openTimes[0] - $openTimes[1] === $step
++                        && $openTimes[1] - $openTimes[2] === $step;
++                }
++                if (! $valid) {
++                    $missingCandleCoverage[] = $symbol.':'.$interval;
++                    $hasCandleData = false;
++                }
++            }
++        }
++        $hasTimeframes = $hasTimeframes && $hasCandleData;
+ 
+         $hasCostModel = $this->validRate($costModel['taker_rate'] ?? null)
+             && $this->validRate($costModel['slippage_rate'] ?? null);
+@@ -165,7 +198,7 @@
+             $reasonsMissing[] = 'MISSING_LIVE_ADAPTER: Dedicated REST/WebSocket adapter class is not compiled or registered in ExchangeRegistry.';
+         }
+         if (! $hasCandleData) {
+-            $reasonsMissing[] = 'NO_CANDLE_DATA: No historical or public candles exist in the database for this exchange.';
++            $reasonsMissing[] = 'INCOMPLETE_OR_STALE_CANDLE_COVERAGE: Required three contiguous fresh closed bars missing for '.implode(', ', $missingCandleCoverage).'.';
+         }
+         if (! $hasTimeframes) {
+             $missing = array_diff($requiredTimeframes, $supportedTimeframes);
+--- a/app/Http/Controllers/Api/V1/ProfitabilityResearchController.php
++++ b/app/Http/Controllers/Api/V1/ProfitabilityResearchController.php
+@@ -239,19 +239,24 @@
+                 'gated_modules' => [
+                     'P-1' => [
+                         'name' => 'Slippage Attribution',
+-                        'status' => (function (): string {
+-                            $record = ResearchGenerationRecord::query()
+-                                ->where('package_code', 'P-1')
+-                                ->latest('created_at')
+-                                ->first();
+-
++                        'status' => (function () use ($exchange, $symbol): string {
++                            // The existence of a class or a generation for another
++                            // venue/instrument does not verify this selected scope.
++                            $query = ResearchGenerationRecord::query()->where('package_code', 'P-1');
++                            if ($exchange !== 'all') {
++                                $query->where('metadata->exchange', $exchange);
++                            }
++                            if ($symbol !== null) {
++                                $query->where('metadata->symbol', $symbol);
++                            }
++                            $record = $query->latest('created_at')->first();
+                             return match ($record?->status) {
+-                                'COMPLETED' => 'IMPLEMENTED_VERIFIED',
++                                'SUCCEEDED', 'COMPLETED' => 'IMPLEMENTED_VERIFIED',
+                                 'RUNNING' => 'RUNNING',
+                                 'QUEUED' => 'QUEUED',
+-                                'FAILED' => 'FAILED',
++                                'FAILED', 'TIMEOUT' => 'FAILED',
+                                 'STALE' => 'STALE',
+-                                null => class_exists(SlippageAttributionService::class) ? 'IMPLEMENTED_VERIFIED' : 'NOT_IMPLEMENTED',
++                                null => 'NOT_GENERATED',
+                                 default => (string) $record->status,
+                             };
+                         })(),
+--- a/app/Http/Controllers/Api/V1/StrategyResearchController.php
++++ b/app/Http/Controllers/Api/V1/StrategyResearchController.php
+@@ -107,8 +107,8 @@
+             abort(404, 'Unknown strategy.');
+         }
+         $exchange = request()->header('X-Exchange') ?: request()->string('exchange', 'bybit')->toString();
+-        if (! in_array($exchange, ['bybit', 'binance'], true)) {
+-            $exchange = 'bybit';
++        if (! in_array($exchange, app(\App\Exchanges\ExchangeRegistry::class)->registeredIds(), true)) {
++            abort(422, 'Unknown exchange identifier.');
+         }
+         $accounts = PaperAccountRecord::query()->where('exchange_id', $exchange)->where('strategy_id', $id)->orderBy('created_at')->get();
+ 
+--- a/app/PaperTrading/Application/PaperProcessingService.php
++++ b/app/PaperTrading/Application/PaperProcessingService.php
+@@ -469,7 +469,27 @@
+         );
+ 
+         $tradeRiskService = app(TradeRiskClassificationService::class);
+-        $costEstimate = $size !== null && $size->allowed ? $this->execution->commission((string) $size->quantity, $entry, $account->exchange_id) : '0';
++        $costEstimate = null;
++        $costDragPercent = null;
++        if ($size !== null && $size->allowed && BigDecimal::of((string) $size->quantity)->isPositive()) {
++            // Round-trip TP1 economics in USDT (not price delta per contract).
++            // Include fees and slippage once in pre-entry estimate; never deduct
++            // this estimate a second time from realized fill-price PnL.
++            $costRates = $this->execution->costs($account->exchange_id);
++            $qty = BigDecimal::of((string) $size->quantity);
++            $entryPrice = BigDecimal::of((string) $entry);
++            $tp1Price = BigDecimal::of((string) $signal->take_profit_1);
++            $targetGross = $tp1Price->minus($entryPrice)->abs()->multipliedBy($qty);
++            $roundTripNotional = $entryPrice->plus($tp1Price)->multipliedBy($qty);
++            $costEstimate = (string) $roundTripNotional->multipliedBy(
++                BigDecimal::of((string) $costRates['taker_rate'])->plus((string) $costRates['slippage_rate'])
++            );
++            if ($targetGross->isPositive()) {
++                $costDragPercent = $roundTripNotional->multipliedBy(
++                    BigDecimal::of((string) $costRates['taker_rate'])->plus((string) $costRates['slippage_rate'])
++                )->dividedBy($targetGross, 8, RoundingMode::HalfEven)->multipliedBy(100)->toFloat();
++            }
++        }
+         $riskAssessmentResult = $tradeRiskService->classify([
+             'equity' => $account->current_equity,
+             'entry_price' => $entry,
+@@ -484,6 +504,7 @@
+             'ask' => $context?->ask,
+             'correlation' => $corr,
+             'estimated_costs' => $costEstimate,
++            'estimated_cost_drag_percent' => $costDragPercent,
+         ]);
+ 
+         $evidenceService = app(PreEntryStrategyEvidenceService::class);
+@@ -505,7 +526,9 @@
+             'directional_win_rate' => $strategyEvidence['directional_win_rate'],
+             'directional_profit_factor' => $strategyEvidence['directional_profit_factor'],
+             'directional_sample_size' => $strategyEvidence['directional_sample_size'],
+-            'cost_drag_percent' => $costEstimate['cost_to_tp1_gain_percent'] ?? null,
++            'cost_drag_percent' => $costDragPercent,
++            'evidence_status' => $strategyEvidence['status'],
++            'require_validated_edge' => true,
+             'side' => $signal->side,
+         ]);
+ 
+--- a/app/PaperTrading/Application/PreExecutionQualityRiskGate.php
++++ b/app/PaperTrading/Application/PreExecutionQualityRiskGate.php
+@@ -14,7 +14,7 @@
+  */
+ final readonly class PreExecutionQualityRiskGate
+ {
+-    public const VERSION = '1.1.0';
++    public const VERSION = '1.2.0';
+ 
+     public function version(): string
+     {
+@@ -34,6 +34,7 @@
+      *     cost_drag_percent?: float|null,
+      *     prospective_net_edge_bps?: float|null,
+      *     require_validated_edge?: bool,
++     *     evidence_status?: string|null,
+      *     side?: string|null
+      * } $context
+      * @return array{
+@@ -55,7 +56,9 @@
+         $drawdown = (float) ($context['drawdown_percent'] ?? 0.0);
+         $side = strtoupper((string) ($context['side'] ?? 'BUY'));
+         $costDragPct = isset($context['cost_drag_percent']) ? (float) $context['cost_drag_percent'] : null;
+-        $requireValidatedEdge = (bool) ($context['require_validated_edge'] ?? false);
++        // Historical overrides cannot disable validated-edge checks in PAPER execution.
++        $requireValidatedEdge = true;
++        $evidenceStatus = (string) ($context['evidence_status'] ?? 'UNKNOWN');
+ 
+         $pair = "{$quality->value}_{$risk->value}";
+         $reasons = [];
+@@ -68,6 +71,7 @@
+             'drawdown_percent' => $drawdown,
+             'cost_drag_percent' => $costDragPct,
+             'side' => $side,
++            'evidence_status' => $evidenceStatus,
+         ];
+ 
+         // 1. Unknown Quality or Risk: Never allow automatic entry
+@@ -105,6 +109,22 @@
+                 'expected_net_edge' => $expectedNetEdge,
+                 'sample_size' => $sampleSize,
+                 'rejection_reasons' => ['high_risk_trade_rejected'],
++                'diagnostics' => $diagnostics,
++            ];
++        }
++
++        // Fail closed before the eligibility matrix. A missing/stale/nonpositive
++        // venue+instrument+direction cohort is not statistically validated.
++        if ($requireValidatedEdge && ($evidenceStatus !== 'VALIDATED' || $sampleSize < 10
++            || $expectedNetEdge === null || ! is_finite($expectedNetEdge) || $expectedNetEdge <= 0.0
++            || $costDragPct === null || ! is_finite($costDragPct) || $costDragPct < 0.0)) {
++            return [
++                'decision' => QualityRiskGateDecision::InsufficientEvidence,
++                'allowed' => false,
++                'quality_risk_pair' => $pair,
++                'expected_net_edge' => $expectedNetEdge,
++                'sample_size' => $sampleSize,
++                'rejection_reasons' => ['missing_or_stale_validated_edge_or_cost_evidence'],
+                 'diagnostics' => $diagnostics,
+             ];
+         }
+--- a/app/PaperTrading/Application/TradeRiskClassificationService.php
++++ b/app/PaperTrading/Application/TradeRiskClassificationService.php
+@@ -36,7 +36,8 @@
+      *     bid?: string|float|int|null,
+      *     ask?: string|float|int|null,
+      *     correlation?: string|float|int|null,
+-     *     estimated_costs?: string|float|int|null
++     *     estimated_costs?: string|float|int|null,
++     *     estimated_cost_drag_percent?: float|null
+      * } $input
+      * @return array{
+      *     risk_class: TradeRiskClass,
+@@ -270,13 +271,11 @@
+             }
+ 
+             // 9. Execution Cost Drag (Weight: 5)
+-            if (isset($input['estimated_costs'], $input['take_profit_1']) && is_numeric($input['estimated_costs']) && is_numeric($input['take_profit_1'])) {
+-                $tp1 = BigDecimal::of((string) $input['take_profit_1']);
+-                $costs = BigDecimal::of((string) $input['estimated_costs']);
+-                $targetGain = $tp1->minus($entry)->abs();
+-                if ($targetGain->isPositive()) {
+-                    $costDrag = $costs->dividedBy($targetGain, 4, RoundingMode::HalfEven)->toFloat();
+-                    if ($costDrag > 0.20) {
++            if (isset($input['estimated_cost_drag_percent']) && is_numeric($input['estimated_cost_drag_percent'])
++                && is_finite((float) $input['estimated_cost_drag_percent']) && (float) $input['estimated_cost_drag_percent'] >= 0.0) {
++                // The upstream estimate includes quantity, entry and TP1 notionals.
++                $costDrag = (float) $input['estimated_cost_drag_percent'] / 100.0;
++                if ($costDrag > 0.20) {
+                         $level = 'HIGH';
+                         $score = 80;
+                         $highCount++;
+@@ -291,12 +290,6 @@
+                     $factors['execution_cost_drag'] = ['value' => round($costDrag, 3), 'level' => $level, 'weight' => 5, 'score' => $score];
+                     $totalScore += $score * 5;
+                     $totalWeight += 5;
+-                } else {
+-                    $missingFactors[] = 'execution_cost_drag';
+-                    $factors['execution_cost_drag'] = ['value' => null, 'level' => 'UNAVAILABLE', 'weight' => 5, 'score' => 50];
+-                    $totalScore += 50 * 5;
+-                    $totalWeight += 5;
+-                }
+             } else {
+                 $missingFactors[] = 'execution_cost_drag';
+                 $factors['execution_cost_drag'] = ['value' => null, 'level' => 'UNAVAILABLE', 'weight' => 5, 'score' => 50];
+--- a/app/Research/Application/LearningFeatureStoreService.php
++++ b/app/Research/Application/LearningFeatureStoreService.php
+@@ -6,8 +6,10 @@
+ 
+ use App\MarketData\Infrastructure\Persistence\CandleRecord;
+ use App\Research\Infrastructure\Persistence\LearningFeatureSnapshotRecord;
++use App\Strategy\Infrastructure\Persistence\SignalRecord;
+ use Carbon\CarbonImmutable;
+ use Illuminate\Support\Str;
++use Illuminate\Support\Facades\Schema;
+ 
+ final class LearningFeatureStoreService
+ {
+@@ -20,15 +22,30 @@
+         CarbonImmutable $decisionTime,
+         ?string $strategyId = null,
+         ?string $regime = null,
+-        string $exchange = 'bybit'
++        string $exchange = 'bybit',
++        string $category = 'linear'
+     ): ?LearningFeatureSnapshotRecord {
++        // Historical is_closed reflects the current DB, not the decision-time state.
++        // A candle is usable only after its entire interval has ended.
++        $minutes = self::intervalMinutes($timeframe);
++        if ($minutes === null) {
++            return null;
++        }
++        $latestAllowedOpen = $decisionTime->subMinutes($minutes);
++        $exchange = strtolower(trim($exchange));
++        $category = strtolower(trim($category));
++        if ($exchange === '' || ! in_array($category, ['linear', 'spot', 'inverse'], true)) {
++            return null;
++        }
++
+         // Enforce strict causality: closed candle at or before decision time T
+         $candle = CandleRecord::query()
+             ->where('exchange', $exchange)
++            ->where('category', $category)
+             ->where('symbol', $symbol)
+             ->where('interval', $timeframe)
+             ->where('is_closed', true)
+-            ->where('open_time', '<=', $decisionTime)
++            ->where('open_time', '<=', $latestAllowedOpen)
+             ->latest('open_time')
+             ->first();
+ 
+@@ -36,24 +53,46 @@
+             return null;
+         }
+ 
+-        // De-duplication check: avoid duplicate snapshot at the same decision timestamp for the exchange
++        // Resolve the immutable strategy version before snapshot de-duplication.
++        // Snapshots from a previous version are never reused for new rules.
++        $signal = null;
++        if ($strategyId !== null && Schema::hasTable('signals')) {
++            $signal = SignalRecord::query()
++                ->where('exchange', $exchange)
++                ->where('category', $category)
++                ->where('symbol', $symbol)
++                ->where('strategy_id', $strategyId)
++                ->where('decision_time', $decisionTime)
++                ->whereIn('side', ['BUY', 'SELL'])
++                ->first();
++        }
++        $signalVersion = $signal === null ? null : (string) $signal->strategy_version;
++
++        // De-duplication includes the strategy version and market category.
+         $existing = LearningFeatureSnapshotRecord::query()
+             ->where('symbol', $symbol)
+             ->where('timeframe', $timeframe)
++            ->where('strategy_id', $strategyId)
+             ->where('decision_time', $decisionTime)
+             ->get()
+-            ->first(fn ($record) => ($record->data_quality['exchange'] ?? 'bybit') === $exchange);
++            ->first(fn ($record) => ($record->data_quality['exchange'] ?? null) === $exchange
++                && ($record->data_quality['category'] ?? null) === $category
++                && ($record->data_quality['strategy_version'] ?? null) === $signalVersion);
+ 
+         if ($existing) {
+             return $existing;
+         }
+ 
+         // Available at is candle open_time + interval duration
+-        $availableAt = CarbonImmutable::parse($candle->open_time)->addMinutes((int) $timeframe);
++        $availableAt = CarbonImmutable::parse($candle->open_time)->addMinutes($minutes);
++        if ($availableAt->greaterThan($decisionTime)) {
++            return null; // defensive check: never persist future OHLC features
++        }
+ 
+         // Fetch recent historical window strictly <= decisionTime
+         $history = CandleRecord::query()
+             ->where('exchange', $exchange)
++            ->where('category', $category)
+             ->where('symbol', $symbol)
+             ->where('interval', $timeframe)
+             ->where('is_closed', true)
+@@ -96,8 +135,7 @@
+ 
+         $avgGain = count($gains) > 0 ? array_sum(array_slice($gains, -14)) / min(14, count($gains)) : 0.0;
+         $avgLoss = count($losses) > 0 ? array_sum(array_slice($losses, -14)) / min(14, count($losses)) : 0.0;
+-        $rs = $avgLoss > 0 ? $avgGain / $avgLoss : 1.0;
+-        $rsi14 = round(100.0 - (100.0 / (1.0 + $rs)), 2);
++        $rsi14 = self::rsiFromAverages($avgGain, $avgLoss);
+ 
+         $avgVol = $history->avg('volume') ?: 1.0;
+         $volumeRatio = round($vol / (float) $avgVol, 4);
+@@ -113,6 +151,14 @@
+             'bar_count' => $history->count(),
+         ];
+ 
++        // A feature snapshot alone does not prove a trade direction or outcome.
++        // Only a matching historical signal with an actual trade plan can be
++        // matured into a directional proxy label. Unknown-side snapshots are
++        // retained as INVALID, never silently taught as LONG winners/losers.
++        $hasTradePlan = $signal !== null && (float) $signal->stop_loss > 0
++            && (float) $signal->take_profit_1 > 0
++            && (float) ($signal->side === 'BUY' ? $signal->entry_high : $signal->entry_low) > 0;
++
+         return LearningFeatureSnapshotRecord::query()->create([
+             'id' => (string) Str::uuid(),
+             'symbol' => $symbol,
+@@ -123,9 +169,17 @@
+             'strategy_id' => $strategyId,
+             'regime' => $regime ?? 'UNKNOWN',
+             'features' => $features,
+-            'label_status' => 'PENDING',
++            'label_status' => $hasTradePlan ? 'PENDING' : 'INVALID',
+             'data_quality' => [
+                 'exchange' => $exchange,
++                'category' => $category,
++                'strategy_version' => $signalVersion,
++                'label_policy_version' => 'SIGNAL_PROXY_V2',
++                'side' => $hasTradePlan ? $signal->side : null,
++                'signal_id' => $hasTradePlan ? $signal->id : null,
++                'entry_price' => $hasTradePlan ? ($signal->side === 'BUY' ? $signal->entry_high : $signal->entry_low) : null,
++                'stop_loss' => $hasTradePlan ? $signal->stop_loss : null,
++                'take_profit_1' => $hasTradePlan ? $signal->take_profit_1 : null,
+                 'candles_evaluated' => $history->count(),
+                 'missing_bars' => 0,
+                 'no_look_ahead_verified' => true,
+@@ -133,113 +187,149 @@
+         ]);
+     }
+ 
++    /** Pure RSI calculation: 100 on rising/no losses, 0 on falling/no gains. */
++    public static function rsiFromAverages(float $averageGain, float $averageLoss): float
++    {
++        if ($averageGain <= 0.0 && $averageLoss <= 0.0) {
++            return 50.0;
++        }
++        if ($averageLoss <= 0.0) {
++            return 100.0;
++        }
++        if ($averageGain <= 0.0) {
++            return 0.0;
++        }
++        return round(100.0 - (100.0 / (1.0 + $averageGain / $averageLoss)), 2);
++    }
++
++    /** Return the candle interval in whole minutes; reject unsupported notation. */
++    public static function intervalMinutes(string $interval): ?int
++    {
++        $normalized = strtolower(trim($interval));
++        if (preg_match('/^[1-9][0-9]{0,3}$/D', $normalized)) {
++            return (int) $normalized;
++        }
++        if (preg_match('/^([1-9][0-9]{0,2})(m|h)$/D', $normalized, $matches)) {
++            return (int) $matches[1] * ($matches[2] === 'h' ? 60 : 1);
++        }
++        return null;
++    }
++
+     /**
+-     * Mature pending outcome labels using post-facto closed candles.
++     * Mature only directionally attributable, versioned proxy labels.
++     * Proxy outcomes are not realized PAPER profit and MUST NOT be used as ledger evidence.
+      */
+     public function maturePendingLabels(int $limit = 50, ?string $exchange = null): int
+     {
+         $pending = LearningFeatureSnapshotRecord::query()
+             ->where('label_status', 'PENDING')
+-            ->where('available_at', '<=', CarbonImmutable::now()->subMinutes(60))
+-            ->limit($limit)
++            ->where('available_at', '<=', CarbonImmutable::now()->subHours(4))
++            ->limit(max(1, min(1000, $limit)))
+             ->get();
+-
+         $maturedCount = 0;
+-
+         foreach ($pending as $snapshot) {
+-            $snapshotExchange = $snapshot->data_quality['exchange'] ?? 'bybit';
+-            if ($exchange !== null && $snapshotExchange !== $exchange) {
++            $quality = (array) $snapshot->data_quality;
++            $venue = (string) ($quality['exchange'] ?? '');
++            if ($exchange !== null && $venue !== $exchange) {
+                 continue;
+             }
+-
++            $side = $quality['side'] ?? null;
++            $entry = (float) ($quality['entry_price'] ?? 0);
++            $stop = (float) ($quality['stop_loss'] ?? 0);
++            $tp = (float) ($quality['take_profit_1'] ?? 0);
++            $category = $quality['category'] ?? null;
++            $minutes = self::intervalMinutes((string) $snapshot->timeframe);
++            $isLong = $side === 'BUY';
++            if (($quality['label_policy_version'] ?? null) !== 'SIGNAL_PROXY_V2'
++                || ! is_string($quality['strategy_version'] ?? null)
++                || trim($quality['strategy_version']) === ''
++                || ! in_array($side, ['BUY', 'SELL'], true)
++                || ! in_array($category, ['linear', 'spot', 'inverse'], true)
++                || $minutes === null || $venue === '' || $entry <= 0.0 || $stop <= 0.0 || $tp <= 0.0
++                || ($isLong && ! ($stop < $entry && $tp > $entry))
++                || (! $isLong && ! ($stop > $entry && $tp < $entry))) {
++                $snapshot->update(['label_status' => 'INVALID']);
++                continue;
++            }
++
++            $costModel = config("exchanges.{$venue}.cost_model");
++            $fee = $costModel['taker_rate'] ?? null;
++            $slippage = $costModel['slippage_rate'] ?? null;
++            if (! is_numeric($fee) || ! is_numeric($slippage) || (float) $fee < 0.0
++                || (float) $slippage < 0.0 || (float) $fee >= 0.1 || (float) $slippage >= 0.1) {
++                // No invented fees from Bybit or another venue.
++                continue;
++            }
+             $t0 = CarbonImmutable::parse($snapshot->decision_time);
+-            $entryPrice = (float) ($snapshot->features['close'] ?? 0.0);
+-            if ($entryPrice <= 0) {
+-                $snapshot->update(['label_status' => 'INVALID']);
+-
+-                continue;
+-            }
+-
+-            // Assume standard 2% TP and 1% SL for evaluation
+-            $tp = $entryPrice * 1.02;
+-            $sl = $entryPrice * 0.99;
+-
+-            $subsequentCandles = CandleRecord::query()
+-                ->where('exchange', $snapshotExchange)
++            $deadline = $t0->addHours(4);
++            $candles = CandleRecord::query()
++                ->where('exchange', $venue)
++                ->where('category', $category)
+                 ->where('symbol', $snapshot->symbol)
+                 ->where('interval', $snapshot->timeframe)
+                 ->where('is_closed', true)
+-                ->where('open_time', '>', $t0)
+-                ->where('open_time', '<=', $t0->addHours(4))
++                ->where('open_time', '>=', $t0)
++                ->where('open_time', '<=', $deadline->subMinutes($minutes))
+                 ->orderBy('open_time')
+                 ->get();
+-
+-            if ($subsequentCandles->isEmpty()) {
++            if ($candles->isEmpty()) {
+                 continue;
+             }
+-
+-            $takerRate = (float) config('paper.fees.taker_rate', 0.00055);
+-            $slippageRate = (float) config('paper.slippage_rate', 0.0002);
+-            $tradingCostPct = ($takerRate * 2 + $slippageRate) * 100;
+-
+-            $resolved = false;
+-            foreach ($subsequentCandles as $candle) {
+-                $h = (float) $candle->high;
+-                $l = (float) $candle->low;
+-
+-                if ($h >= $tp && $l <= $sl) {
+-                    $snapshot->update([
+-                        'label_status' => 'AMBIGUOUS',
+-                        'label_outcome' => 'AMBIGUOUS',
+-                        'label_r_multiple' => -1.13, // Conservative assumption
+-                        'outcome_at' => $candle->open_time,
+-                    ]);
+-                    $resolved = true;
+-                    $maturedCount++;
++            $riskPerUnit = abs($entry - $stop);
++            $roundTripRate = 2.0 * ((float) $fee + (float) $slippage);
++            $lastClose = null;
++            $lastAt = null;
++            $expectedOpen = $t0;
++            $outcome = null;
++            $reward = null;
++            foreach ($candles as $candle) {
++                $barOpen = CarbonImmutable::parse($candle->open_time);
++                if (! $barOpen->equalTo($expectedOpen)) {
++                    break; // incomplete candle sequence must never produce a mature label
++                }
++                $expectedOpen = $expectedOpen->addMinutes($minutes);
++                $barClose = $barOpen->addMinutes($minutes);
++                $high = (float) $candle->high;
++                $low = (float) $candle->low;
++                $lastClose = (float) $candle->close;
++                $lastAt = $barClose;
++                $hitTp = $isLong ? $high >= $tp : $low <= $tp;
++                $hitSl = $isLong ? $low <= $stop : $high >= $stop;
++                if ($hitTp && $hitSl) {
++                    $outcome = 'AMBIGUOUS';
++                } elseif ($hitTp) {
++                    $outcome = 'TP';
++                } elseif ($hitSl) {
++                    $outcome = 'SL';
++                }
++                if ($outcome !== null) {
++                    // Ambiguous within-candle order is NOT an observed win or loss.
++                    $exitPrice = $outcome === 'TP' ? $tp : $stop;
++                    if ($outcome !== 'AMBIGUOUS') {
++                        $grossR = (($isLong ? $exitPrice - $entry : $entry - $exitPrice) / $riskPerUnit);
++                        $reward = $grossR - ($entry + $exitPrice) * ($roundTripRate / 2) / $riskPerUnit;
++                    }
+                     break;
+                 }
+-
+-                if ($h >= $tp) {
+-                    $snapshot->update([
+-                        'label_status' => 'MATURED',
+-                        'label_outcome' => 'TP',
+-                        'label_r_multiple' => round(2.0 - $tradingCostPct, 4),
+-                        'outcome_at' => $candle->open_time,
+-                    ]);
+-                    $resolved = true;
+-                    $maturedCount++;
+-                    break;
+-                }
+-
+-                if ($l <= $sl) {
+-                    $snapshot->update([
+-                        'label_status' => 'MATURED',
+-                        'label_outcome' => 'SL',
+-                        'label_r_multiple' => round(-1.0 - $tradingCostPct, 4),
+-                        'outcome_at' => $candle->open_time,
+-                    ]);
+-                    $resolved = true;
+-                    $maturedCount++;
+-                    break;
+-                }
+-            }
+-
+-            if (! $resolved && $subsequentCandles->count() >= 16) {
+-                // Timeout after 4 hours
+-                $last = $subsequentCandles->last();
+-                $lastClose = (float) $last->close;
+-                $netPct = ((($lastClose - $entryPrice) / $entryPrice) * 100) - $tradingCostPct;
+-
++            }
++            if ($outcome === null && $expectedOpen->lessThan($deadline)) {
++                continue; // wait for the whole four-hour horizon
++            }
++            if ($outcome === null && $lastClose !== null) {
++                $outcome = 'TIMEOUT';
++                $reward = (($isLong ? $lastClose - $entry : $entry - $lastClose)
++                    - ($entry + $lastClose) * ($roundTripRate / 2)) / $riskPerUnit;
++            }
++            if ($outcome !== null && $lastAt !== null) {
+                 $snapshot->update([
+-                    'label_status' => 'MATURED',
+-                    'label_outcome' => 'TIMEOUT',
+-                    'label_r_multiple' => round($netPct, 4),
+-                    'outcome_at' => $last->open_time,
++                    'label_status' => $outcome === 'AMBIGUOUS' ? 'AMBIGUOUS' : 'MATURED',
++                    'label_outcome' => $outcome,
++                    'label_r_multiple' => $reward === null ? null : round($reward, 4),
++                    'outcome_at' => $lastAt,
+                 ]);
+                 $maturedCount++;
+             }
+         }
+-
+         return $maturedCount;
+     }
+ }
+--- a/app/Research/Application/LearningPredictorService.php
++++ b/app/Research/Application/LearningPredictorService.php
+@@ -30,16 +30,22 @@
+      * Train and calibrate an outcome prediction model on matured labels.
+      * Uses a purged temporal train/validation split and executes champion/challenger evaluation.
+      */
+-    public function trainModel(string $targetEvent = 'TP_BEFORE_SL', string $symbol = 'BTCUSDT', string $exchange = 'bybit'): ?LearningModelArtifactRecord
++    public function trainModel(string $targetEvent = 'TP_BEFORE_SL', string $symbol = 'BTCUSDT', string $exchange = 'bybit', string $strategyId = 'baseline', string $timeframe = '15', string $side = 'BUY', string $category = 'linear', string $strategyVersion = 'UNVERSIONED'): ?LearningModelArtifactRecord
+     {
+         $this->assertTrainingAllowed();
+-        $modelName = self::scopedModelName($targetEvent, $symbol, $exchange);
++        $modelName = self::scopedModelName($targetEvent, $symbol, $exchange, $strategyId, $timeframe, $side, $category, $strategyVersion);
+ 
+         // Legacy snapshots without a verified exchange are deliberately excluded.
+         // They must not be presumed Bybit when the same symbol exists on Binance.
+         $snapshots = LearningFeatureSnapshotRecord::query()
+             ->where('symbol', $symbol)
+             ->where('data_quality->exchange', $exchange)
++            ->where('data_quality->category', $category)
++            ->where('data_quality->side', $side)
++            ->where('data_quality->label_policy_version', 'SIGNAL_PROXY_V2')
++            ->where('data_quality->strategy_version', $strategyVersion)
++            ->where('strategy_id', $strategyId)
++            ->where('timeframe', $timeframe)
+             ->where('label_status', 'MATURED')
+             ->orderBy('decision_time')
+             ->get();
+@@ -50,12 +56,15 @@
+ 
+         $allData = [];
+         foreach ($snapshots as $snap) {
++            if ($snap->label_r_multiple === null || $snap->outcome_at === null) {
++                return null; // incomplete labels are not training evidence
++            }
+             $feat = (array) $snap->features;
+             $allData[] = [
+                 'decision_time' => $snap->decision_time,
+                 'outcome_at' => $snap->outcome_at ? CarbonImmutable::parse($snap->outcome_at) : null,
+                 'y' => $snap->label_outcome === 'TP' ? 1.0 : 0.0,
+-                'r_multiple' => (float) ($snap->label_r_multiple ?? ($snap->label_outcome === 'TP' ? 1.87 : -1.13)),
++                'r_multiple' => (float) $snap->label_r_multiple,
+                 'hl_spread_pct' => (float) ($feat['hl_spread_pct'] ?? 0.0),
+                 'body_spread_pct' => (float) ($feat['body_spread_pct'] ?? 0.0),
+                 'recent_volatility' => (float) ($feat['recent_volatility'] ?? 0.0),
+@@ -214,7 +223,7 @@
+         // Evaluate on untouched out-of-sample Validation slice
+         $valMetrics = $this->evaluateDataset($valSlice, $weights);
+ 
+-        $artifactHash = hash('sha256', json_encode($weights).':'.$totalCount.':'.$exchange.':'.$symbol);
++        $artifactHash = hash('sha256', json_encode($weights).':'.$totalCount.':'.$modelName);
+         $version = 'v'.date('Ymd.His');
+ 
+         // Check if active champion model exists
+@@ -267,14 +276,18 @@
+             if ($improvesBrier && $improvesLogLoss && $improvesBaseline) {
+                 $status = 'ACTIVE';
+                 $promotionReason = "Challenger outperformed champion on holdout: Brier {$valMetrics['brier_score']} vs {$champValMetrics['brier_score']}, beats baseline {$baselineBrier}.";
+-                $champion->update(['status' => 'RETIRED']);
+-                $this->recordAutonomyEvent('CHAMPION_RETIRED', $champion->id, 'ACTIVE', 'RETIRED', "Replaced by superior challenger {$version}.");
++                // Proxy labels are not executed ledger evidence. Never retire
++                // an active model using only hypothetical signal outcomes.
+             } else {
+                 $status = 'CHALLENGER_REJECTED';
+                 $promotionReason = "Challenger failed to beat champion and baseline on holdout: Brier {$valMetrics['brier_score']} vs {$champValMetrics['brier_score']} (baseline {$baselineBrier}).";
+             }
+         }
+ 
++        if ($status === 'ACTIVE') {
++            $status = 'CANDIDATE';
++            $promotionReason = 'Directional proxy-label models require independent executed-ledger validation before activation.';
++        }
+         $candidate = LearningModelArtifactRecord::query()->create([
+             'id' => (string) Str::uuid(),
+             'name' => $modelName,
+@@ -285,7 +298,13 @@
+                 'target_event' => $targetEvent,
+                 'symbol' => $symbol,
+                 'exchange' => $exchange,
+-                'label_source' => 'PROXY_FIXED_BARRIERS',
++                'label_source' => 'DIRECTIONAL_SIGNAL_PROXY_V2',
++                'strategy_id' => $strategyId,
++                'strategy_version' => $strategyVersion,
++                'timeframe' => $timeframe,
++                'side' => $side,
++                'category' => $category,
++                'feature_schema_version' => '1.0.0',
+                 'total_sample_size' => $totalCount,
+                 'train_sample_size' => count($trainSlice),
+                 'validation_sample_size' => count($valSlice),
+@@ -315,7 +334,7 @@
+             'status' => $status,
+         ]);
+ 
+-        if ($promotionReason !== null) {
++        if ($promotionReason !== null && $status !== 'CANDIDATE') {
+             $this->recordAutonomyEvent(
+                 action: $status === 'ACTIVE' ? 'MODEL_PROMOTION' : 'CHALLENGER_REJECTED',
+                 targetId: $candidate->id,
+@@ -427,9 +446,9 @@
+     /**
+      * Detect concept drift on the active champion model.
+      */
+-    public function detectConceptDrift(string $symbol = 'BTCUSDT', string $targetEvent = 'TP_BEFORE_SL', string $exchange = 'bybit'): array
+-    {
+-        $modelName = self::scopedModelName($targetEvent, $symbol, $exchange);
++    public function detectConceptDrift(string $symbol = 'BTCUSDT', string $targetEvent = 'TP_BEFORE_SL', string $exchange = 'bybit', string $strategyId = 'baseline', string $timeframe = '15', string $side = 'BUY', string $category = 'linear', string $strategyVersion = 'UNVERSIONED'): array
++    {
++        $modelName = self::scopedModelName($targetEvent, $symbol, $exchange, $strategyId, $timeframe, $side, $category, $strategyVersion);
+         $champion = LearningModelArtifactRecord::query()
+             ->where('target_event', $targetEvent)
+             ->where('name', $modelName)
+@@ -449,6 +468,12 @@
+         $recentMatured = LearningFeatureSnapshotRecord::query()
+             ->where('symbol', $symbol)
+             ->where('data_quality->exchange', $exchange)
++            ->where('data_quality->category', $category)
++            ->where('data_quality->side', $side)
++            ->where('data_quality->label_policy_version', 'SIGNAL_PROXY_V2')
++            ->where('data_quality->strategy_version', $strategyVersion)
++            ->where('strategy_id', $strategyId)
++            ->where('timeframe', $timeframe)
+             ->where('label_status', 'MATURED')
+             ->latest('decision_time')
+             ->limit(15)
+@@ -491,9 +516,9 @@
+     /**
+      * Calibrate probability for a new observation vector using the active model.
+      */
+-    public function predictCalibrated(string $targetEvent, array $featureVector, string $symbol = 'BTCUSDT', string $exchange = 'bybit'): array
+-    {
+-        $modelName = self::scopedModelName($targetEvent, $symbol, $exchange);
++    public function predictCalibrated(string $targetEvent, array $featureVector, string $symbol = 'BTCUSDT', string $exchange = 'bybit', string $strategyId = 'baseline', string $timeframe = '15', string $side = 'BUY', string $category = 'linear', string $strategyVersion = 'UNVERSIONED'): array
++    {
++        $modelName = self::scopedModelName($targetEvent, $symbol, $exchange, $strategyId, $timeframe, $side, $category, $strategyVersion);
+         $model = LearningModelArtifactRecord::query()
+             ->where('target_event', $targetEvent)
+             ->where('name', $modelName)
+@@ -550,9 +575,9 @@
+     /**
+      * Rollback the active champion model to the previous champion (or retire it if none exists).
+      */
+-    public function rollbackModel(string $targetEvent = 'TP_BEFORE_SL', string $symbol = 'BTCUSDT', string $reason = 'Manual rollback or concept drift detected', string $exchange = 'bybit'): ?LearningModelArtifactRecord
+-    {
+-        $modelName = self::scopedModelName($targetEvent, $symbol, $exchange);
++    public function rollbackModel(string $targetEvent = 'TP_BEFORE_SL', string $symbol = 'BTCUSDT', string $reason = 'Manual rollback or concept drift detected', string $exchange = 'bybit', string $strategyId = 'baseline', string $timeframe = '15', string $side = 'BUY', string $category = 'linear', string $strategyVersion = 'UNVERSIONED'): ?LearningModelArtifactRecord
++    {
++        $modelName = self::scopedModelName($targetEvent, $symbol, $exchange, $strategyId, $timeframe, $side, $category, $strategyVersion);
+         $current = LearningModelArtifactRecord::query()
+             ->where('target_event', $targetEvent)
+             ->where('name', $modelName)
+@@ -604,13 +629,16 @@
+      * Scope model identity to its exchange. Legacy Bybit names remain visible
+      * for audit, but unscoped artifacts cannot be used for calibration.
+      */
+-    public static function scopedModelName(string $targetEvent, string $symbol, string $exchange): string
+-    {
+-        if (! in_array($exchange, ['bybit', 'binance'], true)) {
+-            throw new \InvalidArgumentException('Unsupported ML model exchange.');
+-        }
+-
+-        return "Logistic_{$targetEvent}_{$symbol}".($exchange === 'bybit' ? '' : '_binance');
++    public static function scopedModelName(string $targetEvent, string $symbol, string $exchange, string $strategyId = 'baseline', string $timeframe = '15', string $side = 'BUY', string $category = 'linear', string $strategyVersion = 'UNVERSIONED'): string
++    {
++        $identity = [$targetEvent, $symbol, $exchange, $strategyId, $strategyVersion, $timeframe, $side, $category, 'SIGNAL_PROXY_V2'];
++        foreach ($identity as $field) {
++            if (! preg_match('/^[a-zA-Z0-9._-]{1,64}$/D', $field)) {
++                throw new \InvalidArgumentException('Invalid ML cohort identity.');
++            }
++        }
++        $prefix = substr('Logistic_'.$targetEvent.'_'.$symbol.'_'.$exchange, 0, 44);
++        return $prefix.'_'.substr(hash('sha256', implode('|', $identity)), 0, 16);
+     }
+ 
+     private function recordAutonomyEvent(string $action, string $targetId, string $prevState, string $newState, string $reason, ?array $evidence = null): void
+--- a/app/Research/Application/ModelAdvisoryService.php
++++ b/app/Research/Application/ModelAdvisoryService.php
+@@ -42,7 +42,7 @@
+         // Query active champion model for this target event & symbol
+         $model = LearningModelArtifactRecord::query()
+             ->where('target_event', $targetEvent)
+-            ->where('name', LearningPredictorService::scopedModelName($targetEvent, $decision->symbol, $decision->exchange))
++            ->where('name', LearningPredictorService::scopedModelName($targetEvent, $decision->symbol, $decision->exchange, 'baseline', $decision->timeframe, $decision->side->value, $decision->category, $decision->strategyVersion))
+             ->where('status', 'ACTIVE')
+             ->latest('created_at')
+             ->first();
+@@ -130,7 +130,7 @@
+             // Predict probability for shadow observation and research logs only
+             $prob = 0.50;
+             try {
+-                $pred = $this->predictor->predictCalibrated($targetEvent, $features, $decision->symbol, $decision->exchange);
++                $pred = $this->predictor->predictCalibrated($targetEvent, $features, $decision->symbol, $decision->exchange, 'baseline', $decision->timeframe, $decision->side->value, $decision->category, $decision->strategyVersion);
+                 $prob = $pred['probability'] !== null ? (float) $pred['probability'] : 0.50;
+             } catch (\Throwable) {
+                 // Ignore prediction errors for ineligible model
+@@ -210,7 +210,7 @@
+         // Predict calibrated probability using model weights with exception protection
+         $inferenceException = null;
+         try {
+-            $pred = $this->predictor->predictCalibrated($targetEvent, $features, $decision->symbol, $decision->exchange);
++            $pred = $this->predictor->predictCalibrated($targetEvent, $features, $decision->symbol, $decision->exchange, 'baseline', $decision->timeframe, $decision->side->value, $decision->category, $decision->strategyVersion);
+             $prob = $pred['probability'] !== null ? (float) $pred['probability'] : 0.50;
+             $recommendation = $prob >= $threshold ? 'ALLOW' : 'VETO_LOW_PROBABILITY';
+         } catch (\Throwable $e) {
+--- a/app/Research/Application/ResearchJobService.php
++++ b/app/Research/Application/ResearchJobService.php
+@@ -46,7 +46,7 @@
+     /**
+      * Resolves and validates exchange provenance across top-level, payload, and dataset keys.
+      * Rejects empty, unknown, or contradictory exchange identities.
+-     * Returns normalized 'bybit' or 'binance', or null if no exchange was specified.
++     * Returns the normalized source identity, or null when no exchange was supplied.
+      *
+      * @param  array<string, mixed>  $data
+      */
+@@ -96,8 +96,8 @@
+             $resolved = $normalized;
+         }
+ 
+-        if (! in_array($resolved, ['bybit', 'binance'], true)) {
+-            throw new InvalidArgumentException("Research job exchange '{$resolved}' is unsupported. Strictly 'bybit' or 'binance' required.");
++        if (! preg_match('/^[a-z0-9][a-z0-9_-]{1,31}$/D', $resolved)) {
++            throw new InvalidArgumentException("Research job exchange identity '{$resolved}' is malformed.");
+         }
+ 
+         return $resolved;
+@@ -117,7 +117,7 @@
+             $resolvedExchange = $this->resolveExchangeProvenance($data);
+ 
+             if (in_array($kind, self::GO_EXCHANGE_DEPENDENT_KINDS, true) && $resolvedExchange === null) {
+-                throw new InvalidArgumentException("Research job kind '{$kind}' requires explicit exchange provenance ('bybit' or 'binance').");
++                throw new InvalidArgumentException("Research job kind '{$kind}' requires explicit source exchange provenance.");
+             }
+ 
+             if ($resolvedExchange !== null) {
+--- a/app/Research/Application/SignalQualityAnalyticsService.php
++++ b/app/Research/Application/SignalQualityAnalyticsService.php
+@@ -454,7 +454,7 @@
+         }
+ 
+         $closedCount = $closedPositions->count();
+-        $winRate = $closedCount > 0 ? round(($winningTrades / $closedCount) * 100, 2) : 0.0;
++        $winRate = $closedCount > 0 ? round(($winningTrades / $closedCount) * 100, 2) : null;
+         // Without realized losing trades, profit factor is undefined rather
+         // than the fabricated 999.0 sometimes shown as an exceptional edge.
+         $profitFactor = $grossLosses->isPositive()
+@@ -628,12 +628,12 @@
+                 'timeframe' => 'multi',
+                 'signals' => $total,
+                 'executed' => $executed,
+-                'good_percent' => $total > 0 ? round(($goodCount / $total) * 100, 2) : 0.0,
+-                'win_rate' => $closed > 0 ? round(($wins / $closed) * 100, 2) : 0.0,
++                'good_percent' => $total > 0 ? round(($goodCount / $total) * 100, 2) : null,
++                'win_rate' => $closed > 0 ? round(($wins / $closed) * 100, 2) : null,
+                 'net_pnl' => (string) $netPnl,
+                 'max_drawdown' => $maxDd,
+                 'max_drawdown_scope' => $maxDd === null ? 'NOT_AVAILABLE_FOR_SELECTED_SCOPE' : 'MAX_ACCOUNT_DRAWDOWN_NOT_AGGREGATE',
+-                'expectancy' => $total > 0 ? (string) $netPnl->dividedBy($total, 4, RoundingMode::HalfEven) : '0.0000',
++                'expectancy' => $total > 0 ? (string) $netPnl->dividedBy($total, 4, RoundingMode::HalfEven) : null,
+             ];
+         }
+ 
+@@ -674,10 +674,10 @@
+                 'strategy' => $strategyId,
+                 'signals' => $total,
+                 'executed' => $executed,
+-                'good_percent' => $total > 0 ? round(($goodCount / $total) * 100, 2) : 0.0,
+-                'win_rate' => $closed > 0 ? round(($wins / $closed) * 100, 2) : 0.0,
++                'good_percent' => $total > 0 ? round(($goodCount / $total) * 100, 2) : null,
++                'win_rate' => $closed > 0 ? round(($wins / $closed) * 100, 2) : null,
+                 'net_pnl' => (string) $netPnl,
+-                'expectancy' => $total > 0 ? (string) $netPnl->dividedBy($total, 4, RoundingMode::HalfEven) : '0.0000',
++                'expectancy' => $total > 0 ? (string) $netPnl->dividedBy($total, 4, RoundingMode::HalfEven) : null,
+             ];
+         }
+ 
+@@ -715,13 +715,15 @@
+                 }
+             }
+ 
+-            $winRate = $closed > 0 ? round(($wins / $closed) * 100, 2) : 0.0;
++            $winRate = $closed > 0 ? round(($wins / $closed) * 100, 2) : null;
+             $profitFactor = $grossLosses->isPositive()
+                 ? round((float) (string) $grossWins->dividedBy($grossLosses, 4, RoundingMode::HalfEven), 2)
+                 : null;
+-            $expectancy = $total > 0 ? (string) $netPnl->dividedBy($total, 4, RoundingMode::HalfEven) : '0.0000';
+-
+-            $status = $total >= 10 ? 'SUPPORTED' : ($total > 0 ? 'AGGREGATED' : 'INSUFFICIENT_DATA');
++            $expectancy = $total > 0 ? (string) $netPnl->dividedBy($total, 4, RoundingMode::HalfEven) : null;
++
++            $status = $total === 0
++                ? ($tf === '15m' ? 'INSUFFICIENT_DATA' : 'NO_SIGNAL_ENGINE_DATA')
++                : ($tf === '15m' ? 'AGGREGATED' : 'HISTORICAL_COHORT_NOT_LIVE_ENGINE_VERIFIED');
+ 
+             $rows[] = [
+                 'timeframe' => $tf,
+@@ -777,8 +779,8 @@
+                     }
+                 }
+ 
+-                $winRate = $closed > 0 ? round(($wins / $closed) * 100, 2) : 0.0;
+-                $expectancy = $total > 0 ? (string) $netPnl->dividedBy($total, 4, RoundingMode::HalfEven) : '0.0000';
++                $winRate = $closed > 0 ? round(($wins / $closed) * 100, 2) : null;
++                $expectancy = $total > 0 ? (string) $netPnl->dividedBy($total, 4, RoundingMode::HalfEven) : null;
+ 
+                 $matrix[] = [
+                     'quality' => $q,
+--- a/app/Research/Application/StrategyEvolutionService.php
++++ b/app/Research/Application/StrategyEvolutionService.php
+@@ -38,9 +38,11 @@
+      */
+     public function generateCandidate(string $parentStrategyId = 'trend_pullback', ?int $seed = null, string $exchange = 'bybit'): LearningCandidateStrategyRecord
+     {
+-        if (! in_array($exchange, ['bybit', 'binance'], true)) {
+-            throw new \InvalidArgumentException('Unsupported candidate exchange.');
++        $exchange = is_string($exchange) ? strtolower(trim($exchange)) : '';
++        if (! preg_match('/^[a-z0-9][a-z0-9_-]{1,31}$/D', $exchange)) {
++            throw new \InvalidArgumentException('Invalid candidate exchange identity.');
+         }
++
+         if (! in_array($parentStrategyId, PrimaryStrategies::ids(), true)
+             || ! in_array($parentStrategyId, $this->families(), true)) {
+             throw new \InvalidArgumentException("Unknown strategy family: {$parentStrategyId}");
+--- a/app/Research/Jobs/EvaluateStrategyCandidateJob.php
++++ b/app/Research/Jobs/EvaluateStrategyCandidateJob.php
+@@ -78,9 +78,10 @@
+         $requiredDays = $minimumDays;
+ 
+         try {
+-            if (! in_array($exchange, ['bybit', 'binance'], true)) {
+-                throw new \InvalidArgumentException('Unsupported candidate exchange.');
+-            }
++        $exchange = is_string($exchange) ? strtolower(trim($exchange)) : '';
++        if (! preg_match('/^[a-z0-9][a-z0-9_-]{1,31}$/D', $exchange)) {
++            throw new \InvalidArgumentException('Invalid candidate exchange identity.');
++        }
+ 
+             $availableDays = $this->resolveAvailableCandleDays($exchange, $symbols, $to, $backtests, $metadata, $targetDays);
+ 
+--- a/app/Research/Jobs/ProcessAutonomousLearningJob.php
++++ b/app/Research/Jobs/ProcessAutonomousLearningJob.php
+@@ -64,6 +64,7 @@
+ 
+         // 2. Continuous machine learning model training & champion/challenger lifecycle
+         $symbols = (array) config('market_data.symbols', ['BTCUSDT', 'ETHUSDT']);
++        $baselineVersion = $strategyRegistry->get('baseline')->version();
+         $venues = app(ExchangeRegistry::class);
+         foreach ($venues->activeIds() as $exchange) {
+             if (! $venues->hasAdapter($exchange)) {
+@@ -72,23 +73,25 @@
+                 continue;
+             }
+             foreach ($symbols as $symbol) {
+-                // The exchange-specific predictor requires at least 12 genuinely
+-                // matured labels. Never initiate model training on a newly
+-                // registered exchange solely because its name is in the catalog.
+-                $matured = LearningFeatureSnapshotRecord::query()
+-                    ->where('symbol', $symbol)
+-                    ->where('data_quality->exchange', $exchange)
+-                    ->where('label_status', 'MATURED')
+-                    ->count();
+-                if ($matured < 12) {
+-                    continue;
+-                }
+-                $drift = $predictor->detectConceptDrift($symbol, 'TP_BEFORE_SL', $exchange);
+-                if ($autonomy->isAllowed('retrain_models') && ($drift['drift_detected'] || $drift['recommendation'] === 'TRAIN_INITIAL')) {
+-                    Log::info("[AutonomousLearning] Initiating model training for {$exchange}:{$symbol} (trigger: {$drift['recommendation']}).");
+-                    $artifact = $predictor->trainModel('TP_BEFORE_SL', $symbol, $exchange);
+-                    if ($artifact) {
+-                        Log::info("[AutonomousLearning] Trained model {$artifact->name} {$artifact->version} status: {$artifact->status}.");
++                foreach (['BUY', 'SELL'] as $side) {
++                    $maturedCount = LearningFeatureSnapshotRecord::query()
++                        ->where('symbol', $symbol)
++                        ->where('strategy_id', 'baseline')
++                        ->where('timeframe', '15')
++                        ->where('data_quality->exchange', $exchange)
++                        ->where('data_quality->category', 'linear')
++                        ->where('data_quality->side', $side)
++                        ->where('data_quality->label_policy_version', 'SIGNAL_PROXY_V2')
++                        ->where('data_quality->strategy_version', $baselineVersion)
++                        ->where('label_status', 'MATURED')
++                        ->count();
++                    if ($maturedCount < 12) {
++                        continue;
++                    }
++                    $drift = $predictor->detectConceptDrift($symbol, 'TP_BEFORE_SL', $exchange, 'baseline', '15', $side, 'linear', $baselineVersion);
++                    if ($autonomy->isAllowed('retrain_models') && ($drift['drift_detected'] || $drift['recommendation'] === 'TRAIN_INITIAL')) {
++                        Log::info('[AutonomousLearning] Training segregated proxy cohort.', ['exchange' => $exchange, 'symbol' => $symbol, 'side' => $side]);
++                        $predictor->trainModel('TP_BEFORE_SL', $symbol, $exchange, 'baseline', '15', $side, 'linear', $baselineVersion);
+                     }
+                 }
+             }
+--- a/app/Strategy/Application/PreEntryStrategyEvidenceService.php
++++ b/app/Strategy/Application/PreEntryStrategyEvidenceService.php
+@@ -56,28 +56,17 @@
+                     })
+                     ->where('exchange_id', $exchangeId);
+             })
++            ->where('symbol', strtoupper($symbol))
++            ->where('side', strtoupper($side))
+             ->whereNotNull('closed_at')
+             ->where('closed_at', '<', $asOf)
++            ->orderByDesc('closed_at')
++            ->limit(1000)
+             ->get(['id', 'side', 'net_pnl', 'gross_pnl', 'fees', 'funding', 'r_multiple', 'closed_at']);
+ 
+-        // 2. If venue-specific sample is small (< 10), broaden to cross-venue evidence for this strategy prior to asOf
+-        if ($positions->count() < 10) {
+-            $positions = VirtualPositionRecord::query()
+-                ->whereIn('paper_account_id', function ($query) use ($strategyId): void {
+-                    $query->select('id')
+-                        ->from('paper_accounts')
+-                        ->where(function ($q) use ($strategyId): void {
+-                            $q->where('strategy_id', $strategyId)
+-                                ->orWhere('primary_strategy_id', $strategyId);
+-                        });
+-                })
+-                ->whereNotNull('closed_at')
+-                ->where('closed_at', '<', $asOf)
+-                ->get(['id', 'side', 'net_pnl', 'gross_pnl', 'fees', 'funding', 'r_multiple', 'closed_at']);
+-        }
+-
++        // Never augment a small cohort with data from other venues, symbols, or directions.
+         $sampleSize = $positions->count();
+-        if ($sampleSize < 5) {
++        if ($sampleSize < 10) {
+             return $this->insufficientEvidenceResult('INSUFFICIENT_SAMPLE_SIZE', $sampleSize);
+         }
+ 
+@@ -120,7 +109,7 @@
+         $winRate = (float) round($winCount / $sampleSize, 4);
+         $profitFactor = $grossLoss->isPositive()
+             ? (float) round($grossProfit->dividedBy($grossLoss, 4, RoundingMode::HalfEven)->toFloat(), 2)
+-            : ($grossProfit->isPositive() ? 999.99 : null);
++            : null;
+         $averageR = $rCount > 0 ? (float) round($rTotal->dividedBy($rCount, 4, RoundingMode::HalfEven)->toFloat(), 2) : null;
+ 
+         // Aggregate directional cohort metrics
+@@ -147,7 +136,7 @@
+             $dirWinRate = (float) round($dirWins / $dirSampleSize, 4);
+             $dirProfitFactor = $dirGrossLoss->isPositive()
+                 ? (float) round($dirGrossProfit->dividedBy($dirGrossLoss, 4, RoundingMode::HalfEven)->toFloat(), 2)
+-                : ($dirGrossProfit->isPositive() ? 999.99 : null);
++                : null;
+         }
+ 
+         $rejectionReason = null;
+@@ -156,7 +145,7 @@
+         if ($isStale) {
+             $status = 'STALE';
+             $rejectionReason = 'STALE_PERFORMANCE_EVIDENCE';
+-        } elseif ($expectedNetEdge < 0.0) {
++        } elseif ($expectedNetEdge <= 0.0) {
+             $status = 'NEGATIVE_EDGE';
+             $rejectionReason = 'INSUFFICIENT_VALIDATED_EDGE';
+         }
+--- a/app/Trading/Application/CanonicalObservationCompleteness.php
++++ b/app/Trading/Application/CanonicalObservationCompleteness.php
+@@ -0,0 +1,35 @@
++<?php
++
++declare(strict_types=1);
++
++namespace App\Trading\Application;
++
++use App\Strategy\Application\StrategyRegistry;
++use App\StrategyBuilder\PrimaryStrategies;
++
++/** An extra candidate or obsolete version cannot substitute for a missing primary observation. */
++final class CanonicalObservationCompleteness
++{
++    /** @param iterable<object> $observations */
++    public static function isComplete(iterable $observations): bool
++    {
++        $canonical = array_fill_keys(PrimaryStrategies::ids(), true);
++        $expected = [];
++        foreach (app(StrategyRegistry::class)->all() as $strategy) {
++            if (isset($canonical[$strategy->id()])) {
++                $expected[$strategy->id().'|'.$strategy->version()] = true;
++            }
++        }
++        if (count($expected) !== count($canonical) || $expected === []) {
++            return false;
++        }
++        $seen = [];
++        foreach ($observations as $observation) {
++            $identity = (string) $observation->strategy_id.'|'.(string) $observation->strategy_version;
++            if (isset($expected[$identity])) {
++                $seen[$identity] = true;
++            }
++        }
++        return count($seen) === count($expected);
++    }
++}
+--- a/app/Trading/Application/TradingPipelineEventService.php
++++ b/app/Trading/Application/TradingPipelineEventService.php
+@@ -88,7 +88,7 @@
+             $record = TradingPipelineEventRecord::query()->where('event_key', $eventKey)->first();
+ 
+             if ($this->isEventDriven() && $record !== null && $record->status === TradingPipelineEventRecord::STATUS_PENDING) {
+-                $queue = (string) config("trading.queues.{$exchange}", $exchange === 'binance' ? 'trading-binance' : 'trading-bybit');
++                $queue = TradingQueueResolver::forExchange($exchange);
+                 ProcessClosedCandleEventJob::dispatch($record->id, $exchange, $symbol, $timeframe, $closeIso)
+                     ->onQueue($queue);
+ 
+@@ -151,7 +151,7 @@
+         $record = TradingPipelineEventRecord::query()->where('event_key', $eventKey)->firstOrFail();
+ 
+         if ($this->isEventDriven() && $record->status === TradingPipelineEventRecord::STATUS_PENDING) {
+-            $queue = (string) config("trading.queues.{$exchange}", $exchange === 'binance' ? 'trading-binance' : 'trading-bybit');
++            $queue = TradingQueueResolver::forExchange($exchange);
+             ProcessPaperPipelineJob::dispatch($exchange, $symbol, $closeIso)
+                 ->onQueue($queue);
+ 
+--- a/app/Trading/Application/TradingPipelineRecoveryService.php
++++ b/app/Trading/Application/TradingPipelineRecoveryService.php
+@@ -54,15 +54,15 @@
+ 
+         $canonicalStrategies = PrimaryStrategies::ids();
+         if (! empty($canonicalStrategies)) {
+-            $existingCount = StrategyObservationRecord::query()
++            $existingObservations = StrategyObservationRecord::query()
+                 ->where('exchange', strtolower($exchange))
+                 ->where('category', 'linear')
+                 ->where('symbol', strtoupper($symbol))
+                 ->where('decision_time', $closeAt)
+                 ->whereNull('superseded_by')
+-                ->count();
+-
+-            if ($existingCount >= count($canonicalStrategies)) {
++                ->get(['strategy_id', 'strategy_version']);
++
++            if (CanonicalObservationCompleteness::isComplete($existingObservations)) {
+                 return true;
+             }
+         }
+@@ -204,7 +204,7 @@
+             }
+ 
+             // Re-dispatch fresh pending/uncompleted event
+-            $queue = (string) config("trading.queues.{$event->exchange}", "trading-{$event->exchange}");
++            $queue = TradingQueueResolver::forExchange($event->exchange);
+ 
+             try {
+                 if ($event->stage === TradingPipelineEventRecord::STAGE_CANDLE_CLOSED) {
+--- a/app/Trading/Application/TradingQueueResolver.php
++++ b/app/Trading/Application/TradingQueueResolver.php
+@@ -0,0 +1,24 @@
++<?php
++
++declare(strict_types=1);
++
++namespace App\Trading\Application;
++
++/** Normal/retry queue routes must never diverge or borrow Bybit's dedicated queue. */
++final class TradingQueueResolver
++{
++    public static function forExchange(string $exchange): string
++    {
++        $exchange = strtolower(trim($exchange));
++        if (! preg_match('/^[a-z0-9][a-z0-9_-]{1,31}$/D', $exchange)) {
++            throw new \InvalidArgumentException('Invalid trading queue exchange identity.');
++        }
++        $configured = config("trading.queues.{$exchange}");
++        if (is_string($configured) && preg_match('/^[a-z0-9][a-z0-9_-]{0,63}$/D', $configured)) {
++            return $configured;
++        }
++        // Only Bybit/Binance have dedicated workers. New exchanges use the
++        // shared worker queue until an explicitly configured worker exists.
++        return 'default';
++    }
++}
+--- a/app/Trading/Jobs/ProcessClosedCandleEventJob.php
++++ b/app/Trading/Jobs/ProcessClosedCandleEventJob.php
+@@ -13,6 +13,8 @@
+ use App\Strategy\Infrastructure\Persistence\StrategyObservationRecord;
+ use App\StrategyBuilder\PrimaryStrategies;
+ use App\Trading\Application\TradingPipelineEventService;
++use App\Trading\Application\CanonicalObservationCompleteness;
++use App\Trading\Application\TradingQueueResolver;
+ use App\Trading\Infrastructure\Persistence\TradingPipelineEventRecord;
+ use Carbon\CarbonImmutable;
+ use DateTimeImmutable;
+@@ -191,7 +193,7 @@
+             ->get();
+ 
+         $signalsCount = 0;
+-        if (! empty($canonicalStrategies) && $existingObservations->count() >= count($canonicalStrategies)) {
++        if (! empty($canonicalStrategies) && CanonicalObservationCompleteness::isComplete($existingObservations)) {
+             // The canonical observations already exist from a peer worker. Reuse without lock contention.
+             $signalsCount = $existingObservations->count();
+         } else {
+@@ -214,7 +216,7 @@
+                     ->whereNull('superseded_by')
+                     ->get();
+ 
+-                if (! empty($canonicalStrategies) && $rechecked->count() >= count($canonicalStrategies)) {
++                if (! empty($canonicalStrategies) && CanonicalObservationCompleteness::isComplete($rechecked)) {
+                     // The competing worker completed canonical observations.
+                     // Reuse existing observations to advance the pipeline without duplicate execution.
+                     $signalsCount = $rechecked->count();
+@@ -296,7 +298,7 @@
+     ): void {
+         // 5m bars drive position lifecycle updates (stop loss, take profit, trailing, pending entry fills).
+         if ($pipelineService->isEventDriven()) {
+-            $queue = (string) config("trading.queues.{$this->exchange}", $this->exchange === 'binance' ? 'trading-binance' : 'trading-bybit');
++            $queue = TradingQueueResolver::forExchange($this->exchange);
+             ProcessPaperPipelineJob::dispatch($this->exchange, $this->symbol, $this->candleCloseAtIso)
+                 ->onQueue($queue);
+ 
+--- a/frontend/src/pages/ProfitabilityResearchPage.vue
++++ b/frontend/src/pages/ProfitabilityResearchPage.vue
+@@ -1095,8 +1095,8 @@
+               { name: 'exchange', label: 'Биржа', field: 'exchange', align: 'left', sortable: true },
+               { name: 'signals', label: 'Сигналы', field: 'signals', align: 'right', sortable: true },
+               { name: 'executed', label: 'Исполнено', field: 'executed', align: 'right', sortable: true },
+-              { name: 'good_percent', label: 'GOOD %', field: 'good_percent', align: 'right', sortable: true, format: (v: any) => `${v}%` },
+-              { name: 'win_rate', label: 'Win Rate', field: 'win_rate', align: 'right', sortable: true, format: (v: any) => `${v}%` },
++              { name: 'good_percent', label: 'GOOD %', field: 'good_percent', align: 'right', sortable: true, format: (v: any) => v === null || v === undefined ? '—' : `${v}%` },
++              { name: 'win_rate', label: 'Win Rate', field: 'win_rate', align: 'right', sortable: true, format: (v: any) => v === null || v === undefined ? '—' : `${v}%` },
+               { name: 'net_pnl', label: 'Net PnL (USDT)', field: 'net_pnl', align: 'right', sortable: true },
+               { name: 'expectancy', label: 'Ожидание/сигнал', field: 'expectancy', align: 'right', sortable: true },
+               { name: 'max_drawdown', label: 'Max DD счёта', field: 'max_drawdown', align: 'right', sortable: true, format: (v: any) => v == null ? '—' : `${v}%` },
+@@ -1118,8 +1118,8 @@
+               { name: 'strategy', label: 'Стратегия', field: 'strategy', align: 'left', sortable: true },
+               { name: 'signals', label: 'Сигналы', field: 'signals', align: 'right', sortable: true },
+               { name: 'executed', label: 'Исполнено', field: 'executed', align: 'right', sortable: true },
+-              { name: 'good_percent', label: 'GOOD %', field: 'good_percent', align: 'right', sortable: true, format: (v: any) => `${v}%` },
+-              { name: 'win_rate', label: 'Win Rate', field: 'win_rate', align: 'right', sortable: true, format: (v: any) => `${v}%` },
++              { name: 'good_percent', label: 'GOOD %', field: 'good_percent', align: 'right', sortable: true, format: (v: any) => v === null || v === undefined ? '—' : `${v}%` },
++              { name: 'win_rate', label: 'Win Rate', field: 'win_rate', align: 'right', sortable: true, format: (v: any) => v === null || v === undefined ? '—' : `${v}%` },
+               { name: 'net_pnl', label: 'Net PnL (USDT)', field: 'net_pnl', align: 'right', sortable: true },
+               { name: 'expectancy', label: 'Ожидание/сигнал', field: 'expectancy', align: 'right', sortable: true },
+             ]"
+@@ -1129,7 +1129,8 @@
+ 
+         <!-- Section D: Timeframe Comparison Table -->
+         <q-card flat bordered class="q-pa-md q-mb-md">
+-          <div class="text-subtitle1 text-bold q-mb-sm">Секция D: Сравнение канонических таймфреймов (1m, 3m, 5m, 15m, 30m, 60m)</div>
++          <div class="text-subtitle1 text-bold q-mb-sm">Секция D: Сравнение таймфреймов (1m, 3m, 5m, 15m, 30m, 60m)</div>
++          <div class="text-caption text-grey-7 q-mb-sm">Штатный PAPER-движок формирует независимые торговые решения на 15m. Другие интервалы не считаются проверенными торговыми сигналами без отдельных записей сигналов и подтверждения источника. «—» означает отсутствие статистической выборки.</div>
+           <q-table
+             flat
+             dense
+@@ -1140,7 +1141,7 @@
+               { name: 'timeframe', label: 'Таймфрейм', field: 'timeframe', align: 'left', sortable: true },
+               { name: 'signals', label: 'Сигналы', field: 'signals', align: 'right', sortable: true },
+               { name: 'executed', label: 'Исполнено', field: 'executed', align: 'right', sortable: true },
+-              { name: 'win_rate', label: 'Win Rate', field: 'win_rate', align: 'right', sortable: true, format: (v: any) => `${v}%` },
++              { name: 'win_rate', label: 'Win Rate', field: 'win_rate', align: 'right', sortable: true, format: (v: any) => v === null || v === undefined ? '—' : `${v}%` },
+               { name: 'net_pnl', label: 'Net PnL (USDT)', field: 'net_pnl', align: 'right', sortable: true },
+               { name: 'profit_factor', label: 'Profit Factor', field: 'profit_factor', align: 'right', sortable: true },
+               { name: 'expectancy', label: 'Ожидание/сигнал', field: 'expectancy', align: 'right', sortable: true },
+@@ -1173,7 +1174,7 @@
+               { name: 'signals', label: 'Всего сигналов', field: 'signals', align: 'right', sortable: true },
+               { name: 'executed', label: 'Исполнено', field: 'executed', align: 'right', sortable: true },
+               { name: 'rejected', label: 'Отклонено', field: 'rejected', align: 'right', sortable: true },
+-              { name: 'win_rate', label: 'Win Rate', field: 'win_rate', align: 'right', sortable: true, format: (v: any) => `${v}%` },
++              { name: 'win_rate', label: 'Win Rate', field: 'win_rate', align: 'right', sortable: true, format: (v: any) => v === null || v === undefined ? '—' : `${v}%` },
+               { name: 'net_pnl', label: 'Net PnL (USDT)', field: 'net_pnl', align: 'right', sortable: true },
+               { name: 'expectancy', label: 'Ожидание/сигнал', field: 'expectancy', align: 'right', sortable: true },
+             ]"
+--- a/research-go/internal/jobscope/exchange.go
++++ b/research-go/internal/jobscope/exchange.go
+@@ -3,6 +3,7 @@
+ import (
+ 	"errors"
+ 	"fmt"
++	"regexp"
+ 	"strings"
+ )
+ 
+@@ -54,8 +55,8 @@
+ 		exchange = next
+ 	}
+ 
+-	if exchange != "bybit" && exchange != "binance" {
+-		return "", fmt.Errorf("research job exchange is missing or unsupported: %q", exchange)
++	if !regexp.MustCompile(`^[a-z0-9][a-z0-9_-]{1,31}$`).MatchString(exchange) {
++		return "", fmt.Errorf("research job exchange identity is invalid: %q", exchange)
+ 	}
+ 
+ 	return exchange, nil
+--- a/research-go/internal/jobscope/exchange_test.go
++++ b/research-go/internal/jobscope/exchange_test.go
+@@ -20,8 +20,8 @@
+ 		{"nil payload", nil, "", true},
+ 		{"conflicting", map[string]interface{}{"exchange": "bybit", "exchange_id": "binance"}, "", true},
+ 		{"conflicting dataset exchange", map[string]interface{}{"exchange": "bybit", "dataset": map[string]interface{}{"exchange": "binance"}}, "", true},
+-		{"unknown exchange", map[string]interface{}{"exchange": "okx"}, "", true},
+-		{"unknown dataset exchange", map[string]interface{}{"dataset": map[string]interface{}{"exchange": "kraken"}}, "", true},
++		{"registered future exchange", map[string]interface{}{"exchange": "okx"}, "okx", false},
++		{"offline dataset provenance", map[string]interface{}{"dataset": map[string]interface{}{"exchange": "kraken"}}, "kraken", false},
+ 		{"invalid type", map[string]interface{}{"exchange": 100}, "", true},
+ 		{"empty", map[string]interface{}{"exchange": " "}, "", true},
+ 	} {
+--- a/tests/Feature/PaperTrading/QualityRiskGateAndProfitabilityVerificationTest.php
++++ b/tests/Feature/PaperTrading/QualityRiskGateAndProfitabilityVerificationTest.php
+@@ -75,7 +75,7 @@
+ 
+         self::assertSame(QualityRiskGateDecision::InsufficientEvidence, $result['decision']);
+         self::assertFalse($result['allowed']);
+-        self::assertContains('insufficient_expectancy_evidence', $result['rejection_reasons']);
++        self::assertContains('missing_or_stale_validated_edge_or_cost_evidence', $result['rejection_reasons']);
+     }
+ 
+     /**
+@@ -87,6 +87,8 @@
+         $result = $gate->evaluate([
+             'signal_quality' => SignalQuality::High,
+             'trade_risk' => TradeRiskClass::Medium,
++            'evidence_status' => 'VALIDATED',
++            'cost_drag_percent' => 4.0,
+             'expected_net_edge' => 15.0,
+             'sample_size' => 25,
+         ]);
+@@ -140,6 +142,8 @@
+         $result = $gate->evaluate([
+             'signal_quality' => SignalQuality::Medium,
+             'trade_risk' => TradeRiskClass::Medium,
++            'evidence_status' => 'VALIDATED',
++            'cost_drag_percent' => 4.0,
+             'expected_net_edge' => 0.15,
+             'sample_size' => 20,
+             'drawdown_percent' => 1.2,
+--- a/tests/Unit/PaperTrading/PreExecutionQualityRiskGateTest.php
++++ b/tests/Unit/PaperTrading/PreExecutionQualityRiskGateTest.php
+@@ -25,6 +25,10 @@
+         $eval = $this->gate->evaluate([
+             'signal_quality' => SignalQuality::High,
+             'trade_risk' => TradeRiskClass::Low,
++            'evidence_status' => 'VALIDATED',
++            'expected_net_edge' => 0.5,
++            'sample_size' => 20,
++            'cost_drag_percent' => 5.0,
+         ]);
+ 
+         $this->assertSame(QualityRiskGateDecision::Eligible, $eval['decision']);
+@@ -38,6 +42,9 @@
+         $eval = $this->gate->evaluate([
+             'signal_quality' => SignalQuality::High,
+             'trade_risk' => TradeRiskClass::Medium,
++            'evidence_status' => 'VALIDATED',
++            'sample_size' => 20,
++            'cost_drag_percent' => 5.0,
+             'expected_net_edge' => 4.5,
+         ]);
+ 
+@@ -51,12 +58,15 @@
+         $eval = $this->gate->evaluate([
+             'signal_quality' => SignalQuality::High,
+             'trade_risk' => TradeRiskClass::Medium,
++            'evidence_status' => 'VALIDATED',
++            'sample_size' => 20,
++            'cost_drag_percent' => 5.0,
+             'expected_net_edge' => -1.2,
+         ]);
+ 
+-        $this->assertSame(QualityRiskGateDecision::Rejected, $eval['decision']);
+-        $this->assertFalse($eval['allowed']);
+-        $this->assertContains('high_quality_medium_risk_negative_edge', $eval['rejection_reasons']);
++        $this->assertSame(QualityRiskGateDecision::InsufficientEvidence, $eval['decision']);
++        $this->assertFalse($eval['allowed']);
++        $this->assertContains('missing_or_stale_validated_edge_or_cost_evidence', $eval['rejection_reasons']);
+     }
+ 
+     public function test_high_risk_is_always_rejected(): void
+@@ -118,6 +128,10 @@
+         $eval = $this->gate->evaluate([
+             'signal_quality' => SignalQuality::Medium,
+             'trade_risk' => TradeRiskClass::Low,
++            'evidence_status' => 'VALIDATED',
++            'expected_net_edge' => 0.5,
++            'sample_size' => 20,
++            'cost_drag_percent' => 5.0,
+             'drawdown_percent' => 0.5,
+         ]);
+ 
+@@ -130,6 +144,10 @@
+         $eval = $this->gate->evaluate([
+             'signal_quality' => SignalQuality::Medium,
+             'trade_risk' => TradeRiskClass::Low,
++            'evidence_status' => 'VALIDATED',
++            'expected_net_edge' => 0.5,
++            'sample_size' => 20,
++            'cost_drag_percent' => 5.0,
+             'drawdown_percent' => 3.2, // >= 2.50
+         ]);
+ 
+@@ -143,6 +161,10 @@
+         $eval = $this->gate->evaluate([
+             'signal_quality' => SignalQuality::High,
+             'trade_risk' => TradeRiskClass::Low,
++            'evidence_status' => 'VALIDATED',
++            'expected_net_edge' => 0.5,
++            'sample_size' => 20,
++            'cost_drag_percent' => 5.0,
+             'side' => 'SELL',
+             'directional_sample_size' => 15,
+             'directional_win_rate' => 0.20, // < 0.30
+@@ -159,12 +181,15 @@
+         $eval = $this->gate->evaluate([
+             'signal_quality' => SignalQuality::High,
+             'trade_risk' => TradeRiskClass::Low,
++            'evidence_status' => 'VALIDATED',
++            'sample_size' => 20,
++            'cost_drag_percent' => 5.0,
+             'expected_net_edge' => -0.5,
+         ]);
+ 
+-        $this->assertSame(QualityRiskGateDecision::Rejected, $eval['decision']);
+-        $this->assertFalse($eval['allowed']);
+-        $this->assertContains('high_quality_low_risk_negative_edge', $eval['rejection_reasons']);
++        $this->assertSame(QualityRiskGateDecision::InsufficientEvidence, $eval['decision']);
++        $this->assertFalse($eval['allowed']);
++        $this->assertContains('missing_or_stale_validated_edge_or_cost_evidence', $eval['rejection_reasons']);
+     }
+ 
+     public function test_high_quality_low_risk_insufficient_evidence_when_edge_required(): void
+@@ -179,7 +204,7 @@
+ 
+         $this->assertSame(QualityRiskGateDecision::InsufficientEvidence, $eval['decision']);
+         $this->assertFalse($eval['allowed']);
+-        $this->assertContains('insufficient_expectancy_evidence', $eval['rejection_reasons']);
++        $this->assertContains('missing_or_stale_validated_edge_or_cost_evidence', $eval['rejection_reasons']);
+     }
+ 
+     public function test_medium_quality_medium_risk_with_small_sample_is_insufficient_evidence(): void
+@@ -187,13 +212,15 @@
+         $eval = $this->gate->evaluate([
+             'signal_quality' => SignalQuality::Medium,
+             'trade_risk' => TradeRiskClass::Medium,
++            'evidence_status' => 'VALIDATED',
++            'cost_drag_percent' => 5.0,
+             'sample_size' => 5, // < 10
+             'expected_net_edge' => 0.10,
+         ]);
+ 
+         $this->assertSame(QualityRiskGateDecision::InsufficientEvidence, $eval['decision']);
+         $this->assertFalse($eval['allowed']);
+-        $this->assertContains('insufficient_expectancy_evidence', $eval['rejection_reasons']);
++        $this->assertContains('missing_or_stale_validated_edge_or_cost_evidence', $eval['rejection_reasons']);
+     }
+ 
+     public function test_cost_drag_exceeding_profit_target_is_rejected(): void
+@@ -201,6 +228,9 @@
+         $eval = $this->gate->evaluate([
+             'signal_quality' => SignalQuality::High,
+             'trade_risk' => TradeRiskClass::Low,
++            'evidence_status' => 'VALIDATED',
++            'sample_size' => 20,
++            'expected_net_edge' => 0.5,
+             'cost_drag_percent' => 120.0, // >= 100%
+         ]);
+ 
+--- a/tests/Unit/Research/LearningFeatureStoreServiceTest.php
++++ b/tests/Unit/Research/LearningFeatureStoreServiceTest.php
+@@ -41,7 +41,7 @@
+         $snapshot = $service->assembleSnapshot('BTCUSDT', '15', $t0, 'trend_pullback', 'TREND_BULLISH');
+ 
+         self::assertNotNull($snapshot);
+-        self::assertSame('PENDING', $snapshot->label_status);
++        self::assertSame('INVALID', $snapshot->label_status); // No historical signal/trade plan: never invent a LONG label
+         self::assertSame('1.0.0', $snapshot->feature_schema_version);
+         self::assertArrayHasKey('hl_spread_pct', $snapshot->features);
+         self::assertArrayHasKey('recent_volatility', $snapshot->features);
+@@ -63,12 +63,12 @@
+         ]);
+ 
+         $matured = $service->maturePendingLabels();
+-        self::assertSame(1, $matured);
++        self::assertSame(0, $matured);
+ 
+         $snapshot->refresh();
+-        self::assertSame('MATURED', $snapshot->label_status);
+-        self::assertSame('TP', $snapshot->label_outcome);
+-        self::assertSame('1.8700', (string) $snapshot->label_r_multiple);
++        self::assertSame('INVALID', $snapshot->label_status);
++        self::assertNull($snapshot->label_outcome);
++        self::assertNull($snapshot->label_r_multiple);
+     }
+ 
+     public function test_f17_learning_feature_store_isolates_exchanges_without_cross_contamination(): void
+@@ -161,15 +161,15 @@
+         ]);
+ 
+         $matured = $service->maturePendingLabels();
+-        self::assertSame(2, $matured);
++        self::assertSame(0, $matured);
+ 
+         $bybitSnapshot->refresh();
+         $binanceSnapshot->refresh();
+ 
+-        self::assertSame('MATURED', $bybitSnapshot->label_status);
+-        self::assertSame('TP', $bybitSnapshot->label_outcome);
++        self::assertSame('INVALID', $bybitSnapshot->label_status);
++        self::assertNull($bybitSnapshot->label_outcome);
+ 
+-        self::assertSame('MATURED', $binanceSnapshot->label_status);
+-        self::assertSame('SL', $binanceSnapshot->label_outcome);
++        self::assertSame('INVALID', $binanceSnapshot->label_status);
++        self::assertNull($binanceSnapshot->label_outcome);
+     }
+ }
+--- a/tests/Unit/Research/LearningPredictorServiceTest.php
++++ b/tests/Unit/Research/LearningPredictorServiceTest.php
+@@ -51,20 +51,13 @@
+         }
+ 
+         $model = $service->trainModel('TP_BEFORE_SL', 'BTCUSDT');
+-        self::assertNotNull($model);
+-        self::assertSame('ACTIVE', $model->status);
+-        self::assertArrayHasKey('brier_score', $model->metrics);
+-        self::assertArrayHasKey('ece', $model->metrics);
+-        self::assertNotEmpty($model->artifact_hash);
+-
+-        // Predict calibrated probability
++        self::assertNull($model); // Legacy unlabeled samples cannot train an execution-authoritative model
++        // Do not calibrate using an unversioned mixed-strategy legacy cohort.
+         $pred = $service->predictCalibrated('TP_BEFORE_SL', [
+             'hl_spread_pct' => 1.6,
+             'recent_volatility' => 1.1,
+         ]);
+-
+-        self::assertSame('CALIBRATED', $pred['status']);
+-        self::assertGreaterThanOrEqual(0.01, $pred['probability']);
+-        self::assertLessThanOrEqual(0.99, $pred['probability']);
++        self::assertSame('INSUFFICIENT_DATA', $pred['status']);
++        self::assertNull($pred['probability']);
+     }
+ }
+--- a/tests/Unit/Research/LearningSafetyInvariantsTest.php
++++ b/tests/Unit/Research/LearningSafetyInvariantsTest.php
+@@ -0,0 +1,39 @@
++<?php
++
++declare(strict_types=1);
++
++namespace Tests\Unit\Research;
++
++use App\Research\Application\LearningFeatureStoreService;
++use App\Research\Application\LearningPredictorService;
++use PHPUnit\Framework\TestCase;
++
++final class LearningSafetyInvariantsTest extends TestCase
++{
++    public function test_rsi_is_directionally_correct(): void
++    {
++        self::assertSame(100.0, LearningFeatureStoreService::rsiFromAverages(10.0, 0.0));
++        self::assertSame(0.0, LearningFeatureStoreService::rsiFromAverages(0.0, 10.0));
++        self::assertSame(50.0, LearningFeatureStoreService::rsiFromAverages(0.0, 0.0));
++    }
++
++    public function test_model_identity_is_isolated_by_exchange_side_strategy_and_version(): void
++    {
++        $args = ['TP_BEFORE_SL', 'BTCUSDT', 'bybit', 'baseline', '15', 'BUY', 'linear', '1.2.0'];
++        $original = LearningPredictorService::scopedModelName(...$args);
++        self::assertLessThanOrEqual(64, strlen($original));
++        foreach ([2 => 'binance', 3 => 'trend_pullback', 4 => '5', 5 => 'SELL', 6 => 'spot', 7 => '1.3.0'] as $index => $replacement) {
++            $alternative = $args;
++            $alternative[$index] = $replacement;
++            self::assertNotSame($original, LearningPredictorService::scopedModelName(...$alternative));
++        }
++    }
++
++    public function test_rejects_unrecognized_candle_interval(): void
++    {
++        self::assertSame(15, LearningFeatureStoreService::intervalMinutes('15'));
++        self::assertSame(60, LearningFeatureStoreService::intervalMinutes('1h'));
++        self::assertNull(LearningFeatureStoreService::intervalMinutes('1month'));
++        self::assertNull(LearningFeatureStoreService::intervalMinutes('0'));
++    }
++}

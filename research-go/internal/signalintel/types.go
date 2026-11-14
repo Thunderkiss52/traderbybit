@@ -4,7 +4,7 @@ package signalintel
 
 const (
 	LabelPolicy           = "HYPOTHETICAL_HORIZON_MARKOUT_V1"
-	QualityPolicy         = "SIGNAL_QUALITY_HOEFFDING_V1"
+	QualityPolicy         = "SIGNAL_QUALITY_HOEFFDING_V2"
 	MinuteMS        int64 = 60000
 	MaxTimestampMS  int64 = 9007199250000000
 	MaxCandles            = 512
@@ -172,13 +172,16 @@ type QualitySettings struct {
 }
 
 type Observation struct {
-	ID          string `json:"id"`
-	InputHash   string `json:"input_hash"`
-	Scope       Scope  `json:"scope"`
-	Status      string `json:"status"`
-	AvailableMS int64  `json:"available_ms"`
-	EndMS       int64  `json:"end_ms"`
-	NetReturn   string `json:"net_return"`
+	ID                 string  `json:"id"`
+	InputHash          string  `json:"input_hash"`
+	Scope              Scope   `json:"scope"`
+	Status             string  `json:"status"`
+	AvailableMS        int64   `json:"available_ms"`
+	EndMS              int64   `json:"end_ms"`
+	NetReturn          string  `json:"net_return"`
+	DirectionalCorrect *bool   `json:"directional_correct,omitempty"`
+	MFERatio           *string `json:"mfe_ratio,omitempty"`
+	MAERatio           *string `json:"mae_ratio,omitempty"`
 }
 
 // A baseline must precede every current observation and share the exact scope/policy.
@@ -204,6 +207,7 @@ type CohortRequest struct {
 }
 
 type CohortResponse struct {
+	DescriptiveMetrics     DescriptiveMetrics     `json:"descriptive_metrics"`
 	Scope                  Scope                  `json:"scope"`
 	PolicyVersion          string                 `json:"policy_version"`
 	PolicyHash             string                 `json:"policy_hash"`
@@ -226,6 +230,58 @@ type CohortResponse struct {
 	StatisticalAssumptions StatisticalAssumptions `json:"statistical_assumptions"`
 	ResearchOnly           bool                   `json:"research_only"`
 	EntryAuthority         bool                   `json:"entry_authority"`
+}
+
+// DescriptiveMetrics summarizes observed normalized returns, never currency PnL
+// or independent statistical evidence. Unsupported predictions remain unavailable.
+type DescriptiveMetrics struct {
+	Version                  string            `json:"version"`
+	Status                   string            `json:"status"`
+	MetricUnit               string            `json:"metric_unit"`
+	Population               string            `json:"population"`
+	ObservedCount            int               `json:"observed_count"`
+	Winners                  int               `json:"winners"`
+	Losers                   int               `json:"losers"`
+	ZeroReturns              int               `json:"zero_returns"`
+	MeanWinner               *string           `json:"mean_winner"`
+	MeanLoser                *string           `json:"mean_loser"`
+	NetExpectancy            *string           `json:"net_expectancy"`
+	NetReturnPerSignal       *string           `json:"net_return_per_signal"`
+	ProfitFactor             *string           `json:"profit_factor"`
+	Quantiles                ReturnQuantiles   `json:"quantiles"`
+	Distribution             []ReturnBin       `json:"distribution"`
+	Precision                *float64          `json:"precision"`
+	FalsePositiveRate        *float64          `json:"false_positive_rate"`
+	DirectionalAccuracy      *float64          `json:"directional_accuracy"`
+	DirectionalObservedCount int               `json:"directional_observed_count"`
+	MFEObservedCount         int               `json:"mfe_observed_count"`
+	MAEObservedCount         int               `json:"mae_observed_count"`
+	MeanMFERatio             *string           `json:"mean_mfe_ratio"`
+	MeanMAERatio             *string           `json:"mean_mae_ratio"`
+	BrierScore               *float64          `json:"brier_score"`
+	LogLoss                  *float64          `json:"log_loss"`
+	ExpectedCalibrationError *float64          `json:"expected_calibration_error"`
+	UnavailableReasons       map[string]string `json:"unavailable_reasons"`
+}
+
+type ReturnQuantiles struct {
+	Method string  `json:"method"`
+	Min    *string `json:"min"`
+	P05    *string `json:"p05"`
+	P25    *string `json:"p25"`
+	P50    *string `json:"p50"`
+	P75    *string `json:"p75"`
+	P95    *string `json:"p95"`
+	Max    *string `json:"max"`
+}
+
+// A null bound is unbounded; interval inclusion is explicit, including the zero bin.
+type ReturnBin struct {
+	LowerBound   *string `json:"lower_bound"`
+	UpperBound   *string `json:"upper_bound"`
+	IncludeLower bool    `json:"include_lower"`
+	IncludeUpper bool    `json:"include_upper"`
+	Count        int     `json:"count"`
 }
 
 // Confidence statements are conditional on assumptions that interval purging

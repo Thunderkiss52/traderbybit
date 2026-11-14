@@ -1113,8 +1113,11 @@ final class ProfitabilityResearchController extends Controller
             $query->where('available_at', '<=', CarbonImmutable::parse($filters['to'])->utc());
         }
 
+        $invalidTimeframes = (clone $query)->whereNot(fn ($nested) => $nested->sourceTimeframeConsistent())->count();
+
         return response()->json(['data_source' => 'HYPOTHETICAL', 'entry_authority' => false,
-            'outcomes' => $query->orderByDesc('available_at')->orderByDesc('id')->paginate($filters['per_page'] ?? 10)]);
+            'invalid_source_timeframe_count' => $invalidTimeframes,
+            'outcomes' => $query->sourceTimeframeConsistent()->orderByDesc('available_at')->orderByDesc('id')->paginate($filters['per_page'] ?? 10)]);
     }
 
     public function signalQualityProfiles(Request $request): JsonResponse
@@ -1129,8 +1132,34 @@ final class ProfitabilityResearchController extends Controller
             }
         }
 
-        return response()->json(['data_source' => 'HYPOTHETICAL', 'entry_authority' => false,
-            'profiles' => $query->orderByDesc('as_of')->orderByDesc('id')->paginate($filters['per_page'] ?? 10)]);
+        $profiles = $query->orderByDesc('as_of')->orderByDesc('id')->paginate($filters['per_page'] ?? 10);
+        $profiles->through(static function (SignalQualityProfileRecord $profile): array {
+            $data = $profile->toArray();
+            if ($profile->policy_version === 'SIGNAL_QUALITY_HOEFFDING_V1') {
+                // V1 used a ratio of normalized returns, which is not PnL profit
+                // factor for unequal notionals. Preserve the immutable source row.
+                $data['result']['profit_factor'] = null;
+                $data['result']['profit_factor_unavailable_reason'] = 'LEGACY_NORMALIZED_RETURN_RATIO_NOT_PNL';
+                $data['result']['source_timeframe_attribution_warning'] = 'LEGACY_SOURCE_TIMEFRAME_UNVERIFIED';
+                $data['historical_classification'] = $data['classification'];
+                $data['classification'] = 'INVALID_DATA';
+                if (array_key_exists('classification', $data['result'])) {
+                    $data['result']['historical_classification'] = $data['result']['classification'];
+                    $data['result']['classification'] = 'INVALID_DATA';
+                }
+                if (is_array($data['result']['descriptive_metrics'] ?? null)) {
+                    $data['result']['descriptive_metrics']['profit_factor'] = null;
+                    if (! is_array($data['result']['descriptive_metrics']['unavailable_reasons'] ?? null)) {
+                        $data['result']['descriptive_metrics']['unavailable_reasons'] = [];
+                    }
+                    $data['result']['descriptive_metrics']['unavailable_reasons']['profit_factor'] = 'LEGACY_NORMALIZED_RETURN_RATIO_NOT_PNL';
+                }
+            }
+
+            return $data;
+        });
+
+        return response()->json(['data_source' => 'HYPOTHETICAL', 'entry_authority' => false, 'profiles' => $profiles]);
     }
 
     public function signalExplorer(Request $request, SignalQualityAnalyticsService $service): JsonResponse

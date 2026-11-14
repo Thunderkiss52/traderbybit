@@ -1,0 +1,664 @@
+--- a/app/Backtest/Application/BacktestRunService.php
++++ b/app/Backtest/Application/BacktestRunService.php
+@@ -67,16 +67,17 @@
+             $paper['fees']['taker_rate'] = config('exchanges.binance.paper_taker_rate');
+             $paper['slippage_rate'] = config('exchanges.binance.paper_slippage_rate');
+         } elseif ($exchange !== 'bybit') {
++            // Independent venue-specific costs are mandatory for credible PnL.
++            // Missing, invalid, spot or inverse models must not fall back to Bybit assumptions.
+             $record = DB::table('exchanges')->where('id', $exchange)->first();
+-            if ($record !== null && ! empty($record->cost_model)) {
+-                $cost = json_decode((string) $record->cost_model, true);
+-                if (! empty($cost['taker_rate'])) {
+-                    $paper['fees']['taker_rate'] = (string) $cost['taker_rate'];
+-                }
+-                if (! empty($cost['slippage_rate'])) {
+-                    $paper['slippage_rate'] = (string) $cost['slippage_rate'];
+-                }
+-            }
++            $rawCost = $record?->cost_model;
++            $cost = is_array($rawCost) ? $rawCost : (is_string($rawCost) ? json_decode($rawCost, true) : null);
++            $paper = HistoricalExecutionCostPolicy::apply(
++                $exchange,
++                $paper,
++                $record?->market_type,
++                is_array($cost) ? $cost : null,
++            );
+         }
+         $type = $walkForward ? 'walk_forward' : 'split';
+         $fingerprint = $this->fingerprint([$type, $symbols, $from->format(DATE_ATOM), $to->format(DATE_ATOM), $dataset['checksum'], $strategy, $paper, $this->config]);
+--- /dev/null
++++ b/app/Backtest/Application/HistoricalExecutionCostPolicy.php
+@@ -0,0 +1,38 @@
++<?php
++
++declare(strict_types=1);
++
++namespace App\Backtest\Application;
++
++use RuntimeException;
++
++/**
++ * A historical simulation must never inherit another exchange's fees or slippage.
++ * This is a research-only assumption contract, not proof of execution readiness.
++ */
++final class HistoricalExecutionCostPolicy
++{
++    /** @param array<string, mixed> $paper @param array<string, mixed>|null $costModel
++     *  @return array<string, mixed>
++     */
++    public static function apply(string $exchange, array $paper, ?string $marketType, ?array $costModel): array
++    {
++        if ($marketType !== 'linear_perpetual') {
++            throw new RuntimeException("Historical execution model unavailable for {$exchange}: unsupported market type.");
++        }
++
++        foreach (['maker_rate', 'taker_rate', 'slippage_rate'] as $key) {
++            $rate = $costModel[$key] ?? null;
++            if ((! is_string($rate) && ! is_int($rate))
++                || preg_match('/^(?:0|[1-9][0-9]*)(?:\.[0-9]+)?$/D', (string) $rate) !== 1
++                || (float) $rate >= 0.1) {
++                throw new RuntimeException("Historical execution cost unavailable for {$exchange}: {$key}.");
++            }
++        }
++
++        $paper['fees']['taker_rate'] = (string) $costModel['taker_rate'];
++        $paper['slippage_rate'] = (string) $costModel['slippage_rate'];
++
++        return $paper;
++    }
++}
+--- a/app/Http/Controllers/Api/V1/StrategyMonitorController.php
++++ b/app/Http/Controllers/Api/V1/StrategyMonitorController.php
+@@ -121,14 +121,6 @@
+         $totalEvaluations = (int) ($obsAgg?->total_evaluations ?? 0);
+         $totalSkips = (int) ($obsAgg?->total_skips ?? 0);
+ 
+-        $posAgg = (clone $posQuery)
+-            ->selectRaw("
+-                COUNT(*) FILTER (WHERE status IN ('OPEN', 'PARTIALLY_CLOSED')) as active_positions,
+-                COUNT(*) FILTER (WHERE status IN ('CLOSED', 'CLOSED_TP', 'CLOSED_SL', 'CLOSED_TIMEOUT', 'CLOSED_RISK', 'RESOLVED')) as closed_positions
+-            ")->first();
+-        $activePositions = (int) ($posAgg?->active_positions ?? 0);
+-        $closedPositions = (int) ($posAgg?->closed_positions ?? 0);
+-
+         $sigAgg = (clone $sigQuery)
+             ->selectRaw("
+                 COUNT(*) FILTER (WHERE side IN ('BUY', 'SELL')) as total_signals,
+@@ -160,6 +152,16 @@
+             'UNKNOWN' => (int) ($sigAgg?->r_unknown ?? 0),
+         ];
+ 
++        // Every risk decision and position must belong to the same filtered signal cohort.
++        // Counting by venue alone leaks PnL/execution metrics across strategies and risk filters.
++        $filteredSignalIds = (clone $sigQuery)->select('id');
++        $posQuery->whereIn('signal_id', clone $filteredSignalIds);
++        $riskQuery->whereIn('signal_id', clone $filteredSignalIds);
++        $posAgg = (clone $posQuery)
++            ->selectRaw("COUNT(*) FILTER (WHERE status IN ('OPEN', 'PARTIALLY_CLOSED')) as active_positions, COUNT(*) FILTER (WHERE status IN ('CLOSED', 'CLOSED_TP', 'CLOSED_SL', 'CLOSED_TIMEOUT', 'CLOSED_RISK', 'RESOLVED')) as closed_positions")
++            ->first();
++        $activePositions = (int) ($posAgg?->active_positions ?? 0);
++        $closedPositions = (int) ($posAgg?->closed_positions ?? 0);
+         $riskApproved = (clone $riskQuery)->where('allowed', true)->count();
+ 
+         // Feed items: BUY/SELL from SignalRecord or SKIP from StrategyObservationRecord
+@@ -191,6 +193,10 @@
+                     'diagnostics' => data_get($obs->analysis, 'diagnostics'),
+                     'risk_decision' => null,
+                     'position' => null,
++                    'risk_decision_count' => 0,
++                    'position_count' => 0,
++                    'risk_decisions' => [],
++                    'positions' => [],
+                 ];
+             }
+         } else {
+@@ -203,19 +209,27 @@
+             $paginator = $signalsBuilder->latest('decision_time')->latest('id')->paginate($perPage);
+ 
+             $signalIds = collect($paginator->items())->pluck('id')->all();
+-            $riskDecisions = RiskDecisionRecord::query()->whereIn('signal_id', $signalIds)->get()->keyBy('signal_id');
+-            $positions = VirtualPositionRecord::query()->whereIn('signal_id', $signalIds)->get()->keyBy('signal_id');
++            $riskDecisions = RiskDecisionRecord::query()->whereIn('signal_id', $signalIds)
++                ->orderBy('decided_at')->orderBy('id')->get()->groupBy('signal_id');
++            $positions = VirtualPositionRecord::query()->whereIn('signal_id', $signalIds)
++                ->orderBy('opened_at')->orderBy('id')->get()->groupBy('signal_id');
+ 
+             foreach ($paginator->items() as $sig) {
+                 $rules = data_get($sig->contract, 'rules') ?? data_get($sig->indicator_snapshot, 'rules') ?? [];
+-                $riskRecord = $riskDecisions->get($sig->id);
+-                $pos = $positions->get($sig->id);
+-
+-                $entryMid = BigDecimal::of((string) ($sig->entry_low ?? $sig->stop_loss ?? '1'))
+-                    ->plus(BigDecimal::of((string) ($sig->entry_high ?? $sig->stop_loss ?? '1')))
+-                    ->dividedBy(2, 8, RoundingMode::HalfEven);
++                $signalRiskDecisions = $riskDecisions->get($sig->id, collect());
++                $signalPositions = $positions->get($sig->id, collect());
++                // Legacy singular fields are unambiguous only for one account.
++                $riskRecord = $signalRiskDecisions->count() === 1 ? $signalRiskDecisions->first() : null;
++                $pos = $signalPositions->count() === 1 ? $signalPositions->first() : null;
++
++                // No fabricated 0% stop distance when the entry plan is missing.
++                $entryMid = ($sig->entry_low !== null && $sig->entry_high !== null)
++                    ? BigDecimal::of((string) $sig->entry_low)
++                        ->plus(BigDecimal::of((string) $sig->entry_high))
++                        ->dividedBy(2, 8, RoundingMode::HalfEven)
++                    : null;
+                 $stopDistPercent = null;
+-                if (! $entryMid->isZero() && $sig->stop_loss !== null) {
++                if ($entryMid !== null && $entryMid->isPositive() && $sig->stop_loss !== null) {
+                     $dist = BigDecimal::of((string) $sig->stop_loss)->minus($entryMid)->abs();
+                     $stopDistPercent = (string) $dist->dividedBy($entryMid, 6, RoundingMode::HalfEven)->multipliedBy(100);
+                 }
+@@ -223,12 +237,14 @@
+                 $riskSnapshot = $riskRecord ? (is_array($riskRecord->snapshot) ? $riskRecord->snapshot : (json_decode((string) $riskRecord->snapshot, true) ?? [])) : [];
+                 $riskCapital = $riskSnapshot['risk_capital'] ?? null;
+                 $notional = $riskSnapshot['notional_after'] ?? $riskSnapshot['notional'] ?? null;
+-                $margin = $riskSnapshot['margin'] ?? ($notional !== null ? (string) BigDecimal::of((string) $notional)->dividedBy(10, 8, RoundingMode::HalfEven) : null);
++                // Margin must come from persisted sizing evidence, never a synthetic 10x leverage assumption.
++                $margin = $riskSnapshot['margin'] ?? $riskSnapshot['margin_usdt'] ?? null;
+                 $signalQualityVal = $sig->signal_quality ?? ($sig->quality_class ? match ($sig->quality_class) {
+                     'A' => 'HIGH', 'B' => 'MEDIUM', 'C' => 'LOW', default => 'UNKNOWN'
+                 } : 'UNKNOWN');
+                 $tradeRiskVal = $sig->trade_risk ?? $riskRecord?->trade_risk ?? $riskSnapshot['trade_risk'] ?? 'UNKNOWN';
+-                $gateDecision = $riskSnapshot['gate_decision'] ?? ($riskRecord ? ($riskRecord->allowed ? 'ELIGIBLE' : 'REJECTED') : null);
++                $gateDecision = $signalRiskDecisions->count() > 1 ? 'MULTI_ACCOUNT' :
++                    ($riskSnapshot['gate_decision'] ?? ($riskRecord ? ($riskRecord->allowed ? 'ELIGIBLE' : 'REJECTED') : null));
+                 $expectedNetEdge = $riskSnapshot['expected_net_edge'] ?? null;
+ 
+                 $items[] = [
+@@ -266,6 +282,31 @@
+                     'decision_time' => $sig->decision_time?->toIso8601String(),
+                     'candle_close_time' => $sig->candle_close_time?->toIso8601String(),
+                     'candle_id' => $sig->candle_id,
++                    'risk_decision_count' => $signalRiskDecisions->count(),
++                    'position_count' => $signalPositions->count(),
++                    'risk_decisions' => $signalRiskDecisions->map(fn ($decision) => [
++                        'id' => $decision->id,
++                        'paper_account_id' => $decision->paper_account_id,
++                        'exchange_id' => $decision->exchange_id,
++                        'allowed' => $decision->allowed,
++                        'reasons' => $decision->reasons,
++                        'snapshot' => $decision->snapshot,
++                        'decided_at' => $decision->decided_at?->toIso8601String(),
++                    ])->values()->all(),
++                    'positions' => $signalPositions->map(fn ($position) => [
++                        'id' => $position->id,
++                        'paper_account_id' => $position->paper_account_id,
++                        'exchange_id' => $position->exchange_id,
++                        'status' => $position->status,
++                        'entry_price' => $position->entry_price,
++                        'initial_quantity' => $position->initial_quantity,
++                        'remaining_quantity' => $position->remaining_quantity,
++                        'fees' => $position->fees,
++                        'gross_pnl' => $position->gross_pnl,
++                        'net_pnl' => $position->net_pnl,
++                        'opened_at' => $position->opened_at?->toIso8601String(),
++                        'closed_at' => $position->closed_at?->toIso8601String(),
++                    ])->values()->all(),
+                     'risk_decision' => $riskRecord ? [
+                         'id' => $riskRecord->id,
+                         'allowed' => $riskRecord->allowed,
+@@ -350,8 +391,8 @@
+                     if ($candle !== null) {
+                         $timeline[] = [
+                             'stage' => 'CANDLE_CLOSED',
+-                            'title' => 'Closed 15m Market Candle Ingested',
+-                            'timestamp' => $candle->open_time?->addMinutes(15)->toIso8601String(),
++                            'title' => 'Closed Market Candle Ingested',
++                            'timestamp' => $signal->candle_close_time?->toIso8601String(),
+                             'details' => [
+                                 'exchange' => $candle->exchange,
+                                 'symbol' => $candle->symbol,
+@@ -405,14 +446,17 @@
+                 ];
+ 
+                 // 4. Risk decision
+-                $risk = RiskDecisionRecord::query()->where('signal_id', $signal->id)->latest('decided_at')->first();
+-                if ($risk !== null) {
++                $riskRecords = RiskDecisionRecord::query()->where('signal_id', $signal->id)
++                    ->orderBy('decided_at')->orderBy('id')->get();
++                foreach ($riskRecords as $risk) {
+                     $timeline[] = [
+                         'stage' => 'RISK_DECISION',
+                         'title' => $risk->allowed ? 'Risk Guardrails Approved' : 'Risk Guardrails Rejected',
+                         'timestamp' => $risk->decided_at?->toIso8601String(),
+                         'details' => [
+                             'allowed' => $risk->allowed,
++                            'paper_account_id' => $risk->paper_account_id,
++                            'exchange_id' => $risk->exchange_id,
+                             'reasons' => $risk->reasons,
+                             'sizing' => data_get($risk->snapshot, 'sizing') ?? $risk->snapshot,
+                         ],
+@@ -422,11 +466,15 @@
+                 }
+ 
+                 // 5. Journal and execution events
++                // The timeline endpoint has a bounded response even for signals
++                // with years of journal history. Return recent events in time order.
+                 $journalEvents = JournalEventRecord::query()
+                     ->where('signal_id', $signal->id)
+-                    ->orderBy('occurred_at')
+-                    ->orderBy('sequence')
+-                    ->get();
++                    ->orderByDesc('occurred_at')
++                    ->orderByDesc('sequence')
++                    ->limit($limit)
++                    ->get()
++                    ->reverse();
+ 
+                 foreach ($journalEvents as $je) {
+                     $timeline[] = [
+--- a/app/Strategy/Application/StrategyCompletenessService.php
++++ b/app/Strategy/Application/StrategyCompletenessService.php
+@@ -38,6 +38,7 @@
+             ->pluck('count', 'strategy_id')
+             ->all();
+ 
++        $eligibility = app(PaperExecutionEligibilityService::class);
+         $matrix = [];
+         $totalCells = count($strategyIds) * count($exchangeIds);
+         $provisionedCells = 0;
+@@ -63,6 +64,15 @@
+ 
+                 $isProvisioned = $account !== null;
+                 $isActive = $account !== null && $account->status === 'ACTIVE';
++                $entryBlockedReason = $account === null ? 'account_not_provisioned' : 'account_not_active';
++                if ($isActive) {
++                    try {
++                        $entryBlockedReason = $eligibility->accountEntryRejectionReason($account);
++                    } catch (Throwable) {
++                        // An unavailable catalog, market model, or risk service can never certify an entry.
++                        $entryBlockedReason = 'eligibility_check_unavailable';
++                    }
++                }
+ 
+                 if ($isProvisioned) {
+                     $provisionedCells++;
+@@ -80,7 +90,8 @@
+                     'current_equity' => $account ? (string) $account->current_equity : '0',
+                     'realized_pnl' => $account ? (string) $account->realized_pnl : '0',
+                     'unrealized_pnl' => $account ? (string) $account->unrealized_pnl : '0',
+-                    'execution_eligible' => ($meta['execution_eligible'] ?? true) && ($exchangeId === 'bybit' || ($exchangeId === 'binance' && config('exchanges.binance_paper_execution_approved') === true)),
++                    'execution_eligible' => ($meta['execution_eligible'] ?? true) && $entryBlockedReason === null,
++                    'execution_block_reason' => ($meta['execution_eligible'] ?? true) ? $entryBlockedReason : 'strategy_execution_disabled',
+                     'api_visible' => true,
+                     'ui_visible' => true,
+                 ];
+--- a/frontend/src/pages/StrategyMonitorPage.vue
++++ b/frontend/src/pages/StrategyMonitorPage.vue
+@@ -48,8 +48,8 @@
+   { name: 'side', label: 'Decision', field: 'side', align: 'center', sortable: true },
+   { name: 'signal_quality', label: 'Signal Quality', field: (r: any) => r.signal_quality || 'UNKNOWN', align: 'center', sortable: true },
+   { name: 'trade_risk', label: 'Trade Risk', field: (r: any) => r.trade_risk || 'UNKNOWN', align: 'center', sortable: true },
+-  { name: 'risk_decision', label: 'Risk Guardrail', field: (r: any) => r.risk_decision ? (r.risk_decision.allowed ? 'APPROVED' : 'REJECTED') : '—', align: 'center' },
+-  { name: 'position', label: 'Virtual Execution', field: (r: any) => r.position?.status || (r.side === 'SKIP' ? 'NOT_ATTEMPTED' : 'PENDING'), align: 'center' },
++  { name: 'risk_decision', label: 'Risk Guardrail', field: (r: any) => r.risk_decision_count > 1 ? `${r.risk_decision_count} ACCOUNT DECISIONS` : (r.risk_decision ? (r.risk_decision.allowed ? 'APPROVED' : 'REJECTED') : '—'), align: 'center' },
++  { name: 'position', label: 'Virtual Execution', field: (r: any) => r.position_count > 1 ? `${r.position_count} ACCOUNT POSITIONS` : (r.position?.status || (r.side === 'SKIP' ? 'NOT_ATTEMPTED' : 'PENDING')), align: 'center' },
+   { name: 'actions', label: '', field: 'id', align: 'right' },
+ ];
+ 
+@@ -102,7 +102,8 @@
+ 
+ async function loadMonitor() {
+   currentController?.abort();
+-  currentController = new AbortController();
++  const controller = new AbortController();
++  currentController = controller;
+   loading.value = true;
+   error.value = '';
+ 
+@@ -130,41 +131,47 @@
+       params.risk = selectedRisk.value;
+     }
+ 
+-    const res: any = await get('/strategy-monitor', params, currentController.signal);
++    const res: any = await get('/strategy-monitor', params, controller.signal);
++    if (currentController !== controller || controller.signal.aborted) return;
+     monitorData.value = res;
+-
+-    // Auto-select first item if none selected or selection not in page
+-    if (!selectedItem.value && res.signals?.data?.length > 0) {
+-      selectItem(res.signals.data[0]);
++    const items = res.signals?.data || [];
++    if (!items.some((item: any) => item.id === selectedItem.value?.id)) {
++      selectItem(items[0] || null);
++    } else {
++      // Refresh the inspector with data from the currently selected filter/page.
++      selectItem(items.find((item: any) => item.id === selectedItem.value.id));
+     }
+   } catch (err: any) {
+-    if (!currentController.signal.aborted) {
++    if (currentController === controller && !controller.signal.aborted) {
+       error.value = err.message || 'Failed to load strategy monitor.';
+     }
+   } finally {
+-    loading.value = false;
++    if (currentController === controller) loading.value = false;
+   }
+ }
+ 
++let timelineRequestId = 0;
+ async function selectItem(item: any) {
++  const requestId = ++timelineRequestId;
+   selectedItem.value = item;
++  timelineEvents.value = [];
++  timelineLoading.value = !!item?.id;
+   if (!item?.id) return;
+ 
+-  timelineLoading.value = true;
+-  timelineEvents.value = [];
+   try {
+     const res: any = await get('/strategy-monitor/timeline', { signal_id: item.id });
+-    timelineEvents.value = res.timeline || [];
++    if (requestId === timelineRequestId) timelineEvents.value = res.timeline || [];
+   } catch {
+-    timelineEvents.value = [];
++    if (requestId === timelineRequestId) timelineEvents.value = [];
+   } finally {
+-    timelineLoading.value = false;
++    if (requestId === timelineRequestId) timelineLoading.value = false;
+   }
+ }
+ 
+ function resetPagination() {
+-  page.value = 1;
+-  loadMonitor();
++  selectItem(null);
++  if (page.value === 1) loadMonitor();
++  else page.value = 1; // page watcher performs the single request
+ }
+ 
+ watch([selectedExchange, selectedStrategy, selectedSymbol, selectedSide, selectedQuality, selectedRisk], resetPagination);
+@@ -184,6 +191,7 @@
+ 
+ onBeforeUnmount(() => {
+   currentController?.abort();
++  ++timelineRequestId;
+ });
+ 
+ function qualityColor(quality: string) {
+@@ -365,6 +373,11 @@
+                 :color="props.row.risk_decision.allowed ? 'positive' : 'negative'"
+                 :label="props.row.risk_decision.allowed ? 'PASSED' : 'BLOCKED'"
+               />
++              <q-badge
++                v-else-if="props.row.risk_decision_count > 1"
++                color="info"
++                :label="`${props.row.risk_decision_count} ACCOUNT DECISIONS`"
++              />
+               <span v-else class="text-grey">—</span>
+             </q-td>
+           </template>
+@@ -375,6 +388,11 @@
+                 v-if="props.row.position"
+                 :color="props.row.position.status === 'OPEN' ? 'teal' : 'purple'"
+                 :label="props.row.position.status"
++              />
++              <q-badge
++                v-else-if="props.row.position_count > 1"
++                color="info"
++                :label="`${props.row.position_count} ACCOUNT POSITIONS`"
+               />
+               <span v-else class="text-caption text-grey">{{ props.row.side === 'SKIP' ? 'SKIPPED' : 'NO POSITION' }}</span>
+             </q-td>
+@@ -498,20 +516,27 @@
+                     <div class="text-caption text-grey-4">Gate Matrix Decision:</div>
+                     <q-badge
+                       :color="selectedItem.gate_decision === 'ELIGIBLE' ? 'positive' : (selectedItem.gate_decision === 'CONDITIONALLY_ELIGIBLE' ? 'info' : (selectedItem.gate_decision === 'INSUFFICIENT_EVIDENCE' ? 'warning' : 'negative'))"
+-                      :label="selectedItem.gate_decision || (selectedItem.risk_decision?.allowed ? 'ELIGIBLE' : 'BLOCKED')"
++                      :label="selectedItem.gate_decision || (selectedItem.risk_decision ? (selectedItem.risk_decision.allowed ? 'ELIGIBLE' : 'BLOCKED') : 'NO DECISION')"
+                     />
+                   </div>
+                   <div class="col-6">
+                     <div class="text-caption text-grey-4">Guardrail Status:</div>
+                     <q-badge
+-                      :color="selectedItem.risk_decision?.allowed ? 'positive' : 'negative'"
+-                      :label="selectedItem.risk_decision?.allowed ? 'PASSED ALL CHECKS' : 'REJECTED'"
++                      :color="selectedItem.risk_decision_count > 1 ? 'info' : (selectedItem.risk_decision ? (selectedItem.risk_decision.allowed ? 'positive' : 'negative') : 'grey')"
++                      :label="selectedItem.risk_decision_count > 1 ? `${selectedItem.risk_decision_count} ACCOUNT DECISIONS` : (selectedItem.risk_decision ? (selectedItem.risk_decision.allowed ? 'PASSED ALL CHECKS' : 'REJECTED') : 'NO DECISION')"
+                     />
+                   </div>
+                 </div>
+ 
+                 <div v-if="selectedItem.risk_decision?.reasons?.length > 0" class="text-caption text-grey-4 q-mb-xs">
+                   Checks / Rejections: {{ selectedItem.risk_decision.reasons.join(', ') }}
++                </div>
++                <div v-if="selectedItem.risk_decision_count > 1" class="q-mb-sm">
++                  <div v-for="decision in selectedItem.risk_decisions" :key="decision.id" class="text-caption bg-grey-10 q-pa-xs q-mb-xs">
++                    Account {{ decision.paper_account_id }}:
++                    <q-badge :color="decision.allowed ? 'positive' : 'negative'" :label="decision.allowed ? 'PASSED' : 'BLOCKED'" />
++                    <span class="q-ml-sm">{{ (decision.reasons || []).join(', ') }}</span>
++                  </div>
+                 </div>
+ 
+                 <div class="bg-grey-10 q-pa-sm rounded-borders text-caption q-mt-xs">
+@@ -520,7 +545,7 @@
+                     <div class="col-6">Planned Stop: <span class="text-negative">{{ selectedItem.planned_stop_loss?.price || selectedItem.stop_loss || '—' }} ({{ selectedItem.planned_stop_loss?.distance_percent ? selectedItem.planned_stop_loss.distance_percent + '%' : '—' }})</span></div>
+                     <div class="col-6">Planned Risk $: <span class="text-warning">{{ selectedItem.planned_stop_loss?.loss_amount ? selectedItem.planned_stop_loss.loss_amount + ' USDT' : '—' }}</span></div>
+                     <div class="col-6">Planned Notional: <span class="text-white">{{ selectedItem.notional ? selectedItem.notional + ' USDT' : '—' }}</span></div>
+-                    <div class="col-6">Est. Margin (10x): <span class="text-cyan">{{ selectedItem.margin ? selectedItem.margin + ' USDT' : '—' }}</span></div>
++                    <div class="col-6">Margin (recorded): <span class="text-cyan">{{ selectedItem.margin ? selectedItem.margin + ' USDT' : '—' }}</span></div>
+                     <div class="col-6">Target 1 (TP1): <span class="text-positive">{{ selectedItem.take_profit_1 || '—' }}</span></div>
+                     <div class="col-6">Target 2 (TP2): <span class="text-positive">{{ selectedItem.take_profit_2 || '—' }}</span></div>
+                     <div class="col-6">R:R (TP1/TP2): <span class="text-cyan">{{ selectedItem.risk_reward?.tp1 || '—' }} / {{ selectedItem.risk_reward?.tp2 || '—' }}</span></div>
+@@ -541,17 +566,18 @@
+               header-class="text-weight-bold text-subtitle2 bg-grey-9 rounded-borders q-my-xs"
+             >
+               <div class="q-pa-sm">
+-                <div v-if="selectedItem.position" class="bg-grey-10 q-pa-sm rounded-borders text-caption">
++                <div v-for="position in (selectedItem.positions?.length ? selectedItem.positions : (selectedItem.position ? [selectedItem.position] : []))" :key="position.id" class="bg-grey-10 q-pa-sm rounded-borders text-caption q-mb-xs">
++                  <div class="text-caption text-cyan q-mb-xs">PAPER account: {{ position.paper_account_id || 'legacy' }}</div>
+                   <div class="row q-col-gutter-xs">
+-                    <div class="col-6">Position Status: <q-badge color="teal" :label="selectedItem.position.status" /></div>
+-                    <div class="col-6">Fill Price: <span class="text-white">{{ selectedItem.position.entry_price }}</span></div>
+-                    <div class="col-6">Initial Quantity: <span class="text-white">{{ selectedItem.position.initial_quantity }}</span></div>
+-                    <div class="col-6">Remaining: <span class="text-white">{{ selectedItem.position.remaining_quantity }}</span></div>
+-                    <div class="col-6">Fees: <span class="text-white">{{ selectedItem.position.fees }}</span></div>
+-                    <div class="col-6">Net PnL: <span :class="Number(selectedItem.position.net_pnl) >= 0 ? 'text-positive' : 'text-negative'">{{ selectedItem.position.net_pnl }}</span></div>
++                    <div class="col-6">Position Status: <q-badge color="teal" :label="position.status" /></div>
++                    <div class="col-6">Fill Price: <span class="text-white">{{ position.entry_price }}</span></div>
++                    <div class="col-6">Initial Quantity: <span class="text-white">{{ position.initial_quantity }}</span></div>
++                    <div class="col-6">Remaining: <span class="text-white">{{ position.remaining_quantity }}</span></div>
++                    <div class="col-6">Fees: <span class="text-white">{{ position.fees }}</span></div>
++                    <div class="col-6">Net PnL: <span :class="Number(position.net_pnl) >= 0 ? 'text-positive' : 'text-negative'">{{ position.net_pnl }}</span></div>
+                   </div>
+                 </div>
+-                <div v-else class="text-caption text-grey">
++                <div v-if="!(selectedItem.positions?.length || selectedItem.position)" class="text-caption text-grey">
+                   {{ selectedItem.side === 'SKIP' ? 'Strategy filtered candidate out. No virtual order placed.' : 'No execution recorded yet.' }}
+                 </div>
+               </div>
+--- a/frontend/tests/strategy_monitor.test.js
++++ b/frontend/tests/strategy_monitor.test.js
+@@ -27,3 +27,20 @@
+   assert.match(pageSrc, /Chronological Audit Timeline/);
+   assert.match(pageSrc, /q-timeline/);
+ });
++
++
++test('strategy monitor shows account-scoped decisions and positions without collapsing financial history', () => {
++  const src = readFileSync(resolve('src/pages/StrategyMonitorPage.vue'), 'utf-8');
++  assert.match(src, /risk_decision_count > 1/);
++  assert.match(src, /position_count > 1/);
++  assert.match(src, /v-for="decision in selectedItem\.risk_decisions"/);
++  assert.match(src, /selectedItem\.positions\?\.length/);
++  assert.match(src, /position\.paper_account_id/);
++});
++
++test('strategy monitor protects against stale filter and timeline responses', () => {
++  const src = readFileSync(resolve('src/pages/StrategyMonitorPage.vue'), 'utf-8');
++  assert.match(src, /currentController !== controller \|\| controller\.signal\.aborted/);
++  assert.match(src, /requestId === timelineRequestId/);
++  assert.match(src, /selectItem\(null\);/);
++});
+--- /dev/null
++++ b/scripts/tests/historical_execution_cost_contract_smoke.php
+@@ -0,0 +1,42 @@
++<?php
++
++declare(strict_types=1);
++
++require_once __DIR__.'/../../app/Backtest/Application/HistoricalExecutionCostPolicy.php';
++
++use App\Backtest\Application\HistoricalExecutionCostPolicy as Policy;
++
++$initial = ['fees' => ['taker_rate' => '0.00055'], 'slippage_rate' => '0.0002'];
++$pass = 0;
++$valid = [
++    ['maker_rate' => '0', 'taker_rate' => '0.0004', 'slippage_rate' => '0.0003'],
++    ['maker_rate' => '0', 'taker_rate' => '0', 'slippage_rate' => '0'],
++];
++foreach ($valid as $cost) {
++    $updated = Policy::apply('okx', $initial, 'linear_perpetual', $cost);
++    assert($updated['fees']['taker_rate'] === $cost['taker_rate']);
++    assert($updated['slippage_rate'] === $cost['slippage_rate']);
++    assert($initial['fees']['taker_rate'] === '0.00055');
++    $pass++;
++}
++$rejections = [
++    ['spot', ['maker_rate' => '0', 'taker_rate' => '0', 'slippage_rate' => '0']],
++    [null, null],
++    ['linear_perpetual', null],
++    ['linear_perpetual', []],
++    ['linear_perpetual', ['maker_rate' => '0', 'taker_rate' => '0.0004']],
++    ['linear_perpetual', ['maker_rate' => '0', 'taker_rate' => '-0.1', 'slippage_rate' => '0']],
++    ['linear_perpetual', ['maker_rate' => '0', 'taker_rate' => '0.1', 'slippage_rate' => '0']],
++    ['linear_perpetual', ['maker_rate' => '0', 'taker_rate' => 'NaN', 'slippage_rate' => '0']],
++    ['linear_perpetual', ['maker_rate' => '0', 'taker_rate' => 0.02, 'slippage_rate' => '0']],
++];
++foreach ($rejections as [$type, $cost]) {
++    try {
++        Policy::apply('okx', $initial, $type, $cost);
++        throw new LogicException('Unverified exchange costs were accepted.');
++    } catch (RuntimeException $error) {
++        if ($error instanceof LogicException) throw $error;
++        $pass++;
++    }
++}
++echo "Historical execution cost isolation: {$pass}/".(count($valid)+count($rejections))." PASS\n";
+--- a/tests/Feature/Audit/SystemUiApiReconciliationAuditTest.php
++++ b/tests/Feature/Audit/SystemUiApiReconciliationAuditTest.php
+@@ -40,7 +40,11 @@
+             $this->assertArrayHasKey('binance', $strat['exchanges']);
+             $this->assertTrue($strat['exchanges']['bybit']['provisioned']);
+             $this->assertSame('ACTIVE', $strat['exchanges']['bybit']['account_status']);
+-            $this->assertTrue($strat['exchanges']['bybit']['execution_eligible']);
++            $bybit = $strat['exchanges']['bybit'];
++            $this->assertArrayHasKey('execution_block_reason', $bybit);
++            $this->assertSame($bybit['execution_block_reason'] === null, $bybit['execution_eligible']);
++            // Provisioned or ACTIVE is not equivalent to eligible: exchange approval,
++            // risk, drawdown, capital, and strategy assignment must also pass.
+         }
+     }
+ 
+--- a/tests/Feature/PaperTrading/DirectionalPerformanceAndRiskGateTest.php
++++ b/tests/Feature/PaperTrading/DirectionalPerformanceAndRiskGateTest.php
+@@ -136,7 +136,59 @@
+         $this->assertSame('HIGH', $firstSig['signal_quality']);
+         $this->assertSame('LOW', $firstSig['trade_risk']);
+         $this->assertNotNull($firstSig['planned_stop_loss']);
++        $this->assertNull($firstSig['margin'], 'Margin must not be guessed as 10x of notional.');
+         $this->assertStringStartsWith('49500', (string) $firstSig['planned_stop_loss']['price']);
++    }
++
++    public function test_strategy_monitor_preserves_every_accounts_decision_and_position_for_one_signal(): void
++    {
++        $firstAccount = $this->createAccount('bybit', 'trend_pullback');
++        $secondAccount = $this->createAccount('bybit', 'trend_pullback');
++        // A secondary independent PAPER account can receive the same strategy signal.
++        $secondAccount->update(['is_primary' => false]);
++        $otherStrategyAccount = $this->createAccount('bybit', 'momentum');
++        $signal = $this->createSignal($firstAccount, 'BTCUSDT', 'BUY', 'A', 'HIGH', 'LOW', 91);
++        $otherSignal = $this->createSignal($otherStrategyAccount, 'BTCUSDT', 'SELL', 'B', 'MEDIUM', 'MEDIUM', 70);
++
++        foreach ([$firstAccount, $secondAccount] as $index => $account) {
++            RiskDecisionRecord::query()->create([
++                'paper_account_id' => $account->id,
++                'exchange_id' => 'bybit',
++                'signal_id' => $signal->id,
++                'allowed' => $index === 0,
++                'risk_version' => '1.0.0',
++                'reasons' => [$index === 0 ? 'approved' : 'blocked'],
++                'snapshot' => ['gate_decision' => $index === 0 ? 'ELIGIBLE' : 'REJECTED'],
++                'decided_at' => now()->subMinute(),
++            ]);
++            $this->createPosition($account, $signal, 'BUY', 'A', 'HIGH', 'LOW', 'CLOSED_TP', '20.00', '18.00', '2.00');
++        }
++        $this->createPosition($otherStrategyAccount, $otherSignal, 'SELL', 'B', 'MEDIUM', 'MEDIUM', 'CLOSED_SL', '-10.00', '-12.00', '2.00');
++
++        $response = $this->getJson('/api/v1/strategy-monitor?exchange=bybit&strategy_id=trend_pullback&quality=HIGH&risk=LOW');
++        $response->assertOk();
++        $response->assertJsonPath('data.metrics.total_signals', 1);
++        $response->assertJsonPath('data.metrics.risk_approved', 1);
++        $response->assertJsonPath('data.metrics.closed_positions', 2);
++        $response->assertJsonPath('data.signals.data.0.risk_decision_count', 2);
++        $response->assertJsonPath('data.signals.data.0.position_count', 2);
++        $response->assertJsonPath('data.signals.data.0.gate_decision', 'MULTI_ACCOUNT');
++        $this->assertNull($response->json('data.signals.data.0.position'));
++        $this->assertNull($response->json('data.signals.data.0.risk_decision'));
++        $this->assertCount(2, $response->json('data.signals.data.0.positions'));
++        $this->assertCount(2, $response->json('data.signals.data.0.risk_decisions'));
++        $this->assertEqualsCanonicalizing(
++            [$firstAccount->id, $secondAccount->id],
++            array_column($response->json('data.signals.data.0.positions'), 'paper_account_id'),
++        );
++        $this->assertNotContains(
++            $otherStrategyAccount->id,
++            array_column($response->json('data.signals.data.0.positions'), 'paper_account_id'),
++        );
++        $timeline = $this->getJson('/api/v1/strategy-monitor/timeline?signal_id='.$signal->id);
++        $timeline->assertOk();
++        $riskEvents = collect($timeline->json('data.timeline'))->where('stage', 'RISK_DECISION');
++        $this->assertCount(2, $riskEvents);
+     }
+ 
+     public function test_end_to_end_paper_processing_respects_quality_risk_gate(): void
+--- /dev/null
++++ b/tests/Unit/Backtest/HistoricalExecutionCostPolicyTest.php
+@@ -0,0 +1,45 @@
++<?php
++
++declare(strict_types=1);
++
++namespace Tests\Unit\Backtest;
++
++use App\Backtest\Application\HistoricalExecutionCostPolicy;
++use PHPUnit\Framework\TestCase;
++use RuntimeException;
++
++final class HistoricalExecutionCostPolicyTest extends TestCase
++{
++    public function test_independent_exchange_costs_replace_common_defaults(): void
++    {
++        $paper = ['fees' => ['taker_rate' => '0.00055'], 'slippage_rate' => '0.0002'];
++        $actual = HistoricalExecutionCostPolicy::apply('okx', $paper, 'linear_perpetual', [
++            'maker_rate' => '0', 'taker_rate' => '0.0004', 'slippage_rate' => '0.0003',
++        ]);
++        self::assertSame('0.0004', $actual['fees']['taker_rate']);
++        self::assertSame('0.0003', $actual['slippage_rate']);
++        self::assertSame('0.00055', $paper['fees']['taker_rate']);
++    }
++
++    public function test_missing_or_invalid_market_costs_fail_closed(): void
++    {
++        $paper = ['fees' => ['taker_rate' => '0.00055'], 'slippage_rate' => '0.0002'];
++        $cases = [
++            [null, null],
++            ['spot', ['maker_rate' => '0', 'taker_rate' => '0', 'slippage_rate' => '0']],
++            ['linear_perpetual', ['taker_rate' => '0.001', 'slippage_rate' => '0.002']],
++            ['linear_perpetual', ['maker_rate' => '0', 'taker_rate' => '0.01', 'slippage_rate' => '-1']],
++            ['linear_perpetual', ['maker_rate' => '0', 'taker_rate' => 'NaN', 'slippage_rate' => '0']],
++            ['linear_perpetual', ['maker_rate' => '0', 'taker_rate' => 0.01, 'slippage_rate' => '0']],
++            ['linear_perpetual', ['maker_rate' => '0', 'taker_rate' => '0.1', 'slippage_rate' => '0']],
++        ];
++        foreach ($cases as [$type, $costs]) {
++            try {
++                HistoricalExecutionCostPolicy::apply('okx', $paper, $type, $costs);
++                self::fail('Unverified exchange costs were accepted.');
++            } catch (RuntimeException) {
++                self::assertTrue(true);
++            }
++        }
++    }
++}

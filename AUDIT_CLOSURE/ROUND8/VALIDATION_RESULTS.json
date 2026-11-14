@@ -1,0 +1,35 @@
+{
+  "date_utc": "2026-11-11",
+  "base": "VECTOR-AUDIT-CLOSED-V7.tar(1).gz",
+  "base_sha256": "735b3343dc65ec3ef37b32e783c12cd2135d54d7a45aa8cc6b9e132bf95af6d0",
+  "package_status": "NOT_RELEASE_READY",
+  "code_test_files_modified": 5,
+  "php_syntax": {
+    "passed": 982,
+    "total": 982,
+    "php_version": "8.4.24"
+  },
+  "frontend_unit": {
+    "passed": 99,
+    "total": 99,
+    "node_version": "22.16.0",
+    "typescript_resolution": "temporary global symlink removed before packaging"
+  },
+  "v7_fail_closed": {
+    "passed": 26,
+    "total": 26
+  },
+  "v8_regression_probes": {
+    "passed": 2,
+    "total": 2
+  },
+  "go_jobscope": "PASS (GO111MODULE=off)",
+  "go_full": "BLOCKED (github.com/lib/pq unavailable offline)",
+  "laravel_full": "NOT_EXECUTED (Composer vendor / PostgreSQL unavailable)",
+  "frontend_build_browser": "NOT_EXECUTED (full dependencies / server unavailable)",
+  "source_patch_application": "PASS against pristine extracted V7 for all five changed code/test files",
+  "git_commit": "NOT_CREATED (snapshot has no .git directory)",
+  "production_deployment": "NONE",
+  "real_exchange_orders": "NONE",
+  "complete_apo_specification": "NOT_IMPLEMENTED_OR_VERIFIED"
+}

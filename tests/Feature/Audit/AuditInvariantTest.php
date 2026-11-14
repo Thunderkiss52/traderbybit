@@ -31,6 +31,7 @@ final class AuditInvariantTest extends TestCase
 
     public function test_peak_equity_never_falls_below_starting_balance_and_drawdown_is_positive_on_loss(): void
     {
+        $this->travelTo(new DateTimeImmutable('2026-10-14T10:15:00Z'));
         $account = $this->app->make(PaperAccountService::class)->default();
         self::assertTrue(BigDecimal::of((string) $account->starting_balance)->isEqualTo(10000));
         self::assertTrue(BigDecimal::of((string) $account->peak_equity)->isEqualTo(10000));
@@ -40,7 +41,9 @@ final class AuditInvariantTest extends TestCase
         $signal = $this->signal('BUY', 'BTCUSDT', '10:15');
         $this->seedValidatedPaperEvidence($signal);
         $this->context('BTCUSDT', '10:15');
+        $this->travelTo(new DateTimeImmutable('2026-10-14T10:20:00Z'));
         $this->candle('10:15', '100.5', '102', '100', '101');
+        $this->travelTo(new DateTimeImmutable('2026-10-14T10:25:00Z'));
         $this->candle('10:20', '101', '102', '94', '96'); // Low hits SL at 95
 
         $service = $this->app->make(PaperProcessingService::class);
@@ -74,10 +77,12 @@ final class AuditInvariantTest extends TestCase
 
     public function test_mark_to_market_drawdown_is_positive_on_unrealized_loss(): void
     {
+        $this->travelTo(new DateTimeImmutable('2026-10-14T10:15:00Z'));
         $account = $this->app->make(PaperAccountService::class)->default();
         $signal = $this->signal('BUY', 'BTCUSDT', '10:15');
         $this->seedValidatedPaperEvidence($signal);
         $this->context('BTCUSDT', '10:15');
+        $this->travelTo(new DateTimeImmutable('2026-10-14T10:20:00Z'));
         $this->candle('10:15', '100.5', '101.5', '100', '101');
 
         $service = $this->app->make(PaperProcessingService::class);
@@ -199,7 +204,7 @@ final class AuditInvariantTest extends TestCase
             'observed_at' => new DateTimeImmutable("2026-10-14T{$time}:00Z"),
             'bid' => '100', 'ask' => '100.05', 'turnover_24h' => '100000000',
             'tick_size' => '0.1', 'funding_rate' => '0.0001', 'open_interest' => '1000000',
-            'qty_step' => '0.001', 'min_order_qty' => '0.001', 'max_order_qty' => '1000', 'min_notional_value' => '5',
+            'qty_step' => '0.000001', 'min_order_qty' => '0.000001', 'max_order_qty' => '1000', 'min_notional_value' => '1',
         ]);
     }
 

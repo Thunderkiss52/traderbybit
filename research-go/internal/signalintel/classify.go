@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"math"
+	"math/big"
 	"sort"
 )
 
@@ -30,7 +31,8 @@ func DefaultQualitySettings() QualitySettings {
 
 func Classify(ctx context.Context, input CohortRequest) (CohortResponse, error) {
 	result := CohortResponse{Scope: input.Scope, PolicyVersion: input.Policy.Version, PolicyHash: hash(input.Policy), InputHash: hash(input),
-		Classification: "INVALID_DATA", ResearchOnly: true, EntryAuthority: false,
+		DescriptiveMetrics: unavailableDescriptiveMetrics("INVALID_DATA"),
+		Classification:     "INVALID_DATA", ResearchOnly: true, EntryAuthority: false,
 		UncertaintyMethod: "BOUNDED_HOEFFDING_FAMILYWISE", MetricUnit: "NET_RETURN_ON_EXECUTED_NOTIONAL",
 		StatisticalAssumptions: StatisticalAssumptions{
 			ConfidenceInterpretation: "CONDITIONAL_ON_DECLARED_ASSUMPTIONS",
@@ -64,14 +66,15 @@ func Classify(ctx context.Context, input CohortRequest) (CohortResponse, error) 
 	days := map[int64]bool{}
 	lastEnd := int64(0)
 	var accepted []Observation
-	var mean, m2, winning, losing float64
+	var acceptedReturns []*big.Rat
+	var mean, m2 float64
 	wins := 0
 	for _, o := range observations {
 		if err := ctx.Err(); err != nil {
 			return result, err
 		}
 		net, ok := number(o.NetReturn, true)
-		if !identifierPattern.MatchString(o.ID) || !hashPattern.MatchString(o.InputHash) || seen[o.ID] || o.Scope != input.Scope ||
+		if !identifierPattern.MatchString(o.ID) || !hashPattern.MatchString(o.InputHash) || seen[o.ID] || o.Scope != input.Scope || !excursionsValid(o) ||
 			o.Status != "MATURED" || !ok || o.AvailableMS <= 0 || o.AvailableMS > MaxTimestampMS-int64(input.Scope.HorizonMinutes)*MinuteMS || o.EndMS > input.AsOfMS ||
 			o.EndMS != o.AvailableMS+int64(input.Scope.HorizonMinutes)*MinuteMS || net.Cmp(low) < 0 || net.Cmp(high) > 0 {
 			result.Reason = "INVALID_OR_UNMATURED_OBSERVATION"
@@ -89,6 +92,7 @@ func Classify(ctx context.Context, input CohortRequest) (CohortResponse, error) 
 			return result, nil
 		}
 		accepted = append(accepted, o)
+		acceptedReturns = append(acceptedReturns, net)
 		lastEnd = o.EndMS
 		days[o.AvailableMS/(1440*MinuteMS)] = true
 		n := float64(len(accepted))
@@ -97,13 +101,12 @@ func Classify(ctx context.Context, input CohortRequest) (CohortResponse, error) 
 		m2 += delta * (value - mean)
 		if value > 0 {
 			wins++
-			winning += value
-		} else if value < 0 {
-			losing -= value
 		}
 	}
 	result.IndependentSamples = len(accepted)
 	result.DistinctDays = len(days)
+	result.DescriptiveMetrics = describeNetReturns(acceptedReturns)
+	addObservationMetrics(&result.DescriptiveMetrics, accepted)
 	if len(accepted) < p.MinIndependentSamples || len(days) < p.MinDistinctDays {
 		result.Classification = "INSUFFICIENT_DATA"
 		result.Reason = "INDEPENDENT_SAMPLE_OR_DAY_MINIMUM_NOT_MET"
@@ -121,10 +124,6 @@ func Classify(ctx context.Context, input CohortRequest) (CohortResponse, error) 
 	result.UpperBound = &ucb
 	result.StandardError = &se
 	result.WinRate = &winRate
-	if losing > 0 {
-		factor := winning / losing
-		result.ProfitFactor = &factor
-	}
 	result.Classification = "NEUTRAL"
 	result.Reason = "CONFIDENCE_INTERVAL_INCLUDES_ZERO"
 	if lcb > band {
@@ -144,6 +143,7 @@ func Classify(ctx context.Context, input CohortRequest) (CohortResponse, error) 
 			b.IndependentSamples < p.MinIndependentSamples || b.DistinctDays < p.MinDistinctDays || math.IsNaN(b.LowerBound) || math.IsInf(b.LowerBound, 0) || b.LowerBound < lo || b.LowerBound > hi {
 			result.Classification = "INVALID_DATA"
 			result.Reason = "INVALID_OR_OVERLAPPING_BASELINE"
+			result.DescriptiveMetrics = unavailableDescriptiveMetrics("INVALID_DATA")
 			return result, nil
 		}
 		if b.Classification == "PROFITABLE_CONFIRMED" && b.LowerBound > band && ucb < b.LowerBound {

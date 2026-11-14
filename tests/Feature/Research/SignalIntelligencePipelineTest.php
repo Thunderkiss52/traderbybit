@@ -59,12 +59,35 @@ final class SignalIntelligencePipelineTest extends TestCase
             self::assertFalse($row->result['scope']['data_source'] === 'PAPER');
         }
         self::assertSame(array_map(fn ($r) => $r->id, $records), array_map(fn ($r) => $r->id, $service->importResult($job)));
+        config(['research.signal_intelligence.quality_policy.version' => 'SIGNAL_QUALITY_HOEFFDING_V1']);
+        $legacyCohortJob = $service->scheduleCohort($records[0]);
+        config(['research.signal_intelligence.quality_policy.version' => 'SIGNAL_QUALITY_HOEFFDING_V2']);
         $cohortJob = $service->scheduleCohort($records[0]);
+        self::assertNotSame($legacyCohortJob->job_id, $cohortJob->job_id);
+        self::assertNotSame($legacyCohortJob->idempotency_key, $cohortJob->idempotency_key);
+        self::assertSame($cohortJob->job_id, $service->scheduleCohort($records[0])->job_id);
+        self::assertTrue(app(ResearchJobService::class)->cancelJob($legacyCohortJob->job_id));
+        self::assertSame('CANCELLED', $legacyCohortJob->refresh()->status);
         $this->execute($cohortJob);
         $profiles = $service->importResult($cohortJob);
         self::assertCount(1, $profiles);
         self::assertSame('INSUFFICIENT_DATA', $profiles[0]->classification);
         self::assertFalse($profiles[0]->result['entry_authority']);
+        $descriptive = $profiles[0]->result['descriptive_metrics'];
+        self::assertSame('OBSERVED', $descriptive['status']);
+        self::assertSame('NET_RETURN_ON_EXECUTED_NOTIONAL', $descriptive['metric_unit']);
+        self::assertSame(1, $descriptive['observed_count']);
+        self::assertSame($records[0]->net_return, $descriptive['net_expectancy']);
+        self::assertSame(1, $descriptive['directional_observed_count']);
+        self::assertEquals(1.0, $descriptive['directional_accuracy']);
+        self::assertSame($records[0]->result['mfe_ratio'], $descriptive['mean_mfe_ratio']);
+        self::assertSame($records[0]->result['mae_ratio'], $descriptive['mean_mae_ratio']);
+        self::assertNull($descriptive['profit_factor']);
+        self::assertNull($profiles[0]->result['profit_factor']);
+        self::assertSame('SIGNAL_QUALITY_HOEFFDING_V2', $profiles[0]->policy_version);
+        self::assertSame('OBSERVATION_PNL_AMOUNTS_NOT_PROVIDED', $descriptive['unavailable_reasons']['profit_factor']);
+        self::assertNull($descriptive['false_positive_rate']);
+        self::assertArrayHasKey('false_positive_rate', $descriptive['unavailable_reasons']);
         self::assertSame($financial, $this->financialFingerprint());
         $this->getJson('/api/v1/research/profitability/signal-horizons?source_timeframe_minutes=15&horizon_minutes=1')
             ->assertOk()->assertJsonPath('data_source', 'HYPOTHETICAL')->assertJsonPath('outcomes.per_page', 10)

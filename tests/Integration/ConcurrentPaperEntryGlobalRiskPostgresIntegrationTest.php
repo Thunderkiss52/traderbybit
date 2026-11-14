@@ -6,14 +6,17 @@ namespace Tests\Integration;
 
 use App\PaperTrading\Application\GlobalPaperCapitalGuard;
 use App\PaperTrading\Application\PaperAccountService;
+use App\PaperTrading\Application\PaperExecutionEngine;
 use App\PaperTrading\Application\PaperTopologySynchronizer;
 use App\PaperTrading\Application\PositionLifecycleService;
+use App\PaperTrading\Application\PositionSizingService;
 use App\PaperTrading\Domain\ExecutionQuote;
 use App\PaperTrading\Domain\ExecutionType;
-use App\PaperTrading\Domain\PositionSize;
+use App\PaperTrading\Domain\InstrumentConstraints;
 use App\PaperTrading\Infrastructure\Persistence\PaperAccountRecord;
 use App\PaperTrading\Infrastructure\Persistence\PaperSignalStateRecord;
 use App\Strategy\Application\StrategyRegistry;
+use App\Strategy\Infrastructure\Persistence\MarketContextRecord;
 use App\Strategy\Infrastructure\Persistence\SignalRecord;
 use Brick\Math\BigDecimal;
 use Carbon\CarbonImmutable;
@@ -63,9 +66,10 @@ final class ConcurrentPaperEntryGlobalRiskPostgresIntegrationTest extends TestCa
         }
     }
 
-    public function test_two_concurrent_entries_across_different_accounts_reject_excess_risk(): void
+    public function test_sequential_entries_across_different_accounts_reject_excess_risk(): void
     {
         $this->ensurePostgresTestDatabaseReady('paper_accounts');
+        $this->travelTo(new DateTimeImmutable('2026-11-04T11:50:00Z'));
 
         // Capture pristine primary Bybit accounts state before provisioning and risk mutation
         $bybitAccountsBefore = DB::table('paper_accounts')->where('exchange_id', 'bybit')->get()->map(fn ($r) => (array) $r)->all();
@@ -88,11 +92,25 @@ final class ConcurrentPaperEntryGlobalRiskPostgresIntegrationTest extends TestCa
         $momentumStrategy = app(StrategyRegistry::class)->get('momentum');
         $account1 = $accountService->strategyForward('trend_pullback', $trendStrategy->version(), $trendStrategy->parameters());
         $account2 = $accountService->strategyForward('momentum', $momentumStrategy->version(), $momentumStrategy->parameters());
+        foreach ([$account1, $account2] as $account) {
+            $account->update(['sizing_settings' => ['mode' => 'fixed_notional', 'amount' => '700']]);
+        }
 
         $signal1 = $this->createTestSignal('bybit', 'BTCUSDT', 'trend_pullback');
         $signal2 = $this->createTestSignal('bybit', 'ETHUSDT', 'momentum');
         $evidenceAccount1 = $this->seedValidatedPaperEvidence($signal1);
         $evidenceAccount2 = $this->seedValidatedPaperEvidence($signal2);
+        $at = new DateTimeImmutable('2026-11-04T12:00:00Z');
+        $contextIds = [];
+        foreach ([$signal1, $signal2] as $signal) {
+            $contextIds[] = MarketContextRecord::query()->create([
+                'exchange' => 'bybit', 'category' => 'linear', 'symbol' => $signal->symbol,
+                'observed_at' => $at, 'created_at' => $at, 'updated_at' => $at,
+                'bid' => '50000', 'ask' => '50000', 'turnover_24h' => '100000000',
+                'tick_size' => '0.1', 'qty_step' => '0.001', 'min_order_qty' => '0.001',
+                'max_order_qty' => '1000', 'min_notional_value' => '5',
+            ])->getKey();
+        }
 
         $state1 = PaperSignalStateRecord::query()->create([
             'id' => Uuid::uuid4()->toString(),
@@ -107,20 +125,17 @@ final class ConcurrentPaperEntryGlobalRiskPostgresIntegrationTest extends TestCa
             'status' => 'PENDING_ENTRY',
         ]);
 
-        // Each proposed position requires 15 USDT risk.
-        // First position: 6480 + 15 = 6495 <= 6500 (Allowed).
-        // Second position: 6495 + 15 = 6510 > 6500 (Exceeds global risk budget!).
-        $size = new PositionSize(
-            allowed: true,
-            quantity: '0.1',
-            riskCapital: '15.000000000000',
-            effectiveLossPerUnit: '1000',
-            notional: '5000',
-            reason: null,
-            qtyStep: '0.001',
+        // Each 700 USDT synthetic position reserves just over 15 USDT of risk.
+        // The first fits the remaining 20 USDT budget; the second cannot fit.
+        $size = app(PositionSizingService::class)->calculate(
+            $account1->current_equity, $signal1->model_risk_percent, '50000', $signal1->stop_loss,
+            new InstrumentConstraints('0.001', '0.001', '1000', '5'),
+            app(PaperExecutionEngine::class)->costs('bybit'), $account1->sizing_settings,
         );
+        self::assertTrue($size->allowed, $size->reason ?? 'Synthetic size rejected.');
+        self::assertTrue(BigDecimal::of($size->riskCapital)->isGreaterThan('10'));
+        self::assertTrue(BigDecimal::of($size->riskCapital)->isLessThanOrEqualTo('20'));
         $quote = new ExecutionQuote(ExecutionType::Entry, '50000', '50000', '0.0002', 'SYNTHETIC_TEST', false);
-        $at = new DateTimeImmutable('2026-11-04T12:00:00Z');
 
         $lifecycle = app(PositionLifecycleService::class);
 
@@ -130,7 +145,15 @@ final class ConcurrentPaperEntryGlobalRiskPostgresIntegrationTest extends TestCa
             self::assertNotNull($pos1);
             self::assertSame('OPEN', $pos1->status);
 
-            // Account 2 attempts entry with another 15 USDT risk -> must be rejected
+            $rejectedAccountState = static fn (): array => [
+                DB::table('paper_accounts')->where('id', $account2->id)->first(),
+                DB::table('paper_signal_states')->where('id', $state2->id)->first(),
+                DB::table('virtual_positions')->where('paper_account_id', $account2->id)->count(),
+                DB::table('trading_journal_events')->where('paper_account_id', $account2->id)->count(),
+            ];
+            $beforeRejection = $rejectedAccountState();
+
+            // The second sequential entry would exceed the remaining global risk budget.
             $exceptionThrown = false;
             try {
                 $lifecycle->open($account2, $state2, $signal2, $size, $quote, $at);
@@ -139,7 +162,9 @@ final class ConcurrentPaperEntryGlobalRiskPostgresIntegrationTest extends TestCa
                 self::assertStringContainsString('global_risk_budget_exceeded', $e->getMessage());
             }
             self::assertTrue($exceptionThrown, 'Expected DomainException global_risk_budget_exceeded was not thrown');
+            self::assertEquals($beforeRejection, $rejectedAccountState());
         } finally {
+            MarketContextRecord::query()->whereKey($contextIds)->delete();
             $evidenceAccountIds = [$evidenceAccount1->id, $evidenceAccount2->id];
             $evidenceSignalIds = DB::table('virtual_positions')->whereIn('paper_account_id', $evidenceAccountIds)->pluck('signal_id');
             PaperAccountRecord::query()->whereIn('id', $evidenceAccountIds)->delete();

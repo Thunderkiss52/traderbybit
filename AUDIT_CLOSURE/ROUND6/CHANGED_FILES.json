@@ -1,0 +1,62 @@
+[
+  {
+    "file": "app/Backtest/Application/BacktestRunService.php",
+    "status": "MODIFIED",
+    "old_sha256": "e996521fd54463dfe82ffe5d1824ab6509cf1cd29d1a73e5cc4f714670d1ff50",
+    "new_sha256": "6579523501f1e5bab6c48c405cca2239027b2c703202d13231eee5cb23b19c37"
+  },
+  {
+    "file": "app/Backtest/Application/HistoricalExecutionCostPolicy.php",
+    "status": "ADDED",
+    "old_sha256": null,
+    "new_sha256": "858661ae9193d80e0d06260dda714812e113936180b123c96849af5f6ce29d62"
+  },
+  {
+    "file": "app/Http/Controllers/Api/V1/StrategyMonitorController.php",
+    "status": "MODIFIED",
+    "old_sha256": "dc8b0d1f40f8400a06ed0e8ebc04ee002bd882795a56d7cf861a78bde4f49102",
+    "new_sha256": "4b5de9b0692e700aa4fcc62ddd71cfd5c92c46b5377759a3982493f886ec2751"
+  },
+  {
+    "file": "app/Strategy/Application/StrategyCompletenessService.php",
+    "status": "MODIFIED",
+    "old_sha256": "79f41e524b74cca5458684b93873c1007b8f28cce972a252c2f62e68c5f6d54a",
+    "new_sha256": "87133f0866ec9b632b47c999ff71fa81102074a3a7bebeb07339168b1f57ee8c"
+  },
+  {
+    "file": "frontend/src/pages/StrategyMonitorPage.vue",
+    "status": "MODIFIED",
+    "old_sha256": "b0bc95c5ff402bc2e8df671b578088741f0b1fa729146905fdf4f42d8c7340d5",
+    "new_sha256": "928f32fe4dbd2a19c67ac590a79c39d85ee09ee1c21cb29555483585c1a5b6c9"
+  },
+  {
+    "file": "frontend/tests/strategy_monitor.test.js",
+    "status": "MODIFIED",
+    "old_sha256": "0ec6643d467020e73d390f36872f5acebaca23cfc5989e5e9a4deff282cce15f",
+    "new_sha256": "c5da445177fb8732c1265bca36bcda265352accad00d827b5eaf8b1dece4f265"
+  },
+  {
+    "file": "scripts/tests/historical_execution_cost_contract_smoke.php",
+    "status": "ADDED",
+    "old_sha256": null,
+    "new_sha256": "70e352cb3ce6614dbe772654119e8f78bd5149a60a3d7c033531071f1f079d01"
+  },
+  {
+    "file": "tests/Feature/Audit/SystemUiApiReconciliationAuditTest.php",
+    "status": "MODIFIED",
+    "old_sha256": "e7d013435bac616a91cb9b588c7b86b91bb25afb8ba472609218f9e1edb5e5aa",
+    "new_sha256": "064644e62489089d6e69ac223f8fb737524046e3c407638fb665e4a8d5215721"
+  },
+  {
+    "file": "tests/Feature/PaperTrading/DirectionalPerformanceAndRiskGateTest.php",
+    "status": "MODIFIED",
+    "old_sha256": "45991941980b260185a9688440306e4190e11290ad59100812a731eaa979b531",
+    "new_sha256": "d98f4d31c724de6fa538f7c2f8704ec3cf84c4319f00ad0337b354082239a0fb"
+  },
+  {
+    "file": "tests/Unit/Backtest/HistoricalExecutionCostPolicyTest.php",
+    "status": "ADDED",
+    "old_sha256": null,
+    "new_sha256": "f4c7cbc0c8bd52f8b1dd2dff9e67d099bf84b9d0f2c071be37e113673c32837c"
+  }
+]

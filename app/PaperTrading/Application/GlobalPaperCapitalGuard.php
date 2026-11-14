@@ -4,7 +4,9 @@ declare(strict_types=1);
 
 namespace App\PaperTrading\Application;
 
+use App\Exchanges\Application\ExchangePaperApprovalPolicy;
 use App\Exchanges\ExchangeRegistry;
+use App\Exchanges\Infrastructure\Persistence\ExchangeRecord;
 use App\StrategyBuilder\PrimaryStrategies;
 use Brick\Math\BigDecimal;
 use Brick\Math\RoundingMode;
@@ -97,6 +99,7 @@ final class GlobalPaperCapitalGuard
         }
 
         $accounts = DB::table('paper_accounts')->where('is_primary', true)->get();
+        $catalogExchanges = ExchangeRecord::query()->whereIn('id', $exchanges)->get()->keyBy('id');
 
         $provisionedCapital = BigDecimal::zero();
         $fundedCapital = BigDecimal::zero();
@@ -155,17 +158,20 @@ final class GlobalPaperCapitalGuard
             }
 
             $provisionedCapital = $provisionedCapital->plus($base);
+            // Existing exposure remains reserved even when new entries are blocked.
+            // Such accounts must never contribute capital to the risk denominator.
+            $reservedRisk = $reservedRisk->plus($accountRisk);
             if ($base->isPositive()) {
                 $fundedCapital = $fundedCapital->plus($base);
             }
 
-            $isApprovedVenue = $this->isExchangeExecutionApproved((string) $account->exchange_id);
+            $isApprovedVenue = $this->isCatalogExecutionApproved($catalogExchanges->get($account->exchange_id));
             if ($isApprovedVenue) {
                 $executionApprovedCapital = $executionApprovedCapital->plus($base);
             }
 
             $isCooldown = $account->cooldown_until !== null && ! Carbon::parse($account->cooldown_until)->isPast();
-            $isActiveRiskBearing = ($account->status === 'ACTIVE') && $isApprovedVenue && ! $isCooldown;
+            $isActiveRiskBearing = ($account->status === 'ACTIVE') && $base->isPositive() && $isApprovedVenue && ! $isCooldown;
 
             if ($isActiveRiskBearing) {
                 if (! str_starts_with((string) $account->strategy_id, 'user_')) {
@@ -174,7 +180,6 @@ final class GlobalPaperCapitalGuard
                 }
                 $activePeakTotal = $activePeakTotal->plus($peak);
                 $activeEquity = $activeEquity->plus($current);
-                $reservedRisk = $reservedRisk->plus($accountRisk);
                 $activeFundedCount++;
             } else {
                 $riskBlockedCapital = $riskBlockedCapital->plus($base);
@@ -212,11 +217,13 @@ final class GlobalPaperCapitalGuard
      */
     public function isExchangeExecutionApproved(string $exchangeId): bool
     {
-        if ($exchangeId === 'bybit') {
-            return true;
-        }
+        return $this->isCatalogExecutionApproved(ExchangeRecord::query()->find($exchangeId));
+    }
 
-        return (bool) config("exchanges.{$exchangeId}.paper_execution_approved", false);
+    private function isCatalogExecutionApproved(?ExchangeRecord $exchange): bool
+    {
+        return ExchangePaperApprovalPolicy::allowsEntries($exchange)
+            && ($exchange->id !== 'binance' || config('exchanges.binance.paper_execution_approved') === true);
     }
 
     /** Serialize simultaneous entry decisions on PostgreSQL across all accounts. */

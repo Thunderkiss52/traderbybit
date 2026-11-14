@@ -255,7 +255,8 @@
         "stage-a: Fresh synthetic census is exactly 13+13; initialization/repeat preserves seeded Bybit and active Binance history; foreign exchange and missing-account controls fail; all strategy pairs remain isolated.",
         "stage-bcd: Fresh synthetic census is exactly 13+13; initialization/repeat preserves seeded Bybit and active Binance history; foreign exchange and missing-account controls fail; all strategy pairs remain isolated.",
         "Phase 0 Final Closure: Fresh synthetic census is exactly 13+13; initialization/repeat preserves seeded Bybit and active Binance history; foreign exchange and missing-account controls fail; all strategy pairs remain isolated.",
-        "2026-10-29 Phase 0 integrity remediation: see docs/progress/evidence/phase0-production-acceptance/REMEDIATION_20261029.md and VALIDATION_20261029.md. New local regressions do not certify the entire frozen obligation. All production V2 and product acceptance remain pending; no scores admitted from aggregate production counts."
+        "2026-10-29 Phase 0 integrity remediation: see docs/progress/evidence/phase0-production-acceptance/REMEDIATION_20261029.md and VALIDATION_20261029.md. New local regressions do not certify the entire frozen obligation. All production V2 and product acceptance remain pending; no scores admitted from aggregate production counts.",
+        "2026-11-13 APO increment: isolated focused PAPER sizing and lifecycle suite passed 118 tests and 736 assertions. Same-direction cross-symbol entry now fails closed while causal correlation revalidation is unavailable; exits remain permitted. Per-position mark freshness, concurrent cross-account equity updates and real competing-worker entry remain unresolved. Aggregate counts do not close this requirement."
       ],
       "assessed_commit": "d9a0aeb5d14233fc95e9e5cc55d8748814362f59",
       "roadmap_reference": "docs/roadmap/VECTOR_POST_REMEDIATION_IMPLEMENTATION_ROADMAP.md",
@@ -8032,7 +8033,8 @@
       "notes": [
         "No credit inferred from old pass counts. Runtime source atom credit does not prove integrated target behavior.",
         "2026-11-11 APO Stage 0: four-hour SIGNAL_PROXY_V2 labels are distinct from actual ledger outcomes and do not implement the requested independent source-timeframe/evaluation-horizon matrix. Six UI rows are not six live engines.",
-        "2026-11-12 APO Stage 1 local increment: Go source-timeframe/horizon labels and conditional bounded-return classification added; missing/future/conflicted data cannot produce mature money. Purging does not prove independence; default Hoeffding bounds and the 4096-row cap limit sensitivity. Six accepted timeframe values are not six live signal engines."
+        "2026-11-12 APO Stage 1 local increment: Go source-timeframe/horizon labels and conditional bounded-return classification added; missing/future/conflicted data cannot produce mature money. Purging does not prove independence; default Hoeffding bounds and the 4096-row cap limit sensitivity. Six accepted timeframe values are not six live signal engines.",
+        "2026-11-13 APO increment: corrected 1h attribution, quarantined inconsistent historical source intervals, withheld unsupported PnL profit factor, and marked legacy classifications unverified. Isolated PHP integration passed 28 tests and 244 assertions; classifier binary attestation and full current-source acceptance remain unresolved. No product credit claimed."
       ],
       "assessed_commit": "d9a0aeb5d14233fc95e9e5cc55d8748814362f59",
       "roadmap_reference": "docs/roadmap/VECTOR_POST_REMEDIATION_IMPLEMENTATION_ROADMAP.md",
