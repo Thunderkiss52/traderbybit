@@ -12,6 +12,7 @@ import (
     "github.com/gorilla/websocket"
     "github.com/traderbybit/research-go/internal/datasets"
     "github.com/traderbybit/research-go/internal/rateLimiter"
+    "github.com/traderbybit/research-go/internal/decimal"
 )
 
 // WSClient abstracts a WebSocket connection to a market data stream.

@@ -5,7 +5,6 @@ import (
     "database/sql"
     "fmt"
     "log"
-    "time"
 
     "github.com/traderbybit/research-go/internal/datasets"
     _ "github.com/lib/pq"
