@@ -402,6 +402,21 @@ verify_image_identity() {
     if [[ -z "${expected_id}" ]]; then
         expected_id="$(docker image inspect --format '{{.Id}}' "${expected_ref}" 2>/dev/null || true)"
         [[ -n "${expected_id}" ]] || { echo "[FATAL] Expected image '${expected_ref}' not found in Docker cache." >&2; return 1; }
+        # In Docker with containerd image store, docker image inspect .Id on an OCI index
+        # returns the index digest rather than the platform-resolved container image ID.
+        # When expected_id differs from actual_id, resolve the platform image ID through Docker.
+        if [[ "${expected_id}" != "${actual_id}" ]]; then
+            local dummy_cid
+            dummy_cid="$(docker create "${expected_ref}" 2>/dev/null || true)"
+            if [[ -n "${dummy_cid}" ]]; then
+                local resolved_id
+                resolved_id="$(docker inspect --format '{{.Image}}' "${dummy_cid}" 2>/dev/null || true)"
+                docker rm -v "${dummy_cid}" >/dev/null 2>&1 || true
+                if [[ -n "${resolved_id}" ]]; then
+                    expected_id="${resolved_id}"
+                fi
+            fi
+        fi
         _EXPECTED_IMAGE_IDS["${expected_ref}"]="${expected_id}"
     fi
 
@@ -410,55 +425,7 @@ verify_image_identity() {
     [[ "${actual_id}" =~ ^sha256:[0-9a-f]{64}$ && "${expected_id}" =~ ^sha256:[0-9a-f]{64}$ ]] || {
         echo "[FATAL] Invalid Docker image identity for '${service}'." >&2; return 1;
     }
-    local matched=0
-    if [[ "${actual_id}" == "${expected_id}" ]]; then
-        matched=1
-    else
-        # If expected_id differs from actual_id, expected_ref may be an OCI index or
-        # manifest list whose child platform manifest matches actual_id.
-        local expected_digest="${expected_ref##*@}"
-
-        # 1. Check if the container image's RepoDigests include expected_digest
-        if [[ "${expected_digest}" =~ ^sha256:[0-9a-f]{64}$ ]]; then
-            if docker image inspect --format '{{range .RepoDigests}}{{.}} {{end}}' "${actual_id}" 2>/dev/null | grep -Fq "${expected_digest}"; then
-                matched=1
-            fi
-        fi
-
-        # 2. Check docker manifest inspect for the index/manifest list
-        if [[ "${matched}" -eq 0 ]]; then
-            local manifest_json
-            manifest_json="$(docker manifest inspect --insecure "${expected_ref}" 2>/dev/null || docker manifest inspect "${expected_ref}" 2>/dev/null || true)"
-            if [[ -n "${manifest_json}" ]]; then
-                if echo "${manifest_json}" | grep -Fq "${actual_id}"; then
-                    matched=1
-                else
-                    # Check if any child digest listed in the manifest resolves to actual_id
-                    local child_digests child_d child_img_id
-                    child_digests="$(echo "${manifest_json}" | grep -o 'sha256:[0-9a-f]\{64\}' | sort -u || true)"
-                    for child_d in ${child_digests}; do
-                        child_img_id="$(docker image inspect --format '{{.Id}}' "${child_d}" 2>/dev/null || true)"
-                        if [[ -n "${child_img_id}" && "${child_img_id}" == "${actual_id}" ]]; then
-                            matched=1
-                            break
-                        fi
-                    done
-                fi
-            fi
-        fi
-
-        # 3. Check RootFS layers if available and non-empty
-        if [[ "${matched}" -eq 0 ]]; then
-            local actual_layers expected_layers
-            actual_layers="$(docker inspect --format '{{json .RootFS.Layers}}' "${cid}" 2>/dev/null || true)"
-            expected_layers="$(docker image inspect --format '{{json .RootFS.Layers}}' "${expected_ref}" 2>/dev/null || true)"
-            if [[ -n "${actual_layers}" && "${actual_layers}" != "null" && "${actual_layers}" != "[]" && "${actual_layers}" == "${expected_layers}" ]]; then
-                matched=1
-            fi
-        fi
-    fi
-
-    if [[ "${matched}" -ne 1 ]]; then
+    if [[ "${actual_id}" != "${expected_id}" ]]; then
         echo "[FATAL] Service '${service}' image ID mismatch! Running: ${actual_id} (${actual_img}), Expected: ${expected_id} (${expected_ref})" >&2
         return 1
     fi
