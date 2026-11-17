@@ -402,21 +402,6 @@ verify_image_identity() {
     if [[ -z "${expected_id}" ]]; then
         expected_id="$(docker image inspect --format '{{.Id}}' "${expected_ref}" 2>/dev/null || true)"
         [[ -n "${expected_id}" ]] || { echo "[FATAL] Expected image '${expected_ref}' not found in Docker cache." >&2; return 1; }
-        # In Docker with containerd image store, docker image inspect .Id on an OCI index
-        # returns the index digest rather than the platform-resolved container image ID.
-        # When expected_id differs from actual_id, resolve the platform image ID through Docker.
-        if [[ "${expected_id}" != "${actual_id}" ]]; then
-            local dummy_cid
-            dummy_cid="$(docker create "${expected_ref}" 2>/dev/null || true)"
-            if [[ -n "${dummy_cid}" ]]; then
-                local resolved_id
-                resolved_id="$(docker inspect --format '{{.Image}}' "${dummy_cid}" 2>/dev/null || true)"
-                docker rm -v "${dummy_cid}" >/dev/null 2>&1 || true
-                if [[ -n "${resolved_id}" ]]; then
-                    expected_id="${resolved_id}"
-                fi
-            fi
-        fi
         _EXPECTED_IMAGE_IDS["${expected_ref}"]="${expected_id}"
     fi
 
@@ -425,7 +410,31 @@ verify_image_identity() {
     [[ "${actual_id}" =~ ^sha256:[0-9a-f]{64}$ && "${expected_id}" =~ ^sha256:[0-9a-f]{64}$ ]] || {
         echo "[FATAL] Invalid Docker image identity for '${service}'." >&2; return 1;
     }
-    if [[ "${actual_id}" != "${expected_id}" ]]; then
+    local matched=0
+    if [[ "${actual_id}" == "${expected_id}" ]]; then
+        matched=1
+    else
+        # In Docker with containerd image store, an OCI index image ID is its index digest,
+        # while the container runs the platform manifest digest. Check if actual_img and expected_ref
+        # share the same repository, immutable SHA release tag, OCI revision label, and target service.
+        local actual_repo="${actual_img%@*}"
+        local expected_repo="${expected_ref%@*}"
+        if [[ -n "${actual_repo}" && "${actual_repo}" == "${expected_repo}" && "${expected_ref}" =~ :sha-([0-9a-f]{40})@sha256:[0-9a-f]{64}$ ]]; then
+            local expected_sha="${BASH_REMATCH[1]}"
+            local actual_rev actual_target actual_comp
+            actual_rev="$(docker image inspect --format '{{index .Config.Labels "org.opencontainers.image.revision"}}' "${actual_id}" 2>/dev/null || true)"
+            actual_target="$(docker image inspect --format '{{index .Config.Labels "vector.target"}}' "${actual_id}" 2>/dev/null || true)"
+            actual_comp="$(docker image inspect --format '{{index .Config.Labels "io.bybit-signals.component"}}' "${actual_id}" 2>/dev/null || true)"
+            if [[ "${actual_rev}" == "${expected_sha}" ]]; then
+                if [[ -z "${actual_target}" || "${actual_target}" == "${service}" ]] && \
+                   [[ -z "${actual_comp}" || "${actual_comp}" == "${service}" ]]; then
+                    matched=1
+                fi
+            fi
+        fi
+    fi
+
+    if [[ "${matched}" -ne 1 ]]; then
         echo "[FATAL] Service '${service}' image ID mismatch! Running: ${actual_id} (${actual_img}), Expected: ${expected_id} (${expected_ref})" >&2
         return 1
     fi
