@@ -5,14 +5,18 @@ declare(strict_types=1);
 namespace Tests\Feature\PaperTrading;
 
 use App\PaperTrading\Application\PaperAccountService;
+use App\PaperTrading\Application\PaperExecutionEngine;
+use App\PaperTrading\Application\PaperSizingSettings;
 use App\PaperTrading\Application\PositionLifecycleService;
+use App\PaperTrading\Application\PositionSizingService;
 use App\PaperTrading\Domain\ExecutionQuote;
 use App\PaperTrading\Domain\ExecutionType;
-use App\PaperTrading\Domain\PositionSize;
+use App\PaperTrading\Domain\InstrumentConstraints;
 use App\PaperTrading\Domain\PositionStatus;
 use App\PaperTrading\Infrastructure\Persistence\MarketFundingEventRecord;
 use App\PaperTrading\Infrastructure\Persistence\PaperSignalStateRecord;
 use App\PaperTrading\Infrastructure\Persistence\PositionFundingEventRecord;
+use App\Strategy\Infrastructure\Persistence\MarketContextRecord;
 use App\Strategy\Infrastructure\Persistence\SignalRecord;
 use DateTimeImmutable;
 use Illuminate\Foundation\Testing\DatabaseTransactions;
@@ -74,8 +78,36 @@ final class PaperReconcileFundingCommandTest extends TestCase
         ]);
 
         $openTime = new DateTimeImmutable('2026-10-26T23:30:00Z');
-        $size = new PositionSize(true, '0.010', '100', '10', '600', qtyStep: '0.001');
+        MarketContextRecord::query()->create([
+            'exchange' => 'bybit',
+            'category' => 'linear',
+            'symbol' => 'BTCUSDT',
+            'observed_at' => $openTime,
+            'bid' => '60000',
+            'ask' => '60001',
+            'turnover_24h' => '100000000',
+            'tick_size' => '0.1',
+            'qty_step' => '0.001',
+            'min_order_qty' => '0.001',
+            'max_order_qty' => '1000',
+            'min_notional_value' => '1',
+            'funding_rate' => '0.0001',
+            'open_interest' => '1000000',
+            'created_at' => $openTime,
+            'updated_at' => $openTime,
+        ]);
+        $account->update(['sizing_settings' => ['mode' => 'fixed_notional', 'amount' => '600']]);
         $entryQuote = new ExecutionQuote(ExecutionType::Entry, '60000', '60000', '0', 'test', false);
+        $limits = new InstrumentConstraints('0.001', '0.001', '1000', '1');
+        $size = app(PositionSizingService::class)->calculate(
+            $account->current_equity,
+            $signal->model_risk_percent,
+            $entryQuote->price,
+            $signal->stop_loss,
+            $limits,
+            app(PaperExecutionEngine::class)->costs($account->exchange_id),
+            PaperSizingSettings::effectiveForAccount($account->sizing_settings),
+        );
 
         $position = $lifecycle->open($account, $state, $signal, $size, $entryQuote, $openTime);
 

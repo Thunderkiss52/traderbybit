@@ -11,11 +11,14 @@ use App\Exchanges\Infrastructure\Persistence\ExchangeRecord;
 use App\MarketData\Infrastructure\Persistence\CandleRecord;
 use App\PaperTrading\Application\GlobalPaperCapitalGuard;
 use App\PaperTrading\Application\PaperAccountService;
+use App\PaperTrading\Application\PaperExecutionEngine;
 use App\PaperTrading\Application\PaperProcessingService;
+use App\PaperTrading\Application\PaperSizingSettings;
 use App\PaperTrading\Application\PositionLifecycleService;
+use App\PaperTrading\Application\PositionSizingService;
 use App\PaperTrading\Domain\ExecutionQuote;
 use App\PaperTrading\Domain\ExecutionType;
-use App\PaperTrading\Domain\PositionSize;
+use App\PaperTrading\Domain\InstrumentConstraints;
 use App\PaperTrading\Domain\PositionStatus;
 use App\PaperTrading\Infrastructure\Persistence\JournalEventRecord;
 use App\PaperTrading\Infrastructure\Persistence\MarketFundingEventRecord;
@@ -65,6 +68,12 @@ final class FullPaperTradingPipelineE2ETest extends TestCase
                 'maker_rate' => '0.0002', 'taker_rate' => '0.0005', 'slippage_rate' => '0.0002',
             ]),
         ]);
+        PaperAccountRecord::creating(function (PaperAccountRecord $account): void {
+            if ($account->sizing_settings === null) {
+                $account->sizing_settings = ['mode' => 'risk_percent'];
+            }
+        });
+        DB::table('paper_accounts')->update(['sizing_settings' => json_encode(['mode' => 'risk_percent'])]);
     }
 
     public function test_e2e_complete_trading_lifecycle_bybit_and_binance_with_tp1_tp2_funding_and_reconciliation(): void
@@ -72,6 +81,7 @@ final class FullPaperTradingPipelineE2ETest extends TestCase
         // 1. Initialize all 26 canonical PAPER accounts (13 Bybit + 13 Binance)
         $initializer = $this->app->make(BinanceDeploymentInitializer::class);
         $initializer->initialize('10000', 'OWNER-FULL-E2E-20261104');
+        DB::table('paper_accounts')->update(['sizing_settings' => json_encode(['mode' => 'risk_percent'])]);
 
         $baseHour = (int) floor(time() / 3600) * 3600;
         $now = (new DateTimeImmutable("@{$baseHour}"))->modify('+3 minutes');
@@ -341,11 +351,12 @@ final class FullPaperTradingPipelineE2ETest extends TestCase
         $accountService = $this->app->make(PaperAccountService::class);
         $strategy = $this->app->make(StrategyRegistry::class)->get('trend_pullback');
         $account = $accountService->strategyForward('trend_pullback', $strategy->version(), $strategy->parameters());
-        $account->update(['status' => 'ACTIVE']);
+        $account->update(['status' => 'ACTIVE', 'sizing_settings' => ['mode' => 'fixed_notional', 'amount' => '60']]);
         $lifecycle = $this->app->make(PositionLifecycleService::class);
 
         $t0 = new DateTimeImmutable('2026-11-04T13:00:00Z');
         $account->update(['created_at' => $t0->modify('-1 hour')]);
+        $this->createMarketContext('bybit', 'BTCUSDT', $t0);
         $signal = $this->createSignal('bybit', 'trend_pullback', 'BTCUSDT', 'BUY', $t0);
         $state = PaperSignalStateRecord::query()->create([
             'id' => Uuid::uuid4()->toString(),
@@ -355,9 +366,18 @@ final class FullPaperTradingPipelineE2ETest extends TestCase
         ]);
 
         $tOpen = $t0->modify('+5 minutes');
-        // Initial quantity = 0.001 with qtyStep = 0.001. 50% TP1 fraction floors to 0.000!
-        $size = new PositionSize(true, '0.001', '100', '10', '60', qtyStep: '0.001');
         $entryQuote = new ExecutionQuote(ExecutionType::Entry, '60000', '60000', '0.0002', 'E2E_TEST', false);
+        $context = MarketContextRecord::query()->where('exchange', 'bybit')->where('symbol', 'BTCUSDT')->latest('observed_at')->first();
+        $limits = new InstrumentConstraints($context->qty_step, $context->min_order_qty, $context->max_order_qty, $context->min_notional_value);
+        $size = $this->app->make(PositionSizingService::class)->calculate(
+            $account->current_equity,
+            $signal->model_risk_percent,
+            $entryQuote->price,
+            $signal->stop_loss,
+            $limits,
+            $this->app->make(PaperExecutionEngine::class)->costs($account->exchange_id),
+            PaperSizingSettings::effectiveForAccount($account->sizing_settings),
+        );
 
         $position = $lifecycle->open($account, $state, $signal, $size, $entryQuote, $tOpen);
         self::assertSame('0.001000000000', (string) $position->initial_quantity);

@@ -358,6 +358,7 @@ final class DirectionalPerformanceAndRiskGateTest extends TestCase
             'unrealized_pnl' => '0.00',
             'maximum_drawdown_percent' => '0.00',
             'current_drawdown_percent' => '0.00',
+            'sizing_settings' => ['mode' => 'risk_percent'],
             'created_at' => now(),
             'updated_at' => now(),
         ]);

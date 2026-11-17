@@ -108,6 +108,7 @@ final class DynamicStrategyRegistrationAndPaperExecutionTest extends TestCase
         $bybitAccount->update([
             'starting_balance' => '10000', 'current_equity' => '10000', 'peak_equity' => '10000',
             'status' => 'ACTIVE', 'execution_block_origin' => null,
+            'sizing_settings' => ['mode' => 'risk_percent'],
         ]);
         DB::table('equity_snapshots')->insert([
             'paper_account_id' => $bybitAccount->id, 'exchange_id' => 'bybit', 'recorded_at' => $approvedAt,

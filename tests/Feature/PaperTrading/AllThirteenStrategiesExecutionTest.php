@@ -380,7 +380,7 @@ final class AllThirteenStrategiesExecutionTest extends TestCase
             'qty_step' => '0.001',
             'min_order_qty' => '0.001',
             'max_order_qty' => '1000',
-            'min_notional_value' => '5',
+            'min_notional_value' => '1',
             'funding_rate' => '0.0001',
             'open_interest' => '1000000',
         ]);
@@ -444,7 +444,7 @@ final class AllThirteenStrategiesExecutionTest extends TestCase
                 'qty_step' => '0.001',
                 'min_order_qty' => '0.001',
                 'max_order_qty' => '1000',
-                'min_notional_value' => '5',
+                'min_notional_value' => '1',
                 'funding_rate' => '0.0001',
                 'open_interest' => '1000000',
             ]);

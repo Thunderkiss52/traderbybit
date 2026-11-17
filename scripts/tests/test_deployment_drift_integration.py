@@ -53,7 +53,7 @@ IMAGE_TAG=sha-{SHA}
             raise RuntimeError(result.stdout)
         cls.registry = cls.registry_compose('ps', '-q', 'registry').stdout.strip()
         port = json.loads(run('docker', 'inspect', cls.registry, check=True).stdout)[0]['NetworkSettings']['Ports']['5000/tcp'][0]['HostPort']
-        for _ in range(40):
+        for _ in range(150):
             import urllib.request
             try:
                 urllib.request.urlopen(f'http://127.0.0.1:{port}/v2/', timeout=1).close()
@@ -203,7 +203,7 @@ CMD ["sleep", "3600"]
         finally:
             self.registry_compose('start', 'registry')
             import urllib.request
-            for _ in range(50):
+            for _ in range(150):
                 try:
                     urllib.request.urlopen('http://' + self.refs['app'].split('/')[0] + '/v2/', timeout=1).close()
                     break

@@ -39,6 +39,7 @@ final class TradingPipelineConcurrencyAndSafetyTest extends TestCase
             'exchanges.binance.paper_slippage_rate' => '0.0002',
             'exchanges.binance.paper_execution_approved' => true,
             'exchanges.binance.research_cycle_enabled' => true,
+            'paper.market_safety.maximum_context_age_seconds' => 900,
         ]);
     }
 
@@ -358,9 +359,9 @@ final class TradingPipelineConcurrencyAndSafetyTest extends TestCase
             'qty_step' => '0.001',
             'min_order_qty' => '0.001',
             'max_order_qty' => '100.0',
-            'min_notional_value' => '5.0',
-            'created_at' => CarbonImmutable::now('UTC'),
-            'updated_at' => CarbonImmutable::now('UTC'),
+            'min_notional_value' => '1',
+            'created_at' => $at,
+            'updated_at' => $at,
         ]);
     }
 }

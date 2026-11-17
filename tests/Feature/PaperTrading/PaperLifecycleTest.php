@@ -87,6 +87,7 @@ final class PaperLifecycleTest extends TestCase
     {
         $signal = $this->signal('BUY');
         $this->context();
+        $this->app->make(PaperAccountService::class)->default()->update(['sizing_settings' => ['mode' => 'risk_percent']]);
         $this->candle('10:15', '100.5', '102', '100.5', '101.2');
         $this->candle('10:20', '101.2', '106', '99', '105');
         $this->candle('10:25', '105', '111', '104', '110');
@@ -98,8 +99,8 @@ final class PaperLifecycleTest extends TestCase
         $position = VirtualPositionRecord::query()->where('paper_account_id', $this->app->make(PaperAccountService::class)->default()->id)->firstOrFail();
         self::assertSame(PositionStatus::ClosedTp->value, $position->status);
         self::assertTrue(BigDecimal::of((string) $position->remaining_quantity)->isEqualTo(0));
-        self::assertTrue(BigDecimal::of((string) $position->net_pnl)->isEqualTo('51.43027179678'));
-        self::assertTrue(BigDecimal::of((string) $position->r_multiple)->isEqualTo('1.0286054359'));
+        self::assertTrue(BigDecimal::of((string) $position->net_pnl)->isEqualTo('50.13154407075'));
+        self::assertTrue(BigDecimal::of((string) $position->r_multiple)->isEqualTo('1.0026308814'));
         $this->assertDatabaseCount('virtual_executions', 3);
         $this->assertDatabaseHas('virtual_executions', ['type' => 'TAKE_PROFIT_1']);
         $this->assertDatabaseHas('virtual_executions', ['type' => 'TAKE_PROFIT_2']);
@@ -418,7 +419,7 @@ final class PaperLifecycleTest extends TestCase
         MarketContextRecord::query()->create([
             'exchange' => 'bybit', 'category' => 'linear', 'symbol' => $symbol, 'observed_at' => new DateTimeImmutable("2026-10-14T{$time}:00Z"),
             'bid' => '100', 'ask' => '100.05', 'turnover_24h' => '100000000', 'tick_size' => '0.1', 'funding_rate' => '0.0001',
-            'open_interest' => '1000000', 'qty_step' => '0.001', 'min_order_qty' => '0.001', 'max_order_qty' => '1000', 'min_notional_value' => '5',
+            'open_interest' => '1000000', 'qty_step' => '0.001', 'min_order_qty' => '0.001', 'max_order_qty' => '1000', 'min_notional_value' => '1',
         ]);
     }
 

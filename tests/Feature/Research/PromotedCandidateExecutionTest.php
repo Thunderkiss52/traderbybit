@@ -42,6 +42,7 @@ final class PromotedCandidateExecutionTest extends TestCase
             $candidateVersion,
             ['ema_fast' => 20, 'ema_slow' => 50, 'version' => $candidateVersion]
         );
+        $candidateAccount->update(['sizing_settings' => ['mode' => 'risk_percent']]);
 
         // 2. Persist promoted candidate record
         $candidateRecord = LearningCandidateStrategyRecord::query()->create([

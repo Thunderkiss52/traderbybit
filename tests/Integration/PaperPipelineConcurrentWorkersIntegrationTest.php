@@ -34,7 +34,10 @@ final class PaperPipelineConcurrentWorkersIntegrationTest extends TestCase
         $strategy = app(StrategyRegistry::class)->get('baseline');
         $account = app(PaperAccountService::class)->default();
         $accountOriginalData = (array) DB::table('paper_accounts')->where('id', $account->id)->first();
-        DB::table('paper_accounts')->where('id', $account->id)->update(['created_at' => $decisionTime->subMinutes(10)]);
+        DB::table('paper_accounts')->where('id', $account->id)->update([
+            'created_at' => $decisionTime->subMinutes(10),
+            'sizing_settings' => json_encode(['mode' => 'fixed_notional', 'amount' => '100']),
+        ]);
         $signalId = Uuid::uuid4()->toString();
         $barrier = sys_get_temp_dir().'/vector-paper-race-'.bin2hex(random_bytes(8));
         $workers = [];
@@ -43,7 +46,7 @@ final class PaperPipelineConcurrentWorkersIntegrationTest extends TestCase
         $evidenceAccount = null;
 
         try {
-            CarbonImmutable::setTestNow($decisionTime->addSecond());
+            CarbonImmutable::setTestNow($decisionTime);
             $contextId = MarketContextRecord::query()->create([
                 'exchange' => 'bybit', 'category' => 'linear', 'symbol' => 'BTCUSDT',
                 'observed_at' => $decisionTime, 'funding_rate' => '0.0001',

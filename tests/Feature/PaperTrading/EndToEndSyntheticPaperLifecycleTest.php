@@ -36,6 +36,11 @@ final class EndToEndSyntheticPaperLifecycleTest extends TestCase
             'paper.slippage_rate' => '0.0002',
             'paper.portfolio.maximum_open_positions' => 5,
         ]);
+        PaperAccountRecord::creating(function (PaperAccountRecord $account): void {
+            if ($account->sizing_settings === null) {
+                $account->sizing_settings = ['mode' => 'risk_percent'];
+            }
+        });
     }
 
     public function test_complete_synthetic_paper_lifecycle_from_candle_to_tp2_exit(): void

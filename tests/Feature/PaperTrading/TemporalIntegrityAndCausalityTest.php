@@ -40,6 +40,7 @@ final class TemporalIntegrityAndCausalityTest extends TestCase
             'exchanges.binance.research_cycle_enabled' => true,
             'paper.processing.max_forward_fill_lag_seconds' => 300,
             'paper.processing.max_signal_ingest_lag_seconds' => 300,
+            'paper.market_safety.maximum_context_age_seconds' => 600,
         ]);
     }
 
@@ -61,6 +62,7 @@ final class TemporalIntegrityAndCausalityTest extends TestCase
         PaperAccountRecord::query()->where('exchange_id', 'binance')->update([
             'status' => 'ACTIVE',
             'created_at' => $createdAt,
+            'sizing_settings' => ['mode' => 'risk_percent'],
         ]);
     }
 
