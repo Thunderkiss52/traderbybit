@@ -410,18 +410,57 @@ verify_image_identity() {
     [[ "${actual_id}" =~ ^sha256:[0-9a-f]{64}$ && "${expected_id}" =~ ^sha256:[0-9a-f]{64}$ ]] || {
         echo "[FATAL] Invalid Docker image identity for '${service}'." >&2; return 1;
     }
-    if [[ "${actual_id}" != "${expected_id}" ]]; then
+    local matched=0
+    if [[ "${actual_id}" == "${expected_id}" ]]; then
+        matched=1
+    else
+        # If expected_id differs from actual_id, expected_ref may be an OCI index or
+        # manifest list whose child platform manifest matches actual_id.
+        local manifests child_digest child_id
+        manifests="$(docker image inspect --format '{{range .Manifests}}{{.Digest}} {{end}}' "${expected_ref}" 2>/dev/null || true)"
+        if [[ -z "${manifests}" ]]; then
+            manifests="$(docker image inspect --format '{{range .Manifests}}{{.Digest}} {{end}}' "${expected_id}" 2>/dev/null || true)"
+        fi
+        for child_digest in ${manifests}; do
+            if [[ "${child_digest}" == "${actual_id}" ]]; then
+                matched=1
+                break
+            fi
+            child_id="$(docker image inspect --format '{{.Id}}' "${child_digest}" 2>/dev/null || true)"
+            if [[ -n "${child_id}" && "${child_id}" == "${actual_id}" ]]; then
+                matched=1
+                break
+            fi
+        done
+
+        if [[ "${matched}" -eq 0 ]]; then
+            if docker image inspect "${expected_ref}" 2>/dev/null | grep -Fq "\"${actual_id}\""; then
+                matched=1
+            fi
+        fi
+
+        if [[ "${matched}" -eq 0 ]]; then
+            local actual_layers expected_layers
+            actual_layers="$(docker inspect --format '{{json .RootFS.Layers}}' "${cid}" 2>/dev/null || true)"
+            expected_layers="$(docker image inspect --format '{{json .RootFS.Layers}}' "${expected_ref}" 2>/dev/null || true)"
+            if [[ -n "${actual_layers}" && "${actual_layers}" != "null" && "${actual_layers}" != "[]" && "${actual_layers}" == "${expected_layers}" ]]; then
+                matched=1
+            fi
+        fi
+    fi
+
+    if [[ "${matched}" -ne 1 ]]; then
         echo "[FATAL] Service '${service}' image ID mismatch! Running: ${actual_id} (${actual_img}), Expected: ${expected_id} (${expected_ref})" >&2
         return 1
     fi
-    verify_release_image "${expected_ref}" || return 1
+    verify_release_image "${expected_ref}" "${actual_id}" || return 1
     echo "[IMAGE] service=${service} expected=${expected_ref} creation_ref=${actual_img} image_id=${actual_id} result=PASS"
 
     return 0
 }
 
 verify_release_image() {
-    local reference="$1" revision expected_sha
+    local reference="$1" fallback_id="${2:-}" revision expected_sha
     if [[ -n "${_VERIFIED_RELEASE_IMAGES["${reference}"]:-}" ]]; then
         return 0
     fi
@@ -431,7 +470,22 @@ verify_release_image() {
             echo "[FATAL] Invalid immutable release reference: ${reference}" >&2; return 1;
         }
         expected_sha="${BASH_REMATCH[1]}"
-        revision="$(docker image inspect --format '{{index .Config.Labels "org.opencontainers.image.revision"}}' "${reference}")" || return 1
+        revision="$(docker image inspect --format '{{index .Config.Labels "org.opencontainers.image.revision"}}' "${reference}" 2>/dev/null || true)"
+        if [[ -z "${revision}" || "${revision}" == "<no value>" ]]; then
+            if [[ -n "${fallback_id}" ]]; then
+                revision="$(docker image inspect --format '{{index .Config.Labels "org.opencontainers.image.revision"}}' "${fallback_id}" 2>/dev/null || true)"
+            fi
+            if [[ -z "${revision}" || "${revision}" == "<no value>" ]]; then
+                local manifests child_digest
+                manifests="$(docker image inspect --format '{{range .Manifests}}{{.Digest}} {{end}}' "${reference}" 2>/dev/null || true)"
+                for child_digest in ${manifests}; do
+                    revision="$(docker image inspect --format '{{index .Config.Labels "org.opencontainers.image.revision"}}' "${child_digest}" 2>/dev/null || true)"
+                    if [[ "${revision}" == "${expected_sha}" ]]; then
+                        break
+                    fi
+                done
+            fi
+        fi
         [[ "${revision}" == "${expected_sha}" ]] || {
             echo "[FATAL] OCI revision mismatch for ${reference}: ${revision}" >&2; return 1;
         }
