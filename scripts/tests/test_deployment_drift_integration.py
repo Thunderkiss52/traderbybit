@@ -330,14 +330,31 @@ CMD ["sleep", "3600"]
         import urllib.request
         ref = self.refs['app']
         repo, digest = ref.split('@')
+        tag_name = repo.rsplit(':', 1)[-1] if ':' in repo else 'latest'
         registry_repo = repo.rsplit(':sha-', 1)[0]
         host_path = registry_repo.split('/', 1)
         metadata = json.loads(run('docker', 'image', 'inspect', ref, check=True).stdout)[0]
         child_url = f'http://{host_path[0]}/v2/{host_path[1]}/manifests/{digest}'
-        request = urllib.request.Request(child_url, headers={'Accept': 'application/vnd.docker.distribution.manifest.v2+json'})
-        with urllib.request.urlopen(request) as response:
-            child = response.read()
-            media_type = response.headers['Content-Type']
+        accept_headers = {
+            'Accept': 'application/vnd.docker.distribution.manifest.v2+json, application/vnd.oci.image.manifest.v1+json, application/vnd.oci.image.index.v1+json, application/vnd.docker.distribution.manifest.list.v2+json'
+        }
+        request = urllib.request.Request(child_url, headers=accept_headers)
+        try:
+            with urllib.request.urlopen(request) as response:
+                child = response.read()
+                media_type = response.headers['Content-Type'].split(';')[0].strip()
+                if 'Docker-Content-Digest' in response.headers:
+                    digest = response.headers['Docker-Content-Digest']
+        except urllib.error.HTTPError as e:
+            if e.code == 404:
+                tag_url = f'http://{host_path[0]}/v2/{host_path[1]}/manifests/{tag_name}'
+                request = urllib.request.Request(tag_url, headers=accept_headers)
+                with urllib.request.urlopen(request) as response:
+                    child = response.read()
+                    media_type = response.headers['Content-Type'].split(';')[0].strip()
+                    digest = response.headers.get('Docker-Content-Digest', digest)
+            else:
+                raise
         index = json.dumps({'schemaVersion': 2, 'mediaType': 'application/vnd.oci.image.index.v1+json',
                             'manifests': [{'mediaType': media_type, 'digest': digest, 'size': len(child),
                                            'platform': {'architecture': metadata['Architecture'], 'os': metadata['Os']}}]}).encode()
