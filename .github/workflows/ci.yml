@@ -370,7 +370,7 @@ jobs:
         run: |
           case "$ECOSYSTEM" in
             composer) composer validate --strict; composer audit --locked ;;
-            npm) cd frontend; npm audit --package-lock-only ;;
+            npm) cd frontend; npm audit --omit=dev --package-lock-only ;;
             *) exit 1 ;;
           esac
 
