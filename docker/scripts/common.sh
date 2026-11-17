@@ -416,29 +416,38 @@ verify_image_identity() {
     else
         # If expected_id differs from actual_id, expected_ref may be an OCI index or
         # manifest list whose child platform manifest matches actual_id.
-        local manifests child_digest child_id
-        manifests="$(docker image inspect --format '{{range .Manifests}}{{.Digest}} {{end}}' "${expected_ref}" 2>/dev/null || true)"
-        if [[ -z "${manifests}" ]]; then
-            manifests="$(docker image inspect --format '{{range .Manifests}}{{.Digest}} {{end}}' "${expected_id}" 2>/dev/null || true)"
-        fi
-        for child_digest in ${manifests}; do
-            if [[ "${child_digest}" == "${actual_id}" ]]; then
-                matched=1
-                break
-            fi
-            child_id="$(docker image inspect --format '{{.Id}}' "${child_digest}" 2>/dev/null || true)"
-            if [[ -n "${child_id}" && "${child_id}" == "${actual_id}" ]]; then
-                matched=1
-                break
-            fi
-        done
+        local expected_digest="${expected_ref##*@}"
 
+        # 1. Check if the container image's RepoDigests include expected_digest
+        if [[ "${expected_digest}" =~ ^sha256:[0-9a-f]{64}$ ]]; then
+            if docker image inspect --format '{{range .RepoDigests}}{{.}} {{end}}' "${actual_id}" 2>/dev/null | grep -Fq "${expected_digest}"; then
+                matched=1
+            fi
+        fi
+
+        # 2. Check docker manifest inspect for the index/manifest list
         if [[ "${matched}" -eq 0 ]]; then
-            if docker image inspect "${expected_ref}" 2>/dev/null | grep -Fq "\"${actual_id}\""; then
-                matched=1
+            local manifest_json
+            manifest_json="$(docker manifest inspect --insecure "${expected_ref}" 2>/dev/null || docker manifest inspect "${expected_ref}" 2>/dev/null || true)"
+            if [[ -n "${manifest_json}" ]]; then
+                if echo "${manifest_json}" | grep -Fq "${actual_id}"; then
+                    matched=1
+                else
+                    # Check if any child digest listed in the manifest resolves to actual_id
+                    local child_digests child_d child_img_id
+                    child_digests="$(echo "${manifest_json}" | grep -o 'sha256:[0-9a-f]\{64\}' | sort -u || true)"
+                    for child_d in ${child_digests}; do
+                        child_img_id="$(docker image inspect --format '{{.Id}}' "${child_d}" 2>/dev/null || true)"
+                        if [[ -n "${child_img_id}" && "${child_img_id}" == "${actual_id}" ]]; then
+                            matched=1
+                            break
+                        fi
+                    done
+                fi
             fi
         fi
 
+        # 3. Check RootFS layers if available and non-empty
         if [[ "${matched}" -eq 0 ]]; then
             local actual_layers expected_layers
             actual_layers="$(docker inspect --format '{{json .RootFS.Layers}}' "${cid}" 2>/dev/null || true)"
