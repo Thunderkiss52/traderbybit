@@ -34,6 +34,13 @@ final class GenerateAuditExportJob implements ShouldQueue
 
     public function failed(Throwable $exception): void
     {
-        app(AuditExportService::class)->failed($this->exportId, 'job_failed');
+        $export = \App\Audit\Infrastructure\Persistence\AuditExportRecord::query()->find($this->exportId);
+        if ($export !== null && $export->error_code !== null && str_starts_with((string) $export->error_code, 'audit_')) {
+            return;
+        }
+        $code = $exception instanceof \RuntimeException && str_starts_with($exception->getMessage(), 'audit_')
+            ? $exception->getMessage()
+            : 'job_failed';
+        app(AuditExportService::class)->failed($this->exportId, $code);
     }
 }

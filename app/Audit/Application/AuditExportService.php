@@ -16,6 +16,7 @@ use DateTimeInterface;
 use Illuminate\Database\Query\Builder;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\URL;
 use Ramsey\Uuid\Uuid;
@@ -295,8 +296,15 @@ final class AuditExportService
                 }
                 $ownsTransaction = false;
             }
+            Log::error("Audit export [{$id}] failed: ".$error->getMessage(), [
+                'exception' => $error,
+                'id' => $id,
+            ]);
+            $code = $error instanceof RuntimeException && str_starts_with($error->getMessage(), 'audit_')
+                ? $error->getMessage()
+                : 'audit_generation_failed';
             // Retrying from the beginning is safe: all outputs are temporary until final rename.
-            $this->failed($id, 'audit_generation_failed');
+            $this->failed($id, $code);
             throw $error;
         } finally {
             if ($ownsTransaction && DB::transactionLevel() > 0) {
