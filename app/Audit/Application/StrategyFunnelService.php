@@ -25,7 +25,7 @@ final readonly class StrategyFunnelService
             $exchange = 'bybit';
         }
 
-        return Cache::remember("audit:funnel:v3:{$exchange}:{$days}", 60, function () use ($days, $exchange): array {
+        return Cache::remember("audit:funnel:v3:{$exchange}:{$days}", 120, function () use ($days, $exchange): array {
             $since = now('UTC')->subDays($days);
             $rows = [];
             foreach ($this->strategies->metadata() as $strategy) {
@@ -37,10 +37,19 @@ final readonly class StrategyFunnelService
                     ->where('decision_time', '>=', $since);
                 $sides = (clone $base)->selectRaw('side, COUNT(*) AS n')->groupBy('side')->pluck('n', 'side');
                 $reasons = [];
-                foreach ((clone $base)->where('side', 'SKIP')->cursor(['reasons']) as $observation) {
-                    $primary = collect($observation->reasons ?? [])
-                        ->first(fn ($reason): bool => is_string($reason) && ! str_starts_with($reason, 'regime_'));
-                    $primary = is_string($primary) ? $primary : 'unspecified';
+                foreach ((clone $base)->where('side', 'SKIP')->toBase()->cursor(['reasons']) as $observation) {
+                    $decoded = is_array($observation->reasons)
+                        ? $observation->reasons
+                        : (is_string($observation->reasons) ? json_decode($observation->reasons, true) : []);
+                    $primary = 'unspecified';
+                    if (is_array($decoded)) {
+                        foreach ($decoded as $reason) {
+                            if (is_string($reason) && ! str_starts_with($reason, 'regime_')) {
+                                $primary = $reason;
+                                break;
+                            }
+                        }
+                    }
                     $reasons[$primary] = ($reasons[$primary] ?? 0) + 1;
                 }
                 arsort($reasons);
@@ -51,12 +60,20 @@ final readonly class StrategyFunnelService
                     if ($account->configuration_hash !== $strategy['configuration_hash'] && $account->mode === 'STRATEGY_FORWARD_PAPER') {
                         continue;
                     }
-                    $risk = DB::table('risk_decisions')->where('paper_account_id', $account->id)->where('decided_at', '>=', $since);
-                    $riskApproved += (clone $risk)->where('allowed', true)->count();
-                    $riskRejected += (clone $risk)->where('allowed', false)->count();
-                    $positions = DB::table('virtual_positions')->where('paper_account_id', $account->id);
-                    $opened += (clone $positions)->where('opened_at', '>=', $since)->count();
-                    $closed += (clone $positions)->where('closed_at', '>=', $since)->count();
+                    $riskCounts = DB::table('risk_decisions')
+                        ->where('paper_account_id', $account->id)
+                        ->where('decided_at', '>=', $since)
+                        ->selectRaw('COUNT(*) FILTER (WHERE allowed = true) as approved, COUNT(*) FILTER (WHERE allowed = false) as rejected')
+                        ->first();
+                    $riskApproved += (int) ($riskCounts->approved ?? 0);
+                    $riskRejected += (int) ($riskCounts->rejected ?? 0);
+
+                    $posCounts = DB::table('virtual_positions')
+                        ->where('paper_account_id', $account->id)
+                        ->selectRaw('COUNT(*) FILTER (WHERE opened_at >= ?) as opened, COUNT(*) FILTER (WHERE closed_at >= ?) as closed', [$since, $since])
+                        ->first();
+                    $opened += (int) ($posCounts->opened ?? 0);
+                    $closed += (int) ($posCounts->closed ?? 0);
                 }
                 $rows[] = [
                     'strategy_id' => $strategy['id'], 'strategy_version' => $strategy['version'],

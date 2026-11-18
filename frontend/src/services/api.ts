@@ -9,7 +9,7 @@ import type {
   TradingMethod,
 } from '../types';
 
-export const api = axios.create({ baseURL: '/api/v1', timeout: 15000 });
+export const api = axios.create({ baseURL: '/api/v1', timeout: 45000 });
 api.interceptors.request.use(config => {
   try {
     const saved = JSON.parse(localStorage.getItem('ui-settings') || '{}');

@@ -22,7 +22,7 @@ final class PerformanceStatisticsService
         $maximumDrawdown = $this->drawdown(
             $accountForDrawdown->starting_balance,
             EquitySnapshotRecord::query()->performance()->where('paper_account_id', $accountId)
-                ->oldest('recorded_at')->oldest('id')->cursor(['equity', 'source_event_key', 'unrealized_pnl', 'valuation_fresh']),
+                ->oldest('recorded_at')->oldest('id')->toBase()->cursor(['equity', 'source_event_key', 'unrealized_pnl', 'valuation_fresh']),
             $accountForDrawdown->current_equity
         );
 
@@ -107,7 +107,7 @@ final class PerformanceStatisticsService
         $grossProfit = $grossLoss = $net = $fees = $funding = $grossPnl = $rTotal = BigDecimal::zero();
         $rCount = 0;
         $openFees = $openFunding = BigDecimal::zero();
-        foreach ((clone $query)->orderBy('closed_at')->orderBy('id')->cursor([
+        foreach ((clone $query)->orderBy('closed_at')->orderBy('id')->toBase()->cursor([
             'id', 'closed_at', 'opened_at', 'net_pnl', 'gross_pnl', 'fees', 'funding', 'r_multiple',
             'funding_complete', 'ambiguous_execution', 'awaiting_market_data',
         ]) as $position) {
@@ -115,7 +115,14 @@ final class PerformanceStatisticsService
             $incompleteFunding += $position->funding_complete ? 0 : 1;
             $ambiguous += $position->ambiguous_execution ? 1 : 0;
             $awaitingMarketData += $position->awaiting_market_data ? 1 : 0;
-            if ($position->closed_at === null || (($filters['to'] ?? null) instanceof DateTimeImmutable && $position->closed_at > $filters['to'])) {
+            $closedAtTime = $position->closed_at instanceof \DateTimeInterface
+                ? $position->closed_at->getTimestamp()
+                : ($position->closed_at !== null ? strtotime((string) $position->closed_at) : null);
+            $openedAtTime = $position->opened_at instanceof \DateTimeInterface
+                ? $position->opened_at->getTimestamp()
+                : ($position->opened_at !== null ? strtotime((string) $position->opened_at) : 0);
+
+            if ($closedAtTime === null || (($filters['to'] ?? null) instanceof DateTimeImmutable && $closedAtTime > $filters['to']->getTimestamp())) {
                 $openFees = $openFees->plus($position->fees);
                 $openFunding = $openFunding->plus($position->funding);
 
@@ -128,7 +135,7 @@ final class PerformanceStatisticsService
             $value = BigDecimal::of($position->net_pnl);
             $net = $net->plus($value);
             $grossPnl = $grossPnl->plus($position->gross_pnl);
-            $holdingSeconds += $position->closed_at->getTimestamp() - $position->opened_at->getTimestamp();
+            $holdingSeconds += max(0, (int) ($closedAtTime - $openedAtTime));
             if ($value->isPositive()) {
                 $winCount++;
                 $grossProfit = $grossProfit->plus($value);
@@ -149,12 +156,11 @@ final class PerformanceStatisticsService
                 $rCount++;
             }
         }
-        $slippage = VirtualExecutionRecord::query()
+        $slippageVal = VirtualExecutionRecord::query()
             ->whereIn('position_id', (clone $query)->select('id'))
-            ->cursor(['quantity', 'slippage'])
-            ->reduce(fn (BigDecimal $sum, VirtualExecutionRecord $execution): BigDecimal => $sum->plus(
-                BigDecimal::of($execution->quantity)->multipliedBy($execution->slippage)
-            ), BigDecimal::zero());
+            ->selectRaw('COALESCE(SUM(quantity * slippage), 0) as total_slippage')
+            ->value('total_slippage');
+        $slippage = BigDecimal::of((string) ($slippageVal ?? '0'));
         $profitFactor = $grossLoss->isZero() ? null : (string) $grossProfit->dividedBy($grossLoss->abs(), 8, RoundingMode::HalfEven);
 
         foreach (['symbol', 'side', 'quality_class', 'strategy_version'] as $field) {
@@ -169,11 +175,11 @@ final class PerformanceStatisticsService
             $signalQuery->where('decision_time', '<=', $filters['to']);
         }
         $sideCounts = ['BUY' => 0, 'SELL' => 0, 'SKIP' => 0];
-        $totalSignals = 0;
-        foreach ($signalQuery->cursor(['id', 'side']) as $signal) {
-            $totalSignals++;
-            $sideCounts[$signal->side] = ($sideCounts[$signal->side] ?? 0) + 1;
+        $sideResults = (clone $signalQuery)->selectRaw('side, COUNT(*) as cnt')->groupBy('side')->pluck('cnt', 'side');
+        foreach ($sideResults as $side => $count) {
+            $sideCounts[$side] = (int) $count;
         }
+        $totalSignals = array_sum($sideCounts);
         $skip = (int) ($sideCounts['SKIP'] ?? 0);
 
         return new PerformanceReport([
@@ -231,7 +237,7 @@ final class PerformanceStatisticsService
                 $this->drawdown(
                     $account->starting_balance,
                     EquitySnapshotRecord::query()->performance()->where('paper_account_id', $account->id)
-                        ->oldest('recorded_at')->oldest('id')->cursor(['equity', 'source_event_key', 'unrealized_pnl', 'valuation_fresh']),
+                        ->oldest('recorded_at')->oldest('id')->toBase()->cursor(['equity', 'source_event_key', 'unrealized_pnl', 'valuation_fresh']),
                     $account->current_equity
                 )
             ),

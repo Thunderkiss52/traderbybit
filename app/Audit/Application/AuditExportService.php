@@ -172,8 +172,10 @@ final class AuditExportService
             }
             $export->update(['status' => 'RUNNING', 'progress_percent' => 1, 'error_code' => null]);
             if (DB::getDriverName() === 'pgsql') {
-                DB::statement("SET statement_timeout TO '3000ms'");
-                DB::statement("SET lock_timeout TO '1000ms'");
+                $statementTimeout = (int) config('audit.statement_timeout_ms', 60000);
+                $lockTimeout = (int) config('audit.lock_timeout_ms', 5000);
+                DB::statement("SET statement_timeout TO '{$statementTimeout}ms'");
+                DB::statement("SET lock_timeout TO '{$lockTimeout}ms'");
             }
 
             $ownsTransaction = false;
@@ -511,21 +513,34 @@ final class AuditExportService
             }
             $decisions->where('configuration_hash', $hash);
             $decisions = $window($decisions, 'decision_time');
+            $decisionCounts = (clone $decisions)->selectRaw('side, count(*) as n')->groupBy('side')->pluck('n', 'side');
+            $buy = (int) ($decisionCounts['BUY'] ?? 0);
+            $sell = (int) ($decisionCounts['SELL'] ?? 0);
+            $skip = (int) ($decisionCounts['SKIP'] ?? 0);
+            $totalDecisions = $buy + $sell + $skip;
+
             $signalOnly = in_array($account->strategy_id, (array) config('research.forward_paper.signal_only_strategies', []), true);
             $risks = DB::table('risk_decisions')->where('paper_account_id', $account->id);
-            $positions = DB::table('virtual_positions')->where('paper_account_id', $account->id);
+            $riskCounts = $window(clone $risks, 'decided_at')
+                ->selectRaw('count(*) filter (where allowed = true) as approved, count(*) filter (where allowed = false) as rejected')
+                ->first();
+
+            $posCounts = DB::table('virtual_positions')->where('paper_account_id', $account->id)
+                ->selectRaw('count(*) filter (where opened_at >= ? and opened_at < ?) as opened, count(*) filter (where closed_at >= ? and closed_at < ?) as closed', [$export->from_at, $export->to_at, $export->from_at, $export->to_at])
+                ->first();
+
             fputcsv($handle, [
                 $account->id, $account->exchange_id, $account->strategy_id, $account->strategy_version,
-                (clone $decisions)->count(),
-                (clone $decisions)->where('side', 'BUY')->count(),
-                (clone $decisions)->where('side', 'SELL')->count(),
-                (clone $decisions)->where('side', 'SKIP')->count(),
+                $totalDecisions,
+                $buy,
+                $sell,
+                $skip,
                 $window(clone $signals, 'signals.decision_time')->count(),
                 $signalOnly ? 'SIGNAL_ONLY' : 'PAPER_EXECUTION',
-                $window(clone $risks, 'decided_at')->where('allowed', true)->count(),
-                $window(clone $risks, 'decided_at')->where('allowed', false)->count(),
-                $window(clone $positions, 'opened_at')->count(),
-                $window(clone $positions, 'closed_at')->count(),
+                (int) ($riskCounts->approved ?? 0),
+                (int) ($riskCounts->rejected ?? 0),
+                (int) ($posCounts->opened ?? 0),
+                (int) ($posCounts->closed ?? 0),
             ], ',', '"', '');
             $count++;
         }

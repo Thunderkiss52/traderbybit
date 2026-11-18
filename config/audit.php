@@ -10,4 +10,6 @@ return [
     'min_free_disk_bytes' => 10 * 1024 * 1024 * 1024,
     'retention_hours' => 24,
     'quota_bytes' => 1024 * 1024 * 1024,
+    'statement_timeout_ms' => 60000,
+    'lock_timeout_ms' => 5000,
 ];
