@@ -5,11 +5,13 @@ declare(strict_types=1);
 namespace App\Audit\Jobs;
 
 use App\Audit\Application\AuditExportService;
+use App\Audit\Infrastructure\Persistence\AuditExportRecord;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
 use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\SerializesModels;
+use RuntimeException;
 use Throwable;
 
 final class GenerateAuditExportJob implements ShouldQueue
@@ -34,11 +36,11 @@ final class GenerateAuditExportJob implements ShouldQueue
 
     public function failed(Throwable $exception): void
     {
-        $export = \App\Audit\Infrastructure\Persistence\AuditExportRecord::query()->find($this->exportId);
+        $export = AuditExportRecord::query()->find($this->exportId);
         if ($export !== null && $export->error_code !== null && str_starts_with((string) $export->error_code, 'audit_')) {
             return;
         }
-        $code = $exception instanceof \RuntimeException && str_starts_with($exception->getMessage(), 'audit_')
+        $code = $exception instanceof RuntimeException && str_starts_with($exception->getMessage(), 'audit_')
             ? $exception->getMessage()
             : 'job_failed';
         app(AuditExportService::class)->failed($this->exportId, $code);
