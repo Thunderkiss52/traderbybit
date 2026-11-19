@@ -5,8 +5,8 @@ declare(strict_types=1);
 return [
     'enabled' => ['bybit', 'binance', 'coinbase', 'upbit', 'okx', 'bitget', 'gate', 'kucoin', 'kraken', 'htx'],
     'default' => 'bybit',
-    'auto_approve_eligible' => (bool) env('VECTOR_AUTO_APPROVE_ELIGIBLE_EXCHANGES', true),
-    'binance_paper_provisioning_approved' => env('VECTOR_BINANCE_PAPER_PROVISIONING_APPROVED', true),
+    'auto_approve_eligible' => (bool) env('VECTOR_AUTO_APPROVE_ELIGIBLE_EXCHANGES', false),
+    'binance_paper_provisioning_approved' => (bool) env('VECTOR_BINANCE_PAPER_PROVISIONING_APPROVED', false),
     'bybit' => [
         'base_url' => 'https://api.bybit.com',
         'timeout_seconds' => 8,
@@ -28,7 +28,7 @@ return [
         'open_interest_max_lag_seconds' => 900,
         'max_candles_per_request' => 500,
         'automatic_candle_recovery_enabled' => (bool) env('VECTOR_BINANCE_AUTOMATIC_CANDLE_RECOVERY_ENABLED', false),
-        'paper_execution_approved' => (bool) env('VECTOR_BINANCE_PAPER_EXECUTION_APPROVED', true),
+        'paper_execution_approved' => (bool) env('VECTOR_BINANCE_PAPER_EXECUTION_APPROVED', false),
         'paper_taker_rate' => env('VECTOR_BINANCE_PAPER_TAKER_RATE', '0.0005'),
         'paper_slippage_rate' => env('VECTOR_BINANCE_PAPER_SLIPPAGE_RATE', '0.0002'),
         'research_cycle_enabled' => (bool) env('VECTOR_BINANCE_RESEARCH_CYCLE_ENABLED', true),
@@ -81,7 +81,7 @@ return [
     'okx' => [
         'base_url' => 'https://www.okx.com',
         'timeout_seconds' => 8,
-        'paper_execution_approved' => (bool) env('VECTOR_OKX_PAPER_EXECUTION_APPROVED', true),
+        'paper_execution_approved' => (bool) env('VECTOR_OKX_PAPER_EXECUTION_APPROVED', false),
         'paper_taker_rate' => env('VECTOR_OKX_PAPER_TAKER_RATE', '0.0005'),
         'paper_slippage_rate' => env('VECTOR_OKX_PAPER_SLIPPAGE_RATE', '0.0002'),
         'cost_model' => [
@@ -96,7 +96,7 @@ return [
     'bitget' => [
         'base_url' => 'https://api.bitget.com',
         'timeout_seconds' => 8,
-        'paper_execution_approved' => (bool) env('VECTOR_BITGET_PAPER_EXECUTION_APPROVED', true),
+        'paper_execution_approved' => (bool) env('VECTOR_BITGET_PAPER_EXECUTION_APPROVED', false),
         'paper_taker_rate' => env('VECTOR_BITGET_PAPER_TAKER_RATE', '0.0006'),
         'paper_slippage_rate' => env('VECTOR_BITGET_PAPER_SLIPPAGE_RATE', '0.0002'),
         'cost_model' => [
@@ -111,7 +111,7 @@ return [
     'gate' => [
         'base_url' => 'https://api.gateio.ws',
         'timeout_seconds' => 8,
-        'paper_execution_approved' => (bool) env('VECTOR_GATE_PAPER_EXECUTION_APPROVED', true),
+        'paper_execution_approved' => (bool) env('VECTOR_GATE_PAPER_EXECUTION_APPROVED', false),
         'paper_taker_rate' => env('VECTOR_GATE_PAPER_TAKER_RATE', '0.0005'),
         'paper_slippage_rate' => env('VECTOR_GATE_PAPER_SLIPPAGE_RATE', '0.00025'),
         'cost_model' => [
@@ -126,7 +126,7 @@ return [
     'kucoin' => [
         'base_url' => 'https://api-futures.kucoin.com',
         'timeout_seconds' => 8,
-        'paper_execution_approved' => (bool) env('VECTOR_KUCOIN_PAPER_EXECUTION_APPROVED', true),
+        'paper_execution_approved' => (bool) env('VECTOR_KUCOIN_PAPER_EXECUTION_APPROVED', false),
         'paper_taker_rate' => env('VECTOR_KUCOIN_PAPER_TAKER_RATE', '0.0006'),
         'paper_slippage_rate' => env('VECTOR_KUCOIN_PAPER_SLIPPAGE_RATE', '0.0003'),
         'cost_model' => [
@@ -141,7 +141,7 @@ return [
     'kraken' => [
         'base_url' => 'https://api.kraken.com',
         'timeout_seconds' => 8,
-        'paper_execution_approved' => (bool) env('VECTOR_KRAKEN_PAPER_EXECUTION_APPROVED', true),
+        'paper_execution_approved' => (bool) env('VECTOR_KRAKEN_PAPER_EXECUTION_APPROVED', false),
         'paper_taker_rate' => env('VECTOR_KRAKEN_PAPER_TAKER_RATE', '0.0005'),
         'paper_slippage_rate' => env('VECTOR_KRAKEN_PAPER_SLIPPAGE_RATE', '0.0002'),
         'cost_model' => [
@@ -156,7 +156,7 @@ return [
     'htx' => [
         'base_url' => 'https://api.hbdm.com',
         'timeout_seconds' => 8,
-        'paper_execution_approved' => (bool) env('VECTOR_HTX_PAPER_EXECUTION_APPROVED', true),
+        'paper_execution_approved' => (bool) env('VECTOR_HTX_PAPER_EXECUTION_APPROVED', false),
         'paper_taker_rate' => env('VECTOR_HTX_PAPER_TAKER_RATE', '0.0005'),
         'paper_slippage_rate' => env('VECTOR_HTX_PAPER_SLIPPAGE_RATE', '0.00025'),
         'cost_model' => [
