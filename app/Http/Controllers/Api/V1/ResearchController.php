@@ -21,6 +21,7 @@ use App\Indicators\Application\IndicatorEngine;
 use App\MarketData\Domain\Candle;
 use App\MarketData\Domain\Interval;
 use App\MarketData\Infrastructure\Persistence\CandleRecord;
+use App\PaperTrading\Application\AccountUnblockService;
 use App\PaperTrading\Application\DailyPerformanceService;
 use App\PaperTrading\Application\DirectionalPerformanceService;
 use App\PaperTrading\Application\PaperSizingSettings;
@@ -961,6 +962,24 @@ final class ResearchController extends Controller
             'status', 'starting_balance', 'current_equity', 'realized_pnl', 'unrealized_pnl',
             'reserved_risk', 'maximum_drawdown_percent', 'current_drawdown_percent', 'is_primary',
         ]));
+    }
+
+    public function unblockPaperAccount(string $id, Request $request, AccountUnblockService $unblockService): ResearchResource|JsonResponse
+    {
+        $account = PaperAccountRecord::query()->find($id);
+        if ($account === null) {
+            return $this->notFound('account_not_found', "Account [{$id}] was not found.");
+        }
+
+        $reason = $request->string('reason')->toString() ?: null;
+        $operator = $request->string('operator')->toString() ?: 'operator';
+
+        $updated = $unblockService->unblock($id, $reason, $operator);
+
+        return $this->ok([
+            'account' => $updated,
+            'message' => "Account {$account->name} successfully unblocked and returned to active paper execution.",
+        ]);
     }
 
     public function getAccountSizing(string $id): ResearchResource|JsonResponse

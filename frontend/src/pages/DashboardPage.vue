@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { onBeforeUnmount, onMounted, ref, shallowRef, computed, watch } from 'vue';
 import { storeToRefs } from 'pinia';
-import { get } from '../services/api';
+import { get, unblockPaperAccount } from '../services/api';
 import { usePolling } from '../composables/usePolling';
 import { useSettings } from '../stores/settings';
 import { formatMoney, formatPrice, formatPercent, formatSpread } from '../utils';
@@ -156,6 +156,27 @@ const { autoRefresh } = storeToRefs(useSettings());
 const { loading, connected } = usePolling(loadDashboard, 5000, autoRefresh);
 onBeforeUnmount(() => dashboardController?.abort());
 
+const unblockingAccountId = ref<string | null>(null);
+const unblockSuccessMessage = ref('');
+
+async function handleUnblock(accountId?: string, strategyName?: string) {
+  if (!accountId) return;
+  const confirmed = window.confirm(`Разблокировать стратегию ${strategyName || accountId} и возобновить виртуальную торговлю (PAPER)?`);
+  if (!confirmed) return;
+
+  unblockingAccountId.value = accountId;
+  try {
+    const res = await unblockPaperAccount(accountId, 'Operator manual unblock from UI dashboard', 'operator');
+    unblockSuccessMessage.value = res?.data?.message || `Аккаунт ${strategyName || accountId} успешно разблокирован!`;
+    await Promise.all([loadDashboard(), loadExchangeComparison()]);
+    setTimeout(() => { unblockSuccessMessage.value = ''; }, 5000);
+  } catch (err: any) {
+    alert(`Ошибка при разблокировке: ${err?.response?.data?.message || err.message}`);
+  } finally {
+    unblockingAccountId.value = null;
+  }
+}
+
 const evidence = (value: unknown) => value === null || value === undefined ? '—' : `${value}/100 evidence`;
 
 const systemStatus = computed(() => {
@@ -215,10 +236,23 @@ const systemStatus = computed(() => {
         <q-badge v-if="data.portfolio?.is_aggregate" color="primary" class="q-pa-xs text-subtitle2">
           AGGREGATE ({{ data.portfolio?.accounts_count || selectedAccounts.length || '—' }} Accounts · {{ selectedExchange.toUpperCase() }})
         </q-badge>
-        <q-badge v-else :color="data.portfolio?.status === 'ACTIVE' ? 'positive' : (data.portfolio?.status === 'BLOCKED' ? 'warning' : 'negative')" class="q-pa-xs text-subtitle2">
-          ACCOUNT: {{ data.account?.name || data.portfolio?.account_name || 'Selected' }} ({{ selectedExchange.toUpperCase() }}) · {{ data.portfolio?.status }}
-        </q-badge>
+        <div v-else class="row items-center q-gutter-xs">
+          <q-badge :color="data.portfolio?.status === 'ACTIVE' ? 'positive' : (data.portfolio?.status === 'BLOCKED' ? 'warning' : 'negative')" class="q-pa-xs text-subtitle2">
+            ACCOUNT: {{ data.account?.name || data.portfolio?.account_name || 'Selected' }} ({{ selectedExchange.toUpperCase() }}) · {{ data.portfolio?.status }}
+          </q-badge>
+          <q-btn
+            v-if="data.portfolio?.status === 'BLOCKED' || data.portfolio?.status === 'HALTED'"
+            color="warning"
+            text-color="black"
+            size="sm"
+            dense
+            label="Разблокировать"
+            :loading="unblockingAccountId === (data.account?.id || data.portfolio?.id || data.portfolio?.account_id)"
+            @click="handleUnblock(data.account?.id || data.portfolio?.id || data.portfolio?.account_id, data.account?.name || data.portfolio?.account_name)"
+          />
+        </div>
       </div>
+      <q-banner v-if="unblockSuccessMessage" class="bg-positive text-white q-mb-md" rounded dense>{{ unblockSuccessMessage }}</q-banner>
       <q-banner class="bg-grey-9 text-white q-mb-md">Estimated paper results, not actual exchange profits. Backtest performance is reported separately.</q-banner>
       <div v-if="data.portfolio" class="metrics">
         <MetricCard label="Starting Balance (USDT)" :value="formatMoney(data.portfolio.starting_balance)" />
@@ -240,7 +274,7 @@ const systemStatus = computed(() => {
       <h2>Independent Strategy Paper Portfolios</h2>
       <div class="muted q-mb-sm">Each enabled strategy has isolated forward-only virtual accounting. No historical replay is mixed into these balances.</div>
       <q-markup-table flat bordered>
-        <thead><tr><th class="text-left">Strategy</th><th>Account</th><th>Evaluation</th><th>ML Model</th><th>Equity</th><th>Realized PnL</th><th>Unrealized PnL</th></tr></thead>
+        <thead><tr><th class="text-left">Strategy</th><th>Account</th><th>Evaluation</th><th>ML Model</th><th>Equity</th><th>Realized PnL</th><th>Unrealized PnL</th><th class="text-center">Action</th></tr></thead>
         <tbody><tr v-for="portfolio in data.strategy_portfolios || []" :key="portfolio.id">
           <td class="text-left">
             <b>{{ portfolio.strategy_id || 'baseline' }}</b>
@@ -251,6 +285,17 @@ const systemStatus = computed(() => {
           <td class="text-center"><q-badge color="grey-7">{{ portfolio.ml_status || 'ML_NOT_TRAINED' }}</q-badge></td>
           <td class="text-right">{{ formatMoney(portfolio.current_equity) }}</td>
           <td class="text-right">{{ formatMoney(portfolio.realized_pnl) }}</td><td class="text-right">{{ formatMoney(portfolio.unrealized_pnl) }}</td>
+          <td class="text-center">
+            <q-btn
+              v-if="portfolio.status === 'BLOCKED' || portfolio.status === 'HALTED'"
+              color="warning"
+              text-color="black"
+              size="xs"
+              label="Разблокировать"
+              :loading="unblockingAccountId === portfolio.id"
+              @click="handleUnblock(portfolio.id, portfolio.strategy_id)"
+            />
+          </td>
         </tr></tbody>
       </q-markup-table>
       <EmptyState v-if="!(data.strategy_portfolios || []).length" />
@@ -292,6 +337,7 @@ const systemStatus = computed(() => {
             <th>Equity (USDT)</th>
             <th>Realized PnL</th>
             <th>Unrealized PnL</th>
+            <th class="text-center">Action</th>
           </tr>
         </thead>
         <tbody>
@@ -310,6 +356,17 @@ const systemStatus = computed(() => {
             <td class="text-right">{{ formatMoney(account.current_equity) }}</td>
             <td class="text-right">{{ formatMoney(account.realized_pnl) }}</td>
             <td class="text-right">{{ formatMoney(account.unrealized_pnl) }}</td>
+            <td class="text-center">
+              <q-btn
+                v-if="account.status === 'BLOCKED' || account.status === 'HALTED'"
+                color="warning"
+                text-color="black"
+                size="xs"
+                label="Разблокировать"
+                :loading="unblockingAccountId === account.id"
+                @click="handleUnblock(account.id, account.strategy_id)"
+              />
+            </td>
           </tr>
         </tbody>
       </q-markup-table>

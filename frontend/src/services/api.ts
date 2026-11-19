@@ -197,3 +197,21 @@ export async function getExchangeInstruments(
   })).data;
 }
 
+export async function fetchPaperAccounts(exchangeId?: string): Promise<Envelope<any[]>> {
+  return (await api.get('/paper/accounts', {
+    params: exchangeId ? { exchange: exchangeId } : undefined,
+  })).data;
+}
+
+export async function unblockPaperAccount(
+  accountId: string,
+  reason?: string,
+  operator?: string
+): Promise<Envelope<{ account: any; message: string }>> {
+  return (await api.post(`/paper/accounts/${accountId}/unblock`, {
+    reason,
+    operator,
+  })).data;
+}
+
+

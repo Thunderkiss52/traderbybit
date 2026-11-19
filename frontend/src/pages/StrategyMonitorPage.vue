@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed, onBeforeUnmount, onMounted, ref, shallowRef, watch } from 'vue';
-import { get } from '../services/api';
+import { get, unblockPaperAccount } from '../services/api';
 import { useSettings } from '../stores/settings';
 import MetricCard from '../components/MetricCard.vue';
 import type { QTableColumn } from 'quasar';
@@ -39,6 +39,24 @@ const monitorData = shallowRef<any>({
 
 const selectedItem = ref<any>(null);
 const timelineEvents = ref<any[]>([]);
+const unblockingAccountId = ref<string | null>(null);
+
+async function handleUnblock(accountId?: string) {
+  if (!accountId) return;
+  const confirmed = window.confirm(`Разблокировать торговый аккаунт ${accountId} и возобновить виртуальную торговлю (PAPER)?`);
+  if (!confirmed) return;
+
+  unblockingAccountId.value = accountId;
+  try {
+    await unblockPaperAccount(accountId, 'Operator manual unblock from Strategy Monitor', 'operator');
+    alert('Аккаунт успешно разблокирован!');
+    loadMonitor();
+  } catch (err: any) {
+    alert(`Ошибка при разблокировке: ${err?.response?.data?.message || err.message}`);
+  } finally {
+    unblockingAccountId.value = null;
+  }
+}
 
 const columns: QTableColumn[] = [
   { name: 'decision_time', label: 'Time (UTC)', field: 'decision_time', align: 'left', sortable: true },
@@ -528,14 +546,35 @@ function riskColor(risk: string) {
                   </div>
                 </div>
 
-                <div v-if="selectedItem.risk_decision?.reasons?.length > 0" class="text-caption text-grey-4 q-mb-xs">
-                  Checks / Rejections: {{ selectedItem.risk_decision.reasons.join(', ') }}
+                <div v-if="selectedItem.risk_decision?.reasons?.length > 0" class="text-caption text-grey-4 q-mb-xs row items-center justify-between">
+                  <div>Checks / Rejections: {{ selectedItem.risk_decision.reasons.join(', ') }}</div>
+                  <q-btn
+                    v-if="!selectedItem.risk_decision?.allowed && selectedItem.paper_account_id"
+                    color="warning"
+                    text-color="black"
+                    size="xs"
+                    label="Разблокировать аккаунт"
+                    :loading="unblockingAccountId === selectedItem.paper_account_id"
+                    @click="handleUnblock(selectedItem.paper_account_id)"
+                  />
                 </div>
                 <div v-if="selectedItem.risk_decision_count > 1" class="q-mb-sm">
-                  <div v-for="decision in selectedItem.risk_decisions" :key="decision.id" class="text-caption bg-grey-10 q-pa-xs q-mb-xs">
-                    Account {{ decision.paper_account_id }}:
-                    <q-badge :color="decision.allowed ? 'positive' : 'negative'" :label="decision.allowed ? 'PASSED' : 'BLOCKED'" />
-                    <span class="q-ml-sm">{{ (decision.reasons || []).join(', ') }}</span>
+                  <div v-for="decision in selectedItem.risk_decisions" :key="decision.id" class="text-caption bg-grey-10 q-pa-xs q-mb-xs row items-center justify-between">
+                    <div>
+                      Account {{ decision.paper_account_id }}:
+                      <q-badge :color="decision.allowed ? 'positive' : 'negative'" :label="decision.allowed ? 'PASSED' : 'BLOCKED'" />
+                      <span class="q-ml-sm">{{ (decision.reasons || []).join(', ') }}</span>
+                    </div>
+                    <q-btn
+                      v-if="!decision.allowed && (decision.reasons || []).some((r: string) => r.includes('drawdown') || r.includes('account_not_active'))"
+                      color="warning"
+                      text-color="black"
+                      size="xs"
+                      label="Разблокировать"
+                      class="q-ml-sm"
+                      :loading="unblockingAccountId === decision.paper_account_id"
+                      @click="handleUnblock(decision.paper_account_id)"
+                    />
                   </div>
                 </div>
 

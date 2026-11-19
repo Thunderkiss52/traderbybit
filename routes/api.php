@@ -158,6 +158,7 @@ Route::prefix('v1')->middleware('throttle:api')->group(function () {
     Route::get('journal', [C::class, 'journal']);
     Route::get('journal/accounts', [C::class, 'journalAccounts']);
     Route::get('paper/accounts', [C::class, 'paperAccounts']);
+    Route::post('paper/accounts/{id}/unblock', [C::class, 'unblockPaperAccount'])->whereUuid('id');
     Route::get('paper/accounts/{id}/sizing', [C::class, 'getAccountSizing'])->whereUuid('id');
     Route::put('paper/accounts/{id}/sizing', [C::class, 'updateAccountSizing'])->whereUuid('id');
     Route::get('paper/accounts/{id}/effective-sizing', [C::class, 'getEffectiveAccountSizing'])->whereUuid('id');

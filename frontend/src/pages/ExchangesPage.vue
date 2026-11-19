@@ -742,8 +742,8 @@ onMounted(() => {
             </div>
 
             <div v-if="exchange.cost_model" class="q-mt-sm text-caption text-grey-5">
-              Cost: Taker {{ (parseFloat(exchange.cost_model.taker_rate) * 10000).toFixed(1) }} bps &bull;
-              Slippage {{ (parseFloat(exchange.cost_model.slippage_rate) * 10000).toFixed(1) }} bps
+              Cost: Taker {{ (parseFloat(exchange.cost_model.taker_rate || exchange.cost_model.reference_taker_rate || '0') * 10000).toFixed(1) }} bps &bull;
+              Slippage {{ (parseFloat(exchange.cost_model.slippage_rate || exchange.cost_model.reference_slippage_rate || '0') * 10000).toFixed(1) }} bps
             </div>
           </q-card-section>
 
@@ -944,9 +944,9 @@ onMounted(() => {
                 <div class="text-subtitle2 text-weight-bold q-mt-md q-mb-xs">Cost & Sizing Model</div>
                 <div class="text-caption text-grey-4">
                   <div>Fee Tier: <strong>{{ selectedExchange.cost_model?.fee_tier || 'Standard' }}</strong></div>
-                  <div>Maker Rate: <code>{{ selectedExchange.cost_model?.maker_rate }}</code></div>
-                  <div>Taker Rate: <code>{{ selectedExchange.cost_model?.taker_rate }}</code></div>
-                  <div>Slippage Rate: <code>{{ selectedExchange.cost_model?.slippage_rate }}</code></div>
+                  <div>Maker Rate: <code>{{ selectedExchange.cost_model?.maker_rate || selectedExchange.cost_model?.reference_maker_rate || '—' }}</code></div>
+                  <div>Taker Rate: <code>{{ selectedExchange.cost_model?.taker_rate || selectedExchange.cost_model?.reference_taker_rate || '—' }}</code></div>
+                  <div>Slippage Rate: <code>{{ selectedExchange.cost_model?.slippage_rate || selectedExchange.cost_model?.reference_slippage_rate || '—' }}</code></div>
                 </div>
               </q-card-section>
             </q-card>
