@@ -261,14 +261,14 @@ final class SystemFreshnessServiceTest extends TestCase
         self::assertSame('CONFLICTED', $conflicted['status']);
 
         // Assert MISSING
-        $missing = $items->first(fn ($c) => $c['exchange'] === 'binance' && $c['symbol'] === 'ETHUSDT' && $c['interval'] === '240');
+        $missing = $items->first(fn ($c) => $c['exchange'] === 'binance' && $c['symbol'] === 'ETHUSDT' && $c['interval'] === '60');
         self::assertSame('MISSING', $missing['status']);
 
         // Assert Alerts
         $alerts = collect($check['alerts']);
         self::assertTrue($alerts->contains(fn ($a) => $a['code'] === 'CANDLE_INTEGRITY_CONFLICT' && $a['exchange'] === 'binance' && $a['interval'] === '30'));
         self::assertTrue($alerts->contains(fn ($a) => $a['code'] === 'MISSING_CANDLE_INTERVALS' && $a['exchange'] === 'bybit' && $a['symbol'] === 'ETHUSDT'));
-        self::assertTrue($alerts->contains(fn ($a) => $a['code'] === 'MISSING_CANDLE_INTERVALS' && $a['exchange'] === 'binance' && $a['interval'] === '240'));
+        self::assertTrue($alerts->contains(fn ($a) => $a['code'] === 'MISSING_CANDLE_INTERVALS' && $a['exchange'] === 'binance' && $a['interval'] === '60'));
 
         // Status is CRITICAL because of the conflict
         self::assertSame('CRITICAL', $check['status']);

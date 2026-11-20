@@ -39,7 +39,7 @@ final class SystemFreshnessService
         $hasMissingOrStale = false;
 
         $symbols = (array) config('ui.symbols', ['BTCUSDT', 'ETHUSDT']);
-        $intervals = (array) config('market_data.intervals', ['5', '15', '30', '60', '240']);
+        $intervals = (array) config('market_data.intervals', ['5', '15', '30', '60']);
         $registered = app(ExchangeRegistry::class)->registeredIds();
         $exchanges = $exchangeFilter !== null ? [$exchangeFilter] : $registered;
 
